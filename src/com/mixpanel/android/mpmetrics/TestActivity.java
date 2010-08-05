@@ -18,11 +18,11 @@ public class TestActivity extends Activity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-       
+        
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        mMPMetrics = new MPMetrics(this, "1dcc469a225696478c604ddc560d1673");
+        mMPMetrics = new MPMetrics(this, "Your Token Here");
         mMPMetrics.enableTestMode();
         
         RadioGroup personalityGroup = (RadioGroup) findViewById(R.id.personality_group);
