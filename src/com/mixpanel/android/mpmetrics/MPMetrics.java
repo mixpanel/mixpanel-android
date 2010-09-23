@@ -325,10 +325,10 @@ public class MPMetrics {
             propertiesObj.put("token", mToken);
             propertiesObj.put("time", time);
             propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-            //propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-            //propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-            //propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-            //propertiesObj.put("mp_lib", "android");
+            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
+            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
+            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
+            propertiesObj.put("mp_lib", "android");
             
             if (mSuperProperties != null) {
                 if (mSuperPropertiesType == SUPER_PROPERTY_TYPE_ALL || mSuperPropertiesType == SUPER_PROPERTY_TYPE_EVENTS) {
