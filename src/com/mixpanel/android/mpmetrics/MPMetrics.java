@@ -80,6 +80,11 @@ public class MPMetrics {
         GregorianCalendar gc = new GregorianCalendar();
         gc.add(GregorianCalendar.HOUR, -1 * DATA_EXPIRATION);
         
+        try {
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         mDbAdapter = new MPDbAdapter(mContext);
         mDbAdapter.open();
         mDbAdapter.cleanupEvents(gc.getTime());
@@ -153,9 +158,15 @@ public class MPMetrics {
      */
     private long persistEventData(String data) {
         if (Global.DEBUG) Log.d(LOGTAG, "persistEventData");
-        mDbAdapter.open();
-        long id = mDbAdapter.createEvents(data);
-        mDbAdapter.close();
+        long id = -1;
+        try {
+            mDbAdapter.open();
+            id = mDbAdapter.createEvents(data);
+            mDbAdapter.close();
+        } catch (Exception e) {
+            
+        }
+        
         return id;
     }
     
@@ -166,9 +177,14 @@ public class MPMetrics {
      */
     private boolean removeEventData(long id) {
         if (Global.DEBUG) Log.d(LOGTAG, "removeEventData");
-        mDbAdapter.open();
-        boolean results = mDbAdapter.deleteEvents(id);
-        mDbAdapter.close();
+        boolean results = false;
+        try {
+            mDbAdapter.open();
+            results = mDbAdapter.deleteEvents(id);
+            mDbAdapter.close();
+        } catch (Exception e) {
+            
+        }
         return results;
     }
     
@@ -180,38 +196,43 @@ public class MPMetrics {
      */
     private void sendRequest(final String url) {
         if (Global.DEBUG) Log.d(LOGTAG, "sendRequest");
-        mDbAdapter.open();
-        Cursor cursor = mDbAdapter.fetchEvents();
-        int idColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_ROWID);
-        int dataColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_DATA);
+        try {
+            mDbAdapter.open();
+            Cursor cursor = mDbAdapter.fetchEvents();
+            int idColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_ROWID);
+            int dataColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_DATA);
 
-        if (cursor.moveToFirst()) {
-            do {
-                final long id = cursor.getLong(idColumnIndex);
-                final String data = cursor.getString(dataColumnIndex);
-                
-                if (!mDispatchedEvents.contains(id)) {
-                    mDispatchedEvents.add(id);
+            if (cursor.moveToFirst()) {
+                do {
+                    final long id = cursor.getLong(idColumnIndex);
+                    final String data = cursor.getString(dataColumnIndex);
                     
-                    final ResponseHandler<String> responseHandler = 
-                        HTTPRequestHelper.getResponseHandlerInstance(mHandler, id);
-                    
-                    new Thread() {
-                        @Override
-                        public void run() {
-                            if (Global.DEBUG) Log.d(LOGTAG, "Sending data id: " + id);
-                            Map<String, String> params = new HashMap<String, String>();
-                            params.put("data", data);
-                            HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
-                            helper.performPost(url, null, null, null, params);
-                            
-                        }
-                    }.start();
-                }
-            } while (cursor.moveToNext());
+                    if (!mDispatchedEvents.contains(id)) {
+                        mDispatchedEvents.add(id);
+                        
+                        final ResponseHandler<String> responseHandler = 
+                            HTTPRequestHelper.getResponseHandlerInstance(mHandler, id);
+                        
+                        new Thread() {
+                            @Override
+                            public void run() {
+                                if (Global.DEBUG) Log.d(LOGTAG, "Sending data id: " + id);
+                                Map<String, String> params = new HashMap<String, String>();
+                                params.put("data", data);
+                                HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
+                                helper.performPost(url, null, null, null, params);
+                                
+                            }
+                        }.start();
+                    }
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
+            mDbAdapter.close();
+        } catch (Exception e) {
+            
         }
-        cursor.close();
-        mDbAdapter.close();
+        
         
         
     }
