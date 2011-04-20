@@ -182,7 +182,6 @@ public class HTTPRequestHelper {
                 	
                 	method.setEntity(new UrlEncodedFormEntity(nvps, HTTP.UTF_8));
                 	
-                    
                 } catch (UnsupportedEncodingException e) {
                     if (Global.DEBUG) Log.e(LOGTAG, " " + HTTPRequestHelper.CLASSTAG, e);
                 }
