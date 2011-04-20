@@ -5,24 +5,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.Vector;
 
 import org.apache.http.client.ResponseHandler;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mixpanel.android.dbadapter.MPDbAdapter;
-import com.mixpanel.android.network.Base64Coder;
-import com.mixpanel.android.network.HTTPRequestHelper;
-
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
+
+import com.mixpanel.android.dbadapter.MPDbAdapter;
+import com.mixpanel.android.network.Base64Coder;
+import com.mixpanel.android.network.HTTPRequestHelper;
 
 public class MPMetrics {
     
@@ -47,7 +47,6 @@ public class MPMetrics {
     private String mToken;
     private boolean mTestMode;
     
-    private Vector<Long> mDispatchedEvents;
     private JSONArray mEvents;
     private MPDbAdapter mDbAdapter;
     
@@ -80,17 +79,8 @@ public class MPMetrics {
         GregorianCalendar gc = new GregorianCalendar();
         gc.add(GregorianCalendar.HOUR, -1 * DATA_EXPIRATION);
         
-        try {
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         mDbAdapter = new MPDbAdapter(mContext);
-        mDbAdapter.open();
         mDbAdapter.cleanupEvents(gc.getTime());
-        mDbAdapter.close();
-        
-        mDispatchedEvents = new Vector<Long>();
        
         mEvents = new JSONArray();
         mSuperProperties = null;
@@ -108,7 +98,6 @@ public class MPMetrics {
             }
         }, 0, FLUSH_RATE);
     }
-
     
     /**
      * Return the carrier of the phone
@@ -147,9 +136,7 @@ public class MPMetrics {
         } else {
             return product + "_" + androidId;
         }
-        
     }
-    
    
     /**
      * Stores the event data in the database
@@ -160,11 +147,9 @@ public class MPMetrics {
         if (Global.DEBUG) Log.d(LOGTAG, "persistEventData");
         long id = -1;
         try {
-            mDbAdapter.open();
             id = mDbAdapter.createEvents(data);
-            mDbAdapter.close();
         } catch (Exception e) {
-            
+        	Log.e(LOGTAG, "Error trying to persist data", e);
         }
         
         return id;
@@ -179,15 +164,12 @@ public class MPMetrics {
         if (Global.DEBUG) Log.d(LOGTAG, "removeEventData");
         boolean results = false;
         try {
-            mDbAdapter.open();
             results = mDbAdapter.deleteEvents(id);
-            mDbAdapter.close();
         } catch (Exception e) {
-            
+            Log.e(LOGTAG, "Error trying to delete events", e);
         }
         return results;
     }
-    
     
     /**
      * Sends a the payload to the endpoint 
@@ -197,7 +179,21 @@ public class MPMetrics {
     private void sendRequest(final String url) {
         if (Global.DEBUG) Log.d(LOGTAG, "sendRequest");
         try {
-            mDbAdapter.open();
+            /*
+             * dsmith
+             * 
+             * We have no idea how many events we will be retrieving here.
+             * Since the flush timer is set to 1 minute and the common duration
+             * of an application is 30 seconds, its very conceivable that when
+             * this method is called, the amount of events could be quite large.
+             * 
+             * Since we have the possibility of returning 100s of iterable objects
+             * here, the following for loop will generate 100s of threads that will
+             * cause the OS to terminate the application.
+             * 
+             * We also want to utilize the batch request form so we do not have to send
+             * single events in each request.
+             */
             Cursor cursor = mDbAdapter.fetchEvents();
             int idColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_ROWID);
             int dataColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_DATA);
@@ -207,34 +203,28 @@ public class MPMetrics {
                     final long id = cursor.getLong(idColumnIndex);
                     final String data = cursor.getString(dataColumnIndex);
                     
-                    if (!mDispatchedEvents.contains(id)) {
-                        mDispatchedEvents.add(id);
+                    final ResponseHandler<String> responseHandler = 
+                        HTTPRequestHelper.getResponseHandlerInstance(mHandler, id);
                         
-                        final ResponseHandler<String> responseHandler = 
-                            HTTPRequestHelper.getResponseHandlerInstance(mHandler, id);
-                        
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                if (Global.DEBUG) Log.d(LOGTAG, "Sending data id: " + id);
-                                Map<String, String> params = new HashMap<String, String>();
-                                params.put("data", data);
-                                HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
-                                helper.performPost(url, null, null, null, params);
-                                
-                            }
-                        }.start();
-                    }
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            if (Global.DEBUG) Log.d(LOGTAG, "Sending data id: " + id);
+                            Map<String, String> params = new HashMap<String, String>();
+                            params.put("data", data);
+                            HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
+                            helper.performPost(url, null, null, null, params);
+                        }
+                    }.start();
+
                 } while (cursor.moveToNext());
             }
-            cursor.close();
-            mDbAdapter.close();
+            cursor.close();	
+        } catch (SQLException se) {
+        	Log.e(LOGTAG, "Error connecting to database", se);
         } catch (Exception e) {
-            
+        	Log.e(LOGTAG, "Unable to send request", e);
         }
-        
-        
-        
     }
     
     /**
@@ -251,11 +241,9 @@ public class MPMetrics {
         }
         
         String data = Base64Coder.encodeString(mEvents.toString());
-        
         persistEventData(data);
         
         sendRequest(ENDPOINT_TRACK);
-        
         mEvents = new JSONArray();
     }
     
@@ -336,7 +324,6 @@ public class MPMetrics {
     public void event(String eventName, Map<String, String> properties) {
         if (Global.DEBUG) Log.d(LOGTAG, "event");
         
-        
         String time = Long.toString(System.currentTimeMillis() / 1000);
         
         JSONObject dataObj = new JSONObject();
@@ -365,12 +352,10 @@ public class MPMetrics {
                 }
             }
             
-            
             dataObj.put("properties", propertiesObj);
             
-            
         } catch (JSONException e) {
-            e.printStackTrace();
+        	Log.e(LOGTAG, "Error generate JSON event", e);
         }
         
         addEvent(dataObj);
@@ -378,7 +363,6 @@ public class MPMetrics {
         if (mTestMode || getNumEvents() >= BULK_UPLOAD_LIMIT) {
             flush();
         }
-        
     }
     
     /**
@@ -438,7 +422,6 @@ public class MPMetrics {
             
             dataObj.put("properties", propertiesObj);
             
-            
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -460,12 +443,6 @@ public class MPMetrics {
         
         if (success) {
             removeEventData(id);
-        } else {
-         // Did not get a response from the server
         }
-        
-        mDispatchedEvents.remove(id);
-        
     }
- 
 }
