@@ -24,8 +24,8 @@ public class MPDbAdapter {
 	
 	public static final String KEY_ROWID = "_id";
 
-	private DatabaseHelper mDbHelper;
-	private SQLiteDatabase mDb;
+	private DatabaseHelper mDbHelper = null;
+	private SQLiteDatabase mDb = null;
 	private final Context mContext;
 	private static final String DATABASE_NAME = "mixpanel";
     private static final String DATABASE_TABLE = "events";
@@ -38,8 +38,6 @@ public class MPDbAdapter {
 													KEY_DATA + " string not null," + 
 													KEY_CREATED_AT + " string not null);";
 	
-	
-
 	private static class DatabaseHelper extends SQLiteOpenHelper {
 
 		DatabaseHelper(Context context) {
@@ -49,7 +47,6 @@ public class MPDbAdapter {
 		@Override
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(DATABASE_CREATE);
-			
 		}
 
 		@Override
@@ -60,7 +57,7 @@ public class MPDbAdapter {
     		    default: 
     		        break;
 		    }
-		}
+		}		
 	}
 
 	/**
@@ -83,13 +80,27 @@ public class MPDbAdapter {
 	 * @throws SQLException if the database could be neither opened or created
 	 */
 	public MPDbAdapter open() throws SQLException {
-		mDbHelper = new DatabaseHelper(mContext);
-		mDb = mDbHelper.getWritableDatabase();
+		if (mDbHelper == null) {
+			mDbHelper = new DatabaseHelper(mContext);
+		}
+		
+		if (mDb == null) {
+			mDb = mDbHelper.getWritableDatabase();
+		}
+
 		return this;
 	}
 
 	public void close() {
-		mDbHelper.close();
+		if (mDbHelper != null) {
+			mDbHelper.close();
+			mDbHelper = null;
+		}
+		
+		if (mDb != null) {
+			mDb.close();
+			mDb = null;
+		}
 	}
 
 	/**
@@ -100,6 +111,10 @@ public class MPDbAdapter {
 	public void cleanupEvents(Date date) {
 	    SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_TIME_FORMAT);
 	    String strDate = dateFormat.format(date);
+	    
+	    if (mDb == null) {
+	    	this.open();
+	    }
 	    
 	    mDb.delete(DATABASE_TABLE, KEY_CREATED_AT + " < \"" + strDate + "\"", null);
 	}
@@ -118,6 +133,10 @@ public class MPDbAdapter {
 		initialValues.put(KEY_DATA, data);
 		initialValues.put(KEY_CREATED_AT, dateFormat.format(date));
 		
+		if (mDb == null) {
+			this.open();
+		}
+		
 		return mDb.insert(DATABASE_TABLE, null, initialValues);
 	}
 
@@ -128,6 +147,11 @@ public class MPDbAdapter {
 	 * @return true if deleted, false otherwise
 	 */
 	public boolean deleteEvents(long rowId) {
+		
+		if (mDb == null) {
+			this.open();
+		}
+		
 		return mDb.delete(DATABASE_TABLE, KEY_ROWID + "=" + rowId, null) > 0;
 	}
 	
@@ -137,6 +161,11 @@ public class MPDbAdapter {
 	 * @return true if deleted, false otherwise
 	 */
 	public boolean deleteEvents() {
+		
+		if (mDb == null) {
+			this.open();
+		}
+		
 		return mDb.delete(DATABASE_TABLE, null, null) > 0;
 	}
 
@@ -150,8 +179,12 @@ public class MPDbAdapter {
 	 */
 	public boolean updateEvents(long rowId, String data) {
 		ContentValues args = new ContentValues();
-		
 		args.put(KEY_DATA, data);
+		
+		if (mDb == null) {
+			this.open();
+		}
+		
 		return mDb.update(DATABASE_TABLE, args, KEY_ROWID + "=" + rowId, null) > 0;
 	}
 	
@@ -164,6 +197,10 @@ public class MPDbAdapter {
 	 */
 	public String fetchEventsData(long rowId) throws SQLException {
 
+		if (mDb == null) {
+			this.open();
+		}
+		
 		Cursor mCursor = mDb.query(true, DATABASE_TABLE, new String[] { KEY_DATA }, KEY_ROWID + "=" + rowId,
 				null, null, null, null, null);
 		if (mCursor != null) {
@@ -184,6 +221,10 @@ public class MPDbAdapter {
 	 * @throws SQLException if set of events could not be found/retrieved
 	 */
 	public Cursor fetchEvents() throws SQLException {
+		
+		if (mDb == null) {
+			this.open();
+		}
 		
 		Cursor mCursor = mDb.query(true, DATABASE_TABLE, new String[] {
 		        KEY_ROWID, KEY_DATA, KEY_CREATED_AT }, null, null, null, null, KEY_ROWID + " DESC", null);
