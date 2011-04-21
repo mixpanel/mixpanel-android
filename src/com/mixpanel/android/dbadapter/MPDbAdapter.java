@@ -86,11 +86,11 @@ public class MPDbAdapter {
 		mDbHelper = new DatabaseHelper(mContext);
 		try {
 			mDb = mDbHelper.getWritableDatabase();
-		    throw new Exception();
 		} catch (Exception e) {
 		    if (Global.DEBUG) Log.d(LOGTAG, "Exception with opening database, delete and retry");
 		    if (mDb != null) {
 		    	mDb.close();
+		    	mDb = null;
 		    }		
 		    try {
 		    	mContext.deleteDatabase(DATABASE_NAME);
@@ -100,9 +100,8 @@ public class MPDbAdapter {
 				if (mDbHelper == null) {
 					mDbHelper = new DatabaseHelper(mContext);
 				}
-				if (mDb == null) {
-					mDb = mDbHelper.getWritableDatabase();
-				}
+				mDb = mDbHelper.getWritableDatabase();
+				
 			} catch (Exception ex) {
 			    if (Global.DEBUG) Log.d(LOGTAG, "Retry failed. Giving up.");			    
 			}
