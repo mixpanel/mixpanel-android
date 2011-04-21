@@ -97,9 +97,7 @@ public class MPDbAdapter {
 		    } catch (Exception de) {}
 		    
 			try {
-				if (mDbHelper == null) {
-					mDbHelper = new DatabaseHelper(mContext);
-				}
+				mDbHelper = new DatabaseHelper(mContext);				
 				mDb = mDbHelper.getWritableDatabase();
 				
 			} catch (Exception ex) {
