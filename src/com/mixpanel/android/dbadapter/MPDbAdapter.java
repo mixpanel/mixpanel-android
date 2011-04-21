@@ -84,12 +84,40 @@ public class MPDbAdapter {
 	 */
 	public MPDbAdapter open() throws SQLException {
 		mDbHelper = new DatabaseHelper(mContext);
-		mDb = mDbHelper.getWritableDatabase();
+		try {
+			mDb = mDbHelper.getWritableDatabase();
+		    throw new Exception();
+		} catch (Exception e) {
+		    if (Global.DEBUG) Log.d(LOGTAG, "Exception with opening database, delete and retry");
+		    if (mDb != null) {
+		    	mDb.close();
+		    }		
+		    try {
+		    	mContext.deleteDatabase(DATABASE_NAME);
+		    } catch (Exception de) {}
+		    
+			try {
+				if (mDbHelper == null) {
+					mDbHelper = new DatabaseHelper(mContext);
+				}
+				if (mDb == null) {
+					mDb = mDbHelper.getWritableDatabase();
+				}
+			} catch (Exception ex) {
+			    if (Global.DEBUG) Log.d(LOGTAG, "Retry failed. Giving up.");			    
+			}
+		}
 		return this;
 	}
 
 	public void close() {
-		mDbHelper.close();
+		if (mDb != null) {
+			mDb.close();
+		}
+
+		if (mDbHelper != null) {
+			mDbHelper.close();
+		}		
 	}
 
 	/**
@@ -98,6 +126,10 @@ public class MPDbAdapter {
      * @param date date before which events should be deleted
      */
 	public void cleanupEvents(Date date) {
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return;
+		}
 	    SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_TIME_FORMAT);
 	    String strDate = dateFormat.format(date);
 	    
@@ -111,6 +143,10 @@ public class MPDbAdapter {
 	 * @return rowId or -1 if failed
 	 */
 	public long createEvents(String data) {
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return -1;
+		}		
 	    SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_TIME_FORMAT);
 	    Date date = new Date();
 	    
@@ -128,6 +164,10 @@ public class MPDbAdapter {
 	 * @return true if deleted, false otherwise
 	 */
 	public boolean deleteEvents(long rowId) {
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return false;
+		}		
 		return mDb.delete(DATABASE_TABLE, KEY_ROWID + "=" + rowId, null) > 0;
 	}
 	
@@ -137,6 +177,11 @@ public class MPDbAdapter {
 	 * @return true if deleted, false otherwise
 	 */
 	public boolean deleteEvents() {
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return false;
+		}		
+		
 		return mDb.delete(DATABASE_TABLE, null, null) > 0;
 	}
 
@@ -149,6 +194,11 @@ public class MPDbAdapter {
 	 * @return true if the set of events was successfully updated, false otherwise
 	 */
 	public boolean updateEvents(long rowId, String data) {
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return false;
+		}		
+		
 		ContentValues args = new ContentValues();
 		
 		args.put(KEY_DATA, data);
@@ -163,7 +213,11 @@ public class MPDbAdapter {
 	 * @throws SQLException if set of events could not be found/retrieved
 	 */
 	public String fetchEventsData(long rowId) throws SQLException {
-
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return null;
+		}		
+		
 		Cursor mCursor = mDb.query(true, DATABASE_TABLE, new String[] { KEY_DATA }, KEY_ROWID + "=" + rowId,
 				null, null, null, null, null);
 		if (mCursor != null) {
@@ -184,7 +238,11 @@ public class MPDbAdapter {
 	 * @throws SQLException if set of events could not be found/retrieved
 	 */
 	public Cursor fetchEvents() throws SQLException {
-		
+		if (mDb == null) {
+			this.open();
+			if (mDb == null) return null;
+		}		
+
 		Cursor mCursor = mDb.query(true, DATABASE_TABLE, new String[] {
 		        KEY_ROWID, KEY_DATA, KEY_CREATED_AT }, null, null, null, null, KEY_ROWID + " DESC", null);
 		if (mCursor != null) {

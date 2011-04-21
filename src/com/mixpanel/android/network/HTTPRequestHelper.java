@@ -260,6 +260,13 @@ public class HTTPRequestHelper {
                         bundle.putLong(RESPONSE_ID, mResponseId);
                         message.setData(bundle);
                         handler.sendMessage(message);
+                    } catch (OutOfMemoryError ome) {
+                        if (Global.DEBUG) Log.e(LOGTAG, " " + HTTPRequestHelper.CLASSTAG, ome);
+                        bundle.putBoolean(RESPONSE_SUCCESS, false);
+                        bundle.putString(RESPONSE, "Error - " + ome.getMessage());
+                        bundle.putLong(RESPONSE_ID, mResponseId);
+                        message.setData(bundle);
+                        handler.sendMessage(message);
                     }
                 } else {
                     if (Global.DEBUG) Log.w(LOGTAG, " " + HTTPRequestHelper.CLASSTAG

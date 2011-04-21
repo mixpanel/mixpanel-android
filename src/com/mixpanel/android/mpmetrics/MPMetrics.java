@@ -80,11 +80,6 @@ public class MPMetrics {
         GregorianCalendar gc = new GregorianCalendar();
         gc.add(GregorianCalendar.HOUR, -1 * DATA_EXPIRATION);
         
-        try {
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         mDbAdapter = new MPDbAdapter(mContext);
         mDbAdapter.open();
         mDbAdapter.cleanupEvents(gc.getTime());
@@ -228,9 +223,10 @@ public class MPMetrics {
                 } while (cursor.moveToNext());
             }
             cursor.close();
-            mDbAdapter.close();
         } catch (Exception e) {
             
+        } finally {
+            mDbAdapter.close();
         }
         
         
