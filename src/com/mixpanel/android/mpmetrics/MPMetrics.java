@@ -215,8 +215,13 @@ public class MPMetrics {
                                 Map<String, String> params = new HashMap<String, String>();
                                 params.put("data", data);
                                 HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
-                                helper.performPost(url, null, null, null, params);
-                                
+                                try {
+                                    helper.performPost(url, null, null, null, params);
+                                } catch (Exception e) {
+                                    Log.e(LOGTAG, "Exception on POST", e);
+                                } catch (java.lang.OutOfMemoryError e) {
+                                    Log.e(LOGTAG, "OutOfMemory on POST", e);
+                                }
                             }
                         }.start();
                     }
