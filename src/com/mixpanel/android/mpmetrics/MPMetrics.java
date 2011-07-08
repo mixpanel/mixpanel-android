@@ -12,17 +12,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mixpanel.android.dbadapter.MPDbAdapter;
-import com.mixpanel.android.network.Base64Coder;
-import com.mixpanel.android.network.HTTPRequestHelper;
-
 import android.content.Context;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.Settings;
 import android.util.Log;
+
+import com.mixpanel.android.dbadapter.MPDbAdapter;
+import com.mixpanel.android.network.Base64Coder;
+import com.mixpanel.android.network.HTTPRequestHelper;
+import com.mixpanel.android.util.Installation;
 
 public class MPMetrics {
     
@@ -57,7 +58,7 @@ public class MPMetrics {
     private String mCarrier;
     private String mModel;
     private String mVersion;
-    private String mDeviceId;
+    private String mInstallationId;
     
     public MPMetrics(Context context, String token) {
         mContext = context;
@@ -93,7 +94,7 @@ public class MPMetrics {
         mCarrier = getCarrier();
         mModel = getModel();
         mVersion = getVersion();
-        mDeviceId = getDeviceId();
+        mInstallationId = getInstallationId();
         
         mTimer = new Timer();
         mTimer.schedule(new TimerTask() {
@@ -130,19 +131,13 @@ public class MPMetrics {
     }
     
     /**
-     * Return the unique device identifier of the phone
+     * Return the unique installation identifier of the host application
      * @param context   the context
-     * @return  A String containing the device's unique identifier
+     * @return  A String containing the installation UUID
      */
-    private String getDeviceId() {
-        String product = Build.PRODUCT;
-        String androidId = Settings.Secure.getString(mContext.getContentResolver(), Settings.Secure.ANDROID_ID);
-        if (product == null || androidId == null) {
-            return null;
-        } else {
-            return product + "_" + androidId;
-        }
-        
+    private String getInstallationId() {
+    	if (Global.DEBUG) Log.d(LOGTAG, "getInstallationId: " + Installation.id(mContext));
+		return Installation.id(mContext);
     }
     
    
@@ -152,7 +147,7 @@ public class MPMetrics {
      * @return  the rowId of the stored data, or -1 if failed
      */
     private long persistEventData(String data) {
-        if (Global.DEBUG) Log.d(LOGTAG, "persistEventData");
+        if (Global.DEBUG) Log.d(LOGTAG, "persistEventData: \"" + data + '"');
         long id = -1;
         try {
             mDbAdapter.open();
@@ -189,45 +184,31 @@ public class MPMetrics {
      * @param url   Mixpanel API endpoint
      * @param data  the base64 encoded value for the "data" param
      */
-    private void sendRequest(final String url) {
+    private void sendRequest(String url) {
         if (Global.DEBUG) Log.d(LOGTAG, "sendRequest");
+        
         try {
             mDbAdapter.open();
             Cursor cursor = mDbAdapter.fetchEvents();
-            int idColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_ROWID);
-            int dataColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_DATA);
 
-            if (cursor.moveToFirst()) {
-                do {
-                    final long id = cursor.getLong(idColumnIndex);
-                    final String data = cursor.getString(dataColumnIndex);
-                    
-                    if (!mDispatchedEvents.contains(id)) {
-                        mDispatchedEvents.add(id);
-                        
-                        final ResponseHandler<String> responseHandler = 
-                            HTTPRequestHelper.getResponseHandlerInstance(mHandler, id);
-                        
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                if (Global.DEBUG) Log.d(LOGTAG, "Sending data id: " + id);
-                                Map<String, String> params = new HashMap<String, String>();
-                                params.put("data", data);
-                                HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
-                                try {
-                                    helper.performPost(url, null, null, null, params);
-                                } catch (Exception e) {
-                                    Log.e(LOGTAG, "Exception on POST", e);
-                                } catch (java.lang.OutOfMemoryError e) {
-                                    Log.e(LOGTAG, "OutOfMemory on POST", e);
-                                }
-                            }
-                        }.start();
-                    }
-                } while (cursor.moveToNext());
+            if (cursor != null) {
+                int idColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_ROWID);
+                int dataColumnIndex = cursor.getColumnIndexOrThrow(MPDbAdapter.KEY_DATA);
+                
+	            if (cursor.moveToFirst()) {
+	                do {
+	                    long id = cursor.getLong(idColumnIndex);
+	                    
+	                    if (!mDispatchedEvents.contains(id)) {
+	                        mDispatchedEvents.add(id);
+		                    String data = cursor.getString(dataColumnIndex);
+	                        new POSTTask(id).execute(url, data);
+	                    }
+	                } while (cursor.moveToNext());
+	            }
+	            
+	            cursor.close();
             }
-            cursor.close();
         } catch (Exception e) {
             
         } finally {
@@ -243,21 +224,25 @@ public class MPMetrics {
      * service is destroyed to ensure that any remaining events are sent.
      */
     public synchronized void flush() {
-        if (Global.DEBUG) Log.d(LOGTAG, "flush");
-        if (Global.DEBUG) {
-            try {
-                Log.d(LOGTAG, mEvents.toString(2));
-            } catch (JSONException e) {
+        int eventCount = mEvents.length();
+        if (Global.DEBUG) Log.d(LOGTAG, "flush: " + eventCount + " events");
+        
+        if (eventCount > 0) {
+            if (Global.DEBUG) {
+                try {
+                    Log.d(LOGTAG, "mEvents = " + mEvents.toString(2));
+                } catch (JSONException e) {
+                }
             }
+            
+	        String data = Base64Coder.encodeString(mEvents.toString());
+	        
+	        persistEventData(data);
+	        
+	        sendRequest(ENDPOINT_TRACK);
+	        
+	        mEvents = new JSONArray();
         }
-        
-        String data = Base64Coder.encodeString(mEvents.toString());
-        
-        persistEventData(data);
-        
-        sendRequest(ENDPOINT_TRACK);
-        
-        mEvents = new JSONArray();
     }
     
     /**
@@ -346,11 +331,12 @@ public class MPMetrics {
             JSONObject propertiesObj = new JSONObject();
             propertiesObj.put("token", mToken);
             propertiesObj.put("time", time);
-            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+            propertiesObj.put("distinct_id", mInstallationId == null ? "UNKNOWN" : mInstallationId);
             propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
             propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
             propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
             propertiesObj.put("mp_lib", "android");
+            propertiesObj.put("os", "android");
             
             if (mSuperProperties != null) {
                 if (mSuperPropertiesType == SUPER_PROPERTY_TYPE_ALL || mSuperPropertiesType == SUPER_PROPERTY_TYPE_EVENTS) {
@@ -416,7 +402,7 @@ public class MPMetrics {
             propertiesObj.put("funnel", funnelName);
             propertiesObj.put("step", step);
             propertiesObj.put("goal", goal);
-            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+            propertiesObj.put("distinct_id", mInstallationId == null ? "UNKNOWN" : mInstallationId);
             propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
             propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
             propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
@@ -468,5 +454,36 @@ public class MPMetrics {
         mDispatchedEvents.remove(id);
         
     }
- 
+
+	private class POSTTask extends AsyncTask<String, Void, Void> {
+		private long mId;
+		
+		public POSTTask(long id) {
+			super();
+			mId = id;
+		}
+
+		@Override
+		protected Void doInBackground(String... params) {				
+            if (Global.DEBUG) {
+            	Log.d(LOGTAG, "Sending data id " + mId + ": \"" + params[1] + '"');
+            }
+            
+            try {
+                String url = params[0];
+                String data = params[1];
+                ResponseHandler<String> responseHandler = HTTPRequestHelper.getResponseHandlerInstance(mHandler, mId);
+                Map<String, String> postParams = new HashMap<String, String>();
+                postParams.put("data", data);
+                HTTPRequestHelper helper = new HTTPRequestHelper(responseHandler, mHandler);
+                helper.performPost(url, null, null, null, postParams);
+            } catch (Exception e) {
+                Log.e(LOGTAG, "Exception on POST", e);
+            } catch (OutOfMemoryError e) {
+                Log.e(LOGTAG, "OutOfMemory on POST", e);
+            }
+			
+			return null;
+		}
+	}
 }
