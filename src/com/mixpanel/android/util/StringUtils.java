@@ -9,11 +9,11 @@ public class StringUtils {
 
     /**
      * Static utility method to convert an InputStream to a String
-     * 
+     *
      * @param stream the InputStream to convert to a String
      * @return the converted String
      */
-    
+
     public static String inputStreamToString(final InputStream stream) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(stream));
         StringBuilder sb = new StringBuilder();
