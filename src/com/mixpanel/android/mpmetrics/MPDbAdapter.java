@@ -20,30 +20,30 @@ import android.util.Log;
  * when performing concurrent writes from multiple database connections, some will
  * silently fail (save for a small message in logcat). Synchronize on each method,
  * so we don't close the connection when another thread is using it.
- * 
+ *
  * @author anlu(Anlu Wang)
- * 
+ *
  */
 public class MPDbAdapter {
 	private static final String LOGTAG = "MPDbAdapter";
-	 
+
 	private static final String DATABASE_NAME = "mixpanel";
 	private static final String DATABASE_TABLE = "events";
 	private static final int DATABASE_VERSION = 2;
-	
+
 	public static final String KEY_DATA = "data";
 	public static final String KEY_CREATED_AT = "created_at";
-	 
-	private static final String DATABASE_CREATE = 
-       "CREATE TABLE " + DATABASE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " + 
-		KEY_DATA + " STRING NOT NULL," + 
+
+	private static final String DATABASE_CREATE =
+       "CREATE TABLE " + DATABASE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+		KEY_DATA + " STRING NOT NULL," +
 		KEY_CREATED_AT + " INTEGER NOT NULL);";
 	private static final String DATABASE_INDEX =
-		"CREATE INDEX IF NOT EXISTS time_idx ON " + DATABASE_TABLE + 
+		"CREATE INDEX IF NOT EXISTS time_idx ON " + DATABASE_TABLE +
 		" (" + KEY_CREATED_AT + ");";
-	
+
 	private MPDatabaseHelper mDb;
-	 
+
 	private static class MPDatabaseHelper extends SQLiteOpenHelper {
 		MPDatabaseHelper(Context context) {
 			super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -66,31 +66,31 @@ public class MPDbAdapter {
 		    db.execSQL(DATABASE_INDEX);
 		}
 	}
-	
+
 	public MPDbAdapter(Context context) {
 		mDb = new MPDatabaseHelper(context);
 	}
-	
+
 	/**
-	 * Adds an event to the SQLiteDatabase. 
+	 * Adds an event to the SQLiteDatabase.
 	 * @param j the event and properties to track
 	 * @return the number of events in the table, or -1 on failure
 	 */
 	public int addEvent(JSONObject j) {
 		synchronized (this) {
 			if (Global.DEBUG) { Log.d(LOGTAG, "addEvent"); }
-			
+
 			Cursor c = null;
 			int count = -1;
-	
+
 			try {
 				SQLiteDatabase db = mDb.getWritableDatabase();
-				
+
 				ContentValues cv = new ContentValues();
 				cv.put(KEY_DATA, j.toString());
 				cv.put(KEY_CREATED_AT, System.currentTimeMillis());
 			    db.insert(DATABASE_TABLE, null, cv);
-			    
+
 			    c = db.rawQuery("SELECT * FROM " + DATABASE_TABLE, null);
 			    count = c.getCount();
 			} catch (SQLiteException e) {
@@ -104,7 +104,7 @@ public class MPDbAdapter {
 			return count;
 		}
 	}
-	
+
 	/**
 	 * Removes events before time.
 	 * @param time the unix epoch in milliseconds to remove events before
@@ -112,7 +112,7 @@ public class MPDbAdapter {
 	public void cleanupEvents(long time) {
 		synchronized (this) {
 			if (Global.DEBUG) { Log.d(LOGTAG, "cleanupEvent"); }
-			
+
 			try {
 				SQLiteDatabase db = mDb.getWritableDatabase();
 			    db.delete(DATABASE_TABLE, KEY_CREATED_AT + " <= " + time, null);
@@ -124,18 +124,18 @@ public class MPDbAdapter {
 			}
 		}
 	}
-	
+
 	/**
 	 * Returns "<timestamp>:<data>" where timestamp is the unix epoch in milliseconds
-	 * of when the most recent event was submitted and <data> is the base 64 encoded 
+	 * of when the most recent event was submitted and <data> is the base64 encoded
 	 * string for events and properties stored in the database. If we couldn't
 	 * successfully retrieve any objects, return null.
-	 * 
+	 *
 	 * We need the timestamp to delete when a track request was successful. We
 	 * add it to the string to because we have the data here, and so we don't have to
 	 * call getReadableDatabase() multiple times.
-	 * 
-	 * @return the data string representing the events, or null if none could be 
+	 *
+	 * @return the data string representing the events, or null if none could be
 	 * successfully retrieved.
 	 */
 	public String generateDataString() {
@@ -143,13 +143,13 @@ public class MPDbAdapter {
 			Cursor c = null;
 			String data = null;
 			String timestamp = null;
-			
+
 			try {
 				SQLiteDatabase db = mDb.getReadableDatabase();
-				c = db.rawQuery("SELECT * FROM " + DATABASE_TABLE + 
+				c = db.rawQuery("SELECT * FROM " + DATABASE_TABLE +
 		    		            " ORDER BY " + KEY_CREATED_AT + " ASC", null);
 				JSONArray arr = new JSONArray();
-				
+
 				while (c.moveToNext()) {
 					if (c.isLast()) {
 						timestamp = c.getString(c.getColumnIndex(KEY_CREATED_AT));
@@ -161,7 +161,7 @@ public class MPDbAdapter {
 						// Ignore this object
 					}
 				}
-				
+
 				if (arr.length() > 0) {
 					data = Base64Coder.encodeString(arr.toString());
 				}
@@ -173,7 +173,7 @@ public class MPDbAdapter {
 					c.close();
 				}
 			}
-			
+
 			if (timestamp != null && data != null) {
 				return timestamp + ":" + data;
 			}
