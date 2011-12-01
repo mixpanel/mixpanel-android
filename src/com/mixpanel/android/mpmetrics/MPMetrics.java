@@ -2,8 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -50,7 +50,7 @@ public class MPMetrics {
     private String mVersion;
     private String mDeviceId;
 
-    private Map<String, String> mSuperProperties;
+    private JSONObject mSuperProperties;
 
     private MPDbAdapter mDbAdapter;
 
@@ -70,6 +70,8 @@ public class MPMetrics {
         mModel = getModel();
         mVersion = getVersion();
         mDeviceId = getDeviceId();
+        
+        mSuperProperties = new JSONObject();
 
         mDbAdapter = new MPDbAdapter(mContext);
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - DATA_EXPIRATION);
@@ -85,20 +87,21 @@ public class MPMetrics {
 
     /**
      * Register super properties for events
-     * @param superProperties    A map containing the key value pairs of the super properties to register
+     * @param superProperties    A JSONObject containing super properties to register
      * @param type  Indicates which types of events to apply the super properties. Must be SUPER_PROPERTY_TYPE_ALL,
      *              SUPER_PROPERTY_TYPE_EVENTS, or SUPER_PROPERTY_TYPE_FUNNELS
      */
-    public void registerSuperProperties(Map<String, String> superProperties) {
+    public void registerSuperProperties(JSONObject superProperties) {
         if (Global.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
 
-        if (mSuperProperties == null) {
-        	mSuperProperties = superProperties;
-        } else {
-        	for (Map.Entry<String, String> entry: superProperties.entrySet()) {
-                mSuperProperties.put(entry.getKey(), entry.getValue());
-            }
-        }
+        for (Iterator<String> iter = superProperties.keys(); iter.hasNext(); ) {
+    		String key = iter.next();
+    		try {
+    			mSuperProperties.put(key, superProperties.get(key));
+    		} catch (JSONException e) {
+    			Log.e(LOGTAG, "Exception registering super property.", e);
+    		}
+    	}
     }
 
     /**
@@ -113,10 +116,10 @@ public class MPMetrics {
      * Track an event.
      *
      * @param eventName The name of the event to send
-     * @param properties A Map containing the key value pairs of the properties to include in this event.
+     * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      * Pass null if no extra properties exist.
      */
-    public void event(String eventName, Map<String, String> properties) {
+    public void track(String eventName, JSONObject properties) {
         String time = Long.toString(System.currentTimeMillis() / 1000);
 
         JSONObject dataObj = new JSONObject();
@@ -131,16 +134,16 @@ public class MPMetrics {
             propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
             propertiesObj.put("mp_lib", "android");
 
-            if (mSuperProperties != null) {
-                for (Map.Entry<String, String> entry: mSuperProperties.entrySet()) {
-                    propertiesObj.put(entry.getKey(), entry.getValue());
-                }
-            }
+            for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+        		String key = iter.next();
+    			propertiesObj.put(key, mSuperProperties.get(key));
+        	}
 
             if (properties != null) {
-                for (Map.Entry<String, String> entry: properties.entrySet()) {
-                    propertiesObj.put(entry.getKey(), entry.getValue());
-                }
+            	for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
+            		String key = iter.next();
+        			propertiesObj.put(key, properties.get(key));
+            	}
             }
 
             dataObj.put("properties", propertiesObj);

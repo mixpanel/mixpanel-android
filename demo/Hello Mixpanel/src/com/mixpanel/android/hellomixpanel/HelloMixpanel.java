@@ -1,6 +1,8 @@
 package com.mixpanel.android.hellomixpanel;
 
-import java.util.HashMap;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.mixpanel.android.mpmetrics.MPMetrics;
 
@@ -20,15 +22,20 @@ public class HelloMixpanel extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        mMPMetrics = new MPMetrics(this, "c0cf87b23e9a08ba5842f119d367775b");
+        mMPMetrics = new MPMetrics(this, "c35a4b5163ee2c097de447765f691544");
         
         mButton = (Button) findViewById(R.id.button);
         mButton.setOnClickListener(new View.OnClickListener() {
             
             public void onClick(View arg0) {
-                HashMap<String, String> properties = new HashMap<String, String>();
-                properties.put("gender", "male");
-                mMPMetrics.event("Button Clicked", properties);
+                JSONObject properties = new JSONObject();
+                try {
+	                properties.put("gender", "male");
+	                properties.put("age", 24);
+	                properties.put("registered", true);
+	                properties.put("some list", new JSONArray("[1,2,3,4,5]"));
+                } catch(JSONException e) { }
+                mMPMetrics.track("Button Clicked", properties);
             }
         });
     }
