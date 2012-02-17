@@ -109,7 +109,7 @@ public class MPMetrics {
      */
     public void clearSuperProperties() {
         if (Global.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
-        mSuperProperties = null;
+        mSuperProperties = new JSONObject();
     }
 
     /**
