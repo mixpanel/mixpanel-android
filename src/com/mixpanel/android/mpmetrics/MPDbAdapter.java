@@ -29,20 +29,27 @@ public class MPDbAdapter {
 
 	private static final String DATABASE_NAME = "mixpanel";
 	private static final String DATABASE_TABLE = "events";
-	private static final int DATABASE_VERSION = 2;
+	private static final int DATABASE_VERSION = 3;
 
 	public static final String KEY_DATA = "data";
 	public static final String KEY_CREATED_AT = "created_at";
+	public static final String KEY_TOKEN = "token";
 
 	private static final String DATABASE_CREATE =
        "CREATE TABLE " + DATABASE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
 		KEY_DATA + " STRING NOT NULL," +
-		KEY_CREATED_AT + " INTEGER NOT NULL);";
-	private static final String DATABASE_INDEX =
+		KEY_CREATED_AT + " INTEGER NOT NULL," +
+		KEY_TOKEN + " STRING NOT NULL);";
+	private static final String TIME_INDEX =
 		"CREATE INDEX IF NOT EXISTS time_idx ON " + DATABASE_TABLE +
 		" (" + KEY_CREATED_AT + ");";
+	private static final String TOKEN_INDEX =
+		"CREATE INDEX IF NOT EXISTS token_idx ON " + DATABASE_TABLE +
+		" (" + KEY_TOKEN + ");";
 
 	private MPDatabaseHelper mDb;
+	
+	private String mToken;
 
 	private static class MPDatabaseHelper extends SQLiteOpenHelper {
 		MPDatabaseHelper(Context context) {
@@ -52,7 +59,8 @@ public class MPDbAdapter {
 		@Override
 		public void onCreate(SQLiteDatabase db) {
 			db.execSQL(DATABASE_CREATE);
-			db.execSQL(DATABASE_INDEX);
+			db.execSQL(TIME_INDEX);
+			db.execSQL(TOKEN_INDEX);
 		}
 
 		@Override
@@ -63,12 +71,14 @@ public class MPDbAdapter {
 
 		    db.execSQL("DROP TABLE " + DATABASE_TABLE);
 		    db.execSQL(DATABASE_CREATE);
-		    db.execSQL(DATABASE_INDEX);
+			db.execSQL(TIME_INDEX);
+			db.execSQL(TOKEN_INDEX);
 		}
 	}
 
-	public MPDbAdapter(Context context) {
+	public MPDbAdapter(Context context, String token) {
 		mDb = new MPDatabaseHelper(context);
+		mToken = token;
 	}
 
 	/**
@@ -89,10 +99,12 @@ public class MPDbAdapter {
 				ContentValues cv = new ContentValues();
 				cv.put(KEY_DATA, j.toString());
 				cv.put(KEY_CREATED_AT, System.currentTimeMillis());
+				cv.put(KEY_TOKEN, mToken);
 			    db.insert(DATABASE_TABLE, null, cv);
 
-			    c = db.rawQuery("SELECT * FROM " + DATABASE_TABLE, null);
-			    count = c.getCount();
+			    c = db.rawQuery("SELECT COUNT(*) FROM " + DATABASE_TABLE + " WHERE token = '" + mToken + "'", null);
+			    c.moveToFirst();
+			    count = c.getInt(0);
 			} catch (SQLiteException e) {
 				Log.e(LOGTAG, "addEvent", e);
 			} finally {
@@ -106,16 +118,36 @@ public class MPDbAdapter {
 	}
 
 	/**
+	 * Removes events with an _id <= last_id
+	 * @param last_id the last id to delete
+	 */
+	public void cleanupEvents(String last_id) {
+		synchronized (this) {
+			if (Global.DEBUG) { Log.d(LOGTAG, "cleanupEvents _id " + last_id); }
+
+			try {
+				SQLiteDatabase db = mDb.getWritableDatabase();
+			    db.delete(DATABASE_TABLE, "_id <= " + last_id + " AND token = '" + mToken + "'", null);
+			} catch (SQLiteException e) {
+				// If there's an exception, oh well, let the events persist
+				Log.e(LOGTAG, "cleanupEvents", e);
+			} finally {
+			    mDb.close();
+			}
+		}
+	}
+	
+	/**
 	 * Removes events before time.
 	 * @param time the unix epoch in milliseconds to remove events before
 	 */
 	public void cleanupEvents(long time) {
 		synchronized (this) {
-			if (Global.DEBUG) { Log.d(LOGTAG, "cleanupEvent"); }
+			if (Global.DEBUG) { Log.d(LOGTAG, "cleanupEvents time " + time); }
 
 			try {
 				SQLiteDatabase db = mDb.getWritableDatabase();
-			    db.delete(DATABASE_TABLE, KEY_CREATED_AT + " <= " + time, null);
+			    db.delete(DATABASE_TABLE, KEY_CREATED_AT + " <= " + time + " AND token = '" + mToken + "'", null);
 			} catch (SQLiteException e) {
 				// If there's an exception, oh well, let the events persist
 				Log.e(LOGTAG, "cleanupEvents", e);
@@ -135,24 +167,25 @@ public class MPDbAdapter {
 	 * add it to the string to because we have the data here, and so we don't have to
 	 * call getReadableDatabase() multiple times.
 	 *
-	 * @return the data string representing the events, or null if none could be
-	 * successfully retrieved.
+	 * @return String array containing the maximum ID and the data string 
+	 * representing the events, or null if none could be successfully retrieved.
 	 */
-	public String generateDataString() {
+	public String[] generateDataString() {
 		synchronized (this) {
 			Cursor c = null;
 			String data = null;
-			String timestamp = null;
+			String last_id = null;
 
 			try {
 				SQLiteDatabase db = mDb.getReadableDatabase();
 				c = db.rawQuery("SELECT * FROM " + DATABASE_TABLE +
-		    		            " ORDER BY " + KEY_CREATED_AT + " ASC", null);
+						        " WHERE token = '" + mToken + "'" +
+		    		            " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
 				JSONArray arr = new JSONArray();
 
 				while (c.moveToNext()) {
 					if (c.isLast()) {
-						timestamp = c.getString(c.getColumnIndex(KEY_CREATED_AT));
+						last_id = c.getString(c.getColumnIndex("_id"));
 					}
 					try {
 						JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
@@ -174,8 +207,9 @@ public class MPDbAdapter {
 				}
 			}
 
-			if (timestamp != null && data != null) {
-				return timestamp + ":" + data;
+			if (last_id != null && data != null) {
+				String[] ret = {last_id, data};
+				return ret;
 			}
 			return null;
 		}

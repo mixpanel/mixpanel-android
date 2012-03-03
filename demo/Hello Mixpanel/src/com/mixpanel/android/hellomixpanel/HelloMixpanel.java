@@ -22,7 +22,7 @@ public class HelloMixpanel extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-        mMPMetrics = new MPMetrics(this, "c35a4b5163ee2c097de447765f691544");
+        mMPMetrics = MPMetrics.getInstance(this, "c35a4b5163ee2c097de447765f691544");
         
         mButton = (Button) findViewById(R.id.button);
         mButton.setOnClickListener(new View.OnClickListener() {

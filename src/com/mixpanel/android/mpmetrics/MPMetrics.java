@@ -2,13 +2,14 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -40,6 +41,9 @@ public class MPMetrics {
 
     // Remove events that have sat around for this many milliseconds
     private static final int DATA_EXPIRATION = 1000 * 60 * 60 * 12; // 12 hours
+    
+    // Maps each token to a singleton MPMetrics instance
+    private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
     private Context mContext;
 
@@ -60,9 +64,10 @@ public class MPMetrics {
 
     // Creates a single thread pool to perform the HTTP requests on
     // Multiple requests may be queued up to prevent races.
-    private final ExecutorService executor = Executors.newFixedThreadPool(1);
+    private ThreadPoolExecutor executor =
+    		new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 
-    public MPMetrics(Context context, String token) {
+    private MPMetrics(Context context, String token) {
     	mContext = context;
         mToken = token;
 
@@ -73,7 +78,7 @@ public class MPMetrics {
         
         mSuperProperties = new JSONObject();
 
-        mDbAdapter = new MPDbAdapter(mContext);
+        mDbAdapter = new MPDbAdapter(mContext, mToken);
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - DATA_EXPIRATION);
 
         mTimer = new Timer();
@@ -154,7 +159,7 @@ public class MPMetrics {
 
         int count = mDbAdapter.addEvent(dataObj);
 
-        if (mTestMode || count >= BULK_UPLOAD_LIMIT) {
+        if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
             flush();
         }
     }
@@ -219,14 +224,11 @@ public class MPMetrics {
 
 		@Override
 		public void run() {
-			String data = mDbAdapter.generateDataString();
+			String[] data = mDbAdapter.generateDataString();
 			if (data == null) {
 				// Couldn't get data for whatever reason, so just return.
 				return;
 			}
-			StringTokenizer tok = new StringTokenizer(data, ":");
-			long timestamp = Long.parseLong(tok.nextToken());
-			data = tok.nextToken();
 
 	    	// Post the data
 		    HttpClient httpclient = new DefaultHttpClient();
@@ -235,7 +237,7 @@ public class MPMetrics {
 		    try {
 		        // Add your data
 		        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-		        nameValuePairs.add(new BasicNameValuePair("data", data));
+		        nameValuePairs.add(new BasicNameValuePair("data", data[1]));
 		        httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
 
 		        HttpResponse response = httpclient.execute(httppost);
@@ -249,9 +251,12 @@ public class MPMetrics {
 		        	if (Global.DEBUG) {
 		        		Log.d(LOGTAG, "HttpResponse result: " + result);
 		        	}
+		        	if (!result.equals("1\n")) {
+		        		return;
+		        	}
 
 		        	// Success, so prune the database.
-		        	mDbAdapter.cleanupEvents(timestamp);
+		        	mDbAdapter.cleanupEvents(data[0]);
 
 		        // If anything went wrong, don't remove from the db so we can try again
 		        // on the next flush.
@@ -271,5 +276,15 @@ public class MPMetrics {
 		        return;
 		    }
 		}
+    }
+    
+    public static MPMetrics getInstance(Context context, String token) {
+    	MPMetrics instance = mInstanceMap.get(token);
+    	if (instance == null) {
+    		instance = new MPMetrics(context.getApplicationContext(), token);
+    		mInstanceMap.put(token,  instance);
+    	}
+    	
+    	return instance;
     }
 }
