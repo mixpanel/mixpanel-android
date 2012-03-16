@@ -4,6 +4,10 @@ Demo: See the demo/ folder for a working demo application
 
 Changelog:
 
+v1.2
+-------------------
+* Add country geolocation by default. Now all events tracked will have the property 'Country.'
+
 v1.1
 -------------------
 * Convert MPMetrics into a singleton, fixing a rare race caused by multiple instances.
