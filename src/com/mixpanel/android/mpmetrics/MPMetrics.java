@@ -34,7 +34,7 @@ public class MPMetrics {
     private static final String LOGTAG = "MPMetrics";
 
     private static final String API_URL = "http://api.mixpanel.com";
-    private static final String ENDPOINT_TRACK = API_URL + "/track";
+    private static final String ENDPOINT_TRACK = API_URL + "/track?ip=1";
 
     private static final int BULK_UPLOAD_LIMIT = 40;
     private static final int FLUSH_RATE = 60 * 1000; // time, in milliseconds that the data should be flushed
