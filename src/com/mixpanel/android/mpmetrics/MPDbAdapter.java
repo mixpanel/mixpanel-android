@@ -158,14 +158,8 @@ public class MPDbAdapter {
 	}
 
 	/**
-	 * Returns "<timestamp>:<data>" where timestamp is the unix epoch in milliseconds
-	 * of when the most recent event was submitted and <data> is the base64 encoded
-	 * string for events and properties stored in the database. If we couldn't
-	 * successfully retrieve any objects, return null.
-	 *
-	 * We need the timestamp to delete when a track request was successful. We
-	 * add it to the string to because we have the data here, and so we don't have to
-	 * call getReadableDatabase() multiple times.
+	 * Returns the data string to send to Mixpanel and the maximum ID of the row that
+	 * we're sending, so we know what rows to delete when a track request was successful.
 	 *
 	 * @return String array containing the maximum ID and the data string 
 	 * representing the events, or null if none could be successfully retrieved.
