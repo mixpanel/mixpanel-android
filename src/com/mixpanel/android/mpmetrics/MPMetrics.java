@@ -33,17 +33,17 @@ import android.util.Log;
 public class MPMetrics {
     private static final String LOGTAG = "MPMetrics";
 
-    private static final String API_URL = "http://api.mixpanel.com";
-    private static final String ENDPOINT_TRACK = API_URL + "/track?ip=1";
 
     private static final int BULK_UPLOAD_LIMIT = 40;
     private static final int FLUSH_RATE = 60 * 1000; // time, in milliseconds that the data should be flushed
 
     // Remove events that have sat around for this many milliseconds
-    private static final int DATA_EXPIRATION = 1000 * 60 * 60 * 12; // 12 hours
+    private static final int DATA_EXPIRATION = 1000 * 60 * 60 * 48; // 48 hours
     
     // Maps each token to a singleton MPMetrics instance
     private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
+    
+    private static String track_endpoint = "http://api.mixpanel.com/track?ip=1";
 
     private Context mContext;
 
@@ -232,7 +232,7 @@ public class MPMetrics {
 
 	    	// Post the data
 		    HttpClient httpclient = new DefaultHttpClient();
-		    HttpPost httppost = new HttpPost(ENDPOINT_TRACK);
+		    HttpPost httppost = new HttpPost(track_endpoint);
 
 		    try {
 		        // Add your data
@@ -286,5 +286,13 @@ public class MPMetrics {
     	}
     	
     	return instance;
+    }
+    
+    /**
+     * If you want to post events to your own custom endpoint.
+     * @param address the address where you want events sent to
+     */
+    public static void setTrackEndpoint(String address) {
+    	MPMetrics.track_endpoint = address;
     }
 }
