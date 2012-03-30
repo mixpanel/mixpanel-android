@@ -64,10 +64,10 @@ public class MPMetrics {
 
     // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
     private ThreadPoolExecutor executor =
-    		new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+            new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 
     private MPMetrics(Context context, String token) {
-    	mContext = context;
+        mContext = context;
         mToken = token;
 
         mCarrier = getCarrier();
@@ -99,13 +99,13 @@ public class MPMetrics {
         if (Global.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
 
         for (Iterator<String> iter = superProperties.keys(); iter.hasNext(); ) {
-    		String key = iter.next();
-    		try {
-    			mSuperProperties.put(key, superProperties.get(key));
-    		} catch (JSONException e) {
-    			Log.e(LOGTAG, "Exception registering super property.", e);
-    		}
-    	}
+            String key = iter.next();
+            try {
+                mSuperProperties.put(key, superProperties.get(key));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception registering super property.", e);
+            }
+        }
     }
 
     /**
@@ -124,15 +124,15 @@ public class MPMetrics {
      * Pass null if no extra properties exist.
      */
     public void track(String eventName, JSONObject properties) {
-    	if (Global.DEBUG) Log.d(LOGTAG, "track");
+        if (Global.DEBUG) Log.d(LOGTAG, "track");
 
-    	executor.submit(new QueueTask(eventName, properties));
+        executor.submit(new QueueTask(eventName, properties));
     }
 
     public void flush() {
-    	if (Global.DEBUG) Log.d(LOGTAG, "flush");
+        if (Global.DEBUG) Log.d(LOGTAG, "flush");
 
-    	executor.submit(new SubmitTask());
+        executor.submit(new SubmitTask());
     }
 
     /**
@@ -185,124 +185,123 @@ public class MPMetrics {
     }
 
     private class SubmitTask implements Runnable {
-    	private static final String LOGTAG = "SubmitTask";
+        private static final String LOGTAG = "SubmitTask";
 
-		@Override
-		public void run() {
-			String[] data = mDbAdapter.generateDataString();
-			if (data == null) {
-				// Couldn't get data for whatever reason, so just return.
-				return;
-			}
+        @Override
+        public void run() {
+            String[] data = mDbAdapter.generateDataString();
+            if (data == null) {
+                // Couldn't get data for whatever reason, so just return.
+                return;
+            }
 
-	    	// Post the data
-		    HttpClient httpclient = new DefaultHttpClient();
-		    HttpPost httppost = new HttpPost(track_endpoint);
+            // Post the data
+            HttpClient httpclient = new DefaultHttpClient();
+            HttpPost httppost = new HttpPost(track_endpoint);
 
-		    try {
-		        // Add your data
-		        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-		        nameValuePairs.add(new BasicNameValuePair("data", data[1]));
-		        httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            try {
+                // Add your data
+                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
+                nameValuePairs.add(new BasicNameValuePair("data", data[1]));
+                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
 
-		        HttpResponse response = httpclient.execute(httppost);
-		        HttpEntity entity = response.getEntity();
-		        if (entity == null) {
-		        	return;
-		        }
+                HttpResponse response = httpclient.execute(httppost);
+                HttpEntity entity = response.getEntity();
+                if (entity == null) {
+                    return;
+                }
 
-		        try {
-		        	String result = StringUtils.inputStreamToString(entity.getContent());
-		        	if (Global.DEBUG) {
-		        		Log.d(LOGTAG, "HttpResponse result: " + result);
-		        	}
-		        	if (!result.equals("1\n")) {
-		        		return;
-		        	}
+                try {
+                    String result = StringUtils.inputStreamToString(entity.getContent());
+                    if (Global.DEBUG) {
+                        Log.d(LOGTAG, "HttpResponse result: " + result);
+                    }
+                    if (!result.equals("1\n")) {
+                        return;
+                    }
 
-		        	// Success, so prune the database.
-		        	mDbAdapter.cleanupEvents(data[0]);
+                    // Success, so prune the database.
+                    mDbAdapter.cleanupEvents(data[0]);
 
-		        // If anything went wrong, don't remove from the db so we can try again
-		        // on the next flush.
-		        } catch (IOException e) {
-		        	Log.e(LOGTAG, "SubmitTask", e);
-			        return;
-		        } catch (OutOfMemoryError e) {
-		        	Log.e(LOGTAG, "SubmitTask", e);
-			        return;
-		        }
-		    // Any exceptions, log them and stop this task.
-		    } catch (ClientProtocolException e) {
-		    	Log.e(LOGTAG, "SubmitTask", e);
-		        return;
-		    } catch (IOException e) {
-		    	Log.e(LOGTAG, "SubmitTask", e);
-		        return;
-		    }
-		}
+                // If anything went wrong, don't remove from the db so we can try again
+                // on the next flush.
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "SubmitTask", e);
+                    return;
+                } catch (OutOfMemoryError e) {
+                    Log.e(LOGTAG, "SubmitTask", e);
+                    return;
+                }
+            // Any exceptions, log them and stop this task.
+            } catch (ClientProtocolException e) {
+                Log.e(LOGTAG, "SubmitTask", e);
+                return;
+            } catch (IOException e) {
+                Log.e(LOGTAG, "SubmitTask", e);
+                return;
+            }
+        }
     }
 
     private class QueueTask implements Runnable {
-    	private String eventName;
-    	private JSONObject properties;
-    	private String time;
+        private String eventName;
+        private JSONObject properties;
+        private String time;
 
-    	public QueueTask(String eventName, JSONObject properties) {
-    		this.eventName = eventName;
-    		this.properties = properties;
-	        this.time = Long.toString(System.currentTimeMillis() / 1000);
-    	}
+        public QueueTask(String eventName, JSONObject properties) {
+            this.eventName = eventName;
+            this.properties = properties;
+            this.time = Long.toString(System.currentTimeMillis() / 1000);
+        }
 
-		@Override
-		public void run() {
-	        JSONObject dataObj = new JSONObject();
-	        try {
-	            dataObj.put("event", eventName);
-	            JSONObject propertiesObj = new JSONObject();
-	            propertiesObj.put("token", mToken);
-	            propertiesObj.put("time", time);
-	            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-	            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-	            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-	            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-	            propertiesObj.put("mp_lib", "android");
+        @Override
+        public void run() {
+            JSONObject dataObj = new JSONObject();
+            try {
+                dataObj.put("event", eventName);
+                JSONObject propertiesObj = new JSONObject();
+                propertiesObj.put("token", mToken);
+                propertiesObj.put("time", time);
+                propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+                propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
+                propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
+                propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
+                propertiesObj.put("mp_lib", "android");
 
-	            for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-	        		String key = iter.next();
-	    			propertiesObj.put(key, mSuperProperties.get(key));
-	        	}
+                for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                    String key = iter.next();
+                    propertiesObj.put(key, mSuperProperties.get(key));
+                }
 
-	            if (properties != null) {
-	            	for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
-	            		String key = iter.next();
-	        			propertiesObj.put(key, properties.get(key));
-	            	}
-	            }
+                if (properties != null) {
+                    for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
+                        String key = iter.next();
+                        propertiesObj.put(key, properties.get(key));
+                    }
+                }
 
-	            dataObj.put("properties", propertiesObj);
-	        } catch (JSONException e) {
-	        	Log.e(LOGTAG, "event", e);
-	            return;
-	        }
+                dataObj.put("properties", propertiesObj);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "event", e);
+                return;
+            }
 
-	        int count = mDbAdapter.addEvent(dataObj);
+            int count = mDbAdapter.addEvent(dataObj);
 
-	        if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
-	            flush();
-	        }
-	        Log.e("asdf", "QueueTask done");
-		}
+            if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
+                flush();
+            }
+        }
     }
 
     public static MPMetrics getInstance(Context context, String token) {
-    	MPMetrics instance = mInstanceMap.get(token);
-    	if (instance == null) {
-    		instance = new MPMetrics(context.getApplicationContext(), token);
-    		mInstanceMap.put(token,  instance);
-    	}
+        MPMetrics instance = mInstanceMap.get(token);
+        if (instance == null) {
+            instance = new MPMetrics(context.getApplicationContext(), token);
+            mInstanceMap.put(token,  instance);
+        }
 
-    	return instance;
+        return instance;
     }
 
     /**
@@ -310,6 +309,6 @@ public class MPMetrics {
      * @param address the address where you want events sent to
      */
     public static void setTrackEndpoint(String address) {
-    	MPMetrics.track_endpoint = address;
+        MPMetrics.track_endpoint = address;
     }
 }
