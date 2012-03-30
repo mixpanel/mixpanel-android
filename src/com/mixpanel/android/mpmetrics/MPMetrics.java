@@ -23,12 +23,12 @@ import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mixpanel.android.util.StringUtils;
-
 import android.content.Context;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+
+import com.mixpanel.android.util.StringUtils;
 
 public class MPMetrics {
     private static final String LOGTAG = "MPMetrics";
@@ -39,10 +39,10 @@ public class MPMetrics {
 
     // Remove events that have sat around for this many milliseconds
     private static final int DATA_EXPIRATION = 1000 * 60 * 60 * 48; // 48 hours
-    
+
     // Maps each token to a singleton MPMetrics instance
     private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
-    
+
     private static String track_endpoint = "http://api.mixpanel.com/track?ip=1";
 
     private Context mContext;
@@ -62,8 +62,7 @@ public class MPMetrics {
 
     private Timer mTimer;
 
-    // Creates a single thread pool to perform the HTTP requests on
-    // Multiple requests may be queued up to prevent races.
+    // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
     private ThreadPoolExecutor executor =
     		new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 
@@ -75,7 +74,7 @@ public class MPMetrics {
         mModel = getModel();
         mVersion = getVersion();
         mDeviceId = getDeviceId();
-        
+
         mSuperProperties = new JSONObject();
 
         mDbAdapter = new MPDbAdapter(mContext, mToken);
@@ -125,49 +124,15 @@ public class MPMetrics {
      * Pass null if no extra properties exist.
      */
     public void track(String eventName, JSONObject properties) {
-        String time = Long.toString(System.currentTimeMillis() / 1000);
+    	if (Global.DEBUG) Log.d(LOGTAG, "track");
 
-        JSONObject dataObj = new JSONObject();
-        try {
-            dataObj.put("event", eventName);
-            JSONObject propertiesObj = new JSONObject();
-            propertiesObj.put("token", mToken);
-            propertiesObj.put("time", time);
-            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-            propertiesObj.put("mp_lib", "android");
-
-            for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-        		String key = iter.next();
-    			propertiesObj.put(key, mSuperProperties.get(key));
-        	}
-
-            if (properties != null) {
-            	for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
-            		String key = iter.next();
-        			propertiesObj.put(key, properties.get(key));
-            	}
-            }
-
-            dataObj.put("properties", propertiesObj);
-        } catch (JSONException e) {
-        	Log.e(LOGTAG, "event", e);
-            return;
-        }
-
-        int count = mDbAdapter.addEvent(dataObj);
-
-        if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
-            flush();
-        }
+    	executor.submit(new QueueTask(eventName, properties));
     }
 
     public void flush() {
     	if (Global.DEBUG) Log.d(LOGTAG, "flush");
 
-    	executor.submit(new TrackTask());
+    	executor.submit(new SubmitTask());
     }
 
     /**
@@ -219,8 +184,8 @@ public class MPMetrics {
         }
     }
 
-    private class TrackTask implements Runnable {
-    	private static final String LOGTAG = "TrackTask";
+    private class SubmitTask implements Runnable {
+    	private static final String LOGTAG = "SubmitTask";
 
 		@Override
 		public void run() {
@@ -261,33 +226,85 @@ public class MPMetrics {
 		        // If anything went wrong, don't remove from the db so we can try again
 		        // on the next flush.
 		        } catch (IOException e) {
-		        	Log.e(LOGTAG, "TrackTask", e);
+		        	Log.e(LOGTAG, "SubmitTask", e);
 			        return;
 		        } catch (OutOfMemoryError e) {
-		        	Log.e(LOGTAG, "TrackTask", e);
+		        	Log.e(LOGTAG, "SubmitTask", e);
 			        return;
 		        }
 		    // Any exceptions, log them and stop this task.
 		    } catch (ClientProtocolException e) {
-		    	Log.e(LOGTAG, "TrackTask", e);
+		    	Log.e(LOGTAG, "SubmitTask", e);
 		        return;
 		    } catch (IOException e) {
-		    	Log.e(LOGTAG, "TrackTask", e);
+		    	Log.e(LOGTAG, "SubmitTask", e);
 		        return;
 		    }
 		}
     }
-    
+
+    private class QueueTask implements Runnable {
+    	private String eventName;
+    	private JSONObject properties;
+    	private String time;
+
+    	public QueueTask(String eventName, JSONObject properties) {
+    		this.eventName = eventName;
+    		this.properties = properties;
+	        this.time = Long.toString(System.currentTimeMillis() / 1000);
+    	}
+
+		@Override
+		public void run() {
+	        JSONObject dataObj = new JSONObject();
+	        try {
+	            dataObj.put("event", eventName);
+	            JSONObject propertiesObj = new JSONObject();
+	            propertiesObj.put("token", mToken);
+	            propertiesObj.put("time", time);
+	            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+	            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
+	            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
+	            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
+	            propertiesObj.put("mp_lib", "android");
+
+	            for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+	        		String key = iter.next();
+	    			propertiesObj.put(key, mSuperProperties.get(key));
+	        	}
+
+	            if (properties != null) {
+	            	for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
+	            		String key = iter.next();
+	        			propertiesObj.put(key, properties.get(key));
+	            	}
+	            }
+
+	            dataObj.put("properties", propertiesObj);
+	        } catch (JSONException e) {
+	        	Log.e(LOGTAG, "event", e);
+	            return;
+	        }
+
+	        int count = mDbAdapter.addEvent(dataObj);
+
+	        if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
+	            flush();
+	        }
+	        Log.e("asdf", "QueueTask done");
+		}
+    }
+
     public static MPMetrics getInstance(Context context, String token) {
     	MPMetrics instance = mInstanceMap.get(token);
     	if (instance == null) {
     		instance = new MPMetrics(context.getApplicationContext(), token);
     		mInstanceMap.put(token,  instance);
     	}
-    	
+
     	return instance;
     }
-    
+
     /**
      * If you want to post events to your own custom endpoint.
      * @param address the address where you want events sent to

@@ -4,6 +4,11 @@ Demo: See the demo/ folder for a working demo application
 
 Changelog:
 
+v1.3
+-------------------
+Due to an unexplained increase in Sqlite insertion times on ICS, we now use a background thread to queue up
+events being sent.
+
 v1.2
 -------------------
 * Add country geolocation by default. Now all events tracked will have the property 'Country.'
