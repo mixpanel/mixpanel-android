@@ -5,8 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -23,27 +22,30 @@ import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
 
 import com.mixpanel.android.util.StringUtils;
 
 public class MPMetrics {
+    public static final String VERSION = "2.0";
+
     private static final String LOGTAG = "MPMetrics";
-
-
-    private static final int BULK_UPLOAD_LIMIT = 40;
-    private static final int FLUSH_RATE = 60 * 1000; // time, in milliseconds that the data should be flushed
-
-    // Remove events that have sat around for this many milliseconds
-    private static final int DATA_EXPIRATION = 1000 * 60 * 60 * 48; // 48 hours
 
     // Maps each token to a singleton MPMetrics instance
     private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
-    private static String track_endpoint = "http://api.mixpanel.com/track?ip=1";
+    // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
+    private static ThreadPoolExecutor sExecutor =
+            new ThreadPoolExecutor(0, 1, MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new LowPriorityThreadFactory());
 
     private Context mContext;
 
@@ -53,18 +55,43 @@ public class MPMetrics {
     private String mModel;
     private String mVersion;
     private String mDeviceId;
+    private String distinct_id;
 
     private JSONObject mSuperProperties;
-
     private MPDbAdapter mDbAdapter;
+    private RegistrationReceiver mRReceiver;
 
-    private boolean mTestMode;
+    // Used to allow only one events/people submit task running or in the queue
+    // at a time to prevent unnecessary extraneous requests
+    private static volatile boolean sEventsSubmitLock = false;
+    private static volatile boolean sPeopleSubmitLock = false;
 
-    private Timer mTimer;
+    private static int FLUSH_EVENTS = 0;
+    private static int FLUSH_PEOPLE = 1;
 
-    // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
-    private ThreadPoolExecutor executor =
-            new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+    // Used for sending flushes every MPConfig.FLUSH_RATE seconds when events/people
+    // are actually being tracked.
+    private class UniqueHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == FLUSH_EVENTS) {
+                flushEvents();
+            } else if (msg.what == FLUSH_PEOPLE){
+                flushPeople();
+            }
+        }
+
+        public boolean sendUniqueEmptyMessageDelayed(int what, long delayMillis) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "sendUniqueEmptyMessageDelayed " + what + "...");
+            if (!this.hasMessages(what)) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "success.");
+                return this.sendEmptyMessageDelayed(what, delayMillis);
+            }
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "blocked.");
+            return false;
+        }
+    }
+    private UniqueHandler mTimerHandler;
 
     private MPMetrics(Context context, String token) {
         mContext = context;
@@ -78,15 +105,11 @@ public class MPMetrics {
         mSuperProperties = new JSONObject();
 
         mDbAdapter = new MPDbAdapter(mContext, mToken);
-        mDbAdapter.cleanupEvents(System.currentTimeMillis() - DATA_EXPIRATION);
+        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
+        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
 
-        mTimer = new Timer();
-        mTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                flush();
-            }
-        }, 0, FLUSH_RATE);
+        sExecutor.setKeepAliveTime(MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS);
+        mTimerHandler = new UniqueHandler();
     }
 
     /**
@@ -96,7 +119,7 @@ public class MPMetrics {
      *              SUPER_PROPERTY_TYPE_EVENTS, or SUPER_PROPERTY_TYPE_FUNNELS
      */
     public void registerSuperProperties(JSONObject superProperties) {
-        if (Global.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
 
         for (Iterator<String> iter = superProperties.keys(); iter.hasNext(); ) {
             String key = iter.next();
@@ -112,8 +135,16 @@ public class MPMetrics {
      * Clear super properties
      */
     public void clearSuperProperties() {
-        if (Global.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
         mSuperProperties = new JSONObject();
+    }
+
+    /**
+     * Identifies all the requests sent with the given distinct_id
+     * @param distinct_id
+     */
+    public void identify(String distinct_id) {
+       this.distinct_id = distinct_id;
     }
 
     /**
@@ -124,25 +155,122 @@ public class MPMetrics {
      * Pass null if no extra properties exist.
      */
     public void track(String eventName, JSONObject properties) {
-        if (Global.DEBUG) Log.d(LOGTAG, "track");
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
-        executor.submit(new QueueTask(eventName, properties));
-    }
-
-    public void flush() {
-        if (Global.DEBUG) Log.d(LOGTAG, "flush");
-
-        executor.submit(new SubmitTask());
+        sExecutor.submit(new EventsQueueTask(eventName, properties));
     }
 
     /**
-     * Enable test mode. Normally, calls to MPMetrics.event() and MPMetrics.funnel() are collected and sent out in
-     * bulk to conserve resources. By enabling test mode, data will be sent out as soon as a call to
-     * event() or funnel() is made.
+     * Set the given properties for the identified distinct_id
+     * @param properties
      */
-    public void enableTestMode() {
-        if (Global.DEBUG) Log.d(LOGTAG, "enableTestMode");
-        mTestMode = true;
+    public void set(JSONObject properties) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
+        if (this.distinct_id == null) {
+            return;
+        }
+
+        sExecutor.submit(new PeopleQueueTask("$set", properties));
+    }
+    public void set(String property, Object value) {
+        try {
+            set(new JSONObject().put(property, value));
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "set", e);
+        }
+    }
+
+    /**
+     * Increment the given properties by the long value, which may be negative.
+     * @param properties
+     */
+    public void increment(Map<String, Long> properties) {
+        JSONObject json = new JSONObject(properties);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
+        if (this.distinct_id == null) {
+            return;
+        }
+
+        sExecutor.submit(new PeopleQueueTask("$add", json));
+    }
+    public void increment(String property, long value) {
+        Map<String, Long> map = new HashMap<String, Long>();
+        map.put(property, value);
+        increment(map);
+    }
+
+    /**
+     * Delete all properties set for this user.
+     */
+    public void delete() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
+        if (this.distinct_id == null) {
+            return;
+        }
+
+        sExecutor.submit(new PeopleQueueTask("$delete", null));
+    }
+
+    public void flushAll() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushAll");
+        flushEvents();
+        flushPeople();
+    }
+    public void flushEvents() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
+        if (!sEventsSubmitLock) {
+            sEventsSubmitLock = true;
+            sExecutor.submit(new SubmitTask(FLUSH_EVENTS));
+        }
+    }
+    public void flushPeople() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushPeople");
+        if (!sPeopleSubmitLock) {
+            sPeopleSubmitLock = true;
+            sExecutor.submit(new SubmitTask(FLUSH_PEOPLE));
+        }
+    }
+
+    /**
+     * Enables push notifications from C2DM.
+     * @param accountEmail the Google account that registered for C2DM
+     */
+    public void enablePush(String accountEmail) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "enablePush");
+        if (Build.VERSION.SDK_INT < 8) { // older than froyo
+            return;
+        }
+
+        this.bindRegistrationReceiver();
+
+        Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
+        registrationIntent.putExtra("sender", accountEmail);
+        mContext.startService(registrationIntent);
+    }
+
+    public void disablePush() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "disablePush");
+        if (Build.VERSION.SDK_INT < 8) { // older than froyo
+            return;
+        }
+
+        this.bindRegistrationReceiver();
+
+        Intent unregIntent = new Intent("com.google.android.c2dm.intent.UNREGISTER");
+        unregIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
+        mContext.startService(unregIntent);
+    }
+
+    private void bindRegistrationReceiver() {
+        if (mRReceiver == null) {
+            mRReceiver = new RegistrationReceiver();
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("com.google.android.c2dm.intent.REGISTRATION");
+            filter.addCategory(mContext.getPackageName());
+            mContext.registerReceiver(new RegistrationReceiver(), filter, "com.google.android.c2dm.permission.SEND", null);
+        }
     }
 
     /**
@@ -171,7 +299,6 @@ public class MPMetrics {
 
     /**
      * Return the unique device identifier of the phone
-     * @param context   the context
      * @return  A String containing the device's unique identifier
      */
     private String getDeviceId() {
@@ -184,78 +311,128 @@ public class MPMetrics {
         }
     }
 
-    private class SubmitTask implements Runnable {
-        private static final String LOGTAG = "SubmitTask";
-
+    private class RegistrationReceiver extends BroadcastReceiver {
         @Override
-        public void run() {
-            String[] data = mDbAdapter.generateDataString();
-            if (data == null) {
-                // Couldn't get data for whatever reason, so just return.
-                return;
-            }
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Intent received: " + action);
 
-            // Post the data
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost = new HttpPost(track_endpoint);
-
-            try {
-                // Add your data
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                nameValuePairs.add(new BasicNameValuePair("data", data[1]));
-                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-                HttpResponse response = httpclient.execute(httppost);
-                HttpEntity entity = response.getEntity();
-                if (entity == null) {
-                    return;
+            if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
+                String registration = intent.getStringExtra("registration_id");
+                if (intent.getStringExtra("error") != null) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Error when registering for C2DM: " + intent.getStringExtra("error"));
+                    // Registration failed, try again later
+                } else if (intent.getStringExtra("unregistered") != null) {
+                    // unregistration done, new messages from the authorized sender will be rejected
+                    Log.d(LOGTAG, "Received unregistration: " + intent.getStringExtra("unregistered"));
+                } else if (registration != null) {
+                    Log.d(LOGTAG, "Received registration ID: " + registration);
+                    set("$registration_id", registration);
                 }
-
-                try {
-                    String result = StringUtils.inputStreamToString(entity.getContent());
-                    if (Global.DEBUG) {
-                        Log.d(LOGTAG, "HttpResponse result: " + result);
-                    }
-                    if (!result.equals("1\n")) {
-                        return;
-                    }
-
-                    // Success, so prune the database.
-                    mDbAdapter.cleanupEvents(data[0]);
-
-                // If anything went wrong, don't remove from the db so we can try again
-                // on the next flush.
-                } catch (IOException e) {
-                    Log.e(LOGTAG, "SubmitTask", e);
-                    return;
-                } catch (OutOfMemoryError e) {
-                    Log.e(LOGTAG, "SubmitTask", e);
-                    return;
-                }
-            // Any exceptions, log them and stop this task.
-            } catch (ClientProtocolException e) {
-                Log.e(LOGTAG, "SubmitTask", e);
-                return;
-            } catch (IOException e) {
-                Log.e(LOGTAG, "SubmitTask", e);
-                return;
             }
         }
     }
 
-    private class QueueTask implements Runnable {
-        private String eventName;
-        private JSONObject properties;
-        private String time;
+    private class SubmitTask implements Runnable {
+        private String table;
+        private int messageType;
 
-        public QueueTask(String eventName, JSONObject properties) {
-            this.eventName = eventName;
-            this.properties = properties;
-            this.time = Long.toString(System.currentTimeMillis() / 1000);
+        public SubmitTask(int messageType) {
+            this.messageType = messageType;
+            if (messageType == FLUSH_PEOPLE) {
+                this.table = MPDbAdapter.PEOPLE_TABLE;
+            } else {
+                this.table = MPDbAdapter.EVENTS_TABLE;
+            }
         }
 
         @Override
         public void run() {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "SubmitTask " + this.table + " running.");
+            try {
+                String[] data = mDbAdapter.generateDataString(table);
+                if (data == null) {
+                    return;
+                }
+
+                // Post the data
+                HttpClient httpclient = new DefaultHttpClient();
+                HttpPost httppost;
+                if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
+                    httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
+                } else {
+                    httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
+                }
+
+                try {
+                    // Add your data
+                    List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
+                    nameValuePairs.add(new BasicNameValuePair("data", data[1]));
+                    httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+
+                    HttpResponse response = httpclient.execute(httppost);
+                    HttpEntity entity = response.getEntity();
+                    if (entity == null) {
+                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                        return;
+                    }
+
+                    try {
+                        String result = StringUtils.inputStreamToString(entity.getContent());
+                        if (MPConfig.DEBUG) {
+                            Log.d(LOGTAG, "HttpResponse result: " + result);
+                        }
+                        if (!result.equals("1\n")) {
+                            mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                            return;
+                        }
+
+                        // Success, so prune the database.
+                        mDbAdapter.cleanupEvents(data[0], table);
+
+                    } catch (IOException e) {
+                        Log.e(LOGTAG, "SubmitTask " + table, e);
+                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                        return;
+                    } catch (OutOfMemoryError e) {
+                        Log.e(LOGTAG, "SubmitTask " + table, e);
+                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                        return;
+                    }
+                // Any exceptions, log them and stop this task.
+                } catch (ClientProtocolException e) {
+                    Log.e(LOGTAG, "SubmitTask " + table, e);
+                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                    return;
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "SubmitTask " + table, e);
+                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                    return;
+                }
+            } finally {
+                if (this.table == MPDbAdapter.EVENTS_TABLE) {
+                    sEventsSubmitLock = false;
+                } else {
+                    sPeopleSubmitLock = false;
+                }
+            }
+        }
+    }
+
+    private class EventsQueueTask implements Runnable {
+        private String eventName;
+        private JSONObject properties;
+        private long time;
+
+        public EventsQueueTask(String eventName, JSONObject properties) {
+            this.eventName = eventName;
+            this.properties = properties;
+            this.time = System.currentTimeMillis() / 1000;
+        }
+
+        public void run() {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask running, queueing " + this.eventName);
+
             JSONObject dataObj = new JSONObject();
             try {
                 dataObj.put("event", eventName);
@@ -273,6 +450,10 @@ public class MPMetrics {
                     propertiesObj.put(key, mSuperProperties.get(key));
                 }
 
+                if (distinct_id != null) {
+                    propertiesObj.put("distinct_id", distinct_id);
+                }
+
                 if (properties != null) {
                     for (Iterator<String> iter = properties.keys(); iter.hasNext();) {
                         String key = iter.next();
@@ -282,14 +463,47 @@ public class MPMetrics {
 
                 dataObj.put("properties", propertiesObj);
             } catch (JSONException e) {
-                Log.e(LOGTAG, "event", e);
+                Log.e(LOGTAG, "EventsQueueTask " + eventName, e);
                 return;
             }
 
-            int count = mDbAdapter.addEvent(dataObj);
+            int count = mDbAdapter.addJSON(dataObj, MPDbAdapter.EVENTS_TABLE);
+            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask in test or count greater than MPConfig.BULK_UPLOAD_LIMIT");
+                flushEvents();
+            } else {
+                mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_EVENTS, MPConfig.FLUSH_RATE);
+            }
+        }
+    }
 
-            if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
-                flush();
+    private class PeopleQueueTask implements Runnable {
+        private String actionType;
+        private JSONObject properties;
+
+        public PeopleQueueTask(String actionType, JSONObject properties) {
+            this.actionType = actionType;
+            this.properties = properties;
+        }
+
+        public void run() {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask running, queueing " + this.actionType);
+            JSONObject dataObj = new JSONObject();
+            try {
+                dataObj.put(this.actionType, properties);
+                dataObj.put("$token", mToken);
+                dataObj.put("$distinct_id", distinct_id);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "PeopleQueueTask " + properties.toString(), e);
+                return;
+            }
+
+            int count = mDbAdapter.addJSON(dataObj, MPDbAdapter.PEOPLE_TABLE);
+            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask MPConfig.TEST_MODE set or count greater than MPConfig.BULK_UPLOAD_LIMIT");
+                flushPeople();
+            } else {
+                mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_PEOPLE, MPConfig.FLUSH_RATE);
             }
         }
     }
@@ -302,13 +516,5 @@ public class MPMetrics {
         }
 
         return instance;
-    }
-
-    /**
-     * If you want to post events to your own custom endpoint.
-     * @param address the address where you want events sent to
-     */
-    public static void setTrackEndpoint(String address) {
-        MPMetrics.track_endpoint = address;
     }
 }
