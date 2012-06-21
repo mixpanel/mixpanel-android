@@ -24,6 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
@@ -43,7 +44,7 @@ public class MPMetrics {
     // Maps each token to a singleton MPMetrics instance
     private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
-    private static String track_endpoint = "http://api.mixpanel.com/track?ip=1";
+    private static String track_endpoint = "http://api.mixpanel.com/track";
 
     private Context mContext;
 
@@ -121,12 +122,24 @@ public class MPMetrics {
      *
      * @param eventName The name of the event to send
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
+     * @param trackUnique Determines whether or not ip=1 and distinct_id should be sent to mixpanel
      * Pass null if no extra properties exist.
      */
-    public void track(String eventName, JSONObject properties) {
+    public void track(String eventName, JSONObject properties, boolean trackUnique) {
         if (Global.DEBUG) Log.d(LOGTAG, "track");
 
-        executor.submit(new QueueTask(eventName, properties));
+        executor.submit(new QueueTask(eventName, properties, trackUnique));
+    }
+    
+    /**
+     * Track an event
+     * 
+     * @param eventName The name of the event to send
+     * @param properties a JSONObject containing the key value pairs of the properties to include in this event.
+     * Pass null if no extra properties exist.  Always passes unique tracking data.
+     */
+    public void track(String eventName, JSONObject properties) {
+    	track(eventName, properties, true);
     }
 
     public void flush() {
@@ -197,7 +210,14 @@ public class MPMetrics {
 
             // Post the data
             HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost = new HttpPost(track_endpoint);
+            HttpPost httppost;
+            
+            // Check to see if we should add ip=1
+            if(data[2].equals("1")) {
+            	httppost = new HttpPost(Uri.parse(track_endpoint).buildUpon().appendQueryParameter("ip","1").toString());
+            } else {
+            	httppost = new HttpPost(track_endpoint);
+            }
 
             try {
                 // Add your data
@@ -247,11 +267,13 @@ public class MPMetrics {
         private String eventName;
         private JSONObject properties;
         private String time;
+        private boolean trackUnique;
 
-        public QueueTask(String eventName, JSONObject properties) {
+        public QueueTask(String eventName, JSONObject properties, boolean trackUnique) {
             this.eventName = eventName;
             this.properties = properties;
             this.time = Long.toString(System.currentTimeMillis() / 1000);
+            this.trackUnique = trackUnique;
         }
 
         @Override
@@ -262,11 +284,13 @@ public class MPMetrics {
                 JSONObject propertiesObj = new JSONObject();
                 propertiesObj.put("token", mToken);
                 propertiesObj.put("time", time);
-                propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
                 propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
                 propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
                 propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
                 propertiesObj.put("mp_lib", "android");
+                
+                if(trackUnique)
+                	propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
 
                 for (Iterator<String> iter = mSuperProperties.keys(); iter.hasNext(); ) {
                     String key = iter.next();
@@ -286,7 +310,7 @@ public class MPMetrics {
                 return;
             }
 
-            int count = mDbAdapter.addEvent(dataObj);
+            int count = mDbAdapter.addEvent(dataObj, trackUnique);
 
             if (mTestMode || (count >= BULK_UPLOAD_LIMIT && executor.getQueue().isEmpty())) {
                 flush();

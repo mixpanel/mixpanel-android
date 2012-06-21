@@ -34,12 +34,14 @@ public class MPDbAdapter {
 	public static final String KEY_DATA = "data";
 	public static final String KEY_CREATED_AT = "created_at";
 	public static final String KEY_TOKEN = "token";
+	public static final String KEY_TRACK_IP = "track_ip";
 
 	private static final String DATABASE_CREATE =
        "CREATE TABLE " + DATABASE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
 		KEY_DATA + " STRING NOT NULL," +
 		KEY_CREATED_AT + " INTEGER NOT NULL," +
-		KEY_TOKEN + " STRING NOT NULL);";
+		KEY_TOKEN + " STRING NOT NULL, " +
+		KEY_TRACK_IP + " INTEGER NOT NULL);";
 	private static final String TIME_INDEX =
 		"CREATE INDEX IF NOT EXISTS time_idx ON " + DATABASE_TABLE +
 		" (" + KEY_CREATED_AT + ");";
@@ -86,7 +88,7 @@ public class MPDbAdapter {
 	 * @param j the event and properties to track
 	 * @return the number of events in the table, or -1 on failure
 	 */
-	public int addEvent(JSONObject j) {
+	public int addEvent(JSONObject j, boolean trackIp) {
 		synchronized (this) {
 			if (Global.DEBUG) { Log.d(LOGTAG, "addEvent"); }
 
@@ -100,6 +102,7 @@ public class MPDbAdapter {
 				cv.put(KEY_DATA, j.toString());
 				cv.put(KEY_CREATED_AT, System.currentTimeMillis());
 				cv.put(KEY_TOKEN, mToken);
+				cv.put(KEY_TRACK_IP, trackIp ? 1 : 0);
 			    db.insert(DATABASE_TABLE, null, cv);
 
 			    c = db.rawQuery("SELECT COUNT(*) FROM " + DATABASE_TABLE + " WHERE token = '" + mToken + "'", null);
@@ -169,6 +172,7 @@ public class MPDbAdapter {
 			Cursor c = null;
 			String data = null;
 			String last_id = null;
+			String track_ip = null;
 
 			try {
 				SQLiteDatabase db = mDb.getReadableDatabase();
@@ -178,9 +182,14 @@ public class MPDbAdapter {
 				JSONArray arr = new JSONArray();
 
 				while (c.moveToNext()) {
-					if (c.isLast()) {
-						last_id = c.getString(c.getColumnIndex("_id"));
+					if(c.isFirst()) {
+						track_ip = c.getString(c.getColumnIndex(KEY_TRACK_IP));
+					} else  if(!track_ip.equals(c.getString(c.getColumnIndex(KEY_TRACK_IP)))) {
+						break;
 					}
+					
+					last_id = c.getString(c.getColumnIndex("_id"));
+					
 					try {
 						JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
 						arr.put(j);
@@ -202,7 +211,7 @@ public class MPDbAdapter {
 			}
 
 			if (last_id != null && data != null) {
-				String[] ret = {last_id, data};
+				String[] ret = {last_id, data, track_ip};
 				return ret;
 			}
 			return null;
