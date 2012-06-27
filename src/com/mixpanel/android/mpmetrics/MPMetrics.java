@@ -355,7 +355,6 @@ public class MPMetrics {
                     return;
                 }
 
-                // Post the data
                 HttpClient httpclient = new DefaultHttpClient();
                 HttpPost httppost;
                 if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
@@ -365,7 +364,6 @@ public class MPMetrics {
                 }
 
                 try {
-                    // Add your data
                     List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
                     nameValuePairs.add(new BasicNameValuePair("data", data[1]));
                     httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
@@ -493,6 +491,7 @@ public class MPMetrics {
                 dataObj.put(this.actionType, properties);
                 dataObj.put("$token", mToken);
                 dataObj.put("$distinct_id", distinct_id);
+                dataObj.put("$time", System.currentTimeMillis());
             } catch (JSONException e) {
                 Log.e(LOGTAG, "PeopleQueueTask " + properties.toString(), e);
                 return;
