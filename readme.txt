@@ -4,6 +4,14 @@ Demo: See the demo/ folder for a working demo application
 
 Changelog:
 
+v2.0
+-------------------
+* Added support for Mixpanel People
+* Added MPConfig object for easier configurability
+* MPMetrics.VERSION now available
+* Improved debugging information available
+* Event queuing submission model revamped
+
 v1.3
 -------------------
 Due to an unexplained increase in Sqlite insertion times on ICS, we now use a background thread to queue up
