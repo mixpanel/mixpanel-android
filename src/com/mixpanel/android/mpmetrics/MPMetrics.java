@@ -61,7 +61,7 @@ public class MPMetrics {
     private MPDbAdapter mDbAdapter;
     private RegistrationReceiver mRReceiver;
 
-    // Used to allow only one events/people submit task running or in the queue
+    // Used to allow only one events/people submit task in the queue
     // at a time to prevent unnecessary extraneous requests
     private static volatile boolean sEventsSubmitLock = false;
     private static volatile boolean sPeopleSubmitLock = false;
@@ -341,78 +341,73 @@ public class MPMetrics {
             this.messageType = messageType;
             if (messageType == FLUSH_PEOPLE) {
                 this.table = MPDbAdapter.PEOPLE_TABLE;
+                sPeopleSubmitLock = false;
             } else {
                 this.table = MPDbAdapter.EVENTS_TABLE;
+                sEventsSubmitLock = false;
             }
         }
 
         @Override
         public void run() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "SubmitTask " + this.table + " running.");
-            try {
-                String[] data = mDbAdapter.generateDataString(table);
-                if (data == null) {
-                    return;
-                }
 
-                HttpClient httpclient = new DefaultHttpClient();
-                HttpPost httppost;
-                if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
-                    httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
-                } else {
-                    httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
+            String[] data = mDbAdapter.generateDataString(table);
+            if (data == null) {
+                return;
+            }
+
+            HttpClient httpclient = new DefaultHttpClient();
+            HttpPost httppost;
+            if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
+                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
+            } else {
+                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
+            }
+
+            try {
+                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
+                nameValuePairs.add(new BasicNameValuePair("data", data[1]));
+                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+
+                HttpResponse response = httpclient.execute(httppost);
+                HttpEntity entity = response.getEntity();
+                if (entity == null) {
+                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                    return;
                 }
 
                 try {
-                    List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                    nameValuePairs.add(new BasicNameValuePair("data", data[1]));
-                    httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-                    HttpResponse response = httpclient.execute(httppost);
-                    HttpEntity entity = response.getEntity();
-                    if (entity == null) {
+                    String result = StringUtils.inputStreamToString(entity.getContent());
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "HttpResponse result: " + result);
+                    }
+                    if (!result.equals("1\n")) {
                         mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
                         return;
                     }
 
-                    try {
-                        String result = StringUtils.inputStreamToString(entity.getContent());
-                        if (MPConfig.DEBUG) {
-                            Log.d(LOGTAG, "HttpResponse result: " + result);
-                        }
-                        if (!result.equals("1\n")) {
-                            mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                            return;
-                        }
+                    // Success, so prune the database.
+                    mDbAdapter.cleanupEvents(data[0], table);
 
-                        // Success, so prune the database.
-                        mDbAdapter.cleanupEvents(data[0], table);
-
-                    } catch (IOException e) {
-                        Log.e(LOGTAG, "SubmitTask " + table, e);
-                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                        return;
-                    } catch (OutOfMemoryError e) {
-                        Log.e(LOGTAG, "SubmitTask " + table, e);
-                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                        return;
-                    }
-                // Any exceptions, log them and stop this task.
-                } catch (ClientProtocolException e) {
-                    Log.e(LOGTAG, "SubmitTask " + table, e);
-                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                    return;
                 } catch (IOException e) {
                     Log.e(LOGTAG, "SubmitTask " + table, e);
                     mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
                     return;
+                } catch (OutOfMemoryError e) {
+                    Log.e(LOGTAG, "SubmitTask " + table, e);
+                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                    return;
                 }
-            } finally {
-                if (this.table == MPDbAdapter.EVENTS_TABLE) {
-                    sEventsSubmitLock = false;
-                } else {
-                    sPeopleSubmitLock = false;
-                }
+            // Any exceptions, log them and stop this task.
+            } catch (ClientProtocolException e) {
+                Log.e(LOGTAG, "SubmitTask " + table, e);
+                mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                return;
+            } catch (IOException e) {
+                Log.e(LOGTAG, "SubmitTask " + table, e);
+                mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
+                return;
             }
         }
     }
