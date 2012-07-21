@@ -35,6 +35,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.mixpanel.android.util.StringUtils;
+
 public class MPMetrics {
     public static final String VERSION = "2.0";
 
@@ -282,7 +283,6 @@ public class MPMetrics {
     public String getPushId() {
     	return mPushPref.getString("push_id", null);
     }
-    
 
     /**
      * Return the carrier of the phone

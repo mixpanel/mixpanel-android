@@ -1,4 +1,5 @@
 package com.mixpanel.android.mpmetrics;
+
 /**
  * Stores global configuration options for the Mixpanel library.
  * May be overridden to achieve custom behavior.
@@ -24,10 +25,10 @@ public class MPConfig {
     public static int SUBMIT_THREAD_TTL = 180 * 1000;
 
     // Set to true to see debugging logcat output:
-    public static boolean DEBUG = true;
+    public static boolean DEBUG = false;
 
     // Set to true to send all api requests immediately
-    public static boolean TEST_MODE = true;
+    public static boolean TEST_MODE = false;
     
     // Set to false to prevent Mixpanel push notifications from spawning a system tray notification.
     // Use if want to handle Mixpanel's push intents yourself.
