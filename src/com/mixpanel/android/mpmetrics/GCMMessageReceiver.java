@@ -12,7 +12,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
 public class GCMMessageReceiver extends BroadcastReceiver {
-	String LOGTAG = "MPGMMessage";
+	String LOGTAG = "MPGCMMessage";
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
