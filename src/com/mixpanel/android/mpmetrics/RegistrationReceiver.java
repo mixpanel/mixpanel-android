@@ -13,11 +13,8 @@ public class RegistrationReceiver extends BroadcastReceiver {
 		String token = context.getSharedPreferences("mpPushPref", 0).getString("mp_token", null);
 		if (token == null) return;
 		
-		Log.v(LOGTAG, "REG TOKEN: " + token);
 		MPMetrics mp = MPMetrics.getInstance(context, token);	
-		
         String action = intent.getAction();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Intent received: " + action);
 
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
         	String registration = intent.getStringExtra("registration_id");

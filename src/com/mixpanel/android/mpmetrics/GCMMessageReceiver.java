@@ -18,7 +18,7 @@ public class GCMMessageReceiver extends BroadcastReceiver {
 	public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
 		if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
-			Log.v(LOGTAG, "in message");
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "GCM notification received");
 
             String message = intent.getExtras().getString("mp_message");
             if (message == null || !MPConfig.ALLOW_MP_PUSH) 
