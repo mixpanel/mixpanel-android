@@ -11,16 +11,18 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
-public class MPC2DMReceiver extends BroadcastReceiver {
-    private static String LOGTAG = "MPC2DMReceiver";
+public class GCMMessageReceiver extends BroadcastReceiver {
+	String LOGTAG = "MPGMMessage";
 
-    @Override
-    public void onReceive(Context context, Intent intent) {
+	@Override
+	public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Intent received: " + action);
+		if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "GCM notification received");
 
-        if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
-            String message = intent.getExtras().getString("message");
+            String message = intent.getExtras().getString("mp_message");
+            if (message == null || !MPConfig.ALLOW_MP_PUSH) 
+            	return;
 
             PackageManager manager = context.getPackageManager();
             Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
