@@ -235,8 +235,8 @@ public class MPMetrics {
         }
     }
 
-    public void setPushId(String registrationId) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push id: " + registrationId);
+    public void setPushRegistrationId(String registrationId) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registraiton id: " + registrationId);
         
         mPushPref.edit().putString("push_id", registrationId).commit();
         List<String> ids = new LinkedList<String>();
@@ -244,8 +244,8 @@ public class MPMetrics {
         set("$android_devices",  new JSONArray(ids));
     }
 
-    public void removePushId() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push id");
+    public void removePushRegistrationId() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
         
         mPushPref.edit().remove("push_id").commit();
         set("$android_devices", new JSONArray());

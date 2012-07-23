@@ -29,8 +29,4 @@ public class MPConfig {
 
     // Set to true to send all api requests immediately
     public static boolean TEST_MODE = false;
-    
-    // Set to false to prevent Mixpanel push notifications from spawning a system tray notification.
-    // Do this if you want to interpret and handle Mixpanel's push intents yourself.
-    public static boolean ALLOW_MP_PUSH = true;
 }

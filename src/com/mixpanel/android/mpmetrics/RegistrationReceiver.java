@@ -24,11 +24,11 @@ public class RegistrationReceiver extends BroadcastReceiver {
                 // Registration failed, try again later
             } else if (registration != null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
-                mp.setPushId(registration);
+                mp.setPushRegistrationId(registration);
             } else if (intent.getStringExtra("unregistered") != null) {
                 // unregistration done, new messages from the authorized sender will be rejected
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-                mp.removePushId();             
+                mp.removePushRegistrationId();             
             }
         }
     }
