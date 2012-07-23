@@ -236,17 +236,17 @@ public class MPMetrics {
     }
 
     public void setPushId(String registrationId) {
-    	if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push id: " + registrationId);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push id: " + registrationId);
         
-    	mPushPref.edit().putString("push_id", registrationId).commit();
-    	List<String> ids = new LinkedList<String>();
-    	ids.add(registrationId);
+        mPushPref.edit().putString("push_id", registrationId).commit();
+        List<String> ids = new LinkedList<String>();
+        ids.add(registrationId);
         set("$android_devices",  new JSONArray(ids));
     }
 
     public void removePushId() {
-    	if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push id");
-    	
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push id");
+        
         mPushPref.edit().remove("push_id").commit();
         set("$android_devices", new JSONArray());
     }
@@ -262,10 +262,10 @@ public class MPMetrics {
         }
 
         if (getPushId() == null) {
-	        Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-	        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
-	        registrationIntent.putExtra("sender", senderID);
-	        mContext.startService(registrationIntent);
+            Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+            registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
+            registrationIntent.putExtra("sender", senderID);
+            mContext.startService(registrationIntent);
         }
     }
 
@@ -281,7 +281,7 @@ public class MPMetrics {
     }
     
     public String getPushId() {
-    	return mPushPref.getString("push_id", null);
+        return mPushPref.getString("push_id", null);
     }
 
     /**

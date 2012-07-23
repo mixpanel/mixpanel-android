@@ -8,18 +8,18 @@ import android.util.Log;
 public class RegistrationReceiver extends BroadcastReceiver {
     String LOGTAG = "MPRegistration";
     
-	@Override
+    @Override
     public void onReceive(Context context, Intent intent) {
-		String token = context.getSharedPreferences("mpPushPref", 0).getString("mp_token", null);
-		if (token == null) return;
-		
-		MPMetrics mp = MPMetrics.getInstance(context, token);	
+        String token = context.getSharedPreferences("mpPushPref", 0).getString("mp_token", null);
+        if (token == null) return;
+        
+        MPMetrics mp = MPMetrics.getInstance(context, token);   
         String action = intent.getAction();
 
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
-        	String registration = intent.getStringExtra("registration_id");
+            String registration = intent.getStringExtra("registration_id");
 
-        	if (intent.getStringExtra("error") != null) {
+            if (intent.getStringExtra("error") != null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
                 // Registration failed, try again later
             } else if (registration != null) {
@@ -28,7 +28,7 @@ public class RegistrationReceiver extends BroadcastReceiver {
             } else if (intent.getStringExtra("unregistered") != null) {
                 // unregistration done, new messages from the authorized sender will be rejected
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-            	mp.removePushId();             
+                mp.removePushId();             
             }
         }
     }
