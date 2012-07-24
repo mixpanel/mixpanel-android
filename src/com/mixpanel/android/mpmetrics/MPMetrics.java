@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -42,7 +41,7 @@ public class MPMetrics {
     private static final String LOGTAG = "MPMetrics";
 
     // Maps each token to a singleton MPMetrics instance
-    private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
+    public static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
     // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
     private static ThreadPoolExecutor sExecutor =
@@ -236,12 +235,12 @@ public class MPMetrics {
     }
 
     public void setPushRegistrationId(String registrationId) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registraiton id: " + registrationId);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
         
         mPushPref.edit().putString("push_id", registrationId).commit();
-        List<String> ids = new LinkedList<String>();
-        ids.add(registrationId);
-        set("$android_devices",  new JSONArray(ids));
+        try {
+            set("$android_devices",  new JSONArray("[" + registrationId + "]"));
+        } catch (JSONException e) {}
     }
 
     public void removePushRegistrationId() {
@@ -498,7 +497,6 @@ public class MPMetrics {
             mInstanceMap.put(token,  instance);
         }
 
-        instance.mPushPref.edit().putString("mp_token", token).commit();
         return instance;
     }
 }

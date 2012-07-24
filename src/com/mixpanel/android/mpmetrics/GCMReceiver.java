@@ -17,12 +17,7 @@ public class GCMReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
-            String token = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE).getString("mp_token", null);
-            if (token == null) return;
-            MPMetrics mp = MPMetrics.getInstance(context, token);   
-
             String registration = intent.getStringExtra("registration_id");
 
             if (intent.getStringExtra("error") != null) {
@@ -30,11 +25,15 @@ public class GCMReceiver extends BroadcastReceiver {
                 // Registration failed, try again later
             } else if (registration != null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
-                mp.setPushRegistrationId(registration);
+                for (String token : MPMetrics.mInstanceMap.keySet()) {
+                    MPMetrics.mInstanceMap.get(token).setPushRegistrationId(registration);
+                }
             } else if (intent.getStringExtra("unregistered") != null) {
                 // unregistration done, new messages from the authorized sender will be rejected
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-                mp.removePushRegistrationId();             
+                for (String token : MPMetrics.mInstanceMap.keySet()) {
+                    MPMetrics.mInstanceMap.get(token).removePushRegistrationId();
+                }
             }
         } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
             String message = intent.getExtras().getString("mp_message");
@@ -50,7 +49,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
                 notificationTitle = manager.getApplicationLabel(appInfo);
                 notificationIcon = appInfo.icon;
-            } catch (NameNotFoundException e) { }
+            } catch (NameNotFoundException e) {}
 
             PendingIntent contentIntent = PendingIntent.getActivity(
                 context.getApplicationContext(),
