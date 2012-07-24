@@ -49,7 +49,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
                 notificationTitle = manager.getApplicationLabel(appInfo);
                 notificationIcon = appInfo.icon;
-            } catch (NameNotFoundException e) {}
+            } catch (NameNotFoundException e) { }
 
             PendingIntent contentIntent = PendingIntent.getActivity(
                 context.getApplicationContext(),

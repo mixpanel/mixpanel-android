@@ -240,7 +240,7 @@ public class MPMetrics {
         mPushPref.edit().putString("push_id", registrationId).commit();
         try {
             set("$android_devices",  new JSONArray("[" + registrationId + "]"));
-        } catch (JSONException e) {}
+        } catch (JSONException e) { }
     }
 
     public void removePushRegistrationId() {
