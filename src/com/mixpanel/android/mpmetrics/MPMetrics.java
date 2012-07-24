@@ -113,7 +113,7 @@ public class MPMetrics {
         sExecutor.setKeepAliveTime(MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS);
         mTimerHandler = new UniqueHandler();
         
-        mPushPref = context.getSharedPreferences("mpPushPref", 0);
+        mPushPref = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
     }
 
     /**

@@ -19,7 +19,7 @@ public class GCMReceiver extends BroadcastReceiver {
         String action = intent.getAction();
 
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
-            String token = context.getSharedPreferences("mpPushPref", 0).getString("mp_token", null);
+            String token = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE).getString("mp_token", null);
             if (token == null) return;
             MPMetrics mp = MPMetrics.getInstance(context, token);   
 
