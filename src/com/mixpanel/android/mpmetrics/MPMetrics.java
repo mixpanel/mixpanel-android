@@ -252,10 +252,10 @@ public class MPMetrics {
 
     /**
      * Enables push notifications from GCM.
-     * @param accountEmail the Google account that registered for GCM
+     * @param sender ID of the Google account that registered for GCM
      */
-    public void enablePush(String senderID) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "enablePush");
+    public void registerForPush(String senderID) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
         if (Build.VERSION.SDK_INT < 8) { // older than froyo
             return;
         }
@@ -265,20 +265,13 @@ public class MPMetrics {
             registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
             registrationIntent.putExtra("sender", senderID);
             mContext.startService(registrationIntent);
+        } else {
+            for (String token : mInstanceMap.keySet()) {
+                mInstanceMap.get(token).setPushRegistrationId(getPushId());
+            }
         }
     }
 
-    public void disablePush() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "disablePush");
-        if (Build.VERSION.SDK_INT < 8) { // older than froyo
-            return;
-        }
-
-        Intent unregIntent = new Intent("com.google.android.c2dm.intent.UNREGISTER");
-        unregIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
-        mContext.startService(unregIntent);
-    }
-    
     public String getPushId() {
         return mPushPref.getString("push_id", null);
     }
