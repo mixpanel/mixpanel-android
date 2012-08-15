@@ -236,11 +236,16 @@ public class MPMetrics {
 
     public void setPushRegistrationId(String registrationId) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
-        
+        if (this.distinct_id == null) {
+            return;
+        }
+
         mPushPref.edit().putString("push_id", registrationId).commit();
         try {
-            set("$android_devices",  new JSONArray("[" + registrationId + "]"));
-        } catch (JSONException e) { }
+            sExecutor.submit(new PeopleQueueTask("$union", new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"))));
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "set push registration id error", e);
+        }
     }
 
     public void removePushRegistrationId() {
