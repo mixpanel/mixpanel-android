@@ -19,14 +19,14 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
@@ -41,7 +41,7 @@ public class MPMetrics {
     private static final String LOGTAG = "MPMetrics";
 
     // Maps each token to a singleton MPMetrics instance
-    private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
+    public static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
     // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
     private static ThreadPoolExecutor sExecutor =
@@ -57,9 +57,10 @@ public class MPMetrics {
     private String mDeviceId;
     private String distinct_id;
 
+    private SharedPreferences mPushPref;
+
     private JSONObject mSuperProperties;
     private MPDbAdapter mDbAdapter;
-    private RegistrationReceiver mRReceiver;
 
     // Used to allow only one events/people submit task in the queue
     // at a time to prevent unnecessary extraneous requests
@@ -110,6 +111,8 @@ public class MPMetrics {
 
         sExecutor.setKeepAliveTime(MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS);
         mTimerHandler = new UniqueHandler();
+
+        mPushPref = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
     }
 
     /**
@@ -231,46 +234,51 @@ public class MPMetrics {
         }
     }
 
+    public void setPushRegistrationId(String registrationId) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
+        if (this.distinct_id == null) {
+            return;
+        }
+
+        mPushPref.edit().putString("push_id", registrationId).commit();
+        try {
+            sExecutor.submit(new PeopleQueueTask("$union", new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"))));
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "set push registration id error", e);
+        }
+    }
+
+    public void removePushRegistrationId() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
+
+        mPushPref.edit().remove("push_id").commit();
+        set("$android_devices", new JSONArray());
+    }
+
     /**
-     * Enables push notifications from C2DM.
-     * @param accountEmail the Google account that registered for C2DM
+     * Enables push notifications from GCM.
+     * @param sender ID of the Google account that registered for GCM
      */
-    public void enablePush(String accountEmail) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "enablePush");
+    public void registerForPush(String senderID) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
         if (Build.VERSION.SDK_INT < 8) { // older than froyo
             return;
         }
 
-        this.bindRegistrationReceiver();
-
-        Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
-        registrationIntent.putExtra("sender", accountEmail);
-        mContext.startService(registrationIntent);
+        if (getPushId() == null) {
+            Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+            registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
+            registrationIntent.putExtra("sender", senderID);
+            mContext.startService(registrationIntent);
+        } else {
+            for (String token : mInstanceMap.keySet()) {
+                mInstanceMap.get(token).setPushRegistrationId(getPushId());
+            }
+        }
     }
 
-    public void disablePush() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "disablePush");
-        if (Build.VERSION.SDK_INT < 8) { // older than froyo
-            return;
-        }
-
-        this.bindRegistrationReceiver();
-
-        Intent unregIntent = new Intent("com.google.android.c2dm.intent.UNREGISTER");
-        unregIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
-        mContext.startService(unregIntent);
-    }
-
-    private void bindRegistrationReceiver() {
-        if (mRReceiver == null) {
-            mRReceiver = new RegistrationReceiver();
-
-            IntentFilter filter = new IntentFilter();
-            filter.addAction("com.google.android.c2dm.intent.REGISTRATION");
-            filter.addCategory(mContext.getPackageName());
-            mContext.registerReceiver(new RegistrationReceiver(), filter, "com.google.android.c2dm.permission.SEND", null);
-        }
+    public String getPushId() {
+        return mPushPref.getString("push_id", null);
     }
 
     /**
@@ -308,28 +316,6 @@ public class MPMetrics {
             return null;
         } else {
             return product + "_" + androidId;
-        }
-    }
-
-    private class RegistrationReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Intent received: " + action);
-
-            if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
-                String registration = intent.getStringExtra("registration_id");
-                if (intent.getStringExtra("error") != null) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Error when registering for C2DM: " + intent.getStringExtra("error"));
-                    // Registration failed, try again later
-                } else if (intent.getStringExtra("unregistered") != null) {
-                    // unregistration done, new messages from the authorized sender will be rejected
-                    Log.d(LOGTAG, "Received unregistration: " + intent.getStringExtra("unregistered"));
-                } else if (registration != null) {
-                    Log.d(LOGTAG, "Received registration ID: " + registration);
-                    set("$registration_id", registration);
-                }
-            }
         }
     }
 

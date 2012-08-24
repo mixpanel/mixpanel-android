@@ -11,16 +11,35 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
-public class MPC2DMReceiver extends BroadcastReceiver {
-    private static String LOGTAG = "MPC2DMReceiver";
-
+public class GCMReceiver extends BroadcastReceiver {
+    String LOGTAG = "MPGCMReceiver";
+    
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Intent received: " + action);
+        if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
+            String registration = intent.getStringExtra("registration_id");
 
-        if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
-            String message = intent.getExtras().getString("message");
+            if (intent.getStringExtra("error") != null) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
+                // Registration failed, try again later
+            } else if (registration != null) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
+                for (String token : MPMetrics.mInstanceMap.keySet()) {
+                    MPMetrics.mInstanceMap.get(token).setPushRegistrationId(registration);
+                }
+            } else if (intent.getStringExtra("unregistered") != null) {
+                // unregistration done, new messages from the authorized sender will be rejected
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
+                for (String token : MPMetrics.mInstanceMap.keySet()) {
+                    MPMetrics.mInstanceMap.get(token).removePushRegistrationId();
+                }
+            }
+        } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
+            String message = intent.getExtras().getString("mp_message");
+
+            if (message == null) return;
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
 
             PackageManager manager = context.getPackageManager();
             Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
