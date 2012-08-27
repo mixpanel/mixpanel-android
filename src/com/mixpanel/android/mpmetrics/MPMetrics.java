@@ -262,17 +262,22 @@ public class MPMetrics {
     public void registerForPush(String senderID) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
         if (Build.VERSION.SDK_INT < 8) { // older than froyo
+        	if (MPConfig.DEBUG) Log.d(LOGTAG, "Push not supported SDK " + Build.VERSION.SDK);
             return;
         }
 
-        if (getPushId() == null) {
+        String pushId = getPushId();
+        if (pushId == null) {
+        	if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
+
             Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
             registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
             registrationIntent.putExtra("sender", senderID);
             mContext.startService(registrationIntent);
         } else {
             for (String token : mInstanceMap.keySet()) {
-                mInstanceMap.get(token).setPushRegistrationId(getPushId());
+            	if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
+                mInstanceMap.get(token).setPushRegistrationId(pushId);
             }
         }
     }
