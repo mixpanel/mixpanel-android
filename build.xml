@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MPMetrics_v2.1">
+
+    <!-- The local.properties file is created and updated by the 'android' tool.
+         It contains the path to the SDK. It should *NOT* be checked into
+         Version Control Systems. -->
+    <property file="local.properties" />
+
+    <!-- if sdk.dir was not set from one of the property file, then
+         get it from the ANDROID_HOME env var.
+         This must be done before we load project.properties since
+         the proguard config can use sdk.dir -->
+    <property environment="env" />
+    <condition property="sdk.dir" value="${env.ANDROID_HOME}">
+        <isset property="env.ANDROID_HOME" />
+    </condition>
+
+    <!-- The project.properties file is created and updated by the 'android'
+         tool, as well as ADT.
+
+         This contains project specific properties such as project target, and library
+         dependencies. Lower level build properties are stored in ant.properties
+         (or in .classpath for Eclipse projects).
+
+         This file is an integral part of the build system for your
+         application and should be checked into Version Control Systems. -->
+    <loadproperties srcFile="project.properties" />
+
+    <!-- quick check on sdk.dir -->
+    <fail
+            message="sdk.dir is missing. Make sure to generate local.properties using 'android update project' or to inject it through the ANDROID_HOME environment variable."
+            unless="sdk.dir"
+    />
+
+
+    <!-- These properties are copied pretty directly from
+         $ANDROID_HOME/tools/ant/build.xml -->
+    <property name="source.dir" value="src" />
+    <property name="source.absolute.dir" location="${source.dir}" />
+    <property name="out.dir" value="bin" />
+    <property name="out.absolute.dir" location="${out.dir}" />
+    <property name="out.classes.absolute.dir" location="${out.dir}/classes" />
+
+    <!-- compilation options -->
+    <property name="java.encoding" value="UTF-8" />
+    <property name="java.target" value="1.5" />
+    <property name="java.source" value="1.5" />
+    <property name="java.compilerargs" value="" />
+
+    <!-- whether we need to fork javac.
+         This is only needed on Windows when running Java < 7 -->
+    <condition else="false" property="need.javac.fork">
+        <and>
+            <matches pattern="1\.[56]" string="${java.specification.version}"/>
+            <not>
+                <os family="unix"/>
+            </not>
+        </and>
+    </condition>
+
+    <target name="clean">
+      <delete dir="${out.absolute.dir}" />
+    </target>
+
+    <target name="-setup">
+      <mkdir dir="${out.absolute.dir}" />
+      <mkdir dir="${out.classes.absolute.dir}" />
+    </target>
+
+    <target name="compile" depends="-setup">
+      <path id="project.javac.classpath">
+        <pathelement path="${sdk.dir}/tools/support/annotations.jar" />
+        <pathelement path="${sdk.dir}/platforms/${target}/android.jar" />
+      </path>
+
+      <!-- TODO unset debug="true" -->
+
+      <javac encoding="${java.encoding}"
+             source="${java.source}" target="${java.target}"
+             debug="true"
+             extdirs=""
+             includeantruntime="false"
+             destdir="${out.classes.absolute.dir}"
+             classpathref="project.javac.classpath"
+             verbose="true"
+             fork="${need.javac.fork}">
+        <src path="${source.absolute.dir}" />
+        <compilerarg line="${java.compilerargs}" />
+      </javac>
+    </target>
+
+    <target name="library" depends="compile">
+      <jar destfile="MPMetrics_v2.1.jar"
+           basedir="${out.classes.absolute.dir}"
+           includes="**/*.class" />
+    </target>
+
+</project>
