@@ -44,6 +44,7 @@ public class MPMetrics {
     public static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
     // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
+    // The running thread will always be run at MIN_PRIORITY
     private static ThreadPoolExecutor sExecutor =
             new ThreadPoolExecutor(0, 1, MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new LowPriorityThreadFactory());
 
@@ -87,11 +88,11 @@ public class MPMetrics {
             }
         }
 
-        // To be called from foreign threads
+        // Debouncer, to be called from the sExecutor thread.
         public boolean sendUniqueEmptyMessageDelayed(int what, long delayMillis) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "sendUniqueEmptyMessageDelayed " + what + "...");
             if (!this.hasMessages(what)) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "success.");
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "success."); // TODO Race condition
                 return this.sendEmptyMessageDelayed(what, delayMillis);
             }
             if (MPConfig.DEBUG) Log.d(LOGTAG, "blocked.");
@@ -380,7 +381,7 @@ public class MPMetrics {
         public void flush() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "flushPeople");
             if (!sPeopleSubmitLock) {
-                sPeopleSubmitLock = true;
+                sPeopleSubmitLock = true; // TODO race condition
                 sExecutor.submit(new SubmitTask(FLUSH_PEOPLE));
             }
         }
@@ -469,7 +470,7 @@ public class MPMetrics {
     public void flushEvents() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
         if (!sEventsSubmitLock) {
-            sEventsSubmitLock = true;
+            sEventsSubmitLock = true; // TODO Race condition
             sExecutor.submit(new SubmitTask(FLUSH_EVENTS));
         }
     }
