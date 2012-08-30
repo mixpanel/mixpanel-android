@@ -24,33 +24,48 @@ import com.mixpanel.android.util.Base64Coder;
  * @author anlu(Anlu Wang)
  *
  */
-public class MPDbAdapter {
+/* package */ class MPDbAdapter {
     private static final String LOGTAG = "MPMetrics";
 
     private static final String DATABASE_NAME = "mixpanel";
     public static final String EVENTS_TABLE = "events";
     public static final String PEOPLE_TABLE = "people";
+    public static final String UNIDENTIFIED_PEOPLE_TABLE = "unidentified_people";
+    public static final String SUPERPROPERTIES_TABLE = "superproperties";
+
     private static final int DATABASE_VERSION = 4;
 
     public static final String KEY_DATA = "data";
     public static final String KEY_CREATED_AT = "created_at";
 
     private static final String CREATE_EVENTS_TABLE =
-       "CREATE TABLE " + EVENTS_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        KEY_DATA + " STRING NOT NULL, " +
-        KEY_CREATED_AT + " INTEGER NOT NULL);";
+            "CREATE TABLE " + EVENTS_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    KEY_DATA + " STRING NOT NULL, " +
+                    KEY_CREATED_AT + " INTEGER NOT NULL);";
     private static final String CREATE_PEOPLE_TABLE =
-       "CREATE TABLE " + PEOPLE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-        KEY_DATA + " STRING NOT NULL, " +
-        KEY_CREATED_AT + " INTEGER NOT NULL);";
-    private static final String EVENTS_TIME_INDEX =
-        "CREATE INDEX IF NOT EXISTS time_idx ON " + EVENTS_TABLE +
-        " (" + KEY_CREATED_AT + ");";
-    private static final String PEOPLE_TIME_INDEX =
-        "CREATE INDEX IF NOT EXISTS time_idx ON " + PEOPLE_TABLE +
-        " (" + KEY_CREATED_AT + ");";
+            "CREATE TABLE " + PEOPLE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    KEY_DATA + " STRING NOT NULL, " +
+                    KEY_CREATED_AT + " INTEGER NOT NULL);";
+    private static final String CREATE_UNIDENTIFIED_PEOPLE_TABLE =
+            "CREATE TABLE " + PEOPLE_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    KEY_DATA + " STRING NOT NULL, " +
+                    KEY_CREATED_AT + " INTEGER NOT NULL);";
+    private static final String CREATE_SUPERPROPERTIES_TABLE =
+            "CREATE TABLE " + SUPERPROPERTIES_TABLE + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    KEY_DATA + " STRING NOT NULL, " +
+                    KEY_CREATED_AT + " INTEGER NOT NULL);";
 
-    private MPDatabaseHelper mDb;
+    private static final String EVENTS_TIME_INDEX =
+            "CREATE INDEX IF NOT EXISTS time_idx ON " + EVENTS_TABLE +
+            " (" + KEY_CREATED_AT + ");";
+    private static final String PEOPLE_TIME_INDEX =
+            "CREATE INDEX IF NOT EXISTS time_idx ON " + PEOPLE_TABLE +
+            " (" + KEY_CREATED_AT + ");";
+    private static final String UNIDENTIFIED_PEOPLE_TIME_INDEX =
+            "CREATE INDEX IF NOT EXISTS time_idx ON " + PEOPLE_TABLE +
+            " (" + KEY_CREATED_AT + ");";
+
+    private final MPDatabaseHelper mDb;
 
     private static class MPDatabaseHelper extends SQLiteOpenHelper {
         MPDatabaseHelper(Context context) {
@@ -60,22 +75,32 @@ public class MPDbAdapter {
         @Override
         public void onCreate(SQLiteDatabase db) {
             db.execSQL(CREATE_EVENTS_TABLE);
+            db.execSQL(CREATE_UNIDENTIFIED_PEOPLE_TABLE);
             db.execSQL(CREATE_PEOPLE_TABLE);
+            db.execSQL(CREATE_SUPERPROPERTIES_TABLE);
             db.execSQL(EVENTS_TIME_INDEX);
             db.execSQL(PEOPLE_TIME_INDEX);
+            db.execSQL(UNIDENTIFIED_PEOPLE_TIME_INDEX);
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            db.execSQL("DROP TABLE " + EVENTS_TABLE);
+            db.execSQL("DROP TABLE IF EXISTS " + EVENTS_TABLE);
+            db.execSQL("DROP TABLE IF EXISTS " + UNIDENTIFIED_PEOPLE_TABLE);
+            db.execSQL("DROP TABLE IF EXISTS " + PEOPLE_TABLE);
+            db.execSQL("DROP TABLE IF EXISTS " + SUPERPROPERTIES_TABLE);
+
             db.execSQL(CREATE_EVENTS_TABLE);
+            db.execSQL(CREATE_UNIDENTIFIED_PEOPLE_TABLE);
             db.execSQL(CREATE_PEOPLE_TABLE);
+            db.execSQL(CREATE_SUPERPROPERTIES_TABLE);
             db.execSQL(EVENTS_TIME_INDEX);
             db.execSQL(PEOPLE_TIME_INDEX);
+            db.execSQL(UNIDENTIFIED_PEOPLE_TIME_INDEX);
         }
     }
 
-    public MPDbAdapter(Context context, String token) {
+    /* package */ MPDbAdapter(Context context) {
         mDb = new MPDatabaseHelper(context);
     }
 
@@ -83,7 +108,7 @@ public class MPDbAdapter {
      * Adds a JSON string representing an event with properties or a person record
      * to the SQLiteDatabase.
      * @param j the JSON to record
-     * @param table the table to insert into, either "events" or "people"
+     * @param table the table to insert into, either "events", "people" or "unidentified_people"
      * @return the number of rows in the table, or -1 on failure
      */
     public int addJSON(JSONObject j, String table) {
@@ -175,7 +200,7 @@ public class MPDbAdapter {
             try {
                 SQLiteDatabase db = mDb.getReadableDatabase();
                 c = db.rawQuery("SELECT * FROM " + table  +
-                                " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
+                        " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
                 JSONArray arr = new JSONArray();
 
                 while (c.moveToNext()) {
@@ -208,5 +233,5 @@ public class MPDbAdapter {
             }
             return null;
         }
-    }
+    }// generateDataString
 }

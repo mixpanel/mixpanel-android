@@ -1,24 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,12 +13,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
-
-import com.mixpanel.android.util.StringUtils;
 
 public class MPMetrics {
     public static final String VERSION = "2.0";
@@ -43,14 +24,9 @@ public class MPMetrics {
     // Maps each token to a singleton MPMetrics instance
     public static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
 
-    // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
-    // The running thread will always be run at MIN_PRIORITY
-    private static ThreadPoolExecutor sExecutor =
-            new ThreadPoolExecutor(0, 1, MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new LowPriorityThreadFactory());
-
-    private final MPDbAdapter mDbAdapter;
 
     private final Context mContext;
+    private final AnalyticsMessages mMessages;
 
     private final String mToken;
     private final String mCarrier;
@@ -65,44 +41,11 @@ public class MPMetrics {
 
     private JSONObject mSuperProperties;
 
-    // Used to allow only one events/people submit task in the queue
-    // at a time to prevent unnecessary extraneous requests
-    private static volatile boolean sEventsSubmitLock = false;
-    private static volatile boolean sPeopleSubmitLock = false;
-
-    private static int FLUSH_EVENTS = 0;
-    private static int FLUSH_PEOPLE = 1;
-
-
-    private final UniqueHandler mTimerHandler;
-
-    // Used for sending flushes every MPConfig.FLUSH_RATE seconds when events/people
-    // are actually being tracked. Foreign threads should call sendUniqueEmptyMessageDelayed
-    private class UniqueHandler extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            if (msg.what == FLUSH_EVENTS) {
-                flushEvents();
-            } else if (msg.what == FLUSH_PEOPLE){
-                mPeople.flush();
-            }
-        }
-
-        // Debouncer, to be called from the sExecutor thread.
-        public boolean sendUniqueEmptyMessageDelayed(int what, long delayMillis) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "sendUniqueEmptyMessageDelayed " + what + "...");
-            if (!this.hasMessages(what)) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "success."); // TODO Race condition
-                return this.sendEmptyMessageDelayed(what, delayMillis);
-            }
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "blocked.");
-            return false;
-        }
-    }
-
     private MPMetrics(Context context, String token) {
         mContext = context;
         mToken = token;
+
+        mMessages = AnalyticsMessages.getInstance(mContext);
 
         mCarrier = getCarrier();
         mModel = getModel();
@@ -111,13 +54,6 @@ public class MPMetrics {
         mPeople = new PeopleImpl();
 
         mSuperProperties = new JSONObject();
-
-        mDbAdapter = new MPDbAdapter(mContext, mToken);
-        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
-        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
-
-        sExecutor.setKeepAliveTime(MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS);
-        mTimerHandler = new UniqueHandler();
 
         mPushPref = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
     }
@@ -178,7 +114,39 @@ public class MPMetrics {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
         try {
-            sExecutor.submit(eventQueueTask(eventName, properties));
+            long time = System.currentTimeMillis() / 1000;
+            JSONObject dataObj = new JSONObject();
+
+            dataObj.put("event", eventName);
+            JSONObject propertiesObj = new JSONObject();
+            propertiesObj.put("token", mToken);
+            propertiesObj.put("time", time);
+            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
+            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
+            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
+            propertiesObj.put("mp_lib", "android");
+
+            if (mDistinctId != null) {
+                propertiesObj.put("distinct_id", mDistinctId);
+            }
+
+            if (properties != null) {
+                for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                    String key = (String) iter.next();
+                    propertiesObj.put(key, properties.get(key));
+                }
+            }
+
+            // TODO remove is in favor of handling SuperProperties directly in AnalyticsMessages
+            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                String key = (String) iter.next();
+                propertiesObj.put(key, mSuperProperties.get(key));
+            }
+
+            dataObj.put("properties", propertiesObj);
+
+            mMessages.eventsMessage(dataObj);
         } catch (JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -326,7 +294,8 @@ public class MPMetrics {
             }
 
             try {
-                sExecutor.submit(mPeople.peopleQueueTask("$set", properties));
+                JSONObject message = stdPeopleMessage("$set", properties);
+                mMessages.peopleMessage(message);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Exception setting people properties");
             }
@@ -350,7 +319,8 @@ public class MPMetrics {
             }
 
             try {
-                sExecutor.submit(mPeople.peopleQueueTask("$add", json));
+                JSONObject message = stdPeopleMessage("$add", json);
+                mMessages.peopleMessage(message);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Exception incrementing properties", e);
             }
@@ -371,7 +341,8 @@ public class MPMetrics {
             }
 
             try {
-                sExecutor.submit(mPeople.peopleQueueTask("$delete", null));
+                JSONObject message = stdPeopleMessage("$add", null);
+                mMessages.peopleMessage(message);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Exception deleting a user");
             }
@@ -379,11 +350,8 @@ public class MPMetrics {
 
         @Override
         public void flush() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "flushPeople");
-            if (!sPeopleSubmitLock) {
-                sPeopleSubmitLock = true; // TODO race condition
-                sExecutor.submit(new SubmitTask(FLUSH_PEOPLE));
-            }
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "People.flush");
+            mMessages.submitPeople();
         }
 
         @Override
@@ -396,7 +364,8 @@ public class MPMetrics {
             mPushPref.edit().putString("push_id", registrationId).commit();
             try {
                 JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
-                sExecutor.submit(mPeople.peopleQueueTask("$union", registrationInfo));
+                JSONObject message = stdPeopleMessage("$union", registrationInfo);
+                mMessages.peopleMessage(message);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "set push registration id error", e);
             }
@@ -438,15 +407,15 @@ public class MPMetrics {
             return mPushPref.getString("push_id", null);
         }
 
-        public PeopleQueueTask peopleQueueTask(String actionType, JSONObject properties)
+        public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
                 throws JSONException {
                 JSONObject dataObj = new JSONObject();
                 dataObj.put(actionType, properties);
                 dataObj.put("$token", mToken);
-                dataObj.put("$distinct_id", peopleDistinctId);
+                dataObj.put("$distinct_id", peopleDistinctId); // TODO move to AnalyticsMessages to allow for queuing
                 dataObj.put("$time", System.currentTimeMillis());
 
-                return new PeopleQueueTask(dataObj);
+                return dataObj;
         }
     }
 
@@ -469,10 +438,7 @@ public class MPMetrics {
      */
     public void flushEvents() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
-        if (!sEventsSubmitLock) {
-            sEventsSubmitLock = true; // TODO Race condition
-            sExecutor.submit(new SubmitTask(FLUSH_EVENTS));
-        }
+        mMessages.submitEvents();
     }
 
     /**
@@ -510,163 +476,6 @@ public class MPMetrics {
             return null;
         } else {
             return product + "_" + androidId;
-        }
-    }
-
-    private class SubmitTask implements Runnable {
-        private String table;
-        private final int messageType;
-
-        public SubmitTask(int messageType) {
-            this.messageType = messageType;
-            if (messageType == FLUSH_PEOPLE) {
-                this.table = MPDbAdapter.PEOPLE_TABLE;
-                sPeopleSubmitLock = false;
-            } else {
-                this.table = MPDbAdapter.EVENTS_TABLE;
-                sEventsSubmitLock = false;
-            }
-        }
-
-        @Override
-        public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "SubmitTask " + this.table + " running.");
-
-            String[] data = mDbAdapter.generateDataString(table);
-            if (data == null) {
-                return;
-            }
-
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost;
-            if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
-                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
-            } else {
-                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
-            }
-
-            try {
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                nameValuePairs.add(new BasicNameValuePair("data", data[1]));
-                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-                HttpResponse response = httpclient.execute(httppost);
-                HttpEntity entity = response.getEntity();
-                if (entity == null) {
-                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                    return;
-                }
-
-                try {
-                    String result = StringUtils.inputStreamToString(entity.getContent());
-                    if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "HttpResponse result: " + result);
-                    }
-                    if (!result.equals("1\n")) {
-                        mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                        return;
-                    }
-
-                    // Success, so prune the database.
-                    mDbAdapter.cleanupEvents(data[0], table);
-
-                } catch (IOException e) {
-                    Log.e(LOGTAG, "SubmitTask " + table, e);
-                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                    return;
-                } catch (OutOfMemoryError e) { //?
-                    Log.e(LOGTAG, "SubmitTask " + table, e);
-                    mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                    return;
-                }
-            // Any exceptions, log them and stop this task.
-            } catch (ClientProtocolException e) {
-                Log.e(LOGTAG, "SubmitTask " + table, e);
-                mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                return;
-            } catch (IOException e) {
-                Log.e(LOGTAG, "SubmitTask " + table, e);
-                mTimerHandler.sendUniqueEmptyMessageDelayed(this.messageType, MPConfig.FLUSH_RATE);
-                return;
-            }
-        }
-    }
-
-    private class EventsQueueTask implements Runnable {
-        private final JSONObject mDataObject;
-
-        public EventsQueueTask(JSONObject dataObject) {
-            this.mDataObject = dataObject;
-        }
-
-        @Override
-        public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask queuing event");
-
-            int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.EVENTS_TABLE);
-            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask in test or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                mTimerHandler.sendEmptyMessage(FLUSH_EVENTS);
-            } else {
-                mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_EVENTS, MPConfig.FLUSH_RATE);
-            }
-        }
-    }
-
-    private EventsQueueTask eventQueueTask(String eventName, JSONObject properties)
-        throws JSONException {
-        long time = System.currentTimeMillis() / 1000;
-        JSONObject dataObj = new JSONObject();
-
-        dataObj.put("event", eventName);
-        JSONObject propertiesObj = new JSONObject();
-        propertiesObj.put("token", mToken);
-        propertiesObj.put("time", time);
-        propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-        propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-        propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-        propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-        propertiesObj.put("mp_lib", "android");
-
-        for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-            String key = (String) iter.next();
-            propertiesObj.put(key, mSuperProperties.get(key));
-        }
-
-        if (mDistinctId != null) {
-            propertiesObj.put("distinct_id", mDistinctId);
-        }
-
-        if (properties != null) {
-            for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                String key = (String) iter.next();
-                propertiesObj.put(key, properties.get(key));
-            }
-        }
-
-        dataObj.put("properties", propertiesObj);
-
-        return new EventsQueueTask(dataObj);
-    }
-
-    private class PeopleQueueTask implements Runnable {
-        private final JSONObject dataObject;
-
-        public PeopleQueueTask(JSONObject dataObject) {
-            this.dataObject = dataObject;
-        }
-
-        @Override
-        public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask queuing an action");
-
-            int count = mDbAdapter.addJSON(dataObject, MPDbAdapter.PEOPLE_TABLE);
-            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask MPConfig.TEST_MODE set or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                mTimerHandler.sendEmptyMessage(FLUSH_PEOPLE);
-            } else {
-                mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_PEOPLE, MPConfig.FLUSH_RATE);
-            }
         }
     }
 

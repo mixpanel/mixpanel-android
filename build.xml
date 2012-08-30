@@ -82,7 +82,7 @@
              includeantruntime="false"
              destdir="${out.classes.absolute.dir}"
              classpathref="project.javac.classpath"
-             verbose="true"
+             verbose="false"
              fork="${need.javac.fork}">
         <src path="${source.absolute.dir}" />
         <compilerarg line="${java.compilerargs}" />
