@@ -47,22 +47,22 @@ public class MPMetrics {
     private static ThreadPoolExecutor sExecutor =
             new ThreadPoolExecutor(0, 1, MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new LowPriorityThreadFactory());
 
+    private final MPDbAdapter mDbAdapter;
+
     private final Context mContext;
 
     private final String mToken;
-
     private final String mCarrier;
     private final String mModel;
     private final String mVersion;
     private final String mDeviceId;
-    private final People mPeople;
+    private final PeopleImpl mPeople;
 
-    private String distinct_id;
+    private String mDistinctId;
 
     private final SharedPreferences mPushPref;
 
     private JSONObject mSuperProperties;
-    private final MPDbAdapter mDbAdapter;
 
     // Used to allow only one events/people submit task in the queue
     // at a time to prevent unnecessary extraneous requests
@@ -72,8 +72,11 @@ public class MPMetrics {
     private static int FLUSH_EVENTS = 0;
     private static int FLUSH_PEOPLE = 1;
 
+
+    private final UniqueHandler mTimerHandler;
+
     // Used for sending flushes every MPConfig.FLUSH_RATE seconds when events/people
-    // are actually being tracked.
+    // are actually being tracked. Foreign threads should call sendUniqueEmptyMessageDelayed
     private class UniqueHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
@@ -84,6 +87,7 @@ public class MPMetrics {
             }
         }
 
+        // To be called from foreign threads
         public boolean sendUniqueEmptyMessageDelayed(int what, long delayMillis) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "sendUniqueEmptyMessageDelayed " + what + "...");
             if (!this.hasMessages(what)) {
@@ -94,7 +98,6 @@ public class MPMetrics {
             return false;
         }
     }
-    private final UniqueHandler mTimerHandler;
 
     private MPMetrics(Context context, String token) {
         mContext = context;
@@ -154,13 +157,13 @@ public class MPMetrics {
      * the same distinct_id for both calls, and using a distinct_id that is easy
      * to associate with the given user, for example, a server-side account identifier.
      *
-     * @param distinct_id a string uniquely identifying this user. Events sent to
+     * @param distinctId a string uniquely identifying this user. Events sent to
      *     Mixpanel using the same disinct_id will be considered associated with the
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
      */
-    public void identify(String distinct_id) {
-       this.distinct_id = distinct_id;
+    public void identify(String distinctId) {
+       mDistinctId = distinctId;
     }
 
     /**
@@ -173,7 +176,11 @@ public class MPMetrics {
     public void track(String eventName, JSONObject properties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
-        sExecutor.submit(new EventsQueueTask(eventName, properties));
+        try {
+            sExecutor.submit(eventQueueTask(eventName, properties));
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Exception tracking event " + eventName, e);
+        }
     }
 
     /**
@@ -194,9 +201,9 @@ public class MPMetrics {
          * Identify a user with a unique ID. All future calls to the people object will rely on this
          * value to assign and increment properties. Calls to {@link set} and {@link increment}
          * will be queued until identify is called.
-         * @param distinct_id
+         * @param distinctId
          */
-        public void identify(String distinct_id);
+        public void identify(String distinctId);
 
         /**
          * Sets a single property with the given name and value for this user.
@@ -299,7 +306,6 @@ public class MPMetrics {
     }
 
     private class PeopleImpl implements People {
-
         private String peopleDistinctId;
 
         public PeopleImpl() {
@@ -307,18 +313,22 @@ public class MPMetrics {
         }
 
         @Override
-        public void identify(String distinct_id) {
-            this.peopleDistinctId = distinct_id;
+        public void identify(String distinctId) {
+            peopleDistinctId = distinctId;
          }
 
         @Override
         public void set(JSONObject properties) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
             if (this.peopleDistinctId == null) {
-                return;
+                return; // TODO events should be queued until identify is called
             }
 
-            sExecutor.submit(new PeopleQueueTask("$set", properties));
+            try {
+                sExecutor.submit(mPeople.peopleQueueTask("$set", properties));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception setting people properties");
+            }
         }
 
         @Override
@@ -335,10 +345,14 @@ public class MPMetrics {
             JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             if (this.peopleDistinctId == null) {
-                return;
+                return; // TODO events should be queued until identify is called
             }
 
-            sExecutor.submit(new PeopleQueueTask("$add", json));
+            try {
+                sExecutor.submit(mPeople.peopleQueueTask("$add", json));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception incrementing properties", e);
+            }
         }
 
         @Override
@@ -355,7 +369,11 @@ public class MPMetrics {
                 return;
             }
 
-            sExecutor.submit(new PeopleQueueTask("$delete", null));
+            try {
+                sExecutor.submit(mPeople.peopleQueueTask("$delete", null));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception deleting a user");
+            }
         }
 
         @Override
@@ -376,7 +394,8 @@ public class MPMetrics {
 
             mPushPref.edit().putString("push_id", registrationId).commit();
             try {
-                sExecutor.submit(new PeopleQueueTask("$union", new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"))));
+                JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
+                sExecutor.submit(mPeople.peopleQueueTask("$union", registrationInfo));
             } catch (JSONException e) {
                 Log.e(LOGTAG, "set push registration id error", e);
             }
@@ -417,6 +436,17 @@ public class MPMetrics {
         public String getPushId() {
             return mPushPref.getString("push_id", null);
         }
+
+        public PeopleQueueTask peopleQueueTask(String actionType, JSONObject properties)
+                throws JSONException {
+                JSONObject dataObj = new JSONObject();
+                dataObj.put(actionType, properties);
+                dataObj.put("$token", mToken);
+                dataObj.put("$distinct_id", peopleDistinctId);
+                dataObj.put("$time", System.currentTimeMillis());
+
+                return new PeopleQueueTask(dataObj);
+        }
     }
 
     /**
@@ -430,6 +460,12 @@ public class MPMetrics {
         flushEvents();
         mPeople.flush();
     }
+
+    /**
+     * Will push all queued Mixpanel events (but not changes to People Analytics records)
+     * to Mixpanel servers. See also {@link People.flush} and {@link flushAll}
+     * for other ways of ensuring no values are left in the queue.
+     */
     public void flushEvents() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
         if (!sEventsSubmitLock) {
@@ -556,91 +592,77 @@ public class MPMetrics {
     }
 
     private class EventsQueueTask implements Runnable {
-        private final String eventName;
-        private final JSONObject properties;
-        private final long time;
+        private final JSONObject mDataObject;
 
-        public EventsQueueTask(String eventName, JSONObject properties) {
-            this.eventName = eventName;
-            this.properties = properties;
-            this.time = System.currentTimeMillis() / 1000;
+        public EventsQueueTask(JSONObject dataObject) {
+            this.mDataObject = dataObject;
         }
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask running, queueing " + this.eventName);
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask queuing event");
 
-            JSONObject dataObj = new JSONObject();
-            try {
-                dataObj.put("event", eventName);
-                JSONObject propertiesObj = new JSONObject();
-                propertiesObj.put("token", mToken);
-                propertiesObj.put("time", time);
-                propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-                propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-                propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-                propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-                propertiesObj.put("mp_lib", "android");
-
-                for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-                    String key = (String) iter.next();
-                    propertiesObj.put(key, mSuperProperties.get(key));
-                }
-
-                if (distinct_id != null) {
-                    propertiesObj.put("distinct_id", distinct_id);
-                }
-
-                if (properties != null) {
-                    for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                        String key = (String) iter.next();
-                        propertiesObj.put(key, properties.get(key));
-                    }
-                }
-
-                dataObj.put("properties", propertiesObj);
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "EventsQueueTask " + eventName, e);
-                return;
-            }
-
-            int count = mDbAdapter.addJSON(dataObj, MPDbAdapter.EVENTS_TABLE);
+            int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.EVENTS_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask in test or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                flushEvents();
+                mTimerHandler.sendEmptyMessage(FLUSH_EVENTS);
             } else {
                 mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_EVENTS, MPConfig.FLUSH_RATE);
             }
         }
     }
 
-    private class PeopleQueueTask implements Runnable {
-        private final String actionType;
-        private final JSONObject properties;
+    private EventsQueueTask eventQueueTask(String eventName, JSONObject properties)
+        throws JSONException {
+        long time = System.currentTimeMillis() / 1000;
+        JSONObject dataObj = new JSONObject();
 
-        public PeopleQueueTask(String actionType, JSONObject properties) {
-            this.actionType = actionType;
-            this.properties = properties;
+        dataObj.put("event", eventName);
+        JSONObject propertiesObj = new JSONObject();
+        propertiesObj.put("token", mToken);
+        propertiesObj.put("time", time);
+        propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
+        propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
+        propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
+        propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
+        propertiesObj.put("mp_lib", "android");
+
+        for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+            String key = (String) iter.next();
+            propertiesObj.put(key, mSuperProperties.get(key));
+        }
+
+        if (mDistinctId != null) {
+            propertiesObj.put("distinct_id", mDistinctId);
+        }
+
+        if (properties != null) {
+            for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                String key = (String) iter.next();
+                propertiesObj.put(key, properties.get(key));
+            }
+        }
+
+        dataObj.put("properties", propertiesObj);
+
+        return new EventsQueueTask(dataObj);
+    }
+
+    private class PeopleQueueTask implements Runnable {
+        private final JSONObject dataObject;
+
+        public PeopleQueueTask(JSONObject dataObject) {
+            this.dataObject = dataObject;
         }
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask running, queueing " + this.actionType);
-            JSONObject dataObj = new JSONObject();
-            try {
-                dataObj.put(this.actionType, properties);
-                dataObj.put("$token", mToken);
-                dataObj.put("$distinct_id", distinct_id);
-                dataObj.put("$time", System.currentTimeMillis());
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "PeopleQueueTask " + properties.toString(), e);
-                return;
-            }
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask queuing an action");
 
-            int count = mDbAdapter.addJSON(dataObj, MPDbAdapter.PEOPLE_TABLE);
+            int count = mDbAdapter.addJSON(dataObject, MPDbAdapter.PEOPLE_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask MPConfig.TEST_MODE set or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                getPeople().flush();
+                mTimerHandler.sendEmptyMessage(FLUSH_PEOPLE);
             } else {
                 mTimerHandler.sendUniqueEmptyMessageDelayed(FLUSH_PEOPLE, MPConfig.FLUSH_RATE);
             }

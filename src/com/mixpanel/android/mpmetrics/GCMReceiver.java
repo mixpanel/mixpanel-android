@@ -13,7 +13,7 @@ import android.util.Log;
 
 public class GCMReceiver extends BroadcastReceiver {
     String LOGTAG = "MPGCMReceiver";
-    
+
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
@@ -26,13 +26,13 @@ public class GCMReceiver extends BroadcastReceiver {
             } else if (registration != null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
                 for (String token : MPMetrics.mInstanceMap.keySet()) {
-                    MPMetrics.mInstanceMap.get(token).setPushRegistrationId(registration);
+                    MPMetrics.mInstanceMap.get(token).getPeople().setPushRegistrationId(registration);
                 }
             } else if (intent.getStringExtra("unregistered") != null) {
                 // unregistration done, new messages from the authorized sender will be rejected
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
                 for (String token : MPMetrics.mInstanceMap.keySet()) {
-                    MPMetrics.mInstanceMap.get(token).removePushRegistrationId();
+                    MPMetrics.mInstanceMap.get(token).getPeople().removePushRegistrationId();
                 }
             }
         } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
