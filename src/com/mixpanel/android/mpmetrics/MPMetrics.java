@@ -37,10 +37,17 @@ public class MPMetrics {
 
     private String mDistinctId;
 
-    private final SharedPreferences mPushPref;
+    private final SharedPreferences mStoredPreferences;
 
     private JSONObject mSuperProperties;
 
+    /**
+     * You shouldn't instantiate MPMetrics objects directly.
+     * Use MPMetrics.getInstance to get an instance.
+     *
+     * @param context
+     * @param token
+     */
     private MPMetrics(Context context, String token) {
         mContext = context;
         mToken = token;
@@ -53,9 +60,27 @@ public class MPMetrics {
         mDeviceId = getDeviceId();
         mPeople = new PeopleImpl();
 
-        mSuperProperties = new JSONObject();
+        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
+        readSuperProperties();
+    }
 
-        mPushPref = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
+    /**
+     * Use getInstance to get an instance of MPMetrics you can use to send events
+     * and People Analytics updates to Mixpanel. You should call this method from
+     * the UI thread of your application.
+     *
+     * @param context The application context you are tracking
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     *     in the settings dialog.
+     */
+    public static MPMetrics getInstance(Context context, String token) {
+        MPMetrics instance = mInstanceMap.get(token);
+        if (instance == null) {
+            instance = new MPMetrics(context.getApplicationContext(), token);
+            mInstanceMap.put(token,  instance);
+        }
+
+        return instance;
     }
 
     /**
@@ -83,6 +108,8 @@ public class MPMetrics {
                 Log.e(LOGTAG, "Exception registering super property.", e);
             }
         }
+
+        storeSuperProperties();
     }
 
     /**
@@ -94,6 +121,8 @@ public class MPMetrics {
      */
     public void unregisterSuperProperty(String superPropertyName) {
         mSuperProperties.remove(superPropertyName);
+
+        storeSuperProperties();
     }
 
     /**
@@ -116,6 +145,8 @@ public class MPMetrics {
                 }
             }
         }// for
+
+        storeSuperProperties();
     }
 
     /**
@@ -170,6 +201,11 @@ public class MPMetrics {
             propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
             propertiesObj.put("mp_lib", "android");
 
+            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                String key = (String) iter.next();
+                propertiesObj.put(key, mSuperProperties.get(key));
+            }
+
             if (mDistinctId != null) {
                 propertiesObj.put("distinct_id", mDistinctId);
             }
@@ -179,12 +215,6 @@ public class MPMetrics {
                     String key = (String) iter.next();
                     propertiesObj.put(key, properties.get(key));
                 }
-            }
-
-            // TODO remove is in favor of handling SuperProperties directly in AnalyticsMessages
-            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-                String key = (String) iter.next();
-                propertiesObj.put(key, mSuperProperties.get(key));
             }
 
             dataObj.put("properties", propertiesObj);
@@ -404,7 +434,7 @@ public class MPMetrics {
                 return;
             }
 
-            mPushPref.edit().putString("push_id", registrationId).commit();
+            mStoredPreferences.edit().putString("push_id", registrationId).commit();
             try {
                 JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
                 JSONObject message = stdPeopleMessage("$union", registrationInfo);
@@ -418,7 +448,7 @@ public class MPMetrics {
         public void removePushRegistrationId() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
 
-            mPushPref.edit().remove("push_id").commit();
+            mStoredPreferences.edit().remove("push_id").commit();
             set("$android_devices", new JSONArray());
         }
 
@@ -447,7 +477,7 @@ public class MPMetrics {
         }
 
         public String getPushId() {
-            return mPushPref.getString("push_id", null);
+            return mStoredPreferences.getString("push_id", null);
         }
 
         public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
@@ -483,6 +513,8 @@ public class MPMetrics {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
         mMessages.submitEvents();
     }
+
+    ////////////////////////////////////////////////////
 
     /**
      * Return the carrier of the phone
@@ -522,13 +554,27 @@ public class MPMetrics {
         }
     }
 
-    public static MPMetrics getInstance(Context context, String token) {
-        MPMetrics instance = mInstanceMap.get(token);
-        if (instance == null) {
-            instance = new MPMetrics(context.getApplicationContext(), token);
-            mInstanceMap.put(token,  instance);
-        }
+    private void readSuperProperties() {
+        String props = mStoredPreferences.getString("super_properties", "{}");
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Loading Super Properties " + props);
 
-        return instance;
+        try {
+            mSuperProperties = new JSONObject(props);
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Cannot parse stored superProperties");
+            mSuperProperties = new JSONObject();
+            storeSuperProperties();
+        }
     }
+
+    private void storeSuperProperties() {
+        String props = mSuperProperties.toString();
+
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Storing Super Properties " + props);
+        SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
+        prefsEditor.putString("super_properties", props);
+        prefsEditor.commit();
+    }
+
+
 }

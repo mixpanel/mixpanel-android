@@ -127,12 +127,15 @@ import com.mixpanel.android.util.StringUtils;
         private final JSONObject mDataObject;
 
         public EventsQueueTask(JSONObject dataObject) {
-            this.mDataObject = dataObject;
+            mDataObject = dataObject;
         }
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask queuing event");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "EventsQueueTask queuing event");
+                Log.d(LOGTAG, "    " + mDataObject.toString());
+            }
 
             int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.EVENTS_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
@@ -145,17 +148,17 @@ import com.mixpanel.android.util.StringUtils;
     }
 
     private class PeopleQueueTask implements Runnable {
-        private final JSONObject dataObject;
+        private final JSONObject mDataObject;
 
         public PeopleQueueTask(JSONObject dataObject) {
-            this.dataObject = dataObject;
+            mDataObject = dataObject;
         }
 
         @Override
         public void run() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask queuing an action");
 
-            int count = mDbAdapter.addJSON(dataObject, MPDbAdapter.PEOPLE_TABLE);
+            int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.PEOPLE_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask MPConfig.TEST_MODE set or count greater than MPConfig.BULK_UPLOAD_LIMIT");
                 mFlushTimer.sendEmptyMessage(FLUSH_PEOPLE);
