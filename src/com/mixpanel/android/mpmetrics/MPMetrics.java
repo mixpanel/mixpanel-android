@@ -59,10 +59,18 @@ public class MPMetrics {
     }
 
     /**
-     * Register super properties for events
+     * Register super properties for events. SuperProperties are a collection of properties
+     * that will be sent with every event to Mixpanel, and persist beyond the lifetime of
+     * your application.
+     *
+     * Setting a superProperty with registerSuperProperties will store a new superProperty,
+     * possibly overwriting any existing superProperty with the same name (to set a
+     * superProperty only if it is currently unset, use {@link registerSuperPropertiesOnce})
+     *
+     * SuperProperties will persist even if your application is taken completely out of memory.
+     * to remove a superProperty, call {@link unregisterSuperProperties} or {@link clearSuperProperties}
+     *
      * @param superProperties    A JSONObject containing super properties to register
-     * @param type  Indicates which types of events to apply the super properties. Must be SUPER_PROPERTY_TYPE_ALL,
-     *              SUPER_PROPERTY_TYPE_EVENTS, or SUPER_PROPERTY_TYPE_FUNNELS
      */
     public void registerSuperProperties(JSONObject superProperties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
@@ -78,9 +86,44 @@ public class MPMetrics {
     }
 
     /**
+     * Unregister a single superProperty. If there is a superProperty that with
+     * the given name, it will be permanently removed from the existing superProperties.
+     * To clear all superProperties, use {@link clearSuperProperties}
+     *
+     * @param superPropertyName
+     */
+    public void unregisterSuperProperty(String superPropertyName) {
+        mSuperProperties.remove(superPropertyName);
+    }
+
+    /**
+     * Register super properties for events, only if no other super properties with the
+     * same names are already registered. Calling registerSuperPropertiesOnce will
+     * never overwrite existing properties.
+     *
+     * @param superProperties A JSONObject containing the super properties to register.
+     */
+    public void registerSuperPropertiesOnce(JSONObject superProperties) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
+
+        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+            String key = (String) iter.next();
+            if (! mSuperProperties.has(key)) {
+                try {
+                    mSuperProperties.put(key, superProperties.get(key));
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Exception registering super property.", e);
+                }
+            }
+        }// for
+    }
+
+    /**
      * Clear all superProperties. Future tracking calls to Mixpanel (even those already queued up but not
      * yet sent to Mixpanel servers) will not be associated with the superProperties registered
      * before this call was made.
+     *
+     * To remove a single superProperty, use {@link unregisterSuperProperty}
      */
     public void clearSuperProperties() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
