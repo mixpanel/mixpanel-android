@@ -17,7 +17,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 public class MPMetrics {
-    public static final String VERSION = "2.0";
+    public static final String VERSION = "2.1";
 
     private static final String LOGTAG = "MPMetrics";
 
@@ -35,11 +35,14 @@ public class MPMetrics {
     private final String mDeviceId;
     private final PeopleImpl mPeople;
 
-    private String mDistinctId;
 
     private final SharedPreferences mStoredPreferences;
 
+    // Persistent members. These are loaded and stored from our preferences.
     private JSONObject mSuperProperties;
+    private String mEventsDistinctId;
+    private String mPeopleDistinctId;
+    private WaitingPeopleRecord mWaitingPeopleRecord;
 
     /**
      * You shouldn't instantiate MPMetrics objects directly.
@@ -62,6 +65,7 @@ public class MPMetrics {
 
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
         readSuperProperties();
+        readIdentities();
     }
 
     /**
@@ -174,7 +178,7 @@ public class MPMetrics {
      *     value is globally unique for each individual user you intend to track.
      */
     public void identify(String distinctId) {
-       mDistinctId = distinctId;
+       mEventsDistinctId = distinctId;
     }
 
     /**
@@ -206,8 +210,8 @@ public class MPMetrics {
                 propertiesObj.put(key, mSuperProperties.get(key));
             }
 
-            if (mDistinctId != null) {
-                propertiesObj.put("distinct_id", mDistinctId);
+            if (mEventsDistinctId != null) {
+                propertiesObj.put("distinct_id", mEventsDistinctId);
             }
 
             if (properties != null) {
@@ -348,27 +352,30 @@ public class MPMetrics {
     }
 
     private class PeopleImpl implements People {
-        private String peopleDistinctId;
-
-        public PeopleImpl() {
-            peopleDistinctId = null;
-        }
-
         @Override
         public void identify(String distinctId) {
-            peopleDistinctId = distinctId;
+            mPeopleDistinctId = distinctId;
+
+            if (mWaitingPeopleRecord != null)
+                pushWaitingPeopleRecord();
          }
 
         @Override
         public void set(JSONObject properties) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
-            if (this.peopleDistinctId == null) {
-                return; // TODO events should be queued until identify is called
-            }
 
             try {
-                JSONObject message = stdPeopleMessage("$set", properties);
-                mMessages.peopleMessage(message);
+                if (mPeopleDistinctId == null) {
+                    if (mWaitingPeopleRecord == null)
+                        mWaitingPeopleRecord = new WaitingPeopleRecord();
+
+                    mWaitingPeopleRecord.setOnWaitingPeopleRecord(properties);
+                    writeIdentities();
+                }
+                else {
+                    JSONObject message = stdPeopleMessage("$set", properties);
+                    mMessages.peopleMessage(message);
+                }
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Exception setting people properties");
             }
@@ -387,11 +394,14 @@ public class MPMetrics {
         public void increment(Map<String, Long> properties) {
             JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
-            if (this.peopleDistinctId == null) {
-                return; // TODO events should be queued until identify is called
-            }
-
             try {
+                if (mPeopleDistinctId == null) {
+                    if (mWaitingPeopleRecord == null)
+                        mWaitingPeopleRecord = new WaitingPeopleRecord();
+
+                    mWaitingPeopleRecord.incrementToWaitingPeopleRecord(properties);
+                }
+
                 JSONObject message = stdPeopleMessage("$add", json);
                 mMessages.peopleMessage(message);
             } catch (JSONException e) {
@@ -409,7 +419,7 @@ public class MPMetrics {
         @Override
         public void deleteUser() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
-            if (this.peopleDistinctId == null) {
+            if (mPeopleDistinctId == null) {
                 return;
             }
 
@@ -430,7 +440,7 @@ public class MPMetrics {
         @Override
         public void setPushRegistrationId(String registrationId) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
-            if (this.peopleDistinctId == null) {
+            if (mPeopleDistinctId == null) {
                 return;
             }
 
@@ -485,12 +495,12 @@ public class MPMetrics {
                 JSONObject dataObj = new JSONObject();
                 dataObj.put(actionType, properties);
                 dataObj.put("$token", mToken);
-                dataObj.put("$distinct_id", peopleDistinctId); // TODO move to AnalyticsMessages to allow for queuing
+                dataObj.put("$distinct_id", mPeopleDistinctId);
                 dataObj.put("$time", System.currentTimeMillis());
 
                 return dataObj;
         }
-    }
+    }// PeopleImpl
 
     /**
      * Will push all queued Mixpanel events and changes to Mixpanel People Analytics records
@@ -554,6 +564,19 @@ public class MPMetrics {
         }
     }
 
+    private void pushWaitingPeopleRecord() {
+        if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
+           JSONObject sets = mWaitingPeopleRecord.setMessage();
+           Map<String, Long> adds = mWaitingPeopleRecord.incrementMessage();
+
+           getPeople().set(sets);
+           getPeople().increment(adds);
+        }
+
+        mWaitingPeopleRecord = null;
+        writeIdentities();
+    }
+
     private void readSuperProperties() {
         String props = mStoredPreferences.getString("super_properties", "{}");
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Loading Super Properties " + props);
@@ -576,5 +599,37 @@ public class MPMetrics {
         prefsEditor.commit();
     }
 
+    private void readIdentities() {
+        mEventsDistinctId = mStoredPreferences.getString("events_distinct_id", null);
+        mPeopleDistinctId = mStoredPreferences.getString("people_distinct_id", null);
+        mWaitingPeopleRecord = null;
 
+        String storedWaitingRecord = mStoredPreferences.getString("waiting_people_record", null);
+        if (storedWaitingRecord != null) {
+            try {
+                mWaitingPeopleRecord = new WaitingPeopleRecord();
+                mWaitingPeopleRecord.readFromJSONString(storedWaitingRecord);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Could not interpret waiting people JSON record " + storedWaitingRecord);
+            }
+        }
+
+        if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
+            pushWaitingPeopleRecord();
+        }
+    }
+
+    private void writeIdentities() {
+        SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
+
+        prefsEditor.putString("events_distinct_id", mEventsDistinctId);
+        prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
+        if (mWaitingPeopleRecord == null) {
+            prefsEditor.remove("waiting_people_record");
+        }
+        else {
+            prefsEditor.putString("waiting_people_record", mWaitingPeopleRecord.toJSONString());
+        }
+        prefsEditor.commit();
+    }
 }
