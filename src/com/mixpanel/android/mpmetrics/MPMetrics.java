@@ -19,31 +19,6 @@ import android.util.Log;
 public class MPMetrics {
     public static final String VERSION = "2.1";
 
-    private static final String LOGTAG = "MPMetrics";
-
-    // Maps each token to a singleton MPMetrics instance
-    public static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
-
-
-    private final Context mContext;
-    private final AnalyticsMessages mMessages;
-
-    private final String mToken;
-    private final String mCarrier;
-    private final String mModel;
-    private final String mVersion;
-    private final String mDeviceId;
-    private final PeopleImpl mPeople;
-
-
-    private final SharedPreferences mStoredPreferences;
-
-    // Persistent members. These are loaded and stored from our preferences.
-    private JSONObject mSuperProperties;
-    private String mEventsDistinctId;
-    private String mPeopleDistinctId;
-    private WaitingPeopleRecord mWaitingPeopleRecord;
-
     /**
      * You shouldn't instantiate MPMetrics objects directly.
      * Use MPMetrics.getInstance to get an instance.
@@ -63,7 +38,7 @@ public class MPMetrics {
         mDeviceId = getDeviceId();
         mPeople = new PeopleImpl();
 
-        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics", Context.MODE_PRIVATE);
+        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
     }
@@ -230,6 +205,19 @@ public class MPMetrics {
     }
 
     /**
+     * Will push all queued Mixpanel events and People Analytics changes
+     * to Mixpanel servers.  Events and People messages are pushed gradually throughout
+     * the lifetime of your application, but to be sure to push all messages we
+     * recommend placing a call to flush() in the onDestroy() method of your main application activity.
+     */
+    public void flush() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
+
+        mMessages.submitEvents();
+        mMessages.submitPeople();
+    }
+
+    /**
      * Returns a Mixpanel.People object that can be used to set and increment
      * People Analytics properties
      *
@@ -295,14 +283,6 @@ public class MPMetrics {
         public void deleteUser();
 
         /**
-         * Send all queued calls to {@link set} and {@link increment} to
-         * Mixpanel servers. This method should be called before your application
-         * is taken out of memory- we recommend calling it in the onDestroy method
-         * in your the main activity of your application.
-         */
-        public void flush();
-
-        /**
          * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel. Calling this method
          * will allow the Mixpanel libraries to handle GCM user registration, and enable
          * Mixpanel to show alerts when GCM messages arrive.
@@ -320,7 +300,7 @@ public class MPMetrics {
          *     at https://code.google.com/apis/console/; it is the twelve digit number after
          *     after "#project:" in the URL address bar on console pages.
          */
-        public void registerForPush(String senderID);
+        public void initPushHandling(String senderID);
 
         /**
          * If you are handling Google Cloud Messages in your own application, but would like to
@@ -348,7 +328,12 @@ public class MPMetrics {
          * removePushRegistrationId, and no applications that call {@link registerForPush} should
          * call removePushRegistrationId
          */
-        public void removePushRegistrationId();
+        public void clearPushRegistrationId();
+    }
+
+    /// Package-level access
+    /* package */ static Map<String, MPMetrics> allInstances() {
+        return mInstanceMap;
     }
 
     private class PeopleImpl implements People {
@@ -432,12 +417,6 @@ public class MPMetrics {
         }
 
         @Override
-        public void flush() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "People.flush");
-            mMessages.submitPeople();
-        }
-
-        @Override
         public void setPushRegistrationId(String registrationId) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
             if (mPeopleDistinctId == null) {
@@ -455,7 +434,7 @@ public class MPMetrics {
         }
 
         @Override
-        public void removePushRegistrationId() {
+        public void clearPushRegistrationId() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
 
             mStoredPreferences.edit().remove("push_id").commit();
@@ -463,7 +442,7 @@ public class MPMetrics {
         }
 
         @Override
-        public void registerForPush(String senderID) {
+        public void initPushHandling(String senderID) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
             if (Build.VERSION.SDK_INT < 8) { // older than froyo
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Push not supported SDK " + Build.VERSION.SDK);
@@ -501,28 +480,6 @@ public class MPMetrics {
                 return dataObj;
         }
     }// PeopleImpl
-
-    /**
-     * Will push all queued Mixpanel events and changes to Mixpanel People Analytics records
-     * to Mixpanel servers. Events are pushed gradually throughout the lifetime of your application,
-     * but to be sure to push all messages we recommend placing a call to flushAll() in
-     * the onDestroy() method of your main application activity.
-     */
-    public void flushAll() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushAll");
-        flushEvents();
-        mPeople.flush();
-    }
-
-    /**
-     * Will push all queued Mixpanel events (but not changes to People Analytics records)
-     * to Mixpanel servers. See also {@link People.flush} and {@link flushAll}
-     * for other ways of ensuring no values are left in the queue.
-     */
-    public void flushEvents() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
-        mMessages.submitEvents();
-    }
 
     ////////////////////////////////////////////////////
 
@@ -632,4 +589,28 @@ public class MPMetrics {
         }
         prefsEditor.commit();
     }
+
+    private static final String LOGTAG = "MPMetrics";
+
+    // Maps each token to a singleton MPMetrics instance
+    private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
+
+
+    private final Context mContext;
+    private final AnalyticsMessages mMessages;
+
+    private final String mToken;
+    private final String mCarrier;
+    private final String mModel;
+    private final String mVersion;
+    private final String mDeviceId;
+    private final PeopleImpl mPeople;
+
+    private final SharedPreferences mStoredPreferences;
+
+    // Persistent members. These are loaded and stored from our preferences.
+    private JSONObject mSuperProperties;
+    private String mEventsDistinctId;
+    private String mPeopleDistinctId;
+    private WaitingPeopleRecord mWaitingPeopleRecord;
 }

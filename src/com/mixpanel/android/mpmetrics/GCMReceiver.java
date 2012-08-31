@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.util.Map;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -25,14 +27,18 @@ public class GCMReceiver extends BroadcastReceiver {
                 // Registration failed, try again later
             } else if (registration != null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
-                for (String token : MPMetrics.mInstanceMap.keySet()) {
-                    MPMetrics.mInstanceMap.get(token).getPeople().setPushRegistrationId(registration);
+
+                Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+                for (String token : allMetrics.keySet()) {
+                    allMetrics.get(token).getPeople().setPushRegistrationId(registration);
                 }
             } else if (intent.getStringExtra("unregistered") != null) {
                 // unregistration done, new messages from the authorized sender will be rejected
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-                for (String token : MPMetrics.mInstanceMap.keySet()) {
-                    MPMetrics.mInstanceMap.get(token).getPeople().removePushRegistrationId();
+
+                Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+                for (String token : allMetrics.keySet()) {
+                    allMetrics.get(token).getPeople().clearPushRegistrationId();
                 }
             }
         } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {

@@ -25,7 +25,7 @@ public class MPConfig {
     public static int SUBMIT_THREAD_TTL = 180 * 1000;
 
     // Set to true to see debugging logcat output:
-    public static boolean DEBUG = false;
+    public static boolean DEBUG = true; // false;
 
     // Set to true to send all api requests immediately
     public static boolean TEST_MODE = false;

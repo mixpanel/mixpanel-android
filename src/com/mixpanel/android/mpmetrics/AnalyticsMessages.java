@@ -156,7 +156,10 @@ import com.mixpanel.android.util.StringUtils;
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask queuing an action");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "PeopleQueueTask queuing an action");
+                Log.d(LOGTAG, "    " + mDataObject.toString());
+            }
 
             int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.PEOPLE_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
@@ -187,6 +190,7 @@ import com.mixpanel.android.util.StringUtils;
 
             String[] data = mDbAdapter.generateDataString(table);
             if (data == null) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "    No data to submit.");
                 return;
             }
 
