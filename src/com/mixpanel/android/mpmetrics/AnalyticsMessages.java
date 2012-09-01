@@ -22,6 +22,7 @@ import org.json.JSONObject;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
@@ -36,14 +37,24 @@ import com.mixpanel.android.util.StringUtils;
  */
 /* package */ class AnalyticsMessages {
 
-    private AnalyticsMessages(Context context) {
+    /**
+     * Do not call directly. You should call AnalyticsMessages.getInstance()
+     */
+    /* package */ AnalyticsMessages(Context context) {
         mDbAdapter = new MPDbAdapter(context);
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
 
-        mFlushTimer = new FlushTimer();
+        mFlushTimer = new FlushTimer(); // Problem- we can't really trust that this happens in the UIThread
     }
 
+    /**
+     * Use this to get an instance of AnalyticsMessages instead of creating one directly
+     * for yourself.
+     *
+     * @param messageContext should be the Main Activity of the application
+     *     associated with these messages.
+     */
     public static AnalyticsMessages getInstance(Context messageContext) {
         synchronized (sInstances) {
             AnalyticsMessages ret;

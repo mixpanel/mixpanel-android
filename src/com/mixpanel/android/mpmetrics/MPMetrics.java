@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -22,21 +23,17 @@ public class MPMetrics {
     /**
      * You shouldn't instantiate MPMetrics objects directly.
      * Use MPMetrics.getInstance to get an instance.
-     *
-     * @param context
-     * @param token
      */
-    private MPMetrics(Context context, String token) {
+    /* package */ MPMetrics(Context context, String token) {
         mContext = context;
         mToken = token;
-
-        mMessages = AnalyticsMessages.getInstance(mContext);
+        mPeople = new PeopleImpl();
 
         mCarrier = getCarrier();
         mModel = getModel();
         mVersion = getVersion();
         mDeviceId = getDeviceId();
-        mPeople = new PeopleImpl();
+        mMessages = getAnalyticsMessages();
 
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
@@ -46,17 +43,21 @@ public class MPMetrics {
     /**
      * Use getInstance to get an instance of MPMetrics you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
-     * the UI thread of your application.
+     * the UI thread of your application (if you call it from threads that are not
+     * the main UI thread, it will return null)
      *
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
      */
     public static MPMetrics getInstance(Context context, String token) {
-        MPMetrics instance = mInstanceMap.get(token);
-        if (instance == null) {
-            instance = new MPMetrics(context.getApplicationContext(), token);
-            mInstanceMap.put(token,  instance);
+        MPMetrics instance = null;
+        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+            instance = mInstanceMap.get(token);
+            if (instance == null) {
+                instance = new MPMetrics(context.getApplicationContext(), token);
+                mInstanceMap.put(token,  instance);
+            }
         }
 
         return instance;
@@ -336,6 +337,26 @@ public class MPMetrics {
         return mInstanceMap;
     }
 
+    ///////////////////////
+
+    protected AnalyticsMessages getAnalyticsMessages() {
+        return AnalyticsMessages.getInstance(mContext);
+    }
+
+    /**
+     * Will clear persistent identify distinct_ids, superProperties,
+     * and waiting People Analytics properties. Will have no effect
+     * on messages already queued to send with AnalyticsMessages.
+     */
+    protected void clearPreferences() {
+        SharedPreferences.Editor prefsEdit = mStoredPreferences.edit();
+        prefsEdit.clear().commit();
+        readSuperProperties();
+        readIdentities();
+    }
+
+    ///////////////////////
+
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
@@ -386,9 +407,10 @@ public class MPMetrics {
 
                     mWaitingPeopleRecord.incrementToWaitingPeopleRecord(properties);
                 }
-
-                JSONObject message = stdPeopleMessage("$add", json);
-                mMessages.peopleMessage(message);
+                else {
+                    JSONObject message = stdPeopleMessage("$add", json);
+                    mMessages.peopleMessage(message);
+                }
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Exception incrementing properties", e);
             }
