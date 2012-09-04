@@ -3,7 +3,7 @@
 	<name>mixpanel-android-tests</name>
 	<comment></comment>
 	<projects>
-		<project>sample-android-mixpanel-integration</project>
+		<project>Hello Mixpanel</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
