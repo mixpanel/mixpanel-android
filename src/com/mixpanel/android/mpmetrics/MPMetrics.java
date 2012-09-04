@@ -76,8 +76,8 @@ public class MPMetrics {
     }
 
     /**
-     * Associates all of the {@link #track(String, JSONObject)} events sent by this user with the
-     * given disinct_id.
+     * Associate all future calls to {@link #track(String, JSONObject)} with the user identified by
+     * the given distinct id.
      *
      * This call does not identify the user for People Analytics;
      * to do that, see {@link People#identify(String)}. Mixpanel recommends using
@@ -159,12 +159,15 @@ public class MPMetrics {
     }
 
     /**
-     * Will push all queued Mixpanel events and People Analytics changes
-     * to Mixpanel servers.
+     * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
      *
      * Events and People messages are pushed gradually throughout
-     * the lifetime of your application, but to be sure to push all messages we
-     * recommend placing a call to flush() in the onDestroy() method of your main application activity.
+     * the lifetime of your application. This means that to ensure that all messages
+     * are sent to Mixpanel when your application is shut down, you will
+     * need to call flush() to let the Mixpanel library know it should
+     * send all remaining messages to the server. We strongly recommend
+     * placing a call to flush() in the onDestroy() method of
+     * your main application activity.
      */
     public void flush() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
@@ -280,12 +283,12 @@ public class MPMetrics {
      */
     public interface People {
         /**
-         * Associated future calls with a particular People Analytics user.
+         * Associate future call to {@link #set(JSONObject)} and {@link #increment(Map)}
+         * with a particular People Analytics user.
          *
          * All future calls to the People object will rely on this value to assign
          * and increment properties. The user identification will persist across
-         * restarts of your application. Calls to {@link #set(JSONObject)} and {@link #increment(Map)}
-         * will be queued until identify is called, but we recommend calling
+         * restarts of your application. We recommend calling
          * People.identify as soon as you know the a distinct id.
          *
          * @param distinctId a String that uniquely identifies the user. Users identified with
@@ -586,7 +589,7 @@ public class MPMetrics {
 
     /**
      * Return the carrier of the phone
-     * @return   A String containing the carrier
+     * @return A String containing the carrier
      */
     private String getCarrier() {
         return Build.BRAND;
