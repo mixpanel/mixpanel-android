@@ -155,6 +155,7 @@ public class MPMetrics {
      */
     public void identify(String distinctId) {
        mEventsDistinctId = distinctId;
+       writeIdentities();
     }
 
     /**
@@ -361,6 +362,7 @@ public class MPMetrics {
         @Override
         public void identify(String distinctId) {
             mPeopleDistinctId = distinctId;
+            writeIdentities();
 
             if (mWaitingPeopleRecord != null)
                 pushWaitingPeopleRecord();
