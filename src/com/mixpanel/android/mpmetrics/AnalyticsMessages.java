@@ -22,7 +22,6 @@ import org.json.JSONObject;
 
 import android.content.Context;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
@@ -69,12 +68,12 @@ import com.mixpanel.android.util.StringUtils;
         }
     }
 
-    public void eventsMessage(JSONObject message) {
-        sExecutor.submit(new EventsQueueTask(message));
+    public void eventsMessage(JSONObject eventsJson) {
+        sExecutor.submit(new EventsQueueTask(eventsJson));
     }
 
-    public void peopleMessage(JSONObject message) {
-        sExecutor.submit(new PeopleQueueTask(message));
+    public void peopleMessage(JSONObject peopleJson) {
+        sExecutor.submit(new PeopleQueueTask(peopleJson));
     }
 
     public void submitPeople() {
@@ -97,19 +96,29 @@ import com.mixpanel.android.util.StringUtils;
             if (msg.what == ENQUEUE_OPERATION) {
                 Message debounced = (Message) msg.obj;
                 if ((debounced.what == FLUSH_PEOPLE) && (! mEnqueuingPeople)) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING people flush for later execution");
+
                     mEnqueuingPeople = true;
                     sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
                 }
                 else if ((debounced.what == FLUSH_EVENTS) && (! mEnqueuingEvents)) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING events flush for later execution");
                     mEnqueuingEvents = true;
                     sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
                 }
+                else {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Ignoring delayed flush call, debouncing.");
+                }
             }
             else if (msg.what == FLUSH_PEOPLE) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing people flush");
+
                 mEnqueuingPeople = false;
                 submitPeople();
             }
             else if (msg.what == FLUSH_EVENTS) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing events flush");
+
                 mEnqueuingEvents = true;
                 submitEvents();
             }
