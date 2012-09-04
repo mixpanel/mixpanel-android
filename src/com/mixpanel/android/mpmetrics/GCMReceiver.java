@@ -13,6 +13,30 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
+/**
+ * Optional BroadcastReciever for handling Google Cloud Messaging intents.
+ *
+ * Include a clause like the following in your AndroidManifest.xml if you
+ * would like the Mixpanel libraries to handle the registration and display
+ * of Mixpanel-sourced Google Cloud Messaging notifications.
+ *
+ *<pre>
+ *{@code
+ * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+ *           android:permission="com.google.android.c2dm.permission.SEND" >
+ *    <intent-filter>
+ *        <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+ *        <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+ *        <category android:name="YOUR APPLICATION PACKAGE NAME" />
+ *    </intent-filter>
+ * </receiver>
+ *}
+ *</pre>
+ *
+ * You shouldn't need to instantiate or call methods on this object directly.
+ *
+ * @see MPMetrics.People#initPushHandling(String)
+ */
 public class GCMReceiver extends BroadcastReceiver {
     String LOGTAG = "MPGCMReceiver";
 

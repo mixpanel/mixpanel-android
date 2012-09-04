@@ -37,6 +37,8 @@
          $ANDROID_HOME/tools/ant/build.xml -->
     <property name="source.dir" value="src" />
     <property name="source.absolute.dir" location="${source.dir}" />
+    <property name="docs.dir" value="docs" />
+    <property name="docs.absolute.dir" location="${docs.dir}" />
     <property name="out.dir" value="bin" />
     <property name="out.absolute.dir" location="${out.dir}" />
     <property name="out.classes.absolute.dir" location="${out.dir}/classes" />
@@ -58,8 +60,14 @@
         </and>
     </condition>
 
+    <path id="project.javac.classpath">
+      <pathelement path="${sdk.dir}/tools/support/annotations.jar" />
+      <pathelement path="${sdk.dir}/platforms/${target}/android.jar" />
+    </path>
+
     <target name="clean">
       <delete dir="${out.absolute.dir}" />
+      <delete dir="${docs.absolute.dir}" />
     </target>
 
     <target name="-setup">
@@ -68,11 +76,6 @@
     </target>
 
     <target name="compile" depends="-setup">
-      <path id="project.javac.classpath">
-        <pathelement path="${sdk.dir}/tools/support/annotations.jar" />
-        <pathelement path="${sdk.dir}/platforms/${target}/android.jar" />
-      </path>
-
       <!-- TODO unset debug="true" -->
 
       <javac encoding="${java.encoding}"
@@ -94,6 +97,22 @@
            basedir="${out.classes.absolute.dir}"
            includes="**/*.class" />
       <copy file="MPMetrics_v2.1.jar" tofile="demo/Hello Mixpanel/libs/MPMetrics_v2.1.jar" />
+    </target>
+
+    <target name="docs">
+      <javadoc packagenames="com.mixpanel.android.mpmetrics"
+               sourcepath="src"
+               defaultexcludes="yes"
+               destdir="${docs.absolute.dir}"
+               author="true"
+               version="true"
+               classpathref="project.javac.classpath"
+               linkoffline="http://d.android.com/reference ${sdk.dir}/docs/reference"
+               use="true">
+        <fileset dir="." defaultexcludes="yes">
+          <include name="*/src/com/mixpanel/android/mpmetrics/MPMetrics.java"/>
+        </fileset>
+      </javadoc>
     </target>
 
 </project>

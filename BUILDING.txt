@@ -1,0 +1,28 @@
+
+Building the Mixpanel Library
+=============================
+
+The Mixpanel library is built using ant. To build, enter the root
+directory of the repository and type
+
+    $ ANDROID_HOME='location of your android SDK directory' ant library
+
+This will produce the file MPMetrics_v2.1.jar, and place it in the
+root directory of the repository. You can copy the jar into the libs/
+directory of your android projects and use them to interact with Mixpanel.
+
+Building the Demo and Test Projects
+===================================
+
+The root Mixpanel project is not configured to use Eclipse to build and
+run, but repository also contains a demo and a test project that can
+(and should) be build and run within the Android Eclipse environment.
+
+To work with these projects, you should import the following directories
+as Eclipse projects:
+
+   demo/Hello Mixpanel
+   test/
+
+The test project depends on the demo project to run.
+

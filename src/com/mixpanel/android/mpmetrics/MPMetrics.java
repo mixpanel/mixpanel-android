@@ -17,6 +17,15 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 
+/**
+ * Core class for interacting with Mixpanel Analytics.
+ *
+ * Call {@link #getInstance(Context, String)} with
+ * your main application activity and your Mixpanel API token as arguments
+ * an to get an instance you can use to report how users are using your
+ * application.
+ *
+ */
 public class MPMetrics {
     public static final String VERSION = "2.1";
 
@@ -41,6 +50,8 @@ public class MPMetrics {
     }
 
     /**
+     * Get the instance of MPMetrics associated with your Mixpanel project token.
+     *
      * Use getInstance to get an instance of MPMetrics you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
      * the UI thread of your application (if you call it from threads that are not
@@ -49,6 +60,7 @@ public class MPMetrics {
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
+     * @return an instance of MPMetrics associated with your project
      */
     public static MPMetrics getInstance(Context context, String token) {
         MPMetrics instance = null;
@@ -64,94 +76,29 @@ public class MPMetrics {
     }
 
     /**
-     * Register super properties for events. SuperProperties are a collection of properties
-     * that will be sent with every event to Mixpanel, and persist beyond the lifetime of
-     * your application.
+     * Associates all of the {@link #track(String, JSONObject)} events sent by this user with the
+     * given disinct_id.
      *
-     * Setting a superProperty with registerSuperProperties will store a new superProperty,
-     * possibly overwriting any existing superProperty with the same name (to set a
-     * superProperty only if it is currently unset, use {@link registerSuperPropertiesOnce})
-     *
-     * SuperProperties will persist even if your application is taken completely out of memory.
-     * to remove a superProperty, call {@link unregisterSuperProperties} or {@link clearSuperProperties}
-     *
-     * @param superProperties    A JSONObject containing super properties to register
-     */
-    public void registerSuperProperties(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
-
-        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            String key = (String) iter.next();
-            try {
-                mSuperProperties.put(key, superProperties.get(key));
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "Exception registering super property.", e);
-            }
-        }
-
-        storeSuperProperties();
-    }
-
-    /**
-     * Unregister a single superProperty. If there is a superProperty that with
-     * the given name, it will be permanently removed from the existing superProperties.
-     * To clear all superProperties, use {@link clearSuperProperties}
-     *
-     * @param superPropertyName
-     */
-    public void unregisterSuperProperty(String superPropertyName) {
-        mSuperProperties.remove(superPropertyName);
-
-        storeSuperProperties();
-    }
-
-    /**
-     * Register super properties for events, only if no other super properties with the
-     * same names are already registered. Calling registerSuperPropertiesOnce will
-     * never overwrite existing properties.
-     *
-     * @param superProperties A JSONObject containing the super properties to register.
-     */
-    public void registerSuperPropertiesOnce(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
-
-        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            String key = (String) iter.next();
-            if (! mSuperProperties.has(key)) {
-                try {
-                    mSuperProperties.put(key, superProperties.get(key));
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Exception registering super property.", e);
-                }
-            }
-        }// for
-
-        storeSuperProperties();
-    }
-
-    /**
-     * Clear all superProperties. Future tracking calls to Mixpanel (even those already queued up but not
-     * yet sent to Mixpanel servers) will not be associated with the superProperties registered
-     * before this call was made.
-     *
-     * To remove a single superProperty, use {@link unregisterSuperProperty}
-     */
-    public void clearSuperProperties() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
-        mSuperProperties = new JSONObject();
-    }
-
-    /**
-     * Associates all of the {@link track} events sent by this user with the
-     * given disinct_id. This call does not identify the user for People Analytics;
-     * to do that, see {@link People.identify}. Mixpanel recommends using
+     * This call does not identify the user for People Analytics;
+     * to do that, see {@link People#identify(String)}. Mixpanel recommends using
      * the same distinct_id for both calls, and using a distinct_id that is easy
      * to associate with the given user, for example, a server-side account identifier.
+     *
+     * Calls to {@link #track(String, JSONObject)} made before corresponding calls to
+     * identify will use an internally generated distinct id, which means it is best
+     * to call identify early to ensure that your Mixpanel funnels and retention
+     * analytics can continue to track the user throughout their lifetime. We recommend
+     * calling identify as early as you can.
+     *
+     * Once identify is called, the given distinct id persists across restarts of your
+     * application.
      *
      * @param distinctId a string uniquely identifying this user. Events sent to
      *     Mixpanel using the same disinct_id will be considered associated with the
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
+     *
+     * @see People#identify(String)
      */
     public void identify(String distinctId) {
        mEventsDistinctId = distinctId;
@@ -161,9 +108,14 @@ public class MPMetrics {
     /**
      * Track an event.
      *
+     * Every call to track eventually results in a data point sent to Mixpanel. These data points
+     * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+     * have a string name, and an optional set of name/value pairs that describe the properties of
+     * that event.
+     *
      * @param eventName The name of the event to send
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
-     * Pass null if no extra properties exist.
+     *                   Pass null if no extra properties exist.
      */
     public void track(String eventName, JSONObject properties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
@@ -208,7 +160,9 @@ public class MPMetrics {
 
     /**
      * Will push all queued Mixpanel events and People Analytics changes
-     * to Mixpanel servers.  Events and People messages are pushed gradually throughout
+     * to Mixpanel servers.
+     *
+     * Events and People messages are pushed gradually throughout
      * the lifetime of your application, but to be sure to push all messages we
      * recommend placing a call to flush() in the onDestroy() method of your main application activity.
      */
@@ -220,24 +174,128 @@ public class MPMetrics {
     }
 
     /**
-     * Returns a Mixpanel.People object that can be used to set and increment
-     * People Analytics properties
+     * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
      *
-     * @return
+     * SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+     * and persist beyond the lifetime of your application.
+     *
+     * Setting a superProperty with registerSuperProperties will store a new superProperty,
+     * possibly overwriting any existing superProperty with the same name (to set a
+     * superProperty only if it is currently unset, use {@link #registerSuperPropertiesOnce(JSONObject)})
+     *
+     * SuperProperties will persist even if your application is taken completely out of memory.
+     * to remove a superProperty, call {@link #unregisterSuperProperty(String)} or {@link #clearSuperProperties()}
+     *
+     * @param superProperties    A JSONObject containing super properties to register
+     * @see #registerSuperPropertiesOnce(JSONObject)
+     * @see #unregisterSuperProperty(String)
+     * @see #clearSuperProperties()
+     */
+    public void registerSuperProperties(JSONObject superProperties) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
+
+        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+            String key = (String) iter.next();
+            try {
+                mSuperProperties.put(key, superProperties.get(key));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception registering super property.", e);
+            }
+        }
+
+        storeSuperProperties();
+    }
+
+    /**
+     * Remove a single superProperty, so that it will not be sent with future calls to {@link #track(String, JSONObject)}.
+     *
+     * If there is a superProperty registered with the given name, it will be permanently
+     * removed from the existing superProperties.
+     * To clear all superProperties, use {@link #clearSuperProperties()}
+     *
+     * @param superPropertyName
+     * @see #registerSuperProperties(JSONObject)
+     */
+    public void unregisterSuperProperty(String superPropertyName) {
+        mSuperProperties.remove(superPropertyName);
+
+        storeSuperProperties();
+    }
+
+    /**
+     * Register super properties for events, only if no other super property with the
+     * same names has already been registered.
+     *
+     * Calling registerSuperPropertiesOnce will never overwrite existing properties.
+     *
+     * @param superProperties A JSONObject containing the super properties to register.
+     * @see #registerSuperProperties(JSONObject)
+     */
+    public void registerSuperPropertiesOnce(JSONObject superProperties) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
+
+        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+            String key = (String) iter.next();
+            if (! mSuperProperties.has(key)) {
+                try {
+                    mSuperProperties.put(key, superProperties.get(key));
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Exception registering super property.", e);
+                }
+            }
+        }// for
+
+        storeSuperProperties();
+    }
+
+    /**
+     * Clear all superProperties.
+     *
+     * Future tracking calls to Mixpanel (even those already queued up but not
+     * yet sent to Mixpanel servers) will not be associated with the superProperties registered
+     * before this call was made.
+     *
+     * To remove a single superProperty, use {@link #unregisterSuperProperty(String)}
+     * @see #registerSuperProperties(JSONObject)
+     */
+    public void clearSuperProperties() {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
+        mSuperProperties = new JSONObject();
+    }
+
+    /**
+     * Returns a Mixpanel.People object that can be used to set and increment
+     * People Analytics properties.
+     *
+     * @return an instance of {@link People} that you can use to update
+     *     records in Mixpanel People Analytics and manage Mixpanel Google Cloud Messaging notifications.
      */
     public People getPeople() {
         return mPeople;
     }
 
     /**
-     * Use MPMetrics.People to interact with Mixpanel People Analytics features
+     * Core interface for using Mixpanel People Analytics features.
+     * You can get an instance by calling {@link MPMetrics#getPeople()}
      */
     public interface People {
         /**
-         * Identify a user with a unique ID. All future calls to the people object will rely on this
-         * value to assign and increment properties. Calls to {@link set} and {@link increment}
-         * will be queued until identify is called.
-         * @param distinctId
+         * Associated future calls with a particular People Analytics user.
+         *
+         * All future calls to the People object will rely on this value to assign
+         * and increment properties. The user identification will persist across
+         * restarts of your application. Calls to {@link #set(JSONObject)} and {@link #increment(Map)}
+         * will be queued until identify is called, but we recommend calling
+         * People.identify as soon as you know the a distinct id.
+         *
+         * @param distinctId a String that uniquely identifies the user. Users identified with
+         *     the same distinct id will be considered to be the same user in Mixpanel,
+         *     across all platforms and devices. We recommend choosing a distinct id
+         *     that is meaningful to your other systems (for example, a server-side account
+         *     identifier), and using the same distinct id for both calls to People.identify
+         *     and {@link MPMetrics#identify(String)}
+         *
+         * @see MPMetrics#identify(String)
          */
         public void identify(String distinctId);
 
@@ -247,7 +305,6 @@ public class MPMetrics {
          * possibly overwriting an existing property with the same name.
          *
          * @param propertyName The name of the Mixpanel property. This must be a String, for example "Zip Code"
-         *
          * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
          */
         public void set(String propertyName, Object value);
@@ -264,38 +321,51 @@ public class MPMetrics {
         /**
          * Add the given amount to an existing property on the identified user. If the user does not already
          * have the associated property, the amount will be added to zero. To reduce a property,
-         * provide a negative number for the value
+         * provide a negative number for the value.
          *
          * @param name the People Analytics property that should have its value changed
          * @param increment the amount to be added to the current value of the named property
+         *
+         * @see #increment(Map)
          */
         public void increment(String name, long increment);
 
         /**
-         * Like {@link increment}, changing the values of multiple properties at once
+         * Change the existing values of multiple People Analytics properties at once.
+         *
+         * If the user does not already have the associated property, the amount will
+         * be added to zero. To reduce a property, provide a negative number for the value.
          *
          * @param properties A map of String properties names to Long amounts. Each
          *     property associated with a name in the map will have its value changed by the given amount
+         *
+         * @see #increment(String, long)
          */
         public void increment(Map<String, Long> properties);
 
         /**
          * Permanently deletes the identified user's record from People Analytics.
+         *
+         * Calling deleteUser deletes an entire record completely. Any future calls
+         * to People Analytics using the same distinct id will create and store new values.
          */
         public void deleteUser();
 
         /**
-         * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel. Calling this method
-         * will allow the Mixpanel libraries to handle GCM user registration, and enable
-         * Mixpanel to show alerts when GCM messages arrive.
+         * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel.
+         *
+         * Calling this method will allow the Mixpanel libraries to handle GCM user
+         * registration, and enable Mixpanel to show alerts when GCM messages arrive.
          *
          * If you're planning to use end-to-end support for Messaging, we recommend you
-         * call this method immediately after calling {@link People.identify}, likely
-         * early in your application's lifecycle.
+         * call this method immediately after calling {@link People#identify(String)}, likely
+         * early in your application's lifecycle. (for example, in the onCreate method of your
+         * main application activity.)
          *
-         * Calls to {@link registerForPush} should not be mixed with calls to {@link setPushRegistrationId}
-         * and {@link removePushRegistrationId} in the same application. Application authors
-         * should choose one or the other method for handling Mixpanel GCM messages.
+         * Calls to {@link #initPushHandling(String)} should not be mixed with calls to
+         * {@link #setPushRegistrationId(String)} and {@link #clearPushRegistrationId()}
+         * in the same application. Application authors should choose one or the other
+         * method for handling Mixpanel GCM messages.
          *
          * @param senderID of the Google API Project that registered for Google Cloud Messaging
          *     You can find your ID by looking at the URL of in your Google API Console
@@ -305,29 +375,35 @@ public class MPMetrics {
         public void initPushHandling(String senderID);
 
         /**
+         * Manually send a Google Cloud Messaging registration id to Mixpanel.
+         *
          * If you are handling Google Cloud Messages in your own application, but would like to
          * allow Mixpanel to handle messages originating from Mixpanel campaigns, you should
          * call setPushRegistrationId with the "registration_id" property of the
          * com.google.android.c2dm.intent.REGISTRATION intent when it is received.
          *
-         * Calls to setPushRegistrationId should not be mixed with calls to {@link registerForPush}
+         * Calls to setPushRegistrationId should not be mixed with calls to {@link #initPushHandling(String)}
          * in the same application. In addition, applications that call setPushRegistrationId
-         * should also call {@link removePushRegistrationId} when they receive an intent to unregister
+         * should also call {@link #clearPushRegistrationId()} when they receive an intent to unregister
          * (a com.google.android.c2dm.intent.REGISTRATION intent with getStringExtra("unregistered") != null)
          *
          * @param registrationId the result of calling intent.getStringExtra("registration_id")
          *     on a com.google.android.c2dm.intent.REGISTRATION intent
+         *
+         * @see #initPushHandling(String)
+         * @see #clearPushRegistrationId()
          */
         public void setPushRegistrationId(String registrationId);
 
-
         /**
+         * Manually clear a current Google Cloud Messaging registration id from Mixpanel.
+         *
          * If you are handling Google Cloud Messages in your own application, you should
          * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
          * with getStringExtra("unregistered") != null
          *
-         * In general, all applications that call {@link setPushRegistration} should include a call to
-         * removePushRegistrationId, and no applications that call {@link registerForPush} should
+         * In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
+         * removePushRegistrationId, and no applications that call {@link #initPushHandling(String)} should
          * call removePushRegistrationId
          */
         public void clearPushRegistrationId();
@@ -338,18 +414,19 @@ public class MPMetrics {
         return mInstanceMap;
     }
 
-    ///////////////////////
+    ////////////////////////////////////////////////////////////////////
+    // Conveniences for testing. These methods should not be called by
+    // non-test client code.
 
-    protected AnalyticsMessages getAnalyticsMessages() {
+    /* package */ AnalyticsMessages getAnalyticsMessages() {
         return AnalyticsMessages.getInstance(mContext);
     }
 
-    /**
-     * Will clear persistent identify distinct_ids, superProperties,
-     * and waiting People Analytics properties. Will have no effect
-     * on messages already queued to send with AnalyticsMessages.
-     */
-    protected void clearPreferences() {
+    /* package */ void clearPreferences() {
+        // Will clear persistent identify distinct_ids, superProperties,
+        // and waiting People Analytics properties. Will have no effect
+        // on messages already queued to send with AnalyticsMessages.
+
         SharedPreferences.Editor prefsEdit = mStoredPreferences.edit();
         prefsEdit.clear().commit();
         readSuperProperties();

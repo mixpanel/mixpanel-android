@@ -4,7 +4,7 @@ package com.mixpanel.android.mpmetrics;
  * Stores global configuration options for the Mixpanel library.
  * May be overridden to achieve custom behavior.
  */
-public class MPConfig {
+/* package */ class MPConfig {
     // When we've reached this many track calls, flush immediately
     public static int BULK_UPLOAD_LIMIT = 40;
 
