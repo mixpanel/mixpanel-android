@@ -11,6 +11,11 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+/**
+ * For a more comprehensive sample application, see
+ * 
+ * https://github.com/mixpanel/sample-android-mixpanel-integration
+ */
 public class HelloMixpanel extends Activity {
     
     Button mButton;
