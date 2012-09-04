@@ -93,6 +93,7 @@
       <jar destfile="MPMetrics_v2.1.jar"
            basedir="${out.classes.absolute.dir}"
            includes="**/*.class" />
+      <copy file="MPMetrics_v2.1.jar" tofile="demo/Hello Mixpanel/libs/MPMetrics_v2.1.jar" />
     </target>
 
 </project>
