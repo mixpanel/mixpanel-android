@@ -24,7 +24,11 @@ package com.mixpanel.android.mpmetrics;
     // Must be reconfigured before the library is initialized for the first time.
     public static int SUBMIT_THREAD_TTL = 180 * 1000;
 
-    // Set to true to see debugging logcat output:
+    // Set to true to see lots of internal debugging logcat output.
+    // When adding your own output, consider whether the (user configurable)
+    // MPMetrics.setVerbose() is a better choice.
+    // (Users will never see straight DEBUG messages but have the option
+    // to enable setVerbose() in their code)
     public static boolean DEBUG = false;
 
     // Set to true to send all api requests immediately

@@ -54,8 +54,8 @@ public class MPMetrics {
      *
      * Use getInstance to get an instance of MPMetrics you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
-     * the UI thread of your application (if you call it from threads that are not
-     * the main UI thread, it will return null)
+     * and use the resulting object only in the UI thread of your application
+     * (if you call it from threads that are not the main UI thread, it will return null)
      *
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
@@ -252,7 +252,7 @@ public class MPMetrics {
     }
 
     /**
-     * Clear all superProperties.
+     * Erase all currently registered superProperties.
      *
      * Future tracking calls to Mixpanel (even those already queued up but not
      * yet sent to Mixpanel servers) will not be associated with the superProperties registered
@@ -412,7 +412,24 @@ public class MPMetrics {
         public void clearPushRegistrationId();
     }
 
-    /// Package-level access
+    /**
+     * Manage verbose logging about messages sent to Mixpanel.
+     *
+     * Under ordinary circumstances, the Mixpanel library will only send messages
+     * to the log when errors occur. However, if setVerbose is called with
+     * a true argument, Mixpanel will send more detailed messages
+     * to the log. Calling setVerbose(false) will quiet these messages.
+     *
+     * Mixpanel will log its verbose messages tag "MPMetrics" with priority I("Information")
+     *
+     * @param verbose set to true for more detailed looging
+     */
+    public void enableLogAboutMessagesToMixpanel(boolean verbose) {
+        mMessages.enableLogAboutMessagesToMixpanel(verbose);
+    }
+
+    // Package-level access. Used (at least) by GCMReciever
+    // when OS-level events occur.
     /* package */ static Map<String, MPMetrics> allInstances() {
         return mInstanceMap;
     }
@@ -698,7 +715,6 @@ public class MPMetrics {
 
     // Maps each token to a singleton MPMetrics instance
     private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
-
 
     private final Context mContext;
     private final AnalyticsMessages mMessages;

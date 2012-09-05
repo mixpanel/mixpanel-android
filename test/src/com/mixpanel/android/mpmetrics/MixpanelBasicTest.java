@@ -3,6 +3,9 @@ package com.mixpanel.android.mpmetrics;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,7 +47,7 @@ public class MixpanelBasicTest extends
             }
         };
 
-        MPMetrics mixpanel = new CleanableMPMetrics(mActivity, "TEST TOKEN testIdentifyAfterSet") {
+        MPMetrics mixpanel = new MPMetrics(mActivity, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -106,6 +109,91 @@ public class MixpanelBasicTest extends
     }
 
     @UiThreadTest
+    public void testMessageQueuing() {
+        final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
+
+        final MPDbAdapter mockAdapter = new MPDbAdapter(mActivity) {
+            @Override
+            public int addJSON(JSONObject message, String table) {
+                boolean sentTable = messages.offer("TABLE " + table);
+                boolean sentMessage = messages.offer(message.toString());
+
+                if (! (sentTable && sentMessage)) {
+                    throw new RuntimeException("Test queue refused to accept a message.");
+                }
+
+                return super.addJSON(message, table);
+            }
+        };
+        mockAdapter.cleanupEvents(Long.MAX_VALUE, "events");
+
+        final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
+
+            class MockFlushTimer extends FlushTimer {
+                @Override
+                public void sendImmediateFlush(int messageType) {
+                    String handlingString = "SENT FLUSH " + String.valueOf(messageType);
+                    messages.offer(handlingString);
+                    super.sendImmediateFlush(messageType);
+                }
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+
+            @Override
+            protected FlushTimer makeFlushTimer() {
+                return new MockFlushTimer();
+            }
+        };
+
+        // listener.enableLogAboutMessagesToMixpanel(true);
+
+        MPMetrics metrics = new MPMetrics(mActivity, "Test Message Queuing") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                 return listener;
+            }
+        };
+
+        // Test filling up the message queue
+        for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
+            metrics.track("frequent event", null);
+        }
+
+        metrics.track("final event", null);
+        String expectedJSONMessage = "<No message actually recieved>";
+
+        try {
+            for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
+                String messageTable = messages.poll(1, TimeUnit.SECONDS);
+                assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, messageTable);
+
+                expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+                JSONObject message = new JSONObject(expectedJSONMessage);
+                assertEquals("frequent event", message.getString("event"));
+            }
+
+            String messageTable = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, messageTable);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONObject message = new JSONObject(expectedJSONMessage);
+            assertEquals("final event", message.getString("event"));
+
+            String messageFlush = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("SENT FLUSH " + String.valueOf(0), messageFlush);
+        } catch (InterruptedException e) {
+            fail("Expected a log message about mixpanel communication but did not recieve it.");
+        } catch (JSONException e) {
+            fail("Expected a JSON object message and got something silly instead: " + expectedJSONMessage);
+        }
+
+    }
+
+    @UiThreadTest
     public void testPersistence() {
         MPMetrics metricsOne = new MPMetrics(mActivity, "SAME TOKEN");
         metricsOne.clearPreferences();
@@ -144,6 +232,7 @@ public class MixpanelBasicTest extends
                  return listener;
             }
         };
+
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
@@ -170,17 +259,6 @@ public class MixpanelBasicTest extends
             assertEquals("Expected People Identity", sentId);
         } catch (JSONException e) {
             fail("Event message has an unexpected shape: " + peopleMessage.toString());
-        }
-    }
-
-    private class CleanableMPMetrics extends MPMetrics {
-        public CleanableMPMetrics(Context context, String token) {
-            super(context, token);
-        }
-
-        @Override
-        public void clearPreferences() {
-            super.clearPreferences();
         }
     }
 

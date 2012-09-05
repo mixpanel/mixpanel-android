@@ -25,9 +25,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
+import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.StringUtils;
 
 /**
+ * Manage communication of events with the internal database and the Mixpanel servers.
+ *
  * This class straddles the thread boundary between user threads and
  * a logical Mixpanel thread (a Threadpool with a zero or one Threads in it)
  *
@@ -40,16 +43,19 @@ import com.mixpanel.android.util.StringUtils;
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
     /* package */ AnalyticsMessages(Context context) {
-        mDbAdapter = new MPDbAdapter(context);
+        mLogMixpanelMessages = false;
+        mDbAdapter = makeDbAdapter(context);
+
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
         mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
 
-        mFlushTimer = new FlushTimer(); // Problem- we can't really trust that this happens in the UIThread
+        mFlushTimer = makeFlushTimer();
     }
 
     /**
      * Use this to get an instance of AnalyticsMessages instead of creating one directly
-     * for yourself.
+     * for yourself. ONLY call this in the main UI thread or a thread with an existing
+     * Looper. (it may register Handlers with the current Looper)
      *
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
@@ -68,6 +74,8 @@ import com.mixpanel.android.util.StringUtils;
         }
     }
 
+    // Public methods of this object should only be called
+    // from the main UI thread.
     public void eventsMessage(JSONObject eventsJson) {
         sExecutor.submit(new EventsQueueTask(eventsJson));
     }
@@ -84,44 +92,80 @@ import com.mixpanel.android.util.StringUtils;
         sExecutor.submit(new SubmitTask(FLUSH_EVENTS));
     }
 
+    public void enableLogAboutMessagesToMixpanel(boolean enable) {
+        mLogMixpanelMessages = enable;
+    }
+
     /////////////////////////////////////////////////////////
+
+    protected MPDbAdapter makeDbAdapter(Context context) {
+        return  new MPDbAdapter(context);
+    }
+
+    protected FlushTimer makeFlushTimer() {
+        return new FlushTimer();
+    }
+
+    /////////////////////////////////////////////////////////
+
+    // Sends a message if and only if we are running with Mixpanel Message log enabled.
+    // Will be called from the Mixpanel thread.
+    private void logAboutMessageToMixpanel(String message) {
+        if (MPConfig.DEBUG || mLogMixpanelMessages) {
+            Log.i(LOGTAG, message);
+        }
+    }
 
     /**
      * To be posted to by the Mixpanel thread and constructed
      * in the calling UI thread.
      */
-    private class FlushTimer extends Handler {
-        @Override
-        public void handleMessage(Message msg) {
-            if (msg.what == ENQUEUE_OPERATION) {
-                Message debounced = (Message) msg.obj;
-                if ((debounced.what == FLUSH_PEOPLE) && (! mEnqueuingPeople)) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING people flush for later execution");
+    /* package */ class FlushTimer {
 
-                    mEnqueuingPeople = true;
-                    sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
+        private class FlushHandler extends Handler {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == ENQUEUE_OPERATION) {
+                    Message debounced = (Message) msg.obj;
+                    if ((debounced.what == FLUSH_PEOPLE) && (! mEnqueuingPeople)) {
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING people flush for later execution");
+
+                        mEnqueuingPeople = true;
+                        sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
+                    }
+                    else if ((debounced.what == FLUSH_EVENTS) && (! mEnqueuingEvents)) {
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING events flush for later execution");
+                        mEnqueuingEvents = true;
+                        sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
+                    }
+                    else {
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Ignoring delayed flush call, debouncing.");
+                    }
                 }
-                else if ((debounced.what == FLUSH_EVENTS) && (! mEnqueuingEvents)) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING events flush for later execution");
-                    mEnqueuingEvents = true;
-                    sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
+                else if (msg.what == FLUSH_PEOPLE) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing people flush");
+
+                    mEnqueuingPeople = false;
+                    submitPeople();
                 }
-                else {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Ignoring delayed flush call, debouncing.");
+                else if (msg.what == FLUSH_EVENTS) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing events flush");
+
+                    mEnqueuingEvents = false;
+                    submitEvents();
                 }
             }
-            else if (msg.what == FLUSH_PEOPLE) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing people flush");
 
-                mEnqueuingPeople = false;
-                submitPeople();
-            }
-            else if (msg.what == FLUSH_EVENTS) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing events flush");
+            private boolean mEnqueuingPeople = false;
+            private boolean mEnqueuingEvents = false;
+        }
 
-                mEnqueuingEvents = true;
-                submitEvents();
-            }
+        public FlushTimer() {
+            mHandler = new FlushHandler();
+        }
+
+        public void sendImmediateFlush(int flushType) {
+            mHandler.sendEmptyMessage(flushType);
         }
 
         // Will be called by the Mixpanel thread
@@ -133,12 +177,11 @@ import com.mixpanel.android.util.StringUtils;
             outer.what = ENQUEUE_OPERATION;
             outer.obj = inner;
 
-            sendMessage(outer);
+            mHandler.sendMessage(outer);
         }
 
+        private final Handler mHandler;
         private final int ENQUEUE_OPERATION = 100; // Must be distinct from FLUSH_PEOPLE and FLUSH_EVENTS
-        private boolean mEnqueuingPeople = false;
-        private boolean mEnqueuingEvents = false;
     }
 
     /////////////////////////////////////////////////////////
@@ -152,15 +195,13 @@ import com.mixpanel.android.util.StringUtils;
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "EventsQueueTask queuing event");
-                Log.d(LOGTAG, "    " + mDataObject.toString());
-            }
+            logAboutMessageToMixpanel("Queuing event for sending later");
+            logAboutMessageToMixpanel("    " + mDataObject.toString());
 
             int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.EVENTS_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "EventsQueueTask in test or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                mFlushTimer.sendEmptyMessage(FLUSH_EVENTS);
+                logAboutMessageToMixpanel("Events Queue is full, requesting a send (" + count + " messages in queue)");
+                mFlushTimer.sendImmediateFlush(FLUSH_EVENTS);
             } else {
                 mFlushTimer.sendDebouncedFlush(FLUSH_EVENTS);
             }
@@ -176,15 +217,13 @@ import com.mixpanel.android.util.StringUtils;
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "PeopleQueueTask queuing an action");
-                Log.d(LOGTAG, "    " + mDataObject.toString());
-            }
+            logAboutMessageToMixpanel("Queuing people record for sending later");
+            logAboutMessageToMixpanel("    " + mDataObject.toString());
 
             int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.PEOPLE_TABLE);
             if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "PeopleQueueTask MPConfig.TEST_MODE set or count greater than MPConfig.BULK_UPLOAD_LIMIT");
-                mFlushTimer.sendEmptyMessage(FLUSH_PEOPLE);
+                logAboutMessageToMixpanel("People record queue is full, requesting a send");
+                mFlushTimer.sendImmediateFlush(FLUSH_PEOPLE);
             } else {
                 mFlushTimer.sendDebouncedFlush(FLUSH_PEOPLE);
             }
@@ -192,7 +231,7 @@ import com.mixpanel.android.util.StringUtils;
     }
 
     private class SubmitTask implements Runnable {
-        private String table;
+        private final String table;
         private final int messageType;
 
         public SubmitTask(int messageType) {
@@ -206,17 +245,26 @@ import com.mixpanel.android.util.StringUtils;
 
         @Override
         public void run() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "SubmitTask " + this.table + " running.");
+            if (messageType == FLUSH_PEOPLE) {
+                logAboutMessageToMixpanel("Submitting people records to Mixpanel");
+            }
+            else {
+                logAboutMessageToMixpanel("Submitting events to Mixpanel");
+            }
 
             String[] data = mDbAdapter.generateDataString(table);
             if (data == null) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "    No data to submit.");
+                logAboutMessageToMixpanel("    No data to submit.");
                 return;
             }
 
+            String lastId = data[0];
+            String rawMessage = data[1];
+            String encodedData = Base64Coder.encodeString(rawMessage);
+
             HttpClient httpclient = new DefaultHttpClient();
             HttpPost httppost;
-            if (this.table.equals(MPDbAdapter.PEOPLE_TABLE)) {
+            if (messageType == FLUSH_PEOPLE) {
                 httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
             } else {
                 httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
@@ -224,7 +272,7 @@ import com.mixpanel.android.util.StringUtils;
 
             try {
                 List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                nameValuePairs.add(new BasicNameValuePair("data", data[1]));
+                nameValuePairs.add(new BasicNameValuePair("data", encodedData));
                 httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
 
                 HttpResponse response = httpclient.execute(httppost);
@@ -243,9 +291,10 @@ import com.mixpanel.android.util.StringUtils;
                         mFlushTimer.sendDebouncedFlush(messageType);
                         return;
                     }
+                    logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
 
                     // Success, so prune the database.
-                    mDbAdapter.cleanupEvents(data[0], table);
+                    mDbAdapter.cleanupEvents(lastId, table);
 
                 } catch (IOException e) {
                     Log.e(LOGTAG, "SubmitTask " + table, e);
@@ -268,6 +317,8 @@ import com.mixpanel.android.util.StringUtils;
             }
         }
     }
+
+    private volatile boolean mLogMixpanelMessages; // Used across thread boundaries
 
     private final MPDbAdapter mDbAdapter;
     private final FlushTimer mFlushTimer;

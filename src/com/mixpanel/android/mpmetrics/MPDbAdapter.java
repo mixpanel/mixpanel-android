@@ -12,8 +12,6 @@ import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import com.mixpanel.android.util.Base64Coder;
-
 /**
  * SQLite database adapter for MPMetrics. This class is used from both the UI and
  * HTTP request threads, but maintains a single database connection. This is because
@@ -192,7 +190,7 @@ class MPDbAdapter {
                 }
 
                 if (arr.length() > 0) {
-                    data = Base64Coder.encodeString(arr.toString());
+                    data = arr.toString();
                 }
             } catch (SQLiteException e) {
                 Log.e(LOGTAG, "generateDataString " + table, e);
