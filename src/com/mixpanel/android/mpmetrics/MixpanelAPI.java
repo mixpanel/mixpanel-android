@@ -38,9 +38,9 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
 
-        mCarrier = getCarrier();
-        mModel = getModel();
-        mVersion = getVersion();
+        mCarrier = Build.BRAND;
+        mModel = Build.MODEL;
+        mVersion = Build.VERSION.RELEASE;
         mDeviceId = getDeviceId();
         mMessages = getAnalyticsMessages();
 
@@ -607,30 +607,6 @@ public class MixpanelAPI {
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
-
-    /**
-     * Return the carrier of the phone
-     * @return A String containing the carrier
-     */
-    private String getCarrier() {
-        return Build.BRAND;
-    }
-
-    /**
-     * Return the model of the phone
-     * @return  A String containing the model
-     */
-    private String getModel() {
-        return Build.MODEL;
-    }
-
-    /**
-     * Return the Android version of the phone
-     * @return  A String containing the android version
-     */
-    private String getVersion() {
-        return Build.VERSION.RELEASE;
-    }
 
     /**
      * Return the unique device identifier of the phone
