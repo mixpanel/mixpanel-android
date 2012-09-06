@@ -325,7 +325,7 @@ import com.mixpanel.android.util.StringUtils;
 
     private static int FLUSH_EVENTS = 0;
     private static int FLUSH_PEOPLE = 1;
-    private static final String LOGTAG = "MPMetrics";
+    private static final String LOGTAG = "MixpanelAPI";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 

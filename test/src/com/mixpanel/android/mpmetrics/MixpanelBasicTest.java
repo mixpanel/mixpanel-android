@@ -47,7 +47,7 @@ public class MixpanelBasicTest extends
             }
         };
 
-        MPMetrics mixpanel = new MPMetrics(mActivity, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new MixpanelAPI(mActivity, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -55,7 +55,7 @@ public class MixpanelBasicTest extends
         };
 
         mixpanel.clearPreferences();
-        MPMetrics.People people = mixpanel.getPeople();
+        MixpanelAPI.People people = mixpanel.getPeople();
 
         people.increment("the prop", 100);
         people.set("the prop", 1);
@@ -151,7 +151,7 @@ public class MixpanelBasicTest extends
 
         // listener.enableLogAboutMessagesToMixpanel(true);
 
-        MPMetrics metrics = new MPMetrics(mActivity, "Test Message Queuing") {
+        MixpanelAPI metrics = new MixpanelAPI(mActivity, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -195,7 +195,7 @@ public class MixpanelBasicTest extends
 
     @UiThreadTest
     public void testPersistence() {
-        MPMetrics metricsOne = new MPMetrics(mActivity, "SAME TOKEN");
+        MixpanelAPI metricsOne = new MixpanelAPI(mActivity, "SAME TOKEN");
         metricsOne.clearPreferences();
 
         JSONObject props;
@@ -226,7 +226,7 @@ public class MixpanelBasicTest extends
             }
         };
 
-        MPMetrics metricsTwo = new MPMetrics(mActivity, "SAME TOKEN") {
+        MixpanelAPI metricsTwo = new MixpanelAPI(mActivity, "SAME TOKEN") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;

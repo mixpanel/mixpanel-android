@@ -10,7 +10,7 @@ import org.json.JSONObject;
 import android.util.Log;
 
 class WaitingPeopleRecord {
-    private static final String LOGTAG = "MPMetrics";
+    private static final String LOGTAG = "MixpanelAPI";
 
     public WaitingPeopleRecord() {
         mAdds = new HashMap<String, Long>();

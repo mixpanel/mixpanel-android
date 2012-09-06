@@ -13,7 +13,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 /**
- * SQLite database adapter for MPMetrics. This class is used from both the UI and
+ * SQLite database adapter for MixpanelAPI. This class is used from both the UI and
  * HTTP request threads, but maintains a single database connection. This is because
  * when performing concurrent writes from multiple database connections, some will
  * silently fail (save for a small message in logcat). Synchronize on each method,
@@ -23,7 +23,7 @@ import android.util.Log;
  *
  */
 class MPDbAdapter {
-    private static final String LOGTAG = "MPMetrics";
+    private static final String LOGTAG = "MixpanelAPI";
 
     private static final String DATABASE_NAME = "mixpanel";
     public static final String EVENTS_TABLE = "events";

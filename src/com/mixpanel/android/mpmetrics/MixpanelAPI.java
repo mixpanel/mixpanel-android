@@ -26,14 +26,14 @@ import android.util.Log;
  * application.
  *
  */
-public class MPMetrics {
+public class MixpanelAPI {
     public static final String VERSION = "2.1";
 
     /**
-     * You shouldn't instantiate MPMetrics objects directly.
-     * Use MPMetrics.getInstance to get an instance.
+     * You shouldn't instantiate MixpanelAPI objects directly.
+     * Use MixpanelAPI.getInstance to get an instance.
      */
-    /* package */ MPMetrics(Context context, String token) {
+    MixpanelAPI(Context context, String token) {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
@@ -44,15 +44,15 @@ public class MPMetrics {
         mDeviceId = getDeviceId();
         mMessages = getAnalyticsMessages();
 
-        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MPMetrics_" + token, Context.MODE_PRIVATE);
+        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
     }
 
     /**
-     * Get the instance of MPMetrics associated with your Mixpanel project token.
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token.
      *
-     * <p>Use getInstance to get an instance of MPMetrics you can use to send events
+     * <p>Use getInstance to get an instance of MixpanelAPI you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
      * and use the resulting object only in the UI thread of your application
      * (if you call it from threads that are not the main UI thread, it will return null)
@@ -60,14 +60,14 @@ public class MPMetrics {
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
-     * @return an instance of MPMetrics associated with your project
+     * @return an instance of MixpanelAPI associated with your project
      */
-    public static MPMetrics getInstance(Context context, String token) {
-        MPMetrics instance = null;
+    public static MixpanelAPI getInstance(Context context, String token) {
+        MixpanelAPI instance = null;
         if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
             instance = mInstanceMap.get(token);
             if (instance == null) {
-                instance = new MPMetrics(context.getApplicationContext(), token);
+                instance = new MixpanelAPI(context.getApplicationContext(), token);
                 mInstanceMap.put(token,  instance);
             }
         }
@@ -279,7 +279,7 @@ public class MPMetrics {
 
     /**
      * Core interface for using Mixpanel People Analytics features.
-     * You can get an instance by calling {@link MPMetrics#getPeople()}
+     * You can get an instance by calling {@link MixpanelAPI#getPeople()}
      */
     public interface People {
         /**
@@ -296,9 +296,9 @@ public class MPMetrics {
          *     across all platforms and devices. We recommend choosing a distinct id
          *     that is meaningful to your other systems (for example, a server-side account
          *     identifier), and using the same distinct id for both calls to People.identify
-         *     and {@link MPMetrics#identify(String)}
+         *     and {@link MixpanelAPI#identify(String)}
          *
-         * @see MPMetrics#identify(String)
+         * @see MixpanelAPI#identify(String)
          */
         public void identify(String distinctId);
 
@@ -424,7 +424,7 @@ public class MPMetrics {
      * a true argument, Mixpanel will send more detailed messages
      * to the log. Calling setVerbose(false) will quiet these messages.
      *
-     * <p>Mixpanel will log its verbose messages tag "MPMetrics" with priority I("Information")
+     * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
      *
      * @param verbose set to true for more detailed looging
      */
@@ -434,7 +434,7 @@ public class MPMetrics {
 
     // Package-level access. Used (at least) by GCMReciever
     // when OS-level events occur.
-    /* package */ static Map<String, MPMetrics> allInstances() {
+    /* package */ static Map<String, MixpanelAPI> allInstances() {
         return mInstanceMap;
     }
 
@@ -715,10 +715,10 @@ public class MPMetrics {
         prefsEditor.commit();
     }
 
-    private static final String LOGTAG = "MPMetrics";
+    private static final String LOGTAG = "MixpanelAPI";
 
-    // Maps each token to a singleton MPMetrics instance
-    private static HashMap<String, MPMetrics> mInstanceMap = new HashMap<String, MPMetrics>();
+    // Maps each token to a singleton MixpanelAPI instance
+    private static HashMap<String, MixpanelAPI> mInstanceMap = new HashMap<String, MixpanelAPI>();
 
     private final Context mContext;
     private final AnalyticsMessages mMessages;

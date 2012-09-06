@@ -18,7 +18,7 @@ import android.util.Log;
  *
  * <p>You can use GCMReciever to report Google Cloud Messaging registration identifiers
  * to Mixpanel, and to display incoming notifications from Mixpanel to
- * the device status bar. Together with {@link MPMetrics.People#initPushHandling(String) }
+ * the device status bar. Together with {@link MixpanelAPI.People#initPushHandling(String) }
  * this is the simplest way to get up and running with notifications from Mixpanel.
  *
  * <p>To enable GCMReciever in your application, add a clause like the following
@@ -41,13 +41,13 @@ import android.util.Log;
  *</pre>
  *
  * <p>Once the GCMReciever is configured, the only thing you have to do to
- * get set up Mixpanel messages is call {@link MPMetrics.People#identify(String) }
- * with a distinct id for your user, and call {@link MPMetrics.People#initPushHandling(String) }
+ * get set up Mixpanel messages is call {@link MixpanelAPI.People#identify(String) }
+ * with a distinct id for your user, and call {@link MixpanelAPI.People#initPushHandling(String) }
  * with the your Google API project identifier.
  * <pre>
  * {@code
  *
- * MPMetrics.People people = mMPMetrics.getPeople();
+ * MixpanelAPI.People people = mMixpanelAPI.getPeople();
  * people.identify("A USER DISTINCT ID");
  * people.initPushHandling("123456789123");
  *
@@ -57,11 +57,11 @@ import android.util.Log;
  * <p>If you would prefer to handle either sending a registration id to Mixpanel yourself
  * but allow GCMReciever to handle displaying Mixpanel messages, remove the
  * REGISTRATION intent from the GCMReciever {@code <reciever> } tag, and call
- * {@link MPMetrics.People#setPushRegistrationId(String)}
+ * {@link MixpanelAPI.People#setPushRegistrationId(String)}
  * in your own REGISTRATION handler.
  *
- * @see MPMetrics#getPeople()
- * @see MPMetrics.People#initPushHandling(String)
+ * @see MixpanelAPI#getPeople()
+ * @see MixpanelAPI.People#initPushHandling(String)
  */
 public class GCMReceiver extends BroadcastReceiver {
     String LOGTAG = "MPGCMReceiver";
@@ -84,14 +84,14 @@ public class GCMReceiver extends BroadcastReceiver {
         } else if (registration != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
 
-            Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+            Map<String, MixpanelAPI> allMetrics = MixpanelAPI.allInstances();
             for (String token : allMetrics.keySet()) {
                 allMetrics.get(token).getPeople().setPushRegistrationId(registration);
             }
         } else if (intent.getStringExtra("unregistered") != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
 
-            Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+            Map<String, MixpanelAPI> allMetrics = MixpanelAPI.allInstances();
             for (String token : allMetrics.keySet()) {
                 allMetrics.get(token).getPeople().clearPushRegistrationId();
             }
