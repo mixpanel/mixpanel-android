@@ -14,11 +14,16 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
 /**
- * Optional BroadcastReciever for handling Google Cloud Messaging intents.
+ * BroadcastReciever for handling Google Cloud Messaging intents.
  *
- * Include a clause like the following in your AndroidManifest.xml if you
- * would like the Mixpanel libraries to handle the registration and display
- * of Mixpanel-sourced Google Cloud Messaging notifications.
+ * You can use GCMReciever to report Google Cloud Messaging registration identifiers
+ * to Mixpanel, and to display incoming notifications from Mixpanel to
+ * the device status bar. Together with {@link MPMetrics.People#initPushHandling(String) }
+ * this is the simplest way to get up and running with notifications from Mixpanel.
+ *
+ * To enable GCMReciever in your application, add a clause like the following
+ * in your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
+ * in the snippet with the actual package name of your app.)
  *
  *<pre>
  *{@code
@@ -33,8 +38,26 @@ import android.util.Log;
  *}
  *</pre>
  *
- * You shouldn't need to instantiate or call methods on this object directly.
+ * Once the GCMReciever is configured, the only thing you have to do to
+ * get set up Mixpanel messages is call {@link MPMetrics.People#identify(String) }
+ * with a distinct id for your user, and call {@link MPMetrics.People#initPushHandling(String) }
+ * with the your Google API project identifier.
+ * <pre>
+ * {@code
  *
+ * MPMetrics.People people = mMPMetrics.getPeople();
+ * people.identify("A USER DISTINCT ID");
+ * people.initPushHandling("123456789123");
+ *
+ * }
+ * </pre>
+ *
+ * If you would prefer to handle either sending a registration id to Mixpanel yourself
+ * or handling incoming messages from Mixpanel yourself but allow Mixpanel to handle
+ * the other operation, you can simply remove one
+ * of the intent filters in the GCMReciever {@code <reciever> } tag.
+ *
+ * @see MPMetrics#getPeople()
  * @see MPMetrics.People#initPushHandling(String)
  */
 public class GCMReceiver extends BroadcastReceiver {
@@ -44,55 +67,63 @@ public class GCMReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
-            String registration = intent.getStringExtra("registration_id");
-
-            if (intent.getStringExtra("error") != null) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
-                // Registration failed, try again later
-            } else if (registration != null) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
-
-                Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
-                for (String token : allMetrics.keySet()) {
-                    allMetrics.get(token).getPeople().setPushRegistrationId(registration);
-                }
-            } else if (intent.getStringExtra("unregistered") != null) {
-                // unregistration done, new messages from the authorized sender will be rejected
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-
-                Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
-                for (String token : allMetrics.keySet()) {
-                    allMetrics.get(token).getPeople().clearPushRegistrationId();
-                }
-            }
+            handleRegistrationIntent(intent);
         } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
-            String message = intent.getExtras().getString("mp_message");
-
-            if (message == null) return;
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
-
-            PackageManager manager = context.getPackageManager();
-            Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
-            CharSequence notificationTitle = "";
-            int notificationIcon = android.R.drawable.sym_def_app_icon;
-            try {
-                ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
-                notificationTitle = manager.getApplicationLabel(appInfo);
-                notificationIcon = appInfo.icon;
-            } catch (NameNotFoundException e) { }
-
-            PendingIntent contentIntent = PendingIntent.getActivity(
-                context.getApplicationContext(),
-                0,
-                appIntent,   // add this pass null to intent
-                PendingIntent.FLAG_UPDATE_CURRENT
-            );
-
-            NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-            Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
-            n.flags |= Notification.FLAG_AUTO_CANCEL;
-            n.setLatestEventInfo(context, notificationTitle, message, contentIntent);
-            nm.notify(0, n);
+            handleNotificationIntent(context, intent);
         }
+    }
+
+    private void handleRegistrationIntent(Intent intent) {
+        String registration = intent.getStringExtra("registration_id");
+
+        if (intent.getStringExtra("error") != null) {
+            Log.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
+        } else if (registration != null) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
+
+            Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+            for (String token : allMetrics.keySet()) {
+                allMetrics.get(token).getPeople().setPushRegistrationId(registration);
+            }
+        } else if (intent.getStringExtra("unregistered") != null) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
+
+            Map<String, MPMetrics> allMetrics = MPMetrics.allInstances();
+            for (String token : allMetrics.keySet()) {
+                allMetrics.get(token).getPeople().clearPushRegistrationId();
+            }
+        }
+    }
+
+    private void handleNotificationIntent(Context context, Intent intent) {
+        String message = intent.getExtras().getString("mp_message");
+
+        if (message == null) return;
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
+
+        PackageManager manager = context.getPackageManager();
+        Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
+        CharSequence notificationTitle = "";
+        int notificationIcon = android.R.drawable.sym_def_app_icon;
+        try {
+            ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
+            notificationTitle = manager.getApplicationLabel(appInfo);
+            notificationIcon = appInfo.icon;
+        } catch (NameNotFoundException e) {
+            // In this case, use a blank title and default icon
+        }
+
+        PendingIntent contentIntent = PendingIntent.getActivity(
+            context.getApplicationContext(),
+            0,
+            appIntent,   // add this pass null to intent
+            PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        n.setLatestEventInfo(context, notificationTitle, message, contentIntent);
+        nm.notify(0, n);
     }
 }

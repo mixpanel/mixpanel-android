@@ -289,7 +289,7 @@ public class MPMetrics {
          * All future calls to the People object will rely on this value to assign
          * and increment properties. The user identification will persist across
          * restarts of your application. We recommend calling
-         * People.identify as soon as you know the a distinct id.
+         * People.identify as soon as you know the distinct id of the user.
          *
          * @param distinctId a String that uniquely identifies the user. Users identified with
          *     the same distinct id will be considered to be the same user in Mixpanel,
