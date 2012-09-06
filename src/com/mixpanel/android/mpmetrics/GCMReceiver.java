@@ -16,17 +16,18 @@ import android.util.Log;
 /**
  * BroadcastReciever for handling Google Cloud Messaging intents.
  *
- * You can use GCMReciever to report Google Cloud Messaging registration identifiers
+ * <p>You can use GCMReciever to report Google Cloud Messaging registration identifiers
  * to Mixpanel, and to display incoming notifications from Mixpanel to
  * the device status bar. Together with {@link MPMetrics.People#initPushHandling(String) }
  * this is the simplest way to get up and running with notifications from Mixpanel.
  *
- * To enable GCMReciever in your application, add a clause like the following
+ * <p>To enable GCMReciever in your application, add a clause like the following
  * in your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
  * in the snippet with the actual package name of your app.)
  *
  *<pre>
  *{@code
+ *
  * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
  *           android:permission="com.google.android.c2dm.permission.SEND" >
  *    <intent-filter>
@@ -35,10 +36,11 @@ import android.util.Log;
  *        <category android:name="YOUR APPLICATION PACKAGE NAME" />
  *    </intent-filter>
  * </receiver>
+ *
  *}
  *</pre>
  *
- * Once the GCMReciever is configured, the only thing you have to do to
+ * <p>Once the GCMReciever is configured, the only thing you have to do to
  * get set up Mixpanel messages is call {@link MPMetrics.People#identify(String) }
  * with a distinct id for your user, and call {@link MPMetrics.People#initPushHandling(String) }
  * with the your Google API project identifier.
@@ -52,7 +54,7 @@ import android.util.Log;
  * }
  * </pre>
  *
- * If you would prefer to handle either sending a registration id to Mixpanel yourself
+ * <p>If you would prefer to handle either sending a registration id to Mixpanel yourself
  * but allow GCMReciever to handle displaying Mixpanel messages, remove the
  * REGISTRATION intent from the GCMReciever {@code <reciever> } tag, and call
  * {@link MPMetrics.People#setPushRegistrationId(String)}

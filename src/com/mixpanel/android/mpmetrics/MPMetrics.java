@@ -20,7 +20,7 @@ import android.util.Log;
 /**
  * Core class for interacting with Mixpanel Analytics.
  *
- * Call {@link #getInstance(Context, String)} with
+ * <p>Call {@link #getInstance(Context, String)} with
  * your main application activity and your Mixpanel API token as arguments
  * an to get an instance you can use to report how users are using your
  * application.
@@ -52,7 +52,7 @@ public class MPMetrics {
     /**
      * Get the instance of MPMetrics associated with your Mixpanel project token.
      *
-     * Use getInstance to get an instance of MPMetrics you can use to send events
+     * <p>Use getInstance to get an instance of MPMetrics you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
      * and use the resulting object only in the UI thread of your application
      * (if you call it from threads that are not the main UI thread, it will return null)
@@ -79,18 +79,18 @@ public class MPMetrics {
      * Associate all future calls to {@link #track(String, JSONObject)} with the user identified by
      * the given distinct id.
      *
-     * This call does not identify the user for People Analytics;
+     * <p>This call does not identify the user for People Analytics;
      * to do that, see {@link People#identify(String)}. Mixpanel recommends using
      * the same distinct_id for both calls, and using a distinct_id that is easy
      * to associate with the given user, for example, a server-side account identifier.
      *
-     * Calls to {@link #track(String, JSONObject)} made before corresponding calls to
+     * <p>Calls to {@link #track(String, JSONObject)} made before corresponding calls to
      * identify will use an internally generated distinct id, which means it is best
      * to call identify early to ensure that your Mixpanel funnels and retention
      * analytics can continue to track the user throughout their lifetime. We recommend
      * calling identify as early as you can.
      *
-     * Once identify is called, the given distinct id persists across restarts of your
+     * <p>Once identify is called, the given distinct id persists across restarts of your
      * application.
      *
      * @param distinctId a string uniquely identifying this user. Events sent to
@@ -108,7 +108,7 @@ public class MPMetrics {
     /**
      * Track an event.
      *
-     * Every call to track eventually results in a data point sent to Mixpanel. These data points
+     * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
      * are what are measured, counted, and broken down to create your Mixpanel reports. Events
      * have a string name, and an optional set of name/value pairs that describe the properties of
      * that event.
@@ -161,7 +161,7 @@ public class MPMetrics {
     /**
      * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
      *
-     * Events and People messages are pushed gradually throughout
+     * <p>Events and People messages are pushed gradually throughout
      * the lifetime of your application. This means that to ensure that all messages
      * are sent to Mixpanel when your application is shut down, you will
      * need to call flush() to let the Mixpanel library know it should
@@ -179,14 +179,14 @@ public class MPMetrics {
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
      *
-     * SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+     * <p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
      * and persist beyond the lifetime of your application.
      *
-     * Setting a superProperty with registerSuperProperties will store a new superProperty,
+     * <p>Setting a superProperty with registerSuperProperties will store a new superProperty,
      * possibly overwriting any existing superProperty with the same name (to set a
      * superProperty only if it is currently unset, use {@link #registerSuperPropertiesOnce(JSONObject)})
      *
-     * SuperProperties will persist even if your application is taken completely out of memory.
+     * <p>SuperProperties will persist even if your application is taken completely out of memory.
      * to remove a superProperty, call {@link #unregisterSuperProperty(String)} or {@link #clearSuperProperties()}
      *
      * @param superProperties    A JSONObject containing super properties to register
@@ -212,7 +212,7 @@ public class MPMetrics {
     /**
      * Remove a single superProperty, so that it will not be sent with future calls to {@link #track(String, JSONObject)}.
      *
-     * If there is a superProperty registered with the given name, it will be permanently
+     * <p>If there is a superProperty registered with the given name, it will be permanently
      * removed from the existing superProperties.
      * To clear all superProperties, use {@link #clearSuperProperties()}
      *
@@ -229,7 +229,7 @@ public class MPMetrics {
      * Register super properties for events, only if no other super property with the
      * same names has already been registered.
      *
-     * Calling registerSuperPropertiesOnce will never overwrite existing properties.
+     * <p>Calling registerSuperPropertiesOnce will never overwrite existing properties.
      *
      * @param superProperties A JSONObject containing the super properties to register.
      * @see #registerSuperProperties(JSONObject)
@@ -254,7 +254,7 @@ public class MPMetrics {
     /**
      * Erase all currently registered superProperties.
      *
-     * Future tracking calls to Mixpanel (even those already queued up but not
+     * <p>Future tracking calls to Mixpanel (even those already queued up but not
      * yet sent to Mixpanel servers) will not be associated with the superProperties registered
      * before this call was made.
      *
@@ -286,7 +286,7 @@ public class MPMetrics {
          * Associate future call to {@link #set(JSONObject)} and {@link #increment(Map)}
          * with a particular People Analytics user.
          *
-         * All future calls to the People object will rely on this value to assign
+         * <p>All future calls to the People object will rely on this value to assign
          * and increment properties. The user identification will persist across
          * restarts of your application. We recommend calling
          * People.identify as soon as you know the distinct id of the user.
@@ -336,7 +336,7 @@ public class MPMetrics {
         /**
          * Change the existing values of multiple People Analytics properties at once.
          *
-         * If the user does not already have the associated property, the amount will
+         * <p>If the user does not already have the associated property, the amount will
          * be added to zero. To reduce a property, provide a negative number for the value.
          *
          * @param properties A map of String properties names to Long amounts. Each
@@ -349,7 +349,7 @@ public class MPMetrics {
         /**
          * Permanently deletes the identified user's record from People Analytics.
          *
-         * Calling deleteUser deletes an entire record completely. Any future calls
+         * <p>Calling deleteUser deletes an entire record completely. Any future calls
          * to People Analytics using the same distinct id will create and store new values.
          */
         public void deleteUser();
@@ -357,15 +357,15 @@ public class MPMetrics {
         /**
          * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel.
          *
-         * Calling this method will allow the Mixpanel libraries to handle GCM user
+         * <p>Calling this method will allow the Mixpanel libraries to handle GCM user
          * registration, and enable Mixpanel to show alerts when GCM messages arrive.
          *
-         * If you're planning to use end-to-end support for Messaging, we recommend you
+         * <p>If you're planning to use end-to-end support for Messaging, we recommend you
          * call this method immediately after calling {@link People#identify(String)}, likely
          * early in your application's lifecycle. (for example, in the onCreate method of your
          * main application activity.)
          *
-         * Calls to {@link #initPushHandling(String)} should not be mixed with calls to
+         * <p>Calls to {@link #initPushHandling(String)} should not be mixed with calls to
          * {@link #setPushRegistrationId(String)} and {@link #clearPushRegistrationId()}
          * in the same application. Application authors should choose one or the other
          * method for handling Mixpanel GCM messages.
@@ -380,12 +380,14 @@ public class MPMetrics {
         /**
          * Manually send a Google Cloud Messaging registration id to Mixpanel.
          *
-         * If you are handling Google Cloud Messages in your own application, but would like to
+         * <p>If you are handling Google Cloud Messages in your own application, but would like to
          * allow Mixpanel to handle messages originating from Mixpanel campaigns, you should
          * call setPushRegistrationId with the "registration_id" property of the
          * com.google.android.c2dm.intent.REGISTRATION intent when it is received.
          *
-         * Calls to setPushRegistrationId should not be mixed with calls to {@link #initPushHandling(String)}
+         * <p>setPushRegistrationId should only be called after {@link #identify(String)} has been called.
+         *
+         * <p>Calls to setPushRegistrationId should not be mixed with calls to {@link #initPushHandling(String)}
          * in the same application. In addition, applications that call setPushRegistrationId
          * should also call {@link #clearPushRegistrationId()} when they receive an intent to unregister
          * (a com.google.android.c2dm.intent.REGISTRATION intent with getStringExtra("unregistered") != null)
@@ -401,11 +403,13 @@ public class MPMetrics {
         /**
          * Manually clear a current Google Cloud Messaging registration id from Mixpanel.
          *
-         * If you are handling Google Cloud Messages in your own application, you should
+         * <p>If you are handling Google Cloud Messages in your own application, you should
          * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
          * with getStringExtra("unregistered") != null
          *
-         * In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
+         * <p>clearPushRegistrationId should only be called after {@link #identify(String)} has been called.
+         *
+         * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
          * removePushRegistrationId, and no applications that call {@link #initPushHandling(String)} should
          * call removePushRegistrationId
          */
@@ -415,12 +419,12 @@ public class MPMetrics {
     /**
      * Manage verbose logging about messages sent to Mixpanel.
      *
-     * Under ordinary circumstances, the Mixpanel library will only send messages
+     * <p>Under ordinary circumstances, the Mixpanel library will only send messages
      * to the log when errors occur. However, if setVerbose is called with
      * a true argument, Mixpanel will send more detailed messages
      * to the log. Calling setVerbose(false) will quiet these messages.
      *
-     * Mixpanel will log its verbose messages tag "MPMetrics" with priority I("Information")
+     * <p>Mixpanel will log its verbose messages tag "MPMetrics" with priority I("Information")
      *
      * @param verbose set to true for more detailed looging
      */
