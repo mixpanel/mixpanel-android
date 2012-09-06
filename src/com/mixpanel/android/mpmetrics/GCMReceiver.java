@@ -53,9 +53,10 @@ import android.util.Log;
  * </pre>
  *
  * If you would prefer to handle either sending a registration id to Mixpanel yourself
- * or handling incoming messages from Mixpanel yourself but allow Mixpanel to handle
- * the other operation, you can simply remove one
- * of the intent filters in the GCMReciever {@code <reciever> } tag.
+ * but allow GCMReciever to handle displaying Mixpanel messages, remove the
+ * REGISTRATION intent from the GCMReciever {@code <reciever> } tag, and call
+ * {@link MPMetrics.People#setPushRegistrationId(String)}
+ * in your own REGISTRATION handler.
  *
  * @see MPMetrics#getPeople()
  * @see MPMetrics.People#initPushHandling(String)
