@@ -13,7 +13,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -54,8 +53,8 @@ public class MixpanelAPI {
      *
      * <p>Use getInstance to get an instance of MixpanelAPI you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
-     * and use the resulting object only in the UI thread of your application
-     * (if you call it from threads that are not the main UI thread, it will return null)
+     * and use the resulting object only from a single thread in your application
+     * (probably the main UI thread of your application)
      *
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
@@ -63,13 +62,10 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token) {
-        MixpanelAPI instance = null;
-        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            instance = mInstanceMap.get(token);
-            if (instance == null) {
-                instance = new MixpanelAPI(context.getApplicationContext(), token);
-                mInstanceMap.put(token,  instance);
-            }
+        MixpanelAPI instance = mInstanceMap.get(token);
+        if (instance == null) {
+            instance = new MixpanelAPI(context.getApplicationContext(), token);
+            mInstanceMap.put(token,  instance);
         }
 
         return instance;
@@ -172,8 +168,7 @@ public class MixpanelAPI {
     public void flush() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
 
-        mMessages.submitEvents();
-        mMessages.submitPeople();
+        mMessages.postToServer();
     }
 
     /**
@@ -258,7 +253,8 @@ public class MixpanelAPI {
      * yet sent to Mixpanel servers) will not be associated with the superProperties registered
      * before this call was made.
      *
-     * To remove a single superProperty, use {@link #unregisterSuperProperty(String)}
+     * <p>To remove a single superProperty, use {@link #unregisterSuperProperty(String)}
+     *
      * @see #registerSuperProperties(JSONObject)
      */
     public void clearSuperProperties() {
@@ -420,16 +416,14 @@ public class MixpanelAPI {
      * Manage verbose logging about messages sent to Mixpanel.
      *
      * <p>Under ordinary circumstances, the Mixpanel library will only send messages
-     * to the log when errors occur. However, if setVerbose is called with
-     * a true argument, Mixpanel will send more detailed messages
-     * to the log. Calling setVerbose(false) will quiet these messages.
+     * to the log when errors occur. However, after logPosts is called, Mixpanel will
+     * send messages describing it's communication with the Mixpanel servers to
+     * the system log.
      *
      * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
-     *
-     * @param verbose set to true for more detailed looging
      */
-    public void enableLogAboutMessagesToMixpanel(boolean verbose) {
-        mMessages.enableLogAboutMessagesToMixpanel(verbose);
+    public void logPosts() {
+        mMessages.logPosts();
     }
 
     // Package-level access. Used (at least) by GCMReciever
@@ -570,7 +564,7 @@ public class MixpanelAPI {
         public void initPushHandling(String senderID) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
             if (Build.VERSION.SDK_INT < 8) { // older than froyo
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Push not supported SDK " + Build.VERSION.SDK);
+                Log.i(LOGTAG, "Push not supported SDK " + Build.VERSION.SDK + ": ignoring call to initPushHandling");
                 return;
             }
 

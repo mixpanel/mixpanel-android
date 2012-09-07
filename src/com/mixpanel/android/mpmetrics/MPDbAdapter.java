@@ -13,11 +13,10 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 /**
- * SQLite database adapter for MixpanelAPI. This class is used from both the UI and
- * HTTP request threads, but maintains a single database connection. This is because
- * when performing concurrent writes from multiple database connections, some will
- * silently fail (save for a small message in logcat). Synchronize on each method,
- * so we don't close the connection when another thread is using it.
+ * SQLite database adapter for MixpanelAPI.
+ *
+ * <p>Not thread-safe. Instances of this class should only be used
+ * by a single thread.
  *
  * @author anlu(Anlu Wang)
  *
@@ -86,33 +85,31 @@ class MPDbAdapter {
      * @return the number of rows in the table, or -1 on failure
      */
     public int addJSON(JSONObject j, String table) {
-        synchronized (this) {
-            if (MPConfig.DEBUG) { Log.d(LOGTAG, "addJSON " + table); }
+        if (MPConfig.DEBUG) { Log.d(LOGTAG, "addJSON " + table); }
 
-            Cursor c = null;
-            int count = -1;
+        Cursor c = null;
+        int count = -1;
 
-            try {
-                SQLiteDatabase db = mDb.getWritableDatabase();
+        try {
+            SQLiteDatabase db = mDb.getWritableDatabase();
 
-                ContentValues cv = new ContentValues();
-                cv.put(KEY_DATA, j.toString());
-                cv.put(KEY_CREATED_AT, System.currentTimeMillis());
-                db.insert(table, null, cv);
+            ContentValues cv = new ContentValues();
+            cv.put(KEY_DATA, j.toString());
+            cv.put(KEY_CREATED_AT, System.currentTimeMillis());
+            db.insert(table, null, cv);
 
-                c = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
-                c.moveToFirst();
-                count = c.getInt(0);
-            } catch (SQLiteException e) {
-                Log.e(LOGTAG, "addJSON " + table, e);
-            } finally {
-                mDb.close();
-                if (c != null) {
-                    c.close();
-                }
+            c = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
+            c.moveToFirst();
+            count = c.getInt(0);
+        } catch (SQLiteException e) {
+            Log.e(LOGTAG, "addJSON " + table, e);
+        } finally {
+            mDb.close();
+            if (c != null) {
+                c.close();
             }
-            return count;
         }
+        return count;
     }
 
     /**
@@ -121,18 +118,16 @@ class MPDbAdapter {
      * @param table the table to remove events from, either "events" or "people"
      */
     public void cleanupEvents(String last_id, String table) {
-        synchronized (this) {
-            if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents _id " + last_id + " from table " + table); }
+        if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents _id " + last_id + " from table " + table); }
 
-            try {
-                SQLiteDatabase db = mDb.getWritableDatabase();
-                db.delete(table, "_id <= " + last_id, null);
-            } catch (SQLiteException e) {
-                // If there's an exception, oh well, let the events persist
-                Log.e(LOGTAG, "cleanupEvents " + table, e);
-            } finally {
-                mDb.close();
-            }
+        try {
+            SQLiteDatabase db = mDb.getWritableDatabase();
+            db.delete(table, "_id <= " + last_id, null);
+        } catch (SQLiteException e) {
+            // If there's an exception, oh well, let the events persist
+            Log.e(LOGTAG, "cleanupEvents " + table, e);
+        } finally {
+            mDb.close();
         }
     }
 
@@ -142,18 +137,16 @@ class MPDbAdapter {
      * @param table the table to remove events from, either "events" or "people"
      */
     public void cleanupEvents(long time, String table) {
-        synchronized (this) {
-            if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents time " + time + " from table " + table); }
+        if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents time " + time + " from table " + table); }
 
-            try {
-                SQLiteDatabase db = mDb.getWritableDatabase();
-                db.delete(table, KEY_CREATED_AT + " <= " + time, null);
-            } catch (SQLiteException e) {
-                // If there's an exception, oh well, let the events persist
-                Log.e(LOGTAG, "cleanupEvents " + table, e);
-            } finally {
-                mDb.close();
-            }
+        try {
+            SQLiteDatabase db = mDb.getWritableDatabase();
+            db.delete(table, KEY_CREATED_AT + " <= " + time, null);
+        } catch (SQLiteException e) {
+            // If there's an exception, oh well, let the events persist
+            Log.e(LOGTAG, "cleanupEvents " + table, e);
+        } finally {
+            mDb.close();
         }
     }
 
@@ -166,46 +159,44 @@ class MPDbAdapter {
      * representing the events, or null if none could be successfully retrieved.
      */
     public String[] generateDataString(String table) {
-        synchronized (this) {
-            Cursor c = null;
-            String data = null;
-            String last_id = null;
+        Cursor c = null;
+        String data = null;
+        String last_id = null;
 
-            try {
-                SQLiteDatabase db = mDb.getReadableDatabase();
-                c = db.rawQuery("SELECT * FROM " + table  +
-                                " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
-                JSONArray arr = new JSONArray();
+        try {
+            SQLiteDatabase db = mDb.getReadableDatabase();
+            c = db.rawQuery("SELECT * FROM " + table  +
+                    " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
+            JSONArray arr = new JSONArray();
 
-                while (c.moveToNext()) {
-                    if (c.isLast()) {
-                        last_id = c.getString(c.getColumnIndex("_id"));
-                    }
-                    try {
-                        JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
-                        arr.put(j);
-                    } catch (JSONException e) {
-                        // Ignore this object
-                    }
+            while (c.moveToNext()) {
+                if (c.isLast()) {
+                    last_id = c.getString(c.getColumnIndex("_id"));
                 }
-
-                if (arr.length() > 0) {
-                    data = arr.toString();
-                }
-            } catch (SQLiteException e) {
-                Log.e(LOGTAG, "generateDataString " + table, e);
-            } finally {
-                mDb.close();
-                if (c != null) {
-                    c.close();
+                try {
+                    JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
+                    arr.put(j);
+                } catch (JSONException e) {
+                    // Ignore this object
                 }
             }
 
-            if (last_id != null && data != null) {
-                String[] ret = {last_id, data};
-                return ret;
+            if (arr.length() > 0) {
+                data = arr.toString();
             }
-            return null;
+        } catch (SQLiteException e) {
+            Log.e(LOGTAG, "generateDataString " + table, e);
+        } finally {
+            mDb.close();
+            if (c != null) {
+                c.close();
+            }
         }
+
+        if (last_id != null && data != null) {
+            String[] ret = {last_id, data};
+            return ret;
+        }
+        return null;
     }
 }

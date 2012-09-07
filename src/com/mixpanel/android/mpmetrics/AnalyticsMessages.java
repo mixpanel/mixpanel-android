@@ -1,41 +1,22 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
+import java.util.concurrent.SynchronousQueue;
 import org.json.JSONObject;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.StringUtils;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
  *
- * This class straddles the thread boundary between user threads and
- * a logical Mixpanel thread (a Threadpool with a zero or one Threads in it)
- *
- * Because we want the actual Mixpanel thread to die and restart as work comes and
- * goes, we can't use the more natural Looper/Handler pattern.
+ * <p>This class straddles the thread boundary between user threads and
+ * a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
 
@@ -44,18 +25,12 @@ import com.mixpanel.android.util.StringUtils;
      */
     /* package */ AnalyticsMessages(Context context) {
         mLogMixpanelMessages = false;
-        mDbAdapter = makeDbAdapter(context);
-
-        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
-        mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
-
-        mFlushTimer = makeFlushTimer();
+        mWorker = new Worker(context);
     }
 
     /**
      * Use this to get an instance of AnalyticsMessages instead of creating one directly
-     * for yourself. ONLY call this in the main UI thread or a thread with an existing
-     * Looper. (it may register Handlers with the current Looper)
+     * for yourself.
      *
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
@@ -74,39 +49,45 @@ import com.mixpanel.android.util.StringUtils;
         }
     }
 
-    // Public methods of this object should only be called
-    // from the main UI thread.
+    public void logPosts() {
+        mLogMixpanelMessages = true;
+    }
+
     public void eventsMessage(JSONObject eventsJson) {
-        sExecutor.submit(new EventsQueueTask(eventsJson));
+        Message m = Message.obtain();
+        m.what = ENQUEUE_EVENTS;
+        m.obj = eventsJson;
+
+        mWorker.runMessage(m);
     }
 
     public void peopleMessage(JSONObject peopleJson) {
-        sExecutor.submit(new PeopleQueueTask(peopleJson));
+        Message m = Message.obtain();
+        m.what = ENQUEUE_PEOPLE;
+        m.obj = peopleJson;
+
+        mWorker.runMessage(m);
     }
 
-    public void submitPeople() {
-        sExecutor.submit(new SubmitTask(FLUSH_PEOPLE));
-    }
+    public void postToServer() {
+        Message m = Message.obtain();
+        m.what = FLUSH_QUEUE;
 
-    public void submitEvents() {
-        sExecutor.submit(new SubmitTask(FLUSH_EVENTS));
-    }
-
-    public void enableLogAboutMessagesToMixpanel(boolean enable) {
-        mLogMixpanelMessages = enable;
+        mWorker.runMessage(m);
     }
 
     /////////////////////////////////////////////////////////
 
+    // For testing, to allow for Mocking.
     protected MPDbAdapter makeDbAdapter(Context context) {
-        return  new MPDbAdapter(context);
+        return new MPDbAdapter(context);
     }
 
-    protected FlushTimer makeFlushTimer() {
-        return new FlushTimer();
+    protected HttpPoster getPoster() {
+        return new HttpPoster();
     }
 
-    /////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////
 
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
@@ -116,227 +97,190 @@ import com.mixpanel.android.util.StringUtils;
         }
     }
 
-    /**
-     * To be posted to by the Mixpanel thread and constructed
-     * in the calling UI thread.
-     */
-    /* package */ class FlushTimer {
 
-        private class FlushHandler extends Handler {
+    // Worker will manage the (at most single) IO thread associated with
+    // this AnalyticsMessages instance.
+    private class Worker {
+        public Worker(Context context) {
+            mDbAdapter = makeDbAdapter(context);
+            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
+            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
+
+            mHandler = null;
+        }
+
+        public void runMessage(Message msg) {
+            synchronized(mHandlerLock) {
+                if (null == mHandler) { // Worker is dead, get another.
+                    mHandler = restartWorkerThread();
+                }
+
+                mHandler.sendMessage(msg);
+            }
+        }
+
+        // NOTE that the returned worker will not be set with a timeout-
+        // Timeouts will be scheduled after the first post is run (so if you
+        // grab a handler and don't post anything to it, you'll spawn a
+        // zombie thread that never dies.)
+        private Handler restartWorkerThread() {
+            Handler ret = null;
+
+            final SynchronousQueue<Handler> handlerQueue = new SynchronousQueue<Handler>();
+
+            Thread thread = new Thread() {
+                @Override
+                public void run() {
+                    Looper.prepare();
+
+                    try {
+                        handlerQueue.put(new AnalyticsMessageHandler());
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Couldn't build worker thread for Analytics Messages", e);
+                    }
+                    Looper.loop();
+                }
+            };
+            thread.setPriority(Thread.MIN_PRIORITY);
+            thread.start();
+
+            try {
+                ret = handlerQueue.take();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Couldn't retrieve handler from worker thread");
+            }
+
+            return ret;
+        }
+
+        private class AnalyticsMessageHandler extends Handler {
             @Override
             public void handleMessage(Message msg) {
-                if (msg.what == ENQUEUE_OPERATION) {
-                    Message debounced = (Message) msg.obj;
-                    if ((debounced.what == FLUSH_PEOPLE) && (! mEnqueuingPeople)) {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING people flush for later execution");
+                int queueDepth = -1;
 
-                        mEnqueuingPeople = true;
-                        sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
-                    }
-                    else if ((debounced.what == FLUSH_EVENTS) && (! mEnqueuingEvents)) {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "ENQUING events flush for later execution");
-                        mEnqueuingEvents = true;
-                        sendMessageDelayed(debounced, MPConfig.FLUSH_RATE);
-                    }
-                    else {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Ignoring delayed flush call, debouncing.");
+                if (msg.what == ENQUEUE_PEOPLE) {
+                    JSONObject message = (JSONObject) msg.obj;
+
+                    logAboutMessageToMixpanel("Queuing people record for sending later");
+                    logAboutMessageToMixpanel("    " + message.toString());
+
+                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.PEOPLE_TABLE);
+                }
+                else if (msg.what == ENQUEUE_EVENTS) {
+                    JSONObject message = (JSONObject) msg.obj;
+
+                    logAboutMessageToMixpanel("Queuing event for sending later");
+                    logAboutMessageToMixpanel("    " + message.toString());
+
+                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.EVENTS_TABLE);
+                }
+
+                if ((queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) ||
+                    (msg.what == FLUSH_QUEUE)) {
+                    updateFlushFrequency();
+                    sendAllData();
+                }
+                else if(queueDepth > 0) {
+                    if (!hasMessages(FLUSH_QUEUE)) {
+                        // The hasMessages check is a courtesy for the common case
+                        // of delayed flushes already enqueued from inside of this thread.
+                        // Callers outside of this thread can still send
+                        // a flush right here, so we may end up with two flushes
+                        // in our queue, but we're ok with that.
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, MPConfig.FLUSH_RATE);
                     }
                 }
-                else if (msg.what == FLUSH_PEOPLE) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing people flush");
 
-                    mEnqueuingPeople = false;
-                    submitPeople();
+                ///////////////////////
+
+                if (msg.what == TIMEOUT) {
+                    synchronized(mHandlerLock) {
+                        // While this block is running, we can be sure
+                        // that no new messages are being put on our queue.
+
+                        if (hasMessages(ENQUEUE_PEOPLE) ||
+                            hasMessages(ENQUEUE_EVENTS) ||
+                            hasMessages(FLUSH_QUEUE)) {
+                            // Don't timeout if we still have messages to process
+                        }
+                        else {
+                            mHandler = null;
+                            Looper.myLooper().quit();
+                        }
+                    }// synchronized
                 }
-                else if (msg.what == FLUSH_EVENTS) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Executing events flush");
 
-                    mEnqueuingEvents = false;
-                    submitEvents();
+                if (mHandler != null) {
+                    removeMessages(TIMEOUT);
+                    sendEmptyMessageDelayed(TIMEOUT, MPConfig.SUBMIT_THREAD_TTL);
                 }
             }
 
-            private boolean mEnqueuingPeople = false;
-            private boolean mEnqueuingEvents = false;
+            private void sendAllData() {
+                logAboutMessageToMixpanel("Sending records to Mixpanel");
+
+                sendData(MPDbAdapter.EVENTS_TABLE, MPConfig.BASE_ENDPOINT + "/track?ip=1");
+                sendData(MPDbAdapter.PEOPLE_TABLE, MPConfig.BASE_ENDPOINT + "/engage");
+            }
+
+            private void sendData(String table, String endpointUrl) {
+                String[] eventsData = mDbAdapter.generateDataString(table);
+
+                if (eventsData != null) {
+                    String lastId = eventsData[0];
+                    String rawMessage = eventsData[1];
+                    HttpPoster poster = getPoster();
+                    boolean eventsPosted = poster.postData(rawMessage, endpointUrl);
+                    if (eventsPosted) {
+                        logAboutMessageToMixpanel("Posted to " + endpointUrl);
+                        logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
+                        mDbAdapter.cleanupEvents(lastId, table);
+                    }
+                    else if (!hasMessages(FLUSH_QUEUE)) {
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, MPConfig.FLUSH_RATE);
+                    }
+                }
+            }
+        }// AnalyticsMessageHandler
+
+        private void updateFlushFrequency() {
+            long now = System.currentTimeMillis();
+            long newFlushCount = mFlushCount + 1;
+
+            if (mLastFlushTime > 0) {
+                long flushInterval = now - mLastFlushTime;
+                long totalFlushTime = flushInterval + (mAveFlushFrequency * mFlushCount);
+                mAveFlushFrequency = totalFlushTime / newFlushCount;
+
+                long seconds = mAveFlushFrequency / 1000;
+                logAboutMessageToMixpanel("Average send frequency approximately " + seconds + " seconds.");
+            }
+
+            mLastFlushTime = now;
+            mFlushCount = newFlushCount;
         }
 
-        public FlushTimer() {
-            mHandler = new FlushHandler();
-        }
+        private final Object mHandlerLock = new Object();
+        private final MPDbAdapter mDbAdapter; // Should only be used by the Handler
+        private Handler mHandler;
 
-        public void sendImmediateFlush(int flushType) {
-            mHandler.sendEmptyMessage(flushType);
-        }
-
-        // Will be called by the Mixpanel thread
-        public void sendDebouncedFlush(int flushType) {
-            Message inner = Message.obtain();
-            inner.what = flushType;
-
-            Message outer = Message.obtain();
-            outer.what = ENQUEUE_OPERATION;
-            outer.obj = inner;
-
-            mHandler.sendMessage(outer);
-        }
-
-        private final Handler mHandler;
-        private final int ENQUEUE_OPERATION = 100; // Must be distinct from FLUSH_PEOPLE and FLUSH_EVENTS
+        private long mFlushCount = 0;
+        private long mAveFlushFrequency = 0;
+        private long mLastFlushTime = -1;
     }
 
     /////////////////////////////////////////////////////////
 
-    private class EventsQueueTask implements Runnable {
-        private final JSONObject mDataObject;
-
-        public EventsQueueTask(JSONObject dataObject) {
-            mDataObject = dataObject;
-        }
-
-        @Override
-        public void run() {
-            logAboutMessageToMixpanel("Queuing event for sending later");
-            logAboutMessageToMixpanel("    " + mDataObject.toString());
-
-            int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.EVENTS_TABLE);
-            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                logAboutMessageToMixpanel("Events Queue is full, requesting a send (" + count + " messages in queue)");
-                mFlushTimer.sendImmediateFlush(FLUSH_EVENTS);
-            } else {
-                mFlushTimer.sendDebouncedFlush(FLUSH_EVENTS);
-            }
-        }
-    }
-
-    private class PeopleQueueTask implements Runnable {
-        private final JSONObject mDataObject;
-
-        public PeopleQueueTask(JSONObject dataObject) {
-            mDataObject = dataObject;
-        }
-
-        @Override
-        public void run() {
-            logAboutMessageToMixpanel("Queuing people record for sending later");
-            logAboutMessageToMixpanel("    " + mDataObject.toString());
-
-            int count = mDbAdapter.addJSON(mDataObject, MPDbAdapter.PEOPLE_TABLE);
-            if (MPConfig.TEST_MODE || count >= MPConfig.BULK_UPLOAD_LIMIT) {
-                logAboutMessageToMixpanel("People record queue is full, requesting a send");
-                mFlushTimer.sendImmediateFlush(FLUSH_PEOPLE);
-            } else {
-                mFlushTimer.sendDebouncedFlush(FLUSH_PEOPLE);
-            }
-        }
-    }
-
-    private class SubmitTask implements Runnable {
-        private final String table;
-        private final int messageType;
-
-        public SubmitTask(int messageType) {
-            this.messageType = messageType;
-            if (messageType == FLUSH_PEOPLE) {
-                table = MPDbAdapter.PEOPLE_TABLE;
-            } else {
-                table = MPDbAdapter.EVENTS_TABLE;
-            }
-        }
-
-        @Override
-        public void run() {
-            if (messageType == FLUSH_PEOPLE) {
-                logAboutMessageToMixpanel("Submitting people records to Mixpanel");
-            }
-            else {
-                logAboutMessageToMixpanel("Submitting events to Mixpanel");
-            }
-
-            String[] data = mDbAdapter.generateDataString(table);
-            if (data == null) {
-                logAboutMessageToMixpanel("    No data to submit.");
-                return;
-            }
-
-            String lastId = data[0];
-            String rawMessage = data[1];
-            String encodedData = Base64Coder.encodeString(rawMessage);
-
-            HttpClient httpclient = new DefaultHttpClient();
-            HttpPost httppost;
-            if (messageType == FLUSH_PEOPLE) {
-                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/engage");
-            } else {
-                httppost = new HttpPost(MPConfig.BASE_ENDPOINT + "/track?ip=1");
-            }
-
-            try {
-                List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
-                nameValuePairs.add(new BasicNameValuePair("data", encodedData));
-                httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-
-                HttpResponse response = httpclient.execute(httppost);
-                HttpEntity entity = response.getEntity();
-                if (entity == null) {
-                    mFlushTimer.sendDebouncedFlush(messageType);
-                    return;
-                }
-
-                try {
-                    String result = StringUtils.inputStreamToString(entity.getContent());
-                    if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "HttpResponse result: " + result);
-                    }
-                    if (!result.equals("1\n")) {
-                        mFlushTimer.sendDebouncedFlush(messageType);
-                        return;
-                    }
-                    logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
-
-                    // Success, so prune the database.
-                    mDbAdapter.cleanupEvents(lastId, table);
-
-                } catch (IOException e) {
-                    Log.e(LOGTAG, "SubmitTask " + table, e);
-                    mFlushTimer.sendDebouncedFlush(messageType);
-                    return;
-                } catch (OutOfMemoryError e) { //?
-                    Log.e(LOGTAG, "SubmitTask " + table, e);
-                    mFlushTimer.sendDebouncedFlush(messageType);
-                    return;
-                }
-            // Any exceptions, log them and stop this task.
-            } catch (ClientProtocolException e) {
-                Log.e(LOGTAG, "SubmitTask " + table, e);
-                mFlushTimer.sendDebouncedFlush(messageType);
-                return;
-            } catch (IOException e) {
-                Log.e(LOGTAG, "SubmitTask " + table, e);
-                mFlushTimer.sendDebouncedFlush(messageType);
-                return;
-            }
-        }
-    }
-
     private volatile boolean mLogMixpanelMessages; // Used across thread boundaries
+    private final Worker mWorker;
 
-    private final MPDbAdapter mDbAdapter;
-    private final FlushTimer mFlushTimer;
+    // Messages for our thread
+    private static int ENQUEUE_PEOPLE = 0; // submit events and people data
+    private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
+    private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
+    private static int TIMEOUT = 3; // Kill this looper if there is nothing left to do
 
-    private static int FLUSH_EVENTS = 0;
-    private static int FLUSH_PEOPLE = 1;
     private static final String LOGTAG = "MixpanelAPI";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
-
-    // Creates a single thread pool to perform the HTTP requests and insert events into sqlite
-    // The running thread will always be run at MIN_PRIORITY
-    // You should NOT increase the max size of this pool without some serious thinking,
-    // since the design above may assume that no submitted tasks are run concurrently.
-    private static ThreadPoolExecutor sExecutor =
-            new ThreadPoolExecutor(0, 1, MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new LowPriorityThreadFactory());
-
-    static {
-        sExecutor.setKeepAliveTime(MPConfig.SUBMIT_THREAD_TTL, TimeUnit.MILLISECONDS);
-    }
 }

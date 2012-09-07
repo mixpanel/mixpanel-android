@@ -7,12 +7,12 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
 import android.test.ActivityInstrumentationTestCase2;
-import android.test.UiThreadTest;
 
 import com.mixpanel.android.hellomixpanel.HelloMixpanel;
 
@@ -36,7 +36,6 @@ public class MixpanelBasicTest extends
         assertTrue(mActivity != null);
     }
 
-    @UiThreadTest
     public void testIdentifyAfterSet() {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 
@@ -108,48 +107,51 @@ public class MixpanelBasicTest extends
         }
     }
 
-    @UiThreadTest
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(mActivity) {
             @Override
             public int addJSON(JSONObject message, String table) {
-                boolean sentTable = messages.offer("TABLE " + table);
-                boolean sentMessage = messages.offer(message.toString());
 
-                if (! (sentTable && sentMessage)) {
-                    throw new RuntimeException("Test queue refused to accept a message.");
+                try {
+                    messages.put("TABLE " + table);
+                    messages.put(message.toString());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
 
                 return super.addJSON(message, table);
             }
         };
         mockAdapter.cleanupEvents(Long.MAX_VALUE, "events");
+        mockAdapter.cleanupEvents(Long.MAX_VALUE, "people");
+
+        final HttpPoster mockPoster = new HttpPoster() {
+            @Override
+            public boolean postData(String rawMessage, String endpointUrl) {
+                try {
+                    messages.put("SENT FLUSH " + endpointUrl);
+                    messages.put(rawMessage);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+                return true;
+            }
+        };
 
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
-
-            class MockFlushTimer extends FlushTimer {
-                @Override
-                public void sendImmediateFlush(int messageType) {
-                    String handlingString = "SENT FLUSH " + String.valueOf(messageType);
-                    messages.offer(handlingString);
-                    super.sendImmediateFlush(messageType);
-                }
-            }
-
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
             }
 
             @Override
-            protected FlushTimer makeFlushTimer() {
-                return new MockFlushTimer();
+            protected HttpPoster getPoster() {
+                return mockPoster;
             }
         };
-
-        // listener.enableLogAboutMessagesToMixpanel(true);
 
         MixpanelAPI metrics = new MixpanelAPI(mActivity, "Test Message Queuing") {
             @Override
@@ -157,6 +159,8 @@ public class MixpanelBasicTest extends
                  return listener;
             }
         };
+
+        // metrics.logPosts();
 
         // Test filling up the message queue
         for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
@@ -184,16 +188,59 @@ public class MixpanelBasicTest extends
             assertEquals("final event", message.getString("event"));
 
             String messageFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH " + String.valueOf(0), messageFlush);
+            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/track?ip=1", messageFlush);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONArray bigFlush = new JSONArray(expectedJSONMessage);
+            assertEquals(MPConfig.BULK_UPLOAD_LIMIT, bigFlush.length());
+
+            metrics.track("next wave", null);
+            metrics.flush();
+
+            String nextWaveTable = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, nextWaveTable);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONObject nextWaveMessage = new JSONObject(expectedJSONMessage);
+            assertEquals("next wave", nextWaveMessage.getString("event"));
+
+            String manualFlush = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/track?ip=1", manualFlush);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONArray nextWave = new JSONArray(expectedJSONMessage);
+            assertEquals(1, nextWave.length());
+
+            JSONObject nextWaveEvent = nextWave.getJSONObject(0);
+            assertEquals("next wave", nextWaveEvent.getString("event"));
+
+            metrics.getPeople().identify("new person");
+            metrics.getPeople().set("prop", "yup");
+            metrics.flush();
+
+            String peopleTable = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("TABLE " + MPDbAdapter.PEOPLE_TABLE, peopleTable);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONObject peopleMessage = new JSONObject(expectedJSONMessage);
+
+            assertEquals("new person", peopleMessage.getString("$distinct_id"));
+            assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
+
+            String peopleFlush = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/engage", peopleFlush);
+
+            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            JSONArray peopleSent = new JSONArray(expectedJSONMessage);
+            assertEquals(1, peopleSent.length());
+
         } catch (InterruptedException e) {
             fail("Expected a log message about mixpanel communication but did not recieve it.");
         } catch (JSONException e) {
             fail("Expected a JSON object message and got something silly instead: " + expectedJSONMessage);
         }
-
     }
 
-    @UiThreadTest
     public void testPersistence() {
         MixpanelAPI metricsOne = new MixpanelAPI(mActivity, "SAME TOKEN");
         metricsOne.clearPreferences();
