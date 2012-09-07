@@ -53,7 +53,7 @@ public class MixpanelAPI {
      *
      * <p>Use getInstance to get an instance of MixpanelAPI you can use to send events
      * and People Analytics updates to Mixpanel. You should call this method from
-     * and use the resulting object only from a single thread in your application
+     * and use the resulting object only from a single thread
      * (probably the main UI thread of your application)
      *
      * @param context The application context you are tracking
