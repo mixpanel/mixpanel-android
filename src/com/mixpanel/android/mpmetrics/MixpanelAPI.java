@@ -364,6 +364,8 @@ public class MixpanelAPI {
      * }
      * }
      * </pre>
+     *
+     * @see MixpanelAPI
      */
     public interface People {
         /**
