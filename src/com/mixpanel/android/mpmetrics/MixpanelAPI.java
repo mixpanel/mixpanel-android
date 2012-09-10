@@ -24,6 +24,60 @@ import android.util.Log;
  * an to get an instance you can use to report how users are using your
  * application.
  *
+ * <p>Once you have an instance, you can send events to Mixpanel
+ * using {@link #track(String, JSONObject)}, and update People Analytics
+ * records with {@link #getPeople()}
+ *
+ * <p>The Mixpanel library will periodically send information to
+ * Mixpanel servers, so your application will need to have
+ * <tt>android.permission.INTERNET</tt>. In addition, to preserve
+ * battery life, messages to Mixpanel servers may not be sent immediately
+ * when you call <tt>track</tt> or {@link People#set(String, Object)}.
+ * The library will send messages periodically throughout the lifetime
+ * of your application, but you will need to call {@link #flush()}
+ * before your application is completely shutdown to ensure all of your
+ * events are sent.
+ *
+ * <p>A typical use-case for the library might look like this:
+ *
+ * <pre>
+ * {@code
+ * public class MainActivity extends Activity {
+ *      MixpanelAPI mMixpanel;
+ *
+ *      public void onCreate(Bundle saved) {
+ *          mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL API TOKEN");
+ *          ...
+ *      }
+ *
+ *      public void whenSomethingInterestingHappens(int flavor) {
+ *          JSONObject properties = new JSONObject();
+ *          properties.put("flavor", flavor);
+ *          mMixpanel.track("Something Interesting Happened", properties);
+ *          ...
+ *      }
+ *
+ *      public void onDestroy() {
+ *          mMixpanel.flush();
+ *          super.onDestroy();
+ *      }
+ * }
+ * }
+ * </pre>
+ *
+ * <p>In addition to this documentation, you may wish to take a look at
+ * <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">the Mixpanel sample Android application</a>.
+ * It demonstrates a variety of techniques, including
+ * updating People Analytics records with {@link People} and registering for
+ * and receiving push notifications with {@link People#initPushHandling(String)}.
+ *
+ * <p>There are also <a href="https://mixpanel.com/docs/">step-by-step getting started documents</a>
+ * available at mixpanel.com
+ *
+ * @see <a href="https://mixpanel.com/docs/integration-libraries/android">getting started documentation for tracking events</a>
+ * @see <a href="https://mixpanel.com/docs/people-analytics/android">getting started documentation for People Analytics</a>
+ * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">getting started with push notifications for Android</a>
+ * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
     public static final String VERSION = "2.1";
@@ -276,11 +330,45 @@ public class MixpanelAPI {
     /**
      * Core interface for using Mixpanel People Analytics features.
      * You can get an instance by calling {@link MixpanelAPI#getPeople()}
+     *
+     * <p>The People object is used to update properties in a user's People Analytics record,
+     * and to manage the receipt of push notifications sent via Mixpanel Engage.
+     * For this reason, it's important to call {@link #identify(String)} on the People
+     * object before you work with it. Once you call identify, the user identity will
+     * persist across stops and starts of your application, until you make another
+     * call to identify using a different id.
+     *
+     * A typical use case for the People object might look like this:
+     *
+     * <pre>
+     * {@code
+     * public class MainActivity extends Activity {
+     *      MixpanelAPI mMixpanel;
+     *
+     *      public void onCreate(Bundle saved) {
+     *          mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL API TOKEN");
+     *          mMixpanel.getPeople().identify("A UNIQUE ID FOR THIS USER");
+     *          mMixpanel.getPeople().initPushHandling("YOUR 12 DIGIT GOOGLE SENDER API");
+     *          ...
+     *      }
+     *
+     *      public void userUpdatedJobTitle(String newTitle) {
+     *          mMixpanel.getPeople().set("Job Title", newTitle);
+     *          ...
+     *      }
+     *
+     *      public void onDestroy() {
+     *          mMixpanel.flush();
+     *          super.onDestroy();
+     *      }
+     * }
+     * }
+     * </pre>
      */
     public interface People {
         /**
-         * Associate future call to {@link #set(JSONObject)} and {@link #increment(Map)}
-         * with a particular People Analytics user.
+         * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
+         * and {@link #initPushHandling(String)} with a particular People Analytics user.
          *
          * <p>All future calls to the People object will rely on this value to assign
          * and increment properties. The user identification will persist across
