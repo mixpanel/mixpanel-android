@@ -273,19 +273,48 @@ public class MixpanelBasicTest extends
             }
         };
 
-        MixpanelAPI metricsTwo = new MixpanelAPI(mActivity, "SAME TOKEN") {
+        class ListeningAPI extends MixpanelAPI {
+            public ListeningAPI(Context c, String token) {
+                super(c, token);
+            }
+
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
             }
-        };
+        }
+
+        MixpanelAPI differentToken = new ListeningAPI(mActivity, "DIFFERENT TOKEN");
+        differentToken.track("other event", null);
+        differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
+
+        assertEquals(1, messages.size());
+
+        JSONObject eventMessage = messages.get(0);
+
+        try {
+            JSONObject eventProps = eventMessage.getJSONObject("properties");
+            String sentId = eventProps.getString("distinct_id");
+            String sentA = eventProps.optString("a");
+            String sentB = eventProps.optString("b");
+
+            assertFalse("Expected Events Identity".equals(sentId));
+            assertEquals("", sentA);
+            assertEquals("", sentB);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+
+        messages.clear();
+
+        MixpanelAPI metricsTwo = new ListeningAPI(mActivity, "SAME TOKEN");
 
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
         assertEquals(2, messages.size());
 
-        JSONObject eventMessage = messages.get(0);
+        eventMessage = messages.get(0);
         JSONObject peopleMessage = messages.get(1);
 
         try {
@@ -308,6 +337,7 @@ public class MixpanelBasicTest extends
             fail("Event message has an unexpected shape: " + peopleMessage.toString());
         }
     }
+
 
     private HelloMixpanel mActivity;
 }
