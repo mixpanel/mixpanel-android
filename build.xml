@@ -42,6 +42,12 @@
     <property name="out.dir" value="bin" />
     <property name="out.absolute.dir" location="${out.dir}" />
     <property name="out.classes.absolute.dir" location="${out.dir}/classes" />
+    <property name="demo.dir" value="demo/Hello Mixpanel" />
+    <property name="demo.absolute.dir" location="${demo.dir}" />
+    <property name="demo.out.dir" value="${demo.dir}/bin" />
+    <property name="demo.absolute.out.dir" location="${demo.out.dir}" />
+    <property name="demo.libs.dir" value="${demo.dir}/libs" />
+    <property name="demo.absolute.libs.dir" location="${demo.libs.dir}" />
 
     <!-- compilation options -->
     <property name="java.encoding" value="UTF-8" />
@@ -68,6 +74,7 @@
     <target name="clean">
       <delete dir="${out.absolute.dir}" />
       <delete dir="${docs.absolute.dir}" />
+      <delete dir="${demo.absolute.out.dir}" />
     </target>
 
     <target name="-setup">
@@ -96,7 +103,7 @@
       <jar destfile="MixpanelAPI_v2.1.jar"
            basedir="${out.classes.absolute.dir}"
            includes="**/*.class" />
-      <copy file="MixpanelAPI_v2.1.jar" tofile="demo/Hello Mixpanel/libs/MixpanelAPI_v2.1.jar" />
+      <copy file="MixpanelAPI_v2.1.jar" tofile="${demo.absolute.libs.dir}/MixpanelAPI_v2.1.jar" />
     </target>
 
     <target name="docs">
