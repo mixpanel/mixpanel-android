@@ -441,10 +441,13 @@ public class MixpanelAPI {
         public void deleteUser();
 
         /**
-         * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel.
+         * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel, using
+         * the Mixpanel {@link GCMReceiver} tool.
          *
          * <p>Calling this method will allow the Mixpanel libraries to handle GCM user
          * registration, and enable Mixpanel to show alerts when GCM messages arrive.
+         * See the {@link GCMReceiver} documentation for configuration and permissions
+         * that you will need in your AndroidManifest.xml
          *
          * <p>If you're planning to use end-to-end support for Messaging, we recommend you
          * call this method immediately after calling {@link People#identify(String)}, likely
@@ -460,6 +463,9 @@ public class MixpanelAPI {
          *     You can find your ID by looking at the URL of in your Google API Console
          *     at https://code.google.com/apis/console/; it is the twelve digit number after
          *     after "#project:" in the URL address bar on console pages.
+         *
+         * @see GCMReceiver
+         * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
          */
         public void initPushHandling(String senderID);
 

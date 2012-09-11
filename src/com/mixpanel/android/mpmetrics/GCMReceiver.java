@@ -40,6 +40,24 @@ import android.util.Log;
  *}
  *</pre>
  *
+ * <p>In addition, GCMReciever will also need the following permissions configured
+ * in your AndroidManifest.xml file:
+ *
+ * <pre>
+ * {@code
+ *
+ * <!-- Be sure to change YOUR_PACKAGE_NAME to the real name of your application package -->
+ * <permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+ * <uses-permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" />
+ *
+ * <uses-permission android:name="android.permission.INTERNET" />
+ * <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+ * <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+ * <uses-permission android:name="android.permission.WAKE_LOCK" />
+ *
+ * }
+ * </pre>
+ *
  * <p>Once the GCMReciever is configured, the only thing you have to do to
  * get set up Mixpanel messages is call {@link MixpanelAPI.People#identify(String) }
  * with a distinct id for your user, and call {@link MixpanelAPI.People#initPushHandling(String) }
@@ -62,6 +80,7 @@ import android.util.Log;
  *
  * @see MixpanelAPI#getPeople()
  * @see MixpanelAPI.People#initPushHandling(String)
+ * @see  @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
  */
 public class GCMReceiver extends BroadcastReceiver {
     String LOGTAG = "MPGCMReceiver";
