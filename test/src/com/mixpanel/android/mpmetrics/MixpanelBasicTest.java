@@ -107,6 +107,30 @@ public class MixpanelBasicTest extends
         }
     }
 
+    public void testIdentifyAndGetDistinctId() {
+        MixpanelAPI metrics = new MixpanelAPI(mActivity, "Identify Test Token");
+        metrics.clearPreferences();
+        String generatedId = metrics.getDistinctId();
+        assertNotNull(generatedId);
+
+        String emptyId = metrics.getPeople().getDistinctId();
+        assertNull(emptyId);
+
+        metrics.identify("Events Id");
+        String setId = metrics.getDistinctId();
+        assertEquals("Events Id", setId);
+
+        String stillEmpty = metrics.getPeople().getDistinctId();
+        assertNull(stillEmpty);
+
+        metrics.getPeople().identify("People Id");
+        String unchangedId = metrics.getDistinctId();
+        assertEquals("Events Id", unchangedId);
+
+        String setPeopleId = metrics.getPeople().getDistinctId();
+        assertEquals("People Id", setPeopleId);
+    }
+
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
