@@ -41,13 +41,8 @@ public class HelloMixpanel extends Activity {
 	                properties.put("some list", new JSONArray("[1,2,3,4,5]"));
                 } catch(JSONException e) { }
                 mMixpanel.track("Button Clicked", properties);
+                mMixpanel.flush();
             }
         });
-    }
-
-    @Override
-    public void onDestroy() {
-        mMixpanel.flush();
-        super.onDestroy();
     }
 }
