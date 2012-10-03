@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
+
 import org.json.JSONObject;
 
 import android.content.Context;
