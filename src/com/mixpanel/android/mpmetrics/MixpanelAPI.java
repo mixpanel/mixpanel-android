@@ -11,7 +11,6 @@ import org.json.JSONObject;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.provider.Settings;
@@ -700,15 +699,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            // Not awesome- this may be called multiple times
-            GCMReceiver registrar = new GCMReceiver();
-            IntentFilter registrations = new IntentFilter();
-            registrations.addAction("com.google.android.c2dm.intent.RECEIVE");
-            registrations.addAction("com.google.android.c2dm.intent.REGISTRATION");
-            registrations.addCategory("com.mixpanel.example.hello");
-
-            mContext.registerReceiver(registrar, registrations, "com.google.android.c2dm.permission.SEND", null);
-            // End dynamic listener registration
+            NotificationBroadcastReceiver.registerIfNeeded(mContext);
 
             String pushId = getPushId();
             if (pushId == null) {
