@@ -92,7 +92,7 @@ import android.util.Log;
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
-        if (MPConfig.DEBUG || mLogMixpanelMessages) {
+        if (mLogMixpanelMessages || MPConfig.DEBUG) {
             Log.i(LOGTAG, message);
         }
     }

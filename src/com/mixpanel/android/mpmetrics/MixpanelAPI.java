@@ -528,7 +528,7 @@ public class MixpanelAPI {
 
         /**
          * Returns the string id currently being used to uniquely identify the user associated
-         * with events sent using {@link #set(String, JSONObject)} and {@link #increment(String, long)}.
+         * with events sent using {@link People#set(String, Object)} and {@link People#increment(String, long)}.
          * If no calls to {@link People#identify(String)} have been made, this method will return null.
          *
          * <p>The id returned by getDistinctId is independent of the distinct id used to identify

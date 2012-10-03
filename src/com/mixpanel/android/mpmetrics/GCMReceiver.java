@@ -9,9 +9,8 @@ import android.content.Intent;
  * Users wishing to allow the Mixpanel library no longer have to include
  * references to this class, in their AndroidManifest.xml files.
  *
- * @see MixpanelAPI#getPeople()
  * @see MixpanelAPI.People#initPushHandling(String)
- * @see  @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
+ * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
  */
 @Deprecated
 public class GCMReceiver extends BroadcastReceiver {
