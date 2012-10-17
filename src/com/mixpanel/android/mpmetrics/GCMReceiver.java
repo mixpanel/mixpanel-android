@@ -6,8 +6,6 @@ import android.content.Intent;
 
 /**
  * GCMReceiver is a no-op class, maintained for historical reasons.
- * Users wishing to allow the Mixpanel library no longer have to include
- * references to this class in their AndroidManifest.xml files.
  *
  * @see MixpanelAPI.People#initPushHandling(String)
  * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>

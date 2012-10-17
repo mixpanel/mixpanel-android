@@ -126,6 +126,22 @@ public class MixpanelAPI {
     }
 
     /**
+     * Sets the target frequency of messages to Mixpanel servers.
+     * If no calls to {@link #flush()} are made, the Mixpanel
+     * library attempts to send tracking information in batches at a rate
+     * that provides a reasonable compromise between battery life and liveness of data.
+     * Callers can override this value, for the whole application, by calling
+     * <tt>setFlushInterval</tt>
+     *
+     * @param milliseconds the target number of milliseconds between automatic flushes.
+     *      this value is advisory, actual flushes may be more or less frequent
+     */
+    public static void setFlushInterval(Context context, long milliseconds) {
+        AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
+        msgs.setFlushInterval(milliseconds);
+    }
+
+    /**
      * Associate all future calls to {@link #track(String, JSONObject)} with the user identified by
      * the given distinct id.
      *

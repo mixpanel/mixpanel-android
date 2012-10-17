@@ -77,6 +77,14 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    public void setFlushInterval(long milliseconds) {
+        Message m = Message.obtain();
+        m.what = SET_FLUSH_INTERVAL;
+        m.obj = new Long(milliseconds);
+
+        mWorker.runMessage(m);
+    }
+
     /////////////////////////////////////////////////////////
 
     // For testing, to allow for Mocking.
@@ -159,7 +167,12 @@ import android.util.Log;
             public void handleMessage(Message msg) {
                 int queueDepth = -1;
 
-                if (msg.what == ENQUEUE_PEOPLE) {
+                if (msg.what == SET_FLUSH_INTERVAL) {
+                    Long newIntervalObj = (Long) msg.obj;
+                    mFlushInterval = newIntervalObj.longValue();
+                    removeMessages(FLUSH_QUEUE);
+                }
+                else if (msg.what == ENQUEUE_PEOPLE) {
                     JSONObject message = (JSONObject) msg.obj;
 
                     logAboutMessageToMixpanel("Queuing people record for sending later");
@@ -176,6 +189,8 @@ import android.util.Log;
                     queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.EVENTS_TABLE);
                 }
 
+                ///////////////////////////
+
                 if ((queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) ||
                     (msg.what == FLUSH_QUEUE)) {
                     updateFlushFrequency();
@@ -188,7 +203,7 @@ import android.util.Log;
                         // Callers outside of this thread can still send
                         // a flush right here, so we may end up with two flushes
                         // in our queue, but we're ok with that.
-                        sendEmptyMessageDelayed(FLUSH_QUEUE, MPConfig.FLUSH_RATE);
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                     }
                 }
 
@@ -215,7 +230,7 @@ import android.util.Log;
                     removeMessages(TIMEOUT);
                     sendEmptyMessageDelayed(TIMEOUT, MPConfig.SUBMIT_THREAD_TTL);
                 }
-            }
+            }// handleMessage
 
             private void sendAllData() {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
@@ -238,7 +253,7 @@ import android.util.Log;
                         mDbAdapter.cleanupEvents(lastId, table);
                     }
                     else if (!hasMessages(FLUSH_QUEUE)) {
-                        sendEmptyMessageDelayed(FLUSH_QUEUE, MPConfig.FLUSH_RATE);
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                     }
                 }
             }
@@ -265,6 +280,7 @@ import android.util.Log;
         private final MPDbAdapter mDbAdapter; // Should only be used by the Handler
         private Handler mHandler;
 
+        private long mFlushInterval = MPConfig.FLUSH_RATE;
         private long mFlushCount = 0;
         private long mAveFlushFrequency = 0;
         private long mLastFlushTime = -1;
@@ -280,6 +296,7 @@ import android.util.Log;
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
     private static int TIMEOUT = 3; // Kill this looper if there is nothing left to do
+    private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
 
     private static final String LOGTAG = "MixpanelAPI";
 
