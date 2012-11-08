@@ -10,6 +10,21 @@ Demo:
 
 Changelog:
 
+v2.1.1
+---------------------
+
+* Experimental Feature: Allow users to set default timing for sending server messages
+
+  Users can use MixpanelAPI.setFlushInterval to increase or decrease
+  the default frequency of server messages.
+
+* More robust tests
+
+* Changes to error handling
+
+  Mixpanel will no longer retry sending messages when it encounters
+  out of memory errors during send.
+
 v2.1
 ---------------------
 
