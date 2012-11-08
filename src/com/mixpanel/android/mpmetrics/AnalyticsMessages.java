@@ -85,6 +85,13 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    public void hardKill() {
+        Message m = Message.obtain();
+        m.what = KILL_WORKER;
+
+        mWorker.runMessage(m);
+    }
+
     /////////////////////////////////////////////////////////
 
     // For testing, to allow for Mocking.
@@ -121,6 +128,7 @@ import android.util.Log;
         public void runMessage(Message msg) {
             synchronized(mHandlerLock) {
                 if (null == mHandler) { // Worker is dead, get another.
+                    logAboutMessageToMixpanel("Starting new worker thread");
                     mHandler = restartWorkerThread();
                 }
 
@@ -140,6 +148,9 @@ import android.util.Log;
             Thread thread = new Thread() {
                 @Override
                 public void run() {
+                    if (MPConfig.DEBUG)
+                        Log.i(LOGTAG, "Starting worker thread " + this.getId());
+
                     Looper.prepare();
 
                     try {
@@ -169,6 +180,7 @@ import android.util.Log;
 
                 if (msg.what == SET_FLUSH_INTERVAL) {
                     Long newIntervalObj = (Long) msg.obj;
+                    logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
                     mFlushInterval = newIntervalObj.longValue();
                     removeMessages(FLUSH_QUEUE);
                 }
@@ -190,9 +202,15 @@ import android.util.Log;
                 }
 
                 ///////////////////////////
+                logAboutMessageToMixpanel("Queue depth " + queueDepth);
 
-                if ((queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) ||
-                    (msg.what == FLUSH_QUEUE)) {
+                if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
+                    logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
+                    updateFlushFrequency();
+                    sendAllData();
+                }
+                else if (msg.what == FLUSH_QUEUE) {
+                    logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                     updateFlushFrequency();
                     sendAllData();
                 }
@@ -222,8 +240,19 @@ import android.util.Log;
                         else {
                             mHandler = null;
                             Looper.myLooper().quit();
+                            logAboutMessageToMixpanel("Analytics messages worker dying of idleness. Thread id " + Thread.currentThread().getId());
                         }
                     }// synchronized
+                }
+
+                if (msg.what == KILL_WORKER) {
+                    Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
+                    synchronized(mHandlerLock) {
+                        mDbAdapter.deleteAllEvents(MPDbAdapter.EVENTS_TABLE);
+                        mDbAdapter.deleteAllEvents(MPDbAdapter.PEOPLE_TABLE);
+                        mHandler = null;
+                        Looper.myLooper().quit();
+                    }
                 }
 
                 if (mHandler != null) {
@@ -245,15 +274,21 @@ import android.util.Log;
                 if (eventsData != null) {
                     String lastId = eventsData[0];
                     String rawMessage = eventsData[1];
-                    HttpPoster poster = getPoster();
-                    boolean eventsPosted = poster.postData(rawMessage, endpointUrl);
-                    if (eventsPosted) {
+                    HttpPoster.PostResult eventsPosted = getPoster().postData(rawMessage, endpointUrl);
+
+                    if (eventsPosted == HttpPoster.PostResult.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
                         logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
                         mDbAdapter.cleanupEvents(lastId, table);
                     }
-                    else if (!hasMessages(FLUSH_QUEUE)) {
-                        sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                    else if (eventsPosted == HttpPoster.PostResult.FAILED_RECOVERABLE) {
+                        // Try again later
+                        if (!hasMessages(FLUSH_QUEUE)) {
+                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                        }
+                    }
+                    else { // give up, we have an unrecoverable failure.
+                        mDbAdapter.cleanupEvents(lastId, table);
                     }
                 }
             }
@@ -297,6 +332,7 @@ import android.util.Log;
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
     private static int TIMEOUT = 3; // Kill this looper if there is nothing left to do
     private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
+    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue.
 
     private static final String LOGTAG = "MixpanelAPI";
 

@@ -131,8 +131,10 @@ public class MixpanelAPI {
      * library attempts to send tracking information in batches at a rate
      * that provides a reasonable compromise between battery life and liveness of data.
      * Callers can override this value, for the whole application, by calling
-     * <tt>setFlushInterval</tt>
+     * <tt>setFlushInterval</tt>.
      *
+     * @param context the execution context associated with this application, probably
+     *      the main application activity.
      * @param milliseconds the target number of milliseconds between automatic flushes.
      *      this value is advisory, actual flushes may be more or less frequent
      */

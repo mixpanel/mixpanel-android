@@ -56,6 +56,8 @@ class MPDbAdapter {
 
         @Override
         public void onCreate(SQLiteDatabase db) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Creating a new Mixpanel events DB");
+
             db.execSQL(CREATE_EVENTS_TABLE);
             db.execSQL(CREATE_PEOPLE_TABLE);
             db.execSQL(EVENTS_TIME_INDEX);
@@ -64,6 +66,8 @@ class MPDbAdapter {
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
+
             db.execSQL("DROP TABLE IF EXISTS " + EVENTS_TABLE);
             db.execSQL("DROP TABLE IF EXISTS " + PEOPLE_TABLE);
             db.execSQL(CREATE_EVENTS_TABLE);
@@ -74,6 +78,8 @@ class MPDbAdapter {
     }
 
     public MPDbAdapter(Context context) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel Database adapter constructed in context " + context);
+
         mDb = new MPDatabaseHelper(context);
     }
 
@@ -149,6 +155,24 @@ class MPDbAdapter {
             mDb.close();
         }
     }
+
+    /**
+     * Drops *all* queued events from our table.
+     * @param table
+     */
+    public void deleteAllEvents(String table) {
+        try {
+            SQLiteDatabase db = mDb.getWritableDatabase();
+            db.delete(table, null, null);
+        } catch (SQLiteException e) {
+            // If there's an exception, oh well, let the events persist
+            Log.e(LOGTAG, "deleteAllEvents " + table, e);
+        } finally {
+            mDb.close();
+        }
+    }
+
+
 
     /**
      * Returns the data string to send to Mixpanel and the maximum ID of the row that

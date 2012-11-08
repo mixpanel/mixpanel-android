@@ -20,22 +20,31 @@ import com.mixpanel.android.util.StringUtils;
 
 /* package */ class HttpPoster {
 
-    // Will return true only if the request was successful
-    public boolean postData(String rawMessage, String endpointUrl) {
-        boolean sent = false;
+    public static enum PostResult {
+        // The post was sent and understood by the Mixpanel service.
+        SUCCEEDED,
 
+        // The post couldn't be sent (for example, because there was no connectivity)
+        // but might work later.
+        FAILED_RECOVERABLE,
+
+        // The post itself is bad/unsendable (for example, too big for system memory)
+        // and shouldn't be retried.
+        FAILED_UNRECOVERABLE
+    };
+
+    // Will return true only if the request was successful
+    public PostResult postData(String rawMessage, String endpointUrl) {
         String encodedData = Base64Coder.encodeString(rawMessage);
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
 
-        sent = postHttpRequest(endpointUrl, nameValuePairs);
-        return sent;
+        return postHttpRequest(endpointUrl, nameValuePairs);
     }
 
-    // Will return true only if the request was successful.
-    public boolean postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
-        boolean ret = false;
+    private PostResult postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+        PostResult ret = PostResult.FAILED_RECOVERABLE;
         HttpClient httpclient = new DefaultHttpClient();
         HttpPost httppost = new HttpPost(endpointUrl);
 
@@ -46,12 +55,16 @@ import com.mixpanel.android.util.StringUtils;
 
             if (entity != null) {
                 String result = StringUtils.inputStreamToString(entity.getContent());
-                ret = result.equals("1\n");
+                if (result.equals("1\n")) {
+                    ret = PostResult.SUCCEEDED;
+                }
             }
         } catch (IOException e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers", e);
+            ret = PostResult.FAILED_RECOVERABLE;
         } catch (OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers", e);
+            ret = PostResult.FAILED_UNRECOVERABLE;
         }
 
         return ret;

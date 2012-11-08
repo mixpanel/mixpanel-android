@@ -14,22 +14,26 @@ import org.json.JSONObject;
 import android.content.Context;
 import android.test.ActivityInstrumentationTestCase2;
 
-import com.mixpanel.android.hellomixpanel.HelloMixpanel;
+import com.mixpanel.android.dummy.DummyActivity;
 
 public class MixpanelBasicTest extends
-        ActivityInstrumentationTestCase2<HelloMixpanel> {
+        ActivityInstrumentationTestCase2<DummyActivity> {
 
     public MixpanelBasicTest(){
-        super("com.mixpanel.android.hellomixpanel", HelloMixpanel.class);
+        super("com.mixpanel.android.dummy", DummyActivity.class);
     }
 
     @Override
     protected void setUp() throws Exception {
       super.setUp();
+      mActivity = getActivity();
 
       setActivityInitialTouchMode(false);
 
-      mActivity = getActivity();
+
+      AnalyticsMessages messages = AnalyticsMessages.getInstance(mActivity);
+      messages.hardKill();
+      Thread.sleep(500);
     } // end of setUp() method definition
 
     public void testTrivialRunning() {
@@ -54,8 +58,8 @@ public class MixpanelBasicTest extends
         };
 
         mixpanel.clearPreferences();
-        MixpanelAPI.People people = mixpanel.getPeople();
 
+        MixpanelAPI.People people = mixpanel.getPeople();
         people.increment("the prop", 100);
         people.set("the prop", 1);
         people.increment("the prop", 2);
@@ -132,12 +136,13 @@ public class MixpanelBasicTest extends
     }
 
     public void testMessageQueuing() {
+        MixpanelAPI.setFlushInterval(mActivity, Long.MAX_VALUE);
+
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(mActivity) {
             @Override
             public int addJSON(JSONObject message, String table) {
-
                 try {
                     messages.put("TABLE " + table);
                     messages.put(message.toString());
@@ -153,7 +158,7 @@ public class MixpanelBasicTest extends
 
         final HttpPoster mockPoster = new HttpPoster() {
             @Override
-            public boolean postData(String rawMessage, String endpointUrl) {
+            public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(rawMessage);
@@ -161,7 +166,7 @@ public class MixpanelBasicTest extends
                     throw new RuntimeException(e);
                 }
 
-                return true;
+                return HttpPoster.PostResult.SUCCEEDED;
             }
         };
 
@@ -183,7 +188,6 @@ public class MixpanelBasicTest extends
                  return listener;
             }
         };
-
         // metrics.logPosts();
 
         // Test filling up the message queue
@@ -263,6 +267,82 @@ public class MixpanelBasicTest extends
         } catch (JSONException e) {
             fail("Expected a JSON object message and got something silly instead: " + expectedJSONMessage);
         }
+    }
+
+    public void testHTTPFailures() {
+
+        final List<HttpPoster.PostResult> results = new ArrayList<HttpPoster.PostResult>();
+        results.add(HttpPoster.PostResult.SUCCEEDED);
+        results.add(HttpPoster.PostResult.FAILED_RECOVERABLE);
+        results.add(HttpPoster.PostResult.FAILED_UNRECOVERABLE);
+        results.add(HttpPoster.PostResult.FAILED_RECOVERABLE);
+        results.add(HttpPoster.PostResult.SUCCEEDED);
+
+        final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
+
+        final HttpPoster mockPoster = new HttpPoster() {
+            @Override
+            public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
+                try {
+                    JSONArray msg = new JSONArray(rawMessage);
+                    JSONObject event = msg.getJSONObject(0);
+                    attempts.put(event.getString("event"));
+                } catch (JSONException e) {
+                    throw new RuntimeException("Malformed data passed to test mock");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Could not write message to reporting queue for tests.");
+                }
+                return results.remove(0);
+            }
+        };
+
+        final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
+            @Override
+            protected HttpPoster getPoster() {
+                return mockPoster;
+            }
+        };
+
+        MixpanelAPI metrics = new MixpanelAPI(mActivity, "Test Message Queuing") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                 return listener;
+            }
+        };
+
+        try {
+            metrics.track("Should Succeed", null);
+            metrics.flush(); // Should result in SUCCEEDED
+            Thread.sleep(200);
+
+            metrics.track("Should Retry, then Fail", null);
+            metrics.flush();
+            Thread.sleep(200);
+            metrics.flush();
+
+            metrics.track("Should Retry, then Succeed", null);
+            metrics.flush();
+            Thread.sleep(200);
+            metrics.flush();
+
+            String success1 = attempts.poll(1, TimeUnit.SECONDS);
+            assertEquals(success1, "Should Succeed");
+
+            String recoverable2 = attempts.poll(1, TimeUnit.SECONDS);
+            assertEquals(recoverable2, "Should Retry, then Fail");
+
+            String hard_fail3 = attempts.poll(1, TimeUnit.SECONDS);
+            assertEquals(hard_fail3, "Should Retry, then Fail");
+
+            String recoverable4 = attempts.poll(1, TimeUnit.SECONDS);
+            assertEquals(recoverable4, "Should Retry, then Succeed");
+
+            String success5 = attempts.poll(1, TimeUnit.SECONDS);
+            assertEquals(success5, "Should Retry, then Succeed");
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Test was interrupted.");
+        }
+
     }
 
     public void testPersistence() {
@@ -363,5 +443,5 @@ public class MixpanelBasicTest extends
     }
 
 
-    private HelloMixpanel mActivity;
+    private DummyActivity mActivity;
 }
