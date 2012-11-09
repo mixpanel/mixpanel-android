@@ -8,12 +8,17 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 /**
@@ -80,7 +85,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "2.1";
+    public static final String VERSION = "2.1.1";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -91,11 +96,9 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
 
-        mCarrier = Build.BRAND;
-        mModel = Build.MODEL;
-        mVersion = Build.VERSION.RELEASE;
         mDeviceId = getDeviceId();
         mMessages = getAnalyticsMessages();
+        mSystemInformation = getSystemInformation();
 
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
@@ -193,14 +196,10 @@ public class MixpanelAPI {
             JSONObject dataObj = new JSONObject();
 
             dataObj.put("event", eventName);
-            JSONObject propertiesObj = new JSONObject();
+            JSONObject propertiesObj = getDefaultEventProperties();
             propertiesObj.put("token", mToken);
             propertiesObj.put("time", time);
             propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
-            propertiesObj.put("carrier", mCarrier == null ? "UNKNOWN" : mCarrier);
-            propertiesObj.put("model",  mModel == null ? "UNKNOWN" : mModel);
-            propertiesObj.put("version", mVersion == null ? "UNKNOWN" : mVersion);
-            propertiesObj.put("mp_lib", "android");
 
             for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
                 String key = (String) iter.next();
@@ -585,6 +584,10 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext);
     }
 
+    /* package */ SystemInformation getSystemInformation() {
+        return new SystemInformation(mContext);
+    }
+
     /* package */ void clearPreferences() {
         // Will clear persistent identify distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
@@ -768,6 +771,57 @@ public class MixpanelAPI {
         }
     }
 
+    private JSONObject getDefaultEventProperties()
+                throws JSONException {
+        JSONObject ret = new JSONObject();
+
+        ret.put("mp_lib", "android");
+        ret.put("mp_lib_version", VERSION);
+        ret.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+        ret.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
+        ret.put("$android_device", Build.DEVICE == null ? "UNKNOWN" : Build.DEVICE);
+        ret.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+
+
+        DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
+        ret.put("$android_screen_dpi", displayMetrics.densityDpi);
+
+        // Always assume portrait mode.
+        int height = Math.max(displayMetrics.heightPixels, displayMetrics.widthPixels);
+        int width = Math.min(displayMetrics.heightPixels, displayMetrics.widthPixels);
+
+        ret.put("$android_screen_height", height);
+        ret.put("$android_screen_width", width);
+
+        String applicationVersionName = mSystemInformation.getAppVersionName();
+        if (null != applicationVersionName)
+            ret.put("application version name", applicationVersionName);
+
+        Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
+        if (null != applicationVersionCode)
+            ret.put("application version code", applicationVersionCode.intValue());
+
+        Boolean hasNFC = mSystemInformation.hasNFC();
+        if (null != hasNFC)
+            ret.put("$android_has_nfc", hasNFC.booleanValue());
+
+        Boolean hasTelephony = mSystemInformation.hasTelephony();
+        if (null != hasTelephony)
+            ret.put("$android_is_telephone", hasTelephony.booleanValue());
+
+        String phoneRadioType = mSystemInformation.getPhoneRadioType();
+        if (null != phoneRadioType)
+            ret.put("$android_phone_radio_type", phoneRadioType);
+
+        if (PackageManager.PERMISSION_GRANTED == mContext.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE)) {
+            ConnectivityManager connManager = (ConnectivityManager) this.mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo networkInfo = connManager.getActiveNetworkInfo();
+            ret.put("$android_network_type", networkInfo.getTypeName());
+        }
+
+        return ret;
+    }
+
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
            JSONObject sets = mWaitingPeopleRecord.setMessage();
@@ -847,12 +901,10 @@ public class MixpanelAPI {
     private static HashMap<String, MixpanelAPI> mInstanceMap = new HashMap<String, MixpanelAPI>();
 
     private final Context mContext;
+    private final SystemInformation mSystemInformation;
     private final AnalyticsMessages mMessages;
 
     private final String mToken;
-    private final String mCarrier;
-    private final String mModel;
-    private final String mVersion;
     private final String mDeviceId;
     private final PeopleImpl mPeople;
 
