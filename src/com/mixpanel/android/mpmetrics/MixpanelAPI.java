@@ -8,14 +8,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
@@ -85,7 +81,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "2.1.1";
+    public static final String VERSION = "2.2";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -776,48 +772,39 @@ public class MixpanelAPI {
         JSONObject ret = new JSONObject();
 
         ret.put("mp_lib", "android");
-        ret.put("mp_lib_version", VERSION);
-        ret.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
-        ret.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
-        ret.put("$android_device", Build.DEVICE == null ? "UNKNOWN" : Build.DEVICE);
-        ret.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+        ret.put("$lib_version", VERSION);
 
+        // For querying together with data from other libraries
+        ret.put("$os", "Android");
+        ret.put("$os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+
+        ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+        ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
 
         DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
-        ret.put("$android_screen_dpi", displayMetrics.densityDpi);
-
-        // Always assume portrait mode.
-        int height = Math.max(displayMetrics.heightPixels, displayMetrics.widthPixels);
-        int width = Math.min(displayMetrics.heightPixels, displayMetrics.widthPixels);
-
-        ret.put("$android_screen_height", height);
-        ret.put("$android_screen_width", width);
+        ret.put("$screen_dpi", displayMetrics.densityDpi);
+        ret.put("$screen_height", displayMetrics.heightPixels);
+        ret.put("$screen_width", displayMetrics.widthPixels);
 
         String applicationVersionName = mSystemInformation.getAppVersionName();
         if (null != applicationVersionName)
-            ret.put("application version name", applicationVersionName);
-
-        Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
-        if (null != applicationVersionCode)
-            ret.put("application version code", applicationVersionCode.intValue());
+            ret.put("$app_version", applicationVersionName);
 
         Boolean hasNFC = mSystemInformation.hasNFC();
         if (null != hasNFC)
-            ret.put("$android_has_nfc", hasNFC.booleanValue());
+            ret.put("$has_nfc", hasNFC.booleanValue());
 
         Boolean hasTelephony = mSystemInformation.hasTelephony();
         if (null != hasTelephony)
-            ret.put("$android_is_telephone", hasTelephony.booleanValue());
+            ret.put("$has_telephone", hasTelephony.booleanValue());
 
-        String phoneRadioType = mSystemInformation.getPhoneRadioType();
-        if (null != phoneRadioType)
-            ret.put("$android_phone_radio_type", phoneRadioType);
+        String carrier = mSystemInformation.getCurrentNetworkOperator();
+        if (null != carrier)
+            ret.put("$carrier", carrier);
 
-        if (PackageManager.PERMISSION_GRANTED == mContext.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE)) {
-            ConnectivityManager connManager = (ConnectivityManager) this.mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo networkInfo = connManager.getActiveNetworkInfo();
-            ret.put("$android_network_type", networkInfo.getTypeName());
-        }
+        Boolean isWifi = mSystemInformation.isWifiConnected();
+        if (null != isWifi)
+            ret.put("$wifi", isWifi.booleanValue());
 
         return ret;
     }

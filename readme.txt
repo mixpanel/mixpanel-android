@@ -10,8 +10,14 @@ Demo:
 
 Changelog:
 
-v2.1.1
+v2.2
 ---------------------
+
+* Changes to default properties sent with every event
+
+  "Built-in" properties and names have changed for richer and more
+  accurate names, and to conform with future versions of the iOS
+  library.
 
 * Experimental Feature: Allow users to set default timing for sending server messages
 
