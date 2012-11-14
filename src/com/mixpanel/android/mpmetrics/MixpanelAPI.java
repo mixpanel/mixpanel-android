@@ -778,6 +778,7 @@ public class MixpanelAPI {
         ret.put("$os", "Android");
         ret.put("$os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
 
+        ret.put("$manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
         ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
         ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
 
