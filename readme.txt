@@ -8,6 +8,10 @@ Documentation:
 Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
 
+License:
+    See LICENSE File for details. The Base64Coder class used by this software has been licensed from non-Mixpanel sources, 
+    and modified for use in the library. Please see Base64Coder.java for details.
+
 Changelog:
 
 v2.2
@@ -107,3 +111,4 @@ v1.0 (original)
 * Renamed the event method to track, to be more consistent with the existing APIs. 
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+ 
