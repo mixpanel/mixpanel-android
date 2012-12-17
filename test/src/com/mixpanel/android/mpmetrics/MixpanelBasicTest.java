@@ -52,25 +52,25 @@ public class MixpanelBasicTest extends
         JSONObject after = new JSONObject(afterMap);
 
         MPDbAdapter adapter = new MPDbAdapter(mActivity, "DeleteTestDB");
-        adapter.addJSON(before, MPDbAdapter.EVENTS_TABLE);
-        adapter.addJSON(before, MPDbAdapter.PEOPLE_TABLE);
+        adapter.addJSON(before, MPDbAdapter.Table.EVENTS);
+        adapter.addJSON(before, MPDbAdapter.Table.PEOPLE);
         adapter.deleteDB();
 
-        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.EVENTS_TABLE);
+        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
         assertEquals(emptyEventsData, null);
-        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.PEOPLE_TABLE);
+        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
         assertEquals(emptyPeopleData, null);
 
-        adapter.addJSON(after, MPDbAdapter.EVENTS_TABLE);
-        adapter.addJSON(after, MPDbAdapter.PEOPLE_TABLE);
+        adapter.addJSON(after, MPDbAdapter.Table.EVENTS);
+        adapter.addJSON(after, MPDbAdapter.Table.PEOPLE);
 
         try {
-            String[] someEventsData = adapter.generateDataString(MPDbAdapter.EVENTS_TABLE);
+            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
             JSONArray someEvents = new JSONArray(someEventsData[1]);
             assertEquals(someEvents.length(), 1);
             assertEquals(someEvents.getJSONObject(0).get("added"), "after");
 
-            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.PEOPLE_TABLE);
+            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
             JSONArray somePeople = new JSONArray(somePeopleData[1]);
             assertEquals(somePeople.length(), 1);
             assertEquals(somePeople.getJSONObject(0).get("added"), "after");
@@ -181,9 +181,9 @@ public class MixpanelBasicTest extends
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(mActivity) {
             @Override
-            public int addJSON(JSONObject message, String table) {
+            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
                 try {
-                    messages.put("TABLE " + table);
+                    messages.put("TABLE " + table.getName());
                     messages.put(message.toString());
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
@@ -192,8 +192,8 @@ public class MixpanelBasicTest extends
                 return super.addJSON(message, table);
             }
         };
-        mockAdapter.cleanupEvents(Long.MAX_VALUE, "events");
-        mockAdapter.cleanupEvents(Long.MAX_VALUE, "people");
+        mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
+        mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
         final HttpPoster mockPoster = new HttpPoster() {
             @Override
@@ -240,7 +240,7 @@ public class MixpanelBasicTest extends
         try {
             for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
                 String messageTable = messages.poll(1, TimeUnit.SECONDS);
-                assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, messageTable);
+                assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
                 expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
                 JSONObject message = new JSONObject(expectedJSONMessage);
@@ -248,7 +248,7 @@ public class MixpanelBasicTest extends
             }
 
             String messageTable = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, messageTable);
+            assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONObject message = new JSONObject(expectedJSONMessage);
@@ -265,7 +265,7 @@ public class MixpanelBasicTest extends
             metrics.flush();
 
             String nextWaveTable = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("TABLE " + MPDbAdapter.EVENTS_TABLE, nextWaveTable);
+            assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), nextWaveTable);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONObject nextWaveMessage = new JSONObject(expectedJSONMessage);
@@ -286,7 +286,7 @@ public class MixpanelBasicTest extends
             metrics.flush();
 
             String peopleTable = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("TABLE " + MPDbAdapter.PEOPLE_TABLE, peopleTable);
+            assertEquals("TABLE " + MPDbAdapter.Table.PEOPLE.getName(), peopleTable);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONObject peopleMessage = new JSONObject(expectedJSONMessage);

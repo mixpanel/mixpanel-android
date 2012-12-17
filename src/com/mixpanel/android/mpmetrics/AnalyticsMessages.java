@@ -119,8 +119,8 @@ import android.util.Log;
     private class Worker {
         public Worker(Context context) {
             mDbAdapter = makeDbAdapter(context);
-            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.EVENTS_TABLE);
-            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.PEOPLE_TABLE);
+            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
+            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
 
             mHandler = null;
         }
@@ -190,7 +190,7 @@ import android.util.Log;
                     logAboutMessageToMixpanel("Queuing people record for sending later");
                     logAboutMessageToMixpanel("    " + message.toString());
 
-                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.PEOPLE_TABLE);
+                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                 }
                 else if (msg.what == ENQUEUE_EVENTS) {
                     JSONObject message = (JSONObject) msg.obj;
@@ -198,7 +198,7 @@ import android.util.Log;
                     logAboutMessageToMixpanel("Queuing event for sending later");
                     logAboutMessageToMixpanel("    " + message.toString());
 
-                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.EVENTS_TABLE);
+                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                 }
 
                 ///////////////////////////
@@ -263,11 +263,11 @@ import android.util.Log;
             private void sendAllData() {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
 
-                sendData(MPDbAdapter.EVENTS_TABLE, MPConfig.BASE_ENDPOINT + "/track?ip=1");
-                sendData(MPDbAdapter.PEOPLE_TABLE, MPConfig.BASE_ENDPOINT + "/engage");
+                sendData(MPDbAdapter.Table.EVENTS, MPConfig.BASE_ENDPOINT + "/track?ip=1");
+                sendData(MPDbAdapter.Table.PEOPLE, MPConfig.BASE_ENDPOINT + "/engage");
             }
 
-            private void sendData(String table, String endpointUrl) {
+            private void sendData(MPDbAdapter.Table table, String endpointUrl) {
                 String[] eventsData = mDbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
