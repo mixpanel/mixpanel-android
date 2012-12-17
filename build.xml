@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="MixpanelAPI_v2.2">
+<project name="MixpanelAPI_v2.2.1">
 
     <!-- The local.properties file is created and updated by the 'android' tool.
          It contains the path to the SDK. It should *NOT* be checked into
@@ -99,11 +99,11 @@
     </target>
 
     <target name="library" depends="compile">
-      <jar destfile="MixpanelAPI_v2.2.jar"
+      <jar destfile="MixpanelAPI_v2.2.1.jar"
            basedir="${out.classes.absolute.dir}"
            includes="**/*.class" />
-      <copy file="MixpanelAPI_v2.2.jar" tofile="${demo.absolute.libs.dir}/MixpanelAPI_v2.2.jar" />
-      <copy file="MixpanelAPI_v2.2.jar" tofile="${test.absolute.libs.dir}/MixpanelAPI_v2.2.jar" />
+      <copy file="MixpanelAPI_v2.2.1.jar" tofile="${demo.absolute.libs.dir}/MixpanelAPI_v2.2.1.jar" />
+      <copy file="MixpanelAPI_v2.2.1.jar" tofile="${test.absolute.libs.dir}/MixpanelAPI_v2.2.1.jar" />
     </target>
 
     <target name="docs">
