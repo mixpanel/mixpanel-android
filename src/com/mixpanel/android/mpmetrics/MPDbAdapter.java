@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.io.File;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -50,8 +52,16 @@ class MPDbAdapter {
     private final MPDatabaseHelper mDb;
 
     private static class MPDatabaseHelper extends SQLiteOpenHelper {
-        MPDatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        MPDatabaseHelper(Context context, String dbName) {
+            super(context, dbName, null, DATABASE_VERSION);
+            mDatabaseFile = context.getDatabasePath(dbName);
+        }
+
+        /**
+         * Completely deletes the DB file from the file system.
+         */
+        public void deleteDatabase() {
+            mDatabaseFile.delete();
         }
 
         @Override
@@ -75,12 +85,18 @@ class MPDbAdapter {
             db.execSQL(EVENTS_TIME_INDEX);
             db.execSQL(PEOPLE_TIME_INDEX);
         }
+
+        private final File mDatabaseFile;
     }
 
     public MPDbAdapter(Context context) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel Database adapter constructed in context " + context);
+        this(context, DATABASE_NAME);
+    }
 
-        mDb = new MPDatabaseHelper(context);
+    public MPDbAdapter(Context context, String dbName) {
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel Database (" + dbName + ") adapter constructed in context " + context);
+
+        mDb = new MPDatabaseHelper(context, dbName);
     }
 
     /**
@@ -156,22 +172,9 @@ class MPDbAdapter {
         }
     }
 
-    /**
-     * Drops *all* queued events from our table.
-     * @param table
-     */
-    public void deleteAllEvents(String table) {
-        try {
-            SQLiteDatabase db = mDb.getWritableDatabase();
-            db.delete(table, null, null);
-        } catch (SQLiteException e) {
-            // If there's an exception, oh well, let the events persist
-            Log.e(LOGTAG, "deleteAllEvents " + table, e);
-        } finally {
-            mDb.close();
-        }
+    public void deleteDB() {
+        mDb.deleteDatabase();
     }
-
 
 
     /**

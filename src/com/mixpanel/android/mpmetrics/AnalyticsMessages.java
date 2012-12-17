@@ -248,8 +248,7 @@ import android.util.Log;
                 if (msg.what == KILL_WORKER) {
                     Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                     synchronized(mHandlerLock) {
-                        mDbAdapter.deleteAllEvents(MPDbAdapter.EVENTS_TABLE);
-                        mDbAdapter.deleteAllEvents(MPDbAdapter.PEOPLE_TABLE);
+                        mDbAdapter.deleteDB();
                         mHandler = null;
                         Looper.myLooper().quit();
                     }

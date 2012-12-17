@@ -2,7 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +40,43 @@ public class MixpanelBasicTest extends
 
     public void testTrivialRunning() {
         assertTrue(mActivity != null);
+    }
+
+    public void testDeleteDB() {
+        Map<String, String> beforeMap = new HashMap<String, String>();
+        beforeMap.put("added", "before");
+        JSONObject before = new JSONObject(beforeMap);
+
+        Map<String, String> afterMap = new HashMap<String,String>();
+        afterMap.put("added", "after");
+        JSONObject after = new JSONObject(afterMap);
+
+        MPDbAdapter adapter = new MPDbAdapter(mActivity, "DeleteTestDB");
+        adapter.addJSON(before, MPDbAdapter.EVENTS_TABLE);
+        adapter.addJSON(before, MPDbAdapter.PEOPLE_TABLE);
+        adapter.deleteDB();
+
+        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.EVENTS_TABLE);
+        assertEquals(emptyEventsData, null);
+        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.PEOPLE_TABLE);
+        assertEquals(emptyPeopleData, null);
+
+        adapter.addJSON(after, MPDbAdapter.EVENTS_TABLE);
+        adapter.addJSON(after, MPDbAdapter.PEOPLE_TABLE);
+
+        try {
+            String[] someEventsData = adapter.generateDataString(MPDbAdapter.EVENTS_TABLE);
+            JSONArray someEvents = new JSONArray(someEventsData[1]);
+            assertEquals(someEvents.length(), 1);
+            assertEquals(someEvents.getJSONObject(0).get("added"), "after");
+
+            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.PEOPLE_TABLE);
+            JSONArray somePeople = new JSONArray(somePeopleData[1]);
+            assertEquals(somePeople.length(), 1);
+            assertEquals(somePeople.getJSONObject(0).get("added"), "after");
+        } catch (JSONException e) {
+            fail("Unexpected JSON or lack thereof in MPDbAdapter test");
+        }
     }
 
     public void testIdentifyAfterSet() {
