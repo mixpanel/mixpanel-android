@@ -72,6 +72,7 @@ class MPDbAdapter {
          * Completely deletes the DB file from the file system.
          */
         public void deleteDatabase() {
+            close();
             mDatabaseFile.delete();
         }
 
@@ -136,9 +137,13 @@ class MPDbAdapter {
             c.moveToFirst();
             count = c.getInt(0);
         } catch (SQLiteException e) {
-            Log.e(LOGTAG, "addJSON " + tableName, e);
+            Log.e(LOGTAG, "addJSON " + tableName + " FAILED. Deleting DB.", e);
 
-            // If we have a failure here, it's unlikely to clear up on its own.
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
         } finally {
             mDb.close();
             if (c != null) {
@@ -161,8 +166,13 @@ class MPDbAdapter {
             SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, "_id <= " + last_id, null);
         } catch (SQLiteException e) {
-            // If there's an exception, oh well, let the events persist
-            Log.e(LOGTAG, "cleanupEvents " + tableName, e);
+            Log.e(LOGTAG, "cleanupEvents " + tableName + " by id FAILED. Deleting DB.", e);
+
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
         } finally {
             mDb.close();
         }
@@ -181,8 +191,13 @@ class MPDbAdapter {
             SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, KEY_CREATED_AT + " <= " + time, null);
         } catch (SQLiteException e) {
-            // If there's an exception, oh well, let the events persist
-            Log.e(LOGTAG, "cleanupEvents " + tableName, e);
+            Log.e(LOGTAG, "cleanupEvents " + tableName + " by time FAILED. Deleting DB.", e);
+
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
         } finally {
             mDb.close();
         }
@@ -230,6 +245,13 @@ class MPDbAdapter {
             }
         } catch (SQLiteException e) {
             Log.e(LOGTAG, "generateDataString " + tableName, e);
+
+            // We'll dump the DB on write failures, but with reads we can
+            // let things ride in hopes the issue clears up.
+            // (A bit more likely, since we're opening the DB for read and not write.)
+            // A corrupted or disk-full DB will be cleaned up on the next write or clear call.
+            last_id = null;
+            data = null;
         } finally {
             mDb.close();
             if (c != null) {
