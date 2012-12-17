@@ -14,6 +14,13 @@ License:
 
 Changelog:
 
+v2.2.1
+---------------------
+* Changes to handling of catastrophic database failures (for example, full disks)
+
+  The Mixpanel library will now truncate its database in the face of full disks or corrupted
+  databases.
+
 v2.2
 ---------------------
 
