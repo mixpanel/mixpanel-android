@@ -17,7 +17,7 @@ import android.util.Log;
 
 class NotificationBroadcastReceiver extends BroadcastReceiver {
 
-    String LOGTAG = "NotificationBroadcastReceiver";
+    private static String LOGTAG = "NotificationBroadcastReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -31,6 +31,7 @@ class NotificationBroadcastReceiver extends BroadcastReceiver {
 
     /* package */ static synchronized void registerIfNeeded(Context registrationContext) {
         if (sAlreadyRegistered.containsKey(registrationContext)) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "NotificationBroadcastReceiver already registered");
             return;
         }
 
@@ -38,10 +39,12 @@ class NotificationBroadcastReceiver extends BroadcastReceiver {
         IntentFilter registrations = new IntentFilter();
         registrations.addAction("com.google.android.c2dm.intent.RECEIVE");
         registrations.addAction("com.google.android.c2dm.intent.REGISTRATION");
-        registrations.addCategory("com.mixpanel.example.hello");
+        registrations.addCategory(registrationContext.getPackageName());
 
         registrationContext.registerReceiver(registrar, registrations, "com.google.android.c2dm.permission.SEND", null);
         sAlreadyRegistered.put(registrationContext, true);
+
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Registered to recieve notifications for package name " + registrationContext.getPackageName());
     }
 
 
