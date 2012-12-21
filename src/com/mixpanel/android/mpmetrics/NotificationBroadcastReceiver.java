@@ -77,7 +77,14 @@ class NotificationBroadcastReceiver extends BroadcastReceiver {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
 
         PackageManager manager = context.getPackageManager();
-        Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
+        Intent launchAppIntent = manager.getLaunchIntentForPackage(context.getPackageName());
+        PendingIntent contentIntent = PendingIntent.getActivity(
+                context.getApplicationContext(),
+                0,
+                launchAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+            );
+
         CharSequence notificationTitle = "";
         int notificationIcon = android.R.drawable.sym_def_app_icon;
         try {
@@ -87,13 +94,6 @@ class NotificationBroadcastReceiver extends BroadcastReceiver {
         } catch (NameNotFoundException e) {
             // In this case, use a blank title and default icon
         }
-
-        PendingIntent contentIntent = PendingIntent.getActivity(
-            context.getApplicationContext(),
-            0,
-            appIntent,   // add this pass null to intent
-            PendingIntent.FLAG_UPDATE_CURRENT
-        );
 
         NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
