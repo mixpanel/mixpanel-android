@@ -14,6 +14,14 @@ License:
 
 Changelog:
 
+v2.2.3
+---------------------
+* Use SSL api endpoint by default
+
+v2.2.2
+---------------------
+* Fix to of initPushHandling
+
 v2.2.1
 ---------------------
 * Changes to handling of catastrophic database failures (for example, full disks)
