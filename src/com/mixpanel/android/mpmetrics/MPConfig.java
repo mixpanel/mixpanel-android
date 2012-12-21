@@ -18,7 +18,7 @@ package com.mixpanel.android.mpmetrics;
 
     // Base url that track requests will be sent to. Events will be sent to /track
     // and people requests will be sent to /engage
-    public static final String BASE_ENDPOINT = "http://api.mixpanel.com";
+    public static final String BASE_ENDPOINT = "https://api.mixpanel.com";
 
     // Time in milliseconds that the AnalyticsMessages thread must be idle for before it dies.
     // Must be reconfigured before the library is initialized for the first time.
