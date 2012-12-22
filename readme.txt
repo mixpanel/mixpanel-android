@@ -9,10 +9,30 @@ Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
 
 License:
-    See LICENSE File for details. The Base64Coder class used by this software has been licensed from non-Mixpanel sources, 
+    See LICENSE File for details. The Base64Coder class used by this software has been licensed from non-Mixpanel sources,
     and modified for use in the library. Please see Base64Coder.java for details.
 
 Changelog:
+
+v2.3.0
+---------------------
+* Major change to the handling of automatically assigned distinct ids
+
+  In version 2.3, library-assigned distinct ids are randomly generated
+  and stored as needed. If you are upgrading from an older version
+  that used the automatically generated distinct id, and you want to
+  maintain the same distinct id across upgrades, you can generate it
+  with the following code:
+
+      String androidId = Settings.Secure.getString(mContext.getContentResolver(), Settings.Secure.ANDROID_ID);
+      String oldStyleId = Build.PRODUCT + '_' + androidId;
+      mMixpanel.identify(oldStyleId);
+
+* Stop using version in artifact name
+
+  New versions of the Mixpanel library are named "MixpanelAPI.jar",
+  rather than "MixpanelAPI_vXXX.jar".
+
 
 v2.2.3
 ---------------------

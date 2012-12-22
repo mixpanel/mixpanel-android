@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -13,7 +14,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -81,7 +81,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "2.2.3";
+    public static final String VERSION = "2.3.0";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -92,7 +92,6 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
 
-        mDeviceId = getDeviceId();
         mMessages = getAnalyticsMessages();
         mSystemInformation = getSystemInformation();
 
@@ -195,15 +194,15 @@ public class MixpanelAPI {
             JSONObject propertiesObj = getDefaultEventProperties();
             propertiesObj.put("token", mToken);
             propertiesObj.put("time", time);
-            propertiesObj.put("distinct_id", mDeviceId == null ? "UNKNOWN" : mDeviceId);
 
             for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
                 String key = (String) iter.next();
                 propertiesObj.put(key, mSuperProperties.get(key));
             }
 
-            if (mEventsDistinctId != null) {
-                propertiesObj.put("distinct_id", mEventsDistinctId);
+            String eventsId = getDistinctId();
+            if (eventsId != null) {
+                propertiesObj.put("distinct_id", eventsId);
             }
 
             if (properties != null) {
@@ -585,7 +584,7 @@ public class MixpanelAPI {
     }
 
     /* package */ void clearPreferences() {
-        // Will clear persistent identify distinct_ids, superProperties,
+        // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
 
@@ -753,20 +752,6 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
-    /**
-     * Return the unique device identifier of the phone
-     * @return  A String containing the device's unique identifier
-     */
-    private String getDeviceId() {
-        String product = Build.PRODUCT;
-        String androidId = Settings.Secure.getString(mContext.getContentResolver(), Settings.Secure.ANDROID_ID);
-        if (product == null || androidId == null) {
-            return null;
-        } else {
-            return product + "_" + androidId;
-        }
-    }
-
     private JSONObject getDefaultEventProperties()
                 throws JSONException {
         JSONObject ret = new JSONObject();
@@ -861,7 +846,8 @@ public class MixpanelAPI {
         }
 
         if (mEventsDistinctId == null) {
-            mEventsDistinctId = mDeviceId;
+            mEventsDistinctId = UUID.randomUUID().toString();
+            writeIdentities();
         }
 
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
@@ -893,7 +879,6 @@ public class MixpanelAPI {
     private final AnalyticsMessages mMessages;
 
     private final String mToken;
-    private final String mDeviceId;
     private final PeopleImpl mPeople;
 
     private final SharedPreferences mStoredPreferences;

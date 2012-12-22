@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +41,18 @@ public class MixpanelBasicTest extends
 
     public void testTrivialRunning() {
         assertTrue(mActivity != null);
+    }
+
+    public void testGeneratedDistinctId() {
+        String fakeToken = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(mActivity, fakeToken);
+        String generatedId1 = mixpanel.getDistinctId();
+        assertTrue(generatedId1 != null);
+
+        mixpanel.clearPreferences();
+        String generatedId2 = mixpanel.getDistinctId();
+        assertTrue(generatedId2 != null);
+        assertTrue(generatedId1 != generatedId2);
     }
 
     public void testDeleteDB() {
