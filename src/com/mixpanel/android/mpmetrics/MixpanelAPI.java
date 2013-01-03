@@ -711,22 +711,30 @@ public class MixpanelAPI {
                 return;
             }
 
-            ConfigurationChecker.checkManifest(mContext); // will log warnings if we have configuration problems.
-
-            String pushId = getPushId();
-            if (pushId == null) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
-
-                Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-                registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
-                registrationIntent.putExtra("sender", senderID);
-                mContext.startService(registrationIntent);
-            } else {
-                for (String token : mInstanceMap.keySet()) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
-                    mInstanceMap.get(token).getPeople().setPushRegistrationId(pushId);
-                }
+            if (! ConfigurationChecker.checkManifest(mContext) ) {
+                Log.w(LOGTAG, "Can't start push notification service. Push notifications will not work.");
+                Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
+            else { // Config is good for push notifications
+                String pushId = getPushId();
+                if (pushId == null) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
+
+                    try {
+                        Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+                        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
+                        registrationIntent.putExtra("sender", senderID);
+                        mContext.startService(registrationIntent);
+                    } catch (SecurityException e) {
+                        Log.w(LOGTAG, e);
+                    }
+                } else {
+                    for (String token : mInstanceMap.keySet()) {
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
+                        mInstanceMap.get(token).getPeople().setPushRegistrationId(pushId);
+                    }
+                }
+            }// endelse
         }
 
         @Override

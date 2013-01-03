@@ -146,7 +146,7 @@ import android.util.Log;
     public static String sampleConfigurationMessage(String packageName) {
         return
         "<receiver android:name=\"com.mixpanel.android.mpmetrics.GCMReceiver\"\n" +
-        "          android:permission=\"com.google.android.c2dm.permission.SEND\" >" +
+        "          android:permission=\"com.google.android.c2dm.permission.SEND\" >\n" +
         "    <intent-filter>\n" +
         "       <action android:name=\"com.google.android.c2dm.intent.RECEIVE\" />\n" +
         "       <action android:name=\"com.google.android.c2dm.intent.REGISTRATION\" />\n" +
