@@ -15,11 +15,29 @@ License:
 
 Changelog:
 
-v2.3.0
+v3.0.0
 ---------------------
-* Major change to the handling of automatically assigned distinct ids
 
-  In version 2.3, library-assigned distinct ids are randomly generated
+* Major change to configuration necessary for push notifications
+
+  In version 3.0, you will need to add the following receiver to the <application> tag
+  in your AndroidManifest.xml file to receive push notifications using initPushNotification.
+
+  <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+            android:permission="com.google.android.c2dm.permission.SEND" >
+      <intent-filter>
+          <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+          <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+          <category android:name="YOUR_PACKAGE_NAME" />
+      </intent-filter>
+  </receiver>
+
+  Be sure to replace "YOUR_PACKAGE_NAME" above with the package name of your project
+  (The value of the "package" attribute in your <manifest> tag.)
+
+* Backward incompatible change: Major change to the handling of automatically assigned distinct ids
+
+  In version 3.0, library-assigned distinct ids are randomly generated
   and stored as needed. If you are upgrading from an older version
   that used the automatically generated distinct id, and you want to
   maintain the same distinct id across upgrades, you can generate it
