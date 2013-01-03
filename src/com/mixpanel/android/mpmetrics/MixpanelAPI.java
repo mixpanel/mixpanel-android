@@ -711,8 +711,6 @@ public class MixpanelAPI {
                 return;
             }
 
-            NotificationBroadcastReceiver.registerIfNeeded(mContext);
-
             String pushId = getPushId();
             if (pushId == null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
