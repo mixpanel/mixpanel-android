@@ -10,7 +10,7 @@ Demo:
 
 License:
     See LICENSE File for details. The Base64Coder class and ConfigurationChecker class used by
-    this software have been licensed from non-Mixpanel sources, and modified for use in the library.
+    this software have been licensed from non-Mixpanel sources and modified for use in the library.
     Please see the relevant source files for details.
 
 Changelog:

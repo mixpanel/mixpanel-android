@@ -80,7 +80,7 @@ import android.util.Log;
 *
 * @see MixpanelAPI#getPeople()
 * @see MixpanelAPI.People#initPushHandling(String)
-* @see @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
+* @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
 */
 public class GCMReceiver extends BroadcastReceiver {
     String LOGTAG = "MPGCMReceiver";

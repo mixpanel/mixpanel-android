@@ -477,9 +477,25 @@ public class MixpanelAPI {
          * <p>Calling this method will allow the Mixpanel libraries to handle GCM user
          * registration, and enable Mixpanel to show alerts when GCM messages arrive.
          *
+         * <p>To use initPushHandling(), you will need to add the following to your application manifest:
+         *
+         * {@code
+         * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+         *           android:permission="com.google.android.c2dm.permission.SEND" >
+         *     <intent-filter>
+         *         <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+         *         <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+         *         <category android:name="YOUR_PACKAGE_NAME" />
+         *     </intent-filter>
+         * </receiver>
+         * }
+         *
+         * <p>Be sure to replace "YOUR_PACKAGE_NAME" with the name of your package. For
+         * more information and a list of necessary permissions, see {@link GCMReceiver}.
+         *
          * <p>If you're planning to use end-to-end support for Messaging, we recommend you
          * call this method immediately after calling {@link People#identify(String)}, likely
-         * early in your application's lifecycle. (for example, in the onCreate method of your
+         * early in your application's life cycle. (for example, in the onCreate method of your
          * main application activity.)
          *
          * <p>Calls to {@link #initPushHandling(String)} should not be mixed with calls to
@@ -487,11 +503,13 @@ public class MixpanelAPI {
          * in the same application. Application authors should choose one or the other
          * method for handling Mixpanel GCM messages.
          *
+         *
          * @param senderID of the Google API Project that registered for Google Cloud Messaging
          *     You can find your ID by looking at the URL of in your Google API Console
          *     at https://code.google.com/apis/console/; it is the twelve digit number after
          *     after "#project:" in the URL address bar on console pages.
          *
+         * @see com.mixpanel.android.mpmetrics.GCMReceiver
          * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
          */
         public void initPushHandling(String senderID);
@@ -565,7 +583,7 @@ public class MixpanelAPI {
         mMessages.logPosts();
     }
 
-    // Package-level access. Used (at least) by NotificationBroadcastReceiver
+    // Package-level access. Used (at least) by GCMReceiver
     // when OS-level events occur.
     /* package */ static Map<String, MixpanelAPI> allInstances() {
         return mInstanceMap;
@@ -705,17 +723,13 @@ public class MixpanelAPI {
 
         @Override
         public void initPushHandling(String senderID) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "registerForPush");
-            if (Build.VERSION.SDK_INT < 8) { // older than froyo
-                Log.i(LOGTAG, "Push not supported SDK " + Build.VERSION.SDK + ": ignoring call to initPushHandling");
-                return;
-            }
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "initPushHandling");
 
-            if (! ConfigurationChecker.checkManifest(mContext) ) {
-                Log.w(LOGTAG, "Can't start push notification service. Push notifications will not work.");
+            if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
+                Log.i(LOGTAG, "Can't start push notification service. Push notifications will not work.");
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
-            else { // Config is good for push notifications
+            else { // Configuration is good for push notifications
                 String pushId = getPushId();
                 if (pushId == null) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");

@@ -11,6 +11,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.util.Log;
 
 /*
@@ -39,7 +40,14 @@ import android.util.Log;
 
     public static String LOGTAG = "MixpanelAPI.ConfigurationChecker";
 
-    public static boolean checkManifest(Context context) {
+    public static boolean checkPushConfiguration(Context context) {
+
+        if (Build.VERSION.SDK_INT < 8) {
+            // Not a warning, may be expected behavior
+            Log.i(LOGTAG, "Push not supported in SDK " + Build.VERSION.SDK);
+            return false;
+        }
+
         PackageManager packageManager = context.getPackageManager();
         String packageName = context.getPackageName();
         String permissionName = packageName + ".permission.C2D_MESSAGE";
