@@ -711,6 +711,8 @@ public class MixpanelAPI {
                 return;
             }
 
+            ConfigurationChecker.checkManifest(mContext); // will log warnings if we have configuration problems.
+
             String pushId = getPushId();
             if (pushId == null) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");

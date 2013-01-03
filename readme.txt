@@ -9,8 +9,9 @@ Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
 
 License:
-    See LICENSE File for details. The Base64Coder class used by this software has been licensed from non-Mixpanel sources,
-    and modified for use in the library. Please see Base64Coder.java for details.
+    See LICENSE File for details. The Base64Coder class and ConfigurationChecker class used by
+    this software have been licensed from non-Mixpanel sources, and modified for use in the library.
+    Please see the relevant source files for details.
 
 Changelog:
 
