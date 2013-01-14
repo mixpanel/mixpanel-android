@@ -1,8 +1,13 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import org.json.JSONArray;
@@ -464,6 +469,28 @@ public class MixpanelAPI {
         public void increment(Map<String, Long> properties);
 
         /**
+         * Appends a value to a list-valued property. If the property does not currently exist,
+         * it will be created as a list of one element. If the property does exist and doesn't
+         * currently have a list value, the append will be ignored.
+         * @param name the People Analytics property that should have it's value appended to
+         * @param value the new value that will appear at the end of the property's list
+         */
+        public void append(String name, Object value);
+
+        /**
+         * Track a revenue transaction for the identified people profile.
+         *
+         * @param amount the amount of money exchanged. Positive amounts represent purchases or income from the customer, negative amounts represent refunds or payments to the customer.
+         * @param properties an optional collection of properties to associate with this transaction.
+         */
+        public void trackCharge(double amount, JSONObject properties);
+
+        /**
+         * Permanently clear the whole transaction history for the identified people profile.
+         */
+        public void clearCharges();
+
+        /**
          * Permanently deletes the identified user's record from People Analytics.
          *
          * <p>Calling deleteUser deletes an entire record completely. Any future calls
@@ -682,6 +709,66 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void append(String name, Object value) {
+            try {
+                JSONObject properties = new JSONObject();
+                properties.put(name, value);
+                this.append(properties);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception appending a property", e);
+            }
+        }
+
+        // NOT AN OVERRIDE
+        /* package */ void append(JSONObject properties) {
+            try {
+                if (mPeopleDistinctId == null) {
+                    if (mWaitingPeopleRecord == null)
+                        mWaitingPeopleRecord = new WaitingPeopleRecord();
+
+                    mWaitingPeopleRecord.appendToWaitingPeopleRecord(properties);
+                }
+                else {
+                    JSONObject message = stdPeopleMessage("$append", properties);
+                    mMessages.peopleMessage(message);
+                }
+            } catch(JSONException e) {
+                Log.e(LOGTAG, "Can't create append message", e);
+            }
+        }
+
+        @Override
+        public void trackCharge(double amount, JSONObject metaData) {
+            Date now = new Date();
+
+            try {
+                JSONObject transactionValue = new JSONObject();
+                transactionValue.put("$amount", amount);
+                transactionValue.put("$time", ENGAGE_DATE_FORMAT.format(now));
+
+                if (null != metaData) {
+                    for (Iterator<?> iter = metaData.keys(); iter.hasNext();) {
+                        String key = (String) iter.next();
+                        transactionValue.put(key, transactionValue.get(key));
+                    }
+                }
+
+                this.append("$transactions", transactionValue);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception creating new charge", e);
+            }
+        }
+
+        /**
+         * Permanently clear the whole transaction history for the identified people profile.
+         */
+        @Override
+        public void clearCharges() {
+            JSONArray empty = new JSONArray();
+            this.set("$transactions", empty);
+        }
+
+        @Override
         public void deleteUser() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
             if (mPeopleDistinctId == null) {
@@ -821,9 +908,21 @@ public class MixpanelAPI {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
            JSONObject sets = mWaitingPeopleRecord.setMessage();
            Map<String, Long> adds = mWaitingPeopleRecord.incrementMessage();
+           List<JSONObject> appends = mWaitingPeopleRecord.appendMessages();
 
            getPeople().set(sets);
            getPeople().increment(adds);
+           for(JSONObject appendPairs: appends) {
+               for(Iterator<?> keysIter = appendPairs.keys(); keysIter.hasNext();) {
+                   try {
+                       String key = (String) keysIter.next();
+                       Object appendVal = appendPairs.get(key);
+                       getPeople().append(key, appendVal);
+                   } catch (JSONException e) {
+                       Log.e(LOGTAG, "Couldn't send stored append", e);
+                   }
+               }// for key to append
+           }// for append message in waiting props
         }
 
         mWaitingPeopleRecord = null;
@@ -892,6 +991,10 @@ public class MixpanelAPI {
     }
 
     private static final String LOGTAG = "MixpanelAPI";
+    private static final DateFormat ENGAGE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    static {
+        ENGAGE_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
 
     // Maps each token to a singleton MixpanelAPI instance
     private static HashMap<String, MixpanelAPI> mInstanceMap = new HashMap<String, MixpanelAPI>();

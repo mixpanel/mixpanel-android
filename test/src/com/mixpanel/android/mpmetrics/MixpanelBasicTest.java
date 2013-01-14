@@ -132,12 +132,17 @@ public class MixpanelBasicTest extends
 
         MixpanelAPI.People people = mixpanel.getPeople();
         people.increment("the prop", 100);
-        people.set("the prop", 1);
+        people.append("the prop", 66);
+
+        people.set("the prop", 1); // should wipe out what comes before
+
         people.increment("the prop", 2);
         people.increment("the prop", 3);
+        people.append("the prop", 88);
+        people.append("the prop", 99);
         people.identify("Personal Identity");
 
-        assertEquals(messages.size(), 2);
+        assertEquals(messages.size(), 4);
         JSONObject setMessage = messages.get(0);
 
         try {
@@ -148,7 +153,31 @@ public class MixpanelBasicTest extends
             fail("Unexpected JSON for set message " + setMessage.toString());
         }
 
-        JSONObject addMessage = messages.get(1);
+        // We can guarantee that appendOne happens before appendTwo,
+        // but not that it happens before or after increment
+        JSONObject addMessage = null;
+        JSONObject appendOne = null;
+        JSONObject appendTwo = null;
+
+        for (int i = 1; i < 4; i ++) {
+            JSONObject nextMessage = messages.get(i);
+            if (nextMessage.has("$append") && appendOne == null) {
+                appendOne = nextMessage;
+            }
+            else if(nextMessage.has("$append") && appendTwo == null) {
+                appendTwo = nextMessage;
+            }
+            else if(nextMessage.has("$add") && addMessage == null) {
+                addMessage = nextMessage;
+            }
+            else {
+                fail("Unexpected JSON message sent: " + nextMessage.toString());
+            }
+        }
+
+        assertTrue(addMessage != null);
+        assertTrue(appendOne != null);
+        assertTrue(appendTwo != null);
 
         try {
             JSONObject addValues = addMessage.getJSONObject("$add");
@@ -158,12 +187,22 @@ public class MixpanelBasicTest extends
             fail("Unexpected JSON for add message " + addMessage.toString());
         }
 
+        try {
+            JSONObject appendValuesOne = appendOne.getJSONObject("$append");
+            Long appendForProp = appendValuesOne.getLong("the prop");
+            assertEquals(appendForProp.longValue(), 88);
+        } catch (JSONException e) {
+            fail("Unexpected JSON for append message " + appendOne.toString());
+        }
+
+        messages.clear();
+
         people.increment("the prop", 9000);
         people.set("the prop", "identified");
 
-        assertEquals(messages.size(), 4);
+        assertEquals(messages.size(), 2);
 
-        JSONObject nextIncrement = messages.get(2);
+        JSONObject nextIncrement = messages.get(0);
         try {
             JSONObject addValues = nextIncrement.getJSONObject("$add");
             Long addForProp = addValues.getLong("the prop");
@@ -172,7 +211,7 @@ public class MixpanelBasicTest extends
             fail("Unexpected JSON for add message " + addMessage.toString());
         }
 
-        JSONObject nextSet = messages.get(3);
+        JSONObject nextSet = messages.get(1);
         try {
             JSONObject setValues = nextSet.getJSONObject("$set");
             String setForProp = setValues.getString("the prop");
