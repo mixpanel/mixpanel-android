@@ -1,24 +1,24 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.util.Log;
 
-class WaitingPeopleRecord {
+/* package */ class WaitingPeopleRecord {
     private static final String LOGTAG = "MixpanelAPI";
 
     public WaitingPeopleRecord() {
         mAdds = new HashMap<String, Long>();
-        try {
-            mSets = new JSONObject("{}");
-        } catch (JSONException e) {
-            throw new RuntimeException("Cannot initialize WaitingPeopleRecord JSON object");
-        }
+        mAppends = new ArrayList<JSONObject>();
+        mSets = new JSONObject();
     }
 
     public void setOnWaitingPeopleRecord(JSONObject sets)
@@ -27,8 +27,18 @@ class WaitingPeopleRecord {
             String key = (String) iter.next();
             Object val = sets.get(key);
 
-            // Subsequent sets will eliminate the effect of increments
+            // Subsequent sets will eliminate the effect of earlier increments and appends
             mAdds.remove(key);
+
+            List<JSONObject> remainingAppends = new ArrayList<JSONObject>();
+            for (JSONObject nextAppend: remainingAppends) {
+                nextAppend.remove(key);
+                if (nextAppend.length() > 0) {
+                    remainingAppends.add(nextAppend);
+                }
+            }
+            mAppends = remainingAppends;
+
             mSets.put(key, val);
         }
     }
@@ -49,22 +59,41 @@ class WaitingPeopleRecord {
         }
     }
 
+    public void appendToWaitingPeopleRecord(JSONObject properties) {
+        mAppends.add(properties);
+    }
+
     public void readFromJSONString(String jsonString)
         throws JSONException {
         JSONObject stored = new JSONObject(jsonString);
 
-        JSONObject newSets = stored.getJSONObject("$set");
+        JSONObject newSets = new JSONObject();
+        if (stored.has("$set")) {
+            newSets = stored.getJSONObject("$set");
+        }// if $set is found
 
         Map<String, Long> newAdds = new HashMap<String, Long>();
-        JSONObject addsJSON = stored.getJSONObject("$add");
-        for(Iterator<?> iter = addsJSON.keys(); iter.hasNext();) {
-            String key = (String) iter.next();
-            Long amount = addsJSON.getLong(key);
-            newAdds.put(key, amount);
-        }
+        if (stored.has("$add")) {
+            JSONObject addsJSON = stored.getJSONObject("$add");
+            for(Iterator<?> iter = addsJSON.keys(); iter.hasNext();) {
+                String key = (String) iter.next();
+                Long amount = addsJSON.getLong(key);
+                newAdds.put(key, amount);
+            }
+        }// if $add is found
+
+        List<JSONObject> newAppends = new ArrayList<JSONObject>();
+        if(stored.has("$append")) {
+            JSONArray appendsJSON = stored.getJSONArray("$append");
+            for(int i = 0; i < appendsJSON.length(); i++) {
+                JSONObject nextAppend = appendsJSON.getJSONObject(i);
+                newAppends.add(nextAppend);
+            }
+        }// if $append is found
 
         mSets = newSets;
         mAdds = newAdds;
+        mAppends = newAppends;
     }
 
     public String toJSONString() {
@@ -77,9 +106,15 @@ class WaitingPeopleRecord {
                 addObject.put(addKey, value);
             }
 
+            JSONArray appendArray = new JSONArray();
+            for(JSONObject append:mAppends) {
+                appendArray.put(append);
+            }
+
             JSONObject retObject = new JSONObject();
             retObject.put("$set", mSets);
             retObject.put("$add", addObject);
+            retObject.put("$append", appendArray);
 
             ret = retObject.toString();
         } catch (JSONException e) {
@@ -97,6 +132,11 @@ class WaitingPeopleRecord {
         return mAdds;
     }
 
+    public List<JSONObject> appendMessages() {
+        return mAppends;
+    }
+
     private JSONObject mSets;
     private Map<String, Long> mAdds;
+    private List<JSONObject> mAppends;
 }

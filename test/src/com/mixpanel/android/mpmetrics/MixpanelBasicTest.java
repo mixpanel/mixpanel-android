@@ -92,6 +92,25 @@ public class MixpanelBasicTest extends
         }
     }
 
+    public void testReadOlderWaitingPeopleRecord() {
+        // $append is a late addition to the waiting record protocol, we need to handle old records as well.
+        try {
+            WaitingPeopleRecord r = new WaitingPeopleRecord();
+            r.readFromJSONString("{ \"$set\":{\"a\":1}, \"$add\":{\"b\":2} }");
+
+            JSONObject setMessage = r.setMessage();
+            Map<String, Long> incrementMessage = r.incrementMessage();
+            List<JSONObject> appendMessages = r.appendMessages();
+
+            assertTrue(setMessage.getLong("a") == 1);
+            assertTrue(incrementMessage.get("b") == 2);
+            assertTrue(appendMessages.size() == 0);
+
+        } catch(JSONException e) {
+            fail("Can't read old-style waiting people record");
+        }
+    }
+
     public void testIdentifyAfterSet() {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 
