@@ -102,9 +102,9 @@ public class MixpanelBasicTest extends
             Map<String, Long> incrementMessage = r.incrementMessage();
             List<JSONObject> appendMessages = r.appendMessages();
 
-            assertTrue(setMessage.getLong("a") == 1);
-            assertTrue(incrementMessage.get("b") == 2);
-            assertTrue(appendMessages.size() == 0);
+            assertEquals(setMessage.getLong("a"), 1L);
+            assertEquals(incrementMessage.get("b").longValue(), 2L);
+            assertEquals(appendMessages.size(), 0);
 
         } catch(JSONException e) {
             fail("Can't read old-style waiting people record");
