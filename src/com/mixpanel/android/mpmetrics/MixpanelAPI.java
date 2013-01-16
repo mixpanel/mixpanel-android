@@ -86,7 +86,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "3.0.0";
+    public static final String VERSION = "3.1.0";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.

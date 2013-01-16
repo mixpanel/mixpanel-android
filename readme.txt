@@ -15,6 +15,18 @@ License:
 
 Changelog:
 
+v3.1.0
+---------------------
+
+* Support for Mixpanel Revenue analytics
+
+  The Mixpanel library now supports revenue analytics. To track income, call
+
+      Mixpanel.getPeople().trackCharge(amount, properties)
+
+  where amount is a double representing the amount of the charge, and properties is
+  a possibly null collection of properties associated with the charge.
+
 v3.0.0
 ---------------------
 
