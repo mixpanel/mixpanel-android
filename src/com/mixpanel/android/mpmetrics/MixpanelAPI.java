@@ -86,7 +86,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "3.1.0";
+    public static final String VERSION = "3.1.1";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -378,6 +378,7 @@ public class MixpanelAPI {
      *
      * <pre>
      * {@code
+     *
      * public class MainActivity extends Activity {
      *      MixpanelAPI mMixpanel;
      *
@@ -398,6 +399,7 @@ public class MixpanelAPI {
      *          super.onDestroy();
      *      }
      * }
+     *
      * }
      * </pre>
      *
@@ -506,6 +508,7 @@ public class MixpanelAPI {
          *
          * <p>To use initPushHandling(), you will need to add the following to your application manifest:
          *
+         * <pre>
          * {@code
          * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
          *           android:permission="com.google.android.c2dm.permission.SEND" >
@@ -516,6 +519,7 @@ public class MixpanelAPI {
          *     </intent-filter>
          * </receiver>
          * }
+         * </pre>
          *
          * <p>Be sure to replace "YOUR_PACKAGE_NAME" with the name of your package. For
          * more information and a list of necessary permissions, see {@link GCMReceiver}.
@@ -738,7 +742,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void trackCharge(double amount, JSONObject metaData) {
+        public void trackCharge(double amount, JSONObject properties) {
             Date now = new Date();
 
             try {
@@ -746,10 +750,10 @@ public class MixpanelAPI {
                 transactionValue.put("$amount", amount);
                 transactionValue.put("$time", ENGAGE_DATE_FORMAT.format(now));
 
-                if (null != metaData) {
-                    for (Iterator<?> iter = metaData.keys(); iter.hasNext();) {
+                if (null != properties) {
+                    for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
                         String key = (String) iter.next();
-                        transactionValue.put(key, transactionValue.get(key));
+                        transactionValue.put(key, properties.get(key));
                     }
                 }
 

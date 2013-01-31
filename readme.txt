@@ -15,6 +15,11 @@ License:
 
 Changelog:
 
+v3.1.1
+---------------------
+
+* Bugfix and test for providing metadata with revenue analytics messages
+
 v3.1.0
 ---------------------
 

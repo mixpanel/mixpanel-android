@@ -455,6 +455,57 @@ public class MixpanelBasicTest extends
 
     }
 
+    public void testTrackCharge() {
+        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
+            @Override
+            public void eventsMessage(JSONObject heard) {
+                throw new RuntimeException("Should not be called during this test");
+            }
+
+            @Override
+            public void peopleMessage(JSONObject heard) {
+                messages.add(heard);
+            }
+        };
+
+        class ListeningAPI extends MixpanelAPI {
+            public ListeningAPI(Context c, String token) {
+                super(c, token);
+            }
+
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                 return listener;
+            }
+        }
+
+        MixpanelAPI api = new ListeningAPI(mActivity, "TRACKCHARGE TEST TOKEN");
+        api.getPeople().identify("TRACKCHARGE PERSON");
+
+        JSONObject props;
+        try {
+            props = new JSONObject("{'$time':'Should override', 'Orange':'Banana'}");
+        } catch (JSONException e) {
+            throw new RuntimeException("Can't construct fixture for trackCharge test");
+        }
+
+        api.getPeople().trackCharge(2.13, props);
+        assertEquals(messages.size(), 1);
+
+        JSONObject message = messages.get(0);
+
+        try {
+            JSONObject append = message.getJSONObject("$append");
+            JSONObject newTransaction = append.getJSONObject("$transactions");
+            assertEquals(newTransaction.optString("Orange"), "Banana");
+            assertEquals(newTransaction.optString("$time"), "Should override");
+            assertEquals(newTransaction.optDouble("$amount"), 2.13);
+        } catch (JSONException e) {
+            fail("Transaction message had unexpected layout:\n" + message.toString());
+        }
+    }
+
     public void testPersistence() {
         MixpanelAPI metricsOne = new MixpanelAPI(mActivity, "SAME TOKEN");
         metricsOne.clearPreferences();
