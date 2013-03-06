@@ -27,7 +27,6 @@ import android.util.Log;
      */
     /* package */ AnalyticsMessages(Context context) {
         mLogMixpanelMessages = new AtomicBoolean(false);
-        mUnhandledExceptionInThread = new AtomicBoolean(false);
         mWorker = new Worker(context);
     }
 
@@ -54,10 +53,6 @@ import android.util.Log;
 
     public void logPosts() {
         mLogMixpanelMessages.set(true);
-    }
-
-    public boolean isDead() {
-        return mUnhandledExceptionInThread.get();
     }
 
     public void eventsMessage(JSONObject eventsJson) {
@@ -99,8 +94,12 @@ import android.util.Log;
     }
 
     /////////////////////////////////////////////////////////
-
     // For testing, to allow for Mocking.
+
+    /* package */ boolean isDead() {
+        return mWorker.isDead();
+    }
+
     protected MPDbAdapter makeDbAdapter(Context context) {
         return new MPDbAdapter(context);
     }
@@ -119,7 +118,6 @@ import android.util.Log;
         }
     }
 
-
     // Worker will manage the (at most single) IO thread associated with
     // this AnalyticsMessages instance.
     private class Worker {
@@ -127,8 +125,13 @@ import android.util.Log;
             mDbAdapter = makeDbAdapter(context);
             mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
             mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+            mHandler = restartWorkerThread();
+        }
 
-            mHandler = null;
+        public boolean isDead() {
+            synchronized(mHandlerLock) {
+                return mHandler == null;
+            }
         }
 
         public void runMessage(Message msg) {
@@ -138,21 +141,13 @@ import android.util.Log;
             }
             else {
                 synchronized(mHandlerLock) {
-
-                    if (null == mHandler) { // Worker is dead, get another.
-                        logAboutMessageToMixpanel("Starting new worker thread");
-                        mHandler = restartWorkerThread();
-                    }
-
-                    mHandler.sendMessage(msg);
-                }//synchronized
+                    if (mHandler != null) mHandler.sendMessage(msg);
+                }
             }
         }
 
-        // NOTE that the returned worker will not be set with a timeout-
-        // Timeouts will be scheduled after the first post is run (so if you
-        // grab a handler and don't post anything to it, you'll spawn a
-        // zombie thread that never dies.)
+        // NOTE that the returned worker will run FOREVER, unless you send a hard kill
+        // (which you really shouldn't)
         private Handler restartWorkerThread() {
             Handler ret = null;
 
@@ -244,24 +239,6 @@ import android.util.Log;
                         }
                     }
 
-                    ///////////////////////
-                    if (msg.what == TIMEOUT) {
-                        synchronized(mHandlerLock) {
-                            // While this block is running, we can be sure
-                            // that no new messages are being put on our queue.
-
-                            if (hasMessages(ENQUEUE_PEOPLE) ||
-                                    hasMessages(ENQUEUE_EVENTS) ||
-                                    hasMessages(FLUSH_QUEUE)) {
-                                // Don't timeout if we still have messages to process
-                            }
-                            else {
-                                mHandler = null;
-                                Looper.myLooper().quit();
-                                logAboutMessageToMixpanel("Analytics messages worker dying of idleness. Thread id " + Thread.currentThread().getId());
-                            }
-                        }// synchronized
-                    }
                     if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
@@ -270,18 +247,15 @@ import android.util.Log;
                             Looper.myLooper().quit();
                         }
                     }
-                    if (mHandler != null) {
-                        removeMessages(TIMEOUT);
-                        sendEmptyMessageDelayed(TIMEOUT, MPConfig.SUBMIT_THREAD_TTL);
-                    }
                 } catch (RuntimeException e) {
                     Log.e(LOGTAG, "Worker threw an unhandled exception- will not send any more mixpanel messages", e);
-                    mUnhandledExceptionInThread.set(true);
-                    mHandler = null;
-                    try {
-                        Looper.myLooper().quit();
-                    } catch (Exception tooLate) {
-                        // too late to do anything.
+                    synchronized (mHandlerLock) {
+                        mHandler = null;
+                        try {
+                            Looper.myLooper().quit();
+                        } catch (Exception tooLate) {
+                            // too late to do anything.
+                        }
                     }
                     throw e;
                 }
@@ -351,7 +325,6 @@ import android.util.Log;
 
     // Used across thread boundaries
     private final AtomicBoolean mLogMixpanelMessages;
-    private final AtomicBoolean mUnhandledExceptionInThread;
 
     private final Worker mWorker;
 
@@ -359,7 +332,6 @@ import android.util.Log;
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
-    private static int TIMEOUT = 3; // Kill this looper if there is nothing left to do
     private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue.
 
