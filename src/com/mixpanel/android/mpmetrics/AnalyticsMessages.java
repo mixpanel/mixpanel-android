@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONObject;
 
@@ -25,7 +26,8 @@ import android.util.Log;
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
     /* package */ AnalyticsMessages(Context context) {
-        mLogMixpanelMessages = false;
+        mLogMixpanelMessages = new AtomicBoolean(false);
+        mUnhandledExceptionInThread = new AtomicBoolean(false);
         mWorker = new Worker(context);
     }
 
@@ -51,7 +53,11 @@ import android.util.Log;
     }
 
     public void logPosts() {
-        mLogMixpanelMessages = true;
+        mLogMixpanelMessages.set(true);
+    }
+
+    public boolean isDead() {
+        return mUnhandledExceptionInThread.get();
     }
 
     public void eventsMessage(JSONObject eventsJson) {
@@ -108,7 +114,7 @@ import android.util.Log;
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
-        if (mLogMixpanelMessages || MPConfig.DEBUG) {
+        if (mLogMixpanelMessages.get() || MPConfig.DEBUG) {
             Log.i(LOGTAG, message);
         }
     }
@@ -126,13 +132,20 @@ import android.util.Log;
         }
 
         public void runMessage(Message msg) {
-            synchronized(mHandlerLock) {
-                if (null == mHandler) { // Worker is dead, get another.
-                    logAboutMessageToMixpanel("Starting new worker thread");
-                    mHandler = restartWorkerThread();
-                }
+            if (isDead()) {
+                // We died under suspicious circumstances. Don't try to send any more events.
+                logAboutMessageToMixpanel("Dead mixpanel worker dropping a message.");
+            }
+            else {
+                synchronized(mHandlerLock) {
 
-                mHandler.sendMessage(msg);
+                    if (null == mHandler) { // Worker is dead, get another.
+                        logAboutMessageToMixpanel("Starting new worker thread");
+                        mHandler = restartWorkerThread();
+                    }
+
+                    mHandler.sendMessage(msg);
+                }//synchronized
             }
         }
 
@@ -158,7 +171,12 @@ import android.util.Log;
                     } catch (InterruptedException e) {
                         throw new RuntimeException("Couldn't build worker thread for Analytics Messages", e);
                     }
-                    Looper.loop();
+
+                    try {
+                        Looper.loop();
+                    } catch (RuntimeException e) {
+                        Log.e(LOGTAG, "Mixpanel Thread dying from RuntimeException", e);
+                    }
                 }
             };
             thread.setPriority(Thread.MIN_PRIORITY);
@@ -176,87 +194,96 @@ import android.util.Log;
         private class AnalyticsMessageHandler extends Handler {
             @Override
             public void handleMessage(Message msg) {
-                int queueDepth = -1;
+                try {
+                    int queueDepth = -1;
 
-                if (msg.what == SET_FLUSH_INTERVAL) {
-                    Long newIntervalObj = (Long) msg.obj;
-                    logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
-                    mFlushInterval = newIntervalObj.longValue();
-                    removeMessages(FLUSH_QUEUE);
-                }
-                else if (msg.what == ENQUEUE_PEOPLE) {
-                    JSONObject message = (JSONObject) msg.obj;
-
-                    logAboutMessageToMixpanel("Queuing people record for sending later");
-                    logAboutMessageToMixpanel("    " + message.toString());
-
-                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
-                }
-                else if (msg.what == ENQUEUE_EVENTS) {
-                    JSONObject message = (JSONObject) msg.obj;
-
-                    logAboutMessageToMixpanel("Queuing event for sending later");
-                    logAboutMessageToMixpanel("    " + message.toString());
-
-                    queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
-                }
-
-                ///////////////////////////
-                logAboutMessageToMixpanel("Queue depth " + queueDepth);
-
-                if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
-                    logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
-                    updateFlushFrequency();
-                    sendAllData();
-                }
-                else if (msg.what == FLUSH_QUEUE) {
-                    logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
-                    updateFlushFrequency();
-                    sendAllData();
-                }
-                else if(queueDepth > 0) {
-                    if (!hasMessages(FLUSH_QUEUE)) {
-                        // The hasMessages check is a courtesy for the common case
-                        // of delayed flushes already enqueued from inside of this thread.
-                        // Callers outside of this thread can still send
-                        // a flush right here, so we may end up with two flushes
-                        // in our queue, but we're ok with that.
-                        sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                    if (msg.what == SET_FLUSH_INTERVAL) {
+                        Long newIntervalObj = (Long) msg.obj;
+                        logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
+                        mFlushInterval = newIntervalObj.longValue();
+                        removeMessages(FLUSH_QUEUE);
                     }
-                }
+                    else if (msg.what == ENQUEUE_PEOPLE) {
+                        JSONObject message = (JSONObject) msg.obj;
 
-                ///////////////////////
+                        logAboutMessageToMixpanel("Queuing people record for sending later");
+                        logAboutMessageToMixpanel("    " + message.toString());
 
-                if (msg.what == TIMEOUT) {
-                    synchronized(mHandlerLock) {
-                        // While this block is running, we can be sure
-                        // that no new messages are being put on our queue.
+                        queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
+                    }
+                    else if (msg.what == ENQUEUE_EVENTS) {
+                        JSONObject message = (JSONObject) msg.obj;
 
-                        if (hasMessages(ENQUEUE_PEOPLE) ||
-                            hasMessages(ENQUEUE_EVENTS) ||
-                            hasMessages(FLUSH_QUEUE)) {
-                            // Don't timeout if we still have messages to process
+                        logAboutMessageToMixpanel("Queuing event for sending later");
+                        logAboutMessageToMixpanel("    " + message.toString());
+
+                        queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                    }
+
+                    ///////////////////////////
+                    logAboutMessageToMixpanel("Queue depth " + queueDepth);
+
+                    if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
+                        logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
+                        updateFlushFrequency();
+                        sendAllData();
+                    }
+                    else if (msg.what == FLUSH_QUEUE) {
+                        logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
+                        updateFlushFrequency();
+                        sendAllData();
+                    }
+                    else if(queueDepth > 0) {
+                        if (!hasMessages(FLUSH_QUEUE)) {
+                            // The hasMessages check is a courtesy for the common case
+                            // of delayed flushes already enqueued from inside of this thread.
+                            // Callers outside of this thread can still send
+                            // a flush right here, so we may end up with two flushes
+                            // in our queue, but we're ok with that.
+                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
-                        else {
+                    }
+
+                    ///////////////////////
+                    if (msg.what == TIMEOUT) {
+                        synchronized(mHandlerLock) {
+                            // While this block is running, we can be sure
+                            // that no new messages are being put on our queue.
+
+                            if (hasMessages(ENQUEUE_PEOPLE) ||
+                                    hasMessages(ENQUEUE_EVENTS) ||
+                                    hasMessages(FLUSH_QUEUE)) {
+                                // Don't timeout if we still have messages to process
+                            }
+                            else {
+                                mHandler = null;
+                                Looper.myLooper().quit();
+                                logAboutMessageToMixpanel("Analytics messages worker dying of idleness. Thread id " + Thread.currentThread().getId());
+                            }
+                        }// synchronized
+                    }
+                    if (msg.what == KILL_WORKER) {
+                        Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
+                        synchronized(mHandlerLock) {
+                            mDbAdapter.deleteDB();
                             mHandler = null;
                             Looper.myLooper().quit();
-                            logAboutMessageToMixpanel("Analytics messages worker dying of idleness. Thread id " + Thread.currentThread().getId());
                         }
-                    }// synchronized
-                }
-
-                if (msg.what == KILL_WORKER) {
-                    Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
-                    synchronized(mHandlerLock) {
-                        mDbAdapter.deleteDB();
-                        mHandler = null;
-                        Looper.myLooper().quit();
                     }
-                }
-
-                if (mHandler != null) {
-                    removeMessages(TIMEOUT);
-                    sendEmptyMessageDelayed(TIMEOUT, MPConfig.SUBMIT_THREAD_TTL);
+                    if (mHandler != null) {
+                        removeMessages(TIMEOUT);
+                        sendEmptyMessageDelayed(TIMEOUT, MPConfig.SUBMIT_THREAD_TTL);
+                    }
+                } catch (RuntimeException e) {
+                    Log.e(LOGTAG, "Worker threw an unhandled exception- will not send any more mixpanel messages", e);
+                    mUnhandledExceptionInThread.set(true);
+                    mHandler = null;
+                    try {
+                        Looper.myLooper().quit();
+                    } catch (Exception tooLate) {
+                        // too late to do anything.
+                    }
+                    throw e;
                 }
             }// handleMessage
 
@@ -322,7 +349,10 @@ import android.util.Log;
 
     /////////////////////////////////////////////////////////
 
-    private volatile boolean mLogMixpanelMessages; // Used across thread boundaries
+    // Used across thread boundaries
+    private final AtomicBoolean mLogMixpanelMessages;
+    private final AtomicBoolean mUnhandledExceptionInThread;
+
     private final Worker mWorker;
 
     // Messages for our thread

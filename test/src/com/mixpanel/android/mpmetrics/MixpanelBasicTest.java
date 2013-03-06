@@ -111,6 +111,52 @@ public class MixpanelBasicTest extends
         }
     }
 
+    public void testLooperDestruction() {
+
+        final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
+
+        // If something terrible happens in the worker thread, we
+        // should make sure
+        final MPDbAdapter explodingDb = new MPDbAdapter(mActivity) {
+            @Override
+            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+                messages.add(message);
+                throw new RuntimeException("BANG!");
+            }
+        };
+        final AnalyticsMessages explodingMessages = new AnalyticsMessages(mActivity) {
+            // This will throw inside of our worker thread.
+            @Override
+            public MPDbAdapter makeDbAdapter(Context context) {
+                return explodingDb;
+            }
+        };
+        MixpanelAPI mixpanel = new MixpanelAPI(mActivity, "TEST TOKEN testLooperDisaster") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return explodingMessages;
+            }
+        };
+
+        try {
+            mixpanel.clearPreferences();
+            assertFalse(explodingMessages.isDead());
+
+            mixpanel.track("event1", null);
+            JSONObject found = messages.poll(1, TimeUnit.SECONDS);
+            assertNotNull(found);
+            Thread.sleep(1000);
+            assertTrue(explodingMessages.isDead());
+
+            mixpanel.track("event2", null);
+            JSONObject shouldntFind = messages.poll(1, TimeUnit.SECONDS);
+            assertNull(shouldntFind);
+            assertTrue(explodingMessages.isDead());
+        } catch (InterruptedException e) {
+            fail("Unexpected interruption");
+        }
+    }
+
     public void testIdentifyAfterSet() {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 
