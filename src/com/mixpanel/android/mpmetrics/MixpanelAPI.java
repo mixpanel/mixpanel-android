@@ -86,7 +86,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "3.1.1";
+    public static final String VERSION = "3.2.0";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -119,13 +119,20 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token) {
-        MixpanelAPI instance = mInstanceMap.get(token);
-        if (instance == null) {
-            instance = new MixpanelAPI(context.getApplicationContext(), token);
-            mInstanceMap.put(token,  instance);
+        synchronized (sInstanceMap) {
+            Context appContext = context.getApplicationContext();
+            Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
+            if (instances == null) {
+                instances = new HashMap<Context, MixpanelAPI>();
+                sInstanceMap.put(token, instances);
+            }
+            MixpanelAPI instance = instances.get(appContext);
+            if (instance == null) {
+                instance = new MixpanelAPI(appContext, token);
+                instances.put(appContext, instance);
+            }
+            return instance;
         }
-
-        return instance;
     }
 
     /**
@@ -144,6 +151,23 @@ public class MixpanelAPI {
     public static void setFlushInterval(Context context, long milliseconds) {
         AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
         msgs.setFlushInterval(milliseconds);
+    }
+
+    /**
+     * By default, if the MixpanelAPI cannot contact the API server over HTTPS,
+     * it will attempt to contact the server via regular HTTP. To disable this
+     * behavior, call enableFallbackServer(context, false)
+     *
+     * @param context the execution context associated with this context.
+     * @param enableIfTrue if true, the library will fall back to using http
+     *      when https is unavailable.
+     */
+    public static void enableFallbackServer(Context context, boolean enableIfTrue) {
+        AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
+        if (enableIfTrue)
+            msgs.setFallbackHost(MPConfig.FALLBACK_ENDPOINT);
+        else
+            msgs.setFallbackHost(null);
     }
 
     /**
@@ -616,8 +640,18 @@ public class MixpanelAPI {
 
     // Package-level access. Used (at least) by GCMReceiver
     // when OS-level events occur.
-    /* package */ static Map<String, MixpanelAPI> allInstances() {
-        return mInstanceMap;
+    /* package */ interface InstanceProcessor {
+        public void process(MixpanelAPI m);
+    }
+
+    /* package */ static void allInstances(InstanceProcessor processor) {
+        synchronized (sInstanceMap) {
+            for (Map<Context, MixpanelAPI> contextInstances:sInstanceMap.values()) {
+                for (MixpanelAPI instance:contextInstances.values()) {
+                    processor.process(instance);
+                }
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -821,7 +855,7 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
             else { // Configuration is good for push notifications
-                String pushId = getPushId();
+                final String pushId = getPushId();
                 if (pushId == null) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
 
@@ -834,10 +868,13 @@ public class MixpanelAPI {
                         Log.w(LOGTAG, e);
                     }
                 } else {
-                    for (String token : mInstanceMap.keySet()) {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
-                        mInstanceMap.get(token).getPeople().setPushRegistrationId(pushId);
-                    }
+                    MixpanelAPI.allInstances(new InstanceProcessor() {
+                        @Override
+                        public void process(MixpanelAPI api) {
+                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
+                            api.getPeople().setPushRegistrationId(pushId);
+                        }
+                    });
                 }
             }// endelse
         }
@@ -1001,7 +1038,7 @@ public class MixpanelAPI {
     }
 
     // Maps each token to a singleton MixpanelAPI instance
-    private static HashMap<String, MixpanelAPI> mInstanceMap = new HashMap<String, MixpanelAPI>();
+    private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
 
     private final Context mContext;
     private final SystemInformation mSystemInformation;

@@ -33,18 +33,31 @@ import com.mixpanel.android.util.StringUtils;
         FAILED_UNRECOVERABLE
     };
 
+    public HttpPoster(String defaultHost, String fallbackHost) {
+        mDefaultHost = defaultHost;
+        mFallbackHost = fallbackHost;
+    }
+
     // Will return true only if the request was successful
-    public PostResult postData(String rawMessage, String endpointUrl) {
+    public PostResult postData(String rawMessage, String endpointPath) {
         String encodedData = Base64Coder.encodeString(rawMessage);
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
 
-        return postHttpRequest(endpointUrl, nameValuePairs);
+        String defaultUrl = mDefaultHost + endpointPath;
+        PostResult ret = postHttpRequest(defaultUrl, nameValuePairs);
+        if (ret == PostResult.FAILED_RECOVERABLE && mFallbackHost != null) {
+            String fallbackUrl = mFallbackHost + endpointPath;
+            if (MPConfig.DEBUG) Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
+            ret = postHttpRequest(fallbackUrl, nameValuePairs);
+        }
+
+        return ret;
     }
 
     private PostResult postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
-        PostResult ret = PostResult.FAILED_RECOVERABLE;
+        PostResult ret = PostResult.FAILED_UNRECOVERABLE;
         HttpClient httpclient = new DefaultHttpClient();
         HttpPost httppost = new HttpPost(endpointUrl);
 
@@ -60,15 +73,18 @@ import com.mixpanel.android.util.StringUtils;
                 }
             }
         } catch (IOException e) {
-            Log.e(LOGTAG, "Cannot post message to Mixpanel Servers", e);
+            Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry)", e);
             ret = PostResult.FAILED_RECOVERABLE;
         } catch (OutOfMemoryError e) {
-            Log.e(LOGTAG, "Cannot post message to Mixpanel Servers", e);
+            Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
             ret = PostResult.FAILED_UNRECOVERABLE;
         }
 
         return ret;
     }
+
+    private final String mDefaultHost;
+    private final String mFallbackHost;
 
     private static final String LOGTAG = "MixpanelAPI";
 }

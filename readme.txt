@@ -15,6 +15,24 @@ License:
 
 Changelog:
 
+v3.2.0
+---------------------
+
+* The library now falls back to HTTP communication if HTTPS communication is unavailable.
+  In particular, this may occur in early versions of Android that only support a small
+  set of certificate authorities.
+  To disable this behavior, call
+
+        MixpanelAPI.enableFallbackServer(yourMainActivity, true);
+
+* More robust handling of internal threads and work queues.
+
+  The Mixpanel library now owns one, continuous thread for handling
+  messages (rather than spawning a thread on demand.)
+
+* Improvements to internal library error handling.
+
+
 v3.1.1
 ---------------------
 

@@ -21,7 +21,6 @@ import android.util.Log;
  * a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
-
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
@@ -39,13 +38,16 @@ import android.util.Log;
      */
     public static AnalyticsMessages getInstance(Context messageContext) {
         synchronized (sInstances) {
+            Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
-            if (! sInstances.containsKey(messageContext)) {
-                ret = new AnalyticsMessages(messageContext);
-                sInstances.put(messageContext, ret);
+            if (! sInstances.containsKey(appContext)) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
+                ret = new AnalyticsMessages(appContext);
+                sInstances.put(appContext, ret);
             }
             else {
-                ret = sInstances.get(messageContext);
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
+                ret = sInstances.get(appContext);
             }
             return ret;
         }
@@ -86,6 +88,22 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    public void setFallbackHost(String fallbackHost) {
+        Message m = Message.obtain();
+        m.what = SET_FALLBACK_HOST;
+        m.obj = fallbackHost;
+
+        mWorker.runMessage(m);
+    }
+
+    public void setEndpointHost(String endpointHost) {
+        Message m = Message.obtain();
+        m.what = SET_ENDPOINT_HOST;
+        m.obj = endpointHost;
+
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -104,8 +122,8 @@ import android.util.Log;
         return new MPDbAdapter(context);
     }
 
-    protected HttpPoster getPoster() {
-        return new HttpPoster();
+    protected HttpPoster getPoster(String endpointBase, String endpointFallback) {
+        return new HttpPoster(endpointBase, endpointFallback);
     }
 
     ////////////////////////////////////////////////////
@@ -114,7 +132,7 @@ import android.util.Log;
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
         if (mLogMixpanelMessages.get() || MPConfig.DEBUG) {
-            Log.i(LOGTAG, message);
+            Log.i(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
         }
     }
 
@@ -137,7 +155,7 @@ import android.util.Log;
         public void runMessage(Message msg) {
             if (isDead()) {
                 // We died under suspicious circumstances. Don't try to send any more events.
-                logAboutMessageToMixpanel("Dead mixpanel worker dropping a message.");
+                logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg);
             }
             else {
                 synchronized(mHandlerLock) {
@@ -198,6 +216,14 @@ import android.util.Log;
                         mFlushInterval = newIntervalObj.longValue();
                         removeMessages(FLUSH_QUEUE);
                     }
+                    else if (msg.what == SET_ENDPOINT_HOST) {
+                        logAboutMessageToMixpanel("Setting endpoint API host to " + mEndpointHost);
+                        mEndpointHost = msg.obj == null ? null : msg.obj.toString();
+                    }
+                    else if (msg.what == SET_FALLBACK_HOST) {
+                        logAboutMessageToMixpanel("Setting fallback API host to " + mFallbackHost);
+                        mFallbackHost = msg.obj == null ? null : msg.obj.toString();
+                    }
                     else if (msg.what == ENQUEUE_PEOPLE) {
                         JSONObject message = (JSONObject) msg.obj;
 
@@ -214,37 +240,38 @@ import android.util.Log;
 
                         queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                     }
+                    else if (msg.what == FLUSH_QUEUE) {
+                        logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
+                        updateFlushFrequency();
+                        sendAllData();
+                    }
+                    else if (msg.what == KILL_WORKER) {
+                        Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
+                        synchronized(mHandlerLock) {
+                            mDbAdapter.deleteDB();
+                            mHandler = null;
+                            Looper.myLooper().quit();
+                        }
+                    } else {
+                        Log.e(LOGTAG, "Unexpected message recieved by Mixpanel worker: " + msg);
+                    }
 
                     ///////////////////////////
-                    logAboutMessageToMixpanel("Queue depth " + queueDepth);
 
                     if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         sendAllData();
                     }
-                    else if (msg.what == FLUSH_QUEUE) {
-                        logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
-                        updateFlushFrequency();
-                        sendAllData();
-                    }
                     else if(queueDepth > 0) {
                         if (!hasMessages(FLUSH_QUEUE)) {
+                            logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
                             // The hasMessages check is a courtesy for the common case
                             // of delayed flushes already enqueued from inside of this thread.
                             // Callers outside of this thread can still send
                             // a flush right here, so we may end up with two flushes
                             // in our queue, but we're ok with that.
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
-                        }
-                    }
-
-                    if (msg.what == KILL_WORKER) {
-                        Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
-                        synchronized(mHandlerLock) {
-                            mDbAdapter.deleteDB();
-                            mHandler = null;
-                            Looper.myLooper().quit();
                         }
                     }
                 } catch (RuntimeException e) {
@@ -254,7 +281,7 @@ import android.util.Log;
                         try {
                             Looper.myLooper().quit();
                         } catch (Exception tooLate) {
-                            // too late to do anything.
+                            Log.e(LOGTAG, "Could not halt looper", tooLate);
                         }
                     }
                     throw e;
@@ -264,8 +291,8 @@ import android.util.Log;
             private void sendAllData() {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
 
-                sendData(MPDbAdapter.Table.EVENTS, MPConfig.BASE_ENDPOINT + "/track?ip=1");
-                sendData(MPDbAdapter.Table.PEOPLE, MPConfig.BASE_ENDPOINT + "/engage");
+                sendData(MPDbAdapter.Table.EVENTS, "/track?ip=1");
+                sendData(MPDbAdapter.Table.PEOPLE, "/engage");
             }
 
             private void sendData(MPDbAdapter.Table table, String endpointUrl) {
@@ -274,7 +301,8 @@ import android.util.Log;
                 if (eventsData != null) {
                     String lastId = eventsData[0];
                     String rawMessage = eventsData[1];
-                    HttpPoster.PostResult eventsPosted = getPoster().postData(rawMessage, endpointUrl);
+                    HttpPoster poster = getPoster(mEndpointHost, mFallbackHost);
+                    HttpPoster.PostResult eventsPosted = poster.postData(rawMessage, endpointUrl);
 
                     if (eventsPosted == HttpPoster.PostResult.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
@@ -292,6 +320,9 @@ import android.util.Log;
                     }
                 }
             }
+
+            private String mEndpointHost = MPConfig.BASE_ENDPOINT;
+            private String mFallbackHost = MPConfig.FALLBACK_ENDPOINT;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -325,7 +356,6 @@ import android.util.Log;
 
     // Used across thread boundaries
     private final AtomicBoolean mLogMixpanelMessages;
-
     private final Worker mWorker;
 
     // Messages for our thread
@@ -334,6 +364,8 @@ import android.util.Log;
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
     private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue.
+    private static int SET_ENDPOINT_HOST = 6; // Use obj.toString() as the first part of the URL for api requests.
+    private static int SET_FALLBACK_HOST = 7; // Use obj.toString() as the (possibly null) string for api fallback requests.
 
     private static final String LOGTAG = "MixpanelAPI";
 

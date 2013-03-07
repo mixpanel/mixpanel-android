@@ -1,6 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.util.Map;
+import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -96,24 +96,25 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     private void handleRegistrationIntent(Intent intent) {
-        String registration = intent.getStringExtra("registration_id");
-
+        final String registration = intent.getStringExtra("registration_id");
         if (intent.getStringExtra("error") != null) {
             Log.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
         } else if (registration != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
-
-            Map<String, MixpanelAPI> allMetrics = MixpanelAPI.allInstances();
-            for (String token : allMetrics.keySet()) {
-                allMetrics.get(token).getPeople().setPushRegistrationId(registration);
-            }
+            MixpanelAPI.allInstances(new InstanceProcessor() {
+                @Override
+                public void process(MixpanelAPI api) {
+                    api.getPeople().setPushRegistrationId(registration);
+                }
+            });
         } else if (intent.getStringExtra("unregistered") != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
-
-            Map<String, MixpanelAPI> allMetrics = MixpanelAPI.allInstances();
-            for (String token : allMetrics.keySet()) {
-                allMetrics.get(token).getPeople().clearPushRegistrationId();
-            }
+            MixpanelAPI.allInstances(new InstanceProcessor() {
+                @Override
+                public void process(MixpanelAPI api) {
+                    api.getPeople().clearPushRegistrationId();
+                }
+            });
         }
     }
 

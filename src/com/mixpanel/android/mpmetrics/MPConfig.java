@@ -20,6 +20,9 @@ package com.mixpanel.android.mpmetrics;
     // and people requests will be sent to /engage
     public static final String BASE_ENDPOINT = "https://api.mixpanel.com";
 
+    // Fallback url on failure
+    public static final String FALLBACK_ENDPOINT = "http://api.mixpanel.com";
+
     // Time in milliseconds that the AnalyticsMessages thread must be idle for before it dies.
     // Must be reconfigured before the library is initialized for the first time.
     public static final int SUBMIT_THREAD_TTL = 60 * 1000;

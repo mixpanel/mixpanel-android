@@ -291,6 +291,47 @@ public class MixpanelBasicTest extends
         assertEquals("People Id", setPeopleId);
     }
 
+    public void testEndpointChanges() {
+        final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
+
+        final HttpPoster dummyposter = new HttpPoster(null, null) {
+            @Override
+            public PostResult postData(String rawMessage, String endpointPath) {
+                return HttpPoster.PostResult.SUCCEEDED;
+            }
+        };
+
+        final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
+            @Override
+            protected HttpPoster getPoster(String endpointBase, String endpointFallback) {
+                messages.add("URLS " + endpointBase + ", " + endpointFallback);
+                return dummyposter;
+            }
+        };
+        MixpanelAPI metrics = new MixpanelAPI(mActivity, "TEST TOKEN URL FALLBACK") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                 return listener;
+            }
+        };
+
+        try {
+            metrics.track("event1", null);
+            metrics.flush();
+            String defaultUrls = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("URLS " + MPConfig.BASE_ENDPOINT + ", " + MPConfig.FALLBACK_ENDPOINT, defaultUrls);
+
+            listener.setEndpointHost("BANANAS");
+            listener.setFallbackHost(MPConfig.BASE_ENDPOINT);
+            metrics.track("event1", null);
+            metrics.flush();
+            String explicitUrls = messages.poll(1, TimeUnit.SECONDS);
+            assertEquals("URLS BANANAS, " + MPConfig.BASE_ENDPOINT, explicitUrls);
+        } catch (InterruptedException e) {
+            fail("Unexpected interruption during test");
+        }
+    }
+
     public void testMessageQueuing() {
         MixpanelAPI.setFlushInterval(mActivity, Long.MAX_VALUE);
 
@@ -312,7 +353,7 @@ public class MixpanelBasicTest extends
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
-        final HttpPoster mockPoster = new HttpPoster() {
+        final HttpPoster mockPoster = new HttpPoster(null, null) {
             @Override
             public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
                 try {
@@ -333,7 +374,7 @@ public class MixpanelBasicTest extends
             }
 
             @Override
-            protected HttpPoster getPoster() {
+            protected HttpPoster getPoster(String baseEndpoint, String fallbackEndpoint) {
                 return mockPoster;
             }
         };
@@ -372,7 +413,7 @@ public class MixpanelBasicTest extends
             assertEquals("final event", message.getString("event"));
 
             String messageFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/track?ip=1", messageFlush);
+            assertEquals("SENT FLUSH /track?ip=1", messageFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
@@ -389,7 +430,7 @@ public class MixpanelBasicTest extends
             assertEquals("next wave", nextWaveMessage.getString("event"));
 
             String manualFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/track?ip=1", manualFlush);
+            assertEquals("SENT FLUSH /track?ip=1", manualFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray nextWave = new JSONArray(expectedJSONMessage);
@@ -412,7 +453,7 @@ public class MixpanelBasicTest extends
             assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
 
             String peopleFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH " + MPConfig.BASE_ENDPOINT + "/engage", peopleFlush);
+            assertEquals("SENT FLUSH /engage", peopleFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray peopleSent = new JSONArray(expectedJSONMessage);
@@ -436,7 +477,7 @@ public class MixpanelBasicTest extends
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
-        final HttpPoster mockPoster = new HttpPoster() {
+        final HttpPoster mockPoster = new HttpPoster(null, null) {
             @Override
             public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
                 try {
@@ -454,7 +495,7 @@ public class MixpanelBasicTest extends
 
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
             @Override
-            protected HttpPoster getPoster() {
+            protected HttpPoster getPoster(String baseEndpoint, String fallbackEndpoint) {
                 return mockPoster;
             }
         };
