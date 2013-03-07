@@ -23,7 +23,7 @@ v3.2.0
   set of certificate authorities.
   To disable this behavior, call
 
-        MixpanelAPI.enableFallbackServer(yourMainActivity, true);
+        MixpanelAPI.enableFallbackServer(yourMainActivity, false);
 
 * More robust handling of internal threads and work queues.
 
