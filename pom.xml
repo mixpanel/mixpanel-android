@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.mixpanel.android.mpmetrics</groupId>
   <artifactId>MixpanelAPI</artifactId>
-  <version>3.2.1</version>  <!-- Please update the release number for each release -->
+  <version>3.2.0</version>  <!-- Please update the release number for each release -->
   <packaging>jar</packaging>
   <name>MixpanelAPI</name>
   <properties>
