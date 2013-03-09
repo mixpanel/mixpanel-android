@@ -10,8 +10,8 @@
   <properties>
     <appVersion>${project.version}</appVersion>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- Please upate following property to the actual android_sdk root on the build host -->
-    <ANDROID_SDK_ROOT>/usr/local/Cellar/android-sdk/r20.0.1</ANDROID_SDK_ROOT>
+    <!-- Please make sure environment variable ANDROID_HOME is defined correctly -->
+    <ANDROID_SDK_ROOT>${env.ANDROID_HOME}</ANDROID_SDK_ROOT>
   </properties>
   <dependencies>  
     <dependency>
