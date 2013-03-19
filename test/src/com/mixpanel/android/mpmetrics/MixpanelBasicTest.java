@@ -99,7 +99,7 @@ public class MixpanelBasicTest extends
             r.readFromJSONString("{ \"$set\":{\"a\":1}, \"$add\":{\"b\":2} }");
 
             JSONObject setMessage = r.setMessage();
-            Map<String, Long> incrementMessage = r.incrementMessage();
+            Map<String, Double> incrementMessage = r.incrementMessage();
             List<JSONObject> appendMessages = r.appendMessages();
 
             assertEquals(setMessage.getLong("a"), 1L);
@@ -177,12 +177,12 @@ public class MixpanelBasicTest extends
         mixpanel.clearPreferences();
 
         MixpanelAPI.People people = mixpanel.getPeople();
-        people.increment("the prop", 100);
+        people.increment("the prop", 100L);
         people.append("the prop", 66);
 
         people.set("the prop", 1); // should wipe out what comes before
 
-        people.increment("the prop", 2);
+        people.increment("the prop", 2L);
         people.increment("the prop", 3);
         people.append("the prop", 88);
         people.append("the prop", 99);
@@ -243,7 +243,9 @@ public class MixpanelBasicTest extends
 
         messages.clear();
 
-        people.increment("the prop", 9000);
+        Map<String, Long> lastIncrement = new HashMap<String, Long>();
+        lastIncrement.put("the prop", 9000L);
+        people.increment(lastIncrement);
         people.set("the prop", "identified");
 
         assertEquals(messages.size(), 2);
@@ -254,7 +256,7 @@ public class MixpanelBasicTest extends
             Long addForProp = addValues.getLong("the prop");
             assertEquals(addForProp.longValue(), 9000);
         } catch (JSONException e) {
-            fail("Unexpected JSON for add message " + addMessage.toString());
+            fail("Unexpected JSON for add message " + nextIncrement.toString());
         }
 
         JSONObject nextSet = messages.get(1);
@@ -263,7 +265,7 @@ public class MixpanelBasicTest extends
             String setForProp = setValues.getString("the prop");
             assertEquals(setForProp, "identified");
         } catch (JSONException e) {
-            fail("Unexpected JSON for set message " + setMessage.toString());
+            fail("Unexpected JSON for set message " + nextSet.toString());
         }
     }
 

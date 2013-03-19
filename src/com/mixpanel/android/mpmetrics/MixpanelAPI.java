@@ -86,7 +86,7 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "3.2.0";
+    public static final String VERSION = "3.3.0";
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -284,7 +284,6 @@ public class MixpanelAPI {
         return mEventsDistinctId;
      }
 
-
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
      *
@@ -479,7 +478,7 @@ public class MixpanelAPI {
          *
          * @see #increment(Map)
          */
-        public void increment(String name, long increment);
+        public void increment(String name, double increment);
 
         /**
          * Change the existing values of multiple People Analytics properties at once.
@@ -492,7 +491,7 @@ public class MixpanelAPI {
          *
          * @see #increment(String, long)
          */
-        public void increment(Map<String, Long> properties);
+        public void increment(Map<String, ? extends Number> properties);
 
         /**
          * Appends a value to a list-valued property. If the property does not currently exist,
@@ -720,7 +719,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void increment(Map<String, Long> properties) {
+        public void increment(Map<String, ? extends Number> properties) {
             JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             try {
@@ -740,8 +739,8 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void increment(String property, long value) {
-            Map<String, Long> map = new HashMap<String, Long>();
+        public void increment(String property, double value) {
+            Map<String, Double> map = new HashMap<String, Double>();
             map.put(property, value);
             increment(map);
         }
@@ -948,7 +947,7 @@ public class MixpanelAPI {
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
            JSONObject sets = mWaitingPeopleRecord.setMessage();
-           Map<String, Long> adds = mWaitingPeopleRecord.incrementMessage();
+           Map<String, Double> adds = mWaitingPeopleRecord.incrementMessage();
            List<JSONObject> appends = mWaitingPeopleRecord.appendMessages();
 
            getPeople().set(sets);

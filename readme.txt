@@ -15,6 +15,15 @@ License:
 
 Changelog:
 
+v3.3.0
+---------------------
+
+* Calls to increment() now accept more general types (doubles instead of longs)
+  existing calls should work without changes, types are strictly more general.
+
+* Payloads of increment() are treated as doubles rather than longs in the internal library
+
+
 v3.2.0
 ---------------------
 

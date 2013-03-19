@@ -16,7 +16,7 @@ import android.util.Log;
     private static final String LOGTAG = "MixpanelAPI";
 
     public WaitingPeopleRecord() {
-        mAdds = new HashMap<String, Long>();
+        mAdds = new HashMap<String, Double>();
         mAppends = new ArrayList<JSONObject>();
         mSets = new JSONObject();
     }
@@ -43,18 +43,18 @@ import android.util.Log;
         }
     }
 
-    public void incrementToWaitingPeopleRecord(Map<String, Long> adds) {
+    public void incrementToWaitingPeopleRecord(Map<String, ? extends Number> adds) {
         for(String key: adds.keySet()) {
-            Long oldIncrement = mAdds.get(key);
-            Long changeIncrement = adds.get(key);
+            Number oldIncrement = mAdds.get(key);
+            Number changeIncrement = adds.get(key);
 
             if ((oldIncrement == null) && (changeIncrement != null)) {
-                mAdds.put(key, changeIncrement);
+                mAdds.put(key, changeIncrement.doubleValue());
             }
             else if ((oldIncrement != null) && (changeIncrement != null)) {
                 // the result of two increments is the same as the sum of
                 // the increment values
-                mAdds.put(key, oldIncrement + changeIncrement);
+                mAdds.put(key, oldIncrement.doubleValue() + changeIncrement.doubleValue());
             }
         }
     }
@@ -72,12 +72,12 @@ import android.util.Log;
             newSets = stored.getJSONObject("$set");
         }// if $set is found
 
-        Map<String, Long> newAdds = new HashMap<String, Long>();
+        Map<String, Double> newAdds = new HashMap<String, Double>();
         if (stored.has("$add")) {
             JSONObject addsJSON = stored.getJSONObject("$add");
             for(Iterator<?> iter = addsJSON.keys(); iter.hasNext();) {
                 String key = (String) iter.next();
-                Long amount = addsJSON.getLong(key);
+                Double amount = addsJSON.getDouble(key);
                 newAdds.put(key, amount);
             }
         }// if $add is found
@@ -102,7 +102,7 @@ import android.util.Log;
         try {
             JSONObject addObject = new JSONObject();
             for(String addKey:mAdds.keySet()) {
-                Long value = mAdds.get(addKey);
+                Double value = mAdds.get(addKey);
                 addObject.put(addKey, value);
             }
 
@@ -128,7 +128,7 @@ import android.util.Log;
         return mSets;
     }
 
-    public Map<String, Long> incrementMessage() {
+    public Map<String, Double> incrementMessage() {
         return mAdds;
     }
 
@@ -137,6 +137,6 @@ import android.util.Log;
     }
 
     private JSONObject mSets;
-    private Map<String, Long> mAdds;
+    private Map<String, Double> mAdds;
     private List<JSONObject> mAppends;
 }
