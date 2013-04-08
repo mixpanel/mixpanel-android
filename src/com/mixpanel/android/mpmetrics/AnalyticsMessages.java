@@ -25,8 +25,9 @@ import android.util.Log;
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
     /* package */ AnalyticsMessages(Context context) {
+        mContext = context;
         mLogMixpanelMessages = new AtomicBoolean(false);
-        mWorker = new Worker(context);
+        mWorker = new Worker();
     }
 
     /**
@@ -139,10 +140,7 @@ import android.util.Log;
     // Worker will manage the (at most single) IO thread associated with
     // this AnalyticsMessages instance.
     private class Worker {
-        public Worker(Context context) {
-            mDbAdapter = makeDbAdapter(context);
-            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
-            mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+        public Worker() {
             mHandler = restartWorkerThread();
         }
 
@@ -205,6 +203,13 @@ import android.util.Log;
         }
 
         private class AnalyticsMessageHandler extends Handler {
+            public AnalyticsMessageHandler() {
+                super();
+                mDbAdapter = makeDbAdapter(mContext);
+                mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
+                mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+            }
+
             @Override
             public void handleMessage(Message msg) {
                 try {
@@ -323,6 +328,7 @@ import android.util.Log;
 
             private String mEndpointHost = MPConfig.BASE_ENDPOINT;
             private String mFallbackHost = MPConfig.FALLBACK_ENDPOINT;
+            private final MPDbAdapter mDbAdapter;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -343,7 +349,6 @@ import android.util.Log;
         }
 
         private final Object mHandlerLock = new Object();
-        private final MPDbAdapter mDbAdapter; // Should only be used by the Handler
         private Handler mHandler;
 
         private long mFlushInterval = MPConfig.FLUSH_RATE;
@@ -357,6 +362,7 @@ import android.util.Log;
     // Used across thread boundaries
     private final AtomicBoolean mLogMixpanelMessages;
     private final Worker mWorker;
+    private final Context mContext;
 
     // Messages for our thread
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
