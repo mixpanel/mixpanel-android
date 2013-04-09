@@ -15,6 +15,11 @@ License:
 
 Changelog:
 
+v3.3.1
+---------------------
+
+* Internal changes to improve startup performance.
+
 v3.3.0
 ---------------------
 
