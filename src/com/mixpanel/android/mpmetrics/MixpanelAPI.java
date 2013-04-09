@@ -489,7 +489,7 @@ public class MixpanelAPI {
          * @param properties A map of String properties names to Long amounts. Each
          *     property associated with a name in the map will have its value changed by the given amount
          *
-         * @see #increment(String, long)
+         * @see #increment(String, double)
          */
         public void increment(Map<String, ? extends Number> properties);
 
@@ -608,7 +608,7 @@ public class MixpanelAPI {
 
         /**
          * Returns the string id currently being used to uniquely identify the user associated
-         * with events sent using {@link People#set(String, Object)} and {@link People#increment(String, long)}.
+         * with events sent using {@link People#set(String, Object)} and {@link People#increment(String, double)}.
          * If no calls to {@link People#identify(String)} have been made, this method will return null.
          *
          * <p>The id returned by getDistinctId is independent of the distinct id used to identify
