@@ -124,6 +124,7 @@ public class MixpanelAPI {
      *     instance.track(...)
      * }
      * }
+     * </pre>
      *
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
