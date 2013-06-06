@@ -108,10 +108,22 @@ public class MixpanelAPI {
     /**
      * Get the instance of MixpanelAPI associated with your Mixpanel project token.
      *
-     * <p>Use getInstance to get an instance of MixpanelAPI you can use to send events
-     * and People Analytics updates to Mixpanel. You should call this method from
-     * and use the resulting object only from a single thread
-     * (probably the main UI thread of your application)
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     *     instance.track(...)
+     * }
+     * }
      *
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
