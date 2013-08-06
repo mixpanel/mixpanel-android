@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
+import android.bluetooth.BluetoothAdapter;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -953,6 +954,19 @@ public class MixpanelAPI {
         Boolean isWifi = mSystemInformation.isWifiConnected();
         if (null != isWifi)
             ret.put("$wifi", isWifi.booleanValue());
+
+        try {
+            String bluetooth;
+            BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (mBluetoothAdapter == null) {
+                bluetooth = "not supported";
+            } else {
+                bluetooth = mBluetoothAdapter.isEnabled() ? "enabled" : "disabled";
+            }
+            ret.put("$bluetooth", bluetooth);
+        } catch (SecurityException e) {
+            // do nothing since we don't have permissions
+        }
 
         return ret;
     }
