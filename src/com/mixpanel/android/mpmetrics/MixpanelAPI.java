@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
+
+import android.bluetooth.BluetoothAdapter;
+import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -953,6 +956,27 @@ public class MixpanelAPI {
         Boolean isWifi = mSystemInformation.isWifiConnected();
         if (null != isWifi)
             ret.put("$wifi", isWifi.booleanValue());
+
+        // check for bluetooth
+        if (android.os.Build.VERSION.SDK_INT >= 8) { // FEATURE_BLUETOOTH flag introduced in api 8
+            String bluetoothVersion = "none";
+            if(android.os.Build.VERSION.SDK_INT >= 18 // FEATURE_BLUETOOTH_LE flag introduced in api 18
+                    && mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                bluetoothVersion = "ble";
+            } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
+                bluetoothVersion = "classic";
+            }
+            ret.put("$bluetooth_version", bluetoothVersion);
+
+            try {
+                BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (null != mBluetoothAdapter) {
+                    ret.put("$bluetooth_enabled", mBluetoothAdapter.isEnabled());
+                }
+            } catch (SecurityException e) {
+                // do nothing since we don't have permissions
+            }
+        }
 
         return ret;
     }
