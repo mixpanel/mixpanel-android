@@ -20,7 +20,9 @@ import com.mixpanel.android.util.StringUtils;
 
 /* package */ class ServerMessage {
 
-    public static enum PostResult {
+    // TODO keep HttpClient around? Check lifetime of ServerMessage
+
+    public static enum Status {
         // The post was sent and understood by the Mixpanel service.
         SUCCEEDED,
 
@@ -33,54 +35,79 @@ import com.mixpanel.android.util.StringUtils;
         FAILED_UNRECOVERABLE
     };
 
+    public static class Result {
+        /* package */ Result(Status status, String response) {
+            mStatus = status;
+            mResponse = response;
+        }
+
+        public Status getStatus() {
+            return mStatus;
+        }
+
+        public String getResponse() {
+            return mResponse;
+        }
+
+        private final String mResponse;
+        private final Status mStatus;
+    }
+
     public ServerMessage(String defaultHost, String fallbackHost) {
         mDefaultHost = defaultHost;
         mFallbackHost = fallbackHost;
     }
 
-    // Will return true only if the request was successful
-    public PostResult postData(String rawMessage, String endpointPath) {
+    public Result postData(String rawMessage, String endpointPath) {
         String encodedData = Base64Coder.encodeString(rawMessage);
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
 
         String defaultUrl = mDefaultHost + endpointPath;
-        PostResult ret = postHttpRequest(defaultUrl, nameValuePairs);
-        if (ret == PostResult.FAILED_RECOVERABLE && mFallbackHost != null) {
+        Result ret = postHttpRequest(defaultUrl, nameValuePairs);
+        Status status = ret.getStatus();
+        if (status == Status.FAILED_RECOVERABLE && mFallbackHost != null) {
             String fallbackUrl = mFallbackHost + endpointPath;
             if (MPConfig.DEBUG) Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
             ret = postHttpRequest(fallbackUrl, nameValuePairs);
+            status = ret.getStatus();
+            if (status != Status.SUCCEEDED) {
+                Log.e(LOGTAG, "Could not post data to Mixpanel");
+            }
         }
 
         return ret;
     }
 
-    private PostResult postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
-        PostResult ret = PostResult.FAILED_UNRECOVERABLE;
-        HttpClient httpclient = new DefaultHttpClient();
+    private Result postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+        Status status = Status.FAILED_UNRECOVERABLE;
+        String response = null;
+        HttpClient httpclient = new DefaultHttpClient(); // TODO use AndroidHttpClient
         HttpPost httppost = new HttpPost(endpointUrl);
 
         try {
             httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
+            HttpResponse httpResponse = httpclient.execute(httppost);
+            HttpEntity entity = httpResponse.getEntity();
 
             if (entity != null) {
-                String result = StringUtils.inputStreamToString(entity.getContent());
-                if (result.equals("1\n")) {
-                    ret = PostResult.SUCCEEDED;
+                response = StringUtils.inputStreamToString(entity.getContent());
+                if (response.equals("1\n")) {
+                    status = Status.SUCCEEDED;
                 }
             }
         } catch (IOException e) {
-            Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry)", e);
-            ret = PostResult.FAILED_RECOVERABLE;
+            if (MPConfig.DEBUG) {
+                Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry)", e);
+            }
+            status = Status.FAILED_RECOVERABLE;
         } catch (OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
-            ret = PostResult.FAILED_UNRECOVERABLE;
+            status = Status.FAILED_UNRECOVERABLE;
         }
 
-        return ret;
+        return new Result(status, response);
     }
 
     private final String mDefaultHost;

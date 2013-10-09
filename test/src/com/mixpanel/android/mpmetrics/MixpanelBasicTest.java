@@ -296,16 +296,16 @@ public class MixpanelBasicTest extends
     public void testEndpointChanges() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
-        final HttpPoster dummyposter = new HttpPoster(null, null) {
+        final ServerMessage dummyposter = new ServerMessage(null, null) {
             @Override
-            public PostResult postData(String rawMessage, String endpointPath) {
-                return HttpPoster.PostResult.SUCCEEDED;
+            public Result postData(String rawMessage, String endpointPath) {
+                return new Result(Status.SUCCEEDED, "1\n");
             }
         };
 
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
             @Override
-            protected HttpPoster getPoster(String endpointBase, String endpointFallback) {
+            protected ServerMessage getPoster(String endpointBase, String endpointFallback) { /* Rename getPoster */
                 messages.add("URLS " + endpointBase + ", " + endpointFallback);
                 return dummyposter;
             }
@@ -355,9 +355,9 @@ public class MixpanelBasicTest extends
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
-        final HttpPoster mockPoster = new HttpPoster(null, null) {
+        final ServerMessage mockPoster = new ServerMessage(null, null) {
             @Override
-            public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
+            public Result postData(String rawMessage, String endpointUrl) {
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(rawMessage);
@@ -365,7 +365,7 @@ public class MixpanelBasicTest extends
                     throw new RuntimeException(e);
                 }
 
-                return HttpPoster.PostResult.SUCCEEDED;
+                return new Result(Status.SUCCEEDED, "1\n");
             }
         };
 
@@ -376,7 +376,7 @@ public class MixpanelBasicTest extends
             }
 
             @Override
-            protected HttpPoster getPoster(String baseEndpoint, String fallbackEndpoint) {
+            protected ServerMessage getPoster(String baseEndpoint, String fallbackEndpoint) {
                 return mockPoster;
             }
         };
@@ -470,18 +470,18 @@ public class MixpanelBasicTest extends
 
     public void testHTTPFailures() {
 
-        final List<HttpPoster.PostResult> results = new ArrayList<HttpPoster.PostResult>();
-        results.add(HttpPoster.PostResult.SUCCEEDED);
-        results.add(HttpPoster.PostResult.FAILED_RECOVERABLE);
-        results.add(HttpPoster.PostResult.FAILED_UNRECOVERABLE);
-        results.add(HttpPoster.PostResult.FAILED_RECOVERABLE);
-        results.add(HttpPoster.PostResult.SUCCEEDED);
+        final List<ServerMessage.Result> results = new ArrayList<ServerMessage.Result>();
+        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
+        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, "0\n"));
+        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
-        final HttpPoster mockPoster = new HttpPoster(null, null) {
+        final ServerMessage mockPoster = new ServerMessage(null, null) {
             @Override
-            public HttpPoster.PostResult postData(String rawMessage, String endpointUrl) {
+            public ServerMessage.Result postData(String rawMessage, String endpointUrl) {
                 try {
                     JSONArray msg = new JSONArray(rawMessage);
                     JSONObject event = msg.getJSONObject(0);
@@ -497,7 +497,7 @@ public class MixpanelBasicTest extends
 
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
             @Override
-            protected HttpPoster getPoster(String baseEndpoint, String fallbackEndpoint) {
+            protected ServerMessage getPoster(String baseEndpoint, String fallbackEndpoint) {
                 return mockPoster;
             }
         };

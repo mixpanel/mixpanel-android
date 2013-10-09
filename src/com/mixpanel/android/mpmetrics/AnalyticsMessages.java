@@ -312,14 +312,15 @@ import android.util.Log;
                     String lastId = eventsData[0];
                     String rawMessage = eventsData[1];
                     ServerMessage poster = getPoster(mEndpointHost, mFallbackHost);
-                    ServerMessage.PostResult eventsPosted = poster.postData(rawMessage, endpointUrl);
+                    ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl);
+                    ServerMessage.Status postStatus = eventsPosted.getStatus();
 
-                    if (eventsPosted == ServerMessage.PostResult.SUCCEEDED) {
+                    if (postStatus == ServerMessage.Status.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
                         logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
                         dbAdapter.cleanupEvents(lastId, table);
                     }
-                    else if (eventsPosted == ServerMessage.PostResult.FAILED_RECOVERABLE) {
+                    else if (postStatus == ServerMessage.Status.FAILED_RECOVERABLE) {
                         // Try again later
                         if (!hasMessages(FLUSH_QUEUE)) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
