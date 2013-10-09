@@ -48,6 +48,9 @@
     <property name="test.dir" value="test" />
     <property name="test.libs.dir" value="${test.dir}/libs" />
     <property name="test.absolute.libs.dir" location="${test.libs.dir}" />
+    <property name="dummy.dir" value="dummy" />
+    <property name="dummy.libs.dir" value="${dummy.dir}/libs" />
+    <property name="dummy.absolute.libs.dir" location="${dummy.libs.dir}" />
 
     <!-- compilation options -->
     <property name="java.encoding" value="UTF-8" />
@@ -104,6 +107,7 @@
            includes="**/*.class" />
       <copy file="MixpanelAPI.jar" tofile="${demo.absolute.libs.dir}/MixpanelAPI.jar" />
       <copy file="MixpanelAPI.jar" tofile="${test.absolute.libs.dir}/MixpanelAPI.jar" />
+      <copy file="MixpanelAPI.jar" tofile="${dummy.absolute.libs.dir}/MixpanelAPI.jar" />
     </target>
 
     <target name="docs">

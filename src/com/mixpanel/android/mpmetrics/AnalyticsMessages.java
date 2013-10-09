@@ -176,7 +176,6 @@ import android.util.Log;
                         Log.i(LOGTAG, "Starting worker thread " + this.getId());
 
                     Looper.prepare();
-
                     try {
                         handlerQueue.put(new AnalyticsMessageHandler());
                     } catch (InterruptedException e) {
@@ -205,13 +204,17 @@ import android.util.Log;
         private class AnalyticsMessageHandler extends Handler {
             public AnalyticsMessageHandler() {
                 super();
-                mDbAdapter = makeDbAdapter(mContext);
-                mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
-                mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+                mDbAdapter = null;
             }
 
             @Override
             public void handleMessage(Message msg) {
+                if (mDbAdapter == null) {
+                    mDbAdapter = makeDbAdapter(mContext);
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+                }
+
                 try {
                     int queueDepth = -1;
 
@@ -248,7 +251,7 @@ import android.util.Log;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        sendAllData();
+                        sendAllData(mDbAdapter);
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -266,7 +269,7 @@ import android.util.Log;
                     if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
-                        sendAllData();
+                        sendAllData(mDbAdapter);
                     }
                     else if(queueDepth > 0) {
                         if (!hasMessages(FLUSH_QUEUE)) {
@@ -293,15 +296,15 @@ import android.util.Log;
                 }
             }// handleMessage
 
-            private void sendAllData() {
+            private void sendAllData(MPDbAdapter dbAdapter) {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
 
-                sendData(MPDbAdapter.Table.EVENTS, "/track?ip=1");
-                sendData(MPDbAdapter.Table.PEOPLE, "/engage");
+                sendData(dbAdapter, MPDbAdapter.Table.EVENTS, "/track?ip=1");
+                sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, "/engage");
             }
 
-            private void sendData(MPDbAdapter.Table table, String endpointUrl) {
-                String[] eventsData = mDbAdapter.generateDataString(table);
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl) {
+                String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
                     String lastId = eventsData[0];
@@ -312,7 +315,7 @@ import android.util.Log;
                     if (eventsPosted == HttpPoster.PostResult.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
                         logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
-                        mDbAdapter.cleanupEvents(lastId, table);
+                        dbAdapter.cleanupEvents(lastId, table);
                     }
                     else if (eventsPosted == HttpPoster.PostResult.FAILED_RECOVERABLE) {
                         // Try again later
@@ -321,14 +324,14 @@ import android.util.Log;
                         }
                     }
                     else { // give up, we have an unrecoverable failure.
-                        mDbAdapter.cleanupEvents(lastId, table);
+                        dbAdapter.cleanupEvents(lastId, table);
                     }
                 }
             }
 
             private String mEndpointHost = MPConfig.BASE_ENDPOINT;
             private String mFallbackHost = MPConfig.FALLBACK_ENDPOINT;
-            private final MPDbAdapter mDbAdapter;
+            private MPDbAdapter mDbAdapter;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
