@@ -279,7 +279,9 @@ import android.util.Log;
                             // Callers outside of this thread can still send
                             // a flush right here, so we may end up with two flushes
                             // in our queue, but we're ok with that.
-                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                            if (mFlushInterval >= 0) {
+                                    sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                            }
                         }
                     }
                 } catch (RuntimeException e) {

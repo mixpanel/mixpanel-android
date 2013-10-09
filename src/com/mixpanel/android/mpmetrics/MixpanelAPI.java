@@ -156,6 +156,10 @@ public class MixpanelAPI {
      * Callers can override this value, for the whole application, by calling
      * <tt>setFlushInterval</tt>.
      *
+     * If milliseconds is negative, Mixpanel will never flush the data automatically,
+     * and require callers to call {@ link #flush()} to send data. This can have
+     * implications for storage and is not appropriate for most situations.
+     *
      * @param context the execution context associated with this application, probably
      *      the main application activity.
      * @param milliseconds the target number of milliseconds between automatic flushes.
