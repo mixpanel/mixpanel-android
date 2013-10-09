@@ -123,8 +123,8 @@ import android.util.Log;
         return new MPDbAdapter(context);
     }
 
-    protected HttpPoster getPoster(String endpointBase, String endpointFallback) {
-        return new HttpPoster(endpointBase, endpointFallback);
+    protected ServerMessage getPoster(String endpointBase, String endpointFallback) {
+        return new ServerMessage(endpointBase, endpointFallback);
     }
 
     ////////////////////////////////////////////////////
@@ -311,15 +311,15 @@ import android.util.Log;
                 if (eventsData != null) {
                     String lastId = eventsData[0];
                     String rawMessage = eventsData[1];
-                    HttpPoster poster = getPoster(mEndpointHost, mFallbackHost);
-                    HttpPoster.PostResult eventsPosted = poster.postData(rawMessage, endpointUrl);
+                    ServerMessage poster = getPoster(mEndpointHost, mFallbackHost);
+                    ServerMessage.PostResult eventsPosted = poster.postData(rawMessage, endpointUrl);
 
-                    if (eventsPosted == HttpPoster.PostResult.SUCCEEDED) {
+                    if (eventsPosted == ServerMessage.PostResult.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
                         logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
                         dbAdapter.cleanupEvents(lastId, table);
                     }
-                    else if (eventsPosted == HttpPoster.PostResult.FAILED_RECOVERABLE) {
+                    else if (eventsPosted == ServerMessage.PostResult.FAILED_RECOVERABLE) {
                         // Try again later
                         if (!hasMessages(FLUSH_QUEUE)) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);

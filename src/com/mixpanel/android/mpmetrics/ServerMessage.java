@@ -18,7 +18,7 @@ import android.util.Log;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.StringUtils;
 
-/* package */ class HttpPoster {
+/* package */ class ServerMessage {
 
     public static enum PostResult {
         // The post was sent and understood by the Mixpanel service.
@@ -33,7 +33,7 @@ import com.mixpanel.android.util.StringUtils;
         FAILED_UNRECOVERABLE
     };
 
-    public HttpPoster(String defaultHost, String fallbackHost) {
+    public ServerMessage(String defaultHost, String fallbackHost) {
         mDefaultHost = defaultHost;
         mFallbackHost = fallbackHost;
     }
