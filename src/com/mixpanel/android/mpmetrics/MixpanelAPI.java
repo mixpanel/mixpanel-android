@@ -10,17 +10,17 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
-
-import android.bluetooth.BluetoothAdapter;
-import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -976,24 +976,26 @@ public class MixpanelAPI {
         if (null != isWifi)
             ret.put("$wifi", isWifi.booleanValue());
 
-        // check for bluetooth
-        if (android.os.Build.VERSION.SDK_INT >= 8) { // FEATURE_BLUETOOTH flag introduced in api 8
+        if (android.os.Build.VERSION.SDK_INT >= 8) {
             String bluetoothVersion = "none";
-            if(android.os.Build.VERSION.SDK_INT >= 18 // FEATURE_BLUETOOTH_LE flag introduced in api 18
-                    && mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            if(android.os.Build.VERSION.SDK_INT >= 18 && // TODO MUST TEST ON Phil's phone!
+                    mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
                 bluetoothVersion = "ble";
             } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
                 bluetoothVersion = "classic";
             }
             ret.put("$bluetooth_version", bluetoothVersion);
 
-            try {
-                BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                if (null != mBluetoothAdapter) {
-                    ret.put("$bluetooth_enabled", mBluetoothAdapter.isEnabled());
+            if (android.os.Build.VERSION.SDK_INT >= 18) { // TODO don't merge this until you test on Phil's phone!
+                try {
+                    BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+                    BluetoothAdapter bluetoothAdapter = manager.getAdapter();
+                    if (null != bluetoothAdapter) {
+                        ret.put("$bluetooth_enabled", bluetoothAdapter.isEnabled());
+                    }
+                } catch (SecurityException e) {
+                    // do nothing since we don't have permissions
                 }
-            } catch (SecurityException e) {
-                // do nothing since we don't have permissions
             }
         }
 

@@ -561,7 +561,6 @@ public class MixpanelBasicTest extends
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }
-
     }
 
     public void testTrackCharge() {
