@@ -8,6 +8,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -26,6 +30,7 @@ import android.util.Log;
      */
     /* package */ AnalyticsMessages(Context context) {
         mContext = context;
+        mConfig = getConfig(context);
         mLogMixpanelMessages = new AtomicBoolean(false);
         mWorker = new Worker();
     }
@@ -81,6 +86,9 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    /**
+     * Remove this when we eliminate the associated deprecated public ifc
+     */
     public void setFlushInterval(long milliseconds) {
         Message m = Message.obtain();
         m.what = SET_FLUSH_INTERVAL;
@@ -89,18 +97,13 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
-    public void setFallbackHost(String fallbackHost) {
+    /**
+     * Remove this when we eliminate the associated deprecated public ifc
+     */
+    public void setDisableFallback(boolean disableIfTrue) {
         Message m = Message.obtain();
-        m.what = SET_FALLBACK_HOST;
-        m.obj = fallbackHost;
-
-        mWorker.runMessage(m);
-    }
-
-    public void setEndpointHost(String endpointHost) {
-        Message m = Message.obtain();
-        m.what = SET_ENDPOINT_HOST;
-        m.obj = endpointHost;
+        m.what = SET_DISABLE_FALLBACK;
+        m.obj = new Boolean(disableIfTrue);
 
         mWorker.runMessage(m);
     }
@@ -119,12 +122,16 @@ import android.util.Log;
         return mWorker.isDead();
     }
 
-    protected MPDbAdapter makeDbAdapter(Context context) {
+    protected MPDbAdapter makeDbAdapter(Context context) { // TODO verify this is still a thing?
         return new MPDbAdapter(context);
     }
 
-    protected ServerMessage getPoster(String endpointBase, String endpointFallback) {
-        return new ServerMessage(endpointBase, endpointFallback);
+    protected MPConfig getConfig(Context context) {
+        return MPConfig.readConfig(context);
+    }
+
+    protected ServerMessage getPoster() {
+        return new ServerMessage();
     }
 
     ////////////////////////////////////////////////////
@@ -205,32 +212,31 @@ import android.util.Log;
             public AnalyticsMessageHandler() {
                 super();
                 mDbAdapter = null;
+                mDisableFallback = mConfig.getDisableFallback();
+                mFlushInterval = mConfig.getFlushInterval();
             }
 
             @Override
             public void handleMessage(Message msg) {
                 if (mDbAdapter == null) {
                     mDbAdapter = makeDbAdapter(mContext);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.EVENTS);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - MPConfig.DATA_EXPIRATION, MPDbAdapter.Table.PEOPLE);
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.EVENTS);
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.PEOPLE);
                 }
 
                 try {
                     int queueDepth = -1;
 
                     if (msg.what == SET_FLUSH_INTERVAL) {
-                        Long newIntervalObj = (Long) msg.obj;
+                        final Long newIntervalObj = (Long) msg.obj;
                         logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
                         mFlushInterval = newIntervalObj.longValue();
                         removeMessages(FLUSH_QUEUE);
                     }
-                    else if (msg.what == SET_ENDPOINT_HOST) {
-                        logAboutMessageToMixpanel("Setting endpoint API host to " + mEndpointHost);
-                        mEndpointHost = msg.obj == null ? null : msg.obj.toString();
-                    }
-                    else if (msg.what == SET_FALLBACK_HOST) {
-                        logAboutMessageToMixpanel("Setting fallback API host to " + mFallbackHost);
-                        mFallbackHost = msg.obj == null ? null : msg.obj.toString();
+                    else if (msg.what == SET_DISABLE_FALLBACK) {
+                        final Boolean disableState = (Boolean) msg.obj;
+                        logAboutMessageToMixpanel("Setting fallback to " + disableState);
+                        mDisableFallback = disableState.booleanValue();
                     }
                     else if (msg.what == ENQUEUE_PEOPLE) {
                         JSONObject message = (JSONObject) msg.obj;
@@ -266,19 +272,20 @@ import android.util.Log;
 
                     ///////////////////////////
 
-                    if (queueDepth >= MPConfig.BULK_UPLOAD_LIMIT) {
+                    if (queueDepth >= mConfig.getBulkUploadLimit()) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
                     }
                     else if(queueDepth > 0) {
                         if (!hasMessages(FLUSH_QUEUE)) {
-                            logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
                             // The hasMessages check is a courtesy for the common case
                             // of delayed flushes already enqueued from inside of this thread.
                             // Callers outside of this thread can still send
                             // a flush right here, so we may end up with two flushes
                             // in our queue, but we're ok with that.
+
+                            logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
                             if (mFlushInterval >= 0) {
                                     sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                             }
@@ -300,19 +307,23 @@ import android.util.Log;
 
             private void sendAllData(MPDbAdapter dbAdapter) {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
-
-                sendData(dbAdapter, MPDbAdapter.Table.EVENTS, "/track?ip=1");
-                sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, "/engage");
+                if (mDisableFallback) {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), null);
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), null);
+                } else {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint());
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
+                }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl) {
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl, String fallbackUrl) {
                 String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
                     String lastId = eventsData[0];
                     String rawMessage = eventsData[1];
-                    ServerMessage poster = getPoster(mEndpointHost, mFallbackHost);
-                    ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl);
+                    ServerMessage poster = getPoster();
+                    ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl, fallbackUrl);
                     ServerMessage.Status postStatus = eventsPosted.getStatus();
 
                     if (postStatus == ServerMessage.Status.SUCCEEDED) {
@@ -332,9 +343,9 @@ import android.util.Log;
                 }
             }
 
-            private String mEndpointHost = MPConfig.BASE_ENDPOINT;
-            private String mFallbackHost = MPConfig.FALLBACK_ENDPOINT;
             private MPDbAdapter mDbAdapter;
+            private long mFlushInterval; // TODO remove when associated deprecated APIs are removed
+            private boolean mDisableFallback; // TODO remove when associated deprecated APIs are removed
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -356,8 +367,6 @@ import android.util.Log;
 
         private final Object mHandlerLock = new Object();
         private Handler mHandler;
-
-        private long mFlushInterval = MPConfig.FLUSH_RATE;
         private long mFlushCount = 0;
         private long mAveFlushFrequency = 0;
         private long mLastFlushTime = -1;
@@ -369,15 +378,17 @@ import android.util.Log;
     private final AtomicBoolean mLogMixpanelMessages;
     private final Worker mWorker;
     private final Context mContext;
+    private final MPConfig mConfig;
 
     // Messages for our thread
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
+    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the eve
+
+    // TODO REMOVE when associated deprecated APIs are removed
     private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
-    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue.
-    private static int SET_ENDPOINT_HOST = 6; // Use obj.toString() as the first part of the URL for api requests.
-    private static int SET_FALLBACK_HOST = 7; // Use obj.toString() as the (possibly null) string for api fallback requests.
+    private static int SET_DISABLE_FALLBACK = 10; // Disable fallback to http
 
     private static final String LOGTAG = "MixpanelAPI";
 

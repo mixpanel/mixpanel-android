@@ -53,22 +53,15 @@ import com.mixpanel.android.util.StringUtils;
         private final Status mStatus;
     }
 
-    public ServerMessage(String defaultHost, String fallbackHost) {
-        mDefaultHost = defaultHost;
-        mFallbackHost = fallbackHost;
-    }
-
-    public Result postData(String rawMessage, String endpointPath) {
+    public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
         String encodedData = Base64Coder.encodeString(rawMessage);
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
 
-        String defaultUrl = mDefaultHost + endpointPath;
-        Result ret = postHttpRequest(defaultUrl, nameValuePairs);
+        Result ret = postHttpRequest(endpointUrl, nameValuePairs);
         Status status = ret.getStatus();
-        if (status == Status.FAILED_RECOVERABLE && mFallbackHost != null) {
-            String fallbackUrl = mFallbackHost + endpointPath;
+        if (status == Status.FAILED_RECOVERABLE && fallbackUrl != null) { // TODO MUST ALLOW NO FALLBACK (with test)
             if (MPConfig.DEBUG) Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
             ret = postHttpRequest(fallbackUrl, nameValuePairs);
             status = ret.getStatus();
@@ -109,9 +102,6 @@ import com.mixpanel.android.util.StringUtils;
 
         return new Result(status, response);
     }
-
-    private final String mDefaultHost;
-    private final String mFallbackHost;
 
     private static final String LOGTAG = "MixpanelAPI";
 }

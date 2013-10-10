@@ -97,7 +97,7 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
 
-        mMessages = getAnalyticsMessages();
+        mMessages = getAnalyticsMessages(); // Pass context to read config? or pass config by context?
         mSystemInformation = getSystemInformation();
 
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
@@ -164,8 +164,17 @@ public class MixpanelAPI {
      *      the main application activity.
      * @param milliseconds the target number of milliseconds between automatic flushes.
      *      this value is advisory, actual flushes may be more or less frequent
+     * @deprecated in 4.0.0, use application metadata instead
      */
+    @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
+        Log.i(
+            LOGTAG,
+            "MixpanelAPI.setFlushInterval is deprecated.\n" +
+            "    To set a custom Mixpanel flush interval for your application, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
+            "    to the <application> section of your AndroidManifest.xml."
+        );
         AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
         msgs.setFlushInterval(milliseconds);
     }
@@ -178,13 +187,19 @@ public class MixpanelAPI {
      * @param context the execution context associated with this context.
      * @param enableIfTrue if true, the library will fall back to using http
      *      when https is unavailable.
+     * @deprecated in 4.0.0, use application metadata instead
      */
+    @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
+        Log.i(
+            LOGTAG,
+            "MixpanelAPI.enableFallbackServer is deprecated.\n" +
+            "    To disable fallback in your application, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"true\" />\n" +
+            "    to the <application> section of your AndroidManifest.xml."
+        );
         AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
-        if (enableIfTrue)
-            msgs.setFallbackHost(MPConfig.FALLBACK_ENDPOINT);
-        else
-            msgs.setFallbackHost(null);
+        msgs.setDisableFallback(! enableIfTrue);
     }
 
     /**

@@ -15,6 +15,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.test.ActivityInstrumentationTestCase2;
 
 import com.mixpanel.android.dummy.DummyActivity;
@@ -41,6 +42,41 @@ public class MixpanelBasicTest extends
 
     public void testTrivialRunning() {
         assertTrue(mActivity != null);
+    }
+
+    public void testCustomConfig() {
+        Bundle bundle = new Bundle();
+        bundle.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 101);
+        bundle.putInt("com.mixpanel.android.MPConfig.FlushInterval", 102);
+        bundle.putInt("com.mixpanel.android.MPConfig.DataExpiration", 103);
+        bundle.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EventsEndpoint");
+        bundle.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EventsFallback");
+        bundle.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PeopleEndpoint");
+        bundle.putString("com.mixpanel.android.MPConfig.PeopleFallbackEndpoint", "PeopleFallback");
+        bundle.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DecideEndpoint");
+        bundle.putString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint", "DecideFallback");
+
+        MPConfig config = new MPConfig(bundle);
+        assertEquals(config.getBulkUploadLimit(), 101);
+        assertEquals(config.getFlushInterval(), 102);
+        assertEquals(config.getDataExpiration(), 103);
+        assertEquals(config.getEventsEndpoint(), "EventsEndpoint");
+        assertEquals(config.getEventsFallbackEndpoint(), "EventsFallback");
+        assertEquals(config.getPeopleEndpoint(), "PeopleEndpoint");
+        assertEquals(config.getPeopleFallbackEndpoint(), "PeopleFallback");
+        assertEquals(config.getDecideEndpoint(), "DecideEndpoint");
+        assertEquals(config.getDecideFallbackEndpoint(), "DecideFallback");
+    }
+
+    public void testReadConfig() {
+        // This test depends on a setting in dummy-activity AndroidManifest.xml -
+        // In particular
+        // <application>
+        //    <meta-data android:name="com.mixpanel.android.MPConfig.DataExpiration" android:value="86400000" />
+        //    ...
+        // </application>
+        MPConfig config = MPConfig.readConfig(mActivity.getApplicationContext());
+        assertEquals(config.getDataExpiration(), 86400000);
     }
 
     public void testGeneratedDistinctId() {
@@ -293,50 +329,11 @@ public class MixpanelBasicTest extends
         assertEquals("People Id", setPeopleId);
     }
 
-    public void testEndpointChanges() {
-        final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
-
-        final ServerMessage dummyposter = new ServerMessage(null, null) {
-            @Override
-            public Result postData(String rawMessage, String endpointPath) {
-                return new Result(Status.SUCCEEDED, "1\n");
-            }
-        };
-
-        final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
-            @Override
-            protected ServerMessage getPoster(String endpointBase, String endpointFallback) { /* Rename getPoster */
-                messages.add("URLS " + endpointBase + ", " + endpointFallback);
-                return dummyposter;
-            }
-        };
-        MixpanelAPI metrics = new MixpanelAPI(mActivity, "TEST TOKEN URL FALLBACK") {
-            @Override
-            protected AnalyticsMessages getAnalyticsMessages() {
-                 return listener;
-            }
-        };
-
-        try {
-            metrics.track("event1", null);
-            metrics.flush();
-            String defaultUrls = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("URLS " + MPConfig.BASE_ENDPOINT + ", " + MPConfig.FALLBACK_ENDPOINT, defaultUrls);
-
-            listener.setEndpointHost("BANANAS");
-            listener.setFallbackHost(MPConfig.BASE_ENDPOINT);
-            metrics.track("event1", null);
-            metrics.flush();
-            String explicitUrls = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("URLS BANANAS, " + MPConfig.BASE_ENDPOINT, explicitUrls);
-        } catch (InterruptedException e) {
-            fail("Unexpected interruption during test");
-        }
+    public void testConfigEffects() {
+        fail("Need to write this test?");
     }
 
     public void testMessageQueuing() {
-        MixpanelAPI.setFlushInterval(mActivity, Long.MAX_VALUE);
-
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(mActivity) {
@@ -355,9 +352,9 @@ public class MixpanelBasicTest extends
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
-        final ServerMessage mockPoster = new ServerMessage(null, null) {
+        final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public Result postData(String rawMessage, String endpointUrl) {
+            public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(rawMessage);
@@ -369,6 +366,28 @@ public class MixpanelBasicTest extends
             }
         };
 
+        final MPConfig mockConfig = new MPConfig(new Bundle()) {
+            @Override
+            public int getFlushInterval() {
+                return -1;
+            }
+
+            @Override
+            public int getBulkUploadLimit() {
+                return 40;
+            }
+
+            @Override
+            public String getEventsEndpoint() {
+                return "EVENTS_ENDPOINT";
+            }
+
+            @Override
+            public String getPeopleEndpoint() {
+                return "PEOPLE_ENDPOINT";
+            }
+        };
+
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
@@ -376,7 +395,12 @@ public class MixpanelBasicTest extends
             }
 
             @Override
-            protected ServerMessage getPoster(String baseEndpoint, String fallbackEndpoint) {
+            protected MPConfig getConfig(Context context) {
+                return mockConfig;
+            }
+
+            @Override
+            protected ServerMessage getPoster() {
                 return mockPoster;
             }
         };
@@ -390,7 +414,7 @@ public class MixpanelBasicTest extends
         // metrics.logPosts();
 
         // Test filling up the message queue
-        for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
+        for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
             metrics.track("frequent event", null);
         }
 
@@ -398,7 +422,7 @@ public class MixpanelBasicTest extends
         String expectedJSONMessage = "<No message actually recieved>";
 
         try {
-            for (int i=0; i < (MPConfig.BULK_UPLOAD_LIMIT - 1); i++) {
+            for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
                 String messageTable = messages.poll(1, TimeUnit.SECONDS);
                 assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
@@ -415,11 +439,11 @@ public class MixpanelBasicTest extends
             assertEquals("final event", message.getString("event"));
 
             String messageFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH /track?ip=1", messageFlush);
+            assertEquals("SENT FLUSH EVENTS_ENDPOINT", messageFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
-            assertEquals(MPConfig.BULK_UPLOAD_LIMIT, bigFlush.length());
+            assertEquals(mockConfig.getBulkUploadLimit(), bigFlush.length());
 
             metrics.track("next wave", null);
             metrics.flush();
@@ -432,7 +456,7 @@ public class MixpanelBasicTest extends
             assertEquals("next wave", nextWaveMessage.getString("event"));
 
             String manualFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH /track?ip=1", manualFlush);
+            assertEquals("SENT FLUSH EVENTS_ENDPOINT", manualFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray nextWave = new JSONArray(expectedJSONMessage);
@@ -455,7 +479,7 @@ public class MixpanelBasicTest extends
             assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
 
             String peopleFlush = messages.poll(1, TimeUnit.SECONDS);
-            assertEquals("SENT FLUSH /engage", peopleFlush);
+            assertEquals("SENT FLUSH PEOPLE_ENDPOINT", peopleFlush);
 
             expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
             JSONArray peopleSent = new JSONArray(expectedJSONMessage);
@@ -479,9 +503,9 @@ public class MixpanelBasicTest extends
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
-        final ServerMessage mockPoster = new ServerMessage(null, null) {
+        final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public ServerMessage.Result postData(String rawMessage, String endpointUrl) {
+            public ServerMessage.Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
                 try {
                     JSONArray msg = new JSONArray(rawMessage);
                     JSONObject event = msg.getJSONObject(0);
@@ -497,7 +521,7 @@ public class MixpanelBasicTest extends
 
         final AnalyticsMessages listener = new AnalyticsMessages(mActivity) {
             @Override
-            protected ServerMessage getPoster(String baseEndpoint, String fallbackEndpoint) {
+            protected ServerMessage getPoster() {
                 return mockPoster;
             }
         };
@@ -509,7 +533,7 @@ public class MixpanelBasicTest extends
             }
         };
 
-        try {
+        try { // TODO check fallback URL use here?
             metrics.track("Should Succeed", null);
             metrics.flush(); // Should result in SUCCEEDED
             Thread.sleep(200);
