@@ -329,10 +329,6 @@ public class MixpanelBasicTest extends
         assertEquals("People Id", setPeopleId);
     }
 
-    public void testConfigEffects() {
-        fail("Need to write this test?");
-    }
-
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
 
@@ -533,7 +529,7 @@ public class MixpanelBasicTest extends
             }
         };
 
-        try { // TODO check fallback URL use here?
+        try {
             metrics.track("Should Succeed", null);
             metrics.flush(); // Should result in SUCCEEDED
             Thread.sleep(200);

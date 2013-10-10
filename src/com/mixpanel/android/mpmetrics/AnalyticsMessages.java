@@ -8,10 +8,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -122,7 +118,7 @@ import android.util.Log;
         return mWorker.isDead();
     }
 
-    protected MPDbAdapter makeDbAdapter(Context context) { // TODO verify this is still a thing?
+    protected MPDbAdapter makeDbAdapter(Context context) {
         return new MPDbAdapter(context);
     }
 

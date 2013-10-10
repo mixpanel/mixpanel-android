@@ -61,7 +61,7 @@ import com.mixpanel.android.util.StringUtils;
 
         Result ret = postHttpRequest(endpointUrl, nameValuePairs);
         Status status = ret.getStatus();
-        if (status == Status.FAILED_RECOVERABLE && fallbackUrl != null) { // TODO MUST ALLOW NO FALLBACK (with test)
+        if (status == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
             if (MPConfig.DEBUG) Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
             ret = postHttpRequest(fallbackUrl, nameValuePairs);
             status = ret.getStatus();
