@@ -1,16 +1,18 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
 import android.util.Log;
@@ -58,6 +60,9 @@ import com.mixpanel.android.util.StringUtils;
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
+        if (MPConfig.DEBUG) {
+            nameValuePairs.add(new BasicNameValuePair("verbose", "1"));
+        }
 
         Result ret = postHttpRequest(endpointUrl, nameValuePairs);
         Status status = ret.getStatus();
@@ -76,20 +81,28 @@ import com.mixpanel.android.util.StringUtils;
     private Result postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
         String response = null;
-        HttpClient httpclient = new DefaultHttpClient(); // TODO use AndroidHttpClient
-        HttpPost httppost = new HttpPost(endpointUrl);
+        InputStream in = null;
+        OutputStream out = null;
+        HttpURLConnection connection = null;
 
         try {
-            httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            HttpResponse httpResponse = httpclient.execute(httppost);
-            HttpEntity entity = httpResponse.getEntity();
-
-            if (entity != null) {
-                response = StringUtils.inputStreamToString(entity.getContent());
-                if (response.equals("1\n")) {
-                    status = Status.SUCCEEDED;
-                }
-            }
+            URL url = new URL(endpointUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
+            connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setFixedLengthStreamingMode((int)form.getContentLength());
+            out = new BufferedOutputStream(connection.getOutputStream());
+            form.writeTo(out);
+            out.close();
+            out = null;
+            in = new BufferedInputStream(connection.getInputStream());
+            response = StringUtils.inputStreamToString(in);
+            in.close();
+            in = null;
+        } catch (MalformedURLException e) {
+            Log.e(LOGTAG, "Cannot iterpret " + endpointUrl + " as a URL", e);
+            status = Status.FAILED_UNRECOVERABLE;
         } catch (IOException e) {
             if (MPConfig.DEBUG) {
                 Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry)", e);
@@ -98,6 +111,29 @@ import com.mixpanel.android.util.StringUtils;
         } catch (OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
             status = Status.FAILED_UNRECOVERABLE;
+        } finally {
+            if (null != in) {
+                try { in.close(); } catch (IOException e) { ; }
+            }
+            if (null != out) {
+                try { out.close(); } catch (IOException e) { ; }
+            }
+            if (null != connection) {
+                connection.disconnect();
+            }
+        }
+
+        if (null != response) {
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Request returned:\n" + response);
+                // This Regex is only acceptable because we're in debug mode.
+                if (response.matches(".*\\b\"status\"\\s*:\\s*1\\b.*")) {
+                    status = Status.SUCCEEDED;
+                }
+            }
+            if (response.equals("1\n")) {
+                status = Status.SUCCEEDED;
+            }
         }
 
         return new Result(status, response);

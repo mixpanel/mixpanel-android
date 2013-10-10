@@ -5,6 +5,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
+import android.util.Log;
 
 /**
  * Stores global configuration options for the Mixpanel library.
@@ -72,7 +73,21 @@ import android.os.Bundle;
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;
 
-
+        if (DEBUG) {
+            Log.d(LOGTAG,
+                "Mixpanel configured with:\n" +
+                "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
+                "    FlushInterval " + getFlushInterval() + "\n" +
+                "    DataExpiration " + getDataExpiration() + "\n" +
+                "    DisableFallback " + getDisableFallback() + "\n" +
+                "    EventsEndpoint " + getEventsEndpoint() + "\n" +
+                "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
+                "    DecideEndpoint " + getDecideEndpoint() + "\n" +
+                "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
+                "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
+                "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n"
+            );
+        }
     }
 
     // Max size of queue before we require a flush. Must be below the limit the service will accept.
@@ -134,4 +149,6 @@ import android.os.Bundle;
     private final String mPeopleFallbackEndpoint;
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
+
+    private static final String LOGTAG = "MixpanelAPI.MPConfig";
 }
