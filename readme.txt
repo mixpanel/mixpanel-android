@@ -15,6 +15,32 @@ License:
 
 Changelog:
 
+v4.0.0
+---------------------
+* Users can now configure MixpanelAPI behavior by including <meta-data> tags in the <application>
+  tag of their apps. The following meta-data keys are supported:
+
+  com.mixpanel.android.MPConfig.FlushInterval (value: a time in milliseconds)
+
+      If provided, the library will use this interval instead of the default as a
+      target maximum duration between attempts to flush data to Mixpanel's servers.
+
+  com.mixpanel.android.MPConfig.DisableFallback (value: a boolean)
+
+      If provided and equal to "true", the library will not attempt to send data over
+      HTTP if HTTPS fails
+
+* A scary stack trace log in the common, not-scary case of fallback from HTTPS to HTTP has been
+  removed.
+
+* MixpanelAPI.setFlushInterval() has been deprecated.
+  Use <meta-data android:name="com.mixpanel.android.MPConfig.FlushInterval" android:value="XXX" />
+  instead, where "XXX" is the desired interval in Milliseconds.
+
+* MixpanelAPI.enableFallbackServer() has been deprecated.
+  Use <meta-data android:name="com.mixpanel.android.MPConfig.DisableFallback" android:value="true" />
+  to disable fallback to HTTP if HTTPS is unavailable.
+
 v3.3.1
 ---------------------
 
