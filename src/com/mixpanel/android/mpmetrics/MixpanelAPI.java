@@ -812,11 +812,13 @@ public class MixpanelAPI {
         @Override
         public void trackCharge(double amount, JSONObject properties) {
             Date now = new Date();
+            DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
             try {
                 JSONObject transactionValue = new JSONObject();
                 transactionValue.put("$amount", amount);
-                transactionValue.put("$time", ENGAGE_DATE_FORMAT.format(now));
+                transactionValue.put("$time", dateFormat.format(now));
 
                 if (null != properties) {
                     for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
@@ -1089,10 +1091,7 @@ public class MixpanelAPI {
     }
 
     private static final String LOGTAG = "MixpanelAPI";
-    private static final DateFormat ENGAGE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-    static {
-        ENGAGE_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
+    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     // Maps each token to a singleton MixpanelAPI instance
     private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

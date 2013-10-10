@@ -17,6 +17,10 @@ Changelog:
 
 v4.0.0
 ---------------------
+* Automatic $bluetooth_enabled property will only be added automatically on devices with
+  OS version greater than API 18/OS version 4.3/Jelly Bean MR2. This feature had a
+  critical bug on older platforms, and was not in popular use.
+
 * Users can now configure MixpanelAPI behavior by including <meta-data> tags in the <application>
   tag of their apps. The following meta-data keys are supported:
 
