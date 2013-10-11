@@ -980,7 +980,7 @@ public class MixpanelAPI {
 
         if (android.os.Build.VERSION.SDK_INT >= 8) {
             String bluetoothVersion = "none";
-            if(android.os.Build.VERSION.SDK_INT >= 18 && // TODO MUST TEST ON Phil's phone!
+            if(android.os.Build.VERSION.SDK_INT >= 18 &&
                     mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
                 bluetoothVersion = "ble";
             } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
@@ -988,7 +988,7 @@ public class MixpanelAPI {
             }
             ret.put("$bluetooth_version", bluetoothVersion);
 
-            if (android.os.Build.VERSION.SDK_INT >= 18) { // TODO don't merge this until you test on Phil's phone!
+            if (android.os.Build.VERSION.SDK_INT >= 18) {
                 try {
                     BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
                     BluetoothAdapter bluetoothAdapter = manager.getAdapter();
