@@ -44,7 +44,7 @@ import android.util.Log;
 
         if (Build.VERSION.SDK_INT < 8) {
             // Not a warning, may be expected behavior
-            Log.i(LOGTAG, "Push not supported in SDK " + Build.VERSION.SDK);
+            Log.i(LOGTAG, "Push not supported in SDK " + Build.VERSION.SDK_INT);
             return false;
         }
 

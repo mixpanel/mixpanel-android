@@ -672,6 +672,23 @@ public class MixpanelAPI {
         mMessages.logPosts();
     }
 
+    /**
+     * Check to see if surveys are available. Be aware that callbacks.foundSurvey() will
+     * *not* generally be called from the same thread that called checkForSurvey.
+     */
+    public void checkForSurvey(SurveyCallbacks callbacks) {
+        AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
+        final String checkToken = mToken;
+        final String checkDistinctId = mPeopleDistinctId;
+        final SurveyCallbacks checkCallbacks = callbacks;
+
+        msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
+            @Override public String getToken() { return checkToken; }
+            @Override public String getDistinctId() { return checkDistinctId; }
+            @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
+        });
+    }
+
     // Package-level access. Used (at least) by GCMReceiver
     // when OS-level events occur.
     /* package */ interface InstanceProcessor {

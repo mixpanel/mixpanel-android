@@ -104,6 +104,19 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    public interface SurveyCheck {
+        public SurveyCallbacks getCallbacks();
+        public String getDistinctId();
+        public String getToken();
+    }
+
+    public void checkForSurveys(SurveyCheck check) {
+        Message m = Message.obtain();
+        m.what = CHECK_FOR_SURVEYS;
+        m.obj = check;
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -223,13 +236,13 @@ import android.util.Log;
                 try {
                     int queueDepth = -1;
 
-                    if (msg.what == SET_FLUSH_INTERVAL) {
+                    if (msg.what == SET_FLUSH_INTERVAL) { // TODO remove when associated deprecated api is removed
                         final Long newIntervalObj = (Long) msg.obj;
                         logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
                         mFlushInterval = newIntervalObj.longValue();
                         removeMessages(FLUSH_QUEUE);
                     }
-                    else if (msg.what == SET_DISABLE_FALLBACK) {
+                    else if (msg.what == SET_DISABLE_FALLBACK) { // TODO remove when assoicated deprecated api is removed
                         final Boolean disableState = (Boolean) msg.obj;
                         logAboutMessageToMixpanel("Setting fallback to " + disableState);
                         mDisableFallback = disableState.booleanValue();
@@ -254,6 +267,11 @@ import android.util.Log;
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
+                    }
+                    else if (msg.what == CHECK_FOR_SURVEYS) {
+                        logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
+                        SurveyCheck check = (SurveyCheck) msg.obj;
+                        runSurveyCheck(check);
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -300,6 +318,10 @@ import android.util.Log;
                     throw e;
                 }
             }// handleMessage
+
+            private void runSurveyCheck(SurveyCheck check) {
+                ServerMessage poster = getPoster();
+            }
 
             private void sendAllData(MPDbAdapter dbAdapter) {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
@@ -381,6 +403,7 @@ import android.util.Log;
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the eve
+    private static int CHECK_FOR_SURVEYS = 11; // Poll the Mixpanel decide API for surveys
 
     // TODO REMOVE when associated deprecated APIs are removed
     private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval

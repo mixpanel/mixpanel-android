@@ -56,6 +56,7 @@ import com.mixpanel.android.util.StringUtils;
     }
 
     public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+        Status status = Status.FAILED_UNRECOVERABLE;
         String encodedData = Base64Coder.encodeString(rawMessage);
 
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
@@ -64,20 +65,44 @@ import com.mixpanel.android.util.StringUtils;
             nameValuePairs.add(new BasicNameValuePair("verbose", "1"));
         }
 
-        Result ret = postHttpRequest(endpointUrl, nameValuePairs);
-        Status status = ret.getStatus();
-        if (status == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
-            if (MPConfig.DEBUG) Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
-            ret = postHttpRequest(fallbackUrl, nameValuePairs);
-            status = ret.getStatus();
-            if (status != Status.SUCCEEDED) {
-                Log.e(LOGTAG, "Could not post data to Mixpanel");
+        Result baseResult = postHttpRequest(endpointUrl, nameValuePairs);
+        Status baseStatus = baseResult.getStatus();
+        String response = baseResult.getResponse();
+        if (baseStatus == Status.SUCCEEDED) {
+            // Could still be a failure if the application successfully
+            // returned an error message...
+            if (MPConfig.DEBUG) {
+                // This Regex is only acceptable because we're in debug mode.
+                if (response.matches(".*\\b\"status\"\\s*:\\s*1\\b.*")) {
+                    status = Status.SUCCEEDED;
+                }
+            }
+            else if (response.equals("1\n")) {
+                status = Status.SUCCEEDED;
             }
         }
 
-        return ret;
+        if (baseStatus == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
+            if (MPConfig.DEBUG) {
+                Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
+            }
+            Result retryResult = postData(rawMessage, fallbackUrl, null);
+            Status retryStatus = retryResult.getStatus();
+            response = retryResult.getResponse();
+            if (retryStatus != Status.SUCCEEDED) {
+                Log.e(LOGTAG, "Could not post data to Mixpanel");
+            } else {
+                status = Status.SUCCEEDED;
+            }
+        }
+
+        return new Result(status, response);
     }
 
+    /**
+     * Considers *any* response a SUCCESS, callers should check Result.getResponse() for errors
+     * and craziness.
+     */
     private Result postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
         String response = null;
@@ -124,15 +149,9 @@ import com.mixpanel.android.util.StringUtils;
         }
 
         if (null != response) {
+            status = Status.SUCCEEDED;
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Request returned:\n" + response);
-                // This Regex is only acceptable because we're in debug mode.
-                if (response.matches(".*\\b\"status\"\\s*:\\s*1\\b.*")) {
-                    status = Status.SUCCEEDED;
-                }
-            }
-            if (response.equals("1\n")) {
-                status = Status.SUCCEEDED;
             }
         }
 

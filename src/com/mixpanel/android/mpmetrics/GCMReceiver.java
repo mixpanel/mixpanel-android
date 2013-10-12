@@ -144,9 +144,15 @@ public class GCMReceiver extends BroadcastReceiver {
         );
 
         NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-        Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
+        Notification n = new Notification.Builder(context).
+                    setSmallIcon(notificationIcon).
+                    setTicker(message).
+                    setWhen(System.currentTimeMillis()).
+                    setContentTitle(notificationTitle).
+                    setContentIntent(contentIntent).
+                    build();
+
         n.flags |= Notification.FLAG_AUTO_CANCEL;
-        n.setLatestEventInfo(context, notificationTitle, message, contentIntent);
         nm.notify(0, n);
     }
 }

@@ -143,12 +143,16 @@ class MPDbAdapter {
             // unrecoverable, and could be associated with an oversized or
             // otherwise unusable DB. Better to bomb it and get back on track
             // than to leave it junked up (and maybe filling up the disk.)
+            if (c != null) {
+                c.close();
+                c = null;
+            }
             mDb.deleteDatabase();
         } finally {
-            mDb.close();
             if (c != null) {
                 c.close();
             }
+            mDb.close();
         }
         return count;
     }
