@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -327,6 +328,72 @@ public class MixpanelBasicTest extends
 
         String setPeopleId = metrics.getPeople().getDistinctId();
         assertEquals("People Id", setPeopleId);
+    }
+
+    public void testSurveys() {
+        final List<String> responses = Collections.synchronizedList(new ArrayList<String>());
+
+        final ServerMessage mockMessage = new ServerMessage() {
+            @Override public Result get(String endpointUrl, String fallbackUrl) {
+                return new Result(Status.SUCCEEDED, responses.remove(0));
+            }
+        };
+        final AnalyticsMessages mockMessages = new AnalyticsMessages(mActivity) {
+            @Override protected ServerMessage getPoster() {
+                return mockMessage;
+            }
+        };
+        final MixpanelAPI mixpanel = new MixpanelAPI(mActivity, "TEST TOKEN testLooperDisaster") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return mockMessages;
+            }
+        };
+
+        responses.add("{\"surveys\":[]}");
+        mixpanel.checkForSurvey(new SurveyCallbacks(){
+            @Override public void foundSurvey(Survey s) {
+                assertNull(s);
+            }
+        });
+
+        responses.add(
+                "{\"surveys\":[ {" +
+                "   \"id\":291," +
+                "   \"questions\":[" +
+                "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[\"Option 1\",\"Option 2\"]},\"prompt\":\"Multiple Choice Prompt\"}," +
+                "       {\"id\":277,\"type\":\"text\",\"extra_data\":{},\"prompt\":\"Text Field Prompt\"}]," +
+                "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
+                "]}"
+        );
+        mixpanel.checkForSurvey(new SurveyCallbacks(){
+            @Override public void foundSurvey(Survey s) {
+                assertEquals(s.getId(), 291);
+                List<Integer> collections = s.getCollections();
+                assertEquals(collections.size(), 1);
+                assertEquals(collections.get(0).intValue(), 141);
+
+                List<Survey.Question> questions = s.getQuestions();
+                assertEquals(questions.size(), 2);
+
+                Survey.Question mcQuestion = questions.get(0);
+                assertEquals(mcQuestion.getId(), 275);
+                assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
+                assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+                List<String> mcChoices = mcQuestion.getChoices();
+                assertEquals(mcChoices.size(), 2);
+                assertEquals(mcChoices.get(0), "Option 1");
+                assertEquals(mcChoices.get(1), "Option 2");
+
+                Survey.Question textQuestion = questions.get(1);
+                assertEquals(textQuestion.getId(), 277);
+                assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
+                assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
+                List<String> textChoices = textQuestion.getChoices();
+                assertEquals(textChoices.size(), 0);
+            }
+        });
+
     }
 
     public void testMessageQueuing() {
@@ -710,7 +777,6 @@ public class MixpanelBasicTest extends
             fail("Event message has an unexpected shape: " + peopleMessage.toString());
         }
     }
-
 
     private DummyActivity mActivity;
 }

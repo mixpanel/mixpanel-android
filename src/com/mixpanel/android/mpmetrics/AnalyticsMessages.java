@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -348,13 +349,20 @@ import android.util.Log;
                     if (callbacks != null) {
                         try {
                             JSONObject parsed = new JSONObject(response);
-                            callbacks.foundSurvey(new Survey(parsed));
+                            JSONArray surveys = parsed.getJSONArray("surveys");
+                            if (surveys.length() == 0) {
+                                callbacks.foundSurvey(null);
+                            } else {
+                                JSONObject firstSurveyJson = surveys.getJSONObject(0);
+                                Survey firstSurvey = new Survey(firstSurveyJson); // Can throw a JSON error
+                                callbacks.foundSurvey(firstSurvey);
+                            }
                         } catch (JSONException e) {
                             Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
                         }
                     }
                 }
-            }
+            }// runSurveyCheck
 
             private void sendAllData(MPDbAdapter dbAdapter) {
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
