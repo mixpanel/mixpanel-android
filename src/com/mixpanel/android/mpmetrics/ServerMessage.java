@@ -65,7 +65,7 @@ import com.mixpanel.android.util.StringUtils;
             nameValuePairs.add(new BasicNameValuePair("verbose", "1"));
         }
 
-        Result baseResult = postHttpRequest(endpointUrl, nameValuePairs);
+        Result baseResult = performRequest(endpointUrl, nameValuePairs);
         Status baseStatus = baseResult.getStatus();
         String response = baseResult.getResponse();
         if (baseStatus == Status.SUCCEEDED) {
@@ -99,11 +99,21 @@ import com.mixpanel.android.util.StringUtils;
         return new Result(status, response);
     }
 
+    public Result get(String endpointUrl, String fallbackUrl) {
+        Result ret = performRequest(endpointUrl, null);
+        if (ret.getStatus() == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
+            ret = get(fallbackUrl, null);
+        }
+        return ret;
+    }
+
     /**
      * Considers *any* response a SUCCESS, callers should check Result.getResponse() for errors
      * and craziness.
+     *
+     * Will POST if nameValuePairs is not null.
      */
-    private Result postHttpRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+    private Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
         String response = null;
         InputStream in = null;
@@ -113,14 +123,16 @@ import com.mixpanel.android.util.StringUtils;
         try {
             URL url = new URL(endpointUrl);
             connection = (HttpURLConnection) url.openConnection();
-            UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
-            connection.setDoOutput(true);
-            connection.setRequestMethod("POST");
-            connection.setFixedLengthStreamingMode((int)form.getContentLength());
-            out = new BufferedOutputStream(connection.getOutputStream());
-            form.writeTo(out);
-            out.close();
-            out = null;
+            if (null != nameValuePairs) {
+                connection.setDoOutput(true);
+                UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
+                connection.setRequestMethod("POST");
+                connection.setFixedLengthStreamingMode((int)form.getContentLength());
+                out = new BufferedOutputStream(connection.getOutputStream());
+                form.writeTo(out);
+                out.close();
+                out = null;
+            }
             in = new BufferedInputStream(connection.getInputStream());
             response = StringUtils.inputStreamToString(in);
             in.close();

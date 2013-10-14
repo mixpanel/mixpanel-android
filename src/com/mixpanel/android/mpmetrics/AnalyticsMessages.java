@@ -1,10 +1,13 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
@@ -320,7 +323,37 @@ import android.util.Log;
             }// handleMessage
 
             private void runSurveyCheck(SurveyCheck check) {
-                ServerMessage poster = getPoster();
+                final ServerMessage poster = getPoster();
+                String escapedToken;
+                String escapedId;
+                try {
+                    escapedToken = URLEncoder.encode(check.getToken(), "utf-8");
+                    escapedId = URLEncoder.encode(check.getDistinctId(), "utf-8");
+                } catch(UnsupportedEncodingException e) {
+                    throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
+                }
+                final String checkQuery = new StringBuilder()
+                    .append("?version=1&lib=android&token=")
+                    .append(escapedToken)
+                    .append("&distinct_id=")
+                    .append(escapedId)
+                    .toString();
+                final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
+                final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
+                ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
+
+                if (result.getStatus() == ServerMessage.Status.SUCCEEDED) {
+                    final SurveyCallbacks callbacks = check.getCallbacks();
+                    final String response = result.getResponse();
+                    if (callbacks != null) {
+                        try {
+                            JSONObject parsed = new JSONObject(response);
+                            callbacks.foundSurvey(new Survey(parsed));
+                        } catch (JSONException e) {
+                            Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
+                        }
+                    }
+                }
             }
 
             private void sendAllData(MPDbAdapter dbAdapter) {
