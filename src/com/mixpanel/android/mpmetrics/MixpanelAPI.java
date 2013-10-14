@@ -25,6 +25,8 @@ import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
+import com.mixpanel.android.surveys.SurveyActivity; // TODO MUTUAL RECURSION?
+
 /**
  * Core class for interacting with Mixpanel Analytics.
  *
@@ -100,7 +102,7 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
 
-        mMessages = getAnalyticsMessages(); // Pass context to read config? or pass config by context?
+        mMessages = getAnalyticsMessages();
         mSystemInformation = getSystemInformation();
 
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
@@ -687,6 +689,18 @@ public class MixpanelAPI {
             @Override public String getDistinctId() { return checkDistinctId; }
             @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
         });
+    }
+
+    /**
+     * Launches a survey activity associated with the given survey.
+     */
+    public void showSurvey(Survey s) {
+        Intent surveyIntent = new Intent(mContext, SurveyActivity.class);
+        surveyIntent.putExtra("distinctId", mPeopleDistinctId);
+        surveyIntent.putExtra("token", mToken);
+        surveyIntent.putExtra("surveyJson", s.toJSON());
+        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        mContext.startActivity(surveyIntent);
     }
 
     // Package-level access. Used (at least) by GCMReceiver

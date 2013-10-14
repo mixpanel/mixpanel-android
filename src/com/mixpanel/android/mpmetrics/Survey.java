@@ -10,7 +10,8 @@ import org.json.JSONObject;
 
 public class Survey {
 
-    /* package */ Survey(JSONObject description) throws JSONException {
+    public Survey(JSONObject description) throws JSONException {
+        mDescription = description;
         mId = description.getInt("id");
         JSONArray collectionsJArray = description.getJSONArray("collections");
         List<Integer> collectionsList = new ArrayList<Integer>(collectionsJArray.length());
@@ -28,6 +29,10 @@ public class Survey {
         }
         mQuestions = Collections.unmodifiableList(questionsList);
 
+    }
+
+    public String toJSON() {
+        return mDescription.toString();
     }
 
     public int getId() {
@@ -96,6 +101,7 @@ public class Survey {
         private final List<String> mChoices;
     }
 
+    private final JSONObject mDescription;
     private final int mId;
     private final List<Integer> mCollections;
     private final List<Question> mQuestions;
