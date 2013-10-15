@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,6 +15,8 @@ import java.util.List;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.util.Log;
 
@@ -72,9 +75,13 @@ import com.mixpanel.android.util.StringUtils;
             // Could still be a failure if the application successfully
             // returned an error message...
             if (MPConfig.DEBUG) {
-                // This Regex is only acceptable because we're in debug mode.
-                if (response.matches(".*\\b\"status\"\\s*:\\s*1\\b.*")) {
-                    status = Status.SUCCEEDED;
+                try {
+                    JSONObject verboseResponse = new JSONObject(response);
+                    if (verboseResponse.optInt("status") == 1) {
+                        status = Status.SUCCEEDED;
+                    }
+                } catch (JSONException e) {
+                    status = Status.FAILED_UNRECOVERABLE;
                 }
             }
             else if (response.equals("1\n")) {
@@ -121,28 +128,44 @@ import com.mixpanel.android.util.StringUtils;
         HttpURLConnection connection = null;
 
         try {
-            URL url = new URL(endpointUrl);
-            connection = (HttpURLConnection) url.openConnection();
-            if (null != nameValuePairs) {
-                connection.setDoOutput(true);
-                UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
-                connection.setRequestMethod("POST");
-                connection.setFixedLengthStreamingMode((int)form.getContentLength());
-                out = new BufferedOutputStream(connection.getOutputStream());
-                form.writeTo(out);
-                out.close();
-                out = null;
-            }
-            in = new BufferedInputStream(connection.getInputStream());
-            response = StringUtils.inputStreamToString(in);
-            in.close();
-            in = null;
+            // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
+            // libraries- The underlying library will attempt to reuse stale connections,
+            // meaning the second (or every other) try to connect fails with an EOFException.
+            // Apparently this nasty retry logic is the current state of the workaround art.
+            int retries = 0;
+            boolean succeeded = false;
+            while (retries < 3 && !succeeded) {
+                try {
+                    URL url = new URL(endpointUrl);
+                    connection = (HttpURLConnection) url.openConnection();
+                    if (null != nameValuePairs) {
+                        connection.setDoOutput(true);
+                        UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
+                        connection.setRequestMethod("POST");
+                        connection.setFixedLengthStreamingMode((int)form.getContentLength());
+                        out = new BufferedOutputStream(connection.getOutputStream());
+                        form.writeTo(out);
+                        out.close();
+                        out = null;
+                    }
+                    in = new BufferedInputStream(connection.getInputStream());
+                    response = StringUtils.inputStreamToString(in);
+                    in.close();
+                    in = null;
+                    succeeded = true;
+                } catch (EOFException e) {
+                    if (MPConfig.DEBUG) {
+                        Log.i(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
+                    }
+                    retries = retries + 1;
+                }
+            }// while
         } catch (MalformedURLException e) {
             Log.e(LOGTAG, "Cannot iterpret " + endpointUrl + " as a URL", e);
             status = Status.FAILED_UNRECOVERABLE;
         } catch (IOException e) {
             if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry)", e);
+                Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry with fallback)", e);
             }
             status = Status.FAILED_RECOVERABLE;
         } catch (OutOfMemoryError e) {

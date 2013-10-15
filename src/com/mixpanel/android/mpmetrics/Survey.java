@@ -14,12 +14,8 @@ public class Survey {
         mDescription = description;
         mId = description.getInt("id");
         JSONArray collectionsJArray = description.getJSONArray("collections");
-        List<Integer> collectionsList = new ArrayList<Integer>(collectionsJArray.length());
-        for (int i = 0; i < collectionsJArray.length(); i++) {
-            JSONObject o = collectionsJArray.getJSONObject(i);
-            collectionsList.add(o.getInt("id"));
-        }
-        mCollections = Collections.unmodifiableList(collectionsList);
+        JSONObject collection0 = collectionsJArray.getJSONObject(0);
+        mCollectionId = collection0.getInt("id");
 
         JSONArray questionsJArray = description.getJSONArray("questions");
         List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
@@ -28,7 +24,6 @@ public class Survey {
             questionsList.add(new Question(q));
         }
         mQuestions = Collections.unmodifiableList(questionsList);
-
     }
 
     public String toJSON() {
@@ -39,8 +34,8 @@ public class Survey {
         return mId;
     }
 
-    public List<Integer> getCollections() {
-        return mCollections;
+    public int getCollectionId() {
+        return mCollectionId;
     }
 
     public List<Question> getQuestions() {
@@ -50,7 +45,18 @@ public class Survey {
     public enum QuestionType {
         UNKNOWN,
         MULTIPLE_CHOICE,
-        TEXT
+        TEXT;
+
+        @Override
+        public String toString() {
+            if (MULTIPLE_CHOICE == this) {
+                return "multiple_choice";
+            }
+            if (TEXT == this) {
+                return "text";
+            }
+            return "*unknown_type*";
+        }
     };
 
     public class Question {
@@ -86,10 +92,10 @@ public class Survey {
         }
 
         public final QuestionType getType() {
-            if ("multiple_choice".equals(mQuestionType)) {
+            if (QuestionType.MULTIPLE_CHOICE.toString().equals(mQuestionType)) {
                 return QuestionType.MULTIPLE_CHOICE;
             }
-            if ("text".equals(mQuestionType)) {
+            if (QuestionType.TEXT.toString().equals(mQuestionType)) {
                 return QuestionType.TEXT;
             }
             return QuestionType.UNKNOWN;
@@ -103,6 +109,6 @@ public class Survey {
 
     private final JSONObject mDescription;
     private final int mId;
-    private final List<Integer> mCollections;
+    private final int mCollectionId;
     private final List<Question> mQuestions;
 }

@@ -366,12 +366,11 @@ public class MixpanelBasicTest extends
                 "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
                 "]}"
         );
+        // TODO TEST IS BROKEN. What if this is never called (for example, because the survey didn't parse?)
         mixpanel.checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 assertEquals(s.getId(), 291);
-                List<Integer> collections = s.getCollections();
-                assertEquals(collections.size(), 1);
-                assertEquals(collections.get(0).intValue(), 141);
+                assertEquals(s.getCollectionId(), 141);
 
                 List<Survey.Question> questions = s.getQuestions();
                 assertEquals(questions.size(), 2);
@@ -394,6 +393,28 @@ public class MixpanelBasicTest extends
             }
         });
 
+        responses.add(
+               "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
+        );
+        mixpanel.checkForSurvey(new SurveyCallbacks(){
+            @Override public void foundSurvey(Survey s) {
+                assertEquals(s.getId(), 299);
+                assertEquals(s.getCollectionId(), 151);
+
+                List<Survey.Question> questions = s.getQuestions();
+                assertEquals(questions.size(), 2);
+
+                Survey.Question mcQuestion = questions.get(0);
+                assertEquals(mcQuestion.getId(), 287);
+                assertEquals(mcQuestion.getPrompt(), "PROMPT1");
+                assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+                List<String> mcChoices = mcQuestion.getChoices();
+                assertEquals(mcChoices.size(), 3);
+                assertEquals(mcChoices.get(0), "Answer1,1");
+                assertEquals(mcChoices.get(1), "Answer1,2");
+                assertEquals(mcChoices.get(2), "Answer1,3");
+            }
+        });
     }
 
     public void testMessageQueuing() {

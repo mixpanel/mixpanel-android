@@ -695,8 +695,9 @@ public class MixpanelAPI {
      * Launches a survey activity associated with the given survey.
      */
     public void showSurvey(Survey s) {
-        Intent surveyIntent = new Intent(mContext, SurveyActivity.class);
-        surveyIntent.putExtra("distinctId", mPeopleDistinctId);
+        // TODO must be thread-safe
+        Intent surveyIntent = new Intent(mContext, SurveyActivity.class); // Thread safe??
+        surveyIntent.putExtra("distinctId", mPeopleDistinctId); // TODO mPeopleDistinctId is *NOT* THREAD SAFE
         surveyIntent.putExtra("token", mToken);
         surveyIntent.putExtra("surveyJson", s.toJSON());
         surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

@@ -15,6 +15,9 @@ import android.util.Log;
 /* package */ class WaitingPeopleRecord {
     private static final String LOGTAG = "MixpanelAPI";
 
+    // TODO re-approach as an in-memory queue, to
+    // accomodate $union. You can still collapse against
+    // the head record on set()
     public WaitingPeopleRecord() {
         mAdds = new HashMap<String, Double>();
         mAppends = new ArrayList<JSONObject>();

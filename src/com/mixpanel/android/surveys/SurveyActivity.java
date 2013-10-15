@@ -1,7 +1,11 @@
 package com.mixpanel.android.surveys;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,7 +34,7 @@ public class SurveyActivity extends Activity {
         String surveyJsonStr    = getIntent().getStringExtra("surveyJson");
         mDistinctId              = getIntent().getStringExtra("distinctId");
         mToken                   = getIntent().getStringExtra("token");
-        mMixpanel               = MixpanelAPI.getInstance(this, mToken);
+        mMixpanel               = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
 
         // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
         mMixpanel.getPeople().identify(mDistinctId);
@@ -43,7 +47,6 @@ public class SurveyActivity extends Activity {
             Log.e(LOGTAG, "Unable to parse survey json: "+surveyJsonStr, e);
         }
 
-        // build the layout
         LinearLayout layout = constructView();
         setContentView(layout);
 
@@ -55,7 +58,9 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        // show the first question
+        mMixpanel.getPeople().append("$surveys", mSurvey.getId());
+        mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
+        mMixpanel.flush();
         showQuestion(0);
 
     }
@@ -140,14 +145,35 @@ public class SurveyActivity extends Activity {
     }
 
     private void saveAnswer(int questionIdx, Object answer) {
-        Log.i("MPDecideActivity", "Answering question " + (questionIdx + 1) + ": " + answer);
+        Log.i(LOGTAG, "Answering question " + (questionIdx + 1) + ": " + answer);
 
         // assign the answer to the question locally
         Survey.Question question = mSurvey.getQuestions().get(questionIdx);
         mAnswers.put(question, answer.toString());
+        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
 
-        // write to mixpanel
-        mMixpanel.getPeople().set("survey_" + mSurvey.getId() + "_question_" + question.getId(), answer);
+        try {
+            JSONObject answerJson = new JSONObject();
+            answerJson.put("$survey_id", mSurvey.getId());
+            answerJson.put("$collection_id", mSurvey.getCollectionId());
+            answerJson.put("$question_id", question.getId());
+            answerJson.put("$question_type", question.getType().toString());
+
+            // TODO find a better way to share this format convention
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+            answerJson.put("$time", dateFormat.format(new Date()));
+            answerJson.put("$value", answer.toString());
+
+            if (true) { // TODO REMOVE
+                Log.d(LOGTAG, "LOGGING ANSWER: " + answerJson.toString());
+            }
+
+            mMixpanel.getPeople().append("$answers", answerJson);
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Couldn't record user's answer.", e);
+        }
+        mMixpanel.flush();
     }
 
     private void addChoice(Survey.Question question, Object choice) {

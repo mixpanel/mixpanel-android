@@ -355,6 +355,8 @@ import android.util.Log;
                             } else {
                                 JSONObject firstSurveyJson = surveys.getJSONObject(0);
                                 Survey firstSurvey = new Survey(firstSurveyJson); // Can throw a JSON error
+                                // TODO you need to check if you've already seen the survey
+                                // and Mixpanel just hasn't figured it out yet.
                                 callbacks.foundSurvey(firstSurvey);
                             }
                         } catch (JSONException e) {
