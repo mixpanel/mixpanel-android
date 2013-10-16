@@ -172,7 +172,7 @@ import com.mixpanel.android.util.StringUtils;
                     if (null != bin)
                         try { bin.close(); } catch (IOException e) { ; }
                     if (null != in)
-                        try { bin.close(); } catch (IOException e) { ; }
+                        try { in.close(); } catch (IOException e) { ; }
                     if (null != connection)
                         connection.disconnect();
                 }
