@@ -25,8 +25,6 @@ import com.mixpanel.android.util.StringUtils;
 
 /* package */ class ServerMessage {
 
-    // TODO keep HttpClient around? Check lifetime of ServerMessage
-
     public static enum Status {
         // The post was sent and understood by the Mixpanel service.
         SUCCEEDED,
@@ -123,18 +121,20 @@ import com.mixpanel.android.util.StringUtils;
     private Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
         String response = null;
-        InputStream in = null;
-        OutputStream out = null;
-        HttpURLConnection connection = null;
-
         try {
             // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
             // libraries- The underlying library will attempt to reuse stale connections,
-            // meaning the second (or every other) try to connect fails with an EOFException.
+            // meaning the second (or every other) attempt to connect fails with an EOFException.
             // Apparently this nasty retry logic is the current state of the workaround art.
             int retries = 0;
             boolean succeeded = false;
             while (retries < 3 && !succeeded) {
+                InputStream in = null;
+                BufferedInputStream bin = null;
+                OutputStream out = null;
+                BufferedOutputStream bout = null;
+                HttpURLConnection connection = null;
+
                 try {
                     URL url = new URL(endpointUrl);
                     connection = (HttpURLConnection) url.openConnection();
@@ -143,13 +143,19 @@ import com.mixpanel.android.util.StringUtils;
                         UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
                         connection.setRequestMethod("POST");
                         connection.setFixedLengthStreamingMode((int)form.getContentLength());
-                        out = new BufferedOutputStream(connection.getOutputStream());
-                        form.writeTo(out);
+                        out = connection.getOutputStream();
+                        bout = new BufferedOutputStream(out);
+                        form.writeTo(bout);
+                        bout.close();
+                        bout = null;
                         out.close();
                         out = null;
                     }
-                    in = new BufferedInputStream(connection.getInputStream());
+                    in = connection.getInputStream();
+                    bin = new BufferedInputStream(in);
                     response = StringUtils.inputStreamToString(in);
+                    bin.close();
+                    bin = null;
                     in.close();
                     in = null;
                     succeeded = true;
@@ -158,6 +164,17 @@ import com.mixpanel.android.util.StringUtils;
                         Log.i(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                     }
                     retries = retries + 1;
+                } finally {
+                    if (null != bout)
+                        try { bout.close(); } catch (IOException e) { ; }
+                    if (null != out)
+                        try { out.close(); } catch (IOException e) { ; }
+                    if (null != bin)
+                        try { bin.close(); } catch (IOException e) { ; }
+                    if (null != in)
+                        try { bin.close(); } catch (IOException e) { ; }
+                    if (null != connection)
+                        connection.disconnect();
                 }
             }// while
         } catch (MalformedURLException e) {
@@ -171,16 +188,6 @@ import com.mixpanel.android.util.StringUtils;
         } catch (OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
             status = Status.FAILED_UNRECOVERABLE;
-        } finally {
-            if (null != in) {
-                try { in.close(); } catch (IOException e) { ; }
-            }
-            if (null != out) {
-                try { out.close(); } catch (IOException e) { ; }
-            }
-            if (null != connection) {
-                connection.disconnect();
-            }
         }
 
         if (null != response) {

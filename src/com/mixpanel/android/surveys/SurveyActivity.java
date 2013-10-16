@@ -165,10 +165,6 @@ public class SurveyActivity extends Activity {
             answerJson.put("$time", dateFormat.format(new Date()));
             answerJson.put("$value", answer.toString());
 
-            if (true) { // TODO REMOVE
-                Log.d(LOGTAG, "LOGGING ANSWER: " + answerJson.toString());
-            }
-
             mMixpanel.getPeople().append("$answers", answerJson);
         } catch (JSONException e) {
             Log.e(LOGTAG, "Couldn't record user's answer.", e);

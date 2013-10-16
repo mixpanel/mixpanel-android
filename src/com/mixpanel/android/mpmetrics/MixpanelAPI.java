@@ -22,10 +22,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.View;
 
-import com.mixpanel.android.surveys.SurveyActivity; // TODO MUTUAL RECURSION?
+import com.mixpanel.android.surveys.SurveyActivity;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -137,15 +140,18 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token) {
+        if (null == token || null == context) {
+            return null;
+        }
         synchronized (sInstanceMap) {
             Context appContext = context.getApplicationContext();
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
-            if (instances == null) {
+            if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
                 sInstanceMap.put(token, instances);
             }
             MixpanelAPI instance = instances.get(appContext);
-            if (instance == null) {
+            if (null == instance) {
                 instance = new MixpanelAPI(appContext, token);
                 instances.put(appContext, instance);
             }
@@ -683,7 +689,14 @@ public class MixpanelAPI {
         final String checkToken = mToken;
         final String checkDistinctId = mPeopleDistinctId;
         final SurveyCallbacks checkCallbacks = callbacks;
-
+        if (null == callbacks) {
+            Log.i(LOGTAG, "Skipping survey check, because callback is null.");
+            return;
+        }
+        if (null == checkDistinctId) {
+            Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
+            return;
+        }
         msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
             @Override public String getToken() { return checkToken; }
             @Override public String getDistinctId() { return checkDistinctId; }
@@ -693,15 +706,29 @@ public class MixpanelAPI {
 
     /**
      * Launches a survey activity associated with the given survey.
+     *
+     * Requires a parent view or activity? Probably should?
      */
-    public void showSurvey(Survey s) {
-        // TODO must be thread-safe
-        Intent surveyIntent = new Intent(mContext, SurveyActivity.class); // Thread safe??
-        surveyIntent.putExtra("distinctId", mPeopleDistinctId); // TODO mPeopleDistinctId is *NOT* THREAD SAFE
-        surveyIntent.putExtra("token", mToken);
-        surveyIntent.putExtra("surveyJson", s.toJSON());
-        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        mContext.startActivity(surveyIntent);
+    public void showSurvey(final Survey s, final View parent /* TODO not the final ifc, should be FragmentManager? */) {
+        final String surveyDistinctId = mPeopleDistinctId;
+        final String surveyToken = mToken;
+        final Looper mainLooper = Looper.getMainLooper();
+        new Handler(mainLooper).post(new Runnable() {
+            @Override
+            public void run() {
+                /* TODO should probably be
+                 * FragmentTransaction ft = manager.beginTransaction();
+                 * ft.add(this, tag);
+                 * ft.commit();
+                 */
+                Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
+                surveyIntent.putExtra("distinctId", surveyDistinctId);
+                surveyIntent.putExtra("token", surveyToken);
+                surveyIntent.putExtra("surveyJson", s.toJSON());
+                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mContext.startActivity(surveyIntent);
+            }
+        });
     }
 
     // Package-level access. Used (at least) by GCMReceiver

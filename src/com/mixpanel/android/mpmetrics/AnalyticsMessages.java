@@ -2,8 +2,11 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -108,6 +111,9 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    /**
+     * All fields SurveyCheck must return non-null values.
+     */
     public interface SurveyCheck {
         public SurveyCallbacks getCallbacks();
         public String getDistinctId();
@@ -225,6 +231,7 @@ import android.util.Log;
             public AnalyticsMessageHandler() {
                 super();
                 mDbAdapter = null;
+                mSeenSurveys = Collections.synchronizedSet(new HashSet<Integer>());
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
             }
@@ -324,7 +331,7 @@ import android.util.Log;
             }// handleMessage
 
             private void runSurveyCheck(SurveyCheck check) {
-                final ServerMessage poster = getPoster();
+                final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
                 String escapedId;
                 try {
@@ -341,29 +348,35 @@ import android.util.Log;
                     .toString();
                 final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
                 final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
-                ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
-
-                if (result.getStatus() == ServerMessage.Status.SUCCEEDED) {
-                    final SurveyCallbacks callbacks = check.getCallbacks();
-                    final String response = result.getResponse();
-                    if (callbacks != null) {
-                        try {
-                            JSONObject parsed = new JSONObject(response);
-                            JSONArray surveys = parsed.getJSONArray("surveys");
-                            if (surveys.length() == 0) {
-                                callbacks.foundSurvey(null);
-                            } else {
-                                JSONObject firstSurveyJson = surveys.getJSONObject(0);
-                                Survey firstSurvey = new Survey(firstSurveyJson); // Can throw a JSON error
-                                // TODO you need to check if you've already seen the survey
-                                // and Mixpanel just hasn't figured it out yet.
-                                callbacks.foundSurvey(firstSurvey);
-                            }
-                        } catch (JSONException e) {
-                            Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
+                final ServerMessage poster = getPoster();
+                final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
+                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+                    Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
+                    return;
+                }
+                final String response = result.getResponse();
+                JSONArray surveys = null;
+                try {
+                    final JSONObject parsed = new JSONObject(response);
+                    surveys = parsed.getJSONArray("surveys");
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
+                    return;
+                }
+                Survey found = null;
+                for (int i = 0; found == null && i < surveys.length(); i++) {
+                    try {
+                        final JSONObject candidateJson = surveys.getJSONObject(i);
+                        final Survey candidate = new Survey(candidateJson); // Can throw a JSON error
+                        if (! mSeenSurveys.contains(candidate.getId())) {
+                            found = candidate;
+                            mSeenSurveys.add(found.getId());
                         }
+                    } catch (JSONException e) {
+                        found = null;
                     }
                 }
+                callbacks.foundSurvey(found);
             }// runSurveyCheck
 
             private void sendAllData(MPDbAdapter dbAdapter) {
@@ -405,6 +418,7 @@ import android.util.Log;
             }
 
             private MPDbAdapter mDbAdapter;
+            private final Set<Integer> mSeenSurveys;
             private long mFlushInterval; // TODO remove when associated deprecated APIs are removed
             private boolean mDisableFallback; // TODO remove when associated deprecated APIs are removed
         }// AnalyticsMessageHandler
