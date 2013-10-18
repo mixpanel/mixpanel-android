@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MixpanelAPICustom" default="...">
+  <target name="library" depends="release">
+    <!-- TODO is this right? Shouldn't you just use "bin/classes.jar" ? -->
+    <jar destfile="MixpanelAPI.jar"
+         basedir="${out.classes.absolute.dir}"
+         includes="**/*.class" />
+    <copy file="MixpanelAPI.jar" tofile="${demo.absolute.libs.dir}/MixpanelAPI.jar" />
+    <copy file="MixpanelAPI.jar" tofile="${test.absolute.libs.dir}/MixpanelAPI.jar" />
+    <copy file="MixpanelAPI.jar" tofile="${dummy.absolute.libs.dir}/MixpanelAPI.jar" />
+  </target>
+</project>
