@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.io.ByteArrayOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -21,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,6 +31,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
+import com.mixpanel.android.util.Blur;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -684,6 +687,7 @@ public class MixpanelAPI {
      * Check to see if surveys are available. Be aware that callbacks.foundSurvey() will
      * *not* generally be called from the same thread that called checkForSurvey.
      */
+    // TODO should be getPeople()
     public void checkForSurvey(SurveyCallbacks callbacks) {
         AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
         final String checkToken = mToken;
@@ -709,22 +713,31 @@ public class MixpanelAPI {
      *
      * Requires a parent view or activity? Probably should?
      */
+    // TODO should be getPeople()
     public void showSurvey(final Survey s, final View parent /* TODO not the final ifc, should be FragmentManager? */) {
         final String surveyDistinctId = mPeopleDistinctId;
         final String surveyToken = mToken;
         final Looper mainLooper = Looper.getMainLooper();
+        final View rootView = parent.getRootView();
+        rootView.setDrawingCacheEnabled(true); // TODO leaks state
+        final Bitmap background = rootView.getDrawingCache();
+
+        // TODO - can't run this here, must be Async
+        Blur.blur(mContext, background);
+
+        ByteArrayOutputStream bs = new ByteArrayOutputStream();
+        background.compress(Bitmap.CompressFormat.JPEG, 20, bs);
+        final byte[] backgroundJpgBytes = bs.toByteArray();
+        Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
+
         new Handler(mainLooper).post(new Runnable() {
             @Override
             public void run() {
-                /* TODO should probably be
-                 * FragmentTransaction ft = manager.beginTransaction();
-                 * ft.add(this, tag);
-                 * ft.commit();
-                 */
                 Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
                 surveyIntent.putExtra("distinctId", surveyDistinctId);
                 surveyIntent.putExtra("token", surveyToken);
                 surveyIntent.putExtra("surveyJson", s.toJSON());
+                surveyIntent.putExtra("backgroundJpgBytes", backgroundJpgBytes); // TODO probably won't work, this should really be a file.
                 surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 mContext.startActivity(surveyIntent);
             }

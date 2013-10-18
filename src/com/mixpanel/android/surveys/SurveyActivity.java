@@ -11,6 +11,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -31,10 +34,15 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        String surveyJsonStr    = getIntent().getStringExtra("surveyJson");
-        mDistinctId              = getIntent().getStringExtra("distinctId");
-        mToken                   = getIntent().getStringExtra("token");
-        mMixpanel               = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
+        String surveyJsonStr = getIntent().getStringExtra("surveyJson");
+        mDistinctId = getIntent().getStringExtra("distinctId");
+        mToken = getIntent().getStringExtra("token");
+        final byte[] backgroundJpgBytes = getIntent().getByteArrayExtra("backgroundJpgBytes");
+        mBackground = BitmapFactory.decodeByteArray(backgroundJpgBytes, 0, backgroundJpgBytes.length);
+        mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
+
+        getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), mBackground));
+
 
         // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
         mMixpanel.getPeople().identify(mDistinctId);
@@ -58,11 +66,11 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        mMixpanel.getPeople().append("$surveys", mSurvey.getId());
-        mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
-        mMixpanel.flush();
+        // TODO For testing only
+        // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
+        // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
+        // mMixpanel.flush();
         showQuestion(0);
-
     }
 
     private LinearLayout constructView() {
@@ -204,6 +212,7 @@ public class SurveyActivity extends Activity {
     private TextView mProgressTextView;
     private Button mSkipButton;
     private RadioGroup mAnswerRadioGroup;
+    private Bitmap mBackground;
 
     private Map<Survey.Question, String> mAnswers;
     private int mCurrentQuestion = 0;
