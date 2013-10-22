@@ -23,15 +23,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v8.renderscript.Allocation;
+import android.support.v8.renderscript.Element;
+import android.support.v8.renderscript.RenderScript;
+import android.support.v8.renderscript.ScriptIntrinsicBlur;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
-import com.mixpanel.android.util.Blur;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -722,8 +726,17 @@ public class MixpanelAPI {
         rootView.setDrawingCacheEnabled(true); // TODO leaks state
         final Bitmap background = rootView.getDrawingCache();
 
-        // TODO - can't run this here, must be Async
-        Blur.blur(mContext, background);
+        /** TODO Must be async **/
+        RenderScript rs = RenderScript.create(parent.getContext());
+        Allocation input = Allocation.createFromBitmap(rs, background, Allocation.MipmapControl.MIPMAP_FULL, Allocation.USAGE_SCRIPT);
+        Allocation output = Allocation.createTyped(rs, input.getType());
+
+        // Load up an instance of the specific script that we want to use.
+        ScriptIntrinsicBlur script = ScriptIntrinsicBlur.create(rs, Element.U8_4 (rs));
+        script.setInput(input);
+        script.setRadius(9); // TODO expensive?
+        script.forEach(output);
+        output.copyTo(background);
 
         ByteArrayOutputStream bs = new ByteArrayOutputStream();
         background.compress(Bitmap.CompressFormat.JPEG, 20, bs);
