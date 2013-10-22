@@ -9,4 +9,9 @@
     <copy file="MixpanelAPI.jar" tofile="${test.absolute.libs.dir}/MixpanelAPI.jar" />
     <copy file="MixpanelAPI.jar" tofile="${dummy.absolute.libs.dir}/MixpanelAPI.jar" />
   </target>
+
+  <target name="-post-compile" depends="-compile">
+    <!-- workaround for Eclipse having disagreements with Ant about the name of the final jar -->
+    <copy file="${out.absolute.dir}/classes.jar" tofile="${out.absolute.dir}/mixpanel-android.jar" />
+  </target>
 </project>
