@@ -280,6 +280,9 @@ import android.util.Log;
                         sendAllData(mDbAdapter);
                     }
                     else if (msg.what == CHECK_FOR_SURVEYS) {
+                        logAboutMessageToMixpanel("Flushing before checking surveys");
+                        updateFlushFrequency();
+                        sendAllData(mDbAdapter);
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
                         SurveyCheck check = (SurveyCheck) msg.obj;
                         runSurveyCheck(check);
