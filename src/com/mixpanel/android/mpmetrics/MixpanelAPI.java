@@ -24,10 +24,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.PorterDuff;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
@@ -876,16 +878,20 @@ public class MixpanelAPI {
             surveyIntent.putExtra("surveyJson", s.toJSON());
             surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            AsyncTask<Void, Void, Bitmap> showSurveyActivity = new AsyncTask<Void, Void, Bitmap>() {
+            AsyncTask<Bitmap, Void, Bitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, Bitmap>() {
                 @Override
-                protected Bitmap doInBackground(Void... _) {
+                protected Bitmap doInBackground(Bitmap... backgrounds) {
+                    Bitmap background = backgrounds[0];
                     final long startTime = System.currentTimeMillis();
-                    StackBlurManager.process(scaled, 20);
+                    StackBlurManager.process(background, 20);
                     final long endTime = System.currentTimeMillis();
                     if (MPConfig.DEBUG) {
                         Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
                     }
-                    return scaled;
+
+                    Canvas canvas = new Canvas(background);
+                    canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
+                    return background;
                 }
 
                 @Override
@@ -900,7 +906,7 @@ public class MixpanelAPI {
                     mContext.startActivity(surveyIntent); // Assumed to be safe to call from Random J. Thread
                 }
             };
-            showSurveyActivity.execute();
+            showSurveyActivity.execute(scaled);
         }
 
         @Override
