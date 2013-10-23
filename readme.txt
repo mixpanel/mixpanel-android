@@ -9,9 +9,16 @@ Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
 
 License:
-    See LICENSE File for details. The Base64Coder class and ConfigurationChecker class used by
-    this software have been licensed from non-Mixpanel sources and modified for use in the library.
-    Please see the relevant source files for details.
+
+    See LICENSE File for details. The Base64Coder,
+    ConfigurationChecker, and StackBlurManager classes used by this
+    software have been licensed from non-Mixpanel sources and modified
+    for use in the library.  Please see the relevant source files for
+    details.
+
+    The StackBlurManager class uses an algorithm by Mario Klingemann <mario@quansimondo.com>
+    You can learn more about the algorithm at
+    http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
 
 Changelog:
 

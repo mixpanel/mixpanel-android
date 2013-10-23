@@ -32,7 +32,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
-import com.mixpanel.android.util.Blur;
+import com.mixpanel.android.util.StackBlurManager;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -723,41 +723,15 @@ public class MixpanelAPI {
         rootView.setDrawingCacheEnabled(true); // TODO leaks state
         final Bitmap original = rootView.getDrawingCache();
 
-        long startTime = System.nanoTime();
-        final Bitmap background = Blur.cpuBlur(original);
-        long endTime = System.nanoTime();
-        Log.i(LOGTAG, "Blur took " + (startTime - endTime)/1000000 + " millis"); // TODO
-
-//      TODO this sure would have been great if it worked.
-//        if (Build.VERSION.SDK_INT >= 11) {
-//            /** TODO Must be async. Takes a *long* time **/
-//            /***
-//             * Advice from http://nicolaspomepuy.fr/?p=18#comments
-//             *
-//             * You first create a bitmap that’s 50% or 25% (or less) the size of
-//             * the original bitmap, using bilinear filtering to create the smaller
-//             * version. You can then blur this smaller version using a smaller
-//             * radius (since you’ve already blurred the image a bit.) And at
-//             * draw time you can simply scale the image back up, still using
-//             * bilinear filtering to blur it even further. Not only is this
-//             * solution faster but it also uses a lot less memory since you
-//             * only keep a smaller version of the bitmap in RAM. You could
-//             * also use multiple threads on multi-core devices.
-//             */
-//            RenderScript rs = RenderScript.create(parent.getContext());
-//            Allocation input = Allocation.createFromBitmap(rs, background, Allocation.MipmapControl.MIPMAP_FULL, Allocation.USAGE_SCRIPT);
-//            Allocation output = Allocation.createTyped(rs, input.getType());
-//
-//            // Load up an instance of the specific script that we want to use.
-//            ScriptIntrinsicBlur script = ScriptIntrinsicBlur.create(rs, Element.U8_4 (rs));
-//            script.setInput(input);
-//            script.setRadius(9); // TODO expensive?
-//            script.forEach(output);
-//            output.copyTo(background);
-//        }
-
+        long startTime = System.currentTimeMillis();
+        final int scaledWidth = original.getWidth() / 2;
+        final int scaledHeight = original.getHeight() / 2;
+        final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
+        StackBlurManager.process(scaled, 20);
+        long endTime = System.currentTimeMillis();
+        Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis"); // TODO
         ByteArrayOutputStream bs = new ByteArrayOutputStream();
-        background.compress(Bitmap.CompressFormat.JPEG, 20, bs);
+        scaled.compress(Bitmap.CompressFormat.PNG, 20, bs); // TODO PROBLEM. might be why the output looks so gross.
         final byte[] backgroundJpgBytes = bs.toByteArray();
         Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
 
