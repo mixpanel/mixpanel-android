@@ -247,13 +247,13 @@ import android.util.Log;
                 try {
                     int queueDepth = -1;
 
-                    if (msg.what == SET_FLUSH_INTERVAL) { // TODO remove when associated deprecated api is removed
+                    if (msg.what == SET_FLUSH_INTERVAL) {
                         final Long newIntervalObj = (Long) msg.obj;
                         logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
                         mFlushInterval = newIntervalObj.longValue();
                         removeMessages(FLUSH_QUEUE);
                     }
-                    else if (msg.what == SET_DISABLE_FALLBACK) { // TODO remove when assoicated deprecated api is removed
+                    else if (msg.what == SET_DISABLE_FALLBACK) {
                         final Boolean disableState = (Boolean) msg.obj;
                         logAboutMessageToMixpanel("Setting fallback to " + disableState);
                         mDisableFallback = disableState.booleanValue();
@@ -334,6 +334,7 @@ import android.util.Log;
             }// handleMessage
 
             private void runSurveyCheck(SurveyCheck check) {
+                // TODO break up requesting surveys, checking list, and submitting foundSurvey job
                 final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
                 String escapedId;
@@ -379,7 +380,20 @@ import android.util.Log;
                         found = null;
                     }
                 }
-                callbacks.foundSurvey(found);
+
+                final Survey toReport = found;
+                final Looper mainLooper = Looper.getMainLooper();
+                if (mainLooper != null) {
+                    new Handler(mainLooper).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            callbacks.foundSurvey(toReport);
+                        }
+                    });
+                } else {
+                    // No main looper, we just run it here
+                    callbacks.foundSurvey(toReport);
+                }
             }// runSurveyCheck
 
             private void sendAllData(MPDbAdapter dbAdapter) {
@@ -422,8 +436,8 @@ import android.util.Log;
 
             private MPDbAdapter mDbAdapter;
             private final Set<Integer> mSeenSurveys;
-            private long mFlushInterval; // TODO remove when associated deprecated APIs are removed
-            private boolean mDisableFallback; // TODO remove when associated deprecated APIs are removed
+            private long mFlushInterval; // XXX remove when associated deprecated APIs are removed
+            private boolean mDisableFallback; // XXX remove when associated deprecated APIs are removed
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -465,9 +479,8 @@ import android.util.Log;
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the eve
     private static int CHECK_FOR_SURVEYS = 11; // Poll the Mixpanel decide API for surveys
 
-    // TODO REMOVE when associated deprecated APIs are removed
-    private static int SET_FLUSH_INTERVAL = 4; // Reset frequency of flush interval
-    private static int SET_DISABLE_FALLBACK = 10; // Disable fallback to http
+    private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
+    private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
 
     private static final String LOGTAG = "MixpanelAPI";
 

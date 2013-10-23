@@ -668,6 +668,38 @@ public class MixpanelAPI {
          * @see MixpanelAPI#getDistinctId()
          */
         public String getDistinctId();
+
+        /**
+         * Checks to see if this user is eligible for any Mixpanel surveys.
+         * If the check is successful, it will call its argument's
+         * foundSurvey() method with a (possibly null) {@link Survey} object.
+         * The typical use case is similar to
+         * {@code
+         * View myView = this.getView();
+         * mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
+         *     public void foundSurvey(Survey survey) {
+         *         if (survey != null) {
+         *             mixpanel.getPeople().showSurvey(survey, myView);
+         *         }
+         *     }
+         * });
+         * }
+         *
+         * The callback will be run in the Main UI thread if it is present
+         * (via Looper.getMainLooper()). If you're not running in the context of a
+         * traditional activity or service, the callback will be run inside of an
+         * internal Mixpanel thread.
+         */
+        public void checkForSurvey(SurveyCallbacks callbacks);
+
+        /**
+         * Will launch an activity that shows a survey to a user and sends the responses
+         * to Mixpanel. To get a survey to show, use checkForSurvey()
+         *
+         * The survey activity will use the root of the given view to take a screenshot
+         * for its background.
+         */
+        public void showSurvey(Survey s, View parent);
     }
 
     /**
@@ -682,71 +714,6 @@ public class MixpanelAPI {
      */
     public void logPosts() {
         mMessages.logPosts();
-    }
-
-    /**
-     * Check to see if surveys are available. Be aware that callbacks.foundSurvey() will
-     * *not* generally be called from the same thread that called checkForSurvey.
-     */
-    // TODO should be getPeople()
-    public void checkForSurvey(SurveyCallbacks callbacks) {
-        AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
-        final String checkToken = mToken;
-        final String checkDistinctId = mPeopleDistinctId;
-        final SurveyCallbacks checkCallbacks = callbacks;
-        if (null == callbacks) {
-            Log.i(LOGTAG, "Skipping survey check, because callback is null.");
-            return;
-        }
-        if (null == checkDistinctId) {
-            Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
-            return;
-        }
-        msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
-            @Override public String getToken() { return checkToken; }
-            @Override public String getDistinctId() { return checkDistinctId; }
-            @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
-        });
-    }
-
-    /**
-     * Launches a survey activity associated with the given survey.
-     *
-     * Requires a parent view or activity? Probably should?
-     */
-    // TODO should be getPeople()
-    public void showSurvey(final Survey s, final View parent /* TODO not the final ifc, should be FragmentManager? */) {
-        final String surveyDistinctId = mPeopleDistinctId;
-        final String surveyToken = mToken;
-        final Looper mainLooper = Looper.getMainLooper();
-        final View rootView = parent.getRootView();
-        rootView.setDrawingCacheEnabled(true); // TODO leaks state
-        final Bitmap original = rootView.getDrawingCache();
-
-        long startTime = System.currentTimeMillis();
-        final int scaledWidth = original.getWidth() / 2;
-        final int scaledHeight = original.getHeight() / 2;
-        final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-        StackBlurManager.process(scaled, 20);
-        long endTime = System.currentTimeMillis();
-        Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis"); // TODO
-        ByteArrayOutputStream bs = new ByteArrayOutputStream();
-        scaled.compress(Bitmap.CompressFormat.PNG, 20, bs); // TODO PROBLEM. might be why the output looks so gross.
-        final byte[] backgroundJpgBytes = bs.toByteArray();
-        Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
-
-        new Handler(mainLooper).post(new Runnable() {
-            @Override
-            public void run() {
-                Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
-                surveyIntent.putExtra("distinctId", surveyDistinctId);
-                surveyIntent.putExtra("token", surveyToken);
-                surveyIntent.putExtra("surveyJson", s.toJSON());
-                surveyIntent.putExtra("backgroundJpgBytes", backgroundJpgBytes); // TODO probably won't work, this should really be a file.
-                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                mContext.startActivity(surveyIntent);
-            }
-        });
     }
 
     // Package-level access. Used (at least) by GCMReceiver
@@ -868,22 +835,66 @@ public class MixpanelAPI {
             }
         }
 
-        // NOT AN OVERRIDE
-        /* package */ void append(JSONObject properties) {
-            try {
-                if (mPeopleDistinctId == null) {
-                    if (mWaitingPeopleRecord == null)
-                        mWaitingPeopleRecord = new WaitingPeopleRecord();
-
-                    mWaitingPeopleRecord.appendToWaitingPeopleRecord(properties);
-                }
-                else {
-                    JSONObject message = stdPeopleMessage("$append", properties);
-                    mMessages.peopleMessage(message);
-                }
-            } catch(JSONException e) {
-                Log.e(LOGTAG, "Can't create append message", e);
+        @Override
+        public void checkForSurvey(SurveyCallbacks callbacks) {
+            AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
+            final String checkToken = mToken;
+            final String checkDistinctId = mPeopleDistinctId;
+            final SurveyCallbacks checkCallbacks = callbacks;
+            if (null == callbacks) {
+                Log.i(LOGTAG, "Skipping survey check, because callback is null.");
+                return;
             }
+            if (null == checkDistinctId) {
+                Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
+                return;
+            }
+            msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
+                @Override public String getToken() { return checkToken; }
+                @Override public String getDistinctId() { return checkDistinctId; }
+                @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
+            });
+        }
+
+        @Override
+        public void showSurvey(final Survey s, final View parent) {
+            final String surveyDistinctId = mPeopleDistinctId;
+            final String surveyToken = mToken;
+            final View rootView = parent.getRootView();
+            boolean originalCacheState = rootView.isDrawingCacheEnabled();
+            rootView.setDrawingCacheEnabled(true);
+            final Bitmap original = rootView.getDrawingCache();
+            if (! originalCacheState) {
+                rootView.setDrawingCacheEnabled(false);
+            }
+
+            // TODO this should not be run in the calling thread.
+            long startTime = System.currentTimeMillis();
+            final int scaledWidth = original.getWidth() / 2;
+            final int scaledHeight = original.getHeight() / 2;
+            final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
+            StackBlurManager.process(scaled, 20);
+            long endTime = System.currentTimeMillis();
+            ByteArrayOutputStream bs = new ByteArrayOutputStream();
+            scaled.compress(Bitmap.CompressFormat.PNG, 20, bs);
+            final byte[] backgroundJpgBytes = bs.toByteArray();
+            if (MPConfig.DEBUG) {
+                Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
+                Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
+            }
+
+            final Looper mainLooper = Looper.getMainLooper();
+            new Handler(mainLooper).post(new Runnable() { // TODO why does this need to be in the Main UI thread?
+                @Override
+                public void run() {
+                    Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
+                    surveyIntent.putExtra("distinctId", surveyDistinctId);
+                    surveyIntent.putExtra("token", surveyToken);
+                    surveyIntent.putExtra("surveyJson", s.toJSON());
+                    surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mContext.startActivity(surveyIntent);
+                }
+            });
         }
 
         @Override
@@ -995,6 +1006,24 @@ public class MixpanelAPI {
         @Override
         public String getDistinctId() {
             return mPeopleDistinctId;
+        }
+
+        // NOT AN OVERRIDE due to WaitingPeopleRecord, which needs to go away.
+        /* package */ void append(JSONObject properties) {
+            try {
+                if (mPeopleDistinctId == null) {
+                    if (mWaitingPeopleRecord == null)
+                        mWaitingPeopleRecord = new WaitingPeopleRecord();
+
+                    mWaitingPeopleRecord.appendToWaitingPeopleRecord(properties);
+                }
+                else {
+                    JSONObject message = stdPeopleMessage("$append", properties);
+                    mMessages.peopleMessage(message);
+                }
+            } catch(JSONException e) {
+                Log.e(LOGTAG, "Can't create append message", e);
+            }
         }
 
         public String getPushId() {

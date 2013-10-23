@@ -31,7 +31,6 @@
 package com.mixpanel.android.util;
 
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
 
 public class StackBlurManager {
     public static void process(Bitmap source, int radius) {
@@ -54,11 +53,11 @@ public class StackBlurManager {
         int rsum, gsum, bsum, x, y, i, p, yp;
         int vmin[] = new int[Math.max(width, height)];
 
-        int divsum=(div+1)>>1;
+        int divsum = (div+1)>>1;
         divsum *= divsum;
-        int dv[] = new int[256*divsum];
-        for (i=0;i<256*divsum;i++){
-            dv[i] = (i/divsum);
+        int dv[] = new int[256*divsum]; // TODO this is too much memory?
+        for (i = 0; i < 256 * divsum;i++){
+            dv[i] = i / divsum;
         }
 
         int yw = 0;
