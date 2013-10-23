@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -858,43 +859,48 @@ public class MixpanelAPI {
 
         @Override
         public void showSurvey(final Survey s, final View parent) {
-            final String surveyDistinctId = mPeopleDistinctId;
-            final String surveyToken = mToken;
             final View rootView = parent.getRootView();
             boolean originalCacheState = rootView.isDrawingCacheEnabled();
             rootView.setDrawingCacheEnabled(true);
             final Bitmap original = rootView.getDrawingCache();
+            final int scaledWidth = original.getWidth() / 2;
+            final int scaledHeight = original.getHeight() / 2;
+            final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
             if (! originalCacheState) {
                 rootView.setDrawingCacheEnabled(false);
             }
 
-            // TODO this should not be run in the calling thread.
-            long startTime = System.currentTimeMillis();
-            final int scaledWidth = original.getWidth() / 2;
-            final int scaledHeight = original.getHeight() / 2;
-            final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-            StackBlurManager.process(scaled, 20);
-            long endTime = System.currentTimeMillis();
-            ByteArrayOutputStream bs = new ByteArrayOutputStream();
-            scaled.compress(Bitmap.CompressFormat.PNG, 20, bs);
-            final byte[] backgroundJpgBytes = bs.toByteArray();
-            if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-                Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
-            }
+            final Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
+            surveyIntent.putExtra("distinctId", mPeopleDistinctId);
+            surveyIntent.putExtra("token", mToken);
+            surveyIntent.putExtra("surveyJson", s.toJSON());
+            surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            final Looper mainLooper = Looper.getMainLooper();
-            new Handler(mainLooper).post(new Runnable() { // TODO why does this need to be in the Main UI thread?
+            AsyncTask<Void, Void, Bitmap> showSurveyActivity = new AsyncTask<Void, Void, Bitmap>() {
                 @Override
-                public void run() {
-                    Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
-                    surveyIntent.putExtra("distinctId", surveyDistinctId);
-                    surveyIntent.putExtra("token", surveyToken);
-                    surveyIntent.putExtra("surveyJson", s.toJSON());
-                    surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    mContext.startActivity(surveyIntent);
+                protected Bitmap doInBackground(Void... _) {
+                    final long startTime = System.currentTimeMillis();
+                    StackBlurManager.process(scaled, 20);
+                    final long endTime = System.currentTimeMillis();
+                    if (MPConfig.DEBUG) {
+                        Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
+                    }
+                    return scaled;
                 }
-            });
+
+                @Override
+                protected void onPostExecute(Bitmap background) {
+                    final ByteArrayOutputStream bs = new ByteArrayOutputStream();
+                    background.compress(Bitmap.CompressFormat.PNG, 20, bs);
+                    final byte[] backgroundJpgBytes = bs.toByteArray();
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
+                    }
+                    surveyIntent.putExtra("backgroundJpgBytes", backgroundJpgBytes);
+                    mContext.startActivity(surveyIntent); // Assumed to be safe to call from Random J. Thread
+                }
+            };
+            showSurveyActivity.execute();
         }
 
         @Override

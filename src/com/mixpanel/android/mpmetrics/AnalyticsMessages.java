@@ -24,6 +24,8 @@ import android.util.Log;
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
  *
+ * Consider refactoring to use AsyncTasks instead of custom Looper/Handler assembly below.
+ *
  * <p>This class straddles the thread boundary between user threads and
  * a logical Mixpanel thread.
  */

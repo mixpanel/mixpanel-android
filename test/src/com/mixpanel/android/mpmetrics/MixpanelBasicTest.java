@@ -351,7 +351,7 @@ public class MixpanelBasicTest extends
         };
 
         responses.add("{\"surveys\":[]}");
-        mixpanel.checkForSurvey(new SurveyCallbacks(){
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 assertNull(s);
             }
@@ -367,7 +367,7 @@ public class MixpanelBasicTest extends
                 "]}"
         );
         // TODO TEST IS BROKEN. What if this is never called (for example, because the survey didn't parse?)
-        mixpanel.checkForSurvey(new SurveyCallbacks(){
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 assertEquals(s.getId(), 291);
                 assertEquals(s.getCollectionId(), 141);
@@ -396,7 +396,7 @@ public class MixpanelBasicTest extends
         responses.add(
                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
         );
-        mixpanel.checkForSurvey(new SurveyCallbacks(){
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 assertEquals(s.getId(), 299);
                 assertEquals(s.getCollectionId(), 151);
