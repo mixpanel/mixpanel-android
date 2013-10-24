@@ -11,6 +11,7 @@ import java.util.TimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.database.DataSetObserver;
 import android.graphics.Bitmap;
@@ -31,10 +32,7 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 
-
-
 public class SurveyActivity extends Activity {
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,9 +77,31 @@ public class SurveyActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (mCurrentQuestion > 0) {
-            showQuestion(mCurrentQuestion-1);
+            goToPreviousQuestion();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    public void goToPreviousQuestion(View v) {
+        goToPreviousQuestion();
+    }
+
+    public void goToNextQuestion(View v) {
+        goToNextQuestion();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mMixpanel.flush();
+        super.onDestroy();
+    }
+
+    private void goToPreviousQuestion() {
+        if (mCurrentQuestion > 0) {
+            showQuestion(mCurrentQuestion-1);
+        } else {
+            completeSurvey();
         }
     }
 
@@ -102,6 +122,7 @@ public class SurveyActivity extends Activity {
         mChoiceView.setAdapter(answerAdapter);
     }
 
+    @SuppressLint("SimpleDateFormat")
     private void saveAnswer(int questionIdx, String answer) {
         Survey.Question question = mSurvey.getQuestions().get(questionIdx);
         mAnswers.put(question, answer.toString());
@@ -129,12 +150,6 @@ public class SurveyActivity extends Activity {
 
     private void completeSurvey() {
         finish();
-    }
-
-    @Override
-    protected void onDestroy() {
-        mMixpanel.flush();
-        super.onDestroy();
     }
 
     private static class ChoiceAdapter implements ListAdapter {

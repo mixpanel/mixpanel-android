@@ -4,20 +4,39 @@
     android:layout_height="wrap_content"
     android:orientation="vertical" >
     <!--  TODO consider using RelativeLayout or delete this comment -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        >
+    <Button
+        android:id="@+id/button_previous"
+        android:onClick="goToPreviousQuestion"
+        android:layout_width="24dp"
+        android:layout_height="16dp"
+        android:layout_alignParentLeft="true"
+        android:background="@drawable/com_mixpanel_android_arrowleft"  />
     <TextView
         android:id="@+id/progress_text"
-        android:layout_gravity="center"
+        android:layout_centerHorizontal="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="#ffffff"
         android:text="Survey"
         />
+    <Button
+        android:id="@+id/button_next"
+        android:onClick="goToNextQuestion"
+        android:layout_width="24dp"
+        android:layout_height="16dp"
+        android:layout_alignParentRight="true"
+        android:background="@drawable/com_mixpanel_android_arrowright"  />
+    </RelativeLayout>
     <LinearLayout
         android:layout_width="290dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:orientation="vertical" >
-
         <TextView
             android:id="@+id/prompt_text"
             android:layout_width="wrap_content"
@@ -27,7 +46,15 @@
             android:textSize="18sp" 
             android:paddingBottom="23dp"
             android:text="If we discontinue our service, how much would you care?" />
-
+        <EditText
+            android:id="@+id/text_answer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:background="@drawable/com_mixpanel_android_question_border"
+            android:visibility="gone"
+            />
         <ListView
             android:id="@+id/choice_list"
             android:layout_width="match_parent"
@@ -37,5 +64,4 @@
             android:background="@drawable/com_mixpanel_android_question_border" >
         </ListView>
     </LinearLayout>
-
 </LinearLayout>
