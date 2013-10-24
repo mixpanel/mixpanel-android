@@ -8,13 +8,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:padding="20dp"
         >
-    <Button
+    <ImageButton
         android:id="@+id/button_previous"
         android:onClick="goToPreviousQuestion"
+        android:layout_alignParentLeft="true"
+        android:contentDescription="@string/previous"
         android:layout_width="24dp"
         android:layout_height="16dp"
-        android:layout_alignParentLeft="true"
         android:background="@drawable/com_mixpanel_android_arrowleft"  />
     <TextView
         android:id="@+id/progress_text"
@@ -24,12 +26,13 @@
         android:textColor="#ffffff"
         android:text="Survey"
         />
-    <Button
+    <ImageButton
         android:id="@+id/button_next"
         android:onClick="goToNextQuestion"
+        android:layout_alignParentRight="true"
+        android:contentDescription="@string/next"
         android:layout_width="24dp"
         android:layout_height="16dp"
-        android:layout_alignParentRight="true"
         android:background="@drawable/com_mixpanel_android_arrowright"  />
     </RelativeLayout>
     <LinearLayout
