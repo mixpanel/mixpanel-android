@@ -26,7 +26,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -888,7 +887,6 @@ public class MixpanelAPI {
                     if (MPConfig.DEBUG) {
                         Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
                     }
-
                     Canvas canvas = new Canvas(background);
                     canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
                     return background;
