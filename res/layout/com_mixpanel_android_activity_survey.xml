@@ -1,70 +1,106 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="fill_parent"
+    android:padding="20dp"
     android:orientation="vertical" >
-    <!--  TODO consider using RelativeLayout or delete this comment -->
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="20dp"
-        >
-    <ImageButton
-        android:id="@+id/button_previous"
-        android:onClick="goToPreviousQuestion"
-        android:layout_alignParentLeft="true"
-        android:contentDescription="@string/previous"
-        android:layout_width="24dp"
-        android:layout_height="16dp"
-        android:background="@drawable/com_mixpanel_android_arrowleft"  />
-    <TextView
-        android:id="@+id/progress_text"
-        android:layout_centerHorizontal="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#ffffff"
-        android:text="Survey"
-        />
-    <ImageButton
-        android:id="@+id/button_next"
-        android:onClick="goToNextQuestion"
-        android:layout_alignParentRight="true"
-        android:contentDescription="@string/next"
-        android:layout_width="24dp"
-        android:layout_height="16dp"
-        android:background="@drawable/com_mixpanel_android_arrowright"  />
+        android:paddingBottom="20dp" >
+
+        <ImageButton
+            android:id="@+id/button_previous"
+            android:layout_width="24dp"
+            android:layout_height="16dp"
+            android:layout_alignParentLeft="true"
+            android:background="@drawable/com_mixpanel_android_arrowleft"
+            android:contentDescription="@string/com_mixpanel_android_previous"
+            android:onClick="goToPreviousQuestion" />
+
+        <TextView
+            android:id="@+id/progress_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="Survey"
+            android:textColor="#ffffff" />
+
+        <ImageButton
+            android:id="@+id/button_next"
+            android:layout_width="24dp"
+            android:layout_height="16dp"
+            android:layout_alignParentRight="true"
+            android:background="@drawable/com_mixpanel_android_arrowright"
+            android:contentDescription="@string/com_mixpanel_android_next"
+            android:onClick="goToNextQuestion" />
     </RelativeLayout>
+
     <LinearLayout
-        android:layout_width="290dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
         android:layout_gravity="center"
+        android:layout_weight="1"
         android:orientation="vertical" >
+
         <TextView
             android:id="@+id/prompt_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:paddingBottom="20dp"
+            android:text="If we discontinue our service, how much would you care?"
             android:textColor="#ffffff"
-            android:textSize="18sp" 
-            android:paddingBottom="23dp"
-            android:text="If we discontinue our service, how much would you care?" />
+            android:textSize="18sp" />
+
         <EditText
             android:id="@+id/text_answer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/com_mixpanel_android_text_answer_border"
             android:textColor="#ffffff"
             android:textSize="18sp"
-            android:background="@drawable/com_mixpanel_android_question_border"
-            android:visibility="gone"
-            />
+            android:padding="20dp"
+            android:inputType="textCapSentences|textAutoCorrect|textMultiLine|textShortMessage"
+            android:lines="3"
+            android:imeOptions="actionDone" 
+            android:singleLine="true"
+             />
+
         <ListView
             android:id="@+id/choice_list"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/com_mixpanel_android_choices_border"
             android:textColor="#ffffff"
             android:textSize="18sp"
-            android:background="@drawable/com_mixpanel_android_question_border" >
-        </ListView>
+            android:visibility="gone"
+            />
     </LinearLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="10dp"
+        android:paddingTop="30dp" >
+
+        <ImageView
+            android:layout_width="66dp"
+            android:layout_height="22dp"
+            android:layout_alignParentLeft="true"
+            android:background="@drawable/com_mixpanel_android_logo"
+            android:contentDescription="@string/com_mixpanel_android_logo" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:background="@android:color/transparent"
+            android:text="@string/com_mixpanel_android_exit" />
+
+    </RelativeLayout>
+
 </LinearLayout>

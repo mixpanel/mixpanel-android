@@ -19,14 +19,18 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.TextView.OnEditorActionListener;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -46,12 +50,28 @@ public class SurveyActivity extends Activity {
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);
         mPromptView = (TextView) findViewById(R.id.prompt_text);
+        mEditAnswerView = (EditText) findViewById(R.id.text_answer);
+        mEditAnswerView.setText("");
+        mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) ||
+                        actionId == EditorInfo.IME_ACTION_DONE) {
+                    v.clearComposingText();
+                    String answer = v.getText().toString();
+                    saveAnswer(mCurrentQuestion, answer);
+                    goToNextQuestion();
+                    return true;
+                }
+                return false;
+            }
+        });
         mChoiceView = (ListView) findViewById(R.id.choice_list);
         mChoiceView.setOnItemClickListener(new OnItemClickListener(){
             @Override
             public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
                 String answer = parent.getItemAtPosition(position).toString();
-                saveAnswer(mCurrentQuestion, answer);
+                saveAnswer(mCurrentQuestion, answer); // TODO won't work with text fields
                 goToNextQuestion();
             }
         });
@@ -67,7 +87,7 @@ public class SurveyActivity extends Activity {
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
         }
 
-        // TODO For testing only
+        // TODO For testing only, uncomment before merge
         // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
         // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
         // mMixpanel.flush();
@@ -114,12 +134,22 @@ public class SurveyActivity extends Activity {
     }
 
     private void showQuestion(int idx) {
-        Survey.Question question = mSurvey.getQuestions().get(idx);
         mCurrentQuestion = idx;
-        mProgressTextView.setText("Question " + (idx + 1) + " of " + mSurvey.getQuestions().size());
+        Survey.Question question = mSurvey.getQuestions().get(mCurrentQuestion);
+        Survey.QuestionType questionType = question.getType();
+        if (Survey.QuestionType.TEXT == questionType) {
+            mChoiceView.setVisibility(View.GONE);
+            mEditAnswerView.setVisibility(View.VISIBLE);
+        } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
+            mChoiceView.setVisibility(View.VISIBLE);
+            mEditAnswerView.setVisibility(View.GONE);
+            final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), getLayoutInflater());
+            mChoiceView.setAdapter(answerAdapter);
+        } else {
+            goToNextQuestion();
+        }
+        mProgressTextView.setText("Question " + (mCurrentQuestion + 1) + " of " + mSurvey.getQuestions().size());
         mPromptView.setText(question.getPrompt());
-        final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), getLayoutInflater());
-        mChoiceView.setAdapter(answerAdapter);
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -237,6 +267,7 @@ public class SurveyActivity extends Activity {
     private TextView mPromptView;
     private TextView mProgressTextView;
     private ListView mChoiceView;
+    private EditText mEditAnswerView;
 
     private Map<Survey.Question, String> mAnswers;
     private int mCurrentQuestion = 0;
