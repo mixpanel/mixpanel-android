@@ -374,7 +374,11 @@ import android.util.Log;
                     try {
                         final JSONObject candidateJson = surveys.getJSONObject(i);
                         final Survey candidate = new Survey(candidateJson); // Can throw a JSON error
-                        if (! mSeenSurveys.contains(candidate.getId())) {
+                        if (mSeenSurveys.contains(candidate.getId())) {
+                            if (MPConfig.DEBUG) {
+                                Log.i(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
+                            }
+                        } else {
                             found = candidate;
                             mSeenSurveys.add(found.getId());
                         }

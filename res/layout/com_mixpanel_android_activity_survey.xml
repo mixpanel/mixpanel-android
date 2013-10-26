@@ -78,6 +78,7 @@
             android:textColor="#ffffff"
             android:textSize="18sp"
             android:visibility="gone"
+            android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
             />
     </LinearLayout>
 
