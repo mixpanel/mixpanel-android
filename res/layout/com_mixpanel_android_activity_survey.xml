@@ -99,8 +99,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
+            android:textColor="#ffffff"
             android:background="@android:color/transparent"
-            android:text="@string/com_mixpanel_android_exit" />
+            android:text="@string/com_mixpanel_android_exit"
+            android:onClick="completeSurvey" />
 
     </RelativeLayout>
 

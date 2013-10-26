@@ -111,6 +111,10 @@ public class SurveyActivity extends Activity {
         goToNextQuestion();
     }
 
+    public void completeSurvey(View v) {
+        completeSurvey();
+    }
+
     @Override
     protected void onDestroy() {
         mMixpanel.flush();
