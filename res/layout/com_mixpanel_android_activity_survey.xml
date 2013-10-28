@@ -69,6 +69,7 @@
             android:singleLine="true"
              />
 
+        <!--  cacheColorHint setting from http://android-developers.blogspot.com/2009/01/why-is-my-list-black-android.html -->
         <ListView
             android:id="@+id/choice_list"
             android:layout_width="match_parent"
@@ -78,6 +79,7 @@
             android:textColor="#ffffff"
             android:textSize="18sp"
             android:visibility="gone"
+            android:cacheColorHint="#00000000"
             android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
             />
     </LinearLayout>
