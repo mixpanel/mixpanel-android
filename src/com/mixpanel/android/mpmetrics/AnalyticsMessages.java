@@ -380,7 +380,7 @@ import android.util.Log;
                             }
                         } else {
                             found = candidate;
-                            mSeenSurveys.add(found.getId());
+                            // mSeenSurveys.add(found.getId()); TODO UNCOMMENT BEFORE MERGE
                         }
                     } catch (JSONException e) {
                         found = null;

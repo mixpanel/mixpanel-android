@@ -75,7 +75,6 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@drawable/com_mixpanel_android_choices_border"
             android:textColor="#ffffff"
             android:textSize="18sp"
             android:visibility="gone"

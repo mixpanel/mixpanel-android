@@ -210,14 +210,33 @@ public class SurveyActivity extends Activity {
 
         @Override
         public int getItemViewType(int position) {
-            return 0;
+            if (0 == position) {
+                return VIEW_TYPE_FIRST;
+            }
+            if (position == mChoices.size() - 1) {
+                return VIEW_TYPE_LAST;
+            }
+            return VIEW_TYPE_MIDDLE;
         }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
+            int viewId = -1;
             if (null == convertView) {
-                convertView = mInflater.inflate(R.layout.com_mixpanel_android_multiple_choice_answer, parent, false);
+                switch(getItemViewType(position)) {
+                case VIEW_TYPE_FIRST:
+                    viewId = R.layout.com_mixpanel_android_first_choice_answer;
+                    break;
+                case VIEW_TYPE_LAST:
+                    viewId = R.layout.com_mixpanel_android_last_choice_answer;
+                    break;
+                case VIEW_TYPE_MIDDLE:
+                    viewId = R.layout.com_mixpanel_android_middle_choice_answer;
+                    break;
+                }
+                convertView = mInflater.inflate(viewId, parent, false);
             }
+
             TextView choiceText = (TextView) convertView.findViewById(R.id.multiple_choice_answer_text);
             String choice = mChoices.get(position);
             choiceText.setText(choice);
@@ -226,7 +245,7 @@ public class SurveyActivity extends Activity {
 
         @Override
         public int getViewTypeCount() {
-            return 1;
+            return VIEW_TYPE_MAX;
         }
 
         @Override
@@ -261,6 +280,11 @@ public class SurveyActivity extends Activity {
 
         private final List<String> mChoices;
         private final LayoutInflater mInflater;
+
+        private static final int VIEW_TYPE_FIRST = 0;
+        private static final int VIEW_TYPE_LAST = 1;
+        private static final int VIEW_TYPE_MIDDLE = 2;
+        private static final int VIEW_TYPE_MAX = 3; // Should always be precisely one more than the largest VIEW_TYPE
     }
 
     private static final String LOGTAG = "MixpanelAPI";
