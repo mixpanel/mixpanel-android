@@ -67,6 +67,7 @@
             android:lines="3"
             android:imeOptions="actionDone" 
             android:singleLine="true"
+            android:visibility="gone"
              />
 
         <!--  cacheColorHint setting from http://android-developers.blogspot.com/2009/01/why-is-my-list-black-android.html -->
@@ -77,9 +78,10 @@
             android:layout_weight="1"
             android:textColor="#ffffff"
             android:textSize="18sp"
-            android:visibility="gone"
             android:cacheColorHint="#00000000"
             android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
+            android:background="@android:color/transparent"
+            android:divider="@android:color/transparent"
             />
     </LinearLayout>
 
