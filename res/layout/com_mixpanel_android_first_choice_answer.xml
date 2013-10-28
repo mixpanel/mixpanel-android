@@ -3,7 +3,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="22dp"
-    android:background="@drawable/com_mixpanel_android_rounded_top" >
+    android:background="@drawable/com_mixpanel_android_choice_first_states" >
     <TextView 
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
