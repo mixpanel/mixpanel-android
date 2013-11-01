@@ -82,6 +82,7 @@
             android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
             android:background="@android:color/transparent"
             android:divider="@android:color/transparent"
+            android:choiceMode="singleChoice"
             />
     </LinearLayout>
 

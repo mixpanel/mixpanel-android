@@ -3,5 +3,6 @@
     <item android:state_enabled="true" android:state_pressed="true" android:drawable="@drawable/com_mixpanel_android_rounded_bottom_selected" />
     <item android:state_enabled="true" android:state_focused="true" android:drawable="@drawable/com_mixpanel_android_rounded_bottom_selected" />
     <item android:state_enabled="true" android:state_selected="true" android:drawable="@drawable/com_mixpanel_android_rounded_bottom_selected" />
+    <item android:state_enabled="true" android:state_checked="true" android:drawable="@drawable/com_mixpanel_android_rounded_bottom_selected" />
     <item android:drawable="@drawable/com_mixpanel_android_rounded_bottom" />
 </selector>

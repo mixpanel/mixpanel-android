@@ -141,19 +141,34 @@ public class SurveyActivity extends Activity {
         mCurrentQuestion = idx;
         Survey.Question question = mSurvey.getQuestions().get(mCurrentQuestion);
         Survey.QuestionType questionType = question.getType();
+        String answerValue = mAnswers.get(question);
         if (Survey.QuestionType.TEXT == questionType) {
             mChoiceView.setVisibility(View.GONE);
             mEditAnswerView.setVisibility(View.VISIBLE);
+            if (null != answerValue) {
+                mEditAnswerView.setText(answerValue);
+            }
         } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
             mChoiceView.setVisibility(View.VISIBLE);
             mEditAnswerView.setVisibility(View.GONE);
             final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), getLayoutInflater());
             mChoiceView.setAdapter(answerAdapter);
+            mChoiceView.clearChoices();
+            if (null != answerValue) {
+                for (int i = 0; i < answerAdapter.getCount(); i++) {
+                    String item = answerAdapter.getItem(i);
+                    if (item.equals(answerValue)) {
+                        mChoiceView.setItemChecked(i, true);
+                    }
+                }
+            }
         } else {
             goToNextQuestion();
         }
         mProgressTextView.setText("Question " + (mCurrentQuestion + 1) + " of " + mSurvey.getQuestions().size());
         mPromptView.setText(question.getPrompt());
+
+
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -237,7 +252,7 @@ public class SurveyActivity extends Activity {
                 convertView = mInflater.inflate(viewId, parent, false);
             }
 
-            TextView choiceText = (TextView) convertView.findViewById(R.id.multiple_choice_answer_text);
+            TextView choiceText = (TextView) convertView.findViewById(R.id.com_mixpanel_android_multiple_choice_answer_text);
             String choice = mChoices.get(position);
             choiceText.setText(choice);
             return convertView;

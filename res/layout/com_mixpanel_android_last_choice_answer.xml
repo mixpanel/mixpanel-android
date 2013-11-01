@@ -1,15 +1,13 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" ?>
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="22dp"
-    android:background="@drawable/com_mixpanel_android_choice_last_states" >
-    <TextView 
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:textColor="#ffffff"
-        android:id="@+id/multiple_choice_answer_text"
-        android:background="#00000000"
-        android:text="Answer Number 1" />
-</LinearLayout>
+    android:background="@drawable/com_mixpanel_android_choice_last_states" 
+    android:id="@+id/com_mixpanel_android_multiple_choice_answer_text"
+    android:gravity="center_vertical"
+    android:textColor="#ffffff"
+    android:checkMark="@drawable/com_mixpanel_android_checkmark_states"
+    android:text="Answer Number 1" 
+    />
