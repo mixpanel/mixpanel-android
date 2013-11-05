@@ -38,7 +38,7 @@ public class SurveyChoiceView extends CheckedTextView {
         int checkmarkWidth = checkMarkDrawable == null ? 0 : checkMarkDrawable.getIntrinsicWidth();
         setCheckMarkDrawable(null);
         int additionalPadding = originalPadding + checkmarkWidth + originalPadding;
-        setPadding(additionalPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom()); // TODO Does this request redraw?
+        setPadding(additionalPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom()); // TODO Does this request redrawing?
         super.onDraw(canvas);
         setPadding(originalPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom()); // TODO Does this request redrawing?
         setCheckMarkDrawable(checkMarkDrawable);

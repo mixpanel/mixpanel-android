@@ -13,6 +13,7 @@ import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -47,34 +48,16 @@ public class SurveyActivity extends Activity {
         final byte[] backgroundJpgBytes = getIntent().getByteArrayExtra("backgroundJpgBytes");
         final Bitmap background = BitmapFactory.decodeByteArray(backgroundJpgBytes, 0, backgroundJpgBytes.length);
         getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
+
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);
-        mPromptView = (TextView) findViewById(R.id.prompt_text);
-        mEditAnswerView = (EditText) findViewById(R.id.text_answer);
-        mEditAnswerView.setText("");
-        mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) ||
-                        actionId == EditorInfo.IME_ACTION_DONE) {
-                    v.clearComposingText();
-                    String answer = v.getText().toString();
-                    saveAnswer(mCurrentQuestion, answer);
-                    goToNextQuestion();
-                    return true;
-                }
-                return false;
-            }
-        });
-        mChoiceView = (ListView) findViewById(R.id.choice_list);
-        mChoiceView.setOnItemClickListener(new OnItemClickListener(){
-            @Override
-            public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
-                String answer = parent.getItemAtPosition(position).toString();
-                saveAnswer(mCurrentQuestion, answer); // TODO won't work with text fields
-                goToNextQuestion();
-            }
-        });
+        mCardHolder = (ViewGroup) findViewById(R.id.question_card_holder);
+
+        LayoutInflater vi = (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View visibleCardView = vi.inflate(R.layout.com_mixpanel_android_question_card, null);
+        mVisibleCard = new QuestionCard(visibleCardView);
+        View backupCardView = vi.inflate(R.layout.com_mixpanel_android_question_card, null);
+        mBackupCard = new QuestionCard(backupCardView);
 
         // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
         mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
@@ -139,41 +122,27 @@ public class SurveyActivity extends Activity {
 
     private void showQuestion(int idx) {
         mCurrentQuestion = idx;
+        final QuestionCard cardToShow = mBackupCard;
         Survey.Question question = mSurvey.getQuestions().get(mCurrentQuestion);
-        Survey.QuestionType questionType = question.getType();
         String answerValue = mAnswers.get(question);
-        if (Survey.QuestionType.TEXT == questionType) {
-            mChoiceView.setVisibility(View.GONE);
-            mEditAnswerView.setVisibility(View.VISIBLE);
-            if (null != answerValue) {
-                mEditAnswerView.setText(answerValue);
-            }
-        } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
-            mChoiceView.setVisibility(View.VISIBLE);
-            mEditAnswerView.setVisibility(View.GONE);
-            final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), getLayoutInflater());
-            mChoiceView.setAdapter(answerAdapter);
-            mChoiceView.clearChoices();
-            if (null != answerValue) {
-                for (int i = 0; i < answerAdapter.getCount(); i++) {
-                    String item = answerAdapter.getItem(i);
-                    if (item.equals(answerValue)) {
-                        mChoiceView.setItemChecked(i, true);
-                    }
-                }
-            }
-        } else {
+
+        try {
+            cardToShow.showQuestionOnCard(this, question, answerValue);
+        } catch(UnrecognizedAnswerTypeException e) {
             goToNextQuestion();
+            return;
         }
+        // ELSE
+
+        mCardHolder.removeAllViews();
+        mCardHolder.addView(cardToShow.getView());
+        mBackupCard = mVisibleCard;
+        mVisibleCard = cardToShow;
         mProgressTextView.setText("Question " + (mCurrentQuestion + 1) + " of " + mSurvey.getQuestions().size());
-        mPromptView.setText(question.getPrompt());
-
-
     }
 
     @SuppressLint("SimpleDateFormat")
-    private void saveAnswer(int questionIdx, String answer) {
-        Survey.Question question = mSurvey.getQuestions().get(questionIdx);
+    private void saveAnswer(Survey.Question question, String answer) {
         mAnswers.put(question, answer.toString());
         mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
 
@@ -199,6 +168,86 @@ public class SurveyActivity extends Activity {
 
     private void completeSurvey() {
         finish();
+    }
+
+    private static class UnrecognizedAnswerTypeException extends Exception {
+        public UnrecognizedAnswerTypeException(String string) {
+            super(string);
+        }
+    }
+
+    private class QuestionCard {
+
+        public QuestionCard(final View cardView) {
+            mCardView = cardView;
+            mPromptView = (TextView) cardView.findViewById(R.id.prompt_text);
+            mEditAnswerView = (EditText) cardView.findViewById(R.id.text_answer);
+            mChoiceView = (ListView) cardView.findViewById(R.id.choice_list);
+            mEditAnswerView.setText("");
+            mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
+                @Override
+                public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                    if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) ||
+                            actionId == EditorInfo.IME_ACTION_DONE) {
+                        v.clearComposingText();
+                        String answer = v.getText().toString();
+                        saveAnswer(mQuestion, answer);
+                        goToNextQuestion();
+                        return true;
+                    }
+                    return false;
+                }
+            });
+            mChoiceView.setOnItemClickListener(new OnItemClickListener(){
+                @Override
+                public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+                    String answer = parent.getItemAtPosition(position).toString();
+                    saveAnswer(mQuestion, answer);
+                    goToNextQuestion();
+                }
+            });
+        }
+
+        public View getView() {
+            return mCardView;
+        }
+
+        public void showQuestionOnCard(Activity parent, Survey.Question question, String answerValueOrNull)
+            throws UnrecognizedAnswerTypeException {
+            mQuestion = question;
+            mPromptView.setText(mQuestion.getPrompt());
+
+            Survey.QuestionType questionType = question.getType();
+            if (Survey.QuestionType.TEXT == questionType) {
+                mChoiceView.setVisibility(View.GONE);
+                mEditAnswerView.setVisibility(View.VISIBLE);
+                if (null != answerValueOrNull) {
+                    mEditAnswerView.setText(answerValueOrNull);
+                }
+            } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
+                mChoiceView.setVisibility(View.VISIBLE);
+                mEditAnswerView.setVisibility(View.GONE);
+                final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), parent.getLayoutInflater());
+                mChoiceView.setAdapter(answerAdapter);
+                mChoiceView.clearChoices();
+                if (null != answerValueOrNull) {
+                    for (int i = 0; i < answerAdapter.getCount(); i++) {
+                        String item = answerAdapter.getItem(i);
+                        if (item.equals(answerValueOrNull)) {
+                            mChoiceView.setItemChecked(i, true);
+                        }
+                    }
+                }
+            } else {
+                throw new UnrecognizedAnswerTypeException("No way to display question type " + questionType);
+            }
+        }
+
+        private Survey.Question mQuestion;
+        private final View mCardView;
+        private final TextView mPromptView;
+        private final TextView mEditAnswerView;
+        private final ListView mChoiceView;
     }
 
     private static class ChoiceAdapter implements ListAdapter {
@@ -307,10 +356,10 @@ public class SurveyActivity extends Activity {
     private Survey mSurvey;
     private String mDistinctId;
     private String mToken;
-    private TextView mPromptView;
     private TextView mProgressTextView;
-    private ListView mChoiceView;
-    private EditText mEditAnswerView;
+    private ViewGroup mCardHolder;
+    private QuestionCard mVisibleCard;
+    private QuestionCard mBackupCard;
 
     private Map<Survey.Question, String> mAnswers;
     private int mCurrentQuestion = 0;
