@@ -172,6 +172,8 @@ public class SurveyActivity extends Activity {
                 @Override
                 public void onAnimationStart(Animation animation) {}
             });
+
+            entrance.setFillAfter(true);
             viewShowing.startAnimation(exit);
             viewToShow.startAnimation(entrance);
             // TODO Need to disable the card before we give up control, or we may get votes in transit...
@@ -225,7 +227,6 @@ public class SurveyActivity extends Activity {
         rotateIn.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(rotateIn);
 
-        set.setFillAfter(true);
         return set;
     }
 
@@ -241,8 +242,6 @@ public class SurveyActivity extends Activity {
         RotateAnimation rotateOut = new RotateAnimation(0, 90, 0, cardHeight);
         rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(rotateOut);
-
-        set.setFillAfter(true);
         return set;
     }
 
@@ -263,8 +262,6 @@ public class SurveyActivity extends Activity {
         scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
         scaleDown.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
         set.addAnimation(scaleDown);
-
-        set.setFillAfter(true);
         return set;
     }
 
@@ -284,7 +281,6 @@ public class SurveyActivity extends Activity {
         scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
         set.addAnimation(scaleUp);
 
-        set.setFillAfter(true);
         return set;
     }
 
@@ -483,6 +479,6 @@ public class SurveyActivity extends Activity {
     private int mCurrentQuestion = 0;
 
     private static final String LOGTAG = "MixpanelAPI";
-    private static final long ANIMATION_DURATION_MILLIS = 300;
+    private static final long ANIMATION_DURATION_MILLIS = 400;
 }
 
