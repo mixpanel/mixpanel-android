@@ -9,5 +9,4 @@
     android:gravity="center_vertical"
     android:textColor="#ffffff"
     android:checkMark="@drawable/com_mixpanel_android_checkmark_states"
-    android:text="Answer Number 1" 
     />

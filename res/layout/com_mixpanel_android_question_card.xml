@@ -8,7 +8,6 @@
 	<TextView android:id="@+id/prompt_text" android:layout_width="wrap_content"
 		android:layout_height="wrap_content" android:layout_gravity="center"
 		android:paddingBottom="20dp"
-		android:text="If we discontinue our service, how much would you care?"
 		android:textColor="#ffffff" android:textSize="18sp" />
 
 	<EditText android:id="@+id/text_answer" android:layout_width="match_parent"

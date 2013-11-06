@@ -13,7 +13,6 @@ import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Context;
 import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -24,6 +23,12 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.view.animation.AnimationSet;
+import android.view.animation.RotateAnimation;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -42,6 +47,9 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mVisibleCard = null;
+        mBackupCard = null;
+
         mDistinctId = getIntent().getStringExtra("distinctId");
         mToken = getIntent().getStringExtra("token");
         String surveyJsonStr = getIntent().getStringExtra("surveyJson");
@@ -52,12 +60,6 @@ public class SurveyActivity extends Activity {
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);
         mCardHolder = (ViewGroup) findViewById(R.id.question_card_holder);
-
-        LayoutInflater vi = (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View visibleCardView = vi.inflate(R.layout.com_mixpanel_android_question_card, null);
-        mVisibleCard = new QuestionCard(visibleCardView);
-        View backupCardView = vi.inflate(R.layout.com_mixpanel_android_question_card, null);
-        mBackupCard = new QuestionCard(backupCardView);
 
         // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
         mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
@@ -120,12 +122,16 @@ public class SurveyActivity extends Activity {
         }
     }
 
-    private void showQuestion(int idx) {
-        mCurrentQuestion = idx;
-        final QuestionCard cardToShow = mBackupCard;
-        Survey.Question question = mSurvey.getQuestions().get(mCurrentQuestion);
-        String answerValue = mAnswers.get(question);
+    private void showQuestion(final int idx) {
+        final int oldQuestion = mCurrentQuestion;
 
+        QuestionCard cardToShow = mBackupCard;
+        if (null == cardToShow) {
+            final View v = getLayoutInflater().inflate(R.layout.com_mixpanel_android_question_card, null);
+            cardToShow = new QuestionCard(v);
+        }
+        final Survey.Question question = mSurvey.getQuestions().get(idx);
+        final String answerValue = mAnswers.get(question);
         try {
             cardToShow.showQuestionOnCard(this, question, answerValue);
         } catch(UnrecognizedAnswerTypeException e) {
@@ -134,11 +140,47 @@ public class SurveyActivity extends Activity {
         }
         // ELSE
 
-        mCardHolder.removeAllViews();
-        mCardHolder.addView(cardToShow.getView());
-        mBackupCard = mVisibleCard;
+        final QuestionCard cardShowing = mVisibleCard;
+        if (null == cardShowing) {
+            mCardHolder.addView(cardToShow.getView());
+        } else {
+            final View viewShowing = cardShowing.getView();
+            final View viewToShow = cardToShow.getView();
+            mCardHolder.removeAllViews(); // TODO right now required because we could be in transit
+            viewShowing.setVisibility(View.VISIBLE);
+            viewToShow.setVisibility(View.VISIBLE);
+            mCardHolder.addView(viewShowing);
+            mCardHolder.addView(viewToShow);
+
+            Animation exit;
+            Animation entrance;
+            if (oldQuestion < idx) {
+                exit = exitLeft(viewShowing.getWidth(), viewShowing.getHeight());
+                entrance = enterRight(viewToShow.getWidth(), viewToShow.getHeight());
+            } else {
+                exit = exitRight(viewShowing.getWidth(), viewShowing.getHeight());
+                entrance = enterLeft(viewToShow.getWidth(), viewToShow.getHeight());
+            }
+
+            exit.setAnimationListener(new AnimationListener() {
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    viewShowing.setVisibility(View.GONE);
+                }
+                @Override
+                public void onAnimationRepeat(Animation animation) {}
+                @Override
+                public void onAnimationStart(Animation animation) {}
+            });
+            viewShowing.startAnimation(exit);
+            viewToShow.startAnimation(entrance);
+            // TODO Need to disable the card before we give up control, or we may get votes in transit...
+        }
+
+        mProgressTextView.setText("" + (idx + 1) + " of " + mSurvey.getQuestions().size());
+        mBackupCard = cardShowing;
         mVisibleCard = cardToShow;
-        mProgressTextView.setText("Question " + (mCurrentQuestion + 1) + " of " + mSurvey.getQuestions().size());
+        mCurrentQuestion = idx;
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -170,10 +212,87 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
+    private Animation enterRight(final float cardWidth, final float cardHeight) {
+        final float slideDistance = cardWidth * 1.3f;
+        final float dropDistance = cardHeight * 4;
+
+        AnimationSet set = new AnimationSet(true);
+        TranslateAnimation slideIn = new TranslateAnimation(slideDistance, 0, dropDistance, 0);
+        slideIn.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideIn);
+
+        RotateAnimation rotateIn = new RotateAnimation(90, 0, 0, cardHeight);
+        rotateIn.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(rotateIn);
+
+        set.setFillAfter(true);
+        return set;
+    }
+
+    private Animation exitRight(final float cardWidth, final float cardHeight) {
+        final float slideDistance = cardWidth * 1.3f;
+        final float dropDistance = cardHeight * 4;
+
+        AnimationSet set = new AnimationSet(true);
+        TranslateAnimation slideOut = new TranslateAnimation(0, slideDistance, 0, dropDistance);
+        slideOut.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideOut);
+
+        RotateAnimation rotateOut = new RotateAnimation(0, 90, 0, cardHeight);
+        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(rotateOut);
+
+        set.setFillAfter(true);
+        return set;
+    }
+
+    private Animation exitLeft(final float cardWidth, final float cardHeight) {
+        final float slideDistance = cardWidth * 1.3f;
+
+        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
+        TranslateAnimation slideX = new TranslateAnimation(0, -slideDistance, 0, 0);
+        slideX.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideX);
+
+        RotateAnimation rotateOut = new RotateAnimation(0, -90, cardWidth, cardHeight);
+        rotateOut.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        rotateOut.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
+        set.addAnimation(rotateOut);
+
+        ScaleAnimation scaleDown = new ScaleAnimation(1, 0.8f, 1, 0.8f);
+        scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        scaleDown.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
+        set.addAnimation(scaleDown);
+
+        set.setFillAfter(true);
+        return set;
+    }
+
+    private Animation enterLeft(final float cardWidth, final float cardHeight) {
+        final float slideDistance = cardWidth * 1.3f;
+
+        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
+        TranslateAnimation slideX = new TranslateAnimation(-slideDistance, 0, 0, 0);
+        slideX.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideX);
+
+        RotateAnimation rotateIn = new RotateAnimation(-90, 0, cardWidth, cardHeight);
+        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(rotateIn);
+
+        ScaleAnimation scaleUp = new ScaleAnimation(0.8f, 1, 0.8f, 1);
+        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(scaleUp);
+
+        set.setFillAfter(true);
+        return set;
+    }
+
     private static class UnrecognizedAnswerTypeException extends Exception {
         public UnrecognizedAnswerTypeException(String string) {
             super(string);
         }
+        private static final long serialVersionUID = -6040399928243560328L;
     }
 
     private class QuestionCard {
@@ -351,7 +470,6 @@ public class SurveyActivity extends Activity {
         private static final int VIEW_TYPE_MAX = 3; // Should always be precisely one more than the largest VIEW_TYPE
     }
 
-    private static final String LOGTAG = "MixpanelAPI";
     private MixpanelAPI mMixpanel;
     private Survey mSurvey;
     private String mDistinctId;
@@ -363,5 +481,8 @@ public class SurveyActivity extends Activity {
 
     private Map<Survey.Question, String> mAnswers;
     private int mCurrentQuestion = 0;
+
+    private static final String LOGTAG = "MixpanelAPI";
+    private static final long ANIMATION_DURATION_MILLIS = 300;
 }
 
