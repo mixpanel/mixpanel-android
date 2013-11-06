@@ -245,6 +245,25 @@ public class SurveyActivity extends Activity {
         return set;
     }
 
+    private Animation enterLeft(final float cardWidth, final float cardHeight) {
+        final float slideDistance = cardWidth * 1.3f;
+
+        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
+        TranslateAnimation slideX = new TranslateAnimation(-slideDistance, 0, 0, 0);
+        slideX.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideX);
+
+        RotateAnimation rotateIn = new RotateAnimation(-90, 0, cardWidth, cardHeight);
+        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(rotateIn);
+
+        ScaleAnimation scaleUp = new ScaleAnimation(0.8f, 1, 0.8f, 1);
+        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(scaleUp);
+
+        return set;
+    }
+
     private Animation exitLeft(final float cardWidth, final float cardHeight) {
         final float slideDistance = cardWidth * 1.3f;
 
@@ -262,25 +281,6 @@ public class SurveyActivity extends Activity {
         scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
         scaleDown.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
         set.addAnimation(scaleDown);
-        return set;
-    }
-
-    private Animation enterLeft(final float cardWidth, final float cardHeight) {
-        final float slideDistance = cardWidth * 1.3f;
-
-        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
-        TranslateAnimation slideX = new TranslateAnimation(-slideDistance, 0, 0, 0);
-        slideX.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(slideX);
-
-        RotateAnimation rotateIn = new RotateAnimation(-90, 0, cardWidth, cardHeight);
-        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(rotateIn);
-
-        ScaleAnimation scaleUp = new ScaleAnimation(0.8f, 1, 0.8f, 1);
-        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(scaleUp);
-
         return set;
     }
 
