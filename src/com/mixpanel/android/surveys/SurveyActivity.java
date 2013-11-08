@@ -127,7 +127,7 @@ public class SurveyActivity extends Activity {
 
         QuestionCard cardToShow = mBackupCard;
         if (null == cardToShow) {
-            final View v = getLayoutInflater().inflate(R.layout.com_mixpanel_android_question_card, null);
+            final View v = getLayoutInflater().inflate(R.layout.com_mixpanel_android_question_card, mCardHolder, false);
             cardToShow = new QuestionCard(v);
         }
         final Survey.Question question = mSurvey.getQuestions().get(idx);

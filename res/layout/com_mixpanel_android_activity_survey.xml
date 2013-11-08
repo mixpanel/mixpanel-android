@@ -37,13 +37,13 @@
             android:onClick="goToNextQuestion" />
     </RelativeLayout>
 
-    <FrameLayout
+    <com.mixpanel.android.surveys.CardCarouselLayout
         android:id="@+id/question_card_holder"
         android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_gravity="center"
         android:layout_weight="1" android:orientation="vertical"
-        ></FrameLayout>
-    
+        ></com.mixpanel.android.surveys.CardCarouselLayout>
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
