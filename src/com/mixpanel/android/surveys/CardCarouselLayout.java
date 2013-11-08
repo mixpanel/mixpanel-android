@@ -31,8 +31,8 @@ import android.view.ViewGroup;
      * Completely ignores margins and child states.
      */
     @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int count = getChildCount();
+    protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
+        final int count = getChildCount();
 
         final boolean measureMatchParentChildren =
                 MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.EXACTLY ||
@@ -87,8 +87,8 @@ import android.view.ViewGroup;
     }
 
     @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        int count = getChildCount();
+    protected void onLayout(final boolean changed, final int left, final int top, final int right, final int bottom) {
+        final int count = getChildCount();
         int childLeft = 0;
         for (int i = 0; i < count; i++) {
             final View child = getChildAt(i);
