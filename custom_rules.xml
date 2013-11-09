@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project name="MixpanelAPICustom" default="...">
-  <target name="-post-compile" depends="-compile">
-    <!-- workaround for Eclipse having disagreements with Ant about the name of the final jar -->
-    <copy file="${out.absolute.dir}/classes.jar" tofile="${out.absolute.dir}/mixpanel-android.jar" />
-  </target>
-</project>

@@ -1,0 +1,26 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.6.+'
+    }
+}
+
+apply plugin: 'android-library'
+
+repositories {
+    mavenCentral()
+}
+
+android {
+    compileSdkVersion 18
+    buildToolsVersion "17.0.0"
+
+    defaultConfig {
+        minSdkVersion 7
+        targetSdkVersion 18
+        testPackageName "com.mixpanel.android"
+        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+}
