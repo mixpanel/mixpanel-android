@@ -7,7 +7,11 @@ buildscript {
     }
 }
 
+group = "com.mixpanel.android"
+version = "0.1a"
+
 apply plugin: 'android-library'
+apply plugin: 'maven-publish'
 
 repositories {
     mavenCentral()
@@ -22,5 +26,14 @@ android {
         targetSdkVersion 18
         testPackageName "com.mixpanel.android"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+}
+
+android.libraryVariants
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact "./build/libs/${project.name}-${version}.aar"
+        }
     }
 }
