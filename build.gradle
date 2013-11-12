@@ -7,8 +7,20 @@ buildscript {
     }
 }
 
+/*
+ * Gets the version name from the latest Git tag
+ */
+def getVersionName = { ->
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine 'git', 'describe', '--tags'
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
+}
+
 group = "com.mixpanel.android"
-version = "0.1a"
+version = getVersionName()
 
 apply plugin: 'android-library'
 apply plugin: 'maven-publish'
@@ -29,6 +41,9 @@ android {
     }
 }
 
+/***
+ * This will specify that we want to publish our aar file when we run gradle publish / gradle publishToMavenLocal
+ */
 android.libraryVariants
 publishing {
     publications {
