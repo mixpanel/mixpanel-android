@@ -109,9 +109,9 @@ public class SurveyActivity extends Activity {
         final String answerValue = mAnswers.get(question);
         try {
             if (oldQuestion < idx) {
-                mCardHolder.forwardTo(question, answerValue);
+                mCardHolder.moveTo(question, answerValue, CardCarouselLayout.Direction.FORWARD);
             } else if (oldQuestion > idx) {
-                mCardHolder.backwardTo(question, answerValue);
+                mCardHolder.moveTo(question, answerValue, CardCarouselLayout.Direction.BACKWARD);
             } else {
                 mCardHolder.replaceTo(question, answerValue);
             }

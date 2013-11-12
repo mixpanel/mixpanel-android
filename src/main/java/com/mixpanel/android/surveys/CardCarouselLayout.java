@@ -3,9 +3,6 @@ package com.mixpanel.android.surveys;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mixpanel.android.R;
-import com.mixpanel.android.mpmetrics.Survey;
-
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.util.AttributeSet;
@@ -13,19 +10,24 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
 import android.view.animation.AnimationSet;
 import android.view.animation.RotateAnimation;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.TextView.OnEditorActionListener;
+
+import com.mixpanel.android.R;
+import com.mixpanel.android.mpmetrics.Survey;
 
 /**
  * Simple, single-purpose layout for juggling question cards.
@@ -38,6 +40,10 @@ import android.widget.TextView.OnEditorActionListener;
             super(string);
         }
         private static final long serialVersionUID = -6040399928243560328L;
+    }
+
+    public static enum Direction {
+        FORWARD, BACKWARD;
     }
 
     public CardCarouselLayout(Context context) {
@@ -60,41 +66,41 @@ import android.widget.TextView.OnEditorActionListener;
         return false;
     }
 
-    public void forwardTo(Survey.Question question, String answerOrNull)
+    public void moveTo(Survey.Question question, String answerOrNull, Direction direction)
             throws UnrecognizedAnswerTypeException {
-        final QuestionCard cardShowing = mVisibleCard;
-        final QuestionCard cardToShow = mBackupCard;
-        final View viewShowing = cardShowing.getView();
-        final View viewToShow = cardToShow.getView();
+        final QuestionCard tmp = mBackupCard;
+        mBackupCard = mVisibleCard;
+        mVisibleCard = tmp;
+        mVisibleCard.showQuestionOnCard(question, answerOrNull);
+        final View viewShowing = mBackupCard.getView();
+        final View viewToShow = mVisibleCard.getView();
         viewShowing.setVisibility(View.VISIBLE);
         viewToShow.setVisibility(View.VISIBLE);
-        mLayoutDirection = Direction.BACKUP_AFTER;
-//        Animation exit = exitLeft(viewShowing.getWidth(), viewShowing.getHeight());
-//        Animation entrance = enterRight(viewToShow.getWidth(), viewToShow.getHeight());
-//        viewShowing.startAnimation(exit);
-//        viewToShow.startAnimation(entrance);
-        mVisibleCard = cardShowing;
-        mBackupCard = cardToShow;
-        mVisibleCard.showQuestionOnCard(question, answerOrNull);
-        invalidate();
-    }
 
-    public void backwardTo(Survey.Question question, String answerOrNull)
-            throws UnrecognizedAnswerTypeException {
-        final QuestionCard cardShowing = mVisibleCard;
-        final QuestionCard cardToShow = mBackupCard;
-        final View viewShowing = cardShowing.getView();
-        final View viewToShow = cardToShow.getView();
-        viewShowing.setVisibility(View.VISIBLE);
-        viewToShow.setVisibility(View.VISIBLE);
-        mLayoutDirection = Direction.BACKUP_BEFORE;
-//        Animation exit = exitRight(viewShowing.getWidth(), viewShowing.getHeight());
-//        Animation entrance = enterLeft(viewToShow.getWidth(), viewToShow.getHeight());
-//        viewShowing.startAnimation(exit);
-//        viewToShow.startAnimation(entrance);
-        mVisibleCard = cardShowing;
-        mBackupCard = cardToShow;
-        mVisibleCard.showQuestionOnCard(question, answerOrNull);
+        Animation exit = null;
+        Animation entrance = null;
+        switch(direction) {
+        case FORWARD:
+            exit = exitLeft();
+            entrance = enterRight();
+            break;
+        case BACKWARD:
+            exit = exitRight();
+            entrance = enterLeft();
+            break;
+        }
+        exit.setAnimationListener(new AnimationListener() {
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                viewShowing.setVisibility(View.GONE);
+            }
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+            @Override
+            public void onAnimationStart(Animation animation) {}
+        });
+        viewShowing.startAnimation(exit);
+        viewToShow.startAnimation(entrance);
         invalidate();
     }
 
@@ -172,24 +178,16 @@ import android.widget.TextView.OnEditorActionListener;
     protected void onLayout(final boolean changed, final int left, final int top, final int right, final int bottom) {
         final View visible = mVisibleCard.getView();
         int visibleWidth = 0;
-        int visibleHeight = 0;
         if (visible.getVisibility() != View.GONE) {
             visibleWidth = visible.getMeasuredWidth();
-            visibleHeight = visible.getMeasuredHeight();
+            final int visibleHeight = visible.getMeasuredHeight();
             visible.layout(0, 0, visibleWidth, visibleHeight);
         }
         final View backup = mBackupCard.getView();
         if (backup.getVisibility() != View.GONE) {
             final int backupWidth = backup.getMeasuredWidth();
             final int backupHeight = backup.getMeasuredHeight();
-            switch (mLayoutDirection) {
-            case BACKUP_BEFORE:
-                backup.layout(-backupWidth, 0, 0, backupHeight);
-                break;
-            case BACKUP_AFTER:
-                backup.layout(visibleWidth, 0, visibleWidth + backupWidth, visibleHeight);
-                break;
-            }
+            backup.layout(visibleWidth, 0, visibleWidth + backupWidth, backupHeight);
         }
     }
 
@@ -199,77 +197,114 @@ import android.widget.TextView.OnEditorActionListener;
         mVisibleCard = new QuestionCard(v1);
         final View v2 = inflater.inflate(R.layout.com_mixpanel_android_question_card, this, false);
         mBackupCard = new QuestionCard(v2);
-        mLayoutDirection = Direction.BACKUP_AFTER;
         this.addView(v1);
         this.addView(v2);
     }
 
-    private Animation enterRight(final float cardWidth, final float cardHeight) {
-        final float slideDistance = cardWidth * 1.3f;
-        final float dropDistance = cardHeight * 4;
-
-        AnimationSet set = new AnimationSet(true);
-        TranslateAnimation slideIn = new TranslateAnimation(slideDistance, 0, dropDistance, 0);
-        slideIn.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(slideIn);
-
-        RotateAnimation rotateIn = new RotateAnimation(90, 0, 0, cardHeight);
-        rotateIn.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(rotateIn);
-
-        return set;
-    }
-
-    private Animation exitRight(final float cardWidth, final float cardHeight) {
-        final float slideDistance = cardWidth * 1.3f;
-        final float dropDistance = cardHeight * 4;
-
-        AnimationSet set = new AnimationSet(true);
-        TranslateAnimation slideOut = new TranslateAnimation(0, slideDistance, 0, dropDistance);
-        slideOut.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(slideOut);
-
-        RotateAnimation rotateOut = new RotateAnimation(0, 90, 0, cardHeight);
-        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(rotateOut);
-        return set;
-    }
-
-    private Animation enterLeft(final float cardWidth, final float cardHeight) {
-        final float slideDistance = cardWidth * 1.3f;
-
-        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
-        TranslateAnimation slideX = new TranslateAnimation(-slideDistance, 0, 0, 0);
+    private static int EXIT_ANGLE = 45;
+    private static float EXIT_SIZE = 0.6f;
+    private static float EXIT_ROTATION_CENTER_X = 0.5f;
+    private static float EXIT_ROTATION_CENTER_Y = 0.5f;
+    private Animation enterRight() {
+        final AnimationSet set = new AnimationSet(false);
+        final TranslateAnimation slideX = new TranslateAnimation(
+                Animation.RELATIVE_TO_PARENT, 1.3f,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0
+        );
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
 
-        RotateAnimation rotateIn = new RotateAnimation(-90, 0, cardWidth, cardHeight);
+        final RotateAnimation rotateIn = new RotateAnimation(EXIT_ANGLE, 0,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
         rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
         set.addAnimation(rotateIn);
 
-        ScaleAnimation scaleUp = new ScaleAnimation(0.8f, 1, 0.8f, 1);
+        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1);
         scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
         set.addAnimation(scaleUp);
 
         return set;
     }
 
-    private Animation exitLeft(final float cardWidth, final float cardHeight) {
-        final float slideDistance = cardWidth * 1.3f;
-
-        AnimationSet set = new AnimationSet(false); // TODO consider using true to share a single interpolator
-        TranslateAnimation slideX = new TranslateAnimation(0, -slideDistance, 0, 0);
+    private Animation exitRight() {
+        final AnimationSet set = new AnimationSet(false);
+        final TranslateAnimation slideX = new TranslateAnimation(
+                Animation.RELATIVE_TO_PARENT, -1.0f,
+                Animation.RELATIVE_TO_PARENT, 0.3f,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0
+        );
+        slideX.setInterpolator(new AccelerateInterpolator());
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
 
-        RotateAnimation rotateOut = new RotateAnimation(0, -90, cardWidth, cardHeight);
+        final RotateAnimation rotateOut = new RotateAnimation(0, EXIT_ANGLE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
         rotateOut.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        rotateOut.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
+        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(rotateOut);
 
-        ScaleAnimation scaleDown = new ScaleAnimation(1, 0.8f, 1, 0.8f);
+        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE);
         scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        scaleDown.setDuration(ANIMATION_DURATION_MILLIS); // TODO how does this interact with the offset?
+        scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(scaleDown);
+        return set;
+    }
+
+    private Animation enterLeft() {
+        final AnimationSet set = new AnimationSet(false);
+        final TranslateAnimation slideX = new TranslateAnimation(
+                Animation.RELATIVE_TO_PARENT, -1.3f,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0
+        );
+        slideX.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideX);
+
+        final RotateAnimation rotateIn = new RotateAnimation(-EXIT_ANGLE, 0,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(rotateIn);
+
+        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1);
+        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        set.addAnimation(scaleUp);
+
+        return set;
+    }
+
+    private Animation exitLeft() {
+        final AnimationSet set = new AnimationSet(false);
+        final TranslateAnimation slideX = new TranslateAnimation(
+                Animation.RELATIVE_TO_PARENT, -1,
+                Animation.RELATIVE_TO_PARENT, -2.3f,
+                Animation.RELATIVE_TO_PARENT, 0,
+                Animation.RELATIVE_TO_PARENT, 0
+        );
+        slideX.setInterpolator(new AccelerateInterpolator());
+        slideX.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(slideX);
+
+        final RotateAnimation rotateOut = new RotateAnimation(0, -EXIT_ANGLE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateOut.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(rotateOut);
+
+        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE);
+        scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
+        scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(scaleDown);
         return set;
     }
@@ -415,7 +450,6 @@ import android.widget.TextView.OnEditorActionListener;
             throws UnrecognizedAnswerTypeException {
             mQuestion = question;
             mPromptView.setText(mQuestion.getPrompt());
-
             Survey.QuestionType questionType = question.getType();
             if (Survey.QuestionType.TEXT == questionType) {
                 mChoiceView.setVisibility(View.GONE);
@@ -440,6 +474,7 @@ import android.widget.TextView.OnEditorActionListener;
             } else {
                 throw new UnrecognizedAnswerTypeException("No way to display question type " + questionType);
             }
+            mCardView.invalidate();
         }
 
         private Survey.Question mQuestion;
@@ -449,14 +484,9 @@ import android.widget.TextView.OnEditorActionListener;
         private final ListView mChoiceView;
     }
 
-    private enum Direction {
-        BACKUP_BEFORE, BACKUP_AFTER;
-    }
-
     private final List<View> mMatchParentChildren = new ArrayList<View>(1);
     private QuestionCard mVisibleCard;
     private QuestionCard mBackupCard;
-    private Direction mLayoutDirection;
 
-    private static final long ANIMATION_DURATION_MILLIS = 2000; // TODO Waaaaay too slow, for debugging
+    private static final long ANIMATION_DURATION_MILLIS = 5000; // TODO Waaaaay too slow, for debugging
 }
