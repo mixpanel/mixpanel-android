@@ -83,8 +83,8 @@ public class SurveyChoiceView extends CheckedTextView {
 
             final int top = y;
             final int bottom = top + height;
-            final int left = originalPadding;
-            final int right = originalPadding + checkmarkWidth;
+            final int left = checkPaddingLeft;
+            final int right = left + checkmarkWidth;
             checkMarkDrawable.setBounds(getScrollX() + left, top, getScrollX() + right, bottom);
             checkMarkDrawable.draw(canvas);
         }
