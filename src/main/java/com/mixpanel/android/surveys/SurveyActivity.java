@@ -23,6 +23,7 @@ import android.widget.TextView;
 import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
+import com.mixpanel.android.mpmetrics.Survey.Question;
 
 public class SurveyActivity extends Activity {
 
@@ -32,7 +33,7 @@ public class SurveyActivity extends Activity {
 
         mDistinctId = getIntent().getStringExtra("distinctId");
         mToken = getIntent().getStringExtra("token");
-        String surveyJsonStr = getIntent().getStringExtra("surveyJson");
+        final String surveyJsonStr = getIntent().getStringExtra("surveyJson");
         final byte[] backgroundJpgBytes = getIntent().getByteArrayExtra("backgroundJpgBytes");
         final Bitmap background = BitmapFactory.decodeByteArray(backgroundJpgBytes, 0, backgroundJpgBytes.length);
         getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
@@ -40,6 +41,13 @@ public class SurveyActivity extends Activity {
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);
         mCardHolder = (CardCarouselLayout) findViewById(R.id.question_card_holder);
+        mCardHolder.setOnQuestionAnsweredListener(new CardCarouselLayout.OnQuestionAnsweredListener() {
+            @Override
+            public void onQuestionAnswered(Question question, String answer) {
+                saveAnswer(question, answer);
+                goToNextQuestion();
+            }
+        });
 
         // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
         mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
@@ -47,7 +55,7 @@ public class SurveyActivity extends Activity {
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
             mAnswers = new HashMap<Survey.Question, String>();
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             // TODO can't merge without doing something useful here.
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
         }
@@ -115,7 +123,7 @@ public class SurveyActivity extends Activity {
             } else {
                 mCardHolder.replaceTo(question, answerValue);
             }
-        } catch(CardCarouselLayout.UnrecognizedAnswerTypeException e) {
+        } catch(final CardCarouselLayout.UnrecognizedAnswerTypeException e) {
             goToNextQuestion();
             return;
         }
@@ -129,20 +137,20 @@ public class SurveyActivity extends Activity {
         mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
 
         try {
-            JSONObject answerJson = new JSONObject();
+            final JSONObject answerJson = new JSONObject();
             answerJson.put("$survey_id", mSurvey.getId());
             answerJson.put("$collection_id", mSurvey.getCollectionId());
             answerJson.put("$question_id", question.getId());
             answerJson.put("$question_type", question.getType().toString());
 
             // TODO find a better way to share this format convention
-            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+            final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             answerJson.put("$time", dateFormat.format(new Date()));
             answerJson.put("$value", answer.toString());
 
             mMixpanel.getPeople().append("$answers", answerJson);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Couldn't record user's answer.", e);
         }
         mMixpanel.flush();

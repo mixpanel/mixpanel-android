@@ -42,6 +42,10 @@ import com.mixpanel.android.mpmetrics.Survey;
         private static final long serialVersionUID = -6040399928243560328L;
     }
 
+    public interface OnQuestionAnsweredListener {
+         public void onQuestionAnswered(Survey.Question question, String answer);
+    }
+
     public static enum Direction {
         FORWARD, BACKWARD;
     }
@@ -64,6 +68,10 @@ import com.mixpanel.android.mpmetrics.Survey;
     @Override
     public boolean shouldDelayChildPressedState() {
         return false;
+    }
+
+    public void setOnQuestionAnsweredListener(OnQuestionAnsweredListener listener) {
+        mListener = listener;
     }
 
     public void moveTo(Survey.Question question, String answerOrNull, Direction direction)
@@ -153,7 +161,7 @@ import com.mixpanel.android.mpmetrics.Survey;
         setMeasuredDimension(resolveSize(maxWidth, widthMeasureSpec),
                     resolveSize(maxHeight, heightMeasureSpec));
 
-        for (View child:mMatchParentChildren) {
+        for (final View child:mMatchParentChildren) {
             final LayoutParams lp = child.getLayoutParams();
             int childWidthMeasureSpec;
             int childHeightMeasureSpec;
@@ -202,11 +210,25 @@ import com.mixpanel.android.mpmetrics.Survey;
     }
 
     private static int EXIT_ANGLE = 45;
-    private static float EXIT_SIZE = 0.6f;
+    private static float EXIT_SIZE = 0.8f;
     private static float EXIT_ROTATION_CENTER_X = 0.5f;
     private static float EXIT_ROTATION_CENTER_Y = 0.5f;
     private Animation enterRight() {
         final AnimationSet set = new AnimationSet(false);
+        final RotateAnimation rotateIn = new RotateAnimation(EXIT_ANGLE, 0,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateIn.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(rotateIn);
+
+        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        scaleUp.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(scaleUp);
+
         final TranslateAnimation slideX = new TranslateAnimation(
                 Animation.RELATIVE_TO_PARENT, 1.3f,
                 Animation.RELATIVE_TO_PARENT, 0,
@@ -215,23 +237,27 @@ import com.mixpanel.android.mpmetrics.Survey;
         );
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
-
-        final RotateAnimation rotateIn = new RotateAnimation(EXIT_ANGLE, 0,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
-        );
-        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(rotateIn);
-
-        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1);
-        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(scaleUp);
-
         return set;
     }
 
     private Animation exitRight() {
         final AnimationSet set = new AnimationSet(false);
+        final RotateAnimation rotateOut = new RotateAnimation(0, EXIT_ANGLE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
+        rotateOut.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(rotateOut);
+
+        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
+        scaleDown.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(scaleDown);
+
         final TranslateAnimation slideX = new TranslateAnimation(
                 Animation.RELATIVE_TO_PARENT, -1.0f,
                 Animation.RELATIVE_TO_PARENT, 0.3f,
@@ -241,24 +267,25 @@ import com.mixpanel.android.mpmetrics.Survey;
         slideX.setInterpolator(new AccelerateInterpolator());
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
-
-        final RotateAnimation rotateOut = new RotateAnimation(0, EXIT_ANGLE,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
-        );
-        rotateOut.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(rotateOut);
-
-        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE);
-        scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(scaleDown);
         return set;
     }
 
     private Animation enterLeft() {
         final AnimationSet set = new AnimationSet(false);
+        final RotateAnimation rotateIn = new RotateAnimation(-EXIT_ANGLE, 0,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateIn.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(rotateIn);
+
+        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        scaleUp.setDuration(ANIMATION_ROTATION_MILLIS);
+        set.addAnimation(scaleUp);
+
         final TranslateAnimation slideX = new TranslateAnimation(
                 Animation.RELATIVE_TO_PARENT, -1.3f,
                 Animation.RELATIVE_TO_PARENT, 0,
@@ -268,22 +295,27 @@ import com.mixpanel.android.mpmetrics.Survey;
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
 
-        final RotateAnimation rotateIn = new RotateAnimation(-EXIT_ANGLE, 0,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
-        );
-        rotateIn.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(rotateIn);
-
-        final ScaleAnimation scaleUp = new ScaleAnimation(EXIT_SIZE, 1, EXIT_SIZE, 1);
-        scaleUp.setDuration((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        set.addAnimation(scaleUp);
-
         return set;
     }
 
     private Animation exitLeft() {
         final AnimationSet set = new AnimationSet(false);
+        final RotateAnimation rotateOut = new RotateAnimation(0, -EXIT_ANGLE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
+        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(rotateOut);
+
+        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
+                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
+        );
+        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
+        scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
+        set.addAnimation(scaleDown);
+
         final TranslateAnimation slideX = new TranslateAnimation(
                 Animation.RELATIVE_TO_PARENT, -1,
                 Animation.RELATIVE_TO_PARENT, -2.3f,
@@ -294,18 +326,6 @@ import com.mixpanel.android.mpmetrics.Survey;
         slideX.setDuration(ANIMATION_DURATION_MILLIS);
         set.addAnimation(slideX);
 
-        final RotateAnimation rotateOut = new RotateAnimation(0, -EXIT_ANGLE,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
-                Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
-        );
-        rotateOut.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(rotateOut);
-
-        final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE);
-        scaleDown.setStartOffset((long) (ANIMATION_DURATION_MILLIS * 0.4));
-        scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
-        set.addAnimation(scaleDown);
         return set;
     }
 
@@ -360,8 +380,8 @@ import com.mixpanel.android.mpmetrics.Survey;
                 convertView = mInflater.inflate(viewId, parent, false);
             }
 
-            TextView choiceText = (TextView) convertView.findViewById(R.id.com_mixpanel_android_multiple_choice_answer_text);
-            String choice = mChoices.get(position);
+            final TextView choiceText = (TextView) convertView.findViewById(R.id.com_mixpanel_android_multiple_choice_answer_text);
+            final String choice = mChoices.get(position);
             choiceText.setText(choice);
             return convertView;
         }
@@ -421,12 +441,18 @@ import com.mixpanel.android.mpmetrics.Survey;
             mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                    if ((event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) ||
-                            actionId == EditorInfo.IME_ACTION_DONE) {
+                    final boolean enterKeyDown =
+                            event != null &&
+                            event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
+                            event.getAction() == KeyEvent.ACTION_DOWN &&
+                            0 == (event.getFlags() & KeyEvent.FLAG_CANCELED);
+
+                    if (enterKeyDown || actionId == EditorInfo.IME_ACTION_DONE) {
                         v.clearComposingText();
-                        String answer = v.getText().toString();
-                        // TODO Need a listener saveAnswer(mQuestion, answer);
-                        // TODO NEED A LISTENER goToNextQuestion();
+                        if (null != mListener) {
+                            final String answer = v.getText().toString();
+                            mListener.onQuestionAnswered(mQuestion, answer);
+                        }
                         return true;
                     }
                     return false;
@@ -435,9 +461,10 @@ import com.mixpanel.android.mpmetrics.Survey;
             mChoiceView.setOnItemClickListener(new OnItemClickListener(){
                 @Override
                 public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
-                    String answer = parent.getItemAtPosition(position).toString();
-                    // TODO Need a listener saveAnswer(mQuestion, answer);
-                    // TODO NEED A LISTENER goToNextQuestion();
+                    if (null != mListener) {
+                        final String answer = parent.getItemAtPosition(position).toString();
+                        mListener.onQuestionAnswered(mQuestion, answer);
+                    }
                 }
             });
         }
@@ -450,7 +477,7 @@ import com.mixpanel.android.mpmetrics.Survey;
             throws UnrecognizedAnswerTypeException {
             mQuestion = question;
             mPromptView.setText(mQuestion.getPrompt());
-            Survey.QuestionType questionType = question.getType();
+            final Survey.QuestionType questionType = question.getType();
             if (Survey.QuestionType.TEXT == questionType) {
                 mChoiceView.setVisibility(View.GONE);
                 mEditAnswerView.setVisibility(View.VISIBLE);
@@ -465,7 +492,7 @@ import com.mixpanel.android.mpmetrics.Survey;
                 mChoiceView.clearChoices();
                 if (null != answerOrNull) {
                     for (int i = 0; i < answerAdapter.getCount(); i++) {
-                        String item = answerAdapter.getItem(i);
+                        final String item = answerAdapter.getItem(i);
                         if (item.equals(answerOrNull)) {
                             mChoiceView.setItemChecked(i, true);
                         }
@@ -487,6 +514,8 @@ import com.mixpanel.android.mpmetrics.Survey;
     private final List<View> mMatchParentChildren = new ArrayList<View>(1);
     private QuestionCard mVisibleCard;
     private QuestionCard mBackupCard;
+    private OnQuestionAnsweredListener mListener = null;
 
     private static final long ANIMATION_DURATION_MILLIS = 5000; // TODO Waaaaay too slow, for debugging
+    private static final long ANIMATION_ROTATION_MILLIS = (ANIMATION_DURATION_MILLIS * 6) / 10;
 }

@@ -50,7 +50,6 @@ public class SurveyChoiceView extends CheckedTextView {
         final Drawable checkMarkDrawable = mSurveyChoiceCheckMark;
         final int checkmarkWidth = checkMarkDrawable == null ? 0 : checkMarkDrawable.getIntrinsicWidth();
 
-        // TODO the padding stuff is a HACK. You may need to fix it before merge.
         final int originalPadding = getPaddingLeft();
         final int paddingTop = getPaddingTop();
         final int paddingRight = getPaddingRight();
@@ -65,7 +64,6 @@ public class SurveyChoiceView extends CheckedTextView {
         setPadding(checkPaddingLeft, paddingTop, paddingRight, paddingBottom);
         setCheckMarkDrawable(checkMarkDrawable);
 
-        // Largely cribbed from android.widget.CheckedTextView
         if (null != checkMarkDrawable) {
             final int verticalGravity = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
             final int height = checkMarkDrawable.getIntrinsicHeight();
@@ -89,7 +87,7 @@ public class SurveyChoiceView extends CheckedTextView {
             checkMarkDrawable.draw(canvas);
         }
 
-        setPadding(originalPadding, paddingTop, paddingRight, paddingBottom); // TODO if this requests a redraw, we're in a world of hurt.
+        setPadding(originalPadding, paddingTop, paddingRight, paddingBottom);
     }
 
     private void initSurveyChoiceView() {
@@ -126,5 +124,5 @@ public class SurveyChoiceView extends CheckedTextView {
     private Drawable mSurveyChoiceCheckMark; // getCheckMarkDrawable() is only available in newer APIs
     private float mCheckmarkLeftOffset; // offset of checkmark drawable from left edge, expressed in checkmark widths
     private float mTextLeftOffset; // offset of text from left edge, expressed in checkmark widths
-    private static int ANIMATION_DURATION = 2000; // Waaaay too slow, for debugging
+    private static int ANIMATION_DURATION = 130;
 }
