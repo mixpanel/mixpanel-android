@@ -14,6 +14,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
@@ -34,8 +35,10 @@ public class SurveyActivity extends Activity {
         mDistinctId = getIntent().getStringExtra("distinctId");
         mToken = getIntent().getStringExtra("token");
         final String surveyJsonStr = getIntent().getStringExtra("surveyJson");
-        final byte[] backgroundJpgBytes = getIntent().getByteArrayExtra("backgroundJpgBytes");
-        final Bitmap background = BitmapFactory.decodeByteArray(backgroundJpgBytes, 0, backgroundJpgBytes.length);
+        final byte[] backgroundCompressed = getIntent().getByteArrayExtra("backgroundCompressed");
+        final int highlightColor = getIntent().getIntExtra("highlightColor", Color.WHITE);
+        System.out.println("GOT HIGHLIGHT COLOR " + Integer.toHexString(highlightColor));
+        final Bitmap background = BitmapFactory.decodeByteArray(backgroundCompressed, 0, backgroundCompressed.length);
         getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
 
         setContentView(R.layout.com_mixpanel_android_activity_survey);

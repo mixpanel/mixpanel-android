@@ -877,11 +877,14 @@ public class MixpanelAPI {
             surveyIntent.putExtra("surveyJson", s.toJSON());
             surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            final AsyncTask<Bitmap, Void, Bitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, Bitmap>() {
+            final AsyncTask<Bitmap, Void, ProcessedBitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, ProcessedBitmap>() {
                 @Override
-                protected Bitmap doInBackground(Bitmap... backgrounds) {
+                protected ProcessedBitmap doInBackground(Bitmap... backgrounds) {
                     final Bitmap background = backgrounds[0];
                     final long startTime = System.currentTimeMillis();
+                    final Bitmap background1px = Bitmap.createScaledBitmap(background, 1, 1, true);
+                    final int highlightColor = background1px.getPixel(0, 0);
+
                     StackBlurManager.process(background, 20);
                     final long endTime = System.currentTimeMillis();
                     if (MPConfig.DEBUG) {
@@ -889,19 +892,22 @@ public class MixpanelAPI {
                     }
                     final Canvas canvas = new Canvas(background);
                     canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
-                    return background;
+
+                    final ByteArrayOutputStream bs = new ByteArrayOutputStream();
+                    background.compress(Bitmap.CompressFormat.PNG, 20, bs);
+                    final byte[] backgroundCompressed = bs.toByteArray();
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundCompressed.length);
+                    }
+
+                    return new ProcessedBitmap(backgroundCompressed, highlightColor);
                 }
 
                 @Override
-                protected void onPostExecute(Bitmap background) {
-                    final ByteArrayOutputStream bs = new ByteArrayOutputStream();
-                    background.compress(Bitmap.CompressFormat.PNG, 20, bs);
-                    final byte[] backgroundJpgBytes = bs.toByteArray();
-                    if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundJpgBytes.length);
-                    }
-                    surveyIntent.putExtra("backgroundJpgBytes", backgroundJpgBytes);
-                    mContext.startActivity(surveyIntent); // Assumed to be safe to call from Random J. Thread
+                protected void onPostExecute(ProcessedBitmap processed) {
+                    surveyIntent.putExtra("backgroundCompressed", processed.getBackgroundCompressed());
+                    surveyIntent.putExtra("highlightColor", processed.getHighlightColor());
+                    mContext.startActivity(surveyIntent);
                 }
             };
             showSurveyActivity.execute(scaled);
@@ -1210,6 +1216,24 @@ public class MixpanelAPI {
             prefsEditor.putString("waiting_people_record", mWaitingPeopleRecord.toJSONString());
         }
         prefsEditor.commit();
+    }
+
+    private static class ProcessedBitmap {
+        public ProcessedBitmap(final byte[] backgroundCompressed, final int highlightColor) {
+            mHighlightColor = highlightColor;
+            mBackgroundCompressed = backgroundCompressed;
+        }
+
+        public byte[] getBackgroundCompressed() {
+            return mBackgroundCompressed;
+        }
+
+        public int getHighlightColor() {
+            return mHighlightColor;
+        }
+
+        private final byte[] mBackgroundCompressed;
+        private final int mHighlightColor;
     }
 
     private static final String LOGTAG = "MixpanelAPI";
