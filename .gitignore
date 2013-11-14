@@ -6,3 +6,4 @@ bin
 gen
 docs
 *.iml
+.idea

@@ -200,6 +200,8 @@ import com.mixpanel.android.mpmetrics.Survey;
     }
 
     private void initCards(Context context) {
+        // Nice to have- if CardCarouselLayout rendered a card by default, we could see it in the
+        // UI designer and make decisions.
         final LayoutInflater inflater = LayoutInflater.from(context);
         final View v1 = inflater.inflate(R.layout.com_mixpanel_android_question_card, this, false);
         mVisibleCard = new QuestionCard(v1);
@@ -516,6 +518,6 @@ import com.mixpanel.android.mpmetrics.Survey;
     private QuestionCard mBackupCard;
     private OnQuestionAnsweredListener mListener = null;
 
-    private static final long ANIMATION_DURATION_MILLIS = 5000; // TODO Waaaaay too slow, for debugging
+    private static final long ANIMATION_DURATION_MILLIS = 330;
     private static final long ANIMATION_ROTATION_MILLIS = (ANIMATION_DURATION_MILLIS * 6) / 10;
 }

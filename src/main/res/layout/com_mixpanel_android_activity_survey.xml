@@ -13,10 +13,12 @@
 
         <ImageButton
             android:id="@+id/button_previous"
-            android:layout_width="24dp"
-            android:layout_height="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:scaleType="fitStart"
             android:layout_alignParentLeft="true"
-            android:background="@drawable/com_mixpanel_android_arrowleft"
+            android:src="@drawable/com_mixpanel_android_arrowleft"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/com_mixpanel_android_previous"
             android:onClick="goToPreviousQuestion" />
 
@@ -25,14 +27,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
+            android:textSize="20dp"
             android:textColor="#ffffff" />
 
         <ImageButton
             android:id="@+id/button_next"
-            android:layout_width="24dp"
-            android:layout_height="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:scaleType="fitEnd"
             android:layout_alignParentRight="true"
-            android:background="@drawable/com_mixpanel_android_arrowright"
+            android:src="@drawable/com_mixpanel_android_arrowright"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/com_mixpanel_android_next"
             android:onClick="goToNextQuestion" />
     </RelativeLayout>
@@ -45,26 +50,31 @@
         ></com.mixpanel.android.surveys.CardCarouselLayout>
 
     <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="10dp"
-        android:paddingTop="30dp" >
+        android:layout_width="fill_parent"
+        android:layout_height="30dp" >
 
         <ImageView
-            android:layout_width="66dp"
-            android:layout_height="22dp"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:scaleType="fitStart"
             android:layout_alignParentLeft="true"
-            android:background="@drawable/com_mixpanel_android_logo"
-            android:contentDescription="@string/com_mixpanel_android_logo" />
+            android:layout_alignParentBottom="true"
+            android:src="@drawable/com_mixpanel_android_logo"
+            android:contentDescription="@string/com_mixpanel_android_logo"
+            />
 
         <Button
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="30dp"
             android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true"
+            android:paddingBottom="0dp"
             android:textColor="#ffffff"
+            android:textSize="20dp"
             android:background="@android:color/transparent"
             android:text="@string/com_mixpanel_android_exit"
-            android:onClick="completeSurvey" />
+            android:onClick="completeSurvey"
+            android:layout_marginBottom="3dp" />
 
     </RelativeLayout>
 
