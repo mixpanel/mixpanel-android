@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
@@ -48,7 +49,11 @@ public class SurveyChoiceView extends CheckedTextView {
     @Override
     protected void onDraw(Canvas canvas) {
         final Drawable checkMarkDrawable = mSurveyChoiceCheckMark;
-        final int checkmarkWidth = checkMarkDrawable == null ? 0 : checkMarkDrawable.getIntrinsicWidth();
+
+        final DisplayMetrics metrics = getResources().getDisplayMetrics();
+        final float density = metrics.density;
+        final int checkmarkHeight = (int) (CHECKMARK_HEIGHT_DP * density);
+        final int checkmarkWidth = checkmarkHeight;
 
         final int originalPadding = getPaddingLeft();
         final int paddingTop = getPaddingTop();
@@ -66,21 +71,19 @@ public class SurveyChoiceView extends CheckedTextView {
 
         if (null != checkMarkDrawable) {
             final int verticalGravity = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
-            final int height = checkMarkDrawable.getIntrinsicHeight();
-
             int y = 0;
 
             switch (verticalGravity) {
                 case Gravity.BOTTOM:
-                    y = getHeight() - height;
+                    y = getHeight() - checkmarkHeight;
                     break;
                 case Gravity.CENTER_VERTICAL:
-                    y = (getHeight() - height) / 2;
+                    y = (getHeight() - checkmarkHeight) / 2;
                     break;
             }
 
             final int top = y;
-            final int bottom = top + height;
+            final int bottom = top + checkmarkHeight;
             final int left = checkPaddingLeft;
             final int right = left + checkmarkWidth;
             checkMarkDrawable.setBounds(getScrollX() + left, top, getScrollX() + right, bottom);
@@ -124,5 +127,8 @@ public class SurveyChoiceView extends CheckedTextView {
     private Drawable mSurveyChoiceCheckMark; // getCheckMarkDrawable() is only available in newer APIs
     private float mCheckmarkLeftOffset; // offset of checkmark drawable from left edge, expressed in checkmark widths
     private float mTextLeftOffset; // offset of text from left edge, expressed in checkmark widths
+
+    // Nice to have- these as LayoutParameters/Styled attributes
     private static int ANIMATION_DURATION = 130;
+    private static int CHECKMARK_HEIGHT_DP = 14; // Current code assumes a SQUARE CHECKMARK.
 }
