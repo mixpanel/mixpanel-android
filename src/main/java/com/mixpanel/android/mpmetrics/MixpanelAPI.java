@@ -150,7 +150,7 @@ public class MixpanelAPI {
             return null;
         }
         synchronized (sInstanceMap) {
-            Context appContext = context.getApplicationContext();
+            final Context appContext = context.getApplicationContext();
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
@@ -192,7 +192,7 @@ public class MixpanelAPI {
             "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
             "    to the <application> section of your AndroidManifest.xml."
         );
-        AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
+        final AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
         msgs.setFlushInterval(milliseconds);
     }
 
@@ -215,7 +215,7 @@ public class MixpanelAPI {
             "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"true\" />\n" +
             "    to the <application> section of your AndroidManifest.xml."
         );
-        AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
+        final AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
         msgs.setDisableFallback(! enableIfTrue);
     }
 
@@ -265,27 +265,27 @@ public class MixpanelAPI {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
         try {
-            long time = System.currentTimeMillis() / 1000;
-            JSONObject dataObj = new JSONObject();
+            final long time = System.currentTimeMillis() / 1000;
+            final JSONObject dataObj = new JSONObject();
 
             dataObj.put("event", eventName);
-            JSONObject propertiesObj = getDefaultEventProperties();
+            final JSONObject propertiesObj = getDefaultEventProperties();
             propertiesObj.put("token", mToken);
             propertiesObj.put("time", time);
 
-            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-                String key = (String) iter.next();
+            for (final Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                final String key = (String) iter.next();
                 propertiesObj.put(key, mSuperProperties.get(key));
             }
 
-            String eventsId = getDistinctId();
+            final String eventsId = getDistinctId();
             if (eventsId != null) {
                 propertiesObj.put("distinct_id", eventsId);
             }
 
             if (properties != null) {
-                for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                    String key = (String) iter.next();
+                for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                    final String key = (String) iter.next();
                     propertiesObj.put(key, properties.get(key));
                 }
             }
@@ -293,7 +293,7 @@ public class MixpanelAPI {
             dataObj.put("properties", propertiesObj);
 
             mMessages.eventsMessage(dataObj);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
     }
@@ -354,11 +354,11 @@ public class MixpanelAPI {
     public void registerSuperProperties(JSONObject superProperties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
 
-        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            String key = (String) iter.next();
+        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+            final String key = (String) iter.next();
             try {
                 mSuperProperties.put(key, superProperties.get(key));
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception registering super property.", e);
             }
         }
@@ -394,12 +394,12 @@ public class MixpanelAPI {
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
 
-        for (Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            String key = (String) iter.next();
+        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+            final String key = (String) iter.next();
             if (! mSuperProperties.has(key)) {
                 try {
                     mSuperProperties.put(key, superProperties.get(key));
-                } catch (JSONException e) {
+                } catch (final JSONException e) {
                     Log.e(LOGTAG, "Exception registering super property.", e);
                 }
             }
@@ -726,8 +726,8 @@ public class MixpanelAPI {
 
     /* package */ static void allInstances(InstanceProcessor processor) {
         synchronized (sInstanceMap) {
-            for (Map<Context, MixpanelAPI> contextInstances:sInstanceMap.values()) {
-                for (MixpanelAPI instance:contextInstances.values()) {
+            for (final Map<Context, MixpanelAPI> contextInstances:sInstanceMap.values()) {
+                for (final MixpanelAPI instance:contextInstances.values()) {
                     processor.process(instance);
                 }
             }
@@ -751,7 +751,7 @@ public class MixpanelAPI {
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
 
-        SharedPreferences.Editor prefsEdit = mStoredPreferences.edit();
+        final SharedPreferences.Editor prefsEdit = mStoredPreferences.edit();
         prefsEdit.clear().commit();
         readSuperProperties();
         readIdentities();
@@ -782,10 +782,10 @@ public class MixpanelAPI {
                     writeIdentities();
                 }
                 else {
-                    JSONObject message = stdPeopleMessage("$set", properties);
+                    final JSONObject message = stdPeopleMessage("$set", properties);
                     mMessages.peopleMessage(message);
                 }
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception setting people properties");
             }
         }
@@ -794,14 +794,14 @@ public class MixpanelAPI {
         public void set(String property, Object value) {
             try {
                 set(new JSONObject().put(property, value));
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "set", e);
             }
         }
 
         @Override
         public void increment(Map<String, ? extends Number> properties) {
-            JSONObject json = new JSONObject(properties);
+            final JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             try {
                 if (mPeopleDistinctId == null) {
@@ -811,17 +811,17 @@ public class MixpanelAPI {
                     mWaitingPeopleRecord.incrementToWaitingPeopleRecord(properties);
                 }
                 else {
-                    JSONObject message = stdPeopleMessage("$add", json);
+                    final JSONObject message = stdPeopleMessage("$add", json);
                     mMessages.peopleMessage(message);
                 }
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception incrementing properties", e);
             }
         }
 
         @Override
         public void increment(String property, double value) {
-            Map<String, Double> map = new HashMap<String, Double>();
+            final Map<String, Double> map = new HashMap<String, Double>();
             map.put(property, value);
             increment(map);
         }
@@ -829,17 +829,17 @@ public class MixpanelAPI {
         @Override
         public void append(String name, Object value) {
             try {
-                JSONObject properties = new JSONObject();
+                final JSONObject properties = new JSONObject();
                 properties.put(name, value);
                 this.append(properties);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception appending a property", e);
             }
         }
 
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
-            AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
+            final AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
             final String checkToken = mToken;
             final String checkDistinctId = mPeopleDistinctId;
             final SurveyCallbacks checkCallbacks = callbacks;
@@ -861,7 +861,7 @@ public class MixpanelAPI {
         @Override
         public void showSurvey(final Survey s, final View parent) {
             final View rootView = parent.getRootView();
-            boolean originalCacheState = rootView.isDrawingCacheEnabled();
+            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
             rootView.setDrawingCacheEnabled(true);
             final Bitmap original = rootView.getDrawingCache();
             final int scaledWidth = original.getWidth() / 2;
@@ -877,17 +877,17 @@ public class MixpanelAPI {
             surveyIntent.putExtra("surveyJson", s.toJSON());
             surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-            AsyncTask<Bitmap, Void, Bitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, Bitmap>() {
+            final AsyncTask<Bitmap, Void, Bitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, Bitmap>() {
                 @Override
                 protected Bitmap doInBackground(Bitmap... backgrounds) {
-                    Bitmap background = backgrounds[0];
+                    final Bitmap background = backgrounds[0];
                     final long startTime = System.currentTimeMillis();
                     StackBlurManager.process(background, 20);
                     final long endTime = System.currentTimeMillis();
                     if (MPConfig.DEBUG) {
                         Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
                     }
-                    Canvas canvas = new Canvas(background);
+                    final Canvas canvas = new Canvas(background);
                     canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
                     return background;
                 }
@@ -909,24 +909,24 @@ public class MixpanelAPI {
 
         @Override
         public void trackCharge(double amount, JSONObject properties) {
-            Date now = new Date();
-            DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+            final Date now = new Date();
+            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
             try {
-                JSONObject transactionValue = new JSONObject();
+                final JSONObject transactionValue = new JSONObject();
                 transactionValue.put("$amount", amount);
                 transactionValue.put("$time", dateFormat.format(now));
 
                 if (null != properties) {
-                    for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                        String key = (String) iter.next();
+                    for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                        final String key = (String) iter.next();
                         transactionValue.put(key, properties.get(key));
                     }
                 }
 
                 this.append("$transactions", transactionValue);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception creating new charge", e);
             }
         }
@@ -936,7 +936,7 @@ public class MixpanelAPI {
          */
         @Override
         public void clearCharges() {
-            JSONArray empty = new JSONArray();
+            final JSONArray empty = new JSONArray();
             this.set("$transactions", empty);
         }
 
@@ -948,9 +948,9 @@ public class MixpanelAPI {
             }
 
             try {
-                JSONObject message = stdPeopleMessage("$add", null);
+                final JSONObject message = stdPeopleMessage("$add", null);
                 mMessages.peopleMessage(message);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception deleting a user");
             }
         }
@@ -964,10 +964,10 @@ public class MixpanelAPI {
 
             mStoredPreferences.edit().putString("push_id", registrationId).commit();
             try {
-                JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
-                JSONObject message = stdPeopleMessage("$union", registrationInfo);
+                final JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
+                final JSONObject message = stdPeopleMessage("$union", registrationInfo);
                 mMessages.peopleMessage(message);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "set push registration id error", e);
             }
         }
@@ -994,11 +994,11 @@ public class MixpanelAPI {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
 
                     try {
-                        Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+                        final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
                         registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
                         registrationIntent.putExtra("sender", senderID);
                         mContext.startService(registrationIntent);
-                    } catch (SecurityException e) {
+                    } catch (final SecurityException e) {
                         Log.w(LOGTAG, e);
                     }
                 } else {
@@ -1028,10 +1028,10 @@ public class MixpanelAPI {
                     mWaitingPeopleRecord.appendToWaitingPeopleRecord(properties);
                 }
                 else {
-                    JSONObject message = stdPeopleMessage("$append", properties);
+                    final JSONObject message = stdPeopleMessage("$append", properties);
                     mMessages.peopleMessage(message);
                 }
-            } catch(JSONException e) {
+            } catch(final JSONException e) {
                 Log.e(LOGTAG, "Can't create append message", e);
             }
         }
@@ -1042,7 +1042,7 @@ public class MixpanelAPI {
 
         public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
                 throws JSONException {
-                JSONObject dataObj = new JSONObject();
+                final JSONObject dataObj = new JSONObject();
                 dataObj.put(actionType, properties);
                 dataObj.put("$token", mToken);
                 dataObj.put("$distinct_id", mPeopleDistinctId);
@@ -1056,7 +1056,7 @@ public class MixpanelAPI {
 
     private JSONObject getDefaultEventProperties()
                 throws JSONException {
-        JSONObject ret = new JSONObject();
+        final JSONObject ret = new JSONObject();
 
         ret.put("mp_lib", "android");
         ret.put("$lib_version", VERSION);
@@ -1069,28 +1069,28 @@ public class MixpanelAPI {
         ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
         ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
 
-        DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
+        final DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
         ret.put("$screen_dpi", displayMetrics.densityDpi);
         ret.put("$screen_height", displayMetrics.heightPixels);
         ret.put("$screen_width", displayMetrics.widthPixels);
 
-        String applicationVersionName = mSystemInformation.getAppVersionName();
+        final String applicationVersionName = mSystemInformation.getAppVersionName();
         if (null != applicationVersionName)
             ret.put("$app_version", applicationVersionName);
 
-        Boolean hasNFC = mSystemInformation.hasNFC();
+        final Boolean hasNFC = mSystemInformation.hasNFC();
         if (null != hasNFC)
             ret.put("$has_nfc", hasNFC.booleanValue());
 
-        Boolean hasTelephony = mSystemInformation.hasTelephony();
+        final Boolean hasTelephony = mSystemInformation.hasTelephony();
         if (null != hasTelephony)
             ret.put("$has_telephone", hasTelephony.booleanValue());
 
-        String carrier = mSystemInformation.getCurrentNetworkOperator();
+        final String carrier = mSystemInformation.getCurrentNetworkOperator();
         if (null != carrier)
             ret.put("$carrier", carrier);
 
-        Boolean isWifi = mSystemInformation.isWifiConnected();
+        final Boolean isWifi = mSystemInformation.isWifiConnected();
         if (null != isWifi)
             ret.put("$wifi", isWifi.booleanValue());
 
@@ -1116,31 +1116,31 @@ public class MixpanelAPI {
     private void addBluetoothEnabledProperty(JSONObject ret)
         throws JSONException {
         try {
-            BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
-            BluetoothAdapter bluetoothAdapter = manager.getAdapter();
+            final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+            final BluetoothAdapter bluetoothAdapter = manager.getAdapter();
             if (null != bluetoothAdapter) {
                 ret.put("$bluetooth_enabled", bluetoothAdapter.isEnabled());
             }
-        } catch (SecurityException e) {
+        } catch (final SecurityException e) {
             // do nothing since we don't have permissions
         }
     }
 
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
-           JSONObject sets = mWaitingPeopleRecord.setMessage();
-           Map<String, Double> adds = mWaitingPeopleRecord.incrementMessage();
-           List<JSONObject> appends = mWaitingPeopleRecord.appendMessages();
+           final JSONObject sets = mWaitingPeopleRecord.setMessage();
+           final Map<String, Double> adds = mWaitingPeopleRecord.incrementMessage();
+           final List<JSONObject> appends = mWaitingPeopleRecord.appendMessages();
 
            getPeople().set(sets);
            getPeople().increment(adds);
-           for(JSONObject appendPairs: appends) {
-               for(Iterator<?> keysIter = appendPairs.keys(); keysIter.hasNext();) {
+           for(final JSONObject appendPairs: appends) {
+               for(final Iterator<?> keysIter = appendPairs.keys(); keysIter.hasNext();) {
                    try {
-                       String key = (String) keysIter.next();
-                       Object appendVal = appendPairs.get(key);
+                       final String key = (String) keysIter.next();
+                       final Object appendVal = appendPairs.get(key);
                        getPeople().append(key, appendVal);
-                   } catch (JSONException e) {
+                   } catch (final JSONException e) {
                        Log.e(LOGTAG, "Couldn't send stored append", e);
                    }
                }// for key to append
@@ -1152,12 +1152,12 @@ public class MixpanelAPI {
     }
 
     private void readSuperProperties() {
-        String props = mStoredPreferences.getString("super_properties", "{}");
+        final String props = mStoredPreferences.getString("super_properties", "{}");
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Loading Super Properties " + props);
 
         try {
             mSuperProperties = new JSONObject(props);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Cannot parse stored superProperties");
             mSuperProperties = new JSONObject();
             storeSuperProperties();
@@ -1165,10 +1165,10 @@ public class MixpanelAPI {
     }
 
     private void storeSuperProperties() {
-        String props = mSuperProperties.toString();
+        final String props = mSuperProperties.toString();
 
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Storing Super Properties " + props);
-        SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
+        final SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
         prefsEditor.putString("super_properties", props);
         prefsEditor.commit();
     }
@@ -1178,12 +1178,12 @@ public class MixpanelAPI {
         mPeopleDistinctId = mStoredPreferences.getString("people_distinct_id", null);
         mWaitingPeopleRecord = null;
 
-        String storedWaitingRecord = mStoredPreferences.getString("waiting_people_record", null);
+        final String storedWaitingRecord = mStoredPreferences.getString("waiting_people_record", null);
         if (storedWaitingRecord != null) {
             try {
                 mWaitingPeopleRecord = new WaitingPeopleRecord();
                 mWaitingPeopleRecord.readFromJSONString(storedWaitingRecord);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Could not interpret waiting people JSON record " + storedWaitingRecord);
             }
         }
@@ -1199,7 +1199,7 @@ public class MixpanelAPI {
     }
 
     private void writeIdentities() {
-        SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
+        final SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
 
         prefsEditor.putString("events_distinct_id", mEventsDistinctId);
         prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
