@@ -50,10 +50,13 @@ public class SurveyChoiceView extends CheckedTextView {
     protected void onDraw(Canvas canvas) {
         final Drawable checkMarkDrawable = mSurveyChoiceCheckMark;
 
-        final DisplayMetrics metrics = getResources().getDisplayMetrics();
-        final float density = metrics.density;
-        final int checkmarkHeight = (int) (CHECKMARK_HEIGHT_DP * density);
-        final int checkmarkWidth = checkmarkHeight;
+        int checkmarkWidth = 0;
+        if (null != checkMarkDrawable && isChecked()) {
+            final DisplayMetrics metrics = getResources().getDisplayMetrics();
+            final float density = metrics.density;
+            checkmarkWidth = (int) (CHECKMARK_HEIGHT_DP * density);
+        }
+        final int checkmarkHeight = checkmarkWidth;
 
         final int originalPadding = getPaddingLeft();
         final int paddingTop = getPaddingTop();
