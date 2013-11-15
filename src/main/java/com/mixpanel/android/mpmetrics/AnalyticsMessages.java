@@ -16,6 +16,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -433,14 +435,33 @@ import android.util.Log;
                 }
             }// runSurveyCheck
 
+            public boolean isOnline() {
+                boolean isOnline;
+                try {
+                    ConnectivityManager cm =
+                            (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+                    NetworkInfo netInfo = cm.getActiveNetworkInfo();
+                    isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+                } catch (SecurityException e) {
+                    isOnline = true;
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity so returning true");
+                }
+                return isOnline;
+            }
+
             private void sendAllData(MPDbAdapter dbAdapter) {
-                logAboutMessageToMixpanel("Sending records to Mixpanel");
-                if (mDisableFallback) {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), null);
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), null);
+                if (isOnline()) {
+                    logAboutMessageToMixpanel("Sending records to Mixpanel");
+                    if (mDisableFallback) {
+                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), null);
+                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), null);
+                    } else {
+                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint());
+                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
+                    }
                 } else {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint());
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
+                    logAboutMessageToMixpanel("Can't send data to mixpanel, because the device is not connected to the internet");
                 }
             }
 
