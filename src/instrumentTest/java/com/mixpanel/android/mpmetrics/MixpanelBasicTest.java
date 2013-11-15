@@ -632,7 +632,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void eventsMessage(JSONObject heard) {
+            public void eventsMessage(EventDTO heard) {
                 throw new RuntimeException("Should not be called during this test");
             }
 
@@ -698,10 +698,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         // We exploit the fact that any metrics object with the same token
         // will get their values from the same persistent store.
 
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<Object> messages = new ArrayList<Object>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void eventsMessage(JSONObject heard) {
+            public void eventsMessage(EventDTO heard) {
                 messages.add(heard);
             }
 
@@ -728,10 +728,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         assertEquals(1, messages.size());
 
-        JSONObject eventMessage = messages.get(0);
+        AnalyticsMessages.EventDTO eventMessage = (AnalyticsMessages.EventDTO) messages.get(0);
 
         try {
-            JSONObject eventProps = eventMessage.getJSONObject("properties");
+            JSONObject eventProps = eventMessage.getProperties();
             String sentId = eventProps.getString("distinct_id");
             String sentA = eventProps.optString("a");
             String sentB = eventProps.optString("b");
@@ -752,11 +752,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         assertEquals(2, messages.size());
 
-        eventMessage = messages.get(0);
-        JSONObject peopleMessage = messages.get(1);
+        eventMessage = (AnalyticsMessages.EventDTO) messages.get(0);
+        JSONObject peopleMessage = (JSONObject) messages.get(1);
 
         try {
-            JSONObject eventProps = eventMessage.getJSONObject("properties");
+            JSONObject eventProps = eventMessage.getProperties();
             String sentId = eventProps.getString("distinct_id");
             String sentA = eventProps.getString("a");
             String sentB = eventProps.getString("b");
@@ -775,4 +775,52 @@ public class MixpanelBasicTest extends AndroidTestCase {
             fail("Event message has an unexpected shape: " + peopleMessage.toString());
         }
     }
+
+    public void testTrackInThread() throws InterruptedException, JSONException {
+        class TestThread extends Thread {
+            BlockingQueue<JSONObject> mMessages;
+
+            public TestThread(BlockingQueue<JSONObject> messages) {
+                this.mMessages = messages;
+            }
+
+            @Override
+            public void run() {
+
+                final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
+                    @Override
+                    public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+                        mMessages.add(message);
+                        return 1;
+                    }
+                };
+
+                final AnalyticsMessages analyticsMessages = new AnalyticsMessages(getContext()) {
+                    @Override
+                    public MPDbAdapter makeDbAdapter(Context context) {
+                        return dbMock;
+                    }
+                };
+
+                MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN") {
+                    @Override
+                    protected AnalyticsMessages getAnalyticsMessages() {
+                        return analyticsMessages;
+                    }
+                };
+
+                mixpanel.track("test in thread", new JSONObject());
+            }
+        }
+
+        final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
+        TestThread testThread = new TestThread(messages);
+        testThread.start();
+        JSONObject found = messages.poll(1, TimeUnit.SECONDS);
+        assertNotNull(found);
+        assertEquals(found.getString("event"), "test in thread");
+        assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
+    }
+
+
 }

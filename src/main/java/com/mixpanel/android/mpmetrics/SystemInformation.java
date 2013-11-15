@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -133,6 +134,33 @@ import android.view.WindowManager;
         }
 
         return ret;
+    }
+
+    public Boolean isBluetoothEnabled() {
+        Boolean isBluetoothEnabled = null;
+        try {
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter != null) {
+                isBluetoothEnabled = bluetoothAdapter.isEnabled();
+            }
+        } catch (SecurityException e) {
+            // do nothing since we don't have permissions
+        }
+        return isBluetoothEnabled;
+    }
+
+    public String getBluetoothVersion() {
+        String bluetoothVersion = null;
+        if (android.os.Build.VERSION.SDK_INT >= 8) {
+            bluetoothVersion = "none";
+            if(android.os.Build.VERSION.SDK_INT >= 18 &&
+                    mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                bluetoothVersion = "ble";
+            } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
+                bluetoothVersion = "classic";
+            }
+        }
+        return bluetoothVersion;
     }
 
     private final Context mContext;

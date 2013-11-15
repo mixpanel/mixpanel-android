@@ -23,15 +23,21 @@ android {
     }
 }
 
+def isReleaseVersion() {
+    return !version.endsWith("SNAPSHOT");
+}
+
 configurations {
     archives {
         extendsFrom configurations.default
     }
 }
 
-signing {
-    required { has("release") && gradle.taskGraph.hasTask("uploadArchives") }
-    sign configurations.archives
+if (isReleaseVersion()) {
+    signing {
+        required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+        sign configurations.archives
+    }
 }
 
 uploadArchives {
@@ -70,9 +76,7 @@ uploadArchives {
             }
         }
 
-        if (version.contains("SNAPSHOT")) {
-            repository(url:'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath)
-        } else {
+        if (isReleaseVersion()) {
             /**
              * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
              * with the following properties. You'll need the mixpanel.key file and then import it using GnuPG
@@ -92,6 +96,8 @@ uploadArchives {
             repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
                 authentication(userName: sonatypeUsername, password: sonatypePassword)
             }
+        } else {
+            repository(url:'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath)
         }
 
     }

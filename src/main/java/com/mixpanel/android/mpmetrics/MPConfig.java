@@ -15,7 +15,7 @@ import android.util.Log;
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     public static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
@@ -151,4 +151,6 @@ import android.util.Log;
     private final String mDecideFallbackEndpoint;
 
     private static final String LOGTAG = "MixpanelAPI.MPConfig";
+
+    public static final String VERSION = "4.0.0-SNAPSHOT";
 }

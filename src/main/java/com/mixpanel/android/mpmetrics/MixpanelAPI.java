@@ -15,21 +15,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.annotation.TargetApi;
 import android.app.PendingIntent;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
-import android.os.Build;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 
@@ -100,7 +94,7 @@ import com.mixpanel.android.util.StackBlurManager;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-    public static final String VERSION = "4.0.0-SNAPSHOT";
+    public static final String VERSION = MPConfig.VERSION;
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -110,10 +104,7 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
-
         mMessages = getAnalyticsMessages();
-        mSystemInformation = getSystemInformation();
-
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
@@ -265,35 +256,22 @@ public class MixpanelAPI {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
         try {
-            final long time = System.currentTimeMillis() / 1000;
-            final JSONObject dataObj = new JSONObject();
-
-            dataObj.put("event", eventName);
-            final JSONObject propertiesObj = getDefaultEventProperties();
-            propertiesObj.put("token", mToken);
-            propertiesObj.put("time", time);
-
-            for (final Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-                final String key = (String) iter.next();
-                propertiesObj.put(key, mSuperProperties.get(key));
+            if (properties == null) {
+                properties = new JSONObject();
             }
-
-            final String eventsId = getDistinctId();
-            if (eventsId != null) {
-                propertiesObj.put("distinct_id", eventsId);
+            long time = System.currentTimeMillis() / 1000;
+            if (!properties.has("time")) properties.put("time", time);
+            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                String key = (String) iter.next();
+                if (!properties.has(key)) properties.put(key, mSuperProperties.get(key));
             }
-
-            if (properties != null) {
-                for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                    final String key = (String) iter.next();
-                    propertiesObj.put(key, properties.get(key));
-                }
+            String eventsId = getDistinctId();
+            if (eventsId != null && !properties.has("distinct_id")) {
+                properties.put("distinct_id", eventsId);
             }
-
-            dataObj.put("properties", propertiesObj);
-
-            mMessages.eventsMessage(dataObj);
-        } catch (final JSONException e) {
+            AnalyticsMessages.EventDTO eventDTO = new AnalyticsMessages.EventDTO(eventName, properties, mToken);
+            mMessages.eventsMessage(eventDTO);
+        } catch (JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
     }
@@ -742,10 +720,6 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext);
     }
 
-    /* package */ SystemInformation getSystemInformation() {
-        return new SystemInformation(mContext);
-    }
-
     /* package */ void clearPreferences() {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
@@ -1060,78 +1034,6 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
-    private JSONObject getDefaultEventProperties()
-                throws JSONException {
-        final JSONObject ret = new JSONObject();
-
-        ret.put("mp_lib", "android");
-        ret.put("$lib_version", VERSION);
-
-        // For querying together with data from other libraries
-        ret.put("$os", "Android");
-        ret.put("$os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
-
-        ret.put("$manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
-        ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
-        ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
-
-        final DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
-        ret.put("$screen_dpi", displayMetrics.densityDpi);
-        ret.put("$screen_height", displayMetrics.heightPixels);
-        ret.put("$screen_width", displayMetrics.widthPixels);
-
-        final String applicationVersionName = mSystemInformation.getAppVersionName();
-        if (null != applicationVersionName)
-            ret.put("$app_version", applicationVersionName);
-
-        final Boolean hasNFC = mSystemInformation.hasNFC();
-        if (null != hasNFC)
-            ret.put("$has_nfc", hasNFC.booleanValue());
-
-        final Boolean hasTelephony = mSystemInformation.hasTelephony();
-        if (null != hasTelephony)
-            ret.put("$has_telephone", hasTelephony.booleanValue());
-
-        final String carrier = mSystemInformation.getCurrentNetworkOperator();
-        if (null != carrier)
-            ret.put("$carrier", carrier);
-
-        final Boolean isWifi = mSystemInformation.isWifiConnected();
-        if (null != isWifi)
-            ret.put("$wifi", isWifi.booleanValue());
-
-        if (android.os.Build.VERSION.SDK_INT >= 8) {
-            String bluetoothVersion = "none";
-            if(android.os.Build.VERSION.SDK_INT >= 18 &&
-                    mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-                bluetoothVersion = "ble";
-            } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
-                bluetoothVersion = "classic";
-            }
-            ret.put("$bluetooth_version", bluetoothVersion);
-
-            if (android.os.Build.VERSION.SDK_INT >= 18) {
-                addBluetoothEnabledProperty(ret);
-            }
-        }
-
-        return ret;
-    }
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    private void addBluetoothEnabledProperty(JSONObject ret)
-        throws JSONException {
-        try {
-            final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
-            final BluetoothAdapter bluetoothAdapter = manager.getAdapter();
-            if (null != bluetoothAdapter) {
-                ret.put("$bluetooth_enabled", bluetoothAdapter.isEnabled());
-            }
-        } catch (final SecurityException e) {
-            // do nothing since we don't have permissions
-        }
-    }
-
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
            final JSONObject sets = mWaitingPeopleRecord.setMessage();
@@ -1241,14 +1143,10 @@ public class MixpanelAPI {
 
     // Maps each token to a singleton MixpanelAPI instance
     private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
-
     private final Context mContext;
-    private final SystemInformation mSystemInformation;
     private final AnalyticsMessages mMessages;
-
     private final String mToken;
     private final PeopleImpl mPeople;
-
     private final SharedPreferences mStoredPreferences;
 
     // Persistent members. These are loaded and stored from our preferences.

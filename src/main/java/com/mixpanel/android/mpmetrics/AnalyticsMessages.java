@@ -5,6 +5,7 @@ import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
@@ -15,9 +16,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 
@@ -68,11 +71,10 @@ import android.util.Log;
         mLogMixpanelMessages.set(true);
     }
 
-    public void eventsMessage(JSONObject eventsJson) {
+    public void eventsMessage(EventDTO eventDTO) {
         Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
-        m.obj = eventsJson;
-
+        m.obj = eventDTO;
         mWorker.runMessage(m);
     }
 
@@ -157,6 +159,31 @@ import android.util.Log;
 
     ////////////////////////////////////////////////////
 
+    static class EventDTO {
+
+        public EventDTO(String eventName, JSONObject properties, String token) {
+            this.eventName = eventName;
+            this.properties = properties;
+            this.token = token;
+        }
+
+        public String getEventName() {
+            return eventName;
+        }
+
+        public JSONObject getProperties() {
+            return properties;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        private String eventName;
+        private JSONObject properties;
+        private String token;
+    }
+
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
@@ -236,6 +263,7 @@ import android.util.Log;
                 mSeenSurveys = Collections.synchronizedSet(new HashSet<Integer>());
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
+                mSystemInformation = new SystemInformation(mContext);
             }
 
             @Override
@@ -269,12 +297,15 @@ import android.util.Log;
                         queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
-                        JSONObject message = (JSONObject) msg.obj;
-
-                        logAboutMessageToMixpanel("Queuing event for sending later");
-                        logAboutMessageToMixpanel("    " + message.toString());
-
-                        queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                        EventDTO eventDTO = (EventDTO) msg.obj;
+                        try {
+                            JSONObject message = prepareEventObject(eventDTO);
+                            logAboutMessageToMixpanel("Queuing event for sending later");
+                            logAboutMessageToMixpanel("    " + message.toString());
+                            queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                        } catch (JSONException e) {
+                            Log.e(LOGTAG, "Exception tracking event " + eventDTO.getEventName(), e);
+                        }
                     }
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
@@ -440,6 +471,73 @@ import android.util.Log;
                 }
             }
 
+            private JSONObject getDefaultEventProperties()
+                    throws JSONException {
+                JSONObject ret = new JSONObject();
+
+                ret.put("mp_lib", "android");
+                ret.put("$lib_version", MPConfig.VERSION);
+
+                // For querying together with data from other libraries
+                ret.put("$os", "Android");
+                ret.put("$os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+
+                ret.put("$manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
+                ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+                ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
+
+                DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
+                ret.put("$screen_dpi", displayMetrics.densityDpi);
+                ret.put("$screen_height", displayMetrics.heightPixels);
+                ret.put("$screen_width", displayMetrics.widthPixels);
+
+                String applicationVersionName = mSystemInformation.getAppVersionName();
+                if (null != applicationVersionName)
+                    ret.put("$app_version", applicationVersionName);
+
+                Boolean hasNFC = mSystemInformation.hasNFC();
+                if (null != hasNFC)
+                    ret.put("$has_nfc", hasNFC.booleanValue());
+
+                Boolean hasTelephony = mSystemInformation.hasTelephony();
+                if (null != hasTelephony)
+                    ret.put("$has_telephone", hasTelephony.booleanValue());
+
+                String carrier = mSystemInformation.getCurrentNetworkOperator();
+                if (null != carrier)
+                    ret.put("$carrier", carrier);
+
+                Boolean isWifi = mSystemInformation.isWifiConnected();
+                if (null != isWifi)
+                    ret.put("$wifi", isWifi.booleanValue());
+
+                Boolean isBluetoothEnabled = mSystemInformation.isBluetoothEnabled();
+                if (isBluetoothEnabled != null)
+                    ret.put("$bluetooth_enabled", isBluetoothEnabled);
+
+                String bluetoothVersion = mSystemInformation.getBluetoothVersion();
+                if (bluetoothVersion != null)
+                    ret.put("$bluetooth_version", bluetoothVersion);
+
+                return ret;
+            }
+
+            private JSONObject prepareEventObject(EventDTO eventDTO) throws JSONException {
+                JSONObject eventObj = new JSONObject();
+                JSONObject properties = eventDTO.getProperties();
+                JSONObject propertiesObj = getDefaultEventProperties();
+                propertiesObj.put("token", eventDTO.getToken());
+                if (properties != null) {
+                    for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                        String key = (String) iter.next();
+                        propertiesObj.put(key, properties.get(key));
+                    }
+                }
+                eventObj.put("event", eventDTO.getEventName());
+                eventObj.put("properties", propertiesObj);
+                return eventObj;
+            }
+
             private MPDbAdapter mDbAdapter;
             private final Set<Integer> mSeenSurveys;
             private long mFlushInterval; // XXX remove when associated deprecated APIs are removed
@@ -468,6 +566,7 @@ import android.util.Log;
         private long mFlushCount = 0;
         private long mAveFlushFrequency = 0;
         private long mLastFlushTime = -1;
+        private SystemInformation mSystemInformation;
     }
 
     /////////////////////////////////////////////////////////
@@ -491,4 +590,5 @@ import android.util.Log;
     private static final String LOGTAG = "MixpanelAPI";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
+
 }
