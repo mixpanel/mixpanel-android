@@ -461,7 +461,7 @@ import android.util.Log;
                         sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
                     }
                 } else {
-                    logAboutMessageToMixpanel("Can't sendAllData right now because isOnline is false");
+                    logAboutMessageToMixpanel("Can't send data to mixpanel, because the device is not connected to the internet");
                 }
             }
 
