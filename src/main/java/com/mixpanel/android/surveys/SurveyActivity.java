@@ -4,6 +4,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -19,6 +20,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
@@ -42,6 +44,8 @@ public class SurveyActivity extends Activity {
         getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
 
         setContentView(R.layout.com_mixpanel_android_activity_survey);
+        mPreviousButton = findViewById(R.id.button_previous);
+        mNextButton = findViewById(R.id.button_next);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);
         mCardHolder = (CardCarouselLayout) findViewById(R.id.question_card_holder);
         mCardHolder.setOnQuestionAnsweredListener(new CardCarouselLayout.OnQuestionAnsweredListener() {
@@ -114,9 +118,20 @@ public class SurveyActivity extends Activity {
     }
 
     private void showQuestion(final int idx) {
+    	final List<Question> questions = mSurvey.getQuestions();
+    	if (0 == idx || questions.size() == 0) {
+    		mPreviousButton.setEnabled(false);
+    	} else {
+    		mPreviousButton.setEnabled(true);
+    	}
+    	if (idx >= questions.size() - 1) {
+    		mNextButton.setEnabled(false);
+    	} else {
+    		mNextButton.setEnabled(true);
+    	}
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
-        final Survey.Question question = mSurvey.getQuestions().get(idx);
+        final Survey.Question question = questions.get(idx);
         final String answerValue = mAnswers.get(question);
         try {
             if (oldQuestion < idx) {
@@ -164,6 +179,8 @@ public class SurveyActivity extends Activity {
     }
 
     private MixpanelAPI mMixpanel;
+    private View mPreviousButton;
+    private View mNextButton;
     private Survey mSurvey;
     private String mDistinctId;
     private String mToken;
