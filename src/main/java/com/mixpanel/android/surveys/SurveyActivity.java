@@ -118,17 +118,17 @@ public class SurveyActivity extends Activity {
     }
 
     private void showQuestion(final int idx) {
-    	final List<Question> questions = mSurvey.getQuestions();
-    	if (0 == idx || questions.size() == 0) {
-    		mPreviousButton.setEnabled(false);
-    	} else {
-    		mPreviousButton.setEnabled(true);
-    	}
-    	if (idx >= questions.size() - 1) {
-    		mNextButton.setEnabled(false);
-    	} else {
-    		mNextButton.setEnabled(true);
-    	}
+        final List<Question> questions = mSurvey.getQuestions();
+        if (0 == idx || questions.size() == 0) {
+            mPreviousButton.setEnabled(false);
+        } else {
+           mPreviousButton.setEnabled(true);
+        }
+        if (idx >= questions.size() - 1) {
+            mNextButton.setEnabled(false);
+        } else {
+            mNextButton.setEnabled(true);
+        }
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
         final Survey.Question question = questions.get(idx);
