@@ -63,7 +63,8 @@
             android:contentDescription="@string/com_mixpanel_android_logo"
             />
 
-        <Button
+        <com.mixpanel.android.surveys.FadeOnPressButton
+            android:id="@+id/com_mixpanel_android_button_exit"
             android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:layout_alignParentRight="true"
