@@ -37,12 +37,21 @@ public class SurveyActivity extends Activity {
         mToken = getIntent().getStringExtra("token");
         final String surveyJsonStr = getIntent().getStringExtra("surveyJson");
         final byte[] backgroundCompressed = getIntent().getByteArrayExtra("backgroundCompressed");
+
+        // At some point, we will want to use the  brand color as a custom highlight for
+        // textareas and selection
+        @SuppressWarnings("unused")
         final int highlightColor = getIntent().getIntExtra("highlightColor", Color.WHITE);
-        System.out.println("GOT HIGHLIGHT COLOR " + Integer.toHexString(highlightColor));
-        final Bitmap background = BitmapFactory.decodeByteArray(backgroundCompressed, 0, backgroundCompressed.length);
-        getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
 
         setContentView(R.layout.com_mixpanel_android_activity_survey);
+        Bitmap background;
+        if (null != backgroundCompressed) {
+            background = BitmapFactory.decodeByteArray(backgroundCompressed, 0, backgroundCompressed.length);
+            getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
+        } else {
+            final View contentView = this.findViewById(R.id.com_mixpanel_android_activity_survey_id);
+            contentView.setBackgroundColor(Color.argb(255, 90, 90, 90));
+        }
         mPreviousButton = findViewById(R.id.button_previous);
         mNextButton = findViewById(R.id.button_next);
         mProgressTextView = (TextView) findViewById(R.id.progress_text);

@@ -259,19 +259,19 @@ public class MixpanelAPI {
             if (properties == null) {
                 properties = new JSONObject();
             }
-            long time = System.currentTimeMillis() / 1000;
+            final long time = System.currentTimeMillis() / 1000;
             if (!properties.has("time")) properties.put("time", time);
-            for (Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
-                String key = (String) iter.next();
+            for (final Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+                final String key = (String) iter.next();
                 if (!properties.has(key)) properties.put(key, mSuperProperties.get(key));
             }
-            String eventsId = getDistinctId();
+            final String eventsId = getDistinctId();
             if (eventsId != null && !properties.has("distinct_id")) {
                 properties.put("distinct_id", eventsId);
             }
-            AnalyticsMessages.EventDTO eventDTO = new AnalyticsMessages.EventDTO(eventName, properties, mToken);
+            final AnalyticsMessages.EventDTO eventDTO = new AnalyticsMessages.EventDTO(eventName, properties, mToken);
             mMessages.eventsMessage(eventDTO);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
     }
@@ -837,10 +837,20 @@ public class MixpanelAPI {
             final View rootView = parent.getRootView();
             final boolean originalCacheState = rootView.isDrawingCacheEnabled();
             rootView.setDrawingCacheEnabled(true);
+            rootView.layout(0, 0, rootView.getMeasuredWidth(), rootView.getMeasuredHeight());
+            rootView.buildDrawingCache(true);
+
+            // We could get a null or zero px bitmap if the rootView hasn't been measured
+            // appropriately. This is ok, and we should handle it gracefully.
             final Bitmap original = rootView.getDrawingCache();
-            final int scaledWidth = original.getWidth() / 2;
-            final int scaledHeight = original.getHeight() / 2;
-            final Bitmap scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
+            Bitmap scaled = null;
+            if (null != original) {
+                final int scaledWidth = original.getWidth() / 2;
+                final int scaledHeight = original.getHeight() / 2;
+                if (scaledWidth > 0 && scaledHeight > 0) {
+                    scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
+                }
+            }
             if (! originalCacheState) {
                 rootView.setDrawingCacheEnabled(false);
             }
@@ -855,6 +865,9 @@ public class MixpanelAPI {
                 @Override
                 protected ProcessedBitmap doInBackground(Bitmap... backgrounds) {
                     final Bitmap background = backgrounds[0];
+                    if (null == background) {
+                        return new ProcessedBitmap(null, Color.WHITE);
+                    }
                     final long startTime = System.currentTimeMillis();
                     final Bitmap background1px = Bitmap.createScaledBitmap(background, 1, 1, true);
                     final int highlightColor = background1px.getPixel(0, 0);
@@ -879,11 +892,15 @@ public class MixpanelAPI {
 
                 @Override
                 protected void onPostExecute(ProcessedBitmap processed) {
-                    surveyIntent.putExtra("backgroundCompressed", processed.getBackgroundCompressed());
+                    final byte[] backgroundCompressed = processed.getBackgroundCompressed();
+                    if (null != backgroundCompressed) {
+                        surveyIntent.putExtra("backgroundCompressed", backgroundCompressed);
+                    }
                     surveyIntent.putExtra("highlightColor", processed.getHighlightColor());
                     mContext.startActivity(surveyIntent);
                 }
             };
+
             showSurveyActivity.execute(scaled);
         }
 
