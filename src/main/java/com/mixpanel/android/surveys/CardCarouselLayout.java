@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.database.DataSetObserver;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
@@ -18,6 +19,7 @@ import android.view.animation.RotateAnimation;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.EditText;
@@ -479,6 +481,8 @@ import com.mixpanel.android.mpmetrics.Survey;
             throws UnrecognizedAnswerTypeException {
             mQuestion = question;
             mPromptView.setText(mQuestion.getPrompt());
+            final InputMethodManager inputMethodManager =
+                    (InputMethodManager) mCardView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             final Survey.QuestionType questionType = question.getType();
             if (Survey.QuestionType.TEXT == questionType) {
                 mChoiceView.setVisibility(View.GONE);
@@ -486,7 +490,12 @@ import com.mixpanel.android.mpmetrics.Survey;
                 if (null != answerOrNull) {
                     mEditAnswerView.setText(answerOrNull);
                 }
+                if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+                    mEditAnswerView.requestFocus();
+                    inputMethodManager.showSoftInput(mEditAnswerView, 0); // TODO I suspect this is too soon, since we don't have focus yet.
+                }
             } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
+                inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);
                 mChoiceView.setVisibility(View.VISIBLE);
                 mEditAnswerView.setVisibility(View.GONE);
                 final ChoiceAdapter answerAdapter = new ChoiceAdapter(question.getChoices(), LayoutInflater.from(getContext()));
