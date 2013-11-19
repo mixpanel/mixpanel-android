@@ -13,14 +13,14 @@ public class Survey {
     public Survey(JSONObject description) throws JSONException {
         mDescription = description;
         mId = description.getInt("id");
-        JSONArray collectionsJArray = description.getJSONArray("collections");
-        JSONObject collection0 = collectionsJArray.getJSONObject(0);
+        final JSONArray collectionsJArray = description.getJSONArray("collections");
+        final JSONObject collection0 = collectionsJArray.getJSONObject(0);
         mCollectionId = collection0.getInt("id");
 
-        JSONArray questionsJArray = description.getJSONArray("questions");
-        List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
+        final JSONArray questionsJArray = description.getJSONArray("questions");
+        final List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
         for (int i = 0; i < questionsJArray.length(); i++) {
-            JSONObject q = questionsJArray.getJSONObject(i);
+            final JSONObject q = questionsJArray.getJSONObject(i);
             questionsList.add(new Question(q));
         }
         mQuestions = Collections.unmodifiableList(questionsList);
@@ -67,9 +67,9 @@ public class Survey {
 
             List<String> choicesList = Collections.<String>emptyList();
             if (question.has("extra_data")) {
-                JSONObject extraData = question.getJSONObject("extra_data");
+                final JSONObject extraData = question.getJSONObject("extra_data");
                 if (extraData.has("$choices")) {
-                    JSONArray choices = extraData.getJSONArray("$choices");
+                    final JSONArray choices = extraData.getJSONArray("$choices");
                     choicesList = new ArrayList<String>(choices.length());
                     for (int i = 0; i < choices.length(); i++) {
                         choicesList.add(choices.getString(i));
@@ -79,19 +79,19 @@ public class Survey {
             mChoices = Collections.unmodifiableList(choicesList);
         }
 
-        public final int getId() {
+        public int getId() {
             return mQuestionId;
         }
 
-        public final String getPrompt() {
+        public String getPrompt() {
             return mPrompt;
         }
 
-        public final List<String> getChoices() {
+        public List<String> getChoices() {
             return mChoices;
         }
 
-        public final QuestionType getType() {
+        public QuestionType getType() {
             if (QuestionType.MULTIPLE_CHOICE.toString().equals(mQuestionType)) {
                 return QuestionType.MULTIPLE_CHOICE;
             }
