@@ -40,7 +40,7 @@ public class SurveyActivity extends Activity {
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(SAVED_CURRENT_QUESTION, 0);
             final AnswerMap savedAnswers = savedInstanceState.getParcelable(SAVED_ANSWERS);
-            if (null == savedAnswers) {
+            if (null != savedAnswers) {
                 mAnswers = savedAnswers;
             }
         }
@@ -204,7 +204,7 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
-    private static class AnswerMap extends HashMap<Integer, String> implements Parcelable {
+    public static class AnswerMap extends HashMap<Integer, String> implements Parcelable {
 
         @Override
         public int describeContents() {
@@ -242,7 +242,7 @@ public class SurveyActivity extends Activity {
             }
         };
 
-		private static final long serialVersionUID = -2359922757820889025L;
+        private static final long serialVersionUID = -2359922757820889025L;
     }
 
     private MixpanelAPI mMixpanel;
