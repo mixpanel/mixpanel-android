@@ -18,6 +18,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -32,6 +34,16 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mAnswers = new AnswerMap();
+
+        // Restore from saved instance state if we can
+        if (null != savedInstanceState) {
+            mCurrentQuestion = savedInstanceState.getInt(SAVED_CURRENT_QUESTION, 0);
+            final AnswerMap savedAnswers = savedInstanceState.getParcelable(SAVED_ANSWERS);
+            if (null == savedAnswers) {
+                mAnswers = savedAnswers;
+            }
+        }
 
         mDistinctId = getIntent().getStringExtra("distinctId");
         mToken = getIntent().getStringExtra("token");
@@ -69,7 +81,6 @@ public class SurveyActivity extends Activity {
         mMixpanel.getPeople().identify(mDistinctId);
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
-            mAnswers = new HashMap<Survey.Question, String>();
         } catch (final JSONException e) {
             // TODO can't merge without doing something useful here.
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
@@ -79,7 +90,14 @@ public class SurveyActivity extends Activity {
         // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
         // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
         // mMixpanel.flush();
-        showQuestion(0);
+        showQuestion(mCurrentQuestion);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(SAVED_CURRENT_QUESTION, mCurrentQuestion);
+        outState.putParcelable(SAVED_ANSWERS, mAnswers);
     }
 
     @Override
@@ -140,7 +158,7 @@ public class SurveyActivity extends Activity {
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
         final Survey.Question question = questions.get(idx);
-        final String answerValue = mAnswers.get(question);
+        final String answerValue = mAnswers.get(question.getId());
         try {
             if (oldQuestion < idx) {
                 mCardHolder.moveTo(question, answerValue, CardCarouselLayout.Direction.FORWARD);
@@ -159,7 +177,7 @@ public class SurveyActivity extends Activity {
 
     @SuppressLint("SimpleDateFormat")
     private void saveAnswer(Survey.Question question, String answer) {
-        mAnswers.put(question, answer.toString());
+        mAnswers.put(question.getId(), answer.toString());
         mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
 
         try {
@@ -186,6 +204,47 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
+    private static class AnswerMap extends HashMap<Integer, String> implements Parcelable {
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            final Bundle out = new Bundle();
+            for (final Map.Entry<Integer, String> entry:entrySet()) {
+                final String keyString = Integer.toString(entry.getKey());
+                out.putString(keyString, entry.getValue());
+            }
+            dest.writeBundle(out);
+        }
+
+        @SuppressWarnings("unused")
+        public static final Parcelable.Creator<AnswerMap> CREATOR =
+            new Parcelable.Creator<AnswerMap>() {
+            @Override
+            public AnswerMap createFromParcel(Parcel in) {
+                final Bundle read = new Bundle();
+                final AnswerMap ret = new AnswerMap();
+                read.readFromParcel(in);
+                for (final String kString:read.keySet()) {
+                    final Integer kInt = Integer.valueOf(kString);
+                    ret.put(kInt, read.getString(kString));
+                }
+                return ret;
+            }
+
+            @Override
+            public AnswerMap[] newArray(int size) {
+                return new AnswerMap[size];
+            }
+        };
+
+		private static final long serialVersionUID = -2359922757820889025L;
+    }
+
     private MixpanelAPI mMixpanel;
     private View mPreviousButton;
     private View mNextButton;
@@ -195,9 +254,11 @@ public class SurveyActivity extends Activity {
     private TextView mProgressTextView;
     private CardCarouselLayout mCardHolder;
 
-    private Map<Survey.Question, String> mAnswers;
+    private AnswerMap mAnswers;
     private int mCurrentQuestion = 0;
 
+    private static final String SAVED_CURRENT_QUESTION = "com.mixpanel.android.surveys.SurveyActivity.mCurrentQuestion";
+    private static final String SAVED_ANSWERS = "com.mixpanel.android.surveys.SurveyActivity.mAnswers";
     private static final String LOGTAG = "MixpanelAPI";
 }
 
