@@ -16,7 +16,7 @@
         android:paddingBottom="20dp" >
 
         <ImageButton
-            android:id="@+id/button_previous"
+            android:id="@+id/com_mixpanel_android_button_previous"
             android:layout_width="35dp"
             android:layout_height="24dp"
             android:layout_alignParentLeft="true"
@@ -26,7 +26,7 @@
             android:onClick="goToPreviousQuestion" />
 
         <TextView
-            android:id="@+id/progress_text"
+            android:id="@+id/com_mixpanel_android_progress_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
@@ -34,7 +34,7 @@
             android:textColor="#ffffff" />
 
         <ImageButton
-            android:id="@+id/button_next"
+            android:id="@+id/com_mixpanel_android_button_next"
             android:layout_width="35dp"
             android:layout_height="24dp"
             android:layout_alignParentRight="true"
@@ -45,7 +45,7 @@
     </RelativeLayout>
 
     <com.mixpanel.android.surveys.CardCarouselLayout
-        android:id="@+id/question_card_holder"
+        android:id="@+id/com_mixpanel_android_question_card_holder"
         android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_gravity="center"
         android:layout_weight="1" android:orientation="vertical"

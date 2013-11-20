@@ -64,10 +64,10 @@ public class SurveyActivity extends Activity {
             final View contentView = this.findViewById(R.id.com_mixpanel_android_activity_survey_id);
             contentView.setBackgroundColor(Color.argb(255, 90, 90, 90));
         }
-        mPreviousButton = findViewById(R.id.button_previous);
-        mNextButton = findViewById(R.id.button_next);
-        mProgressTextView = (TextView) findViewById(R.id.progress_text);
-        mCardHolder = (CardCarouselLayout) findViewById(R.id.question_card_holder);
+        mPreviousButton = findViewById(R.id.com_mixpanel_android_button_previous);
+        mNextButton = findViewById(R.id.com_mixpanel_android_button_next);
+        mProgressTextView = (TextView) findViewById(R.id.com_mixpanel_android_progress_text);
+        mCardHolder = (CardCarouselLayout) findViewById(R.id.com_mixpanel_android_question_card_holder);
         mCardHolder.setOnQuestionAnsweredListener(new CardCarouselLayout.OnQuestionAnsweredListener() {
             @Override
             public void onQuestionAnswered(Question question, String answer) {
@@ -221,7 +221,6 @@ public class SurveyActivity extends Activity {
             dest.writeBundle(out);
         }
 
-        @SuppressWarnings("unused")
         public static final Parcelable.Creator<AnswerMap> CREATOR =
             new Parcelable.Creator<AnswerMap>() {
             @Override
