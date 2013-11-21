@@ -1,20 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.ByteArrayOutputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.UUID;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import android.app.Application;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +15,21 @@ import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.StackBlurManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.UUID;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -108,6 +109,15 @@ public class MixpanelAPI {
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
+
+        if (android.os.Build.VERSION.SDK_INT >= 14) {
+            Log.d(LOGTAG, "OS version is >= 14");
+            if (context.getApplicationContext() instanceof Application) {
+                Log.d(LOGTAG, "Context is instanceof Application");
+                Application app = (Application)context.getApplicationContext();
+                app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(mContext, mToken)));
+            }
+        }
     }
 
     /**
@@ -813,6 +823,7 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
+            Log.d(LOGTAG, "Checking for surveys...");
             final AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
             final String checkToken = mToken;
             final String checkDistinctId = mPeopleDistinctId;
