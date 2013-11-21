@@ -12,16 +12,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:clickable="true"
-        android:paddingBottom="20dp" >
+        android:clickable="true" >
 
         <ImageButton
             android:id="@+id/com_mixpanel_android_button_previous"
             android:layout_width="35dp"
-            android:layout_height="24dp"
+            android:layout_height="44dp"
             android:layout_alignParentLeft="true"
             android:clickable="true"
-            android:background="@drawable/com_mixpanel_android_arrowleft_states"
+            android:background="@drawable/com_mixpanel_android_arrowleft_insets"
             android:contentDescription="@string/com_mixpanel_android_previous"
             android:onClick="goToPreviousQuestion" />
 
@@ -36,10 +35,10 @@
         <ImageButton
             android:id="@+id/com_mixpanel_android_button_next"
             android:layout_width="35dp"
-            android:layout_height="24dp"
+            android:layout_height="44dp"
             android:layout_alignParentRight="true"
             android:clickable="true"
-            android:background="@drawable/com_mixpanel_android_arrowright_states"
+            android:background="@drawable/com_mixpanel_android_arrowright_insets"
             android:contentDescription="@string/com_mixpanel_android_next"
             android:onClick="goToNextQuestion" />
     </RelativeLayout>
