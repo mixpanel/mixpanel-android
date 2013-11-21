@@ -187,7 +187,6 @@ public class SurveyActivity extends Activity {
             answerJson.put("$question_id", question.getId());
             answerJson.put("$question_type", question.getType().toString());
 
-            // TODO find a better way to share this format convention
             final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             answerJson.put("$time", dateFormat.format(new Date()));
