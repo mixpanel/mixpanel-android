@@ -76,8 +76,7 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
-        mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
+        mMixpanel = MixpanelAPI.getInstance(this, mToken);
         mMixpanel.getPeople().identify(mDistinctId);
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
@@ -178,7 +177,7 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void saveAnswer(Survey.Question question, String answer) {
         mAnswers.put(question.getId(), answer.toString());
-        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
+        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // TODO should be $union
 
         try {
             final JSONObject answerJson = new JSONObject();
