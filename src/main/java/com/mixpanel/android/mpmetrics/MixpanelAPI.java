@@ -109,15 +109,7 @@ public class MixpanelAPI {
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
-
-        if (android.os.Build.VERSION.SDK_INT >= 14) {
-            Log.d(LOGTAG, "OS version is >= 14");
-            if (context.getApplicationContext() instanceof Application) {
-                Log.d(LOGTAG, "Context is instanceof Application");
-                Application app = (Application)context.getApplicationContext();
-                app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(mContext, mToken)));
-            }
-        }
+        registerMixpanelActivityLifecycleCallbacks();
     }
 
     /**
@@ -704,6 +696,27 @@ public class MixpanelAPI {
      */
     public void logPosts() {
         mMessages.logPosts();
+    }
+
+    /**
+     * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
+     * Once registered, we can automatically check for and show surveys when the application is opened.
+     * This is only available if the android version is >= 14. You can disable this by setting
+     * com.mixpanel.android.MPConfig.AutoCheckForSurveys to false in your AndroidManifest.xml
+     */
+    /* package */ void registerMixpanelActivityLifecycleCallbacks() {
+        if (android.os.Build.VERSION.SDK_INT >= 14 && MPConfig.readConfig(mContext).getAutoCheckForSurveys()) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is >= 14");
+            if (mContext.getApplicationContext() instanceof Application) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is instanceof Application, registering MixpanelActivityLifecycleCallbacks");
+                Application app = (Application) mContext.getApplicationContext();
+                app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
+            } else {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, auto show surveys will be disabled.");
+            }
+        } else {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is < 14, auto show surveys will be disabled.");
+        }
     }
 
     // Package-level access. Used (at least) by GCMReceiver
