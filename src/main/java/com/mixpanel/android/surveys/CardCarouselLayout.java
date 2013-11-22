@@ -492,7 +492,7 @@ import com.mixpanel.android.mpmetrics.Survey;
                 }
                 if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
                     mEditAnswerView.requestFocus();
-                    inputMethodManager.showSoftInput(mEditAnswerView, 0); // TODO I suspect this is too soon, since we don't have focus yet.
+                    inputMethodManager.showSoftInput(mEditAnswerView, 0);
                 }
             } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
                 inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);

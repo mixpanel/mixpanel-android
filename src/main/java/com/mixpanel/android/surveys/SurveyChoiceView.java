@@ -10,8 +10,8 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.CheckedTextView;
 
-// TODO this feels a bit hacky, it might be better to contain or even reimpliment
-// rather than subclass here.
+// XXX: CheckedTextView is a bit hostile to this kind of extension.
+// Consider reimplementing as a child of View, that contains a Drawable and a TextView
 public class SurveyChoiceView extends CheckedTextView {
 
     public SurveyChoiceView(Context context) {
