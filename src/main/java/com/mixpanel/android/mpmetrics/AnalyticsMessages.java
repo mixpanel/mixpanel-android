@@ -15,9 +15,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -320,7 +322,19 @@ import android.util.Log;
                         sendAllData(mDbAdapter);
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
                         final SurveyCheck check = (SurveyCheck) msg.obj;
-                        runSurveyCheck(check);
+                        final Survey found = runSurveyCheck(check);
+                        final Runnable task = new Runnable() {
+                            @Override
+                            public void run() {
+                                check.getCallbacks().foundSurvey(found);
+                            }
+                        };
+                        final Looper mainLooper = Looper.getMainLooper();
+                        if (mainLooper != null) {
+                            new Handler(mainLooper).post(task);
+                        } else {
+                            AsyncTask.execute(task);
+                        }
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -368,7 +382,8 @@ import android.util.Log;
                 }
             }// handleMessage
 
-            private void runSurveyCheck(SurveyCheck check) {
+            // Return is possibly (often!) null
+            private Survey runSurveyCheck(SurveyCheck check) {
                 // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
                 final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
@@ -391,7 +406,7 @@ import android.util.Log;
                 final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
                 if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
                     Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
-                    return;
+                    return null;
                 }
                 final String response = result.getResponse();
                 JSONArray surveys = null;
@@ -400,7 +415,7 @@ import android.util.Log;
                     surveys = parsed.getJSONArray("surveys");
                 } catch (final JSONException e) {
                     Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
-                    return;
+                    return null;
                 }
                 Survey found = null;
                 for (int i = 0; found == null && i < surveys.length(); i++) {
@@ -420,19 +435,7 @@ import android.util.Log;
                     }
                 }
 
-                final Survey toReport = found;
-                final Looper mainLooper = Looper.getMainLooper();
-                if (mainLooper != null) {
-                    new Handler(mainLooper).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            callbacks.foundSurvey(toReport);
-                        }
-                    });
-                } else {
-                    // No main looper, we just run it here
-                    callbacks.foundSurvey(toReport);
-                }
+                return found;
             }// runSurveyCheck
 
             public boolean isOnline() {

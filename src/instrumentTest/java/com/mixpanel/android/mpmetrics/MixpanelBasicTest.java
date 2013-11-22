@@ -413,7 +413,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             fail("checkForSurvey never returned");
         }
 
-
         responses.add(
                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
         );
@@ -446,12 +445,29 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 }
             }
         });
+
         try {
             final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
             assertEquals("OK 2", ok);
         } catch(InterruptedException e) {
-            fail("checkForSuervey never returned");
+            fail("checkForSurvey never returned");
         }
+
+        // Corrupted or crazy responses.
+        responses.add("{ WONT PARSE");
+        getNoSurvey(mixpanel, foundQueue);
+
+        // Valid JSON but bad (no name)
+        responses.add("{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}");
+        getNoSurvey(mixpanel, foundQueue);
+
+        // Just pure craziness
+        responses.add("null");
+        getNoSurvey(mixpanel, foundQueue);
+
+        // Valid JSON that isn't relevant
+        responses.add("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
+        getNoSurvey(mixpanel, foundQueue);
     }
 
     public void testMessageQueuing() {
@@ -873,6 +889,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
+        //////////////////////////////
+
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
         TestThread testThread = new TestThread(messages);
         testThread.start();
@@ -882,5 +900,24 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
     }
 
+    private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
+            @Override
+            public void foundSurvey(final Survey s) {
+                assertNull(s);
+                try {
+                    foundQueue.put("OK NO SURVEY");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Test was interrupted");
+                }
+            }
+        });
 
+        try {
+            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
+            assertEquals("OK NO SURVEY", ok);
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Test was interrupted");
+        }
+    }
 }
