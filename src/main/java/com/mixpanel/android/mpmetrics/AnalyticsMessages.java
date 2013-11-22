@@ -383,9 +383,8 @@ import android.util.Log;
             }// handleMessage
 
             // Return is possibly (often!) null
-            private Survey runSurveyCheck(SurveyCheck check) {
+            private Survey runSurveyCheck(final SurveyCheck check) {
                 // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
-                final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
                 String escapedId;
                 try {
@@ -421,7 +420,7 @@ import android.util.Log;
                 for (int i = 0; found == null && i < surveys.length(); i++) {
                     try {
                         final JSONObject candidateJson = surveys.getJSONObject(i);
-                        final Survey candidate = new Survey(candidateJson); // Can throw a JSON error
+                        final Survey candidate = new Survey(candidateJson);
                         if (mSeenSurveys.contains(candidate.getId())) {
                             if (MPConfig.DEBUG) {
                                 Log.i(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
@@ -431,6 +430,10 @@ import android.util.Log;
                             // mSeenSurveys.add(found.getId()); TODO UNCOMMENT
                         }
                     } catch (final JSONException e) {
+                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
+                        found = null;
+                    } catch (final Survey.BadSurveyException e) {
+                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
                         found = null;
                     }
                 }

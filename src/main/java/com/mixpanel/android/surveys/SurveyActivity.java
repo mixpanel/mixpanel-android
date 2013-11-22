@@ -81,17 +81,18 @@ public class SurveyActivity extends Activity {
         mMixpanel.getPeople().identify(mDistinctId);
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
+            // TODO For testing only, uncomment before merge
+            // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
+            // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
+            // mMixpanel.flush();
+            showQuestion(mCurrentQuestion);
         } catch (final JSONException e) {
+            Log.e(LOGTAG, "Couldn't read survey JSON: " + surveyJsonStr);
+            finish();
+        } catch (final Survey.BadSurveyException e) {
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
-            // TODO MUST DO SOMETHING HERE (like finish(), if that's a thing)
-            // finish(); // TODO test before commit
+            finish();
         }
-
-        // TODO For testing only, uncomment before merge
-        // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
-        // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
-        // mMixpanel.flush();
-        showQuestion(mCurrentQuestion);
     }
 
     @Override
