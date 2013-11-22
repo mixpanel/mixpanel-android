@@ -1,20 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.ByteArrayOutputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.UUID;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import android.app.Application;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +16,21 @@ import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.StackBlurManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.UUID;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -109,6 +110,7 @@ public class MixpanelAPI {
         mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
         readSuperProperties();
         readIdentities();
+        registerMixpanelActivityLifecycleCallbacks();
     }
 
     /**
@@ -703,6 +705,27 @@ public class MixpanelAPI {
         mMessages.logPosts();
     }
 
+    /**
+     * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
+     * Once registered, we can automatically check for and show surveys when the application is opened.
+     * This is only available if the android version is >= 14. You can disable this by setting
+     * com.mixpanel.android.MPConfig.AutoCheckForSurveys to false in your AndroidManifest.xml
+     */
+    /* package */ void registerMixpanelActivityLifecycleCallbacks() {
+        if (android.os.Build.VERSION.SDK_INT >= 14 && MPConfig.readConfig(mContext).getAutoCheckForSurveys()) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is >= 14");
+            if (mContext.getApplicationContext() instanceof Application) {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is instanceof Application, registering MixpanelActivityLifecycleCallbacks");
+                Application app = (Application) mContext.getApplicationContext();
+                app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
+            } else {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, auto show surveys will be disabled.");
+            }
+        } else {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is < 14, auto show surveys will be disabled.");
+        }
+    }
+
     // Package-level access. Used (at least) by GCMReceiver
     // when OS-level events occur.
     /* package */ interface InstanceProcessor {
@@ -820,6 +843,7 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
             final String checkToken = mToken;
             final String checkDistinctId = mPeopleDistinctId;
             final SurveyCallbacks checkCallbacks = callbacks;
