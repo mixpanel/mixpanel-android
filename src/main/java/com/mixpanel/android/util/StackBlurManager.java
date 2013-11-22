@@ -37,25 +37,25 @@ public class StackBlurManager {
         if (radius < 1) {
             return; // No work to do
         }
-        int width = source.getWidth();
-        int height = source.getHeight();
-        int[] currentPixels = new int[width * height];
+        final int width = source.getWidth();
+        final int height = source.getHeight();
+        final int[] currentPixels = new int[width * height];
         source.getPixels(currentPixels, 0, width, 0, 0, width, height);
 
-        int wm = width-1;
-        int hm = height-1;
-        int wh = width * height;
-        int div = radius + radius + 1;
+        final int wm = width-1;
+        final int hm = height-1;
+        final int wh = width * height;
+        final int div = radius + radius + 1;
 
-        int r[] = new int[wh];
-        int g[] = new int[wh];
-        int b[] = new int[wh];
+        final int r[] = new int[wh];
+        final int g[] = new int[wh];
+        final int b[] = new int[wh];
         int rsum, gsum, bsum, x, y, i, p, yp;
-        int vmin[] = new int[Math.max(width, height)];
+        final int vmin[] = new int[Math.max(width, height)];
 
         int divsum = (div+1)>>1;
         divsum *= divsum;
-        int dv[] = new int[256*divsum]; // TODO this is too much memory?
+        final int dv[] = new int[256*divsum];
         for (i = 0; i < 256 * divsum;i++){
             dv[i] = i / divsum;
         }
@@ -63,12 +63,12 @@ public class StackBlurManager {
         int yw = 0;
         int yi = 0;
 
-        int[][] stack = new int[div][3];
+        final int[][] stack = new int[div][3];
         int stackpointer;
         int stackstart;
         int[] sir;
         int rbs;
-        int r1=radius+1;
+        final int r1=radius+1;
         int routsum,goutsum,boutsum;
         int rinsum,ginsum,binsum;
 
