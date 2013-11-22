@@ -54,7 +54,7 @@ import android.util.Log;
      */
     public static AnalyticsMessages getInstance(Context messageContext) {
         synchronized (sInstances) {
-            Context appContext = messageContext.getApplicationContext();
+            final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
@@ -74,14 +74,14 @@ import android.util.Log;
     }
 
     public void eventsMessage(EventDTO eventDTO) {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
         m.obj = eventDTO;
         mWorker.runMessage(m);
     }
 
     public void peopleMessage(JSONObject peopleJson) {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;
         m.obj = peopleJson;
 
@@ -89,7 +89,7 @@ import android.util.Log;
     }
 
     public void postToServer() {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
 
         mWorker.runMessage(m);
@@ -99,7 +99,7 @@ import android.util.Log;
      * Remove this when we eliminate the associated deprecated public ifc
      */
     public void setFlushInterval(long milliseconds) {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = SET_FLUSH_INTERVAL;
         m.obj = new Long(milliseconds);
 
@@ -110,7 +110,7 @@ import android.util.Log;
      * Remove this when we eliminate the associated deprecated public ifc
      */
     public void setDisableFallback(boolean disableIfTrue) {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = SET_DISABLE_FALLBACK;
         m.obj = new Boolean(disableIfTrue);
 
@@ -127,14 +127,14 @@ import android.util.Log;
     }
 
     public void checkForSurveys(SurveyCheck check) {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = CHECK_FOR_SURVEYS;
         m.obj = check;
         mWorker.runMessage(m);
     }
 
     public void hardKill() {
-        Message m = Message.obtain();
+        final Message m = Message.obtain();
         m.what = KILL_WORKER;
 
         mWorker.runMessage(m);
@@ -181,9 +181,9 @@ import android.util.Log;
             return token;
         }
 
-        private String eventName;
-        private JSONObject properties;
-        private String token;
+        private final String eventName;
+        private final JSONObject properties;
+        private final String token;
     }
 
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
@@ -226,7 +226,7 @@ import android.util.Log;
 
             final SynchronousQueue<Handler> handlerQueue = new SynchronousQueue<Handler>();
 
-            Thread thread = new Thread() {
+            final Thread thread = new Thread() {
                 @Override
                 public void run() {
                     if (MPConfig.DEBUG)
@@ -235,13 +235,13 @@ import android.util.Log;
                     Looper.prepare();
                     try {
                         handlerQueue.put(new AnalyticsMessageHandler());
-                    } catch (InterruptedException e) {
+                    } catch (final InterruptedException e) {
                         throw new RuntimeException("Couldn't build worker thread for Analytics Messages", e);
                     }
 
                     try {
                         Looper.loop();
-                    } catch (RuntimeException e) {
+                    } catch (final RuntimeException e) {
                         Log.e(LOGTAG, "Mixpanel Thread dying from RuntimeException", e);
                     }
                 }
@@ -251,7 +251,7 @@ import android.util.Log;
 
             try {
                 ret = handlerQueue.take();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new RuntimeException("Couldn't retrieve handler from worker thread");
             }
 
@@ -291,7 +291,7 @@ import android.util.Log;
                         mDisableFallback = disableState.booleanValue();
                     }
                     else if (msg.what == ENQUEUE_PEOPLE) {
-                        JSONObject message = (JSONObject) msg.obj;
+                        final JSONObject message = (JSONObject) msg.obj;
 
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
@@ -299,13 +299,13 @@ import android.util.Log;
                         queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
-                        EventDTO eventDTO = (EventDTO) msg.obj;
+                        final EventDTO eventDTO = (EventDTO) msg.obj;
                         try {
-                            JSONObject message = prepareEventObject(eventDTO);
+                            final JSONObject message = prepareEventObject(eventDTO);
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
                             queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
-                        } catch (JSONException e) {
+                        } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDTO.getEventName(), e);
                         }
                     }
@@ -319,7 +319,7 @@ import android.util.Log;
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
-                        SurveyCheck check = (SurveyCheck) msg.obj;
+                        final SurveyCheck check = (SurveyCheck) msg.obj;
                         runSurveyCheck(check);
                     }
                     else if (msg.what == KILL_WORKER) {
@@ -354,13 +354,13 @@ import android.util.Log;
                             }
                         }
                     }
-                } catch (RuntimeException e) {
+                } catch (final RuntimeException e) {
                     Log.e(LOGTAG, "Worker threw an unhandled exception- will not send any more mixpanel messages", e);
                     synchronized (mHandlerLock) {
                         mHandler = null;
                         try {
                             Looper.myLooper().quit();
-                        } catch (Exception tooLate) {
+                        } catch (final Exception tooLate) {
                             Log.e(LOGTAG, "Could not halt looper", tooLate);
                         }
                     }
@@ -376,7 +376,7 @@ import android.util.Log;
                 try {
                     escapedToken = URLEncoder.encode(check.getToken(), "utf-8");
                     escapedId = URLEncoder.encode(check.getDistinctId(), "utf-8");
-                } catch(UnsupportedEncodingException e) {
+                } catch(final UnsupportedEncodingException e) {
                     throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
                 }
                 final String checkQuery = new StringBuilder()
@@ -398,7 +398,7 @@ import android.util.Log;
                 try {
                     final JSONObject parsed = new JSONObject(response);
                     surveys = parsed.getJSONArray("surveys");
-                } catch (JSONException e) {
+                } catch (final JSONException e) {
                     Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
                     return;
                 }
@@ -413,9 +413,9 @@ import android.util.Log;
                             }
                         } else {
                             found = candidate;
-                            // mSeenSurveys.add(found.getId()); TODO UNCOMMENT BEFORE MERGE
+                            // mSeenSurveys.add(found.getId()); TODO UNCOMMENT
                         }
-                    } catch (JSONException e) {
+                    } catch (final JSONException e) {
                         found = null;
                     }
                 }
@@ -438,12 +438,12 @@ import android.util.Log;
             public boolean isOnline() {
                 boolean isOnline;
                 try {
-                    ConnectivityManager cm =
+                    final ConnectivityManager cm =
                             (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-                    NetworkInfo netInfo = cm.getActiveNetworkInfo();
+                    final NetworkInfo netInfo = cm.getActiveNetworkInfo();
                     isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
-                } catch (SecurityException e) {
+                } catch (final SecurityException e) {
                     isOnline = true;
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity so returning true");
                 }
@@ -466,14 +466,14 @@ import android.util.Log;
             }
 
             private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl, String fallbackUrl) {
-                String[] eventsData = dbAdapter.generateDataString(table);
+                final String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
-                    String lastId = eventsData[0];
-                    String rawMessage = eventsData[1];
-                    ServerMessage poster = getPoster();
-                    ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl, fallbackUrl);
-                    ServerMessage.Status postStatus = eventsPosted.getStatus();
+                    final String lastId = eventsData[0];
+                    final String rawMessage = eventsData[1];
+                    final ServerMessage poster = getPoster();
+                    final ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl, fallbackUrl);
+                    final ServerMessage.Status postStatus = eventsPosted.getStatus();
 
                     if (postStatus == ServerMessage.Status.SUCCEEDED) {
                         logAboutMessageToMixpanel("Posted to " + endpointUrl);
@@ -494,7 +494,7 @@ import android.util.Log;
 
             private JSONObject getDefaultEventProperties()
                     throws JSONException {
-                JSONObject ret = new JSONObject();
+                final JSONObject ret = new JSONObject();
 
                 ret.put("mp_lib", "android");
                 ret.put("$lib_version", MPConfig.VERSION);
@@ -507,36 +507,36 @@ import android.util.Log;
                 ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
                 ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
 
-                DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
+                final DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
                 ret.put("$screen_dpi", displayMetrics.densityDpi);
                 ret.put("$screen_height", displayMetrics.heightPixels);
                 ret.put("$screen_width", displayMetrics.widthPixels);
 
-                String applicationVersionName = mSystemInformation.getAppVersionName();
+                final String applicationVersionName = mSystemInformation.getAppVersionName();
                 if (null != applicationVersionName)
                     ret.put("$app_version", applicationVersionName);
 
-                Boolean hasNFC = mSystemInformation.hasNFC();
+                final Boolean hasNFC = mSystemInformation.hasNFC();
                 if (null != hasNFC)
                     ret.put("$has_nfc", hasNFC.booleanValue());
 
-                Boolean hasTelephony = mSystemInformation.hasTelephony();
+                final Boolean hasTelephony = mSystemInformation.hasTelephony();
                 if (null != hasTelephony)
                     ret.put("$has_telephone", hasTelephony.booleanValue());
 
-                String carrier = mSystemInformation.getCurrentNetworkOperator();
+                final String carrier = mSystemInformation.getCurrentNetworkOperator();
                 if (null != carrier)
                     ret.put("$carrier", carrier);
 
-                Boolean isWifi = mSystemInformation.isWifiConnected();
+                final Boolean isWifi = mSystemInformation.isWifiConnected();
                 if (null != isWifi)
                     ret.put("$wifi", isWifi.booleanValue());
 
-                Boolean isBluetoothEnabled = mSystemInformation.isBluetoothEnabled();
+                final Boolean isBluetoothEnabled = mSystemInformation.isBluetoothEnabled();
                 if (isBluetoothEnabled != null)
                     ret.put("$bluetooth_enabled", isBluetoothEnabled);
 
-                String bluetoothVersion = mSystemInformation.getBluetoothVersion();
+                final String bluetoothVersion = mSystemInformation.getBluetoothVersion();
                 if (bluetoothVersion != null)
                     ret.put("$bluetooth_version", bluetoothVersion);
 
@@ -544,13 +544,13 @@ import android.util.Log;
             }
 
             private JSONObject prepareEventObject(EventDTO eventDTO) throws JSONException {
-                JSONObject eventObj = new JSONObject();
-                JSONObject properties = eventDTO.getProperties();
-                JSONObject propertiesObj = getDefaultEventProperties();
+                final JSONObject eventObj = new JSONObject();
+                final JSONObject properties = eventDTO.getProperties();
+                final JSONObject propertiesObj = getDefaultEventProperties();
                 propertiesObj.put("token", eventDTO.getToken());
                 if (properties != null) {
-                    for (Iterator<?> iter = properties.keys(); iter.hasNext();) {
-                        String key = (String) iter.next();
+                    for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                        final String key = (String) iter.next();
                         propertiesObj.put(key, properties.get(key));
                     }
                 }
@@ -566,15 +566,15 @@ import android.util.Log;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
-            long now = System.currentTimeMillis();
-            long newFlushCount = mFlushCount + 1;
+            final long now = System.currentTimeMillis();
+            final long newFlushCount = mFlushCount + 1;
 
             if (mLastFlushTime > 0) {
-                long flushInterval = now - mLastFlushTime;
-                long totalFlushTime = flushInterval + (mAveFlushFrequency * mFlushCount);
+                final long flushInterval = now - mLastFlushTime;
+                final long totalFlushTime = flushInterval + (mAveFlushFrequency * mFlushCount);
                 mAveFlushFrequency = totalFlushTime / newFlushCount;
 
-                long seconds = mAveFlushFrequency / 1000;
+                final long seconds = mAveFlushFrequency / 1000;
                 logAboutMessageToMixpanel("Average send frequency approximately " + seconds + " seconds.");
             }
 
