@@ -369,7 +369,7 @@ import android.util.Log;
             }// handleMessage
 
             private void runSurveyCheck(SurveyCheck check) {
-                // TODO break up requesting surveys, checking list, and submitting foundSurvey job
+                // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
                 final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
                 String escapedId;
