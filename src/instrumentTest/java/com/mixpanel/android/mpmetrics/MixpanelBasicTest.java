@@ -468,6 +468,23 @@ public class MixpanelBasicTest extends AndroidTestCase {
         // Valid JSON that isn't relevant
         responses.add("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
         getNoSurvey(mixpanel, foundQueue);
+
+        // Valid survey with no questions
+        responses.add(
+                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
+        );
+        getNoSurvey(mixpanel, foundQueue);
+
+        // Valid survey with a question with no choices
+        responses.add(
+                "{\"surveys\":[ {" +
+                        "   \"id\":291," +
+                        "   \"questions\":[" +
+                        "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[]},\"prompt\":\"Multiple Choice Prompt\"}," +
+                        "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
+                        "]}"
+        );
+        getNoSurvey(mixpanel, foundQueue);
     }
 
     public void testMessageQueuing() {
