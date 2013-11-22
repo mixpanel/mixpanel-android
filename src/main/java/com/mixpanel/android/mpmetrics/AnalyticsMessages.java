@@ -101,7 +101,7 @@ import android.util.Log;
     public void setFlushInterval(long milliseconds) {
         final Message m = Message.obtain();
         m.what = SET_FLUSH_INTERVAL;
-        m.obj = new Long(milliseconds);
+        m.obj = Long.valueOf(milliseconds);
 
         mWorker.runMessage(m);
     }
@@ -112,7 +112,7 @@ import android.util.Log;
     public void setDisableFallback(boolean disableIfTrue) {
         final Message m = Message.obtain();
         m.what = SET_DISABLE_FALLBACK;
-        m.obj = new Boolean(disableIfTrue);
+        m.obj = Boolean.valueOf(disableIfTrue);
 
         mWorker.runMessage(m);
     }
