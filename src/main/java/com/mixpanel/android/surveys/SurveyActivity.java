@@ -50,7 +50,8 @@ public class SurveyActivity extends Activity {
         final String surveyJsonStr = getIntent().getStringExtra("surveyJson");
         final byte[] backgroundCompressed = getIntent().getByteArrayExtra("backgroundCompressed");
 
-        // At some point, we will want to use the  brand color as a custom highlight for
+        // At some point, we will want to use the
+        // brand color as a custom highlight for
         // textareas and selection
         @SuppressWarnings("unused")
         final int highlightColor = getIntent().getIntExtra("highlightColor", Color.WHITE);
@@ -81,8 +82,9 @@ public class SurveyActivity extends Activity {
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
         } catch (final JSONException e) {
-            // TODO can't merge without doing something useful here.
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
+            // TODO MUST DO SOMETHING HERE (like finish(), if that's a thing)
+            // finish(); // TODO test before commit
         }
 
         // TODO For testing only, uncomment before merge

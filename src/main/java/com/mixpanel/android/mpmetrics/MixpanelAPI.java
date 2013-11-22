@@ -820,13 +820,6 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
-            // Surveys are not supported before Gingerbread
-            if (Build.VERSION.SDK_INT < 10) {
-                callbacks.foundSurvey(null);
-                return;
-            }
-
-            final AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
             final String checkToken = mToken;
             final String checkDistinctId = mPeopleDistinctId;
             final SurveyCallbacks checkCallbacks = callbacks;
@@ -838,7 +831,12 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
                 return;
             }
-            msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
+            if (Build.VERSION.SDK_INT < 10) {
+                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
+                callbacks.foundSurvey(null);
+                return;
+            }
+            mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
                 @Override public String getToken() { return checkToken; }
                 @Override public String getDistinctId() { return checkDistinctId; }
                 @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }

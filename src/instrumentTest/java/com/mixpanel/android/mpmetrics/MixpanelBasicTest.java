@@ -16,6 +16,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
@@ -309,30 +310,55 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testSurveys() {
         final List<String> responses = Collections.synchronizedList(new ArrayList<String>());
+        final BlockingQueue<String> foundQueue = new LinkedBlockingQueue<String>();
 
         final ServerMessage mockMessage = new ServerMessage() {
-            @Override public Result get(String endpointUrl, String fallbackUrl) {
+            @Override
+            public Result get(String endpointUrl, String fallbackUrl) {
                 return new Result(Status.SUCCEEDED, responses.remove(0));
             }
         };
         final AnalyticsMessages mockMessages = new AnalyticsMessages(getContext()) {
-            @Override protected ServerMessage getPoster() {
+            @Override
+            protected ServerMessage getPoster() {
                 return mockMessage;
             }
         };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN testLooperDisaster") {
+        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN test checkForSurveys") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return mockMessages;
             }
         };
+        mixpanel.clearPreferences();
 
         responses.add("{\"surveys\":[]}");
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
-            @Override public void foundSurvey(Survey s) {
-                assertNull(s);
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
+            @Override
+            public void foundSurvey(final Survey s) {
+                fail("Shouldn't check for surveys if the user is not identified.");
             }
         });
+
+        mixpanel.getPeople().identify("SURVEY TEST USER");
+        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
+            @Override
+            public void foundSurvey(Survey s) {
+                assertNull(s);
+                try {
+                    foundQueue.put("OK 0");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Test Interrupted");
+                }
+            }
+        });
+
+        try {
+            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
+            assertEquals("OK 0", ok);
+        } catch(InterruptedException e) {
+            fail("checkForSurvey never returned");
+        }
 
         responses.add(
                 "{\"surveys\":[ {" +
@@ -343,55 +369,89 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
                 "]}"
         );
-        // TODO TEST IS BROKEN. What if this is never called (for example, because the survey didn't parse?)
+
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
-                assertEquals(s.getId(), 291);
-                assertEquals(s.getCollectionId(), 141);
+                if (Build.VERSION.SDK_INT < 10) {
+                    assertNull(s);
+                } else {
+                    assertEquals(s.getId(), 291);
+                    assertEquals(s.getCollectionId(), 141);
 
-                List<Survey.Question> questions = s.getQuestions();
-                assertEquals(questions.size(), 2);
+                    List<Survey.Question> questions = s.getQuestions();
+                    assertEquals(questions.size(), 2);
 
-                Survey.Question mcQuestion = questions.get(0);
-                assertEquals(mcQuestion.getId(), 275);
-                assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
-                assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-                List<String> mcChoices = mcQuestion.getChoices();
-                assertEquals(mcChoices.size(), 2);
-                assertEquals(mcChoices.get(0), "Option 1");
-                assertEquals(mcChoices.get(1), "Option 2");
+                    Survey.Question mcQuestion = questions.get(0);
+                    assertEquals(mcQuestion.getId(), 275);
+                    assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
+                    assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+                    List<String> mcChoices = mcQuestion.getChoices();
+                    assertEquals(mcChoices.size(), 2);
+                    assertEquals(mcChoices.get(0), "Option 1");
+                    assertEquals(mcChoices.get(1), "Option 2");
 
-                Survey.Question textQuestion = questions.get(1);
-                assertEquals(textQuestion.getId(), 277);
-                assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
-                assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
-                List<String> textChoices = textQuestion.getChoices();
-                assertEquals(textChoices.size(), 0);
+                    Survey.Question textQuestion = questions.get(1);
+                    assertEquals(textQuestion.getId(), 277);
+                    assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
+                    assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
+                    List<String> textChoices = textQuestion.getChoices();
+                    assertEquals(textChoices.size(), 0);
+                }
+
+                try {
+                    foundQueue.put("OK 1");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Test was interrupted");
+                }
             }
         });
+
+        try {
+            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
+            assertEquals("OK 1", ok);
+        } catch(InterruptedException e) {
+            fail("checkForSurvey never returned");
+        }
+
 
         responses.add(
                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
         );
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
-                assertEquals(s.getId(), 299);
-                assertEquals(s.getCollectionId(), 151);
+                if (Build.VERSION.SDK_INT < 10) {
+                    assertNull(s);
+                } else {
+                    assertEquals(s.getId(), 299);
+                    assertEquals(s.getCollectionId(), 151);
 
-                List<Survey.Question> questions = s.getQuestions();
-                assertEquals(questions.size(), 2);
+                    List<Survey.Question> questions = s.getQuestions();
+                    assertEquals(questions.size(), 2);
 
-                Survey.Question mcQuestion = questions.get(0);
-                assertEquals(mcQuestion.getId(), 287);
-                assertEquals(mcQuestion.getPrompt(), "PROMPT1");
-                assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-                List<String> mcChoices = mcQuestion.getChoices();
-                assertEquals(mcChoices.size(), 3);
-                assertEquals(mcChoices.get(0), "Answer1,1");
-                assertEquals(mcChoices.get(1), "Answer1,2");
-                assertEquals(mcChoices.get(2), "Answer1,3");
+                    Survey.Question mcQuestion = questions.get(0);
+                    assertEquals(mcQuestion.getId(), 287);
+                    assertEquals(mcQuestion.getPrompt(), "PROMPT1");
+                    assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+                    List<String> mcChoices = mcQuestion.getChoices();
+                    assertEquals(mcChoices.size(), 3);
+                    assertEquals(mcChoices.get(0), "Answer1,1");
+                    assertEquals(mcChoices.get(1), "Answer1,2");
+                    assertEquals(mcChoices.get(2), "Answer1,3");
+                }
+
+                try {
+                    foundQueue.put("OK 2");
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Test was interrupted");
+                }
             }
         });
+        try {
+            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
+            assertEquals("OK 2", ok);
+        } catch(InterruptedException e) {
+            fail("checkForSuervey never returned");
+        }
     }
 
     public void testMessageQueuing() {
