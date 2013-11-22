@@ -444,7 +444,7 @@ import com.mixpanel.android.mpmetrics.Survey;
             mEditAnswerView.setText("");
             mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
                 @Override
-                public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                public boolean onEditorAction(final TextView view, final int actionId, final KeyEvent event) {
                     final boolean enterKeyDown =
                             event != null &&
                             event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
@@ -452,9 +452,9 @@ import com.mixpanel.android.mpmetrics.Survey;
                             0 == (event.getFlags() & KeyEvent.FLAG_CANCELED);
 
                     if (enterKeyDown || actionId == EditorInfo.IME_ACTION_DONE) {
-                        v.clearComposingText();
+                        view.clearComposingText();
                         if (null != mListener) {
-                            final String answer = v.getText().toString();
+                            final String answer = view.getText().toString();
                             mListener.onQuestionAnswered(mQuestion, answer);
                         }
                         return true;
@@ -492,7 +492,7 @@ import com.mixpanel.android.mpmetrics.Survey;
                 }
                 if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
                     mEditAnswerView.requestFocus();
-                    inputMethodManager.showSoftInput(mEditAnswerView, 0); // TODO I suspect this is too soon, since we don't have focus yet.
+                    inputMethodManager.showSoftInput(mEditAnswerView, 0);
                 }
             } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
                 inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);

@@ -10,8 +10,8 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.CheckedTextView;
 
-// TODO this feels a bit hacky, it might be better to contain or even reimpliment
-// rather than subclass here.
+// XXX: CheckedTextView is a bit hostile to this kind of extension.
+// Consider reimplementing as a child of View, that contains a Drawable and a TextView
 public class SurveyChoiceView extends CheckedTextView {
 
     public SurveyChoiceView(Context context) {
@@ -27,6 +27,15 @@ public class SurveyChoiceView extends CheckedTextView {
     public SurveyChoiceView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         initSurveyChoiceView();
+    }
+
+    @Override
+    public void setPadding(int left, int top, int right, int bottom) {
+        mRealLeftPadding = left;
+        mRealTopPadding = top;
+        mRealRightPadding = right;
+        mRealBottomPadding = bottom;
+        super.setPadding(left, top, right, bottom);
     }
 
     @Override
@@ -58,18 +67,26 @@ public class SurveyChoiceView extends CheckedTextView {
         }
         final int checkmarkHeight = checkmarkWidth;
 
-        final int originalPadding = getPaddingLeft();
-        final int paddingTop = getPaddingTop();
-        final int paddingRight = getPaddingRight();
-        final int paddingBottom = getPaddingBottom();
+        if (mRealLeftPadding == -1) {
+            mRealLeftPadding = getPaddingLeft();
+        }
+        if (mRealTopPadding == -1) {
+            mRealTopPadding = getPaddingTop();
+        }
+        if (mRealRightPadding == -1) {
+            mRealRightPadding = getPaddingRight();
+        }
+        if (mRealBottomPadding == -1) {
+            mRealBottomPadding = getPaddingBottom();
+        }
 
         // Hide the checkmark during our parent drawing
         setCheckMarkDrawable(null);
-        final int textPaddingLeft = (int) (originalPadding + (mTextLeftOffset * checkmarkWidth));
-        setPadding(textPaddingLeft, paddingTop, paddingRight, paddingBottom);
+        final int textPaddingLeft = (int) (mRealLeftPadding + (mTextLeftOffset * checkmarkWidth));
+        super.setPadding(textPaddingLeft, mRealTopPadding, mRealRightPadding, mRealBottomPadding);
         super.onDraw(canvas);
-        final int checkPaddingLeft = (int) (originalPadding + (mCheckmarkLeftOffset * checkmarkWidth));
-        setPadding(checkPaddingLeft, paddingTop, paddingRight, paddingBottom);
+        final int checkPaddingLeft = (int) (mRealLeftPadding + (mCheckmarkLeftOffset * checkmarkWidth));
+        super.setPadding(checkPaddingLeft, mRealTopPadding, mRealRightPadding, mRealBottomPadding);
         setCheckMarkDrawable(checkMarkDrawable);
 
         if (null != checkMarkDrawable) {
@@ -93,7 +110,7 @@ public class SurveyChoiceView extends CheckedTextView {
             checkMarkDrawable.draw(canvas);
         }
 
-        setPadding(originalPadding, paddingTop, paddingRight, paddingBottom);
+        super.setPadding(mRealLeftPadding, mRealTopPadding, mRealRightPadding, mRealBottomPadding);
     }
 
     private void initSurveyChoiceView() {
@@ -130,6 +147,11 @@ public class SurveyChoiceView extends CheckedTextView {
     private Drawable mSurveyChoiceCheckMark; // getCheckMarkDrawable() is only available in newer APIs
     private float mCheckmarkLeftOffset; // offset of checkmark drawable from left edge, expressed in checkmark widths
     private float mTextLeftOffset; // offset of text from left edge, expressed in checkmark widths
+
+    private int mRealLeftPadding = -1;
+    private int mRealTopPadding = -1;
+    private int mRealRightPadding = -1;
+    private int mRealBottomPadding = -1;
 
     // Nice to have- these as LayoutParameters/Styled attributes
     private static int ANIMATION_DURATION = 130;

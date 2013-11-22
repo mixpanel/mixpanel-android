@@ -9,18 +9,21 @@
 		android:paddingBottom="20dp"
 		android:textColor="#ffffff" android:textSize="18sp" />
 
-	<EditText android:id="@+id/com_mixpanel_android_text_answer" android:layout_width="match_parent"
+	<com.mixpanel.android.surveys.AlwaysSubmittableEditText android:id="@+id/com_mixpanel_android_text_answer" android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:background="@drawable/com_mixpanel_android_text_answer_border"
 		android:textColor="#ffffff" android:textSize="18sp" android:padding="20dp"
-		android:inputType="textCapSentences|textAutoCorrect|textMultiLine|textShortMessage"
-		android:lines="3" android:imeOptions="actionDone" android:singleLine="true"
+		android:inputType="text|textCapSentences|textAutoCorrect|textMultiLine"
+		android:scrollHorizontally="true"
+		android:imeOptions="actionDone"
+		android:lines="3" android:singleLine="true"
 		android:visibility="gone" />
 
 	<!-- cacheColorHint setting from http://android-developers.blogspot.com/2009/01/why-is-my-list-black-android.html -->
 	<ListView android:id="@+id/com_mixpanel_android_choice_list" android:layout_width="match_parent"
 		android:layout_height="0dp" android:layout_weight="1"
 		android:textColor="#ffffff" android:textSize="18sp"
+		android:scrollbars="none"
 		android:cacheColorHint="#00000000" android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
 		android:background="@android:color/transparent" android:divider="@android:color/transparent"
 		android:choiceMode="singleChoice" />

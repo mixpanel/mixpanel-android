@@ -15,9 +15,8 @@ import android.util.Log;
 /* package */ class WaitingPeopleRecord {
     private static final String LOGTAG = "MixpanelAPI";
 
-    // TODO re-approach as an in-memory queue, to
-    // accomodate $union. You can still collapse against
-    // the head record on set()
+    // XXX: re-approach as an in-memory queue, to accomodate $union.
+    // You can still collapse against the head record on set()
     public WaitingPeopleRecord() {
         mAdds = new HashMap<String, Double>();
         mAppends = new ArrayList<JSONObject>();
@@ -26,15 +25,15 @@ import android.util.Log;
 
     public void setOnWaitingPeopleRecord(JSONObject sets)
         throws JSONException {
-        for(Iterator<?> iter = sets.keys(); iter.hasNext();) {
-            String key = (String) iter.next();
-            Object val = sets.get(key);
+        for(final Iterator<?> iter = sets.keys(); iter.hasNext();) {
+            final String key = (String) iter.next();
+            final Object val = sets.get(key);
 
             // Subsequent sets will eliminate the effect of earlier increments and appends
             mAdds.remove(key);
 
-            List<JSONObject> remainingAppends = new ArrayList<JSONObject>();
-            for (JSONObject nextAppend: remainingAppends) {
+            final List<JSONObject> remainingAppends = new ArrayList<JSONObject>();
+            for (final JSONObject nextAppend: remainingAppends) {
                 nextAppend.remove(key);
                 if (nextAppend.length() > 0) {
                     remainingAppends.add(nextAppend);
@@ -47,9 +46,9 @@ import android.util.Log;
     }
 
     public void incrementToWaitingPeopleRecord(Map<String, ? extends Number> adds) {
-        for(String key: adds.keySet()) {
-            Number oldIncrement = mAdds.get(key);
-            Number changeIncrement = adds.get(key);
+        for(final String key: adds.keySet()) {
+            final Number oldIncrement = mAdds.get(key);
+            final Number changeIncrement = adds.get(key);
 
             if ((oldIncrement == null) && (changeIncrement != null)) {
                 mAdds.put(key, changeIncrement.doubleValue());
@@ -68,28 +67,28 @@ import android.util.Log;
 
     public void readFromJSONString(String jsonString)
         throws JSONException {
-        JSONObject stored = new JSONObject(jsonString);
+        final JSONObject stored = new JSONObject(jsonString);
 
         JSONObject newSets = new JSONObject();
         if (stored.has("$set")) {
             newSets = stored.getJSONObject("$set");
         }// if $set is found
 
-        Map<String, Double> newAdds = new HashMap<String, Double>();
+        final Map<String, Double> newAdds = new HashMap<String, Double>();
         if (stored.has("$add")) {
-            JSONObject addsJSON = stored.getJSONObject("$add");
-            for(Iterator<?> iter = addsJSON.keys(); iter.hasNext();) {
-                String key = (String) iter.next();
-                Double amount = addsJSON.getDouble(key);
+            final JSONObject addsJSON = stored.getJSONObject("$add");
+            for(final Iterator<?> iter = addsJSON.keys(); iter.hasNext();) {
+                final String key = (String) iter.next();
+                final Double amount = addsJSON.getDouble(key);
                 newAdds.put(key, amount);
             }
         }// if $add is found
 
-        List<JSONObject> newAppends = new ArrayList<JSONObject>();
+        final List<JSONObject> newAppends = new ArrayList<JSONObject>();
         if(stored.has("$append")) {
-            JSONArray appendsJSON = stored.getJSONArray("$append");
+            final JSONArray appendsJSON = stored.getJSONArray("$append");
             for(int i = 0; i < appendsJSON.length(); i++) {
-                JSONObject nextAppend = appendsJSON.getJSONObject(i);
+                final JSONObject nextAppend = appendsJSON.getJSONObject(i);
                 newAppends.add(nextAppend);
             }
         }// if $append is found
@@ -103,24 +102,24 @@ import android.util.Log;
         String ret = null;
 
         try {
-            JSONObject addObject = new JSONObject();
-            for(String addKey:mAdds.keySet()) {
-                Double value = mAdds.get(addKey);
+            final JSONObject addObject = new JSONObject();
+            for(final String addKey:mAdds.keySet()) {
+                final Double value = mAdds.get(addKey);
                 addObject.put(addKey, value);
             }
 
-            JSONArray appendArray = new JSONArray();
-            for(JSONObject append:mAppends) {
+            final JSONArray appendArray = new JSONArray();
+            for(final JSONObject append:mAppends) {
                 appendArray.put(append);
             }
 
-            JSONObject retObject = new JSONObject();
+            final JSONObject retObject = new JSONObject();
             retObject.put("$set", mSets);
             retObject.put("$add", addObject);
             retObject.put("$append", appendArray);
 
             ret = retObject.toString();
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Could not write Waiting User Properties to JSON", e);
         }
 

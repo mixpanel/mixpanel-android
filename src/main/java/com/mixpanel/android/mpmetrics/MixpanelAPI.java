@@ -10,6 +10,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.util.Log;
 import android.view.View;
 
@@ -174,7 +175,7 @@ public class MixpanelAPI {
      *      the main application activity.
      * @param milliseconds the target number of milliseconds between automatic flushes.
      *      this value is advisory, actual flushes may be more or less frequent
-     * @deprecated in 4.0.0, use application metadata instead
+     * @deprecated in 4.0.0, use com.mixpanel.android.MPConfig.FlushInterval application metadata instead
      */
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
@@ -197,7 +198,7 @@ public class MixpanelAPI {
      * @param context the execution context associated with this context.
      * @param enableIfTrue if true, the library will fall back to using http
      *      when https is unavailable.
-     * @deprecated in 4.0.0, use application metadata instead
+     * @deprecated in 4.0.0, use com.mixpanel.android.MPConfig.EventsFallbackEndpoint, com.mixpanel.android.MPConfig.PeopleFallbackEndpoint, or com.mixpanel.android.MPConfig.DecideFallbackEndpoint instead
      */
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
@@ -671,6 +672,9 @@ public class MixpanelAPI {
          * (via Looper.getMainLooper()). If you're not running in the context of a
          * traditional activity or service, the callback will be run inside of an
          * internal Mixpanel thread.
+         *
+         * This method is will always call back with null in environments with
+         * Android API before Gingerbread/API level 10
          */
         public void checkForSurvey(SurveyCallbacks callbacks);
 
@@ -680,6 +684,9 @@ public class MixpanelAPI {
          *
          * The survey activity will use the root of the given view to take a screenshot
          * for its background.
+         *
+         * This method is a noop in environments with
+         * Android API before Gingerbread/API level 10
          */
         public void showSurvey(Survey s, View parent);
     }
@@ -836,8 +843,7 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
-            Log.d(LOGTAG, "Checking for surveys...");
-            final AnalyticsMessages msgs = AnalyticsMessages.getInstance(mContext);
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
             final String checkToken = mToken;
             final String checkDistinctId = mPeopleDistinctId;
             final SurveyCallbacks checkCallbacks = callbacks;
@@ -849,7 +855,12 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
                 return;
             }
-            msgs.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
+            if (Build.VERSION.SDK_INT < 10) {
+                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
+                callbacks.foundSurvey(null);
+                return;
+            }
+            mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
                 @Override public String getToken() { return checkToken; }
                 @Override public String getDistinctId() { return checkDistinctId; }
                 @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
@@ -858,6 +869,11 @@ public class MixpanelAPI {
 
         @Override
         public void showSurvey(final Survey s, final View parent) {
+            // Surveys are not supported before Gingerbread
+            if (Build.VERSION.SDK_INT < 10) {
+                return;
+            }
+
             final View rootView = parent.getRootView();
             final boolean originalCacheState = rootView.isDrawingCacheEnabled();
             rootView.setDrawingCacheEnabled(true);

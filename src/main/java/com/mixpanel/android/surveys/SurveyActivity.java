@@ -50,7 +50,8 @@ public class SurveyActivity extends Activity {
         final String surveyJsonStr = getIntent().getStringExtra("surveyJson");
         final byte[] backgroundCompressed = getIntent().getByteArrayExtra("backgroundCompressed");
 
-        // At some point, we will want to use the  brand color as a custom highlight for
+        // At some point, we will want to use the
+        // brand color as a custom highlight for
         // textareas and selection
         @SuppressWarnings("unused")
         final int highlightColor = getIntent().getIntExtra("highlightColor", Color.WHITE);
@@ -76,14 +77,14 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        // identify the person we're saving answers for TODO RACE CONDITION NEED DIRECT INSTANCE LOOKUP
-        mMixpanel = MixpanelAPI.getInstance(this, mToken); // TODO CANT DO THIS. You've gotta make sure you use the same instance? But threads?
+        mMixpanel = MixpanelAPI.getInstance(this, mToken);
         mMixpanel.getPeople().identify(mDistinctId);
         try {
             mSurvey = new Survey(new JSONObject(surveyJsonStr));
         } catch (final JSONException e) {
-            // TODO can't merge without doing something useful here.
             Log.e(LOGTAG, "Unable to parse survey json: " + surveyJsonStr, e);
+            // TODO MUST DO SOMETHING HERE (like finish(), if that's a thing)
+            // finish(); // TODO test before commit
         }
 
         // TODO For testing only, uncomment before merge
@@ -178,7 +179,7 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void saveAnswer(Survey.Question question, String answer) {
         mAnswers.put(question.getId(), answer.toString());
-        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // <<--- TODO should be $union
+        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // TODO should be $union
 
         try {
             final JSONObject answerJson = new JSONObject();
@@ -187,7 +188,6 @@ public class SurveyActivity extends Activity {
             answerJson.put("$question_id", question.getId());
             answerJson.put("$question_type", question.getType().toString());
 
-            // TODO find a better way to share this format convention
             final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             answerJson.put("$time", dateFormat.format(new Date()));
