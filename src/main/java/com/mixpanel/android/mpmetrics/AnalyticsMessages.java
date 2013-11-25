@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import android.os.AsyncTask;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
@@ -321,7 +322,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
                         sendAllData(mDbAdapter);
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
                         final SurveyCheck check = (SurveyCheck) msg.obj;
-                        runSurveyCheck(check);
+                        final Survey found = runSurveyCheck(check);
+                        final Runnable task = new Runnable() {
+                            @Override
+                            public void run() {
+                                check.getCallbacks().foundSurvey(found);
+                            }
+                        };
+
+                        MixpanelAPI mpInstance = MixpanelAPI.getInstance(mContext, check.getToken());
+                        String currentLockId = mpInstance.getPeople().getSurveyLockId();
+                        final Looper mainLooper = Looper.getMainLooper();
+                        if (check.getLockId().equals(currentLockId)) {
+                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids match, executing callback");
+                            if (mainLooper != null) {
+                                new Handler(mainLooper).post(task);
+                            } else {
+                                AsyncTask.execute(task); // this call requires API level >= 11
+                            }
+                        } else {
+                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids don't match, dropping callbacks");
+                        }
+
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -369,9 +391,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
                 }
             }// handleMessage
 
-            private void runSurveyCheck(SurveyCheck check) {
+            // Return is possibly (often!) null
+            private Survey runSurveyCheck(final SurveyCheck check) {
                 // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
-                final SurveyCallbacks callbacks = check.getCallbacks();
                 String escapedToken;
                 String escapedId;
                 try {
@@ -392,7 +414,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
                 final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
                 if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
                     Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
-                    return;
+                    return null;
                 }
                 final String response = result.getResponse();
                 JSONArray surveys = null;
@@ -401,13 +423,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
                     surveys = parsed.getJSONArray("surveys");
                 } catch (final JSONException e) {
                     Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
-                    return;
+                    return null;
                 }
                 Survey found = null;
                 for (int i = 0; found == null && i < surveys.length(); i++) {
                     try {
                         final JSONObject candidateJson = surveys.getJSONObject(i);
-                        final Survey candidate = new Survey(candidateJson); // Can throw a JSON error
+                        final Survey candidate = new Survey(candidateJson);
                         if (mSeenSurveys.contains(candidate.getId())) {
                             if (MPConfig.DEBUG) {
                                 Log.i(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
@@ -417,31 +439,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
                             // mSeenSurveys.add(found.getId()); TODO UNCOMMENT
                         }
                     } catch (final JSONException e) {
+                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
+                        found = null;
+                    } catch (final Survey.BadSurveyException e) {
+                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
                         found = null;
                     }
                 }
-
-                final Survey toReport = found;
-                final Looper mainLooper = Looper.getMainLooper();
-                MixpanelAPI mpInstance = MixpanelAPI.getInstance(mContext, check.getToken());
-                String currentLockId = mpInstance.getPeople().getSurveyLockId();
-                if (check.getLockId().equals(currentLockId)) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids match, executing callback");
-                    if (mainLooper != null) {
-                        new Handler(mainLooper).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                callbacks.foundSurvey(toReport);
-                            }
-                        });
-                    } else {
-                        // No main looper, we just run it here
-                        callbacks.foundSurvey(toReport);
-                    }
-                } else {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids don't match, dropping callbacks");
-                }
-
+                return found;
             }// runSurveyCheck
 
             public boolean isOnline() {

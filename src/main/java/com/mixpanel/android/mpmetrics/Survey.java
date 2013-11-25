@@ -10,20 +10,39 @@ import org.json.JSONObject;
 
 public class Survey {
 
-    public Survey(JSONObject description) throws JSONException {
-        mDescription = description;
-        mId = description.getInt("id");
-        final JSONArray collectionsJArray = description.getJSONArray("collections");
-        final JSONObject collection0 = collectionsJArray.getJSONObject(0);
-        mCollectionId = collection0.getInt("id");
-
-        final JSONArray questionsJArray = description.getJSONArray("questions");
-        final List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
-        for (int i = 0; i < questionsJArray.length(); i++) {
-            final JSONObject q = questionsJArray.getJSONObject(i);
-            questionsList.add(new Question(q));
+    public static class BadSurveyException extends Exception {
+        public BadSurveyException(String detailMessage) {
+            super(detailMessage);
         }
-        mQuestions = Collections.unmodifiableList(questionsList);
+
+        public BadSurveyException(String detailMessage, Throwable throwable) {
+            super(detailMessage, throwable);
+        }
+
+        private static final long serialVersionUID = 4858739193395706341L;
+    }
+
+    public Survey(JSONObject description) throws BadSurveyException {
+        try {
+            mDescription = description;
+            mId = description.getInt("id");
+            final JSONArray collectionsJArray = description.getJSONArray("collections");
+            final JSONObject collection0 = collectionsJArray.getJSONObject(0);
+            mCollectionId = collection0.getInt("id");
+
+            final JSONArray questionsJArray = description.getJSONArray("questions");
+            if (questionsJArray.length() == 0) {
+                throw new BadSurveyException("Survey has no questions.");
+            }
+            final List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
+            for (int i = 0; i < questionsJArray.length(); i++) {
+                final JSONObject q = questionsJArray.getJSONObject(i);
+                questionsList.add(new Question(q));
+            }
+            mQuestions = Collections.unmodifiableList(questionsList);
+        } catch (final JSONException e) {
+            throw new BadSurveyException("Survey JSON was unexpected or bad", e);
+        }
     }
 
     public String toJSON() {
@@ -60,7 +79,7 @@ public class Survey {
     };
 
     public class Question {
-        private Question(JSONObject question) throws JSONException {
+        private Question(JSONObject question) throws JSONException, BadSurveyException {
             mQuestionId = question.getInt("id");
             mQuestionType = question.getString("type").intern();
             mPrompt = question.getString("prompt");
@@ -77,6 +96,9 @@ public class Survey {
                 }
             }
             mChoices = Collections.unmodifiableList(choicesList);
+            if (getType() == QuestionType.MULTIPLE_CHOICE && mChoices.size() == 0) {
+                throw new BadSurveyException("Question is multiple choice but has no answers:" + question.toString());
+            }
         }
 
         public int getId() {
