@@ -1256,7 +1256,7 @@ public class MixpanelAPI {
     private WaitingPeopleRecord mWaitingPeopleRecord;
 
     // Survey check locking
-    private static long SURVEY_LOCK_TIMEOUT = 10;
+    private static long SURVEY_LOCK_TIMEOUT = 5000;
     private final SurveyLock surveyLock = new SurveyLock();
     private class SurveyLock {
         String id;

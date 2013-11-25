@@ -338,7 +338,7 @@ import android.os.AsyncTask;
                             if (mainLooper != null) {
                                 new Handler(mainLooper).post(task);
                             } else {
-                                AsyncTask.execute(task); // this call requires API level >= 11
+                                AsyncTask.execute(task);
                             }
                         } else {
                             if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids don't match, dropping callbacks");
