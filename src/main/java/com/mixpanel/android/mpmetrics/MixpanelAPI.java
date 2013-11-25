@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -848,7 +849,7 @@ public class MixpanelAPI {
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-            final String lockId = acquireSurveyLock();
+            final String lockId = surveyLock.acquire();
             if (lockId != null) {
                 final String checkToken = mToken;
                 final String checkDistinctId = mPeopleDistinctId;
@@ -879,17 +880,12 @@ public class MixpanelAPI {
 
         @Override
         public void releaseSurveyLock() {
-            synchronized (surveyLock) {
-                surveyLock.id = null;
-                surveyLock.time = 0;
-            }
+            surveyLock.release();
         }
 
         @Override
         public String getSurveyLockId() {
-            synchronized (surveyLock) {
-                return surveyLock.id;
-            }
+            return surveyLock.getId();
         }
 
         @Override
@@ -1113,22 +1109,6 @@ public class MixpanelAPI {
                 return dataObj;
         }
 
-        private String acquireSurveyLock() {
-            synchronized (surveyLock) {
-                if ((System.currentTimeMillis() - surveyLock.time) > SURVEY_LOCK_TIMEOUT) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
-                    releaseSurveyLock();
-                }
-
-                if (surveyLock.id == null) {
-                    surveyLock.time = System.currentTimeMillis();
-                    surveyLock.id = String.format("%s-%s", surveyLock.time, Math.floor(Math.random()*10000));
-                    return surveyLock.id;
-                } else {
-                    return null;
-                }
-            }
-        }
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
@@ -1256,10 +1236,52 @@ public class MixpanelAPI {
     private WaitingPeopleRecord mWaitingPeopleRecord;
 
     // Survey check locking
-    private static long SURVEY_LOCK_TIMEOUT = 5000;
     private final SurveyLock surveyLock = new SurveyLock();
     private class SurveyLock {
-        String id;
-        long time;
+        public String acquire() {
+            try {
+                writeLock.lock();
+                if (this.time > 0 && (System.currentTimeMillis() - this.time) > SURVEY_LOCK_TIMEOUT) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
+                    release();
+                }
+
+                if (surveyLock.id == null) {
+                    surveyLock.time = System.currentTimeMillis();
+                    surveyLock.id = String.format("%s-%s", surveyLock.time, Math.floor(Math.random()*10000));
+                    return surveyLock.id;
+                } else {
+                    return null;
+                }
+            } finally {
+                writeLock.unlock();
+            }
+        }
+
+        public void release() {
+            try {
+                writeLock.lock();
+                this.id = null;
+                this.time = 0;
+            } finally {
+                writeLock.unlock();
+            }
+        }
+
+        public String getId() {
+            try {
+                readLock.lock();
+                return this.id;
+            } finally {
+                readLock.unlock();
+            }
+        }
+
+        private final ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
+        private final ReentrantReadWriteLock.ReadLock readLock = reentrantReadWriteLock.readLock();
+        private final ReentrantReadWriteLock.WriteLock writeLock = reentrantReadWriteLock.writeLock();
+        private String id;
+        private long time;
+        private long SURVEY_LOCK_TIMEOUT = 5000;
     }
 }
