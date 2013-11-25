@@ -8,5 +8,7 @@
     android:id="@+id/com_mixpanel_android_multiple_choice_answer_text"
     android:gravity="center_vertical"
     android:textColor="#ffffff"
+    android:ellipsize="end"
+    android:maxLines="3"
     android:checkMark="@drawable/com_mixpanel_android_checkmark_states"
     />
