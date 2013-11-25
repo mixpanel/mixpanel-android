@@ -180,7 +180,7 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void saveAnswer(Survey.Question question, String answer) {
         mAnswers.put(question.getId(), answer.toString());
-        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId()); // TODO should be $union
+        mMixpanel.getPeople().append("$responses", mSurvey.getCollectionId());
 
         try {
             final JSONObject answerJson = new JSONObject();
