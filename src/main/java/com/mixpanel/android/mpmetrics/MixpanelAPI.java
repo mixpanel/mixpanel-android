@@ -678,6 +678,10 @@ public class MixpanelAPI {
          */
         public void checkForSurvey(SurveyCallbacks callbacks);
 
+        public String getSurveyLockId();
+
+        public void releaseSurveyLock();
+
         /**
          * Will launch an activity that shows a survey to a user and sends the responses
          * to Mixpanel. To get a survey to show, use checkForSurvey()
@@ -844,27 +848,48 @@ public class MixpanelAPI {
         @Override
         public void checkForSurvey(SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-            final String checkToken = mToken;
-            final String checkDistinctId = mPeopleDistinctId;
-            final SurveyCallbacks checkCallbacks = callbacks;
-            if (null == callbacks) {
-                Log.i(LOGTAG, "Skipping survey check, because callback is null.");
-                return;
+            final String lockId = acquireSurveyLock();
+            if (lockId != null) {
+                final String checkToken = mToken;
+                final String checkDistinctId = mPeopleDistinctId;
+                final SurveyCallbacks checkCallbacks = callbacks;
+                if (null == callbacks) {
+                    Log.i(LOGTAG, "Skipping survey check, because callback is null.");
+                    return;
+                }
+                if (null == checkDistinctId) {
+                    Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
+                    return;
+                }
+                if (Build.VERSION.SDK_INT < 10) {
+                    Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
+                    callbacks.foundSurvey(null);
+                    return;
+                }
+                mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
+                    @Override public String getToken() { return checkToken; }
+                    @Override public String getDistinctId() { return checkDistinctId; }
+                    @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
+                    @Override public String getLockId() { return lockId; }
+                });
+            } else {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
             }
-            if (null == checkDistinctId) {
-                Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
-                return;
+        }
+
+        @Override
+        public void releaseSurveyLock() {
+            synchronized (surveyLock) {
+                surveyLock.id = null;
+                surveyLock.time = 0;
             }
-            if (Build.VERSION.SDK_INT < 10) {
-                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
-                callbacks.foundSurvey(null);
-                return;
+        }
+
+        @Override
+        public String getSurveyLockId() {
+            synchronized (surveyLock) {
+                return surveyLock.id;
             }
-            mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
-                @Override public String getToken() { return checkToken; }
-                @Override public String getDistinctId() { return checkDistinctId; }
-                @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
-            });
         }
 
         @Override
@@ -1087,9 +1112,27 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
+
+        private String acquireSurveyLock() {
+            synchronized (surveyLock) {
+                if ((System.currentTimeMillis() - surveyLock.time) > SURVEY_LOCK_TIMEOUT) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
+                    releaseSurveyLock();
+                }
+
+                if (surveyLock.id == null) {
+                    surveyLock.time = System.currentTimeMillis();
+                    surveyLock.id = String.format("%s-%s", surveyLock.time, Math.floor(Math.random()*10000));
+                    return surveyLock.id;
+                } else {
+                    return null;
+                }
+            }
+        }
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
+
 
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
@@ -1211,4 +1254,12 @@ public class MixpanelAPI {
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
     private WaitingPeopleRecord mWaitingPeopleRecord;
+
+    // Survey check locking
+    private static long SURVEY_LOCK_TIMEOUT = 10;
+    private final SurveyLock surveyLock = new SurveyLock();
+    private class SurveyLock {
+        String id;
+        long time;
+    }
 }

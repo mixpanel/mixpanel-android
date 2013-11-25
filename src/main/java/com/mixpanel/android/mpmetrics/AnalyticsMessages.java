@@ -1,5 +1,19 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.util.DisplayMetrics;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Collections;
@@ -10,20 +24,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.util.DisplayMetrics;
-import android.util.Log;
 
 
 /**
@@ -124,6 +124,7 @@ import android.util.Log;
         public SurveyCallbacks getCallbacks();
         public String getDistinctId();
         public String getToken();
+        public String getLockId();
     }
 
     public void checkForSurveys(SurveyCheck check) {
@@ -422,17 +423,25 @@ import android.util.Log;
 
                 final Survey toReport = found;
                 final Looper mainLooper = Looper.getMainLooper();
-                if (mainLooper != null) {
-                    new Handler(mainLooper).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            callbacks.foundSurvey(toReport);
-                        }
-                    });
+                MixpanelAPI mpInstance = MixpanelAPI.getInstance(mContext, check.getToken());
+                String currentLockId = mpInstance.getPeople().getSurveyLockId();
+                if (check.getLockId().equals(currentLockId)) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids match, executing callback");
+                    if (mainLooper != null) {
+                        new Handler(mainLooper).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callbacks.foundSurvey(toReport);
+                            }
+                        });
+                    } else {
+                        // No main looper, we just run it here
+                        callbacks.foundSurvey(toReport);
+                    }
                 } else {
-                    // No main looper, we just run it here
-                    callbacks.foundSurvey(toReport);
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids don't match, dropping callbacks");
                 }
+
             }// runSurveyCheck
 
             public boolean isOnline() {
