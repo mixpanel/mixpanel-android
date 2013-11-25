@@ -20,13 +20,13 @@ import android.util.Log;
     public static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
         try {
-            ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
+            final ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
             Bundle configBundle = appInfo.metaData;
             if (null == configBundle) {
                 configBundle = new Bundle();
             }
             return new MPConfig(configBundle);
-        } catch (NameNotFoundException e) {
+        } catch (final NameNotFoundException e) {
             throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
         }
     }
