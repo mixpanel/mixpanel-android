@@ -7,6 +7,8 @@
 	<TextView android:id="@+id/com_mixpanel_android_prompt_text" android:layout_width="wrap_content"
 		android:layout_height="wrap_content" android:layout_gravity="center"
 		android:paddingBottom="20dp"
+		android:ellipsize="end"
+		android:maxLines="3"
 		android:textColor="#ffffff" android:textSize="18sp" />
 
 	<com.mixpanel.android.surveys.AlwaysSubmittableEditText android:id="@+id/com_mixpanel_android_text_answer" android:layout_width="match_parent"
