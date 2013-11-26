@@ -1258,9 +1258,9 @@ public class MixpanelAPI {
                     release();
                 }
 
-                if (id == null) {
+                if (!locked) {
                     time = System.currentTimeMillis();
-                    id = String.format("%s-%s", time, Math.floor(Math.random()*10000));
+                    locked = true;
                     return true;
                 } else {
                     return false;
@@ -1273,26 +1273,17 @@ public class MixpanelAPI {
         public void release() {
             try {
                 writeLock.lock();
-                this.id = null;
+                this.locked = false;
                 this.time = 0;
             } finally {
                 writeLock.unlock();
             }
         }
 
-        public String getId() {
-            try {
-                readLock.lock();
-                return this.id;
-            } finally {
-                readLock.unlock();
-            }
-        }
-
         private final ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
         private final ReentrantReadWriteLock.ReadLock readLock = reentrantReadWriteLock.readLock();
         private final ReentrantReadWriteLock.WriteLock writeLock = reentrantReadWriteLock.writeLock();
-        private String id;
+        private boolean locked;
         private long time;
         private long timeoutMillis;
     }
