@@ -31,6 +31,8 @@
 		android:layout_height="0dp" android:layout_weight="1"
 		android:textColor="#ffffff" android:textSize="18sp"
 		android:scrollbars="none"
+		android:requiresFadingEdge="vertical"
+		android:fadingEdgeLength="30dp"
 		android:cacheColorHint="#00000000" android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
 		android:background="@android:color/transparent" android:divider="@android:color/transparent"
 		android:choiceMode="singleChoice" />
