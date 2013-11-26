@@ -57,15 +57,16 @@ public class SurveyChoiceView extends CheckedTextView {
             checkmarkWidth = (int) (CHECKMARK_HEIGHT_DP * density);
         }
         final int checkmarkHeight = checkmarkWidth;
-        final int boxPadding = (int) (BOX_PADDING_DP * density);
+        final int boxPaddingTop = (int) (BOX_PADDING_TOP_DP * density);
+        final int boxPaddingLeft = (int) (BOX_PADDING_LEFT_DP * density);
 
         // Hide the checkmark during our parent drawing
         setCheckMarkDrawable(null);
-        final int textPaddingLeft = (int) (boxPadding + (mTextLeftOffset * checkmarkWidth));
-        setPadding(textPaddingLeft, boxPadding, boxPadding, boxPadding);
+        final int textPaddingLeft = (int) (boxPaddingLeft + (mTextLeftOffset * checkmarkWidth));
+        setPadding(textPaddingLeft, boxPaddingTop, boxPaddingLeft, boxPaddingTop);
         super.onDraw(canvas);
-        final int checkPaddingLeft = (int) (boxPadding + (mCheckmarkLeftOffset * checkmarkWidth));
-        setPadding(checkPaddingLeft, boxPadding, boxPadding, boxPadding);
+        final int checkPaddingLeft = (int) (boxPaddingLeft + (mCheckmarkLeftOffset * checkmarkWidth));
+        setPadding(checkPaddingLeft, boxPaddingTop, boxPaddingLeft, boxPaddingTop);
         setCheckMarkDrawable(checkMarkDrawable);
 
         if (null != checkMarkDrawable) {
@@ -89,7 +90,7 @@ public class SurveyChoiceView extends CheckedTextView {
             checkMarkDrawable.draw(canvas);
         }
 
-        setPadding(boxPadding, boxPadding, boxPadding, boxPadding);
+        setPadding(boxPaddingLeft, boxPaddingTop, boxPaddingLeft, boxPaddingTop);
     }
 
     private void initSurveyChoiceView() {
@@ -130,5 +131,6 @@ public class SurveyChoiceView extends CheckedTextView {
     // Nice to have- these as LayoutParameters/Styled attributes
     private static final int ANIMATION_DURATION = 130;
     private static final int CHECKMARK_HEIGHT_DP = 14; // Current code assumes a SQUARE CHECKMARK.
-    private static final int BOX_PADDING_DP = 22;
+    private static final int BOX_PADDING_LEFT_DP = 22;
+    private static final int BOX_PADDING_TOP_DP = 12;
 }
