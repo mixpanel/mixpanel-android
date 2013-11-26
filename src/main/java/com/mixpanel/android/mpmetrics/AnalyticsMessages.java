@@ -1,5 +1,21 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -11,20 +27,6 @@ import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
@@ -327,14 +329,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
                                 check.getCallbacks().foundSurvey(found);
                             }
                         };
-
                         final Looper mainLooper = Looper.getMainLooper();
                         if (mainLooper != null) {
                             new Handler(mainLooper).post(task);
                         } else {
                             AsyncTask.execute(task);
                         }
-
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -437,6 +437,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
                         found = null;
                     }
                 }
+
                 return found;
             }// runSurveyCheck
 
