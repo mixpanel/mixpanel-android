@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -1249,38 +1249,40 @@ public class MixpanelAPI {
         }
 
         public boolean acquire() {
-            try {
-                writeLock.lock();
-                if (this.time > 0 && (System.currentTimeMillis() - this.time) > timeoutMillis) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
-                    release();
-                }
+            if (reentrantLock.tryLock()) {
+                try {
+                    if (this.time > 0 && (System.currentTimeMillis() - this.time) > timeoutMillis) {
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
+                        release();
+                    }
 
-                if (!locked) {
-                    time = System.currentTimeMillis();
-                    locked = true;
-                    return true;
-                } else {
-                    return false;
+                    if (!locked) {
+                        time = System.currentTimeMillis();
+                        locked = true;
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } finally {
+                    reentrantLock.unlock();
                 }
-            } finally {
-                writeLock.unlock();
+            } else {
+                return false;
             }
         }
 
         public void release() {
-            try {
-                writeLock.lock();
-                this.locked = false;
-                this.time = 0;
-            } finally {
-                writeLock.unlock();
+            if (reentrantLock.tryLock()) {
+                try {
+                    this.locked = false;
+                    this.time = 0;
+                } finally {
+                    reentrantLock.unlock();
+                }
             }
         }
 
-        private final ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
-        private final ReentrantReadWriteLock.ReadLock readLock = reentrantReadWriteLock.readLock();
-        private final ReentrantReadWriteLock.WriteLock writeLock = reentrantReadWriteLock.writeLock();
+        private final ReentrantLock reentrantLock = new ReentrantLock();
         private boolean locked;
         private long time;
         private long timeoutMillis;
