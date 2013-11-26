@@ -1,16 +1,5 @@
 package com.mixpanel.android.surveys;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -28,6 +17,17 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
 
 public class SurveyActivity extends Activity {
 
@@ -126,6 +126,7 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onDestroy() {
         mMixpanel.flush();
+        mMixpanel.getPeople().releaseShowSurveyLock();
         super.onDestroy();
     }
 
