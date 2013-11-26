@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,8 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import android.os.AsyncTask;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
@@ -125,7 +124,6 @@ import android.os.AsyncTask;
         public SurveyCallbacks getCallbacks();
         public String getDistinctId();
         public String getToken();
-        public String getLockId();
     }
 
     public void checkForSurveys(SurveyCheck check) {
@@ -330,18 +328,11 @@ import android.os.AsyncTask;
                             }
                         };
 
-                        MixpanelAPI mpInstance = MixpanelAPI.getInstance(mContext, check.getToken());
-                        String currentLockId = mpInstance.getPeople().getSurveyLockId();
                         final Looper mainLooper = Looper.getMainLooper();
-                        if (check.getLockId().equals(currentLockId)) {
-                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids match, executing callback");
-                            if (mainLooper != null) {
-                                new Handler(mainLooper).post(task);
-                            } else {
-                                AsyncTask.execute(task);
-                            }
+                        if (mainLooper != null) {
+                            new Handler(mainLooper).post(task);
                         } else {
-                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Lock ids don't match, dropping callbacks");
+                            AsyncTask.execute(task);
                         }
 
                     }
