@@ -1114,11 +1114,9 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
-
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
-
 
     private void pushWaitingPeopleRecord() {
         if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
