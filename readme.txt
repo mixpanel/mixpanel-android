@@ -26,6 +26,12 @@ v4.0.0
 ---------------------
 This is a major release, with significant changes to library behavior.
 
+* Changes to the steps required to integrate the Mixpanel library in your project.
+
+  In previous releases, the Mixpanel library was distributed as a jar file. As of 4.0.0,
+  use of the library varies with the build tools chosen.
+
+
 * Support for Mixpanel surveys. Support takes the form of two new API calls
   and some new default automatic behavior
 

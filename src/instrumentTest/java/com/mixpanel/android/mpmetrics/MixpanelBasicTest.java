@@ -38,30 +38,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(getContext() != null);
     }
 
-    public void testCustomConfig() {
-        Bundle bundle = new Bundle();
-        bundle.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 101);
-        bundle.putInt("com.mixpanel.android.MPConfig.FlushInterval", 102);
-        bundle.putInt("com.mixpanel.android.MPConfig.DataExpiration", 103);
-        bundle.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EventsEndpoint");
-        bundle.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EventsFallback");
-        bundle.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PeopleEndpoint");
-        bundle.putString("com.mixpanel.android.MPConfig.PeopleFallbackEndpoint", "PeopleFallback");
-        bundle.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DecideEndpoint");
-        bundle.putString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint", "DecideFallback");
-
-        MPConfig config = new MPConfig(bundle);
-        assertEquals(config.getBulkUploadLimit(), 101);
-        assertEquals(config.getFlushInterval(), 102);
-        assertEquals(config.getDataExpiration(), 103);
-        assertEquals(config.getEventsEndpoint(), "EventsEndpoint");
-        assertEquals(config.getEventsFallbackEndpoint(), "EventsFallback");
-        assertEquals(config.getPeopleEndpoint(), "PeopleEndpoint");
-        assertEquals(config.getPeopleFallbackEndpoint(), "PeopleFallback");
-        assertEquals(config.getDecideEndpoint(), "DecideEndpoint");
-        assertEquals(config.getDecideFallbackEndpoint(), "DecideFallback");
-    }
-
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();
         MixpanelAPI mixpanel = MixpanelAPI.getInstance(getContext(), fakeToken);
