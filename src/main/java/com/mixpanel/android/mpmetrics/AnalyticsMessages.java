@@ -544,17 +544,17 @@ import android.util.Log;
 
             private JSONObject prepareEventObject(EventDTO eventDTO) throws JSONException {
                 final JSONObject eventObj = new JSONObject();
-                final JSONObject properties = eventDTO.getProperties();
-                final JSONObject propertiesObj = getDefaultEventProperties();
-                propertiesObj.put("token", eventDTO.getToken());
-                if (properties != null) {
-                    for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                final JSONObject eventProperties = eventDTO.getProperties();
+                final JSONObject sendProperties = getDefaultEventProperties();
+                sendProperties.put("token", eventDTO.getToken());
+                if (eventProperties != null) {
+                    for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext();) {
                         final String key = (String) iter.next();
-                        propertiesObj.put(key, properties.get(key));
+                        sendProperties.put(key, eventProperties.get(key));
                     }
                 }
                 eventObj.put("event", eventDTO.getEventName());
-                eventObj.put("properties", propertiesObj);
+                eventObj.put("properties", sendProperties);
                 return eventObj;
             }
 
