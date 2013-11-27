@@ -22,6 +22,7 @@ import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.DisplayMetrics;
@@ -228,45 +229,15 @@ import android.util.Log;
         // NOTE that the returned worker will run FOREVER, unless you send a hard kill
         // (which you really shouldn't)
         private Handler restartWorkerThread() {
-            Handler ret = null;
-
-            final SynchronousQueue<Handler> handlerQueue = new SynchronousQueue<Handler>();
-
-            final Thread thread = new Thread() {
-                @Override
-                public void run() {
-                    if (MPConfig.DEBUG)
-                        Log.i(LOGTAG, "Starting worker thread " + this.getId());
-
-                    Looper.prepare();
-                    try {
-                        handlerQueue.put(new AnalyticsMessageHandler());
-                    } catch (final InterruptedException e) {
-                        throw new RuntimeException("Couldn't build worker thread for Analytics Messages", e);
-                    }
-
-                    try {
-                        Looper.loop();
-                    } catch (final RuntimeException e) {
-                        Log.e(LOGTAG, "Mixpanel Thread dying from RuntimeException", e);
-                    }
-                }
-            };
-            thread.setPriority(Thread.MIN_PRIORITY);
+            final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
             thread.start();
-
-            try {
-                ret = handlerQueue.take();
-            } catch (final InterruptedException e) {
-                throw new RuntimeException("Couldn't retrieve handler from worker thread");
-            }
-
+            final Handler ret = new AnalyticsMessageHandler(thread.getLooper());
             return ret;
         }
 
         private class AnalyticsMessageHandler extends Handler {
-            public AnalyticsMessageHandler() {
-                super();
+            public AnalyticsMessageHandler(Looper looper) {
+                super(looper);
                 mDbAdapter = null;
                 mSeenSurveys = Collections.synchronizedSet(new HashSet<Integer>());
                 mDisableFallback = mConfig.getDisableFallback();
@@ -376,16 +347,16 @@ import android.util.Log;
                         }
                     }
                 } catch (final RuntimeException e) {
-                    Log.e(LOGTAG, "Worker threw an unhandled exception- will not send any more mixpanel messages", e);
+                    Log.e(LOGTAG, "Worker threw an unhandled exception", e);
                     synchronized (mHandlerLock) {
                         mHandler = null;
                         try {
                             Looper.myLooper().quit();
+                            Log.e(LOGTAG, "Mixpanel will not process any more analytics messages", e);
                         } catch (final Exception tooLate) {
                             Log.e(LOGTAG, "Could not halt looper", tooLate);
                         }
                     }
-                    throw e;
                 }
             }// handleMessage
 
