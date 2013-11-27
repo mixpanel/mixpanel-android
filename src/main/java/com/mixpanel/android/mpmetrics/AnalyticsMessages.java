@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONArray;
@@ -225,13 +224,12 @@ import android.util.Log;
         }
 
         public void runMessage(Message msg) {
-            if (isDead()) {
-                // We died under suspicious circumstances. Don't try to send any more events.
-                logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg);
-            }
-            else {
-                synchronized(mHandlerLock) {
-                    if (mHandler != null) mHandler.sendMessage(msg);
+            synchronized(mHandlerLock) {
+                if (mHandler == null) {
+                    // We died under suspicious circumstances. Don't try to send any more events.
+                    logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg);
+                } else {
+                    mHandler.sendMessage(msg);
                 }
             }
         }
