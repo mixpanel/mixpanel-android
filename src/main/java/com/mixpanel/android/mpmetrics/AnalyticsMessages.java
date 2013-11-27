@@ -342,18 +342,16 @@ import android.util.Log;
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
-                    } else if (queueDepth > 0) {
-                        if (!hasMessages(FLUSH_QUEUE)) {
-                            // The hasMessages check is a courtesy for the common case
-                            // of delayed flushes already enqueued from inside of this thread.
-                            // Callers outside of this thread can still send
-                            // a flush right here, so we may end up with two flushes
-                            // in our queue, but we're ok with that.
+                    } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
+                        // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
+                        // of delayed flushes already enqueued from inside of this thread.
+                        // Callers outside of this thread can still send
+                        // a flush right here, so we may end up with two flushes
+                        // in our queue, but we're OK with that.
 
-                            logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
-                            if (mFlushInterval >= 0) {
-                                    sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
-                            }
+                        logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
+                        if (mFlushInterval >= 0) {
+                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
                     }
                 } catch (final RuntimeException e) {
