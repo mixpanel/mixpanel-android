@@ -24,6 +24,22 @@ Changelog:
 
 v4.0.0
 ---------------------
+This is a major release, with significant changes to library behavior.
+
+* Support for Mixpanel surveys. Support takes the form of two new API calls
+  and some new default automatic behavior
+
+  - MixpanelAPI.getPeople().checkForSurveys will query Mixpanel for surveys
+    targeted to the current user, and pass a Survey object
+    to a callback when a survey is found, or null if no Survey could be found
+
+  - MixpanelAPI.getPeople().showSurvey will launch a new Activity that shows
+    the given survey to the user, and send the results of the survey to Mixpanel
+
+  - Unless configured with com.mixpanel.android.MPConfig.AutoCheckForSurveys metadata,
+    applications using the Mixpanel library will automatically query for and show
+    an available survey on application startup.
+
 * Passing a null token or null context to MixpanelAPI.getInstance() will result in
   a null return value.
 
@@ -43,6 +59,12 @@ v4.0.0
 
       If provided and equal to "true", the library will not attempt to send data over
       HTTP if HTTPS fails
+
+  com.mixpanel.android.MPConfig.AutoCheckForSurveys (value: a boolean)
+
+      If provided and equal to "false", the Mixpanel library will not attempt to
+      retrieve and show surveys automatically, users can still show surveys using
+      MixpanelAPI.getPeople().checkForSurvey and MixpanelAPI.getPeople().showSurvey
 
 * A scary stack trace log in the common, not-scary case of fallback from HTTPS to HTTP has been
   removed.
