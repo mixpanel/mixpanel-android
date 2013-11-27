@@ -719,7 +719,7 @@ public class MixpanelAPI {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is >= 14");
             if (mContext.getApplicationContext() instanceof Application) {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is instanceof Application, registering MixpanelActivityLifecycleCallbacks");
-                Application app = (Application) mContext.getApplicationContext();
+                final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, auto show surveys will be disabled.");
@@ -877,7 +877,7 @@ public class MixpanelAPI {
                 mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
                     @Override public String getToken() { return checkToken; }
                     @Override public String getDistinctId() { return checkDistinctId; }
-                    @Override public SurveyCallbacks getCallbacks() { return checkCallbacks; }
+                    @Override public SurveyCallbacks getCallbacks() { return callbackWrapper; }
                 });
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
@@ -1285,6 +1285,6 @@ public class MixpanelAPI {
         private final ReentrantLock reentrantLock = new ReentrantLock();
         private boolean locked;
         private long time;
-        private long timeoutMillis;
+        private final long timeoutMillis;
     }
 }
