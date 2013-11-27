@@ -437,10 +437,14 @@ import android.util.Log;
                             (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
                     final NetworkInfo netInfo = cm.getActiveNetworkInfo();
                     isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+                    }
                 } catch (final SecurityException e) {
                     isOnline = true;
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity so returning true");
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
+                    }
                 }
                 return isOnline;
             }
