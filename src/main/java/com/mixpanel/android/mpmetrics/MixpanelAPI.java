@@ -934,7 +934,7 @@ public class MixpanelAPI {
                         if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
 
                         final Canvas canvas = new Canvas(background);
-                        canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
+                        canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
 
                         final ByteArrayOutputStream bs = new ByteArrayOutputStream();
                         background.compress(Bitmap.CompressFormat.PNG, 20, bs);
@@ -1217,27 +1217,7 @@ public class MixpanelAPI {
         private final int mHighlightColor;
     }
 
-    private static final String LOGTAG = "MixpanelAPI";
-    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
-    // Maps each token to a singleton MixpanelAPI instance
-    private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
-    private final Context mContext;
-    private final AnalyticsMessages mMessages;
-    private final String mToken;
-    private final PeopleImpl mPeople;
-    private final SharedPreferences mStoredPreferences;
-
-    // Persistent members. These are loaded and stored from our preferences.
-    private JSONObject mSuperProperties;
-    private String mEventsDistinctId;
-    private String mPeopleDistinctId;
-    private WaitingPeopleRecord mWaitingPeopleRecord;
-
-    // Survey check locking
-    private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
-    private final ExpiringLock showSurveyLock = new ExpiringLock(12 * 60 * 60 * 1000); // 12 hour timeout
-    private class ExpiringLock {
+    private static class ExpiringLock {
 
         private ExpiringLock(long timeoutInMillis) {
             this.timeoutMillis = timeoutInMillis;
@@ -1282,4 +1262,27 @@ public class MixpanelAPI {
         private long time;
         private final long timeoutMillis;
     }
+
+    private static final String LOGTAG = "MixpanelAPI";
+    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
+
+    // Maps each token to a singleton MixpanelAPI instance
+    private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
+    private final Context mContext;
+    private final AnalyticsMessages mMessages;
+    private final String mToken;
+    private final PeopleImpl mPeople;
+    private final SharedPreferences mStoredPreferences;
+
+    // Persistent members. These are loaded and stored from our preferences.
+    private JSONObject mSuperProperties;
+    private String mEventsDistinctId;
+    private String mPeopleDistinctId;
+    private WaitingPeopleRecord mWaitingPeopleRecord;
+
+    // Survey check locking
+    private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
+    private final ExpiringLock showSurveyLock = new ExpiringLock(12 * 60 * 60 * 1000); // 12 hour timeout
+
+    private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
 }
