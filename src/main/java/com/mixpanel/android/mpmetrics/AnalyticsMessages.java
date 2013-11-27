@@ -369,7 +369,9 @@ import android.util.Log;
                 }
             }// handleMessage
 
-            // Return is possibly (often!) null
+            /**
+             * @return a Survey that the current identified user is eligible for, or null if no survey could be found.
+             */
             private Survey runSurveyCheck(final SurveyCheck check) {
                 // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
                 String escapedToken;
