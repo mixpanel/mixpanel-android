@@ -373,30 +373,7 @@ import android.util.Log;
              * @return a Survey that the current identified user is eligible for, or null if no survey could be found.
              */
             private Survey runSurveyCheck(final SurveyCheck check) {
-                // XXX: break up requesting surveys, checking list, and submitting foundSurvey job into separate methods
-                String escapedToken;
-                String escapedId;
-                try {
-                    escapedToken = URLEncoder.encode(check.getToken(), "utf-8");
-                    escapedId = URLEncoder.encode(check.getDistinctId(), "utf-8");
-                } catch(final UnsupportedEncodingException e) {
-                    throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
-                }
-                final String checkQuery = new StringBuilder()
-                    .append("?version=1&lib=android&token=")
-                    .append(escapedToken)
-                    .append("&distinct_id=")
-                    .append(escapedId)
-                    .toString();
-                final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
-                final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
-                final ServerMessage poster = getPoster();
-                final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
-                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                    Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
-                    return null;
-                }
-                final String response = result.getResponse();
+                final String response = getSurveyFromServer(check.getToken(), check.getDistinctId());
                 JSONArray surveys = null;
                 try {
                     final JSONObject parsed = new JSONObject(response);
@@ -430,7 +407,33 @@ import android.util.Log;
                 return found;
             }// runSurveyCheck
 
-            public boolean isOnline() {
+            private String getSurveyFromServer(String unescapedToken, String unescapedDistinctId) {
+                String escapedToken;
+                String escapedId;
+                try {
+                    escapedToken = URLEncoder.encode(unescapedToken, "utf-8");
+                    escapedId = URLEncoder.encode(unescapedDistinctId, "utf-8");
+                } catch(final UnsupportedEncodingException e) {
+                    throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
+                }
+                final String checkQuery = new StringBuilder()
+                    .append("?version=1&lib=android&token=")
+                    .append(escapedToken)
+                    .append("&distinct_id=")
+                    .append(escapedId)
+                    .toString();
+                final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
+                final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
+                final ServerMessage poster = getPoster();
+                final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
+                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+                    Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
+                    return null;
+                }
+                return result.getResponse();
+            }
+
+            private boolean isOnline() {
                 boolean isOnline;
                 try {
                     final ConnectivityManager cm =
