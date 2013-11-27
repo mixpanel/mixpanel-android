@@ -59,16 +59,12 @@ import android.util.Log;
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
-                }
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
             }
             else {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
-                }
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
                 ret = sInstances.get(appContext);
             }
             return ret;
@@ -387,9 +383,7 @@ import android.util.Log;
                         final JSONObject candidateJson = surveys.getJSONObject(i);
                         final Survey candidate = new Survey(candidateJson);
                         if (mSeenSurveys.contains(candidate.getId())) {
-                            if (MPConfig.DEBUG) {
-                                Log.i(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
-                            }
+                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
                         } else {
                             found = candidate;
                             // mSeenSurveys.add(found.getId()); TODO UNCOMMENT
@@ -439,14 +433,10 @@ import android.util.Log;
                             (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
                     final NetworkInfo netInfo = cm.getActiveNetworkInfo();
                     isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-                    if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
-                    }
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
                 } catch (final SecurityException e) {
                     isOnline = true;
-                    if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
-                    }
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
                 }
                 return isOnline;
             }
