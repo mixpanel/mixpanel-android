@@ -672,10 +672,9 @@ public class MixpanelAPI {
          * });
          * }
          *
-         * The callback will be run in the Main UI thread if it is present
-         * (via Looper.getMainLooper()). If you're not running in the context of a
-         * traditional activity or service, the callback will be run inside of an
-         * internal Mixpanel thread.
+         * The foundSurvey() may be (and will probably be) called on a different thread
+         * than the one that called checkForSurveys(). The library doesn't guarantee
+         * a particular thread, and callbacks are responsible for their own thread safety.
          *
          * This method is will always call back with null in environments with
          * Android API before Gingerbread/API level 10

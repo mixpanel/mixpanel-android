@@ -307,16 +307,18 @@ import android.util.Log;
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
                         final SurveyCheck check = (SurveyCheck) msg.obj;
                         final Survey found = runSurveyCheck(check);
+
+                        // We don't want to run client callback code inside of this thread
+                        // (because it may take a long time, throw runtime exceptions, etc.)
+                        // We run it as an AsyncTask if such things are available,
+                        // Otherwise we run it in an isolated orphan thread.
                         final Runnable task = new Runnable() {
                             @Override
                             public void run() {
                                 check.getCallbacks().foundSurvey(found);
                             }
                         };
-                        final Looper mainLooper = Looper.getMainLooper();
-                        if (mainLooper != null) {
-                            new Handler(mainLooper).post(task);
-                        } else if (Build.VERSION.SDK_INT >= 11) {
+                        if (Build.VERSION.SDK_INT >= 11) {
                             AsyncTask.execute(task);
                         } else {
                             final Thread callbackThread = new Thread(task);
