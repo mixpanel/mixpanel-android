@@ -248,7 +248,7 @@ import android.util.Log;
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
-                mSeenSurveys = Collections.synchronizedSet(new HashSet<Integer>());
+                mSeenSurveys = new HashSet<Integer>();
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
