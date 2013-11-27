@@ -533,6 +533,7 @@ public class MixpanelAPI {
          */
         public void append(String name, Object value);
 
+        /** @hide */
         void releaseShowSurveyLock();
 
         /**

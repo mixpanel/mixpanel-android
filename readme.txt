@@ -31,6 +31,11 @@ This is a major release, with significant changes to library behavior.
   In previous releases, the Mixpanel library was distributed as a jar file. As of 4.0.0,
   use of the library varies with the build tools chosen.
 
+  For building with Eclipse, download the Mixpanel repository and follow the steps outlined
+  here, for "Referencing a Library Project":
+
+  http://developer.android.com/tools/projects/projects-eclipse.html#ReferencingLibraryProject
+
 
 * Support for Mixpanel surveys. Support takes the form of two new API calls
   and some new default automatic behavior
