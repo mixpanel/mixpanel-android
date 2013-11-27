@@ -212,6 +212,7 @@ import android.util.Log;
 
     // Worker will manage the (at most single) IO thread associated with
     // this AnalyticsMessages instance.
+    // XXX: Worker class is unnecessary, should be just a subclass of HandlerThread
     private class Worker {
         public Worker() {
             mHandler = restartWorkerThread();
