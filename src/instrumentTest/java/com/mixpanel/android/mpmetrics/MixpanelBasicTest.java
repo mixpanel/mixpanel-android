@@ -1,6 +1,19 @@
 package com.mixpanel.android.mpmetrics;
 
 
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.test.AndroidTestCase;
+import android.test.mock.MockContext;
+import android.test.mock.MockPackageManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,15 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.content.Context;
-import android.os.Build;
-import android.os.Bundle;
-import android.test.AndroidTestCase;
 
 public class MixpanelBasicTest extends AndroidTestCase {
 
@@ -311,26 +315,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testSurveys() {
         final List<String> responses = Collections.synchronizedList(new ArrayList<String>());
         final BlockingQueue<String> foundQueue = new LinkedBlockingQueue<String>();
-
-        final ServerMessage mockMessage = new ServerMessage() {
-            @Override
-            public Result get(String endpointUrl, String fallbackUrl) {
-                return new Result(Status.SUCCEEDED, responses.remove(0));
-            }
-        };
-        final AnalyticsMessages mockMessages = new AnalyticsMessages(getContext()) {
-            @Override
-            protected ServerMessage getPoster() {
-                return mockMessage;
-            }
-        };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN test checkForSurveys") {
-            @Override
-            protected AnalyticsMessages getAnalyticsMessages() {
-                return mockMessages;
-            }
-        };
-        mixpanel.clearPreferences();
+        MixpanelAPI mixpanel = apiForSurvey(responses);
 
         responses.add("{\"surveys\":[]}");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
@@ -340,6 +325,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         });
 
+        mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override
@@ -370,6 +356,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 "]}"
         );
 
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 if (Build.VERSION.SDK_INT < 10) {
@@ -416,6 +404,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         responses.add(
                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
         );
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
                 if (Build.VERSION.SDK_INT < 10) {
@@ -455,24 +445,34 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         // Corrupted or crazy responses.
         responses.add("{ WONT PARSE");
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid JSON but bad (no name)
         responses.add("{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}");
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Just pure craziness
         responses.add("null");
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid JSON that isn't relevant
         responses.add("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid survey with no questions
         responses.add(
                 "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
         );
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid survey with a question with no choices
@@ -484,6 +484,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
                         "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
                         "]}"
         );
+        mixpanel = apiForSurvey(responses);
+        mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
     }
 
@@ -917,6 +919,57 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
     }
 
+    public void testConfiguration() {
+        final ApplicationInfo appInfo = new ApplicationInfo();
+        appInfo.metaData = new Bundle();
+        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 1);
+        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
+        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
+        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
+        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", false);
+
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EVENTS FALLBACK ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PEOPLE ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleFallbackEndpoint", "PEOPLE FALLBACK ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DECIDE ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint", "DECIDE FALLBACK ENDPOINT");
+
+        final PackageManager packageManager = new MockPackageManager() {
+            @Override
+            public ApplicationInfo getApplicationInfo(String packageName, int flags) {
+                assertEquals(packageName, "TEST PACKAGE NAME");
+                assertTrue((flags & PackageManager.GET_META_DATA) == PackageManager.GET_META_DATA);
+                return appInfo;
+            }
+        };
+
+        final Context context = new MockContext() {
+            @Override
+            public String getPackageName() {
+                return "TEST PACKAGE NAME";
+            }
+
+            @Override
+            public PackageManager getPackageManager() {
+                return packageManager;
+            }
+        };
+
+        final MPConfig testConfig = MPConfig.readConfig(context);
+        assertEquals(1, testConfig.getBulkUploadLimit());
+        assertEquals(2, testConfig.getFlushInterval());
+        assertEquals(3, testConfig.getDataExpiration());
+        assertEquals(true, testConfig.getDisableFallback());
+        assertEquals(false, testConfig.getAutoCheckForSurveys());
+        assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
+        assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
+        assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
+        assertEquals("PEOPLE FALLBACK ENDPOINT", testConfig.getPeopleFallbackEndpoint());
+        assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
+        assertEquals("DECIDE FALLBACK ENDPOINT", testConfig.getDecideFallbackEndpoint());
+    }
+
     private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
             @Override
@@ -936,5 +989,28 @@ public class MixpanelBasicTest extends AndroidTestCase {
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted");
         }
+    }
+
+    private MixpanelAPI apiForSurvey(final List<String> responses) {
+        final ServerMessage mockMessage = new ServerMessage() {
+            @Override
+            public Result get(String endpointUrl, String fallbackUrl) {
+                return new Result(Status.SUCCEEDED, responses.remove(0));
+            }
+        };
+        final AnalyticsMessages mockMessages = new AnalyticsMessages(getContext()) {
+            @Override
+            protected ServerMessage getPoster() {
+                return mockMessage;
+            }
+        };
+        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN test checkForSurveys") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return mockMessages;
+            }
+        };
+        mixpanel.clearPreferences();
+        return mixpanel;
     }
 }
