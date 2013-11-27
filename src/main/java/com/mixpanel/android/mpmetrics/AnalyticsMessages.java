@@ -332,8 +332,11 @@ import android.util.Log;
                         final Looper mainLooper = Looper.getMainLooper();
                         if (mainLooper != null) {
                             new Handler(mainLooper).post(task);
-                        } else {
+                        } else if (Build.VERSION.SDK_INT >= 11) {
                             AsyncTask.execute(task);
+                        } else {
+                            Thread callbackThread = new Thread(task);
+                            callbackThread.run();
                         }
                     }
                     else if (msg.what == KILL_WORKER) {
