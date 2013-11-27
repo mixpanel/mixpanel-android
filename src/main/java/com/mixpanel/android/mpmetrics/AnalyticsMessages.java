@@ -342,8 +342,7 @@ import android.util.Log;
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
-                    }
-                    else if(queueDepth > 0) {
+                    } else if (queueDepth > 0) {
                         if (!hasMessages(FLUSH_QUEUE)) {
                             // The hasMessages check is a courtesy for the common case
                             // of delayed flushes already enqueued from inside of this thread.
