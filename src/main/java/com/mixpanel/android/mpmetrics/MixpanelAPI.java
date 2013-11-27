@@ -874,11 +874,9 @@ public class MixpanelAPI {
                     callbacks.foundSurvey(null);
                     return;
                 }
-                mMessages.checkForSurveys(new AnalyticsMessages.SurveyCheck() {
-                    @Override public String getToken() { return checkToken; }
-                    @Override public String getDistinctId() { return checkDistinctId; }
-                    @Override public SurveyCallbacks getCallbacks() { return callbackWrapper; }
-                });
+                final AnalyticsMessages.SurveyCheck surveyCheck =
+                        new AnalyticsMessages.SurveyCheck(callbackWrapper, checkDistinctId, checkToken);
+                mMessages.checkForSurveys(surveyCheck);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
             }

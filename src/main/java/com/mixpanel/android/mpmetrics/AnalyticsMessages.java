@@ -127,10 +127,20 @@ import android.util.Log;
     /**
      * All fields SurveyCheck must return non-null values.
      */
-    public interface SurveyCheck {
-        public SurveyCallbacks getCallbacks();
-        public String getDistinctId();
-        public String getToken();
+    public static class SurveyCheck {
+        public SurveyCheck(final SurveyCallbacks surveyCallbacks, final String distinctId, final String token) {
+            mSurveyCallbacks = surveyCallbacks;
+            mDistinctId = distinctId;
+            mToken = token;
+        }
+
+        public SurveyCallbacks getCallbacks() { return mSurveyCallbacks; }
+        public String getDistinctId() { return mDistinctId; }
+        public String getToken() { return mToken; }
+
+        private final SurveyCallbacks mSurveyCallbacks;
+        private final String mDistinctId;
+        private final String mToken;
     }
 
     public void checkForSurveys(SurveyCheck check) {
@@ -310,7 +320,7 @@ import android.util.Log;
                         } else if (Build.VERSION.SDK_INT >= 11) {
                             AsyncTask.execute(task);
                         } else {
-                            Thread callbackThread = new Thread(task);
+                            final Thread callbackThread = new Thread(task);
                             callbackThread.run();
                         }
                     }
