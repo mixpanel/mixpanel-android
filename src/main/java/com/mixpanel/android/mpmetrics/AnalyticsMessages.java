@@ -59,12 +59,16 @@ import android.util.Log;
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
+                }
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
             }
             else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
+                }
                 ret = sInstances.get(appContext);
             }
             return ret;
