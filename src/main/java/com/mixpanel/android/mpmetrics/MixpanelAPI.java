@@ -931,18 +931,15 @@ public class MixpanelAPI {
 
                         StackBlurManager.process(background, 20);
                         final long endTime = System.currentTimeMillis();
-                        if (MPConfig.DEBUG) {
-                            Log.i(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-                        }
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
+
                         final Canvas canvas = new Canvas(background);
                         canvas.drawColor(Color.argb(186, 28, 28, 28), PorterDuff.Mode.SRC_ATOP);
 
                         final ByteArrayOutputStream bs = new ByteArrayOutputStream();
                         background.compress(Bitmap.CompressFormat.PNG, 20, bs);
                         final byte[] backgroundCompressed = bs.toByteArray();
-                        if (MPConfig.DEBUG) {
-                            Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundCompressed.length);
-                        }
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundCompressed.length);
 
                         return new ProcessedBitmap(backgroundCompressed, highlightColor);
                     }

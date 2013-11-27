@@ -58,27 +58,27 @@ import com.mixpanel.android.util.StringUtils;
 
     public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
         Status status = Status.FAILED_UNRECOVERABLE;
-        String encodedData = Base64Coder.encodeString(rawMessage);
+        final String encodedData = Base64Coder.encodeString(rawMessage);
 
-        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
+        final List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
         nameValuePairs.add(new BasicNameValuePair("data", encodedData));
         if (MPConfig.DEBUG) {
             nameValuePairs.add(new BasicNameValuePair("verbose", "1"));
         }
 
-        Result baseResult = performRequest(endpointUrl, nameValuePairs);
-        Status baseStatus = baseResult.getStatus();
+        final Result baseResult = performRequest(endpointUrl, nameValuePairs);
+        final Status baseStatus = baseResult.getStatus();
         String response = baseResult.getResponse();
         if (baseStatus == Status.SUCCEEDED) {
             // Could still be a failure if the application successfully
             // returned an error message...
             if (MPConfig.DEBUG) {
                 try {
-                    JSONObject verboseResponse = new JSONObject(response);
+                    final JSONObject verboseResponse = new JSONObject(response);
                     if (verboseResponse.optInt("status") == 1) {
                         status = Status.SUCCEEDED;
                     }
-                } catch (JSONException e) {
+                } catch (final JSONException e) {
                     status = Status.FAILED_UNRECOVERABLE;
                 }
             }
@@ -88,11 +88,9 @@ import com.mixpanel.android.util.StringUtils;
         }
 
         if (baseStatus == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
-            if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
-            }
-            Result retryResult = postData(rawMessage, fallbackUrl, null);
-            Status retryStatus = retryResult.getStatus();
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
+            final Result retryResult = postData(rawMessage, fallbackUrl, null);
+            final Status retryStatus = retryResult.getStatus();
             response = retryResult.getResponse();
             if (retryStatus != Status.SUCCEEDED) {
                 Log.e(LOGTAG, "Could not post data to Mixpanel");
@@ -136,11 +134,11 @@ import com.mixpanel.android.util.StringUtils;
                 HttpURLConnection connection = null;
 
                 try {
-                    URL url = new URL(endpointUrl);
+                    final URL url = new URL(endpointUrl);
                     connection = (HttpURLConnection) url.openConnection();
                     if (null != nameValuePairs) {
                         connection.setDoOutput(true);
-                        UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
+                        final UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");
                         connection.setRequestMethod("POST");
                         connection.setFixedLengthStreamingMode((int)form.getContentLength());
                         out = connection.getOutputStream();
@@ -159,42 +157,36 @@ import com.mixpanel.android.util.StringUtils;
                     in.close();
                     in = null;
                     succeeded = true;
-                } catch (EOFException e) {
-                    if (MPConfig.DEBUG) {
-                        Log.i(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
-                    }
+                } catch (final EOFException e) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                     retries = retries + 1;
                 } finally {
                     if (null != bout)
-                        try { bout.close(); } catch (IOException e) { ; }
+                        try { bout.close(); } catch (final IOException e) { ; }
                     if (null != out)
-                        try { out.close(); } catch (IOException e) { ; }
+                        try { out.close(); } catch (final IOException e) { ; }
                     if (null != bin)
-                        try { bin.close(); } catch (IOException e) { ; }
+                        try { bin.close(); } catch (final IOException e) { ; }
                     if (null != in)
-                        try { in.close(); } catch (IOException e) { ; }
+                        try { in.close(); } catch (final IOException e) { ; }
                     if (null != connection)
                         connection.disconnect();
                 }
             }// while
-        } catch (MalformedURLException e) {
+        } catch (final MalformedURLException e) {
             Log.e(LOGTAG, "Cannot iterpret " + endpointUrl + " as a URL", e);
             status = Status.FAILED_UNRECOVERABLE;
-        } catch (IOException e) {
-            if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry with fallback)", e);
-            }
+        } catch (final IOException e) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry with fallback)", e);
             status = Status.FAILED_RECOVERABLE;
-        } catch (OutOfMemoryError e) {
+        } catch (final OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
             status = Status.FAILED_UNRECOVERABLE;
         }
 
         if (null != response) {
             status = Status.SUCCEEDED;
-            if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Request returned:\n" + response);
-            }
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Request returned:\n" + response);
         }
 
         return new Result(status, response);

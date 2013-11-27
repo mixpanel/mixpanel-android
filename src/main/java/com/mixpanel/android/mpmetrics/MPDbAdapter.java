@@ -119,16 +119,16 @@ class MPDbAdapter {
      * @return the number of rows in the table, or -1 on failure
      */
     public int addJSON(JSONObject j, Table table) {
-        String tableName = table.getName();
-        if (MPConfig.DEBUG) { Log.d(LOGTAG, "addJSON " + tableName); }
+        final String tableName = table.getName();
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "addJSON " + tableName);
 
         Cursor c = null;
         int count = -1;
 
         try {
-            SQLiteDatabase db = mDb.getWritableDatabase();
+            final SQLiteDatabase db = mDb.getWritableDatabase();
 
-            ContentValues cv = new ContentValues();
+            final ContentValues cv = new ContentValues();
             cv.put(KEY_DATA, j.toString());
             cv.put(KEY_CREATED_AT, System.currentTimeMillis());
             db.insert(tableName, null, cv);
@@ -136,7 +136,7 @@ class MPDbAdapter {
             c = db.rawQuery("SELECT COUNT(*) FROM " + tableName, null);
             c.moveToFirst();
             count = c.getInt(0);
-        } catch (SQLiteException e) {
+        } catch (final SQLiteException e) {
             Log.e(LOGTAG, "addJSON " + tableName + " FAILED. Deleting DB.", e);
 
             // We assume that in general, the results of a SQL exception are
@@ -163,13 +163,13 @@ class MPDbAdapter {
      * @param table the table to remove events from, either "events" or "people"
      */
     public void cleanupEvents(String last_id, Table table) {
-        String tableName = table.getName();
-        if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents _id " + last_id + " from table " + tableName); }
+        final String tableName = table.getName();
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "cleanupEvents _id " + last_id + " from table " + tableName);
 
         try {
-            SQLiteDatabase db = mDb.getWritableDatabase();
+            final SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, "_id <= " + last_id, null);
-        } catch (SQLiteException e) {
+        } catch (final SQLiteException e) {
             Log.e(LOGTAG, "cleanupEvents " + tableName + " by id FAILED. Deleting DB.", e);
 
             // We assume that in general, the results of a SQL exception are
@@ -188,13 +188,13 @@ class MPDbAdapter {
      * @param table the table to remove events from, either "events" or "people"
      */
     public void cleanupEvents(long time, Table table) {
-        String tableName = table.getName();
-        if (MPConfig.DEBUG) { Log.d(LOGTAG, "cleanupEvents time " + time + " from table " + tableName); }
+        final String tableName = table.getName();
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "cleanupEvents time " + time + " from table " + tableName);
 
         try {
-            SQLiteDatabase db = mDb.getWritableDatabase();
+            final SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, KEY_CREATED_AT + " <= " + time, null);
-        } catch (SQLiteException e) {
+        } catch (final SQLiteException e) {
             Log.e(LOGTAG, "cleanupEvents " + tableName + " by time FAILED. Deleting DB.", e);
 
             // We assume that in general, the results of a SQL exception are
@@ -224,22 +224,22 @@ class MPDbAdapter {
         Cursor c = null;
         String data = null;
         String last_id = null;
-        String tableName = table.getName();
+        final String tableName = table.getName();
 
         try {
-            SQLiteDatabase db = mDb.getReadableDatabase();
+            final SQLiteDatabase db = mDb.getReadableDatabase();
             c = db.rawQuery("SELECT * FROM " + tableName  +
                     " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
-            JSONArray arr = new JSONArray();
+            final JSONArray arr = new JSONArray();
 
             while (c.moveToNext()) {
                 if (c.isLast()) {
                     last_id = c.getString(c.getColumnIndex("_id"));
                 }
                 try {
-                    JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
+                    final JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
                     arr.put(j);
-                } catch (JSONException e) {
+                } catch (final JSONException e) {
                     // Ignore this object
                 }
             }
@@ -247,7 +247,7 @@ class MPDbAdapter {
             if (arr.length() > 0) {
                 data = arr.toString();
             }
-        } catch (SQLiteException e) {
+        } catch (final SQLiteException e) {
             Log.e(LOGTAG, "generateDataString " + tableName, e);
 
             // We'll dump the DB on write failures, but with reads we can
@@ -264,7 +264,7 @@ class MPDbAdapter {
         }
 
         if (last_id != null && data != null) {
-            String[] ret = {last_id, data};
+            final String[] ret = {last_id, data};
             return ret;
         }
         return null;
