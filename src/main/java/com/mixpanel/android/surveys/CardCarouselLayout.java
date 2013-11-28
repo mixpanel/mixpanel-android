@@ -250,16 +250,16 @@ import com.mixpanel.android.mpmetrics.Survey;
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
         );
-        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         rotateOut.setDuration(ANIMATION_ROTATION_MILLIS);
+        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         set.addAnimation(rotateOut);
 
         final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
         );
-        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         scaleDown.setDuration(ANIMATION_ROTATION_MILLIS);
+        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         set.addAnimation(scaleDown);
 
         final TranslateAnimation slideX = new TranslateAnimation(
@@ -308,16 +308,16 @@ import com.mixpanel.android.mpmetrics.Survey;
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
         );
-        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         rotateOut.setDuration(ANIMATION_DURATION_MILLIS);
+        rotateOut.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         set.addAnimation(rotateOut);
 
         final ScaleAnimation scaleDown = new ScaleAnimation(1, EXIT_SIZE, 1, EXIT_SIZE,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_X,
                 Animation.RELATIVE_TO_SELF, EXIT_ROTATION_CENTER_Y
         );
-        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         scaleDown.setDuration(ANIMATION_DURATION_MILLIS);
+        scaleDown.setStartOffset(ANIMATION_DURATION_MILLIS - ANIMATION_ROTATION_MILLIS);
         set.addAnimation(scaleDown);
 
         final TranslateAnimation slideX = new TranslateAnimation(
@@ -467,7 +467,13 @@ import com.mixpanel.android.mpmetrics.Survey;
                 public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
                     if (null != mListener) {
                         final String answer = parent.getItemAtPosition(position).toString();
-                        mListener.onQuestionAnswered(mQuestion, answer);
+                        // Wait for the checkmark to show before reporting the selection
+                        postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                mListener.onQuestionAnswered(mQuestion, answer);
+                            }
+                        }, ANIMATION_DURATION_MILLIS/2);
                     }
                 }
             });

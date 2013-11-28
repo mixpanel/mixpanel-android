@@ -129,7 +129,7 @@ public class SurveyChoiceView extends CheckedTextView {
     private float mTextLeftOffset; // offset of text from left edge, expressed in checkmark widths
 
     // Nice to have- these as LayoutParameters/Styled attributes
-    private static final int ANIMATION_DURATION = 130;
+    private static final int ANIMATION_DURATION = 300;
     private static final int CHECKMARK_HEIGHT_DP = 14; // Current code assumes a SQUARE CHECKMARK.
     private static final int BOX_PADDING_LEFT_DP = 22;
     private static final int BOX_PADDING_TOP_DP = 12;

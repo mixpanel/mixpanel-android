@@ -63,7 +63,7 @@ public class SurveyActivity extends Activity {
             getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
         } else {
             final View contentView = this.findViewById(R.id.com_mixpanel_android_activity_survey_id);
-            contentView.setBackgroundColor(Color.argb(255, 90, 90, 90));
+            contentView.setBackgroundColor(GRAY_30PERCENT);
         }
         mPreviousButton = findViewById(R.id.com_mixpanel_android_button_previous);
         mNextButton = findViewById(R.id.com_mixpanel_android_button_next);
@@ -261,5 +261,6 @@ public class SurveyActivity extends Activity {
     private static final String SAVED_CURRENT_QUESTION = "com.mixpanel.android.surveys.SurveyActivity.mCurrentQuestion";
     private static final String SAVED_ANSWERS = "com.mixpanel.android.surveys.SurveyActivity.mAnswers";
     private static final String LOGTAG = "MixpanelAPI";
+    private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
 }
 
