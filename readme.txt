@@ -1,9 +1,10 @@
 Documentation:
     You can find getting started guides for using Mixpanel at
-
-    https://mixpanel.com/docs/integration-libraries/android for tracking events
-    https://mixpanel.com/docs/people-analytics/android for updating people analytics
-    https://mixpanel.com/docs/people-analytics/android-push for sending push notifications
+    https://mixpanel.com/docs/integration-libraries/android#installing for installation instructions
+    https://mixpanel.com/docs/integration-libraries/android#sending_events for tracking events
+    https://mixpanel.com/docs/integration-libraries/android#creating_profiles for updating people analytics
+    https://mixpanel.com/docs/integration-libraries/android#push_quick_start for sending push notifications
+    https://mixpanel.com/docs/integration-libraries/android#surveys for showing surveys
 
 Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
@@ -284,7 +285,7 @@ v1.0 (original)
 * Removed the funnel() methods. Funnels have been built from events for some time now, and this update to Android simply reflects that change we have made.
   The proper way to perform funnel analysis is to create a funnel based on events that you are sending. For more information, please see http://mixpanel.com/api/docs/guides/funnel-analysis
 
-* Renamed the event method to track, to be more consistent with the existing APIs. 
+* Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
- 
+
