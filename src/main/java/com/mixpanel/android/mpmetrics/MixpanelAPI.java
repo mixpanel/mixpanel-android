@@ -1,27 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Application;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.PorterDuff;
-import android.os.AsyncTask;
-import android.os.Build;
-import android.util.Log;
-import android.view.View;
-
-import com.mixpanel.android.surveys.SurveyActivity;
-import com.mixpanel.android.util.StackBlurManager;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.ByteArrayOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -32,6 +10,19 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.Application;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Build;
+import android.util.Log;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -691,7 +682,7 @@ public class MixpanelAPI {
          * This method is a noop in environments with
          * Android API before Gingerbread/API level 10
          */
-        public void showSurvey(Survey s, View parent);
+        public void showSurvey(Survey s, Activity parent);
     }
 
     /**
@@ -883,79 +874,14 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void showSurvey(final Survey s, final View parent) {
+        public void showSurvey(final Survey s, final Activity parent) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
                 return;
             }
 
-            if (showSurveyLock.acquire()) {
-                final View rootView = parent.getRootView();
-                final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-                rootView.setDrawingCacheEnabled(true);
-                rootView.layout(0, 0, rootView.getMeasuredWidth(), rootView.getMeasuredHeight());
-                rootView.buildDrawingCache(true);
-
-                // We could get a null or zero px bitmap if the rootView hasn't been measured
-                // appropriately. This is ok, and we should handle it gracefully.
-                final Bitmap original = rootView.getDrawingCache();
-                Bitmap scaled = null;
-                if (null != original) {
-                    final int scaledWidth = original.getWidth() / 2;
-                    final int scaledHeight = original.getHeight() / 2;
-                    if (scaledWidth > 0 && scaledHeight > 0) {
-                        scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-                    }
-                }
-                if (! originalCacheState) {
-                    rootView.setDrawingCacheEnabled(false);
-                }
-
-                final Intent surveyIntent = new Intent(parent.getContext().getApplicationContext(), SurveyActivity.class);
-                surveyIntent.putExtra("distinctId", mPeopleDistinctId);
-                surveyIntent.putExtra("token", mToken);
-                surveyIntent.putExtra("surveyJson", s.toJSON());
-                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-                final AsyncTask<Bitmap, Void, ProcessedBitmap> showSurveyActivity = new AsyncTask<Bitmap, Void, ProcessedBitmap>() {
-                    @Override
-                    protected ProcessedBitmap doInBackground(Bitmap... backgrounds) {
-                        final Bitmap background = backgrounds[0];
-                        if (null == background) {
-                            return new ProcessedBitmap(null, Color.WHITE);
-                        }
-                        final long startTime = System.currentTimeMillis();
-                        final Bitmap background1px = Bitmap.createScaledBitmap(background, 1, 1, true);
-                        final int highlightColor = background1px.getPixel(0, 0);
-
-                        StackBlurManager.process(background, 20);
-                        final long endTime = System.currentTimeMillis();
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-
-                        final Canvas canvas = new Canvas(background);
-                        canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
-
-                        final ByteArrayOutputStream bs = new ByteArrayOutputStream();
-                        background.compress(Bitmap.CompressFormat.PNG, 20, bs);
-                        final byte[] backgroundCompressed = bs.toByteArray();
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Background (compressed) to bytes: " + backgroundCompressed.length);
-
-                        return new ProcessedBitmap(backgroundCompressed, highlightColor);
-                    }
-
-                    @Override
-                    protected void onPostExecute(ProcessedBitmap processed) {
-                        final byte[] backgroundCompressed = processed.getBackgroundCompressed();
-                        if (null != backgroundCompressed) {
-                            surveyIntent.putExtra("backgroundCompressed", backgroundCompressed);
-                        }
-                        surveyIntent.putExtra("highlightColor", processed.getHighlightColor());
-                        mContext.startActivity(surveyIntent);
-                    }
-                };
-
-                showSurveyActivity.execute(scaled);
+            if (showSurveyLock.acquire()) { // TODO redundant lock
+                SurveyState.proposeSurvey(s, parent, mPeopleDistinctId, mToken);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "showSurveyLock already acquired, not showing...");
             }
@@ -1199,24 +1125,6 @@ public class MixpanelAPI {
         prefsEditor.commit();
     }
 
-    private static class ProcessedBitmap {
-        public ProcessedBitmap(final byte[] backgroundCompressed, final int highlightColor) {
-            mHighlightColor = highlightColor;
-            mBackgroundCompressed = backgroundCompressed;
-        }
-
-        public byte[] getBackgroundCompressed() {
-            return mBackgroundCompressed;
-        }
-
-        public int getHighlightColor() {
-            return mHighlightColor;
-        }
-
-        private final byte[] mBackgroundCompressed;
-        private final int mHighlightColor;
-    }
-
     private static class ExpiringLock {
 
         private ExpiringLock(long timeoutInMillis) {
@@ -1283,6 +1191,4 @@ public class MixpanelAPI {
     // Survey check locking
     private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
     private final ExpiringLock showSurveyLock = new ExpiringLock(12 * 60 * 60 * 1000); // 12 hour timeout
-
-    private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
 }

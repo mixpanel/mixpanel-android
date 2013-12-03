@@ -5,7 +5,6 @@ import android.app.Application;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
@@ -29,8 +28,8 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        Configuration config = activity.getResources().getConfiguration();
-        boolean dueToOrientationChange = mCurOrientation != null && config.orientation != mCurOrientation;
+        final Configuration config = activity.getResources().getConfiguration();
+        final boolean dueToOrientationChange = mCurOrientation != null && config.orientation != mCurOrientation;
         if(!dueToOrientationChange && activity.isTaskRoot()) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSureys called from onActivityCreated");
             checkForSurveys(activity);
@@ -77,40 +76,33 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      * We instantiate a new SurveyCallbacks that auto-shows the survey.
      * @param activity
      */
-    private void checkForSurveys(Activity activity) {
-        final long startTime = System.currentTimeMillis();
-        final View view = activity.findViewById(android.R.id.content);
-
-        mHasDoneFirstCheck = true;
-
-        if (view == null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Could not find view with id 'android.R.id.content', not showing survey.");
-        } else {
-            mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {
-                public void foundSurvey(Survey s) {
-                    long endTime = System.currentTimeMillis();
-                    long totalTime = endTime - startTime;
-                    if (totalTime > timeoutMillis) { // enforce a max time from fetch to display
-                       Log.i(LOGTAG, String.format("The survey took %d milliseconds which is " +
-                               "longer than %d milliseconds, not showing.", totalTime, timeoutMillis));
-                    }  else {
-                        if (null != s) {
-                            if (MPConfig.DEBUG)
-                                Log.d(LOGTAG, "found survey " + s.getId() + ", calling showSurvey...");
-                            mMpInstance.getPeople().showSurvey(s, view);
-                        } else {
-                            if (MPConfig.DEBUG)
-                                Log.d(LOGTAG, "found survey was executed with a null survey");
-                        }
-                    }
-                }
-            });
+    private void checkForSurveys(final Activity activity) {
+        if (null == activity) {
+            return;
         }
+        final long startTime = System.currentTimeMillis();
+        mHasDoneFirstCheck = true;
+        mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {
+            @Override
+            public void foundSurvey(Survey s) {
+                final long endTime = System.currentTimeMillis();
+                final long totalTime = endTime - startTime;
+                if (totalTime > timeoutMillis) { // enforce a max time from fetch to display
+                    Log.i(LOGTAG, String.format("The survey took %d milliseconds which is " +
+                            "longer than %d milliseconds, not showing.", totalTime, timeoutMillis));
+                } else if (null != s) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + s.getId() + ", calling showSurvey...");
+                    mMpInstance.getPeople().showSurvey(s, activity);
+                } else {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey was executed with a null survey");
+                }
+            }
+        });
     }
 
-    private MixpanelAPI mMpInstance;
+    private final MixpanelAPI mMpInstance;
     private boolean mHasDoneFirstCheck = false;
     private Integer mCurOrientation;
-    private long timeoutMillis = 2000; // 2 second timeout
+    private final long timeoutMillis = 2000; // 2 second timeout
     private static final String LOGTAG = "MixpanelAPI:MixpanelActivityLifecycleCallbacks";
 }
