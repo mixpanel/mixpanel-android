@@ -10,17 +10,16 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
-
-import android.bluetooth.BluetoothAdapter;
-import android.content.pm.PackageManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -216,6 +215,27 @@ public class MixpanelAPI {
        writeIdentities();
     }
 
+    public void createAliasForDistinctId(String alias, String distinctId) {
+    	if (alias == null || alias.trim().length() == 0) {
+    		Log.d(LOGTAG, String.format("%s create alias called with empty alias; %s", this, alias));
+    		return;
+    	}
+    	
+    	if (distinctId == null || distinctId.trim().length() == 0) {
+    		Log.d(LOGTAG, String.format("%s create alias called with empty distinct id; %s", this, distinctId));
+    		return;
+    	}
+    	
+    	try {
+			JSONObject properties = new JSONObject();
+			properties.put("distinct_id", distinctId);
+			properties.put("alias", alias);
+			track("$create_alias", properties);
+		} catch (JSONException e) {
+			Log.e(LOGTAG, "Exception creating alias " + alias, e);
+		}
+    }
+    
     /**
      * Track an event.
      *
