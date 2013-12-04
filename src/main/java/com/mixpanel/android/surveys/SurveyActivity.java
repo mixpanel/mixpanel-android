@@ -76,7 +76,9 @@ public class SurveyActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        mMixpanel.flush();
+        if (mMixpanel != null) { // Will be null if we bail in onCreate (for example, if we can't get a lock)
+            mMixpanel.flush();
+        }
         SurveyState.releaseSurvey(mIntentId);
         super.onDestroy();
     }
@@ -156,8 +158,11 @@ public class SurveyActivity extends Activity {
             return;
         }
 
-        // TODO don't show when you've only got one question!
-        mProgressTextView.setText("" + (idx + 1) + " of " + questions.size());
+        if (questions.size() > 1) {
+            mProgressTextView.setText("" + (idx + 1) + " of " + questions.size());
+        } else {
+            mProgressTextView.setText("");
+        }
     }
 
     @SuppressLint("SimpleDateFormat")

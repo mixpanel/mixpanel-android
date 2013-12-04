@@ -26,8 +26,13 @@ import com.mixpanel.android.util.StackBlurManager;
 
 public class SurveyState implements Parcelable {
 	public static void proposeSurvey(final Survey s, final Activity parentActivity, final String distinctId, final String token) {
+        final long currentTime = System.currentTimeMillis();
+        final long deltaTime = currentTime - sSurveyStateLockMillis;
         synchronized(sSurveyStateLock) {
-            // TODO Timeouts! Which means figuring out whether we're SHOWING or ORPHANED
+            if (sShowingIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
+                Log.i(LOGTAG, "SurveyState set long, long ago, without showing.");
+                sSurveyState = null;
+            }
             if (null == sSurveyState) {
                 sSurveyState = new SurveyState(s, parentActivity, distinctId, token);
                 sSurveyState.initializeAndLaunch();
@@ -46,12 +51,16 @@ public class SurveyState implements Parcelable {
         }
     }
 
-    // TODO NEEDS TESTING
     public static SurveyState claimSurveyState(SurveyState proposed, int intentId) {
         assert(null == proposed || proposed.isReady());
+        final long currentTime = System.currentTimeMillis();
+        final long deltaTime = currentTime - sIntentIdLockMillis;
         synchronized(sSurveyStateLock) {
-            if (sShowingIntentId >= 0 && sShowingIntentId != intentId) {
-                // TODO Timeout here?
+            if (sShowingIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
+                Log.i(LOGTAG, "Survey activity claimed but never released lock, possible force quit.");
+                sShowingIntentId = -1;
+            }
+            if (sShowingIntentId > 0 && sShowingIntentId != intentId) {
                 return null;
             } else if (null != proposed) {
                 sShowingIntentId = intentId;
@@ -318,12 +327,15 @@ public class SurveyState implements Parcelable {
     private boolean mIsReady;
 
     private static final Object sSurveyStateLock = new Object();
+    private static long sSurveyStateLockMillis = -1;
     private static SurveyState sSurveyState = null;
     private static int sNextIntentId = 0;
+    private static long sIntentIdLockMillis = -1;
     private static int sShowingIntentId = -1;
 
     private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
     private static final String LOGTAG = "MixpanelAPI SurveyState";
+    private static final long MAX_LOCK_TIME_MILLIS = 12 * 60 * 60 * 1000; // Twelve hour timeout on survey activities
 
     private static final String SURVEY_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.SURVEY_BUNDLE_KEY";
     private static final String DISTINCT_ID_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.DISTINCT_ID_BUNDLE_KEY";
