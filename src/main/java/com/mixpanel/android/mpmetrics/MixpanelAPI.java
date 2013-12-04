@@ -524,9 +524,6 @@ public class MixpanelAPI {
          */
         public void append(String name, Object value);
 
-        /** @hide */
-        void releaseShowSurveyLock();
-
         /**
          * Track a revenue transaction for the identified people profile.
          *
@@ -880,16 +877,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            if (showSurveyLock.acquire()) { // TODO redundant lock
-                SurveyState.proposeSurvey(s, parent, mPeopleDistinctId, mToken);
-            } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "showSurveyLock already acquired, not showing...");
-            }
-        }
-
-        @Override
-        public void releaseShowSurveyLock() {
-            showSurveyLock.release();
+            SurveyState.proposeSurvey(s, parent, mPeopleDistinctId, mToken);
         }
 
         @Override
@@ -1190,5 +1178,4 @@ public class MixpanelAPI {
 
     // Survey check locking
     private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
-    private final ExpiringLock showSurveyLock = new ExpiringLock(12 * 60 * 60 * 1000); // 12 hour timeout
 }
