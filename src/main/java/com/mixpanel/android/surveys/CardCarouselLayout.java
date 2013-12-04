@@ -438,9 +438,9 @@ import com.mixpanel.android.mpmetrics.Survey;
 
         public QuestionCard(final View cardView) {
             mCardView = cardView;
-            mPromptView = (TextView) cardView.findViewById(R.id.com_mixpanel_android_prompt_text);
-            mEditAnswerView = (EditText) cardView.findViewById(R.id.com_mixpanel_android_text_answer);
-            mChoiceView = (ListView) cardView.findViewById(R.id.com_mixpanel_android_choice_list);
+            mPromptView = (TextView) cardView.findViewWithTag("com_mixpanel_android_TAG_prompt_text");
+            mEditAnswerView = (EditText) cardView.findViewWithTag("com_mixpanel_android_TAG_text_answer");
+            mChoiceView = (ListView) cardView.findViewWithTag("com_mixpanel_android_TAG_choice_list");
             mEditAnswerView.setText("");
             mEditAnswerView.setOnEditorActionListener(new OnEditorActionListener() {
                 @Override
