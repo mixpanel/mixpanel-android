@@ -1,11 +1,14 @@
 package com.mixpanel.android.mpmetrics;
 
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Parcel;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
@@ -944,6 +947,65 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals("PEOPLE FALLBACK ENDPOINT", testConfig.getPeopleFallbackEndpoint());
         assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
         assertEquals("DECIDE FALLBACK ENDPOINT", testConfig.getDecideFallbackEndpoint());
+    }
+
+    public void testSurveyStateSaving() {
+        final String surveyJsonString =
+            "{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}]," +
+             "\"id\":299," +
+             "\"questions\":[" +
+                 "{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287}," +
+                 "{\"prompt\":\"PROMPT2\",\"extra_data\":{},\"type\":\"text\",\"id\":289}]}";
+
+        SurveyState originalSurveyState;
+        try {
+            final JSONObject surveyJson = new JSONObject(surveyJsonString);
+            final Survey s = new Survey(surveyJson);
+            originalSurveyState = new SurveyState(s, null, "DistinctId", "Token");
+        } catch (JSONException e) {
+            throw new RuntimeException("Survey string in test doesn't parse");
+        } catch (Survey.BadSurveyException e) {
+            throw new RuntimeException("Test survey string couldn't be made into a survey");
+        }
+
+        final Bundle inBundle = new Bundle();
+        inBundle.putParcelable("TEST SURVEY PARCEL", originalSurveyState);
+        final Parcel outerParcel = Parcel.obtain();
+        inBundle.writeToParcel(outerParcel, 0);
+        outerParcel.setDataPosition(0);
+        final Bundle outBundle = outerParcel.readBundle();
+        outBundle.setClassLoader(SurveyState.class.getClassLoader());
+        final SurveyState inSurveyState = outBundle.getParcelable("TEST SURVEY PARCEL");
+
+        // TODO need to test inSurveyState.getBackground()
+
+        final SurveyState.AnswerMap inAnswers = inSurveyState.getAnswers();
+        final Survey inSurvey = inSurveyState.getSurvey();
+        final String inDistinctId = inSurveyState.getDistinctId();
+        final String inToken = inSurveyState.getToken();
+
+        assertEquals("DistinctId", inDistinctId);
+        assertEquals("Token", inToken);
+        assertEquals(inSurvey.getId(), 299);
+
+        List<Survey.Question> inQuestions = inSurvey.getQuestions();
+        assertEquals(2, inQuestions.size());
+
+        final Survey.Question q1 = inQuestions.get(0);
+        assertEquals(q1.getId(), 287);
+        assertEquals(q1.getPrompt(), "PROMPT1");
+        assertEquals(q1.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+
+        final List<String> q1Choices = q1.getChoices();
+        assertEquals(q1Choices.size(), 3);
+        assertEquals(q1Choices.get(0), "Answer1,1");
+        assertEquals(q1Choices.get(1), "Answer1,2");
+        assertEquals(q1Choices.get(2), "Answer1,3");
+
+        final Survey.Question q2 = inQuestions.get(1);
+        assertEquals(q2.getId(), 289);
+        assertEquals(q2.getPrompt(), "PROMPT2");
+        assertEquals(q2.getType(), Survey.QuestionType.TEXT);
     }
 
     private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {

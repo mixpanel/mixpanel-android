@@ -91,9 +91,12 @@ public class SurveyState implements Parcelable {
         out.putBoolean(IS_READY_BUNDLE_KEY, mIsReady);
         out.putParcelable(ANSWERS_BUNDLE_KEY, mAnswers);
 
-        final ByteArrayOutputStream bs = new ByteArrayOutputStream();
-        mBackground.compress(Bitmap.CompressFormat.PNG, 20, bs);
-        final byte[] backgroundCompressed = bs.toByteArray();
+        byte[] backgroundCompressed = null;
+        if (mBackground != null) {
+            final ByteArrayOutputStream bs = new ByteArrayOutputStream();
+            mBackground.compress(Bitmap.CompressFormat.PNG, 20, bs);
+            backgroundCompressed = bs.toByteArray();
+        }
         out.putByteArray(BACKGROUND_COMPRESSED_BUNDLE_KEY, backgroundCompressed);
 
         final String surveyJson = mSurvey.toJSON();
@@ -126,7 +129,8 @@ public class SurveyState implements Parcelable {
         return mHighlightColor;
     }
 
-    private SurveyState(final Survey s, final Activity parentActivity, final String distinctId, final String token) {
+    // Package access for testing only- DO NOT CALL in library code
+    /* package */ SurveyState(final Survey s, final Activity parentActivity, final String distinctId, final String token) {
         mSurvey = s;
         mParentActivity = parentActivity;
         mDistinctId = distinctId;
@@ -135,7 +139,6 @@ public class SurveyState implements Parcelable {
         mAnswers = new AnswerMap();
     }
 
-    // TODO NEEDS A TEST
     private SurveyState(Bundle read) {
         mDistinctId = read.getString(DISTINCT_ID_BUNDLE_KEY);
         mToken = read.getString(TOKEN_BUNDLE_KEY);
