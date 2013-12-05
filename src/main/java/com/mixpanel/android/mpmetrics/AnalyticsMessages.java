@@ -385,7 +385,7 @@ import android.util.Log;
                             if (MPConfig.DEBUG) Log.d(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
                         } else {
                             found = candidate;
-                            // mSeenSurveys.add(found.getId()); TODO UNCOMMENT
+                            mSeenSurveys.add(found.getId());
                         }
                     } catch (final JSONException e) {
                         Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
