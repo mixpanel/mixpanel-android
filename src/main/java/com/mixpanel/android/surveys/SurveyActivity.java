@@ -37,13 +37,12 @@ public class SurveyActivity extends Activity {
         mIntentId = getIntent().getIntExtra("intentID", Integer.MAX_VALUE);
         mSurveyState = SurveyState.claimSurveyState(saved, mIntentId);
         if (null == mSurveyState) {
-            Log.e(LOGTAG, "Survey intent recieved, but no survey was found.");
+            Log.e(LOGTAG, "Survey intent received, but no survey was found.");
             finish();
             return;
         }
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
-            // TODO restore surveyState if (and only if) you can't get one from the singleton
         }
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         final Bitmap background = mSurveyState.getBackground();
@@ -65,12 +64,19 @@ public class SurveyActivity extends Activity {
             }
         });
 
+        Survey survey = mSurveyState.getSurvey();
+        String answerDistinctId = mSurveyState.getDistinctId();
+        if (null == answerDistinctId) {
+            Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
+            finish();
+            return;
+        }
+
         mMixpanel = MixpanelAPI.getInstance(this, mSurveyState.getToken());
-        mMixpanel.getPeople().identify(mSurveyState.getDistinctId()); // TODO race condition!
-        // TODO For testing only, uncomment before merge
-        // mMixpanel.getPeople().append("$surveys", mSurvey.getId());
-        // mMixpanel.getPeople().append("$collections", mSurvey.getCollectionId());
-        // mMixpanel.flush();
+        MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
+        people.append("$surveys", survey.getId());
+        people.append("$collections", survey.getCollectionId());
+        mMixpanel.flush();
         showQuestion(mCurrentQuestion);
     }
 
@@ -170,7 +176,10 @@ public class SurveyActivity extends Activity {
         final Survey survey = mSurveyState.getSurvey();
         final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
-        mMixpanel.getPeople().append("$responses", survey.getCollectionId());
+
+        String answerDistinctId = mSurveyState.getDistinctId();
+        MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
+        people.append("$responses", survey.getCollectionId());
 
         try {
             final JSONObject answerJson = new JSONObject();
@@ -184,7 +193,7 @@ public class SurveyActivity extends Activity {
             answerJson.put("$time", dateFormat.format(new Date()));
             answerJson.put("$value", answer.toString());
 
-            mMixpanel.getPeople().append("$answers", answerJson);
+            people.append("$answers", answerJson);
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Couldn't record user's answer.", e);
         }

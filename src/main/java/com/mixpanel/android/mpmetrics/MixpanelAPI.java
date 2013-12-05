@@ -680,6 +680,12 @@ public class MixpanelAPI {
          * Android API before Gingerbread/API level 10
          */
         public void showSurvey(Survey s, Activity parent);
+
+        /**
+         * Return an instance of Mixpanel people with a temporary distinct id.
+         * This is used by Mixpanel Surveys but is likely not needed in your code.
+         */
+        public People withIdentity(String distinctId);
     }
 
     /**
@@ -769,7 +775,7 @@ public class MixpanelAPI {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
 
             try {
-                if (mPeopleDistinctId == null) {
+                if (getDistinctId() == null) {
                     if (mWaitingPeopleRecord == null)
                         mWaitingPeopleRecord = new WaitingPeopleRecord();
 
@@ -799,7 +805,7 @@ public class MixpanelAPI {
             final JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             try {
-                if (mPeopleDistinctId == null) {
+                if (getDistinctId() == null) {
                     if (mWaitingPeopleRecord == null)
                         mWaitingPeopleRecord = new WaitingPeopleRecord();
 
@@ -839,7 +845,7 @@ public class MixpanelAPI {
 
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
                 final String checkToken = mToken;
-                final String checkDistinctId = mPeopleDistinctId;
+                final String checkDistinctId = getDistinctId();
                 final SurveyCallbacks checkCallbacks = callbacks;
                 final SurveyCallbacks callbackWrapper = new SurveyCallbacks() {
                     @Override
@@ -877,7 +883,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            SurveyState.proposeSurvey(s, parent, mPeopleDistinctId, mToken);
+            SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken);
         }
 
         @Override
@@ -916,7 +922,7 @@ public class MixpanelAPI {
         @Override
         public void deleteUser() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
-            if (mPeopleDistinctId == null) {
+            if (getDistinctId() == null) {
                 return;
             }
 
@@ -931,7 +937,7 @@ public class MixpanelAPI {
         @Override
         public void setPushRegistrationId(String registrationId) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
-            if (mPeopleDistinctId == null) {
+            if (getDistinctId() == null) {
                 return;
             }
 
@@ -988,13 +994,15 @@ public class MixpanelAPI {
 
         @Override
         public String getDistinctId() {
+
+
             return mPeopleDistinctId;
         }
 
         // NOT AN OVERRIDE due to WaitingPeopleRecord, which needs to go away.
         /* package */ void append(JSONObject properties) {
             try {
-                if (mPeopleDistinctId == null) {
+                if (getDistinctId() == null) {
                     if (mWaitingPeopleRecord == null)
                         mWaitingPeopleRecord = new WaitingPeopleRecord();
 
@@ -1009,6 +1017,24 @@ public class MixpanelAPI {
             }
         }
 
+        @Override
+        public People withIdentity(final String distinctId) {
+            if (null == distinctId) {
+                return null;
+            }
+            return new PeopleImpl() {
+                @Override
+                public String getDistinctId() {
+                    return distinctId;
+                }
+
+                @Override
+                public void identify(String distinctId) {
+                    throw new RuntimeException("This MixpanelPeople object has a fixed, constant distinctId");
+                }
+            };
+        }
+
         public String getPushId() {
             return mStoredPreferences.getString("push_id", null);
         }
@@ -1018,7 +1044,7 @@ public class MixpanelAPI {
                 final JSONObject dataObj = new JSONObject();
                 dataObj.put(actionType, properties);
                 dataObj.put("$token", mToken);
-                dataObj.put("$distinct_id", mPeopleDistinctId);
+                dataObj.put("$distinct_id", getDistinctId());
                 dataObj.put("$time", System.currentTimeMillis());
 
                 return dataObj;
