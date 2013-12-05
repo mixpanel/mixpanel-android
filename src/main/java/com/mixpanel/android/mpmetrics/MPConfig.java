@@ -17,6 +17,11 @@ import android.util.Log;
     // This should be set to false in production builds
     public static final boolean DEBUG = true;
 
+    // Set to true, Mixpanel will not send survey results.
+    // Should be set to false in production or your surveys
+    // won't work.
+    public static final boolean DONT_SEND_SURVEYS = true;
+
     public static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
         try {

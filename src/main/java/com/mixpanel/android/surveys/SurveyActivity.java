@@ -64,8 +64,8 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        Survey survey = mSurveyState.getSurvey();
-        String answerDistinctId = mSurveyState.getDistinctId();
+        final Survey survey = mSurveyState.getSurvey();
+        final String answerDistinctId = mSurveyState.getDistinctId();
         if (null == answerDistinctId) {
             Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
             finish();
@@ -73,7 +73,7 @@ public class SurveyActivity extends Activity {
         }
 
         mMixpanel = MixpanelAPI.getInstance(this, mSurveyState.getToken());
-        MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
+        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
         people.append("$surveys", survey.getId());
         people.append("$collections", survey.getCollectionId());
         mMixpanel.flush();
@@ -177,8 +177,8 @@ public class SurveyActivity extends Activity {
         final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
 
-        String answerDistinctId = mSurveyState.getDistinctId();
-        MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
+        final String answerDistinctId = mSurveyState.getDistinctId();
+        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
         people.append("$responses", survey.getCollectionId());
 
         try {

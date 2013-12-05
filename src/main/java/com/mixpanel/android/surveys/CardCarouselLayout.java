@@ -499,6 +499,9 @@ import com.mixpanel.android.mpmetrics.Survey;
                 if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
                     mEditAnswerView.requestFocus();
                     inputMethodManager.showSoftInput(mEditAnswerView, 0);
+                } else {
+                    // Landscape soft keyboard will obscure the question
+                    inputMethodManager.hideSoftInputFromInputMethod(mCardView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
                 }
             } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
                 inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);
