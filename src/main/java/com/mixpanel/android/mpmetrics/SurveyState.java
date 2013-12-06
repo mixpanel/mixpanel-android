@@ -229,16 +229,24 @@ public class SurveyState implements Parcelable {
                 }
             }
 
-            final long startTime = System.currentTimeMillis();
-            final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
-            mCalculatedHighlightColor = background1px.getPixel(0, 0);
+            try {
+                final long startTime = System.currentTimeMillis();
+                final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
+                mCalculatedHighlightColor = background1px.getPixel(0, 0);
 
-            StackBlurManager.process(mSourceImage, 20);
-            final long endTime = System.currentTimeMillis();
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
+                StackBlurManager.process(mSourceImage, 20);
 
-            final Canvas canvas = new Canvas(mSourceImage);
-            canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
+                final long endTime = System.currentTimeMillis();
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
+
+                final Canvas canvas = new Canvas(mSourceImage);
+                canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
+            } catch (final OutOfMemoryError e) {
+                // It's possible that the bitmap processing was what sucked up all of the memory,
+                // So we try to recover here.
+                mCalculatedHighlightColor = Color.WHITE;
+                mSourceImage = null;
+            }
             return null;
         }
 
