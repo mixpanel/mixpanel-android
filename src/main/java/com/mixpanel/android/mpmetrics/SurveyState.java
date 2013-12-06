@@ -7,6 +7,7 @@ import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -139,12 +140,13 @@ public class SurveyState implements Parcelable {
         mAnswers = new AnswerMap();
     }
 
+    // Bundle must have the same classloader that loaded this constructor.
     private SurveyState(Bundle read) {
         mDistinctId = read.getString(DISTINCT_ID_BUNDLE_KEY);
         mToken = read.getString(TOKEN_BUNDLE_KEY);
         mHighlightColor = read.getInt(HIGHLIGHT_COLOR_BUNDLE_KEY);
         mIsReady = read.getBoolean(IS_READY_BUNDLE_KEY);
-        mAnswers = (AnswerMap) read.getParcelable(ANSWERS_BUNDLE_KEY);
+        mAnswers = read.getParcelable(ANSWERS_BUNDLE_KEY);
         mParentActivity = null;
 
         mBackground = null;
@@ -266,7 +268,22 @@ public class SurveyState implements Parcelable {
         private int  mCalculatedHighlightColor;
     } // SurveyInitializationTask
 
-    public static class AnswerMap extends HashMap<Integer, String> implements Parcelable {
+    // Can't extend HashMap<..> because Parcelable will jump in and
+    // deal with the HashMap itself. Which, maybe we should just drop the type entirely...
+    public static class AnswerMap implements Parcelable {
+
+        @SuppressLint("UseSparseArrays")
+        public AnswerMap() {
+            mMap = new HashMap<Integer, String>();
+        }
+
+        public void put(Integer i, String s) {
+            mMap.put(i, s);
+        }
+
+        public String get(Integer i) {
+            return mMap.get(i);
+        }
 
         @Override
         public int describeContents() {
@@ -276,7 +293,7 @@ public class SurveyState implements Parcelable {
         @Override
         public void writeToParcel(Parcel dest, int flags) {
             final Bundle out = new Bundle();
-            for (final Map.Entry<Integer, String> entry:entrySet()) {
+            for (final Map.Entry<Integer, String> entry:mMap.entrySet()) {
                 final String keyString = Integer.toString(entry.getKey());
                 out.putString(keyString, entry.getValue());
             }
@@ -303,13 +320,13 @@ public class SurveyState implements Parcelable {
             }
         };
 
-        private static final long serialVersionUID = -2359922757820889025L;
+        private final HashMap<Integer, String> mMap;
     }
 
     public static final Parcelable.Creator<SurveyState> CREATOR = new Parcelable.Creator<SurveyState>() {
         @Override
         public SurveyState createFromParcel(Parcel in) {
-            final Bundle read = new Bundle();
+            final Bundle read = new Bundle(SurveyState.class.getClassLoader());
             read.readFromParcel(in);
             return new SurveyState(read);
         }
