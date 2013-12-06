@@ -501,7 +501,7 @@ import com.mixpanel.android.mpmetrics.Survey;
                     inputMethodManager.showSoftInput(mEditAnswerView, 0);
                 } else {
                     // Landscape soft keyboard will obscure the question
-                    inputMethodManager.hideSoftInputFromInputMethod(mCardView.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+                    inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);
                 }
             } else if (Survey.QuestionType.MULTIPLE_CHOICE == questionType) {
                 inputMethodManager.hideSoftInputFromWindow(mCardView.getWindowToken(), 0);
