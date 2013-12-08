@@ -1,7 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Application;
+import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
@@ -84,17 +86,38 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         mHasDoneFirstCheck = true;
         mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {
             @Override
-            public void foundSurvey(Survey s) {
+            public void foundSurvey(final Survey survey) {
                 final long endTime = System.currentTimeMillis();
                 final long totalTime = endTime - startTime;
-                if (totalTime > timeoutMillis) { // enforce a max time from fetch to display
-                    Log.i(LOGTAG, String.format("The survey took %d milliseconds which is " +
-                            "longer than %d milliseconds, not showing.", totalTime, timeoutMillis));
-                } else if (null != s) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + s.getId() + ", calling showSurvey...");
-                    mMpInstance.getPeople().showSurvey(s, activity);
-                } else {
+                if (null == survey) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey was executed with a null survey");
+                } else if (totalTime <= timeoutMillis) { // If we're quick enough, just show the survey!
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
+                    mMpInstance.getPeople().showSurvey(survey, activity);
+                } else {
+                    final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(activity);
+                    alertBuilder.setTitle("We'd love your feedback!");
+                    alertBuilder.setMessage("Mind taking a quick survey?");
+                    alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mMpInstance.getPeople().showSurvey(survey, activity);
+                        }
+                    });
+                    alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            // Don't hassle the user about this particular survey again.
+                            mMpInstance.getPeople().append("$surveys", survey.getId());
+                            mMpInstance.getPeople().append("$collections", survey.getCollectionId());
+                        }
+                    });
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            alertBuilder.show();
+                        }
+                    });
                 }
             }
         });
