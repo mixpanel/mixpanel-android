@@ -12,21 +12,20 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.PorterDuff;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
-import android.view.View;
 
 import com.mixpanel.android.surveys.SurveyActivity;
-import com.mixpanel.android.util.StackBlurManager;
 
 public class SurveyState implements Parcelable {
-	public static void proposeSurvey(final Survey s, final Activity parentActivity, final String distinctId, final String token) {
+    public static void proposeSurvey(final Survey s,
+            final Activity parentActivity,
+            final String distinctId,
+            final String token,
+            Bitmap background,
+            int highlightColor) {
         final long currentTime = System.currentTimeMillis();
         final long deltaTime = currentTime - sSurveyStateLockMillis;
         synchronized(sSurveyStateLock) {
@@ -35,8 +34,8 @@ public class SurveyState implements Parcelable {
                 sSurveyState = null;
             }
             if (null == sSurveyState) {
-                sSurveyState = new SurveyState(s, parentActivity, distinctId, token);
-                sSurveyState.initializeAndLaunch();
+                sSurveyState = new SurveyState(s, distinctId, token, background, highlightColor);
+                sSurveyState.initializeAndLaunch(parentActivity);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a survey, declining to show another.");
             }
@@ -53,7 +52,7 @@ public class SurveyState implements Parcelable {
     }
 
     public static SurveyState claimSurveyState(SurveyState proposed, int intentId) {
-        assert(null == proposed || proposed.isReady());
+        assert(null == proposed);
         final long currentTime = System.currentTimeMillis();
         final long deltaTime = currentTime - sIntentIdLockMillis;
         synchronized(sSurveyStateLock) {
@@ -68,8 +67,6 @@ public class SurveyState implements Parcelable {
                 sSurveyState = proposed;
                 return proposed;
             } else if (sSurveyState == null) {
-                return null;
-            } else if (! sSurveyState.isReady()) {
                 return null;
             } else {
                 sShowingIntentId = intentId;
@@ -89,7 +86,6 @@ public class SurveyState implements Parcelable {
         out.putString(DISTINCT_ID_BUNDLE_KEY, mDistinctId);
         out.putString(TOKEN_BUNDLE_KEY, mToken);
         out.putInt(HIGHLIGHT_COLOR_BUNDLE_KEY, mHighlightColor);
-        out.putBoolean(IS_READY_BUNDLE_KEY, mIsReady);
         out.putParcelable(ANSWERS_BUNDLE_KEY, mAnswers);
 
         byte[] backgroundCompressed = null;
@@ -131,28 +127,27 @@ public class SurveyState implements Parcelable {
     }
 
     // Package access for testing only- DO NOT CALL in library code
-    /* package */ SurveyState(final Survey s, final Activity parentActivity, final String distinctId, final String token) {
+    /* package */ SurveyState(final Survey s, final String distinctId, final String token, Bitmap background, int highlightColor) {
         mSurvey = s;
-        mParentActivity = parentActivity;
         mDistinctId = distinctId;
         mToken = token;
-        mIsReady = false;
         mAnswers = new AnswerMap();
+        mBackground = background;
+        mHighlightColor = highlightColor;
     }
 
-    // Bundle must have the same classloader that loaded this constructor.
+    // Bundle must have the same ClassLoader that loaded this constructor.
     private SurveyState(Bundle read) {
         mDistinctId = read.getString(DISTINCT_ID_BUNDLE_KEY);
         mToken = read.getString(TOKEN_BUNDLE_KEY);
         mHighlightColor = read.getInt(HIGHLIGHT_COLOR_BUNDLE_KEY);
-        mIsReady = read.getBoolean(IS_READY_BUNDLE_KEY);
         mAnswers = read.getParcelable(ANSWERS_BUNDLE_KEY);
-        mParentActivity = null;
 
-        mBackground = null;
         final byte[] backgroundCompressed = read.getByteArray(BACKGROUND_COMPRESSED_BUNDLE_KEY);
         if (null != backgroundCompressed) {
             mBackground = BitmapFactory.decodeByteArray(backgroundCompressed, 0, backgroundCompressed.length);
+        } else {
+            mBackground = null;
         }
 
         final String surveyJsonString = read.getString(SURVEY_BUNDLE_KEY);
@@ -166,115 +161,19 @@ public class SurveyState implements Parcelable {
         }
     }
 
-    private boolean isReady() {
-        return mIsReady;
+    private void initializeAndLaunch(Activity parentActivity) {
+        final Intent surveyIntent = new Intent(parentActivity.getApplicationContext(), SurveyActivity.class);
+        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+        synchronized (sSurveyStateLock) {
+            sNextIntentId++;
+            surveyIntent.putExtra("intentID", sNextIntentId);
+        }
+        parentActivity.startActivity(surveyIntent);
     }
 
-    private void initializeAndLaunch() {
-        final SurveyState self = this;
-        mParentActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final SurveyInitializationTask task = new SurveyInitializationTask(self);
-                task.execute();
-            }
-        });
-    }
 
-    private class SurveyInitializationTask extends AsyncTask<Void, Void, Void> {
-        public SurveyInitializationTask(SurveyState parentState) {
-            mParentState = parentState;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            final View someView = mParentActivity.findViewById(android.R.id.content);
-            final View rootView = someView.getRootView();
-            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-            rootView.setDrawingCacheEnabled(true);
-            rootView.layout(0, 0, rootView.getMeasuredWidth(), rootView.getMeasuredHeight());
-            rootView.buildDrawingCache(true);
-
-            // We could get a null or zero px bitmap if the rootView hasn't been measured
-            // appropriately. This is ok, and we should handle it gracefully.
-            final Bitmap original = rootView.getDrawingCache();
-            Bitmap scaled = null;
-            if (null != original) {
-                final int scaledWidth = original.getWidth() / 2;
-                final int scaledHeight = original.getHeight() / 2;
-                if (scaledWidth > 0 && scaledHeight > 0) {
-                    scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-                }
-            }
-            if (! originalCacheState) {
-                rootView.setDrawingCacheEnabled(false);
-            }
-            mSourceImage = scaled;
-        }
-
-        @Override
-        protected Void doInBackground(Void ...params) {
-            if (null == mSourceImage) {
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
-                return null;
-            }
-
-            // This is purely an optimization- all kinds of great
-            // stuff could happen after we make this check, which is ok.
-            synchronized (sSurveyStateLock) {
-                if (sSurveyState != mParentState) {
-                    isWasted = true;
-                    return null;
-                }
-            }
-
-            try {
-                final long startTime = System.currentTimeMillis();
-                final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
-                mCalculatedHighlightColor = background1px.getPixel(0, 0);
-
-                StackBlurManager.process(mSourceImage, 20);
-
-                final long endTime = System.currentTimeMillis();
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-
-                final Canvas canvas = new Canvas(mSourceImage);
-                canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
-            } catch (final OutOfMemoryError e) {
-                // It's possible that the bitmap processing was what sucked up all of the memory,
-                // So we try to recover here.
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void _) {
-            if (isWasted) {
-                return; // No need to launch anything
-            }
-            mBackground = mSourceImage;
-            mHighlightColor = mCalculatedHighlightColor;
-
-            final Intent surveyIntent = new Intent(mParentActivity.getApplicationContext(), SurveyActivity.class);
-            surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-            synchronized (sSurveyStateLock) {
-                mIsReady = true;
-                sNextIntentId++;
-                surveyIntent.putExtra("intentID", sNextIntentId);
-            }
-            mParentActivity.startActivity(surveyIntent);
-        }
-
-        private final SurveyState mParentState;
-        private boolean isWasted = false;
-        private Bitmap mSourceImage;
-        private int  mCalculatedHighlightColor;
-    } // SurveyInitializationTask
 
     // Can't extend HashMap<..> because Parcelable will jump in and
     // deal with the HashMap itself. Which, maybe we should just drop the type entirely...
@@ -346,13 +245,11 @@ public class SurveyState implements Parcelable {
     };
 
     private final Survey mSurvey;
-    private final Activity mParentActivity;
     private final String mDistinctId;
     private final String mToken;
     private final AnswerMap mAnswers;
-    private Bitmap mBackground;
-    private int mHighlightColor;
-    private boolean mIsReady;
+    private final Bitmap mBackground;
+    private final int mHighlightColor;
 
     private static final Object sSurveyStateLock = new Object();
     private static long sSurveyStateLockMillis = -1;
@@ -361,7 +258,6 @@ public class SurveyState implements Parcelable {
     private static long sIntentIdLockMillis = -1;
     private static int sShowingIntentId = -1;
 
-    private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
     private static final String LOGTAG = "MixpanelAPI SurveyState";
     private static final long MAX_LOCK_TIME_MILLIS = 12 * 60 * 60 * 1000; // Twelve hour timeout on survey activities
 
@@ -369,7 +265,6 @@ public class SurveyState implements Parcelable {
     private static final String DISTINCT_ID_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.DISTINCT_ID_BUNDLE_KEY";
     private static final String TOKEN_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.TOKEN_BUNDLE_KEY";
     private static final String HIGHLIGHT_COLOR_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.HIGHLIGHT_COLOR_BUNDLE_KEY";
-    private static final String IS_READY_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.IS_READY_BUNDLE_KEY";
     private static final String ANSWERS_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.ANSWERS_BUNDLE_KEY";
     private static final String BACKGROUND_COMPRESSED_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.SurveyState.BACKGROUND_COMPRESSED_BUNDLE_KEY";
 }

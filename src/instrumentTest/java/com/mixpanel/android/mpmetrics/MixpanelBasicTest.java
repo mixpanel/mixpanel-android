@@ -6,6 +6,9 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -957,11 +960,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
                  "{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287}," +
                  "{\"prompt\":\"PROMPT2\",\"extra_data\":{},\"type\":\"text\",\"id\":289}]}";
 
+        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+        Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
+
         SurveyState originalSurveyState;
         try {
             final JSONObject surveyJson = new JSONObject(surveyJsonString);
             final Survey s = new Survey(surveyJson);
-            originalSurveyState = new SurveyState(s, null, "DistinctId", "Token");
+            originalSurveyState = new SurveyState(s, "DistinctId", "Token", testBitmap, Color.WHITE);
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");
         } catch (Survey.BadSurveyException e) {
@@ -977,9 +983,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         outBundle.setClassLoader(SurveyState.class.getClassLoader());
         final SurveyState inSurveyState = outBundle.getParcelable("TEST SURVEY PARCEL");
 
-        // TODO need to test inSurveyState.getBackground()
-
-        final SurveyState.AnswerMap inAnswers = inSurveyState.getAnswers();
         final Survey inSurvey = inSurveyState.getSurvey();
         final String inDistinctId = inSurveyState.getDistinctId();
         final String inToken = inSurveyState.getToken();
@@ -1006,6 +1009,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(q2.getId(), 289);
         assertEquals(q2.getPrompt(), "PROMPT2");
         assertEquals(q2.getType(), Survey.QuestionType.TEXT);
+
+        assertNotNull(inSurveyState.getBackground());
+        assertNotNull(inSurveyState.getAnswers());
     }
 
     private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {

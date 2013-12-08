@@ -21,6 +21,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.util.Log;
 
@@ -882,8 +883,12 @@ public class MixpanelAPI {
             if (Build.VERSION.SDK_INT < 10) {
                 return;
             }
-
-            SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken);
+            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                @Override
+                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                    SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
+                }
+            });
         }
 
         @Override
