@@ -164,5 +164,5 @@ import android.util.Log;
 
     private static final String LOGTAG = "MixpanelAPI.MPConfig";
 
-    public static final String VERSION = "4.0.0-SNAPSHOT";
+    public static final String VERSION = "4.0.0";
 }
