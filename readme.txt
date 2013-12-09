@@ -32,11 +32,23 @@ This is a major release, with significant changes to library behavior.
   In previous releases, the Mixpanel library was distributed as a jar file. As of 4.0.0,
   use of the library varies with the build tools chosen.
 
-  For building with Eclipse, download the Mixpanel repository and follow the steps outlined
-  here, for "Referencing a Library Project":
+  For Eclipse and Ant
+  -------------------
+      For building with Eclipse or ant, download the Mixpanel repository and follow the steps outlined
+      here, for "Referencing a Library Project":
 
-  http://developer.android.com/tools/projects/projects-eclipse.html#ReferencingLibraryProject
+      http://developer.android.com/tools/projects/projects-eclipse.html#ReferencingLibraryProject
 
+  For Gradle and Android Studio
+  -----------------------------
+      For building with Gradle or Android Studio- add the following dependency to your build.gradle file
+
+          dependencies {
+              compile "com.mixpanel.android:mixpanel-android:4.0.0@aar"
+          }
+
+       A version of each release is hosted in Maven central, and will not require you to manually
+       download or install any artifacts.
 
 * Support for Mixpanel surveys. Support takes the form of two new API calls
   and some new default automatic behavior
