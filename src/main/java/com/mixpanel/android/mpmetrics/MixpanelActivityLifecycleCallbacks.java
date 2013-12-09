@@ -120,7 +120,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                     });
                 }
             }
-        });
+        }, activity);
     }
 
     private final MixpanelAPI mMpInstance;

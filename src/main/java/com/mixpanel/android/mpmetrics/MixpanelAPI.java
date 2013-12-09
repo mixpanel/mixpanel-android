@@ -671,6 +671,12 @@ public class MixpanelAPI {
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
+         * Like {@link checkForSurvey}, but will prepare visuals and do work associated
+         * with showing the build in survey activity before calling the user callback.
+         */
+        public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
+
+        /**
          * Will launch an activity that shows a survey to a user and sends the responses
          * to Mixpanel. To get a survey to show, use checkForSurvey()
          *
@@ -840,7 +846,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void checkForSurvey(SurveyCallbacks callbacks) {
+        public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
             if (checkForSurveysLock.acquire()) {
 
@@ -878,17 +884,59 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
+            synchronized(mCachedSurveyAssetsLock) {
+                mCachedSurveyBitmap = null;
+                mCachedSurveyHighlightColor = -1;
+                mCachedSurveyActivityHashcode = -1;
+            }
+
+            checkForSurvey(new SurveyCallbacks() {
+                @Override
+                public void foundSurvey(final Survey survey) {
+                    BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
+                        @Override
+                        public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                            synchronized(mCachedSurveyAssetsLock) {
+                                mCachedSurveyBitmap = bitmapCaptured;
+                                mCachedSurveyHighlightColor = highlightColorCaptured;
+                                mCachedSurveyActivityHashcode = parentActivity.hashCode();
+                            }
+                            callbacks.foundSurvey(survey);
+                        }
+                    });
+                }
+            });
+        }
+
+        @Override
         public void showSurvey(final Survey s, final Activity parent) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
                 return;
             }
-            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                @Override
-                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                    SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
+            Bitmap useBitmap = null;
+            int useHighlightColor = -1;
+            synchronized(mCachedSurveyAssetsLock) {
+                if (parent.hashCode() == mCachedSurveyActivityHashcode) {
+                    useBitmap = mCachedSurveyBitmap;
+                    useHighlightColor = mCachedSurveyHighlightColor;
                 }
-            });
+                mCachedSurveyBitmap = null;
+                mCachedSurveyHighlightColor = -1;
+                mCachedSurveyActivityHashcode = -1;
+            }
+
+            if (null != useBitmap) {
+                SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, useBitmap, useHighlightColor);
+            } else {
+                BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                    @Override
+                    public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                        SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
+                    }
+                });
+            }
         }
 
         @Override
@@ -1200,6 +1248,12 @@ public class MixpanelAPI {
     private final String mToken;
     private final PeopleImpl mPeople;
     private final SharedPreferences mStoredPreferences;
+
+    // Cache of survey assets for showSurveys. Synchronized access only.
+    private final Object mCachedSurveyAssetsLock = new Object();
+    private int mCachedSurveyActivityHashcode = -1;
+    private Bitmap mCachedSurveyBitmap;
+    private int mCachedSurveyHighlightColor;
 
     // Persistent members. These are loaded and stored from our preferences.
     private JSONObject mSuperProperties;
