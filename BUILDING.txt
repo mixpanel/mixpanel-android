@@ -1,3 +1,15 @@
+To build the source code, use
+
+With Gradle 1.8:
+
+    $ cd PATH_TO_REPO
+    $ gradle build
+
+With Ant
+
+    $ cd PATH_TO_REPO/src/main/src
+    $ ant debug # or ant release
+
 In order to support gradle and Android Studio while continuing to support older
 build tools, the Mixpanel library contains a complete Eclipse/Ant android project
 inside of its src/main directory. To include the library in your ant or Eclipse
