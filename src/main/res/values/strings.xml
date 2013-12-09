@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="com_mixpanel_android_next">Next question</string>
+    <string name="com_mixpanel_android_previous">Previous question</string>
+    <string name="com_mixpanel_android_logo">By Mixpanel</string>
+    <string name="com_mixpanel_android_exit">Exit</string>
+    <color name="com_mixpanel_android_selected">#66ffffff</color>
+</resources>

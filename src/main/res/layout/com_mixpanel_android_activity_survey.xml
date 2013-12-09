@@ -1,0 +1,86 @@
+<?xml version="1.0" ?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/com_mixpanel_android_activity_survey_id"
+    android:layout_width="match_parent"
+    android:layout_height="fill_parent"
+    android:padding="20dp"
+    android:clickable="true"
+    android:orientation="vertical" >
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:clickable="true" >
+
+        <ImageButton
+            android:id="@+id/com_mixpanel_android_button_previous"
+            android:layout_width="35dp"
+            android:layout_height="44dp"
+            android:layout_alignParentLeft="true"
+            android:clickable="true"
+            android:background="@drawable/com_mixpanel_android_arrowleft_insets"
+            android:contentDescription="@string/com_mixpanel_android_previous"
+            android:onClick="goToPreviousQuestion" />
+
+        <TextView
+            android:id="@+id/com_mixpanel_android_progress_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:textSize="20dp"
+            android:textColor="#ffffff" />
+
+        <ImageButton
+            android:id="@+id/com_mixpanel_android_button_next"
+            android:layout_width="35dp"
+            android:layout_height="44dp"
+            android:layout_alignParentRight="true"
+            android:clickable="true"
+            android:background="@drawable/com_mixpanel_android_arrowright_insets"
+            android:contentDescription="@string/com_mixpanel_android_next"
+            android:onClick="goToNextQuestion" />
+    </RelativeLayout>
+
+    <com.mixpanel.android.surveys.CardCarouselLayout
+        android:id="@+id/com_mixpanel_android_question_card_holder"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_gravity="center"
+        android:layout_weight="1" android:orientation="vertical"
+        ></com.mixpanel.android.surveys.CardCarouselLayout>
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="40dp"
+        android:paddingTop="10dp" >
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="25dp"
+            android:scaleType="fitStart"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentBottom="true"
+            android:src="@drawable/com_mixpanel_android_logo"
+            android:contentDescription="@string/com_mixpanel_android_logo"
+            />
+
+        <com.mixpanel.android.surveys.FadeOnPressButton
+            android:id="@+id/com_mixpanel_android_button_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentBottom="true"
+            android:paddingBottom="0dp"
+            android:textColor="#ffffff"
+            android:textSize="20dp"
+            android:clickable="true"
+            android:background="@android:color/transparent"
+            android:text="@string/com_mixpanel_android_exit"
+            android:gravity="right|center_vertical"
+            android:onClick="completeSurvey"
+            android:layout_marginBottom="3dp" />
+
+    </RelativeLayout>
+
+</LinearLayout>

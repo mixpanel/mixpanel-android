@@ -1,19 +1,105 @@
 Documentation:
     You can find getting started guides for using Mixpanel at
-
-    https://mixpanel.com/docs/integration-libraries/android for tracking events
-    https://mixpanel.com/docs/people-analytics/android for updating people analytics
-    https://mixpanel.com/docs/people-analytics/android-push for sending push notifications
+    https://mixpanel.com/docs/integration-libraries/android#installing for installation instructions
+    https://mixpanel.com/docs/integration-libraries/android#sending_events for tracking events
+    https://mixpanel.com/docs/integration-libraries/android#creating_profiles for updating people analytics
+    https://mixpanel.com/docs/integration-libraries/android#push_quick_start for sending push notifications
+    https://mixpanel.com/docs/integration-libraries/android#surveys for showing surveys
 
 Demo:
     See https://github.com/mixpanel/mixpanel-android for a full featured sample application
 
 License:
-    See LICENSE File for details. The Base64Coder class and ConfigurationChecker class used by
-    this software have been licensed from non-Mixpanel sources and modified for use in the library.
-    Please see the relevant source files for details.
+
+    See LICENSE File for details. The Base64Coder,
+    ConfigurationChecker, and StackBlurManager classes used by this
+    software have been licensed from non-Mixpanel sources and modified
+    for use in the library.  Please see the relevant source files for
+    details.
+
+    The StackBlurManager class uses an algorithm by Mario Klingemann <mario@quansimondo.com>
+    You can learn more about the algorithm at
+    http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html
 
 Changelog:
+
+v4.0.0
+---------------------
+This is a major release, with significant changes to library behavior.
+
+* Changes to the steps required to integrate the Mixpanel library in your project.
+
+  In previous releases, the Mixpanel library was distributed as a jar file. As of 4.0.0,
+  use of the library varies with the build tools chosen.
+
+  For Eclipse and Ant
+  -------------------
+      For building with Eclipse or ant, download the Mixpanel repository and follow the steps outlined
+      here, for "Referencing a Library Project":
+
+      http://developer.android.com/tools/projects/projects-eclipse.html#ReferencingLibraryProject
+
+  For Gradle and Android Studio
+  -----------------------------
+      For building with Gradle or Android Studio- add the following dependency to your build.gradle file
+
+          dependencies {
+              compile "com.mixpanel.android:mixpanel-android:4.0.0@aar"
+          }
+
+       A version of each release is hosted in Maven central, and will not require you to manually
+       download or install any artifacts.
+
+* Support for Mixpanel surveys. Support takes the form of two new API calls
+  and some new default automatic behavior
+
+  - MixpanelAPI.getPeople().checkForSurveys will query Mixpanel for surveys
+    targeted to the current user, and pass a Survey object
+    to a callback when a survey is found, or null if no Survey could be found
+
+  - MixpanelAPI.getPeople().showSurvey will launch a new Activity that shows
+    the given survey to the user, and send the results of the survey to Mixpanel
+
+  - Unless configured with com.mixpanel.android.MPConfig.AutoCheckForSurveys metadata,
+    applications using the Mixpanel library will automatically query for and show
+    an available survey on application startup.
+
+* Passing a null token or null context to MixpanelAPI.getInstance() will result in
+  a null return value.
+
+* Automatic $bluetooth_enabled property will only be added automatically on devices with
+  OS version greater than API 18/OS version 4.3/Jelly Bean MR2. This feature had a
+  critical bug on older platforms, and was not in popular use.
+
+* Users can now configure MixpanelAPI behavior by including <meta-data> tags in the <application>
+  tag of their apps. The following meta-data keys are supported:
+
+  com.mixpanel.android.MPConfig.FlushInterval (value: a time in milliseconds)
+
+      If provided, the library will use this interval instead of the default as a
+      target maximum duration between attempts to flush data to Mixpanel's servers.
+
+  com.mixpanel.android.MPConfig.DisableFallback (value: a boolean)
+
+      If provided and equal to "true", the library will not attempt to send data over
+      HTTP if HTTPS fails
+
+  com.mixpanel.android.MPConfig.AutoCheckForSurveys (value: a boolean)
+
+      If provided and equal to "false", the Mixpanel library will not attempt to
+      retrieve and show surveys automatically, users can still show surveys using
+      MixpanelAPI.getPeople().checkForSurvey and MixpanelAPI.getPeople().showSurvey
+
+* A scary stack trace log in the common, not-scary case of fallback from HTTPS to HTTP has been
+  removed.
+
+* MixpanelAPI.setFlushInterval() has been deprecated.
+  Use <meta-data android:name="com.mixpanel.android.MPConfig.FlushInterval" android:value="XXX" />
+  instead, where "XXX" is the desired interval in Milliseconds.
+
+* MixpanelAPI.enableFallbackServer() has been deprecated.
+  Use <meta-data android:name="com.mixpanel.android.MPConfig.DisableFallback" android:value="true" />
+  to disable fallback to HTTP if HTTPS is unavailable.
 
 v3.3.1
 ---------------------
@@ -211,7 +297,7 @@ v1.0 (original)
 * Removed the funnel() methods. Funnels have been built from events for some time now, and this update to Android simply reflects that change we have made.
   The proper way to perform funnel analysis is to create a funnel based on events that you are sending. For more information, please see http://mixpanel.com/api/docs/guides/funnel-analysis
 
-* Renamed the event method to track, to be more consistent with the existing APIs. 
+* Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
- 
+

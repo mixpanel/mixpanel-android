@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<!--  Padding is hard coded in the component, to work around some limitations of CheckedTextView -->
+<com.mixpanel.android.surveys.SurveyChoiceView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/com_mixpanel_android_choice_first_states"
+    android:id="@+id/com_mixpanel_android_multiple_choice_answer_text"
+    android:gravity="center_vertical"
+    android:textColor="#ffffff"
+    android:ellipsize="end"
+    android:maxLines="3"
+    android:checkMark="@drawable/com_mixpanel_android_checkmark_states"
+    />

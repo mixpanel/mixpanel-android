@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+The use of android:tag rather than android:id is a workaround to a (bug? very strange feature?)
+of Android views that results in ListViews sharing internal state after saving/restoring state
+(For example, when the screen is rotated) if they share the same ids.
+
+https://groups.google.com/forum/#!msg/android-developers/qcclW4oekVY/IeQtoAruCTgJ
+
+ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:tag="com_mixpanel_android_TAG_prompt_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:ellipsize="end"
+        android:maxLines="3"
+        android:minHeight="80dp"
+        android:paddingBottom="20dp"
+        android:textColor="#ffffff"
+        android:textSize="18sp" />
+
+    <com.mixpanel.android.surveys.AlwaysSubmittableEditText
+        android:tag="com_mixpanel_android_TAG_text_answer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/com_mixpanel_android_text_answer_border"
+        android:textColor="#ffffff"
+        android:textSize="18sp"
+        android:inputType="text|textCapSentences|textAutoCorrect|textMultiLine"
+        android:scrollHorizontally="true"
+        android:imeOptions="actionDone"
+        android:lines="3" android:singleLine="true"
+        android:padding="5dp"
+        android:gravity="top|left"
+        android:visibility="gone" />
+
+    <!-- cacheColorHint setting from http://android-developers.blogspot.com/2009/01/why-is-my-list-black-android.html -->
+    <ListView
+        android:tag="com_mixpanel_android_TAG_choice_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1"
+        android:textColor="#ffffff" android:textSize="18sp"
+        android:scrollbars="none"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="30dp"
+        android:cacheColorHint="#00000000" android:listSelector="@drawable/com_mixpanel_android_nocolor_list"
+        android:background="@android:color/transparent" android:divider="@android:color/transparent"
+        android:choiceMode="singleChoice" />
+</LinearLayout>
