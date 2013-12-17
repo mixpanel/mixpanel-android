@@ -19,6 +19,10 @@ import android.util.Log;
 
 import com.mixpanel.android.surveys.SurveyActivity;
 
+/**
+ * This is a class intended for internal use by the library.
+ * Users of the library should not interact with it directly.
+ */
 public class SurveyState implements Parcelable {
     public static void proposeSurvey(final Survey s,
             final Activity parentActivity,
@@ -174,9 +178,10 @@ public class SurveyState implements Parcelable {
     }
 
 
-
-    // Can't extend HashMap<..> because Parcelable will jump in and
-    // deal with the HashMap itself. Which, maybe we should just drop the type entirely...
+    /**
+     * This class is intended for internal use by the Mixpanel library.
+     * Users of the library should not interact directly with this class.
+     */
     public static class AnswerMap implements Parcelable {
 
         @SuppressLint("UseSparseArrays")

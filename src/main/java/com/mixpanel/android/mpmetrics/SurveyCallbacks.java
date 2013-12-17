@@ -1,7 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
 /**
- * For use with MixpanelAPI.checkForSurvey
+ * For use with MixpanelAPI.checkForSurvey. SurveyCallbacks.foundSurvey() will be called when the library gets a survey from Mixpanel.
  */
 public interface SurveyCallbacks {
     /**

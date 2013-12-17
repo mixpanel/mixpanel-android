@@ -8,6 +8,24 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+/**
+ * Represents a Survey, configured in Mixpanel, suitable for showing to a user.
+ *
+ * The typical use of this class follows the pattern.
+ * <pre>
+ * {@code
+ *   Activity parent = this;
+ *   mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
+ *       {@literal @}Override
+ *       public void foundSurvey(Survey survey) {
+ *           if (survey != null) {
+ *               mixpanel.getPeople().showSurvey(survey, parent);
+ *           }
+ *       }
+ *   });
+ * }
+ * </pre>
+ */
 public class Survey {
 
     public static class BadSurveyException extends Exception {

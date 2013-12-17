@@ -161,7 +161,7 @@ public class MixpanelAPI {
      * <tt>setFlushInterval</tt>.
      *
      * If milliseconds is negative, Mixpanel will never flush the data automatically,
-     * and require callers to call {@ link #flush()} to send data. This can have
+     * and require callers to call {@link #flush()} to send data. This can have
      * implications for storage and is not appropriate for most situations.
      *
      * @param context the execution context associated with this application, probably
@@ -650,16 +650,18 @@ public class MixpanelAPI {
          * If the check is successful, it will call its argument's
          * foundSurvey() method with a (possibly null) {@link Survey} object.
          * The typical use case is similar to
+         * <pre>
          * {@code
-         * View myView = this.getView();
+         * Activity parent = this;
          * mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
          *     public void foundSurvey(Survey survey) {
          *         if (survey != null) {
-         *             mixpanel.getPeople().showSurvey(survey, myView);
+         *             mixpanel.getPeople().showSurvey(survey, parent);
          *         }
          *     }
          * });
          * }
+         * </pre>
          *
          * The foundSurvey() may be (and will probably be) called on a different thread
          * than the one that called checkForSurveys(). The library doesn't guarantee
@@ -671,7 +673,7 @@ public class MixpanelAPI {
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
-         * Like {@link checkForSurvey}, but will prepare visuals and do work associated
+         * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
          * with showing the build in survey activity before calling the user callback.
          */
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
