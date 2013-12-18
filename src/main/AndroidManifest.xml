@@ -10,13 +10,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      This permission is optional but recommended so we can be smart about when to send data.
-     -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      These permissions are optional but recommended so we can be smart about when to send data,
+      and send more complete data about your users automatically.
 
-    <!--
-      This permission is optional but recommended so events will contain information about bluetooth state
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+      <uses-permission android:name="android.permission.BLUETOOTH" />
+
     -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
 
 </manifest>
