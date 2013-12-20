@@ -368,6 +368,9 @@ import android.util.Log;
              */
             private Survey runSurveyCheck(final SurveyCheck check) {
                 final String response = getSurveyFromServer(check.getToken(), check.getDistinctId());
+                if (null == response) {
+                    return null;
+                }
                 JSONArray surveys = null;
                 try {
                     final JSONObject parsed = new JSONObject(response);
