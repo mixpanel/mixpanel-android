@@ -4,7 +4,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.TimeZone;
 
 import org.json.JSONException;
@@ -17,7 +16,6 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.SparseArray;
 import android.view.View;
 import android.widget.TextView;
 
@@ -92,28 +90,20 @@ public class SurveyActivity extends Activity {
             if (null != mSurveyState) {
                 final Survey survey = mSurveyState.getSurvey();
                 final List<Survey.Question> questionList = survey.getQuestions();
-                final SparseArray<Survey.Question> questionsById = new SparseArray<Survey.Question>();
-                for (final Question question:questionList) {
-                    questionsById.put(question.getId(), question);
-                }
 
                 final String answerDistinctId = mSurveyState.getDistinctId();
                 final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
                 people.append("$responses", survey.getCollectionId());
 
                 final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
-                for (final Map.Entry<Integer, String> answerEntry:answers.entrySet()) {
-                    final int questionId = answerEntry.getKey();
-                    final String answerString = answerEntry.getValue();
-                    final Survey.Question question = questionsById.get(questionId);
-                    if (null == question) {
-                        Log.e(LOGTAG, "Found an answer to a nonexistent question: Question Id was " + questionId);
-                    } else {
+                for (final Survey.Question question:questionList) {
+                    final String answerString = answers.get(question.getId());
+                    if (null != answerString) {
                         try {
                             final JSONObject answerJson = new JSONObject();
                             answerJson.put("$survey_id", survey.getId());
                             answerJson.put("$collection_id", survey.getCollectionId());
-                            answerJson.put("$question_id", questionId);
+                            answerJson.put("$question_id", question.getId());
                             answerJson.put("$question_type", question.getType().toString());
 
                             final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
@@ -125,8 +115,8 @@ public class SurveyActivity extends Activity {
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Couldn't record user's answer.", e);
                         }
-                    } // if question is present and valid
-                } // For each answer
+                    } // if answer is present
+                } // For each question
             } // if we have a survey state
             mMixpanel.flush();
         } // if we initialized property and we have a mixpanel

@@ -198,10 +198,6 @@ public class SurveyState implements Parcelable {
             return mMap.get(i);
         }
 
-        public Set<Map.Entry<Integer, String>> entrySet() {
-            return mMap.entrySet();
-        }
-
         @Override
         public int describeContents() {
             return 0;
