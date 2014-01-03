@@ -4,6 +4,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.json.JSONException;
@@ -16,6 +17,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
 import android.widget.TextView;
 
@@ -82,11 +84,53 @@ public class SurveyActivity extends Activity {
         showQuestion(mCurrentQuestion);
     }
 
+
+    @SuppressLint("SimpleDateFormat")
     @Override
     protected void onDestroy() {
-        if (mMixpanel != null) { // Will be null if we bail in onCreate (for example, if we can't get a lock)
+        if (null != mMixpanel) {
+            if (null != mSurveyState) {
+                final Survey survey = mSurveyState.getSurvey();
+                final List<Survey.Question> questionList = survey.getQuestions();
+                final SparseArray<Survey.Question> questionsById = new SparseArray<Survey.Question>();
+                for (final Question question:questionList) {
+                    questionsById.put(question.getId(), question);
+                }
+
+                final String answerDistinctId = mSurveyState.getDistinctId();
+                final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
+                people.append("$responses", survey.getCollectionId());
+
+                final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
+                for (final Map.Entry<Integer, String> answerEntry:answers.entrySet()) {
+                    final int questionId = answerEntry.getKey();
+                    final String answerString = answerEntry.getValue();
+                    final Survey.Question question = questionsById.get(questionId);
+                    if (null == question) {
+                        Log.e(LOGTAG, "Found an answer to a nonexistent question: Question Id was " + questionId);
+                    } else {
+                        try {
+                            final JSONObject answerJson = new JSONObject();
+                            answerJson.put("$survey_id", survey.getId());
+                            answerJson.put("$collection_id", survey.getCollectionId());
+                            answerJson.put("$question_id", questionId);
+                            answerJson.put("$question_type", question.getType().toString());
+
+                            final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+                            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                            answerJson.put("$time", dateFormat.format(new Date()));
+                            answerJson.put("$value", answerString);
+
+                            people.append("$answers", answerJson);
+                        } catch (final JSONException e) {
+                            Log.e(LOGTAG, "Couldn't record user's answer.", e);
+                        }
+                    } // if question is present and valid
+                } // For each answer
+            } // if we have a survey state
             mMixpanel.flush();
-        }
+        } // if we initialized property and we have a mixpanel
+
         SurveyState.releaseSurvey(mIntentId);
         super.onDestroy();
     }
@@ -173,33 +217,9 @@ public class SurveyActivity extends Activity {
         }
     }
 
-    @SuppressLint("SimpleDateFormat")
     private void saveAnswer(Survey.Question question, String answer) {
-        final Survey survey = mSurveyState.getSurvey();
         final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
-
-        final String answerDistinctId = mSurveyState.getDistinctId();
-        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
-        people.append("$responses", survey.getCollectionId());
-
-        try {
-            final JSONObject answerJson = new JSONObject();
-            answerJson.put("$survey_id", survey.getId());
-            answerJson.put("$collection_id", survey.getCollectionId());
-            answerJson.put("$question_id", question.getId());
-            answerJson.put("$question_type", question.getType().toString());
-
-            final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-            answerJson.put("$time", dateFormat.format(new Date()));
-            answerJson.put("$value", answer.toString());
-
-            people.append("$answers", answerJson);
-        } catch (final JSONException e) {
-            Log.e(LOGTAG, "Couldn't record user's answer.", e);
-        }
-        mMixpanel.flush();
     }
 
     private void completeSurvey() {

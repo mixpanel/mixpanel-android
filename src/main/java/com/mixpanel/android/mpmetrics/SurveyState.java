@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -195,6 +196,10 @@ public class SurveyState implements Parcelable {
 
         public String get(Integer i) {
             return mMap.get(i);
+        }
+
+        public Set<Map.Entry<Integer, String>> entrySet() {
+            return mMap.entrySet();
         }
 
         @Override
