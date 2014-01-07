@@ -3,7 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.json.JSONException;
 import org.json.JSONObject;
