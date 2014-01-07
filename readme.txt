@@ -50,6 +50,21 @@ This is a major release, with significant changes to library behavior.
        A version of each release is hosted in Maven central, and will not require you to manually
        download or install any artifacts.
 
+* Fallback to HTTP from HTTPS is disabled by default
+
+  In previous releases, the Mixpanel library would automatically fall
+  back to communicating over HTTP if HTTPS communication failed. This
+  was to facilitate use on Android 2.2 (Froyo) and older OS versions,
+  which had poor support for modern SSL certificates.
+
+  In the 4.0.0, HTTP fallback behavior is disabled by default, but can be
+  reenabled for users who intend to ship to older devices by adding
+  the following tags to the <application> tag in the Application's
+  AndroidManifest.xml:
+
+    <meta-data android:name="com.mixpanel.android.MPConfig.DisableFallback"
+               android:value="false" />
+
 * Support for Mixpanel surveys. Support takes the form of two new API calls
   and some new default automatic behavior
 
@@ -81,7 +96,7 @@ This is a major release, with significant changes to library behavior.
 
   com.mixpanel.android.MPConfig.DisableFallback (value: a boolean)
 
-      If provided and equal to "true", the library will not attempt to send data over
+      If provided and equal to "false", the library will attempt to send data over
       HTTP if HTTPS fails
 
   com.mixpanel.android.MPConfig.AutoCheckForSurveys (value: a boolean)

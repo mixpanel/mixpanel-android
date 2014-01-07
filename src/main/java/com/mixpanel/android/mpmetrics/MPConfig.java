@@ -40,7 +40,7 @@ import android.util.Log;
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 48); // 48 hours default
-        mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", false);
+        mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mAutoCheckForSurveys = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
