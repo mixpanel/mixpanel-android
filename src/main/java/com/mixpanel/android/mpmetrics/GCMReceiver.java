@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
+import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -11,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 import android.util.Log;
 
 /**
@@ -87,7 +89,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent.getAction();
+        final String action = intent.getAction();
         if ("com.google.android.c2dm.intent.REGISTRATION".equals(action)) {
             handleRegistrationIntent(intent);
         } else if ("com.google.android.c2dm.intent.RECEIVE".equals(action)) {
@@ -119,37 +121,56 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     private void handleNotificationIntent(Context context, Intent intent) {
-        String message = intent.getExtras().getString("mp_message");
+        final String message = intent.getExtras().getString("mp_message");
 
         if (message == null) return;
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
 
-        PackageManager manager = context.getPackageManager();
-        Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
+        final PackageManager manager = context.getPackageManager();
+        final Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
         CharSequence notificationTitle = "";
         int notificationIcon = android.R.drawable.sym_def_app_icon;
         try {
-            ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
+            final ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
             notificationTitle = manager.getApplicationLabel(appInfo);
             notificationIcon = appInfo.icon;
-        } catch (NameNotFoundException e) {
+        } catch (final NameNotFoundException e) {
             // In this case, use a blank title and default icon
         }
 
-        PendingIntent contentIntent = PendingIntent.getActivity(
+        final PendingIntent contentIntent = PendingIntent.getActivity(
             context.getApplicationContext(),
             0,
             appIntent, // add this pass null to intent
             PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-        Notification n = new Notification.Builder(context).
+        if (Build.VERSION.SDK_INT < 11) {
+            showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
+        } else {
+            showNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @TargetApi(8)
+    private void showNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+        final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        final Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        n.setLatestEventInfo(context, title, message, intent);
+        nm.notify(0, n);
+    }
+
+    private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+        final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        final Notification n = new Notification.Builder(context).
                     setSmallIcon(notificationIcon).
                     setTicker(message).
                     setWhen(System.currentTimeMillis()).
-                    setContentTitle(notificationTitle).
-                    setContentIntent(contentIntent).
+                    setContentTitle(title).
+                    setContentText(message).
+                    setContentIntent(intent).
                     build();
 
         n.flags |= Notification.FLAG_AUTO_CANCEL;

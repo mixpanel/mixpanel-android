@@ -177,7 +177,7 @@ import com.mixpanel.android.util.StringUtils;
             Log.e(LOGTAG, "Cannot iterpret " + endpointUrl + " as a URL", e);
             status = Status.FAILED_UNRECOVERABLE;
         } catch (final IOException e) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Cannot post message to Mixpanel Servers (May Retry with fallback)", e);
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Cannot post message to Mixpanel Servers (ok, can retry.)");
             status = Status.FAILED_RECOVERABLE;
         } catch (final OutOfMemoryError e) {
             Log.e(LOGTAG, "Cannot post message to Mixpanel Servers, will not retry.", e);
