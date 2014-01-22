@@ -11,7 +11,7 @@ Documentation:
     https://mixpanel.com/docs/integration-libraries/android#surveys for showing surveys
 
 Demo:
-    See https://github.com/mixpanel/mixpanel-android for a full featured sample application
+    See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application
 
 License:
 
