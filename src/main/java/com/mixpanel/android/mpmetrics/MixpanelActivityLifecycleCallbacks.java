@@ -90,7 +90,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 final long endTime = System.currentTimeMillis();
                 final long totalTime = endTime - startTime;
                 if (null == survey) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey was executed with a null survey");
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "No survey found, nothing to show the user.");
                 } else if (totalTime <= timeoutMillis) { // If we're quick enough, just show the survey!
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
                     mMpInstance.getPeople().showSurvey(survey, activity);
