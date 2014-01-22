@@ -148,6 +148,7 @@ public class GCMReceiver extends BroadcastReceiver {
         Notification n = new NotificationCompat.Builder(context).
                     setSmallIcon(notificationIcon).
                     setTicker(message).
+                    setContentText(message).
                     setWhen(System.currentTimeMillis()).
                     setContentTitle(notificationTitle).
                     setContentIntent(contentIntent).
