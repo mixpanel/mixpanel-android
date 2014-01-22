@@ -11,6 +11,8 @@ import android.view.View;
 
 import com.mixpanel.android.util.StackBlurManager;
 
+// This class is UNUSED as of this commit, due to issues where generating the
+// blur was preventing ListView elements in the parent activity from rendering.
 /* package */ class BackgroundCapture {
 
     public static void captureBackground(final Activity parentActivity, final OnBackgroundCapturedListener listener) {

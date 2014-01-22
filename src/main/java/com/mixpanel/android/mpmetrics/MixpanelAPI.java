@@ -21,7 +21,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Build;
 import android.util.Log;
 
@@ -887,23 +887,12 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
-            synchronized(mCachedSurveyAssetsLock) {
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
             checkForSurvey(new SurveyCallbacks() {
                 @Override
                 public void foundSurvey(final Survey survey) {
-                    BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
+                    parentActivity.runOnUiThread(new Runnable() {
                         @Override
-                        public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                            synchronized(mCachedSurveyAssetsLock) {
-                                mCachedSurveyBitmap = bitmapCaptured;
-                                mCachedSurveyHighlightColor = highlightColorCaptured;
-                                mCachedSurveyActivityHashcode = parentActivity.hashCode();
-                            }
+                        public void run() {
                             callbacks.foundSurvey(survey);
                         }
                     });
@@ -917,28 +906,12 @@ public class MixpanelAPI {
             if (Build.VERSION.SDK_INT < 10) {
                 return;
             }
-            Bitmap useBitmap = null;
-            int useHighlightColor = -1;
-            synchronized(mCachedSurveyAssetsLock) {
-                if (parent.hashCode() == mCachedSurveyActivityHashcode) {
-                    useBitmap = mCachedSurveyBitmap;
-                    useHighlightColor = mCachedSurveyHighlightColor;
+            parent.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, null, Color.WHITE);
                 }
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
-            if (null != useBitmap) {
-                SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, useBitmap, useHighlightColor);
-            } else {
-                BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                    @Override
-                    public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
-                    }
-                });
-            }
+            });
         }
 
         @Override
@@ -1250,12 +1223,6 @@ public class MixpanelAPI {
     private final String mToken;
     private final PeopleImpl mPeople;
     private final SharedPreferences mStoredPreferences;
-
-    // Cache of survey assets for showSurveys. Synchronized access only.
-    private final Object mCachedSurveyAssetsLock = new Object();
-    private int mCachedSurveyActivityHashcode = -1;
-    private Bitmap mCachedSurveyBitmap;
-    private int mCachedSurveyHighlightColor;
 
     // Persistent members. These are loaded and stored from our preferences.
     private JSONObject mSuperProperties;
