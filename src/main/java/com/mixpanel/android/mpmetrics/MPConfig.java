@@ -12,7 +12,7 @@ import android.util.Log;
  * May be overridden to achieve custom behavior.
  */
 /* package */ class MPConfig {
-    public static final String VERSION = "4.0.0-RC3";
+    public static final String VERSION = "4.0.0-beta";
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
