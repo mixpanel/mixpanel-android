@@ -162,16 +162,22 @@ public class GCMReceiver extends BroadcastReceiver {
         nm.notify(0, n);
     }
 
-    private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    @SuppressWarnings("deprecation")
+	private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-        final Notification n = new Notification.Builder(context).
-                    setSmallIcon(notificationIcon).
-                    setTicker(message).
-                    setWhen(System.currentTimeMillis()).
-                    setContentTitle(title).
-                    setContentText(message).
-                    setContentIntent(intent).
-                    build();
+        final Notification.Builder builder = new Notification.Builder(context).
+                setSmallIcon(notificationIcon).
+                setTicker(message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(title).
+                setContentText(message).
+                setContentIntent(intent);
+        Notification n;
+        if (Build.VERSION.SDK_INT < 16) {
+            n = builder.getNotification();
+        } else {
+            n = builder.build();
+        }
 
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         nm.notify(0, n);
