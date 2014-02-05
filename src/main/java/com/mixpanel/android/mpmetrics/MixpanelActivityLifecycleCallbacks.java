@@ -82,6 +82,10 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         if (null == activity) {
             return;
         }
+        if (! ConfigurationChecker.checkSurveyActivityAvailable(activity.getApplicationContext())) {
+            return;
+        }
+
         final long startTime = System.currentTimeMillis();
         mHasDoneFirstCheck = true;
         mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {

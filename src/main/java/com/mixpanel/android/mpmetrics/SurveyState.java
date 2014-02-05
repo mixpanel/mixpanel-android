@@ -30,6 +30,10 @@ public class SurveyState implements Parcelable {
             final String token,
             Bitmap background,
             int highlightColor) {
+        if (! ConfigurationChecker.checkSurveyActivityAvailable(parentActivity.getApplicationContext())) {
+            return;
+        }
+
         final long currentTime = System.currentTimeMillis();
         final long deltaTime = currentTime - sSurveyStateLockMillis;
         synchronized(sSurveyStateLock) {
@@ -39,7 +43,13 @@ public class SurveyState implements Parcelable {
             }
             if (null == sSurveyState) {
                 sSurveyState = new SurveyState(s, distinctId, token, background, highlightColor);
-                sSurveyState.initializeAndLaunch(parentActivity);
+                final Intent surveyIntent = new Intent(parentActivity.getApplicationContext(), SurveyActivity.class);
+                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+                SurveyState.sNextIntentId++;
+                surveyIntent.putExtra("intentID", SurveyState.sNextIntentId);
+                parentActivity.startActivity(surveyIntent);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a survey, declining to show another.");
             }
@@ -164,19 +174,6 @@ public class SurveyState implements Parcelable {
             throw new RuntimeException("Survey serialization resulted in a corrupted parcel");
         }
     }
-
-    private void initializeAndLaunch(Activity parentActivity) {
-        final Intent surveyIntent = new Intent(parentActivity.getApplicationContext(), SurveyActivity.class);
-        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-        synchronized (sSurveyStateLock) {
-            sNextIntentId++;
-            surveyIntent.putExtra("intentID", sNextIntentId);
-        }
-        parentActivity.startActivity(surveyIntent);
-    }
-
 
     /**
      * This class is intended for internal use by the Mixpanel library.

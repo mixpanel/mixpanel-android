@@ -4,6 +4,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.mixpanel.android.surveys.SurveyActivity;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -48,13 +50,13 @@ import android.util.Log;
             return false;
         }
 
-        PackageManager packageManager = context.getPackageManager();
-        String packageName = context.getPackageName();
-        String permissionName = packageName + ".permission.C2D_MESSAGE";
+        final PackageManager packageManager = context.getPackageManager();
+        final String packageName = context.getPackageName();
+        final String permissionName = packageName + ".permission.C2D_MESSAGE";
         // check special permission
         try {
             packageManager.getPermissionInfo(permissionName, PackageManager.GET_PERMISSIONS);
-        } catch (NameNotFoundException e) {
+        } catch (final NameNotFoundException e) {
             Log.w(LOGTAG, "Application does not define permission " + permissionName);
             Log.i(LOGTAG, "You will need to add the following lines to your application manifest:\n" +
                     "<permission android:name=\"" + packageName + ".permission.C2D_MESSAGE\" android:protectionLevel=\"signature\" />\n" +
@@ -95,20 +97,20 @@ import android.util.Log;
         PackageInfo receiversInfo;
         try {
             receiversInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_RECEIVERS);
-        } catch (NameNotFoundException e) {
+        } catch (final NameNotFoundException e) {
             Log.w(LOGTAG, "Could not get receivers for package " + packageName);
             return false;
         }
-        ActivityInfo[] receivers = receiversInfo.receivers;
+        final ActivityInfo[] receivers = receiversInfo.receivers;
         if (receivers == null || receivers.length == 0) {
             Log.w(LOGTAG, "No receiver for package " + packageName);
             Log.i(LOGTAG, "You can fix this with the following into your <application> tag:\n" +
-                            sampleConfigurationMessage(packageName));
+                            samplePushConfigurationMessage(packageName));
             return false;
         }
 
-        Set<String> allowedReceivers = new HashSet<String>();
-        for (ActivityInfo receiver : receivers) {
+        final Set<String> allowedReceivers = new HashSet<String>();
+        for (final ActivityInfo receiver : receivers) {
             if ("com.google.android.c2dm.permission.SEND".equals(receiver.permission)) {
                 allowedReceivers.add(receiver.name);
             }
@@ -117,7 +119,7 @@ import android.util.Log;
         if (allowedReceivers.isEmpty()) {
             Log.w(LOGTAG, "No receiver allowed to receive com.google.android.c2dm.permission.SEND");
             Log.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
-                    sampleConfigurationMessage(packageName));
+                    samplePushConfigurationMessage(packageName));
             return false;
         }
 
@@ -125,33 +127,23 @@ import android.util.Log;
                 checkReceiver(context, allowedReceivers, "com.google.android.c2dm.intent.RECEIVE");
     }
 
-    private static boolean checkReceiver(Context context, Set<String> allowedReceivers, String action) {
-        PackageManager pm = context.getPackageManager();
-        String packageName = context.getPackageName();
-        Intent intent = new Intent(action);
-        intent.setPackage(packageName);
-        List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_INTENT_FILTERS);
+    public static boolean checkSurveyActivityAvailable(Context context) {
+        final Intent surveyIntent = new Intent(context, SurveyActivity.class);
+        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
-        if (receivers.isEmpty()) {
-            Log.w(LOGTAG, "No receivers for action " + action);
-            Log.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
-                    sampleConfigurationMessage(packageName));
+        final PackageManager packageManager = context.getPackageManager();
+        final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(surveyIntent, 0);
+        if (intentActivities.size() == 0) {
+            Log.w(LOGTAG, SurveyActivity.class.getName() + " is not registered as an activity in your application, so surveys can't be shown.");
+            Log.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.surveys.SurveyActivity\" /> to your <application> tag.");
             return false;
-        }
-        // make sure receivers match
-        for (ResolveInfo receiver : receivers) {
-            String name = receiver.activityInfo.name;
-            if (!allowedReceivers.contains(name)) {
-                Log.w(LOGTAG, "Receiver " + name + " is not set with permission com.google.android.c2dm.permission.SEND");
-                Log.i(LOGTAG, "Please add the attribute 'android:permission=\"com.google.android.c2dm.permission.SEND\"' to your <receiver> tag");
-                return false;
-            }
         }
 
         return true;
     }
 
-    public static String sampleConfigurationMessage(String packageName) {
+    private static String samplePushConfigurationMessage(String packageName) {
         return
         "<receiver android:name=\"com.mixpanel.android.mpmetrics.GCMReceiver\"\n" +
         "          android:permission=\"com.google.android.c2dm.permission.SEND\" >\n" +
@@ -161,5 +153,31 @@ import android.util.Log;
         "       <category android:name=\"" + packageName + "\" />\n" +
         "    </intent-filter>\n" +
         "</receiver>";
+    }
+
+    private static boolean checkReceiver(Context context, Set<String> allowedReceivers, String action) {
+        final PackageManager pm = context.getPackageManager();
+        final String packageName = context.getPackageName();
+        final Intent intent = new Intent(action);
+        intent.setPackage(packageName);
+        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_INTENT_FILTERS);
+
+        if (receivers.isEmpty()) {
+            Log.w(LOGTAG, "No receivers for action " + action);
+            Log.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
+                    samplePushConfigurationMessage(packageName));
+            return false;
+        }
+        // make sure receivers match
+        for (final ResolveInfo receiver : receivers) {
+            final String name = receiver.activityInfo.name;
+            if (!allowedReceivers.contains(name)) {
+                Log.w(LOGTAG, "Receiver " + name + " is not set with permission com.google.android.c2dm.permission.SEND");
+                Log.i(LOGTAG, "Please add the attribute 'android:permission=\"com.google.android.c2dm.permission.SEND\"' to your <receiver> tag");
+                return false;
+            }
+        }
+
+        return true;
     }
 }

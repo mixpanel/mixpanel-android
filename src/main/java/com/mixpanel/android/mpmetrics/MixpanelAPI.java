@@ -906,6 +906,12 @@ public class MixpanelAPI {
             if (Build.VERSION.SDK_INT < 10) {
                 return;
             }
+
+            // We can't show surveys if they haven't been configured.
+            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                return;
+            }
+
             parent.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
