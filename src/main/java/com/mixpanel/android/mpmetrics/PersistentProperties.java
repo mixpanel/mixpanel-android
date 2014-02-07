@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
@@ -52,15 +53,8 @@ import android.util.Log;
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mSuperPropertiesCache = null;
+        mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
-    }
-
-    public Future<SharedPreferences> getLoadStoredPreferences() {
-        return mLoadStoredPreferences;
-    }
-
-    public Future<SharedPreferences> getLoadReferrerPreferences() {
-        return mLoadReferrerPreferences;
     }
 
     public JSONObject getSuperProperties() {
@@ -71,7 +65,10 @@ import android.util.Log;
     }
 
     public Map<String, String> getReferrerProperties() {
-        return mReferrerProperties;
+        if (null == mReferrerPropertiesCache) {
+            readReferrerProperties();
+        }
+        return mReferrerPropertiesCache;
     }
 
     public String getEventsDistinctId() {
@@ -120,7 +117,7 @@ import android.util.Log;
         JSONArray ret = null;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
-            ret = waitingPeopleRecordsForSending();
+            ret = waitingPeopleRecordsForSending(prefs);
             readIdentities();
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Couldn't read waiting people records from shared preferences.", e.getCause());
@@ -195,9 +192,11 @@ import android.util.Log;
         storeSuperProperties();
     }
 
-    public void readSuperProperties() {
+    //////////////////////////////////////////////////
+
+    private void readSuperProperties() {
         try {
-            final SharedPreferences prefs = getLoadStoredPreferences().get();
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
             final String props = prefs.getString("super_properties", "{}");
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Loading Super Properties " + props);
             mSuperPropertiesCache = new JSONObject(props);
@@ -215,7 +214,25 @@ import android.util.Log;
         }
     }
 
-    public void storeSuperProperties() {
+    private void readReferrerProperties() {
+        mReferrerPropertiesCache = new HashMap<String, String>();
+
+        try {
+            final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
+            final Map<String, ?> prefsMap = referrerPrefs.getAll();
+            for (final Map.Entry<String, ?> entry:prefsMap.entrySet()) {
+                final String prefsName = entry.getKey();
+                final Object prefsVal = entry.getValue();
+                mReferrerPropertiesCache.put(prefsName, prefsVal.toString());
+            }
+        } catch (final ExecutionException e) {
+            Log.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            Log.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e);
+        }
+    }
+
+    private void storeSuperProperties() {
         if (null == mSuperPropertiesCache) {
             Log.e(LOGTAG, "storeSuperProperties should not be called with uninitialized superPropertiesCache.");
             return;
@@ -295,7 +312,7 @@ import android.util.Log;
     private final Future<SharedPreferences> mLoadStoredPreferences;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
     private JSONObject mSuperPropertiesCache;
-    private Map<String, String> mReferrerProperties;
+    private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;

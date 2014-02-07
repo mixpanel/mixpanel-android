@@ -265,21 +265,37 @@ public class MixpanelAPI {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
 
         try {
-            if (properties == null) {
-                properties = new JSONObject();
+            final JSONObject messageProps = new JSONObject();
+
+            final Map<String, String> referrerProperties = mPersistentProperties.getReferrerProperties();
+            for (final Map.Entry<String, String> entry:referrerProperties.entrySet()) {
+                final String key = entry.getKey();
+                final String value = entry.getValue();
+                messageProps.put(key, value);
             }
-            final long time = System.currentTimeMillis() / 1000;
-            if (!properties.has("time")) properties.put("time", time);
+
             final JSONObject superProperties = mPersistentProperties.getSuperProperties();
-            for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-                final String key = (String) iter.next();
-                if (!properties.has(key)) properties.put(key, superProperties.get(key));
+            final Iterator superIter = superProperties.keys();
+            while (superIter.hasNext()) {
+                final String key = (String) superIter.next();
+                messageProps.put(key, superProperties.get(key));
             }
-            final String eventsId = getDistinctId();
-            if (eventsId != null && !properties.has("distinct_id")) {
-                properties.put("distinct_id", eventsId);
+
+            // Don't allow super properties or referral properties to override these fields,
+            // but DO allow the caller to override them in their given properties.
+            final long time = System.currentTimeMillis() / 1000;
+            messageProps.put("time", time);
+            messageProps.put("distinct_id", getDistinctId());
+
+            if (null != properties) {
+                final Iterator propIter = properties.keys();
+                while (propIter.hasNext()) {
+                    final String key = (String) propIter.next();
+                    messageProps.put(key, properties.get(key));
+                }
             }
-            final AnalyticsMessages.EventDescription eventDTO = new AnalyticsMessages.EventDescription(eventName, properties, mToken);
+
+            final AnalyticsMessages.EventDescription eventDTO = new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
             mMessages.eventsMessage(eventDTO);
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);

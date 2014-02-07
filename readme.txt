@@ -109,6 +109,12 @@ This is a major release, with significant changes to library behavior.
       retrieve and show surveys automatically, users can still show surveys using
       MixpanelAPI.getPeople().checkForSurvey and MixpanelAPI.getPeople().showSurvey
 
+* Previous version of the library allowed setting "distinct_id" as a
+  superProperty, and would use this value as the distinct id for event
+  tracking. This behavior has been removed, and super properties with
+  the name "distinct_id" will be ignored. Callers can still provide
+  their own value for "distinct_id" in the properties argument to track.
+
 * A scary stack trace log in the common, not-scary case of fallback from HTTPS to HTTP has been
   removed.
 
