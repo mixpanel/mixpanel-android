@@ -15,10 +15,44 @@ import android.util.Log;
 
 /* package */ class PersistentProperties {
 
+    // Will be called from crazy threads, BUT will be the only thread that has access to the given
+    // SharedPreferences during the run.
+    public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
+        JSONArray ret = null;
+        final String peopleDistinctId = storedPreferences.getString("people_distinct_id", null);
+        final String waitingPeopleRecords = storedPreferences.getString("waiting_people_record", null);
+        if ((null != waitingPeopleRecords) && (null != peopleDistinctId)) {
+            JSONArray waitingObjects = null;
+            try {
+                waitingObjects = new JSONArray(waitingPeopleRecords);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Waiting people records were unreadable.");
+                return null;
+            }
+
+            ret = new JSONArray();
+            for (int i = 0; i < waitingObjects.length(); i++) {
+                try {
+                    final JSONObject ob = waitingObjects.getJSONObject(i);
+                    ob.put("$distinct_id", peopleDistinctId);
+                    ret.put(ob);
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Unparsable object found in waiting people records", e);
+                }
+            }
+
+            final SharedPreferences.Editor editor = storedPreferences.edit();
+            editor.remove("waiting_people_record");
+            editor.commit();
+        }
+        return ret;
+    }
+
     public PersistentProperties(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mSuperPropertiesCache = null;
+        mIdentitiesLoaded = false;
     }
 
     public Future<SharedPreferences> getLoadStoredPreferences() {
@@ -41,20 +75,32 @@ import android.util.Log;
     }
 
     public String getEventsDistinctId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
         return mEventsDistinctId;
     }
 
-    public void setEventsDistinctId(String mEventsDistinctId) {
-        this.mEventsDistinctId = mEventsDistinctId;
+    public void setEventsDistinctId(String eventsDistinctId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mEventsDistinctId = eventsDistinctId;
         writeIdentities();
     }
 
     public String getPeopleDistinctId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
         return mPeopleDistinctId;
     }
 
-    public void setPeopleDistinctId(String mPeopleDistinctId) {
-        this.mPeopleDistinctId = mPeopleDistinctId;
+    public void setPeopleDistinctId(String peopleDistinctId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
     }
 
@@ -66,13 +112,22 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public JSONArray getWaitingPeopleRecords() {
-        return mWaitingPeopleRecords;
+    public boolean hasWaitingPeopleRecords() {
+        return null != mWaitingPeopleRecords;
     }
 
-    public void clearWaitingPeopleRecords() {
-        mWaitingPeopleRecords = null;
-        writeIdentities();
+    public JSONArray waitingPeopleRecordsForSending() {
+        JSONArray ret = null;
+        try {
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
+            ret = waitingPeopleRecordsForSending();
+            readIdentities();
+        } catch (final ExecutionException e) {
+            Log.e(LOGTAG, "Couldn't read waiting people records from shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            Log.e(LOGTAG, "Couldn't read waiting people records from shared preferences.", e);
+        }
+        return ret;
     }
 
     public void clearPreferences() {
@@ -181,7 +236,7 @@ import android.util.Log;
         }
     }
 
-    public void readIdentities() {
+    private void readIdentities() {
         SharedPreferences prefs = null;
         try {
             prefs = mLoadStoredPreferences.get();
@@ -212,9 +267,11 @@ import android.util.Log;
             mEventsDistinctId = UUID.randomUUID().toString();
             writeIdentities();
         }
+
+        mIdentitiesLoaded = true;
     }
 
-    public void writeIdentities() {
+    private void writeIdentities() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();

@@ -11,30 +11,40 @@ import android.content.SharedPreferences;
 
 public class SharedPreferencesLoader {
 
+    public interface OnPrefsLoadedListener {
+        public void onPrefsLoaded(SharedPreferences prefs);
+    }
+
     public SharedPreferencesLoader() {
         mExecutor = Executors.newSingleThreadExecutor();
     }
 
-    public Future<SharedPreferences> loadPreferences(Context context, String name) {
-        final LoadSharedPreferences loadSharedPrefs = new LoadSharedPreferences(context, name);
+    public Future<SharedPreferences> loadPreferences(Context context, String name, OnPrefsLoadedListener listener) {
+        final LoadSharedPreferences loadSharedPrefs = new LoadSharedPreferences(context, name, listener);
         final FutureTask<SharedPreferences> task = new FutureTask<SharedPreferences>(loadSharedPrefs);
         mExecutor.execute(task);
         return task;
     }
 
     private static class LoadSharedPreferences implements Callable<SharedPreferences> {
-        public LoadSharedPreferences(Context context, String prefsName) {
+        public LoadSharedPreferences(Context context, String prefsName, OnPrefsLoadedListener listener) {
             mContext = context;
             mPrefsName = prefsName;
+            mListener = listener;
         }
 
         @Override
         public SharedPreferences call() {
-            return mContext.getSharedPreferences(mPrefsName, Context.MODE_PRIVATE);
+            final SharedPreferences ret = mContext.getSharedPreferences(mPrefsName, Context.MODE_PRIVATE);
+            if (null != mListener) {
+                mListener.onPrefsLoaded(ret);
+            }
+            return ret;
         }
 
         private final Context mContext;
         private final String mPrefsName;
+        private final OnPrefsLoadedListener mListener;
     }
 
     private final Executor mExecutor;

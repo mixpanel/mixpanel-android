@@ -81,6 +81,7 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
+    // Must be thread safe.
     public void peopleMessage(JSONObject peopleJson) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;

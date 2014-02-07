@@ -5,10 +5,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
@@ -98,17 +96,21 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
-        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token);
-
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
-        mPersistentProperties = new PersistentProperties(referrerPreferences, storedPreferences);
 
-        // THIS SHOULD BE LAZY or we're wasting our time with Futures
-        mPersistentProperties.readIdentities();
-        pushWaitingPeopleRecord();
+        final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
+            @Override
+            public void onPrefsLoaded(SharedPreferences preferences) {
+                final JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(preferences);
+                sendAllPeopleRecords(records);
+            }
+        };
+
+        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, listener);
+        mPersistentProperties = new PersistentProperties(referrerPreferences, storedPreferences);
         registerMixpanelActivityLifecycleCallbacks();
     }
 
@@ -146,7 +148,7 @@ public class MixpanelAPI {
             final Context appContext = context.getApplicationContext();
 
             if (null == sReferrerPrefs) {
-                sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME);
+                sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME, null);
             }
 
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
@@ -1090,19 +1092,24 @@ public class MixpanelAPI {
     }
 
     private void pushWaitingPeopleRecord() {
-        final JSONArray records = mPersistentProperties.getWaitingPeopleRecords();
+        final boolean hasRecords = mPersistentProperties.hasWaitingPeopleRecords();
         final String peopleId = getPeople().getDistinctId();
 
-        if ((null != records) && (null != peopleId)) {
-            mPersistentProperties.clearWaitingPeopleRecords();
-            for (int i = 0; i < records.length(); i++) {
-                try {
-                    final JSONObject message = records.getJSONObject(i);
-                    message.put("$distinct_id", peopleId);
-                    recordPeopleMessage(message);
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
-                }
+        if (hasRecords && (null != peopleId)) {
+            final JSONArray records = mPersistentProperties.waitingPeopleRecordsForSending();
+            sendAllPeopleRecords(records);
+        }
+    }
+
+    // MUST BE THREAD SAFE. Called from crazy places. mPersistentProperties may not exist
+    // when this is called (from it's crazy thread)
+    private void sendAllPeopleRecords(JSONArray records) {
+        for (int i = 0; i < records.length(); i++) {
+            try {
+                final JSONObject message = records.getJSONObject(i);
+                mMessages.peopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
             }
         }
     }
