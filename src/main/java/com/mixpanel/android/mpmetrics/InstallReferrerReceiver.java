@@ -24,8 +24,6 @@ public class InstallReferrerReceiver extends BroadcastReceiver {
             return;
         }
 
-        System.out.println("REFERRER FOUND " + referrer);
-
         final SharedPreferences referralInfo = context.getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
         final SharedPreferences.Editor editor = referralInfo.edit();
         editor.putString("referrer", referrer);
