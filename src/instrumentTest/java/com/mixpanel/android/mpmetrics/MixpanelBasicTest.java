@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -27,17 +28,52 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
-      super.setUp();
-      AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
-      messages.hardKill();
-      Thread.sleep(500);
+        super.setUp();
+        final SharedPreferences referrerPreferences = getContext().getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = referrerPreferences.edit();
+        editor.clear();
+        editor.commit();
+        mMockPreferences = new Future<SharedPreferences>() {
+            @Override
+            public boolean cancel(final boolean mayInterruptIfRunning) {
+                return false;
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+
+            @Override
+            public boolean isDone() {
+                return false;
+            }
+
+            @Override
+            public SharedPreferences get() throws InterruptedException, ExecutionException {
+                return referrerPreferences;
+            }
+
+            @Override
+            public SharedPreferences get(final long timeout, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                return referrerPreferences;
+            }
+        };
+
+
+        AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
+        messages.hardKill();
+        Thread.sleep(500);
     } // end of setUp() method definition
 
     public void testTrivialRunning() {
@@ -93,25 +129,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
-    public void testReadOlderWaitingPeopleRecord() {
-        // $append is a late addition to the waiting record protocol, we need to handle old records as well.
-        try {
-            WaitingPeopleRecord r = new WaitingPeopleRecord();
-            r.readFromJSONString("{ \"$set\":{\"a\":1}, \"$add\":{\"b\":2} }");
-
-            JSONObject setMessage = r.setMessage();
-            Map<String, Double> incrementMessage = r.incrementMessage();
-            List<JSONObject> appendMessages = r.appendMessages();
-
-            assertEquals(setMessage.getLong("a"), 1L);
-            assertEquals(incrementMessage.get("b").longValue(), 2L);
-            assertEquals(appendMessages.size(), 0);
-
-        } catch(JSONException e) {
-            fail("Can't read old-style waiting people record");
-        }
-    }
-
     public void testLooperDestruction() {
 
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
@@ -132,7 +149,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return explodingDb;
             }
         };
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN testLooperDisaster") {
+        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return explodingMessages;
@@ -168,7 +185,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -178,100 +195,34 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.clearPreferences();
 
         MixpanelAPI.People people = mixpanel.getPeople();
-        people.increment("the prop", 100L);
-        people.append("the prop", 66);
-
-        people.set("the prop", 1); // should wipe out what comes before
-
-        people.increment("the prop", 2L);
-        people.increment("the prop", 3);
-        people.append("the prop", 88);
-        people.append("the prop", 99);
+        people.increment("the prop", 0L);
+        people.append("the prop", 1);
+        people.set("the prop", 2);
+        people.increment("the prop", 3L);
+        people.increment("the prop", 4);
+        people.append("the prop", 5);
+        people.append("the prop", 6);
         people.identify("Personal Identity");
 
-        assertEquals(messages.size(), 4);
-        JSONObject setMessage = messages.get(0);
-
+        assertEquals(messages.size(), 7);
         try {
-            JSONObject setValues = setMessage.getJSONObject("$set");
-            Long setForProp = setValues.getLong("the prop");
-            assertEquals(setForProp.longValue(), 1);
-        } catch (JSONException e) {
-            fail("Unexpected JSON for set message " + setMessage.toString());
-        }
-
-        // We can guarantee that appendOne happens before appendTwo,
-        // but not that it happens before or after increment
-        JSONObject addMessage = null;
-        JSONObject appendOne = null;
-        JSONObject appendTwo = null;
-
-        for (int i = 1; i < 4; i ++) {
-            JSONObject nextMessage = messages.get(i);
-            if (nextMessage.has("$append") && appendOne == null) {
-                appendOne = nextMessage;
+            for (JSONObject message: messages) {
+                String distinctId = message.getString("$distinct_id");
+                assertEquals(distinctId, "Personal Identity");
             }
-            else if(nextMessage.has("$append") && appendTwo == null) {
-                appendTwo = nextMessage;
-            }
-            else if(nextMessage.has("$add") && addMessage == null) {
-                addMessage = nextMessage;
-            }
-            else {
-                fail("Unexpected JSON message sent: " + nextMessage.toString());
-            }
-        }
 
-        assertTrue(addMessage != null);
-        assertTrue(appendOne != null);
-        assertTrue(appendTwo != null);
-
-        try {
-            JSONObject addValues = addMessage.getJSONObject("$add");
-            Long addForProp = addValues.getLong("the prop");
-            assertEquals(addForProp.longValue(), 5);
+            assertTrue(messages.get(0).has("$add"));
+            assertTrue(messages.get(1).has("$append"));
+            assertTrue(messages.get(2).has("$set"));
+            assertTrue(messages.get(3).has("$add"));
+            assertTrue(messages.get(4).has("$add"));
         } catch (JSONException e) {
-            fail("Unexpected JSON for add message " + addMessage.toString());
-        }
-
-        try {
-            JSONObject appendValuesOne = appendOne.getJSONObject("$append");
-            Long appendForProp = appendValuesOne.getLong("the prop");
-            assertEquals(appendForProp.longValue(), 88);
-        } catch (JSONException e) {
-            fail("Unexpected JSON for append message " + appendOne.toString());
-        }
-
-        messages.clear();
-
-        Map<String, Long> lastIncrement = new HashMap<String, Long>();
-        lastIncrement.put("the prop", 9000L);
-        people.increment(lastIncrement);
-        people.set("the prop", "identified");
-
-        assertEquals(messages.size(), 2);
-
-        JSONObject nextIncrement = messages.get(0);
-        try {
-            JSONObject addValues = nextIncrement.getJSONObject("$add");
-            Long addForProp = addValues.getLong("the prop");
-            assertEquals(addForProp.longValue(), 9000);
-        } catch (JSONException e) {
-            fail("Unexpected JSON for add message " + nextIncrement.toString());
-        }
-
-        JSONObject nextSet = messages.get(1);
-        try {
-            JSONObject setValues = nextSet.getJSONObject("$set");
-            String setForProp = setValues.getString("the prop");
-            assertEquals(setForProp, "identified");
-        } catch (JSONException e) {
-            fail("Unexpected JSON for set message " + nextSet.toString());
+            fail("Unexpected JSON error in stored messages.");
         }
     }
 
     public void testIdentifyAndGetDistinctId() {
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), "Identify Test Token");
+        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
         metrics.clearPreferences();
         String generatedId = metrics.getDistinctId();
         assertNotNull(generatedId);
@@ -543,7 +494,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), "Test Message Queuing") {
+        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -664,7 +615,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), "Test Message Queuing") {
+        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -709,7 +660,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void eventsMessage(EventDTO heard) {
+            public void eventsMessage(EventDescription heard) {
                 throw new RuntimeException("Should not be called during this test");
             }
 
@@ -720,8 +671,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
         class ListeningAPI extends MixpanelAPI {
-            public ListeningAPI(Context c, String token) {
-                super(c, token);
+            public ListeningAPI(Context c, Future<SharedPreferences> referrerPrefs, String token) {
+                super(c, referrerPrefs, token);
             }
 
             @Override
@@ -730,7 +681,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        MixpanelAPI api = new ListeningAPI(getContext(), "TRACKCHARGE TEST TOKEN");
+        MixpanelAPI api = new ListeningAPI(getContext(), mMockPreferences, "TRACKCHARGE TEST TOKEN");
         api.getPeople().identify("TRACKCHARGE PERSON");
 
         JSONObject props;
@@ -757,7 +708,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testPersistence() {
-        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), "SAME TOKEN");
+        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
         metricsOne.clearPreferences();
 
         JSONObject props;
@@ -778,7 +729,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final List<Object> messages = new ArrayList<Object>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void eventsMessage(EventDTO heard) {
+            public void eventsMessage(EventDescription heard) {
                 messages.add(heard);
             }
 
@@ -789,8 +740,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
         class ListeningAPI extends MixpanelAPI {
-            public ListeningAPI(Context c, String token) {
-                super(c, token);
+            public ListeningAPI(Context c, Future<SharedPreferences> prefs, String token) {
+                super(c, prefs, token);
             }
 
             @Override
@@ -799,13 +750,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        MixpanelAPI differentToken = new ListeningAPI(getContext(), "DIFFERENT TOKEN");
+        MixpanelAPI differentToken = new ListeningAPI(getContext(), mMockPreferences, "DIFFERENT TOKEN");
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
         assertEquals(1, messages.size());
 
-        AnalyticsMessages.EventDTO eventMessage = (AnalyticsMessages.EventDTO) messages.get(0);
+        AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
 
         try {
             JSONObject eventProps = eventMessage.getProperties();
@@ -822,14 +773,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         messages.clear();
 
-        MixpanelAPI metricsTwo = new ListeningAPI(getContext(), "SAME TOKEN");
+        MixpanelAPI metricsTwo = new ListeningAPI(getContext(), mMockPreferences, "SAME TOKEN");
 
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
         assertEquals(2, messages.size());
 
-        eventMessage = (AnalyticsMessages.EventDTO) messages.get(0);
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
         JSONObject peopleMessage = (JSONObject) messages.get(1);
 
         try {
@@ -879,7 +830,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     }
                 };
 
-                MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN") {
+                MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
                     @Override
                     protected AnalyticsMessages getAnalyticsMessages() {
                         return analyticsMessages;
@@ -1048,7 +999,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return mockMessage;
             }
         };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), "TEST TOKEN test checkForSurveys") {
+        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN test checkForSurveys") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return mockMessages;
@@ -1057,4 +1008,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.clearPreferences();
         return mixpanel;
     }
+
+    private Future<SharedPreferences> mMockPreferences;
 }

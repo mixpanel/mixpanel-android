@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -15,6 +14,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.PendingIntent;
@@ -105,7 +105,9 @@ public class MixpanelAPI {
             @Override
             public void onPrefsLoaded(SharedPreferences preferences) {
                 final JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(preferences);
-                sendAllPeopleRecords(records);
+                if (null != records) {
+                    sendAllPeopleRecords(records);
+                }
             }
         };
 
@@ -730,7 +732,9 @@ public class MixpanelAPI {
      * This is only available if the android version is >= 14. You can disable this by setting
      * com.mixpanel.android.MPConfig.AutoCheckForSurveys to false in your AndroidManifest.xml
      */
-    /* package */ void registerMixpanelActivityLifecycleCallbacks() {
+    /* package */
+    @TargetApi(14)
+    void registerMixpanelActivityLifecycleCallbacks() {
         if (android.os.Build.VERSION.SDK_INT >= 14 && MPConfig.readConfig(mContext).getAutoCheckForSurveys()) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is >= 14");
             if (mContext.getApplicationContext() instanceof Application) {
@@ -971,24 +975,9 @@ public class MixpanelAPI {
             if (getDistinctId() == null) {
                 return;
             }
-
+            mPersistentProperties.storePushId(registrationId);
             try {
-                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
-                final SharedPreferences.Editor editor = prefs.edit();
-                editor.putString("push_id", registrationId);
-                editor.commit();
-            } catch (final ExecutionException e) {
-                Log.e(LOGTAG, "Can't write push id into preferences, push registration cannot be completed.", e.getCause());
-                return;
-            } catch (final InterruptedException e) {
-                Log.e(LOGTAG, "Can't write push id into preferences, push registration cannot be completed.", e);
-                return;
-            }
-
-            try {
-                final JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
-                final JSONObject message = stdPeopleMessage("$union", registrationInfo);
-                mMessages.peopleMessage(message);
+                union("$android_devices", new JSONArray("[" + registrationId + "]"));
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "set push registration id error", e);
             }
@@ -997,18 +986,8 @@ public class MixpanelAPI {
         @Override
         public void clearPushRegistrationId() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
-
-            try {
-                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
-                final SharedPreferences.Editor editor = prefs.edit();
-                editor.remove("push_id");
-                editor.commit();
-                set("$android_devices", new JSONArray());
-            } catch (final ExecutionException e) {
-                Log.e(LOGTAG, "Can't clear push id from preferences.", e.getCause());
-            } catch (final InterruptedException e) {
-                Log.e(LOGTAG, "Can't clear push id from preferences.", e);
-            }
+            mPersistentProperties.clearPushId();
+            set("$android_devices", new JSONArray());
         }
 
         @Override
@@ -1020,7 +999,7 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
             else { // Configuration is good for push notifications
-                final String pushId = getPushId();
+                final String pushId = mPersistentProperties.getPushId();
                 if (pushId == null) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
 
@@ -1067,19 +1046,6 @@ public class MixpanelAPI {
             };
         }
 
-        public String getPushId() {
-            try {
-                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
-                return prefs.getString("push_id", null);
-            } catch (final ExecutionException e) {
-                Log.e(LOGTAG, "Can't load push id from SharedPreferences.", e.getCause());
-            } catch (final InterruptedException e) {
-                Log.e(LOGTAG, "Can't load push id from SharedPreferences.", e);
-            }
-
-            return null;
-        }
-
         public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
                 throws JSONException {
                 final JSONObject dataObj = new JSONObject();
@@ -1108,11 +1074,8 @@ public class MixpanelAPI {
     }
 
     private void pushWaitingPeopleRecord() {
-        final boolean hasRecords = mPersistentProperties.hasWaitingPeopleRecords();
-        final String peopleId = getPeople().getDistinctId();
-
-        if (hasRecords && (null != peopleId)) {
-            final JSONArray records = mPersistentProperties.waitingPeopleRecordsForSending();
+        final JSONArray records = mPersistentProperties.waitingPeopleRecordsForSending();
+        if (null != records) {
             sendAllPeopleRecords(records);
         }
     }

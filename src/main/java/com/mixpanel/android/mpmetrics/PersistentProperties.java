@@ -21,7 +21,7 @@ import android.util.Log;
     public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
         JSONArray ret = null;
         final String peopleDistinctId = storedPreferences.getString("people_distinct_id", null);
-        final String waitingPeopleRecords = storedPreferences.getString("waiting_people_record", null);
+        final String waitingPeopleRecords = storedPreferences.getString("waiting_array", null);
         if ((null != waitingPeopleRecords) && (null != peopleDistinctId)) {
             JSONArray waitingObjects = null;
             try {
@@ -43,7 +43,7 @@ import android.util.Log;
             }
 
             final SharedPreferences.Editor editor = storedPreferences.edit();
-            editor.remove("waiting_people_record");
+            editor.remove("waiting_array");
             editor.commit();
         }
         return ret;
@@ -167,6 +167,45 @@ import android.util.Log;
         storeSuperProperties();
     }
 
+    public void storePushId(String registrationId) {
+        try {
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.putString("push_id", registrationId);
+            editor.commit();
+        } catch (final ExecutionException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
+        } catch (final InterruptedException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e);
+        }
+    }
+
+    public void clearPushId() {
+        try {
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.remove("push_id");
+            editor.commit();
+        } catch (final ExecutionException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
+        } catch (final InterruptedException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e);
+        }
+    }
+
+    public String getPushId() {
+        String ret = null;
+        try {
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
+            ret = prefs.getString("push_id", null);
+        } catch (final ExecutionException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
+        } catch (final InterruptedException e) {
+            Log.e(LOGTAG, "Can't write push id to shared preferences", e);
+        }
+        return ret;
+    }
+
     public void unregisterSuperProperty(String superPropertyName) {
         final JSONObject propCache = getSuperProperties();
         propCache.remove(superPropertyName);
@@ -280,7 +319,7 @@ import android.util.Log;
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mWaitingPeopleRecords = null;
 
-        final String storedWaitingRecord = prefs.getString("waiting_people_record", null);
+        final String storedWaitingRecord = prefs.getString("waiting_array", null);
         if (storedWaitingRecord != null) {
             try {
                 mWaitingPeopleRecords = new JSONArray(storedWaitingRecord);
@@ -305,10 +344,10 @@ import android.util.Log;
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             if (mWaitingPeopleRecords == null) {
-                prefsEditor.remove("waiting_people_record");
+                prefsEditor.remove("waiting_array");
             }
             else {
-                prefsEditor.putString("waiting_people_record", mWaitingPeopleRecords.toString());
+                prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
             }
             prefsEditor.commit();
         } catch (final ExecutionException e) {
