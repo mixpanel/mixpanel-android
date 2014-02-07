@@ -108,15 +108,14 @@ import android.util.Log;
     }
 
     public void storeWaitingPeopleRecord(JSONObject record) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
         if (null == mWaitingPeopleRecords) {
             mWaitingPeopleRecords = new JSONArray();
         }
         mWaitingPeopleRecords.put(record);
         writeIdentities();
-    }
-
-    public boolean hasWaitingPeopleRecords() {
-        return null != mWaitingPeopleRecords;
     }
 
     public JSONArray waitingPeopleRecordsForSending() {
