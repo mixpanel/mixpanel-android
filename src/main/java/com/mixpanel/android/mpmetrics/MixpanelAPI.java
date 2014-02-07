@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.json.JSONArray;
@@ -95,14 +97,18 @@ public class MixpanelAPI {
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, String token) {
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
+        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token);
+
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
-        mStoredPreferences = context.getSharedPreferences("com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, Context.MODE_PRIVATE);
-        readSuperProperties();
-        readIdentities();
+        mPersistentProperties = new PersistentProperties(referrerPreferences, storedPreferences);
+
+        // THIS SHOULD BE LAZY or we're wasting our time with Futures
+        mPersistentProperties.readIdentities();
+        pushWaitingPeopleRecord();
         registerMixpanelActivityLifecycleCallbacks();
     }
 
@@ -138,14 +144,20 @@ public class MixpanelAPI {
         }
         synchronized (sInstanceMap) {
             final Context appContext = context.getApplicationContext();
+
+            if (null == sReferrerPrefs) {
+                sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME);
+            }
+
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
                 sInstanceMap.put(token, instances);
             }
+
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance) {
-                instance = new MixpanelAPI(appContext, token);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
                 instances.put(appContext, instance);
             }
             return instance;
@@ -232,8 +244,7 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
-       mEventsDistinctId = distinctId;
-       writeIdentities();
+       mPersistentProperties.setEventsDistinctId(distinctId);
     }
 
     /**
@@ -257,15 +268,16 @@ public class MixpanelAPI {
             }
             final long time = System.currentTimeMillis() / 1000;
             if (!properties.has("time")) properties.put("time", time);
-            for (final Iterator<?> iter = mSuperProperties.keys(); iter.hasNext(); ) {
+            final JSONObject superProperties = mPersistentProperties.getSuperProperties();
+            for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
                 final String key = (String) iter.next();
-                if (!properties.has(key)) properties.put(key, mSuperProperties.get(key));
+                if (!properties.has(key)) properties.put(key, superProperties.get(key));
             }
             final String eventsId = getDistinctId();
             if (eventsId != null && !properties.has("distinct_id")) {
                 properties.put("distinct_id", eventsId);
             }
-            final AnalyticsMessages.EventDTO eventDTO = new AnalyticsMessages.EventDTO(eventName, properties, mToken);
+            final AnalyticsMessages.EventDescription eventDTO = new AnalyticsMessages.EventDescription(eventName, properties, mToken);
             mMessages.eventsMessage(eventDTO);
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
@@ -304,7 +316,7 @@ public class MixpanelAPI {
      * @see People#getDistinctId()
      */
     public String getDistinctId() {
-        return mEventsDistinctId;
+        return mPersistentProperties.getEventsDistinctId();
      }
 
     /**
@@ -326,18 +338,7 @@ public class MixpanelAPI {
      * @see #clearSuperProperties()
      */
     public void registerSuperProperties(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
-
-        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            final String key = (String) iter.next();
-            try {
-                mSuperProperties.put(key, superProperties.get(key));
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception registering super property.", e);
-            }
-        }
-
-        storeSuperProperties();
+        mPersistentProperties.registerSuperProperties(superProperties);
     }
 
     /**
@@ -351,9 +352,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void unregisterSuperProperty(String superPropertyName) {
-        mSuperProperties.remove(superPropertyName);
-
-        storeSuperProperties();
+        mPersistentProperties.unregisterSuperProperty(superPropertyName);
     }
 
     /**
@@ -366,20 +365,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
-
-        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            final String key = (String) iter.next();
-            if (! mSuperProperties.has(key)) {
-                try {
-                    mSuperProperties.put(key, superProperties.get(key));
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Exception registering super property.", e);
-                }
-            }
-        }// for
-
-        storeSuperProperties();
+        mPersistentProperties.registerSuperPropertiesOnce(superProperties);
     }
 
     /**
@@ -394,8 +380,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void clearSuperProperties() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
-        mSuperProperties = new JSONObject();
+        mPersistentProperties.clearSuperProperties();
     }
 
     /**
@@ -524,6 +509,16 @@ public class MixpanelAPI {
          * @param value the new value that will appear at the end of the property's list
          */
         public void append(String name, Object value);
+
+        /**
+         * Adds values to a list-valued property only if they are not already present in the list.
+         * If the property does not currently exist, it will be created with the given list as it's value.
+         * If the property exists and is not list-valued, the union will be ignored.
+         *
+         * @param name
+         * @param value
+         */
+        void union(String name, JSONArray value);
 
         /**
          * Track a revenue transaction for the identified people profile.
@@ -760,11 +755,7 @@ public class MixpanelAPI {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
-
-        final SharedPreferences.Editor prefsEdit = mStoredPreferences.edit();
-        prefsEdit.clear().commit();
-        readSuperProperties();
-        readIdentities();
+        mPersistentProperties.clearPreferences();
     }
 
     ///////////////////////
@@ -772,11 +763,8 @@ public class MixpanelAPI {
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
-            mPeopleDistinctId = distinctId;
-            writeIdentities();
-
-            if (mWaitingPeopleRecord != null)
-                pushWaitingPeopleRecord();
+            mPersistentProperties.setPeopleDistinctId(distinctId);
+            pushWaitingPeopleRecord();
          }
 
         @Override
@@ -784,17 +772,8 @@ public class MixpanelAPI {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
 
             try {
-                if (getDistinctId() == null) {
-                    if (mWaitingPeopleRecord == null)
-                        mWaitingPeopleRecord = new WaitingPeopleRecord();
-
-                    mWaitingPeopleRecord.setOnWaitingPeopleRecord(properties);
-                    writeIdentities();
-                }
-                else {
-                    final JSONObject message = stdPeopleMessage("$set", properties);
-                    mMessages.peopleMessage(message);
-                }
+                final JSONObject message = stdPeopleMessage("$set", properties);
+                recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception setting people properties");
             }
@@ -814,16 +793,8 @@ public class MixpanelAPI {
             final JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             try {
-                if (getDistinctId() == null) {
-                    if (mWaitingPeopleRecord == null)
-                        mWaitingPeopleRecord = new WaitingPeopleRecord();
-
-                    mWaitingPeopleRecord.incrementToWaitingPeopleRecord(properties);
-                }
-                else {
-                    final JSONObject message = stdPeopleMessage("$add", json);
-                    mMessages.peopleMessage(message);
-                }
+                final JSONObject message = stdPeopleMessage("$add", json);
+                recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception incrementing properties", e);
             }
@@ -841,9 +812,21 @@ public class MixpanelAPI {
             try {
                 final JSONObject properties = new JSONObject();
                 properties.put(name, value);
-                this.append(properties);
+                final JSONObject message = stdPeopleMessage("$append", properties);
+                recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception appending a property", e);
+            }
+        }
+
+        @Override
+        public void union(String name, JSONArray value) {
+            try {
+                final JSONObject properties = new JSONObject();
+                final JSONObject message = stdPeopleMessage("$union", properties);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception unioning a property");
             }
         }
 
@@ -956,13 +939,9 @@ public class MixpanelAPI {
         @Override
         public void deleteUser() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
-            if (getDistinctId() == null) {
-                return;
-            }
-
             try {
-                final JSONObject message = stdPeopleMessage("$add", null);
-                mMessages.peopleMessage(message);
+                final JSONObject message = stdPeopleMessage("$delete", null);
+                recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception deleting a user");
             }
@@ -975,7 +954,19 @@ public class MixpanelAPI {
                 return;
             }
 
-            mStoredPreferences.edit().putString("push_id", registrationId).commit();
+            try {
+                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
+                final SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("push_id", registrationId);
+                editor.commit();
+            } catch (final ExecutionException e) {
+                Log.e(LOGTAG, "Can't write push id into preferences, push registration cannot be completed.", e.getCause());
+                return;
+            } catch (final InterruptedException e) {
+                Log.e(LOGTAG, "Can't write push id into preferences, push registration cannot be completed.", e);
+                return;
+            }
+
             try {
                 final JSONObject registrationInfo = new JSONObject().put("$android_devices", new JSONArray("[" + registrationId + "]"));
                 final JSONObject message = stdPeopleMessage("$union", registrationInfo);
@@ -989,8 +980,17 @@ public class MixpanelAPI {
         public void clearPushRegistrationId() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
 
-            mStoredPreferences.edit().remove("push_id").commit();
-            set("$android_devices", new JSONArray());
+            try {
+                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
+                final SharedPreferences.Editor editor = prefs.edit();
+                editor.remove("push_id");
+                editor.commit();
+                set("$android_devices", new JSONArray());
+            } catch (final ExecutionException e) {
+                Log.e(LOGTAG, "Can't clear push id from preferences.", e.getCause());
+            } catch (final InterruptedException e) {
+                Log.e(LOGTAG, "Can't clear push id from preferences.", e);
+            }
         }
 
         @Override
@@ -1028,27 +1028,7 @@ public class MixpanelAPI {
 
         @Override
         public String getDistinctId() {
-
-
-            return mPeopleDistinctId;
-        }
-
-        // NOT AN OVERRIDE due to WaitingPeopleRecord, which needs to go away.
-        /* package */ void append(JSONObject properties) {
-            try {
-                if (getDistinctId() == null) {
-                    if (mWaitingPeopleRecord == null)
-                        mWaitingPeopleRecord = new WaitingPeopleRecord();
-
-                    mWaitingPeopleRecord.appendToWaitingPeopleRecord(properties);
-                }
-                else {
-                    final JSONObject message = stdPeopleMessage("$append", properties);
-                    mMessages.peopleMessage(message);
-                }
-            } catch(final JSONException e) {
-                Log.e(LOGTAG, "Can't create append message", e);
-            }
+            return mPersistentProperties.getPeopleDistinctId();
         }
 
         @Override
@@ -1070,16 +1050,30 @@ public class MixpanelAPI {
         }
 
         public String getPushId() {
-            return mStoredPreferences.getString("push_id", null);
+            try {
+                final SharedPreferences prefs = mPersistentProperties.getLoadStoredPreferences().get();
+                return prefs.getString("push_id", null);
+            } catch (final ExecutionException e) {
+                Log.e(LOGTAG, "Can't load push id from SharedPreferences.", e.getCause());
+            } catch (final InterruptedException e) {
+                Log.e(LOGTAG, "Can't load push id from SharedPreferences.", e);
+            }
+
+            return null;
         }
 
         public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
                 throws JSONException {
                 final JSONObject dataObj = new JSONObject();
+                final String distinctId = getDistinctId();
+
                 dataObj.put(actionType, properties);
                 dataObj.put("$token", mToken);
-                dataObj.put("$distinct_id", getDistinctId());
                 dataObj.put("$time", System.currentTimeMillis());
+
+                if (null != distinctId) {
+                    dataObj.put("$distinct_id", getDistinctId());
+                }
 
                 return dataObj;
         }
@@ -1087,90 +1081,30 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
+    private void recordPeopleMessage(JSONObject message) {
+        if (message.has("$distinct_id")) {
+           mMessages.peopleMessage(message);
+        } else {
+           mPersistentProperties.storeWaitingPeopleRecord(message);
+        }
+    }
+
     private void pushWaitingPeopleRecord() {
-        if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
-           final JSONObject sets = mWaitingPeopleRecord.setMessage();
-           final Map<String, Double> adds = mWaitingPeopleRecord.incrementMessage();
-           final List<JSONObject> appends = mWaitingPeopleRecord.appendMessages();
+        final JSONArray records = mPersistentProperties.getWaitingPeopleRecords();
+        final String peopleId = getPeople().getDistinctId();
 
-           getPeople().set(sets);
-           getPeople().increment(adds);
-           for(final JSONObject appendPairs: appends) {
-               for(final Iterator<?> keysIter = appendPairs.keys(); keysIter.hasNext();) {
-                   try {
-                       final String key = (String) keysIter.next();
-                       final Object appendVal = appendPairs.get(key);
-                       getPeople().append(key, appendVal);
-                   } catch (final JSONException e) {
-                       Log.e(LOGTAG, "Couldn't send stored append", e);
-                   }
-               }// for key to append
-           }// for append message in waiting props
-        }
-
-        mWaitingPeopleRecord = null;
-        writeIdentities();
-    }
-
-    private void readSuperProperties() {
-        final String props = mStoredPreferences.getString("super_properties", "{}");
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Loading Super Properties " + props);
-
-        try {
-            mSuperProperties = new JSONObject(props);
-        } catch (final JSONException e) {
-            Log.e(LOGTAG, "Cannot parse stored superProperties");
-            mSuperProperties = new JSONObject();
-            storeSuperProperties();
-        }
-    }
-
-    private void storeSuperProperties() {
-        final String props = mSuperProperties.toString();
-
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Storing Super Properties " + props);
-        final SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
-        prefsEditor.putString("super_properties", props);
-        prefsEditor.commit();
-    }
-
-    private void readIdentities() {
-        mEventsDistinctId = mStoredPreferences.getString("events_distinct_id", null);
-        mPeopleDistinctId = mStoredPreferences.getString("people_distinct_id", null);
-        mWaitingPeopleRecord = null;
-
-        final String storedWaitingRecord = mStoredPreferences.getString("waiting_people_record", null);
-        if (storedWaitingRecord != null) {
-            try {
-                mWaitingPeopleRecord = new WaitingPeopleRecord();
-                mWaitingPeopleRecord.readFromJSONString(storedWaitingRecord);
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "Could not interpret waiting people JSON record " + storedWaitingRecord);
+        if ((null != records) && (null != peopleId)) {
+            mPersistentProperties.clearWaitingPeopleRecords();
+            for (int i = 0; i < records.length(); i++) {
+                try {
+                    final JSONObject message = records.getJSONObject(i);
+                    message.put("$distinct_id", peopleId);
+                    recordPeopleMessage(message);
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
+                }
             }
         }
-
-        if (mEventsDistinctId == null) {
-            mEventsDistinctId = UUID.randomUUID().toString();
-            writeIdentities();
-        }
-
-        if ((mWaitingPeopleRecord != null) && (mPeopleDistinctId != null)) {
-            pushWaitingPeopleRecord();
-        }
-    }
-
-    private void writeIdentities() {
-        final SharedPreferences.Editor prefsEditor = mStoredPreferences.edit();
-
-        prefsEditor.putString("events_distinct_id", mEventsDistinctId);
-        prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
-        if (mWaitingPeopleRecord == null) {
-            prefsEditor.remove("waiting_people_record");
-        }
-        else {
-            prefsEditor.putString("waiting_people_record", mWaitingPeopleRecord.toJSONString());
-        }
-        prefsEditor.commit();
     }
 
     private static class ExpiringLock {
@@ -1222,20 +1156,17 @@ public class MixpanelAPI {
     private static final String LOGTAG = "MixpanelAPI";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
-    // Maps each token to a singleton MixpanelAPI instance
-    private static Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final String mToken;
     private final PeopleImpl mPeople;
-    private final SharedPreferences mStoredPreferences;
-
-    // Persistent members. These are loaded and stored from our preferences.
-    private JSONObject mSuperProperties;
-    private String mEventsDistinctId;
-    private String mPeopleDistinctId;
-    private WaitingPeopleRecord mWaitingPeopleRecord;
+    private final PersistentProperties mPersistentProperties;
 
     // Survey check locking
     private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
+
+    // Maps each token to a singleton MixpanelAPI instance
+    private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
+    private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
+    private static Future<SharedPreferences> sReferrerPrefs;
 }

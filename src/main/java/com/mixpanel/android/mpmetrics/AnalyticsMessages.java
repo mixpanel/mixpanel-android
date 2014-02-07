@@ -74,7 +74,7 @@ import android.util.Log;
         mLogMixpanelMessages.set(true);
     }
 
-    public void eventsMessage(EventDTO eventDTO) {
+    public void eventsMessage(EventDescription eventDTO) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
         m.obj = eventDTO;
@@ -172,9 +172,8 @@ import android.util.Log;
 
     ////////////////////////////////////////////////////
 
-    static class EventDTO {
-
-        public EventDTO(String eventName, JSONObject properties, String token) {
+    static class EventDescription {
+        public EventDescription(String eventName, JSONObject properties, String token) {
             this.eventName = eventName;
             this.properties = properties;
             this.token = token;
@@ -280,7 +279,7 @@ import android.util.Log;
                         queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
-                        final EventDTO eventDTO = (EventDTO) msg.obj;
+                        final EventDescription eventDTO = (EventDescription) msg.obj;
                         try {
                             final JSONObject message = prepareEventObject(eventDTO);
                             logAboutMessageToMixpanel("Queuing event for sending later");
@@ -538,7 +537,7 @@ import android.util.Log;
                 return ret;
             }
 
-            private JSONObject prepareEventObject(EventDTO eventDTO) throws JSONException {
+            private JSONObject prepareEventObject(EventDescription eventDTO) throws JSONException {
                 final JSONObject eventObj = new JSONObject();
                 final JSONObject eventProperties = eventDTO.getProperties();
                 final JSONObject sendProperties = getDefaultEventProperties();
