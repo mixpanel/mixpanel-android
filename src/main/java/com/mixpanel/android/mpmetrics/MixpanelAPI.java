@@ -368,7 +368,7 @@ public class MixpanelAPI {
      * removed from the existing superProperties.
      * To clear all superProperties, use {@link #clearSuperProperties()}
      *
-     * @param superPropertyName
+     * @param superPropertyName name of the property to unregister
      * @see #registerSuperProperties(JSONObject)
      */
     public void unregisterSuperProperty(String superPropertyName) {
@@ -497,6 +497,23 @@ public class MixpanelAPI {
         public void set(JSONObject properties);
 
         /**
+         * Works just like set(), except it will not overwrite existing property values. This is useful for properties like "First login date".
+         *
+         * @param propertyName The name of the Mixpanel property. This must be a String, for example "Zip Code"
+         * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
+         */
+        public void setOnce(String propertyName, Object value);
+
+        /**
+         * Like set(), but will not set properties that already exist on a record.
+         *
+         * @param properties a JSONObject containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the JSONObject will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         */
+        public void setOnce(JSONObject properties);
+
+        /**
          * Add the given amount to an existing property on the identified user. If the user does not already
          * have the associated property, the amount will be added to zero. To reduce a property,
          * provide a negative number for the value.
@@ -535,10 +552,17 @@ public class MixpanelAPI {
          * If the property does not currently exist, it will be created with the given list as it's value.
          * If the property exists and is not list-valued, the union will be ignored.
          *
-         * @param name
-         * @param value
+         * @param name name of the list-valued property to set or modify
+         * @param value an array of values to add to the property value if not already present
          */
         void union(String name, JSONArray value);
+
+
+        /**
+         * permanently removes the property with the given name from the user's profile
+         * @param name name of a property to unset
+         */
+        void unset(String name);
 
         /**
          * Track a revenue transaction for the identified people profile.
@@ -590,7 +614,7 @@ public class MixpanelAPI {
          * early in your application's life cycle. (for example, in the onCreate method of your
          * main application activity.)
          *
-         * <p>Calls to {@link #initPushHandling(String)} should not be mixed with calls to
+         * <p>Calls to initPushHandling should not be mixed with calls to
          * {@link #setPushRegistrationId(String)} and {@link #clearPushRegistrationId()}
          * in the same application. Application authors should choose one or the other
          * method for handling Mixpanel GCM messages.
@@ -811,6 +835,27 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void setOnce(JSONObject properties) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "setOnce " + properties.toString());
+
+            try {
+                final JSONObject message = stdPeopleMessage("$set_once", properties);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception setting people properties");
+            }
+        }
+
+        @Override
+        public void setOnce(String property, Object value) {
+            try {
+                setOnce(new JSONObject().put(property, value));
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "set", e);
+            }
+        }
+
+        @Override
         public void increment(Map<String, ? extends Number> properties) {
             final JSONObject json = new JSONObject(properties);
             if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
@@ -845,10 +890,23 @@ public class MixpanelAPI {
         public void union(String name, JSONArray value) {
             try {
                 final JSONObject properties = new JSONObject();
+                properties.put(name, value);
                 final JSONObject message = stdPeopleMessage("$union", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception unioning a property");
+            }
+        }
+
+        @Override
+        public void unset(String name) {
+            try {
+                final JSONArray names = new JSONArray();
+                names.put(name);
+                final JSONObject message = stdPeopleMessage("$unset", names);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception unsetting a property");
             }
         }
 
@@ -860,11 +918,10 @@ public class MixpanelAPI {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
                 final String checkToken = mToken;
                 final String checkDistinctId = getDistinctId();
-                final SurveyCallbacks checkCallbacks = callbacks;
                 final SurveyCallbacks callbackWrapper = new SurveyCallbacks() {
                     @Override
                     public void foundSurvey(Survey s) {
-                        checkCallbacks.foundSurvey(s);
+                        callbacks.foundSurvey(s);
                         checkForSurveysLock.release();
                     }
                 };
@@ -955,14 +1012,14 @@ public class MixpanelAPI {
         @Override
         public void clearCharges() {
             final JSONArray empty = new JSONArray();
-            this.set("$transactions", empty);
+            this.unset("$transactions");
         }
 
         @Override
         public void deleteUser() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
             try {
-                final JSONObject message = stdPeopleMessage("$delete", null);
+                final JSONObject message = stdPeopleMessage("$delete", JSONObject.NULL);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception deleting a user");
@@ -1046,7 +1103,7 @@ public class MixpanelAPI {
             };
         }
 
-        public JSONObject stdPeopleMessage(String actionType, JSONObject properties)
+        public JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
                 final JSONObject dataObj = new JSONObject();
                 final String distinctId = getDistinctId();

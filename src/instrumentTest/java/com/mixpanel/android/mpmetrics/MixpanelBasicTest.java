@@ -172,6 +172,69 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    public void testPeopleOperations() throws JSONException {
+        final List<JSONObject> messages = new ArrayList<JSONObject>();
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void peopleMessage(JSONObject heard) {
+                messages.add(heard);
+            }
+        };
+
+        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+
+        mixpanel.getPeople().identify("TEST IDENTITY");
+
+        mixpanel.getPeople().set("SET NAME", "SET VALUE");
+        mixpanel.getPeople().increment("INCREMENT NAME", 1);
+        mixpanel.getPeople().append("APPEND NAME", "APPEND VALUE");
+        mixpanel.getPeople().setOnce("SET ONCE NAME", "SET ONCE VALUE");
+        mixpanel.getPeople().union("UNION NAME", new JSONArray("[100]"));
+        mixpanel.getPeople().unset("UNSET NAME");
+        mixpanel.getPeople().trackCharge(100, new JSONObject("{\"name\": \"val\"}"));
+        mixpanel.getPeople().clearCharges();
+        mixpanel.getPeople().deleteUser();
+
+        JSONObject setMessage = messages.get(0).getJSONObject("$set");
+        assertEquals("SET VALUE", setMessage.getString("SET NAME"));
+
+        JSONObject addMessage = messages.get(1).getJSONObject("$add");
+        assertEquals(1, addMessage.getInt("INCREMENT NAME"));
+
+        JSONObject appendMessage = messages.get(2).getJSONObject("$append");
+        assertEquals("APPEND VALUE", appendMessage.get("APPEND NAME"));
+
+        JSONObject setOnceMessage = messages.get(3).getJSONObject("$set_once");
+        assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
+
+        JSONObject unionMessage = messages.get(4).getJSONObject("$union");
+        JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
+        assertEquals(1, unionValues.length());
+        assertEquals(100, unionValues.getInt(0));
+
+        JSONArray unsetMessage = messages.get(5).getJSONArray("$unset");
+        assertEquals(1, unsetMessage.length());
+        assertEquals("UNSET NAME", unsetMessage.get(0));
+
+        JSONObject trackChargeMessage = messages.get(6).getJSONObject("$append");
+        JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
+        assertEquals(100.0d, transaction.getDouble("$amount"));
+
+        JSONArray clearChargesMessage = messages.get(7).getJSONArray("$unset");
+        assertEquals(1, clearChargesMessage.length());
+        assertEquals("$transactions", clearChargesMessage.getString(0));
+
+        System.out.println("DELETE MESSAGE WAS " + messages.get(8).toString());
+
+        assertTrue(messages.get(8).has("$delete"));
+    }
+
     public void testIdentifyAfterSet() {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 

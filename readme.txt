@@ -54,6 +54,8 @@ This is a major release, with significant changes to library behavior.
        A version of each release is hosted in Maven central, and will not require you to manually
        download or install any artifacts.
 
+* Support for getPeople().union(), getPeople().setOnce() and getPeople().unset() has been added.
+
 * Fallback to HTTP from HTTPS is disabled by default
 
   In previous releases, the Mixpanel library would automatically fall
