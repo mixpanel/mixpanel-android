@@ -74,13 +74,14 @@ import android.util.Log;
         mLogMixpanelMessages.set(true);
     }
 
-    public void eventsMessage(EventDTO eventDTO) {
+    public void eventsMessage(EventDescription eventDescription) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
-        m.obj = eventDTO;
+        m.obj = eventDescription;
         mWorker.runMessage(m);
     }
 
+    // Must be thread safe.
     public void peopleMessage(JSONObject peopleJson) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;
@@ -172,9 +173,8 @@ import android.util.Log;
 
     ////////////////////////////////////////////////////
 
-    static class EventDTO {
-
-        public EventDTO(String eventName, JSONObject properties, String token) {
+    static class EventDescription {
+        public EventDescription(String eventName, JSONObject properties, String token) {
             this.eventName = eventName;
             this.properties = properties;
             this.token = token;
@@ -280,14 +280,14 @@ import android.util.Log;
                         queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
-                        final EventDTO eventDTO = (EventDTO) msg.obj;
+                        final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
-                            final JSONObject message = prepareEventObject(eventDTO);
+                            final JSONObject message = prepareEventObject(eventDescription);
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
                             queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                         } catch (final JSONException e) {
-                            Log.e(LOGTAG, "Exception tracking event " + eventDTO.getEventName(), e);
+                            Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
                     }
                     else if (msg.what == FLUSH_QUEUE) {
@@ -538,18 +538,18 @@ import android.util.Log;
                 return ret;
             }
 
-            private JSONObject prepareEventObject(EventDTO eventDTO) throws JSONException {
+            private JSONObject prepareEventObject(EventDescription eventDescription) throws JSONException {
                 final JSONObject eventObj = new JSONObject();
-                final JSONObject eventProperties = eventDTO.getProperties();
+                final JSONObject eventProperties = eventDescription.getProperties();
                 final JSONObject sendProperties = getDefaultEventProperties();
-                sendProperties.put("token", eventDTO.getToken());
+                sendProperties.put("token", eventDescription.getToken());
                 if (eventProperties != null) {
                     for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext();) {
                         final String key = (String) iter.next();
                         sendProperties.put(key, eventProperties.get(key));
                     }
                 }
-                eventObj.put("event", eventDTO.getEventName());
+                eventObj.put("event", eventDescription.getEventName());
                 eventObj.put("properties", sendProperties);
                 return eventObj;
             }
