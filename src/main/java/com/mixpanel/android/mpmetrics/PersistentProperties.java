@@ -55,6 +55,12 @@ import android.util.Log;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
+        mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+			@Override
+			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+				readReferrerProperties();
+			}
+		};
     }
 
     public JSONObject getSuperProperties() {
@@ -219,6 +225,9 @@ import android.util.Log;
 
         try {
             final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
+            referrerPrefs.unregisterOnSharedPreferenceChangeListener(mReferrerChangeListener);
+            referrerPrefs.registerOnSharedPreferenceChangeListener(mReferrerChangeListener);
+
             final Map<String, ?> prefsMap = referrerPrefs.getAll();
             for (final Map.Entry<String, ?> entry:prefsMap.entrySet()) {
                 final String prefsName = entry.getKey();
@@ -311,6 +320,7 @@ import android.util.Log;
 
     private final Future<SharedPreferences> mLoadStoredPreferences;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
+    private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
     private JSONObject mSuperPropertiesCache;
     private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
