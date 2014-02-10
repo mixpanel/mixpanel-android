@@ -277,7 +277,7 @@ public class MixpanelAPI {
             }
 
             final JSONObject superProperties = mPersistentProperties.getSuperProperties();
-            final Iterator superIter = superProperties.keys();
+            final Iterator<?> superIter = superProperties.keys();
             while (superIter.hasNext()) {
                 final String key = (String) superIter.next();
                 messageProps.put(key, superProperties.get(key));
@@ -290,7 +290,7 @@ public class MixpanelAPI {
             messageProps.put("distinct_id", getDistinctId());
 
             if (null != properties) {
-                final Iterator propIter = properties.keys();
+                final Iterator<?> propIter = properties.keys();
                 while (propIter.hasNext()) {
                     final String key = (String) propIter.next();
                     messageProps.put(key, properties.get(key));
@@ -1011,7 +1011,6 @@ public class MixpanelAPI {
          */
         @Override
         public void clearCharges() {
-            final JSONArray empty = new JSONArray();
             this.unset("$transactions");
         }
 
