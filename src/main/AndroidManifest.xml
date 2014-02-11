@@ -1,6 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mixpanel.android">
-    <application/>
     <uses-sdk android:minSdkVersion="8"
               android:targetSdkVersion="19"/>
 
@@ -15,7 +14,17 @@
 
       <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
       <uses-permission android:name="android.permission.BLUETOOTH" />
-
     -->
 
+    <application>
+        <!-- This activity allows your application to show Mixpanel surveys -->
+        <activity android:name="com.mixpanel.android.surveys.SurveyActivity" />
+
+        <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
+        <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.vending.INSTALL_REFERRER" />
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>
