@@ -39,24 +39,11 @@ import com.mixpanel.android.util.StackBlurManager;
             final View rootView = someView.getRootView();
             final boolean originalCacheState = rootView.isDrawingCacheEnabled();
             rootView.setDrawingCacheEnabled(true);
-
-            /****
-            TODO remove this comment when this fix is confirmed by a customer.
-
-            Occasionally, the root view will not be layed out or measured when we arrive here.
-            In the past, we've called the following to stimulate a layout
-
-            rootView.layout(0, 0, rootView.getMeasuredWidth(), rootView.getMeasuredHeight());
-
-            However, this can result in a failure to render the element appropriately
-            in some cases. So, for now, we fall back to the "generic" background if the
-            view isn't ready to draw.
-            **/
-
             rootView.buildDrawingCache(true);
 
             // We could get a null or zero px bitmap if the rootView hasn't been measured
-            // appropriately. This is ok, and we should handle it gracefully.
+            // appropriately, or we grab it before layout.
+            // This is ok, and we should handle it gracefully.
             final Bitmap original = rootView.getDrawingCache();
             Bitmap scaled = null;
             if (null != original && original.getWidth() > 0 && original.getHeight() > 0) {
