@@ -821,7 +821,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$set", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception setting people properties");
+                Log.e(LOGTAG, "Exception setting people properties", e);
             }
         }
 
@@ -906,7 +906,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$unset", names);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception unsetting a property");
+                Log.e(LOGTAG, "Exception unsetting a property", e);
             }
         }
 

@@ -16,7 +16,7 @@ import android.util.Log;
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
 
     // Set to true, Mixpanel will not send survey results.
     // Should be set to false in production or your surveys

@@ -318,14 +318,14 @@ import android.util.Log;
                         }
                     }
                     else if (msg.what == KILL_WORKER) {
-                        Log.w(LOGTAG, "Worker recieved a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
+                        Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
                             mDbAdapter.deleteDB();
                             mHandler = null;
                             Looper.myLooper().quit();
                         }
                     } else {
-                        Log.e(LOGTAG, "Unexpected message recieved by Mixpanel worker: " + msg);
+                        Log.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
                     }
 
                     ///////////////////////////
@@ -382,7 +382,7 @@ import android.util.Log;
                         final JSONObject candidateJson = surveys.getJSONObject(i);
                         final Survey candidate = new Survey(candidateJson);
                         if (mSeenSurveys.contains(candidate.getId())) {
-                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Recieved a duplicate survey from Mixpanel, ignoring.");
+                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Received a duplicate survey from Mixpanel, ignoring.");
                         } else {
                             found = candidate;
                             if (! MPConfig.DONT_SEND_SURVEYS) {
@@ -390,10 +390,10 @@ import android.util.Log;
                             }
                         }
                     } catch (final JSONException e) {
-                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
+                        Log.i(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
                         found = null;
                     } catch (final Survey.BadSurveyException e) {
-                        Log.i(LOGTAG, "Recieved a strange response from surveys service: " + surveys.toString());
+                        Log.i(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
                         found = null;
                     }
                 }
@@ -421,7 +421,7 @@ import android.util.Log;
                 final ServerMessage poster = getPoster();
                 final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
                 if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                    Log.e(LOGTAG, "Couldn't reach Mixpanel to check for Surveys.");
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Couldn't reach Mixpanel to check for Surveys. (Or user doesn't exist yet)");
                     return null;
                 }
                 return result.getResponse();
