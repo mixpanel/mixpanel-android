@@ -111,6 +111,18 @@ This is a major release, with significant changes to library behavior.
       retrieve and show surveys automatically, users can still show surveys using
       MixpanelAPI.getPeople().checkForSurvey and MixpanelAPI.getPeople().showSurvey
 
+* Automatic referrer tracking from the Google Play Store
+
+  Adding the following to the main <application> tag in your AndroidManfest.xml will
+  automatically set super properties associated with the referrer to your Google Play Store listing:
+
+  <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver"
+            android:exported="true">
+      <intent-filter>
+          <action android:name="com.android.vending.INSTALL_REFERRER" />
+      </intent-filter>
+  </receiver>
+
 * Previous version of the library allowed setting "distinct_id" as a
   superProperty, and would use this value as the distinct id for event
   tracking. This behavior has been removed, and super properties with

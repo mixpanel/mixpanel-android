@@ -230,8 +230,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(1, clearChargesMessage.length());
         assertEquals("$transactions", clearChargesMessage.getString(0));
 
-        System.out.println("DELETE MESSAGE WAS " + messages.get(8).toString());
-
         assertTrue(messages.get(8).has("$delete"));
     }
 

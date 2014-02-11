@@ -17,7 +17,6 @@ public class MixpanelInstallReferrerTest extends AndroidTestCase {
         mIntent.putExtra("Bananas", "utm_source=should no appear");
         mReceiver.onReceive(getContext(), mIntent);
         SharedPreferences stored = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
-        System.out.println("FOUND REFERRER " + stored.getString("referrer", "(didnt find a referrer)"));
 
         assertFalse(stored.contains("referrer"));
         assertFalse(stored.contains("utm_source"));
