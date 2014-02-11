@@ -23,6 +23,8 @@ import android.util.Log;
     // won't work.
     public static final boolean DONT_SEND_SURVEYS = true;
 
+    /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
+
     public static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
         try {
