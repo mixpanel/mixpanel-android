@@ -2,6 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,41 +26,40 @@ public class InstallReferrerReceiver extends BroadcastReceiver {
             return;
         }
 
-        final SharedPreferences referralInfo = context.getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = referralInfo.edit();
-        editor.putString("referrer", referrer);
+        final Map<String, String> newPrefs = new HashMap<String, String>();
+        newPrefs.put("referrer", referrer);
 
         final Matcher sourceMatcher = UTM_SOURCE_PATTERN.matcher(referrer);
         final String source = find(sourceMatcher);
         if (null != source) {
-            editor.putString("utm_source", source);
+            newPrefs.put("utm_source", source);
         }
 
         final Matcher mediumMatcher = UTM_MEDIUM_PATTERN.matcher(referrer);
         final String medium = find(mediumMatcher);
         if (null != medium) {
-            editor.putString("utm_medium", medium);
+            newPrefs.put("utm_medium", medium);
         }
 
         final Matcher campaignMatcher = UTM_CAMPAIGN_PATTERN.matcher(referrer);
         final String campaign = find(campaignMatcher);
         if (null != campaign) {
-            editor.putString("utm_campaign", campaign);
+            newPrefs.put("utm_campaign", campaign);
         }
 
         final Matcher contentMatcher = UTM_CONTENT_PATTERN.matcher(referrer);
         final String content = find(contentMatcher);
         if (null != content) {
-            editor.putString("utm_content", content);
+            newPrefs.put("utm_content", content);
         }
 
         final Matcher termMatcher = UTM_TERM_PATTERN.matcher(referrer);
         final String term = find(termMatcher);
         if (null != term) {
-            editor.putString("utm_term", term);
+            newPrefs.put("utm_term", term);
         }
 
-        editor.commit();
+        PersistentProperties.writeReferrerPrefs(context, MPConfig.REFERRER_PREFS_NAME, newPrefs);
     }
 
     private String find(Matcher matcher) {

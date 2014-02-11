@@ -11,6 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
@@ -49,6 +50,19 @@ import android.util.Log;
         return ret;
     }
 
+    public static void writeReferrerPrefs(Context context, String preferencesName, Map<String, String> properties) {
+        synchronized (sReferrerPrefsLock) {
+            final SharedPreferences referralInfo = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE);
+            final SharedPreferences.Editor editor = referralInfo.edit();
+            editor.clear();
+            for (final Map.Entry<String, String> entry:properties.entrySet()) {
+                editor.putString(entry.getKey(), entry.getValue());
+            }
+            editor.commit();
+            sReferrerPrefsDirty = true;
+        }
+    }
+
     public PersistentProperties(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
@@ -58,7 +72,10 @@ import android.util.Log;
         mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
 			@Override
 			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-				readReferrerProperties();
+                synchronized (sReferrerPrefsLock) {
+                    readReferrerProperties();
+                    sReferrerPrefsDirty = false;
+                }
 			}
 		};
     }
@@ -71,8 +88,11 @@ import android.util.Log;
     }
 
     public Map<String, String> getReferrerProperties() {
-        if (null == mReferrerPropertiesCache) {
-            readReferrerProperties();
+        synchronized (sReferrerPrefsLock) {
+            if (sReferrerPrefsDirty || null == mReferrerPropertiesCache) {
+                readReferrerProperties();
+                sReferrerPrefsDirty = false;
+            }
         }
         return mReferrerPropertiesCache;
     }
@@ -366,5 +386,7 @@ import android.util.Log;
     private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
 
+    private static boolean sReferrerPrefsDirty = true;
+    private static final Object sReferrerPrefsLock = new Object();
     private static final String LOGTAG = "MixpanelAPI PersistentProperties";
 }

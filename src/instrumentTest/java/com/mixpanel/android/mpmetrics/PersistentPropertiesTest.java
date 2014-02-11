@@ -8,13 +8,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 public class PersistentPropertiesTest extends AndroidTestCase {
     public void setUp() {
-        SharedPreferences referrerPrefs = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences referrerPrefs = getContext().getSharedPreferences(TEST_REFERRER_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor referrerEditor = referrerPrefs.edit();
         referrerEditor.clear();
         referrerEditor.putString("referrer", "REFERRER");
@@ -36,7 +37,7 @@ public class PersistentPropertiesTest extends AndroidTestCase {
         prefsEditor.commit();
 
         SharedPreferencesLoader loader = new SharedPreferencesLoader();
-        Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), MPConfig.REFERRER_PREFS_NAME, null);
+        Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
         Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
 
         mPersistentProperties = new PersistentProperties(referrerLoader, testLoader);
@@ -118,20 +119,19 @@ public class PersistentPropertiesTest extends AndroidTestCase {
         assertEquals("CONTENT VALUE", props.get("utm_content"));
         assertEquals("TERM VALUE", props.get("utm_term"));
 
-        final SharedPreferences referrerPrefs = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
-        final SharedPreferences.Editor referrerEditor = referrerPrefs.edit();
-        referrerEditor.putString("referrer", "BJORK");
-        referrerEditor.putString("mystery", "BOO!");
-        referrerEditor.remove("utm_medium");
-        referrerEditor.commit();
+        final Map<String, String> newPrefs = new HashMap<String, String>();
+        newPrefs.put("referrer", "BJORK");
+        newPrefs.put("mystery", "BOO!");
+        newPrefs.put("utm_term", "NEW TERM");
+        PersistentProperties.writeReferrerPrefs(getContext(), TEST_REFERRER_PREFERENCES, newPrefs);
 
         final Map<String, String> propsAfterChange = mPersistentProperties.getReferrerProperties();
         assertFalse(propsAfterChange.containsKey("utm_medium"));
+        assertFalse(propsAfterChange.containsKey("utm_source"));
+        assertFalse(propsAfterChange.containsKey("utm_campaign"));
+        assertFalse(propsAfterChange.containsKey("utm_content"));
         assertEquals("BJORK", propsAfterChange.get("referrer"));
-        assertEquals("SOURCE VALUE", propsAfterChange.get("utm_source"));
-        assertEquals("CAMPAIGN NAME VALUE", propsAfterChange.get("utm_campaign"));
-        assertEquals("CONTENT VALUE", propsAfterChange.get("utm_content"));
-        assertEquals("TERM VALUE", propsAfterChange.get("utm_term"));
+        assertEquals("NEW TERM", propsAfterChange.get("utm_term"));
         assertEquals("BOO!", propsAfterChange.get("mystery"));
     }
 
@@ -184,5 +184,5 @@ public class PersistentPropertiesTest extends AndroidTestCase {
 
     private PersistentProperties mPersistentProperties;
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
-
+    private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
 }
