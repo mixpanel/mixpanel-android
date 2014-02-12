@@ -89,6 +89,10 @@ import android.util.Log;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
+
+    /**
+     * String version of the library.
+     */
     public static final String VERSION = MPConfig.VERSION;
 
     /**

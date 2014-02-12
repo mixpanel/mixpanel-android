@@ -1,37 +1,35 @@
-/**
-* StackBlur v1.0 for Android
-*
-* @Author: Enrique López Mañas <eenriquelopez@gmail.com>
-* http://www.neo-tech.es
-*
-* Author of the original algorithm: Mario Klingemann <mario.quasimondo.com>
-*
-* This is a compromise between Gaussian Blur and Box blur
-* It creates much better looking blurs than Box Blur, but is
-* 7x faster than my Gaussian Blur implementation.
-
-* I called it Stack Blur because this describes best how this
-* filter works internally: it creates a kind of moving stack
-* of colors whilst scanning through the image. Thereby it
-* just has to add one new block of color to the right side
-* of the stack and remove the leftmost color. The remaining
-* colors on the topmost layer of the stack are either added on
-* or reduced by one, depending on if they are on the right or
-* on the left side of the stack.
-*
-* @copyright: Enrique López Mañas
-* @license: Apache License 2.0
-*
-* This file has been modified from it's original version by Mixpanel, Inc
-* The original was retrieved from
-* https://github.com/kikoso/android-stackblur on October 23rd, 2013
-*/
-
-
 package com.mixpanel.android.util;
 
 import android.graphics.Bitmap;
 
+/**
+ * <p>StackBlur v1.0 for Android</p>
+ *
+ * <p>Author: Enrique López Mañas <eenriquelopez@gmail.com></p>
+ * <p>http://www.neo-tech.es</p>
+ *
+ * <p>Author of the original algorithm: Mario Klingemann &lt;mario.quasimondo.com&gt;</p>
+ *
+ * <p>This is a compromise between Gaussian Blur and Box blur
+ * It creates much better looking blurs than Box Blur, but is
+ * 7x faster than my Gaussian Blur implementation.</p>
+
+ * <p>I called it Stack Blur because this describes best how this
+ * filter works internally: it creates a kind of moving stack
+ * of colors whilst scanning through the image. Thereby it
+ * just has to add one new block of color to the right side
+ * of the stack and remove the leftmost color. The remaining
+ * colors on the topmost layer of the stack are either added on
+ * or reduced by one, depending on if they are on the right or
+ * on the left side of the stack.</p>
+ *
+ * <p>Copyright: Enrique López Mañas</p>
+ * <p>License: Apache License 2.0</p>
+ *
+ * <p>This file has been modified from its original version by Mixpanel, Inc
+ * The original was retrieved from
+ * https://github.com/kikoso/android-stackblur on October 23rd, 2013</p>
+ */
 public class StackBlurManager {
     public static void process(Bitmap source, int radius) {
         if (radius < 1) {

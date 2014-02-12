@@ -24,7 +24,7 @@ import android.util.Log;
 * this is the simplest way to get up and running with notifications from Mixpanel.
 *
 * <p>To enable GCMReciever in your application, add a clause like the following
-* in your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
+* to the &lt;application&gt; tag of your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
 * in the snippet with the actual package name of your app.)
 *
 *<pre>

@@ -9,9 +9,9 @@ import java.util.concurrent.FutureTask;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-public class SharedPreferencesLoader {
+/* package */ class SharedPreferencesLoader {
 
-    public interface OnPrefsLoadedListener {
+    /* package */ interface OnPrefsLoadedListener {
         public void onPrefsLoaded(SharedPreferences prefs);
     }
 

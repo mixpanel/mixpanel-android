@@ -6,7 +6,10 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.EditText;
 
-public class AlwaysSubmittableEditText extends EditText {
+/**
+ * View used by the default Mixpanel Survey Display.
+ */
+/* package */ class AlwaysSubmittableEditText extends EditText {
 
     public AlwaysSubmittableEditText(Context context) {
         super(context);

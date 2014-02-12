@@ -25,6 +25,11 @@ import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.SurveyState;
 
+/**
+ * Activity used internally by Mixpanel to display surveys. You shouldn't send intents directly to this activity-
+ * The best way to display a SurveyActivity is to call
+ * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
+ */
 public class SurveyActivity extends Activity {
 
     @Override

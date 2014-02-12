@@ -7,7 +7,7 @@ import android.widget.Button;
 
 import android.R.attr;
 
-public class FadeOnPressButton extends Button {
+/* package */ class FadeOnPressButton extends Button {
 
     public FadeOnPressButton(Context context) {
         super(context);

@@ -11,6 +11,8 @@ import org.json.JSONObject;
 /**
  * Represents a Survey, configured in Mixpanel, suitable for showing to a user.
  *
+ * Unless you have disabled automatic survey display, you shouldn't need to work with this class directly.
+ *
  * The typical use of this class follows the pattern.
  * <pre>
  * {@code
@@ -28,7 +30,7 @@ import org.json.JSONObject;
  */
 public class Survey {
 
-    public static class BadSurveyException extends Exception {
+    /* package */ static class BadSurveyException extends Exception {
         public BadSurveyException(String detailMessage) {
             super(detailMessage);
         }
@@ -40,7 +42,7 @@ public class Survey {
         private static final long serialVersionUID = 4858739193395706341L;
     }
 
-    public Survey(JSONObject description) throws BadSurveyException {
+    /* package */ Survey(JSONObject description) throws BadSurveyException {
         try {
             mDescription = description;
             mId = description.getInt("id");
@@ -63,7 +65,7 @@ public class Survey {
         }
     }
 
-    public String toJSON() {
+    /* package */ String toJSON() {
         return mDescription.toString();
     }
 

@@ -10,9 +10,8 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.CheckedTextView;
 
-// XXX: CheckedTextView is a bit hostile to this kind of extension.
-// Consider reimplementing as a child of View, that contains a Drawable and a TextView
-public class SurveyChoiceView extends CheckedTextView {
+
+/* package */ class SurveyChoiceView extends CheckedTextView {
 
     public SurveyChoiceView(Context context) {
         super(context);
