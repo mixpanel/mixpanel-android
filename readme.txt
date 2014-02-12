@@ -1,7 +1,3 @@
-This is the BETA version of this software, you can get the most recent stable version at:
-
-    https://github.com/mixpanel/mixpanel-android/releases/tag/v3.3.2
-
 Documentation:
     You can find getting started guides for using Mixpanel at
     https://mixpanel.com/docs/integration-libraries/android#installing for installation instructions
