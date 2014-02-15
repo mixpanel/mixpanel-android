@@ -979,7 +979,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             originalSurveyState = new SurveyState(s, "DistinctId", "Token", testBitmap, Color.WHITE);
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");
-        } catch (Survey.BadSurveyException e) {
+        } catch (BadDecideObjectException e) {
             throw new RuntimeException("Test survey string couldn't be made into a survey");
         }
 
@@ -1057,7 +1057,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return mockMessage;
             }
         };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN test checkForSurveys") {
+        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN test checkDecideService") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return mockMessages;

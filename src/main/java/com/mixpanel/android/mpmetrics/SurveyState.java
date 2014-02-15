@@ -170,7 +170,7 @@ public class SurveyState implements Parcelable {
             mSurvey = new Survey(surveyJson);
         } catch (final JSONException e) {
             throw new RuntimeException("Survey serialization resulted in a corrupted parcel");
-        } catch (final Survey.BadSurveyException e) {
+        } catch (final BadDecideObjectException e) {
             throw new RuntimeException("Survey serialization resulted in a corrupted parcel");
         }
     }

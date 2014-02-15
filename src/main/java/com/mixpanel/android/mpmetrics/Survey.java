@@ -17,7 +17,7 @@ import org.json.JSONObject;
  * <pre>
  * {@code
  *   Activity parent = this;
- *   mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
+ *   mixpanel.getPeople().checkDecideService(new SurveyCallbacks() {
  *       {@literal @}Override
  *       public void foundSurvey(Survey survey) {
  *           if (survey != null) {
@@ -30,19 +30,7 @@ import org.json.JSONObject;
  */
 public class Survey {
 
-    /* package */ static class BadSurveyException extends Exception {
-        public BadSurveyException(String detailMessage) {
-            super(detailMessage);
-        }
-
-        public BadSurveyException(String detailMessage, Throwable throwable) {
-            super(detailMessage, throwable);
-        }
-
-        private static final long serialVersionUID = 4858739193395706341L;
-    }
-
-    /* package */ Survey(JSONObject description) throws BadSurveyException {
+    /* package */ Survey(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");
@@ -52,7 +40,7 @@ public class Survey {
 
             final JSONArray questionsJArray = description.getJSONArray("questions");
             if (questionsJArray.length() == 0) {
-                throw new BadSurveyException("Survey has no questions.");
+                throw new BadDecideObjectException("Survey has no questions.");
             }
             final List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
             for (int i = 0; i < questionsJArray.length(); i++) {
@@ -61,7 +49,7 @@ public class Survey {
             }
             mQuestions = Collections.unmodifiableList(questionsList);
         } catch (final JSONException e) {
-            throw new BadSurveyException("Survey JSON was unexpected or bad", e);
+            throw new BadDecideObjectException("Survey JSON was unexpected or bad", e);
         }
     }
 
@@ -82,26 +70,30 @@ public class Survey {
     }
 
     public enum QuestionType {
-        UNKNOWN,
-        MULTIPLE_CHOICE,
-        TEXT;
-
-        @Override
-        public String toString() {
-            if (MULTIPLE_CHOICE == this) {
+        UNKNOWN {
+            @Override
+           public String toString() {
+                return "*unknown_type*";
+            }
+        },
+        MULTIPLE_CHOICE {
+            @Override
+            public String toString() {
                 return "multiple_choice";
             }
-            if (TEXT == this) {
+        },
+        TEXT {
+            @Override
+            public String toString() {
                 return "text";
             }
-            return "*unknown_type*";
-        }
+        };
     };
 
     public class Question {
-        private Question(JSONObject question) throws JSONException, BadSurveyException {
+        private Question(JSONObject question) throws JSONException, BadDecideObjectException {
             mQuestionId = question.getInt("id");
-            mQuestionType = question.getString("type").intern();
+            mQuestionType = question.getString("type");
             mPrompt = question.getString("prompt");
 
             List<String> choicesList = Collections.<String>emptyList();
@@ -117,7 +109,7 @@ public class Survey {
             }
             mChoices = Collections.unmodifiableList(choicesList);
             if (getType() == QuestionType.MULTIPLE_CHOICE && mChoices.size() == 0) {
-                throw new BadSurveyException("Question is multiple choice but has no answers:" + question.toString());
+                throw new BadDecideObjectException("Question is multiple choice but has no answers:" + question.toString());
             }
         }
 

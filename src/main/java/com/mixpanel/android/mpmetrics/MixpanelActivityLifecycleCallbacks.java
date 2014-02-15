@@ -44,7 +44,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      * reason we are interested in this call is to check and show an eligible survey on initial app
      * open. Unfortunately, by the time MixpanelActivityLifecycleCallbacks is registered, we've
      * already missed the onActivityCreated call. We'll use this event to "catch up".
-     * checkForSurveys is only called if hasn't been previously called in the life of the app.
+     * checkDecideService is only called if hasn't been previously called in the life of the app.
      *
      * @param activity
      */
@@ -52,7 +52,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityStarted(Activity activity) {
         if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
             mCurOrientation = activity.getResources().getConfiguration().orientation;
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSurveys called from onActivityCreated");
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "checkDecideService called from onActivityCreated");
             checkForSurveys(activity);
         }
     }

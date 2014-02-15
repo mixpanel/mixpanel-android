@@ -301,8 +301,9 @@ public class MixpanelAPI {
                 }
             }
 
-            final AnalyticsMessages.EventDescription eventDTO = new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
-            mMessages.eventsMessage(eventDTO);
+            final AnalyticsMessages.EventDescription eventDescription =
+                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
+            mMessages.eventsMessage(eventDescription);
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -696,7 +697,7 @@ public class MixpanelAPI {
          * <pre>
          * {@code
          * Activity parent = this;
-         * mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
+         * mixpanel.getPeople().checkDecideService(new SurveyCallbacks() {
          *     public void foundSurvey(Survey survey) {
          *         if (survey != null) {
          *             mixpanel.getPeople().showSurvey(survey, parent);
@@ -707,7 +708,7 @@ public class MixpanelAPI {
          * </pre>
          *
          * The foundSurvey() may be (and will probably be) called on a different thread
-         * than the one that called checkForSurveys(). The library doesn't guarantee
+         * than the one that called checkDecideService(). The library doesn't guarantee
          * a particular thread, and callbacks are responsible for their own thread safety.
          *
          * This method is will always call back with null in environments with
@@ -922,9 +923,9 @@ public class MixpanelAPI {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
                 final String checkToken = mToken;
                 final String checkDistinctId = getDistinctId();
-                final SurveyCallbacks callbackWrapper = new SurveyCallbacks() {
+                final DecideCallbacks callbackWrapper = new DecideCallbacks() {
                     @Override
-                    public void foundSurvey(Survey s) {
+                    public void foundResults(Survey s, InAppNotification n) {
                         callbacks.foundSurvey(s);
                         checkForSurveysLock.release();
                     }
@@ -943,9 +944,9 @@ public class MixpanelAPI {
                     callbacks.foundSurvey(null);
                     return;
                 }
-                final AnalyticsMessages.SurveyCheck surveyCheck =
-                        new AnalyticsMessages.SurveyCheck(callbackWrapper, checkDistinctId, checkToken);
-                mMessages.checkForSurveys(surveyCheck);
+                final AnalyticsMessages.DecideCheck decideCheck =
+                        new AnalyticsMessages.DecideCheck(callbackWrapper, checkDistinctId, checkToken);
+                mMessages.checkDecideService(decideCheck);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
             }
