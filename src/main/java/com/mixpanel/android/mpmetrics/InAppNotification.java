@@ -1,0 +1,100 @@
+package com.mixpanel.android.mpmetrics;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/**
+ * Represents an in-app notification delivered from Mixpanel.
+ */
+public class InAppNotification {
+    public enum Type {
+        UNKNOWN {
+            @Override
+            public String toString() {
+                return "*unknown_type*";
+            }
+        },
+        MINI {
+            @Override
+            public String toString() {
+                return "mini";
+            }
+        },
+        TAKEOVER {
+            @Override
+            public String toString() {
+                return "takeover";
+            }
+        };
+    }
+
+    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
+        try {
+            mDescription = description;
+            mId = description.getInt("id");
+            mMessageId = description.getInt("message_id");
+            mType = description.getString("type");
+            mTitle = description.getString("title");
+            mBody = description.getString("body");
+            mImageUrl = description.getString("image_url");
+
+            // "cta" here is an unfortunate abbreviation of "Call To Action"
+            mCallToAction = description.getString("cta");
+            mCallToActionUrl = description.getString("cta_url");
+        } catch (final JSONException e) {
+            throw new BadDecideObjectException("Notification JSON was unexpected or bad", e);
+        }
+    }
+
+    /* package */ String toJSON() {
+        return mDescription.toString();
+    }
+
+    public int getId() {
+        return mId;
+    }
+
+    public int getMessageId() {
+        return mMessageId;
+    }
+
+    public Type getType() {
+        if (Type.MINI.toString().equals(mType)) {
+            return Type.MINI;
+        }
+        if (Type.TAKEOVER.toString().equals(mType)) {
+            return Type.TAKEOVER;
+        }
+        return Type.UNKNOWN;
+    }
+
+    public String getTitle() {
+        return mTitle;
+    }
+
+    public String getBody() {
+        return mBody;
+    }
+
+    public String getImageUrl() {
+        return mImageUrl;
+    }
+
+    public String getCallToAction() {
+        return mCallToAction;
+    }
+
+    public String getCallToActionUrl() {
+        return mCallToActionUrl;
+    }
+
+    private final JSONObject mDescription;
+    private final int mId;
+    private final int mMessageId;
+    private final String mType;
+    private final String mTitle;
+    private final String mBody;
+    private final String mImageUrl;
+    private final String mCallToAction;
+    private final String mCallToActionUrl;
+}
