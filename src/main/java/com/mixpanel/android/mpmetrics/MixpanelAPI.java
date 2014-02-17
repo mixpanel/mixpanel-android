@@ -751,6 +751,7 @@ public class MixpanelAPI {
      *
      * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
      */
+    @SuppressWarnings("unused")
     public void logPosts() {
         mMessages.logPosts();
     }
@@ -1169,7 +1170,7 @@ public class MixpanelAPI {
     }
 
     // MUST BE THREAD SAFE. Called from crazy places. mPersistentProperties may not exist
-    // when this is called (from it's crazy thread)
+    // when this is called (from its crazy thread)
     private void sendAllPeopleRecords(JSONArray records) {
         for (int i = 0; i < records.length(); i++) {
             try {

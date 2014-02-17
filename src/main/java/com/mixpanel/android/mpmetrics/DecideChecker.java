@@ -25,9 +25,27 @@ import java.util.Set;
             mToken = token;
         }
 
-        public DecideCallbacks getCallbacks() { return mDecideCallbacks; }
         public String getDistinctId() { return mDistinctId; }
         public String getToken() { return mToken; }
+
+        public void callback(final Survey survey, final InAppNotification notification) {
+            // We don't want to run client callback code inside of
+            // the Mixpanel working thread or UI thread.
+            // (because it may take a long time, throw runtime exceptions, etc.)
+            final DecideCallbacks callbacks = mDecideCallbacks;
+            final Runnable task = new Runnable() {
+                @Override
+                public void run() {
+                    callbacks.foundResults(survey, notification);
+                }
+            };
+            if (Build.VERSION.SDK_INT >= 11) {
+                AsyncTask.execute(task);
+            } else {
+                final Thread callbackThread = new Thread(task);
+                callbackThread.run();
+            }
+        }
 
         private final DecideCallbacks mDecideCallbacks;
         private final String mDistinctId;
@@ -52,33 +70,15 @@ import java.util.Set;
             parsed = parseDecideResponse(responseString);
         }
 
-        final Survey foundSurvey = parsed.survey;
-        final InAppNotification foundNotification = parsed.notification;
-
-        if (null != foundSurvey && ! MPConfig.DONT_SEND_SURVEYS) {
-            mSeenSurveys.add(foundSurvey.getId());
+        if (null != parsed.survey && ! MPConfig.DONT_SEND_SURVEYS) {
+            mSeenSurveys.add(parsed.survey.getId());
         }
 
-        if (null != foundNotification && ! MPConfig.DONT_SEND_SURVEYS) {
-            mSeenNotifications.add(foundNotification.getId());
+        if (null != parsed.notification && ! MPConfig.DONT_SEND_SURVEYS) {
+            mSeenNotifications.add(parsed.notification.getId());
         }
 
-        // We don't want to run client callback code inside of this thread
-        // (because it may take a long time, throw runtime exceptions, etc.)
-        // We run it as an AsyncTask if such things are available,
-        // Otherwise we run it in an isolated orphan thread.
-        final Runnable task = new Runnable() {
-            @Override
-            public void run() {
-                check.getCallbacks().foundResults(foundSurvey, foundNotification);
-            }
-        };
-        if (Build.VERSION.SDK_INT >= 11) {
-            AsyncTask.execute(task);
-        } else {
-            final Thread callbackThread = new Thread(task);
-            callbackThread.run();
-        }
+        check.callback(parsed.survey, parsed.notification);
     }// runDecideCheck
 
     private ParseResult parseDecideResponse(String responseString) {
