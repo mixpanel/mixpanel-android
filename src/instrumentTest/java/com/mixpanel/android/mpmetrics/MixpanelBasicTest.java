@@ -67,7 +67,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
         Thread.sleep(500);

@@ -918,7 +918,7 @@ public class MixpanelAPI {
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-            if (checkForSurveysLock.acquire()) {
+            if (mCheckForSurveysLock.acquire()) {
 
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
                 final String checkToken = mToken;
@@ -927,7 +927,7 @@ public class MixpanelAPI {
                     @Override
                     public void foundResults(Survey s, InAppNotification n) {
                         callbacks.foundSurvey(s);
-                        checkForSurveysLock.release();
+                        mCheckForSurveysLock.release();
                     }
                 };
 
@@ -944,8 +944,8 @@ public class MixpanelAPI {
                     callbacks.foundSurvey(null);
                     return;
                 }
-                final AnalyticsMessages.DecideCheck decideCheck =
-                        new AnalyticsMessages.DecideCheck(callbackWrapper, checkDistinctId, checkToken);
+                final DecideChecker.DecideCheck decideCheck =
+                        new DecideChecker.DecideCheck(callbackWrapper, checkDistinctId, checkToken);
                 mMessages.checkDecideService(decideCheck);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
@@ -1243,7 +1243,7 @@ public class MixpanelAPI {
     private int mCachedSurveyHighlightColor;
 
     // Survey check locking
-    private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
+    private final ExpiringLock mCheckForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

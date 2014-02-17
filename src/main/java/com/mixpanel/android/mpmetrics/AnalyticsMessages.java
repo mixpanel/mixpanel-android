@@ -1,15 +1,10 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -17,7 +12,6 @@ import org.json.JSONObject;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -119,26 +113,7 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
-    /**
-     * All fields DecideCheck must return non-null values.
-     */
-    public static class DecideCheck {
-        public DecideCheck(final DecideCallbacks decideCallbacks, final String distinctId, final String token) {
-            mDecideCallbacks = decideCallbacks;
-            mDistinctId = distinctId;
-            mToken = token;
-        }
-
-        public DecideCallbacks getCallbacks() { return mDecideCallbacks; }
-        public String getDistinctId() { return mDistinctId; }
-        public String getToken() { return mToken; }
-
-        private final DecideCallbacks mDecideCallbacks;
-        private final String mDistinctId;
-        private final String mToken;
-    }
-
-    public void checkDecideService(DecideCheck check) {
+    public void checkDecideService(DecideChecker.DecideCheck check) {
         final Message m = Message.obtain();
         m.what = CHECK_DECIDE_SERVICE;
         m.obj = check;
@@ -243,8 +218,7 @@ import android.util.Log;
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
-                mSeenSurveys = new HashSet<Integer>();
-                mSeenNotifications = new HashSet<Integer>();
+                mDecideChecker = new DecideChecker(mConfig);
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
@@ -298,8 +272,8 @@ import android.util.Log;
                     }
                     else if (msg.what == CHECK_DECIDE_SERVICE) {
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
-                        final DecideCheck check = (DecideCheck) msg.obj;
-                        runDecideCheck(check);
+                        final DecideChecker.DecideCheck check = (DecideChecker.DecideCheck) msg.obj;
+                        mDecideChecker.runDecideCheck(check, getPoster());
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -343,138 +317,6 @@ import android.util.Log;
                     }
                 }
             }// handleMessage
-
-            /**
-             * Will call check's callback with one survey and
-             */
-            private void runDecideCheck(final DecideCheck check) {
-                String responseString = null;
-                JSONObject response = null;
-
-                try {
-                    responseString = getDecideResponseFromServer(check.getToken(), check.getDistinctId());
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
-                    if (null != responseString) {
-                        response = new JSONObject(responseString);
-                    }
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Mixpanel endpoint returned unparsable result:\n" + responseString, e);
-                }
-
-                if (null == response) {
-                    reportDecideResponse(check, null, null);
-                    return;
-                }
-
-                JSONArray notifications = null;
-                if (response.has("notifications")) {
-                    try {
-                        notifications = response.getJSONArray("notifications");
-                    } catch (final JSONException e) {
-                        Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
-                    }
-                }
-
-                JSONArray surveys = null;
-                if (response.has("surveys")) {
-                    try {
-                        surveys = response.getJSONArray("surveys");
-                    } catch (final JSONException e) {
-                        Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for surveys: " + response);
-                    }
-                }
-
-                Survey foundSurvey = null;
-                for (int i = 0; null != surveys && i < surveys.length(); i++) {
-                    try {
-                        final JSONObject candidateJson = surveys.getJSONObject(i);
-                        final Survey candidate = new Survey(candidateJson);
-                        if (! mSeenSurveys.contains(candidate.getId())) {
-                            foundSurvey = candidate;
-                            break;
-                        }
-                    } catch (final JSONException e) {
-                        Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                    } catch (final BadDecideObjectException e) {
-                        Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                    }
-                }
-
-                if (null != foundSurvey && ! MPConfig.DONT_SEND_SURVEYS) {
-                    mSeenSurveys.add(foundSurvey.getId());
-                }
-
-                InAppNotification foundNotification = null;
-                for (int i = 0; null != notifications && i < notifications.length(); i++) {
-                    try {
-                        final JSONObject candidateJson = surveys.getJSONObject(i);
-                        final InAppNotification candidate = new InAppNotification(candidateJson);
-                        if (! mSeenNotifications.contains(candidate.getId())) {
-                            foundNotification = candidate;
-                            break;
-                        }
-                    } catch (final JSONException e) {
-                        Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
-                    } catch (final BadDecideObjectException e) {
-                        Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
-                    }
-                }
-
-                if (null != foundNotification && ! MPConfig.DONT_SEND_SURVEYS) {
-                    mSeenNotifications.add(foundNotification.getId());
-                }
-
-                reportDecideResponse(check, foundSurvey, foundNotification);
-            }// runDecideCheck
-
-            private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId) {
-                String escapedToken;
-                String escapedId;
-                try {
-                    escapedToken = URLEncoder.encode(unescapedToken, "utf-8");
-                    escapedId = URLEncoder.encode(unescapedDistinctId, "utf-8");
-                } catch(final UnsupportedEncodingException e) {
-                    throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
-                }
-                final String checkQuery = new StringBuilder()
-                    .append("?version=1&lib=android&token=")
-                    .append(escapedToken)
-                    .append("&distinct_id=")
-                    .append(escapedId)
-                    .toString();
-                final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
-                final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
-
-                Log.d(LOGTAG, "Querying decide server at " + endpointUrl);
-                Log.d(LOGTAG, "    (with fallback " + fallbackUrl + ")");
-
-                final ServerMessage poster = getPoster();
-                final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
-                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Couldn't reach Mixpanel to check for Surveys. (Or user doesn't exist yet)");
-                    return null;
-                }
-                return result.getResponse();
-            }
-
-            private void reportDecideResponse(final DecideCheck check, final Survey survey, final InAppNotification inAppNotification) {
-                // We don't want to run client callback code inside of this thread
-                // (because it may take a long time, throw runtime exceptions, etc.)
-                // We run it as an AsyncTask if such things are available,
-                // Otherwise we run it in an isolated orphan thread.
-                final Runnable task = new Runnable() {
-                    @Override
-                    public void run() {
-                        check.getCallbacks().foundResults(survey, inAppNotification);
-                    }
-                };
-                if (Build.VERSION.SDK_INT >= 11) {
-                    AsyncTask.execute(task);
-                } else {
-                    final Thread callbackThread = new Thread(task);
-                    callbackThread.run();
-                }
-            }
 
             private boolean isOnline() {
                 boolean isOnline;
@@ -601,10 +443,9 @@ import android.util.Log;
             }
 
             private MPDbAdapter mDbAdapter;
-            private final Set<Integer> mSeenSurveys;
-            private final Set<Integer> mSeenNotifications;
             private long mFlushInterval; // XXX remove when associated deprecated APIs are removed
             private boolean mDisableFallback; // XXX remove when associated deprecated APIs are removed
+            private final DecideChecker mDecideChecker;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
