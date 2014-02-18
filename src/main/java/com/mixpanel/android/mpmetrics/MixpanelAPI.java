@@ -104,6 +104,7 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
+        mSurveyAssets = new SynchronizedReference<SurveyAssets>();
 
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
@@ -955,23 +956,21 @@ public class MixpanelAPI {
 
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
-            synchronized(mCachedSurveyAssetsLock) {
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
+            // This is all about waiting to show a "See our survey" dialog until after the survey is
+            // ready to show. We don't get to the end any faster, but we don't make users wait.
+            mSurveyAssets.set(null);
             checkForSurvey(new SurveyCallbacks() {
                 @Override
                 public void foundSurvey(final Survey survey) {
                     BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
                         @Override
                         public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                            synchronized(mCachedSurveyAssetsLock) {
-                                mCachedSurveyBitmap = bitmapCaptured;
-                                mCachedSurveyHighlightColor = highlightColorCaptured;
-                                mCachedSurveyActivityHashcode = parentActivity.hashCode();
-                            }
+                            final SurveyAssets assets = new SurveyAssets(
+                                    parentActivity.hashCode(),
+                                    bitmapCaptured,
+                                    highlightColorCaptured
+                            );
+                            mSurveyAssets.set(assets);
                             callbacks.foundSurvey(survey);
                         }
                     });
@@ -980,7 +979,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void showSurvey(final Survey s, final Activity parent) {
+        public void showSurvey(final Survey survey, final Activity parent) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
                 return;
@@ -991,25 +990,28 @@ public class MixpanelAPI {
                 return;
             }
 
-            Bitmap useBitmap = null;
-            int useHighlightColor = -1;
-            synchronized(mCachedSurveyAssetsLock) {
-                if (parent.hashCode() == mCachedSurveyActivityHashcode) {
-                    useBitmap = mCachedSurveyBitmap;
-                    useHighlightColor = mCachedSurveyHighlightColor;
-                }
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
-            if (null != useBitmap) {
-                SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, useBitmap, useHighlightColor);
+            final SurveyAssets assets = mSurveyAssets.getAndClear();
+            if (null != assets && assets.activityHashcode == parent.hashCode()) {
+                SurveyState.proposeSurvey(
+                    survey,
+                    parent,
+                    getDistinctId(),
+                    mToken,
+                    assets.surveyBitmap,
+                    assets.highlightColor
+                );
             } else {
                 BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
                     public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
+                        SurveyState.proposeSurvey(
+                            survey,
+                            parent,
+                            getDistinctId(),
+                            mToken,
+                            bitmapCaptured,
+                            highlightColorCaptured
+                        );
                     }
                 });
             }
@@ -1228,6 +1230,17 @@ public class MixpanelAPI {
         private final long timeoutMillis;
     }
 
+    private static class SurveyAssets {
+        public SurveyAssets(int activityHashcode, Bitmap surveyBitmap, int highlightColor) {
+            this.activityHashcode = activityHashcode;
+            this.surveyBitmap = surveyBitmap;
+            this.highlightColor = highlightColor;
+        }
+        public final int activityHashcode;
+        public final Bitmap surveyBitmap;
+        public final int highlightColor;
+    }
+
     private static final String LOGTAG = "MixpanelAPI";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
@@ -1237,11 +1250,7 @@ public class MixpanelAPI {
     private final PeopleImpl mPeople;
     private final PersistentProperties mPersistentProperties;
 
-    // Cache of survey assets for showSurveys. Synchronized access only.
-    private final Object mCachedSurveyAssetsLock = new Object();
-    private int mCachedSurveyActivityHashcode = -1;
-    private Bitmap mCachedSurveyBitmap;
-    private int mCachedSurveyHighlightColor;
+    private final SynchronizedReference<SurveyAssets> mSurveyAssets;
 
     // Survey check locking
     private final ExpiringLock mCheckForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout

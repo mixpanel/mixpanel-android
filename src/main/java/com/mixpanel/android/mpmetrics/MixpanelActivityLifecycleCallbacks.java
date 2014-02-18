@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
@@ -8,6 +9,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
 
+@TargetApi(14)
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance) {
