@@ -19,6 +19,10 @@
     <application>
         <!-- This activity allows your application to show Mixpanel surveys -->
         <activity android:name="com.mixpanel.android.surveys.SurveyActivity" />
+        
+        <!-- This activity allows your application to show Mixpanel In App Notifications -->
+        <activity android:name="com.mixpanel.android.NotificationActivity"
+                  android:theme="@style/Mixpanel.Notification" />
 
         <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
         <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
