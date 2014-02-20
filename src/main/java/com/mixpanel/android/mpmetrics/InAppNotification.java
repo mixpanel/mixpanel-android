@@ -1,5 +1,8 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.graphics.Bitmap;
+import android.media.Image;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -88,6 +91,14 @@ public class InAppNotification {
         return mCallToActionUrl;
     }
 
+    /* package */ void setImage(final Bitmap image) {
+        mImage = image;
+    }
+
+    public Bitmap getImage() {
+        return mImage;
+    }
+
     private final JSONObject mDescription;
     private final int mId;
     private final int mMessageId;
@@ -97,4 +108,5 @@ public class InAppNotification {
     private final String mImageUrl;
     private final String mCallToAction;
     private final String mCallToActionUrl;
+    private Bitmap mImage;
 }

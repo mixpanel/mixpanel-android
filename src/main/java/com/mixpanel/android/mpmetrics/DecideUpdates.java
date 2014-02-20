@@ -238,7 +238,7 @@ import java.util.Set;
                             Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
                         } else {
                             reportNotification = tryNotification;
-                            // SET IMAGE HERE! TODO TODO TODO
+                            reportNotification.setImage(image);
                         }
                     }
                 }

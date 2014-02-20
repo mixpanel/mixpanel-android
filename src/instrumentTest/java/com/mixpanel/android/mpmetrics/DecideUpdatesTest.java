@@ -21,7 +21,7 @@ public class DecideUpdatesTest extends AndroidTestCase {
 
         final Bitmap oneRedPx = Bitmap.createBitmap(new int[] { Color.RED }, 1, 1, Bitmap.Config.RGB_565);
         final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        oneRedPx.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+        oneRedPx.compress(Bitmap.CompressFormat.PNG, 100, stream);
         final byte[] bitmapBytes = stream.toByteArray();
         mSuccessImageResult = new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bitmapBytes);
         mFailureImageResult = new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, null);
@@ -336,6 +336,12 @@ public class DecideUpdatesTest extends AndroidTestCase {
         mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
         assertEquals(mNotificationCallbacks.seen.size(), 1);
         assertEquals(mNotificationCallbacks.seen.get(0), mSomeNotifications.get(1));
+
+        final Bitmap image = mSomeNotifications.get(1).getImage();
+        assertEquals(1, image.getWidth());
+        assertEquals(1, image.getHeight());
+        final int pixel = image.getPixel(0, 0);
+        assertEquals(Color.RED, pixel);
     }
 
     public static class MockMessages extends AnalyticsMessages {
