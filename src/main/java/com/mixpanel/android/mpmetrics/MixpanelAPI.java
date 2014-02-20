@@ -707,12 +707,12 @@ public class MixpanelAPI {
         /**
          * Checks to see if this user is eligible for any Mixpanel surveys.
          * If the check is successful, it will call its argument's
-         * foundSurvey() method with a (possibly null) {@link Survey} object.
+         * foundSurvey() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.Survey}.
          * The typical use case is similar to
          * <pre>
          * {@code
          * Activity parent = this;
-         * mixpanel.getPeople().checkDecideService(new SurveyCallbacks() {
+         * mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
          *     public void foundSurvey(Survey survey) {
          *         if (survey != null) {
          *             mixpanel.getPeople().showSurvey(survey, parent);
@@ -723,13 +723,35 @@ public class MixpanelAPI {
          * </pre>
          *
          * The foundSurvey() may be (and will probably be) called on a different thread
-         * than the one that called checkDecideService(). The library doesn't guarantee
+         * than the one that called checkForSurvey(). The library doesn't guarantee
          * a particular thread, and callbacks are responsible for their own thread safety.
          *
          * This method is will always call back with null in environments with
          * Android API before Gingerbread/API level 10
          */
         public void checkForSurvey(SurveyCallbacks callbacks);
+
+
+        /**
+         * Checks to see if this user has any waiting Mixpanel notifications.
+         * If the check is successful, it will call its argument's
+         * foundNotifications() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.InAppNotification}.
+         * The typical use case is similar to
+         * <pre>
+         * {@code
+         * Activity parent = this;
+         * mixpanel.getPeople().checkForNotification(new InAppNotificationCallbacks() {
+         *     public void foundNotification(InAppNotification notification) {
+         *         if (notification != null) {
+         *             mixpanel.getPeople().showNotification(notification, parent);
+         *         }
+         *     }
+         * });
+         * }
+         * </pre>
+         * @param callbacks
+         */
+        public void checkForNotification(InAppNotificationCallbacks callbacks);
 
         /**
          * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
@@ -939,13 +961,13 @@ public class MixpanelAPI {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
 
             if (null == callbacks) {
-                Log.i(LOGTAG, "Skipping survey check, because callback is null.");
+                Log.i(LOGTAG, "Skipping survey check because callback is null.");
                 return;
             }
 
             final String checkDistinctId = getDistinctId();
             if (null == checkDistinctId) {
-                Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
+                Log.i(LOGTAG, "Skipping survey check because user has not yet been identified.");
                 return;
             }
 
@@ -980,6 +1002,23 @@ public class MixpanelAPI {
                     });
                 }
             });
+        }
+
+        @Override
+        public void checkForNotification(final InAppNotificationCallbacks callbacks) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for notifications...");
+
+            if (null == callbacks) {
+                Log.i(LOGTAG, "Skipping notification check because callback is null.");
+            }
+
+            final String checkDistinctId = getDistinctId();
+            if (null == checkDistinctId) {
+                Log.i(LOGTAG, "Skipping notification check because user has not yet been identified.");
+                return;
+            }
+
+            mDecideUpdates.setInAppCallback(callbacks, checkDistinctId, mMessages);
         }
 
         @Override
