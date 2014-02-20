@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,8 +26,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -1188,6 +1192,13 @@ public class MixpanelAPI {
 
 		    }
 		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+		    
+		    Handler handler = new Handler();
+		    handler.postDelayed(new Runnable() {
+                public void run() {
+                    pw.dismiss();
+                }
+            }, 2000);
 		}
 		
 		@Override
@@ -1200,6 +1211,10 @@ public class MixpanelAPI {
 		    final PopupWindow pw = new PopupWindow(popupView);
 		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
 		    pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
+		    
+		    // The following two lines are needed to make back button dismissal work.
+		    pw.setBackgroundDrawable(new BitmapDrawable());
+		    pw.setFocusable(true);
 		    
 	    	Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
 	    	button.setText("Go to URL");
