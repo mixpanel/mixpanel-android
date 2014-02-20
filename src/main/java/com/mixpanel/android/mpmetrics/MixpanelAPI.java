@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 import android.view.Gravity;
@@ -750,8 +751,8 @@ public class MixpanelAPI {
          */
         public People withIdentity(String distinctId);
         
-        public void showMiniInAppNotif(Activity parent, String title);
-        public void showFullInAppNotif(Activity parent, String title, String subtext);
+        public void showMiniInAppNotif(Activity parent, String title, String uri);
+        public void showFullInAppNotif(Activity parent, String title, String subtext, String uri);
     }
 
     /**
@@ -1166,19 +1167,31 @@ public class MixpanelAPI {
         }
 
 		@Override
-		public void showMiniInAppNotif(Activity parent, String title) {
+		public void showMiniInAppNotif(final Activity parent, final String title, final String uri) {
 	    	LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
 	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
 	    	
-		    PopupWindow pw = new PopupWindow(popupView);
+		    final PopupWindow pw = new PopupWindow(popupView);
 		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
 		    pw.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
-		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0); 
+		    
+		    if (uri != null && uri.length() > 0) {
+		    	popupView.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View arg0) {
+						pw.dismiss();
+				    	Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+				    	parent.startActivity(viewIntent);
+					}
+		    	});
+
+		    }
+		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
 		}
 		
 		@Override
-		public void showFullInAppNotif(Activity parent, String title, String subtext) {
+		public void showFullInAppNotif(final Activity parent, final String title, final String subtext, final String uri) {
 			LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
 	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
@@ -1189,11 +1202,13 @@ public class MixpanelAPI {
 		    pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
 		    
 	    	Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
-	    	button.setText("Done");
+	    	button.setText("Go to URL");
 	    	button.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View arg0) {
 					pw.dismiss();
+					Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+			    	parent.startActivity(viewIntent);
 				}
 	    	});
 		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
