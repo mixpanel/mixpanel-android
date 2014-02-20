@@ -7,6 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -97,6 +98,25 @@ public class DecideUpdatesTest extends AndroidTestCase {
         assertEquals(mNotificationCallbacks.seen.get(0), mSomeNotifications.get(0));
     }
 
+    public void testRunningSurveyRequest() {
+        mDecideUpdates.setSurveyCallback(mSurveyCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mSurveyCallbacks.seen.isEmpty()); // Should be waiting for request
+
+        mMockTimeMillis += 1; // A little time passes
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mNotificationCallbacks.seen.isEmpty()); // Now I'm waiting for the request, too
+
+        mNotificationCallbacks.seen.clear();
+        mMockMessages.checks.clear();
+        mMockTimeMillis += MPConfig.DECIDE_REQUEST_TIMEOUT_MILLIS; // An aeon passes
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1); // New request
+        assertEquals(mNotificationCallbacks.seen.size(), 1); // Old callback was called with null.
+        assertNull(mNotificationCallbacks.seen.get(0));
+    }
+
     public void testRunningNotificationsRequest() {
         mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
         assertEquals(mMockMessages.checks.size(), 1);
@@ -127,6 +147,74 @@ public class DecideUpdatesTest extends AndroidTestCase {
         assertNull(mSurveyCallbacks.seen.get(0));
     }
 
+    public void testWaitingNotificationCallbacks() {
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mNotificationCallbacks.seen.isEmpty());
+
+        mMockMessages.checks.clear();
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mNotificationCallbacks.seen.size(), 1);
+        assertNull(mNotificationCallbacks.seen.get(0));
+    }
+
+    public void testRecentRequestSurveyCallbacks() {
+        mDecideUpdates.setSurveyCallback(mSurveyCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mSurveyCallbacks.seen.isEmpty());
+
+        // Resolve outstanding request 1 milli later
+        mMockTimeMillis += 1;
+        mDecideUpdates.reportResults("DISTINCT ID", Collections.<Survey>emptyList(), Collections.<InAppNotification>emptyList());
+
+        assertEquals(mSurveyCallbacks.seen.size(), 1);
+        assertNull(mSurveyCallbacks.seen.get(0));
+
+        // We had a recent request, we should not perform a server check
+        mSurveyCallbacks.seen.clear();
+        mMockMessages.checks.clear();
+        mDecideUpdates.setSurveyCallback(mSurveyCallbacks, "DISTINCT ID", mMockMessages);
+        assertTrue(mMockMessages.checks.isEmpty());
+        assertEquals(mSurveyCallbacks.seen.size(), 1);
+        assertNull(mSurveyCallbacks.seen.get(0));
+
+        // After our min interval, we should perform another check
+        mMockTimeMillis += MPConfig.MAX_DECIDE_REQUEST_FREQUENCY_MILLIS;
+        mSurveyCallbacks.seen.clear();
+        mMockMessages.checks.clear();
+        mDecideUpdates.setSurveyCallback(mSurveyCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mSurveyCallbacks.seen.isEmpty());
+    }
+
+    public void testRecentRequestNotificationCallbacks() {
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mNotificationCallbacks.seen.isEmpty());
+
+        // Resolve outstanding request 1 milli later
+        mMockTimeMillis += 1;
+        mDecideUpdates.reportResults("DISTINCT ID", Collections.<Survey>emptyList(), Collections.<InAppNotification>emptyList());
+
+        assertEquals(mNotificationCallbacks.seen.size(), 1);
+        assertNull(mNotificationCallbacks.seen.get(0));
+
+        // We had a recent request, we should not perform a server check
+        mNotificationCallbacks.seen.clear();
+        mMockMessages.checks.clear();
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertTrue(mMockMessages.checks.isEmpty());
+        assertEquals(mNotificationCallbacks.seen.size(), 1);
+        assertNull(mNotificationCallbacks.seen.get(0));
+
+        // After our min interval, we should perform another check
+        mMockTimeMillis += MPConfig.MAX_DECIDE_REQUEST_FREQUENCY_MILLIS;
+        mNotificationCallbacks.seen.clear();
+        mMockMessages.checks.clear();
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mMockMessages.checks.size(), 1);
+        assertTrue(mNotificationCallbacks.seen.isEmpty());
+    }
 
     public void testReportResultsBehavior() throws JSONException, BadDecideObjectException {
         // With unknown distinct id and no callbacks, no cache changes

@@ -731,7 +731,6 @@ public class MixpanelAPI {
          */
         public void checkForSurvey(SurveyCallbacks callbacks);
 
-
         /**
          * Checks to see if this user has any waiting Mixpanel notifications.
          * If the check is successful, it will call its argument's
