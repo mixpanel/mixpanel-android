@@ -7,11 +7,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Future;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.mixpanel.android.R;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -21,8 +25,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.PopupWindow;
+import android.widget.TextView;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -740,6 +754,9 @@ public class MixpanelAPI {
          * This is used by Mixpanel Surveys but is likely not needed in your code.
          */
         public People withIdentity(String distinctId);
+        
+        public void showMiniInAppNotif(Activity parent, String title, String uri);
+        public void showFullInAppNotif(Activity parent, String title, String subtext, String uri);
     }
 
     /**
@@ -1139,6 +1156,65 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
+
+		@Override
+		public void showMiniInAppNotif(final Activity parent, final String title, final String uri) {
+	    	LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
+	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
+	    	
+		    final PopupWindow pw = new PopupWindow(popupView);
+		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+		    pw.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
+		    
+		    if (uri != null && uri.length() > 0) {
+		    	popupView.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View arg0) {
+						pw.dismiss();
+				    	Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+				    	parent.startActivity(viewIntent);
+					}
+		    	});
+
+		    }
+		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+		    
+		    Handler handler = new Handler();
+		    handler.postDelayed(new Runnable() {
+                public void run() {
+                    pw.dismiss();
+                }
+            }, 2000);
+		}
+		
+		@Override
+		public void showFullInAppNotif(final Activity parent, final String title, final String subtext, final String uri) {
+			LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
+	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
+	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext)).setText(subtext);
+	    	
+		    final PopupWindow pw = new PopupWindow(popupView);
+		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+		    pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
+		    
+		    // The following two lines are needed to make back button dismissal work.
+		    pw.setBackgroundDrawable(new BitmapDrawable());
+		    pw.setFocusable(true);
+		    
+	    	Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
+	    	button.setText("Go to URL");
+	    	button.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View arg0) {
+					pw.dismiss();
+					Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+			    	parent.startActivity(viewIntent);
+				}
+	    	});
+		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+		}
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
