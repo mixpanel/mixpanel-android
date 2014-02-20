@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.util.Log;
@@ -174,6 +176,10 @@ import java.util.Set;
         return mUnseenNotifications;
     }
 
+    protected ServerMessage newPoster() {
+        return new ServerMessage();
+    }
+
     private Survey popSurvey() {
         if (mUnseenSurveys.isEmpty()) {
             return null;
@@ -213,11 +219,30 @@ import java.util.Set;
         runOnIsolatedThread(task);
     }
 
-    private void runInAppCallback(final InAppNotification notification, final InAppNotificationCallbacks callbacks) {
+    private void runInAppCallback(final InAppNotification tryNotification, final InAppNotificationCallbacks callbacks) {
         final Runnable task = new Runnable() {
             @Override
             public void run() {
-                callbacks.foundNotification(notification);
+                InAppNotification reportNotification = null;
+                if (null != tryNotification) {
+                    final String imageUrl = tryNotification.getImageUrl();
+                    final ServerMessage imageMessage = newPoster();
+                    final ServerMessage.Result result = imageMessage.get(imageUrl, null);
+                    if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+                        // Shouldn't drop this notification on the floor if this is a connectivity issue!
+                        Log.i(LOGTAG, "Could not access image at " + imageUrl);
+                    } else {
+                        final byte[] imageBytes = result.getResponseBytes();
+                        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                        if (null == image) {
+                            Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
+                        } else {
+                            reportNotification = tryNotification;
+                            // SET IMAGE HERE! TODO TODO TODO
+                        }
+                    }
+                }
+                callbacks.foundNotification(reportNotification);
             }
         };
         runOnIsolatedThread(task);

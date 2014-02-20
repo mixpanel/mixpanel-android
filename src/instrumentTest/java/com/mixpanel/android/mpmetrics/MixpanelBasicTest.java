@@ -19,6 +19,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +37,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
+
         super.setUp();
         final SharedPreferences referrerPreferences = getContext().getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = referrerPreferences.edit();
@@ -304,11 +306,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testSurveys() {
-        final List<String> responses = Collections.synchronizedList(new ArrayList<String>());
+        final List<byte[]> responses = Collections.synchronizedList(new ArrayList<byte[]>());
         final BlockingQueue<String> foundQueue = new LinkedBlockingQueue<String>();
         MixpanelAPI mixpanel = apiForSurvey(responses);
 
-        responses.add("{\"surveys\":[]}");
+        responses.add(bytes("{\"surveys\":[]}"));
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
             @Override
             public void foundSurvey(final Survey s) {
@@ -337,7 +339,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             fail("checkForSurvey never returned");
         }
 
-        responses.add(
+        responses.add(bytes(
                 "{\"surveys\":[ {" +
                 "   \"id\":291," +
                 "   \"questions\":[" +
@@ -345,7 +347,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 "       {\"id\":277,\"type\":\"text\",\"extra_data\":{},\"prompt\":\"Text Field Prompt\"}]," +
                 "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
                 "]}"
-        );
+        ));
 
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
@@ -392,9 +394,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
             fail("checkForSurvey never returned");
         }
 
-        responses.add(
+        responses.add(bytes(
                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
-        );
+        ));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
@@ -435,46 +437,48 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         // Corrupted or crazy responses.
-        responses.add("{ WONT PARSE");
+        responses.add(bytes("{ WONT PARSE"));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid JSON but bad (no name)
-        responses.add("{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}");
+        responses.add(bytes(
+                "{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}"
+        ));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Just pure craziness
-        responses.add("null");
+        responses.add(bytes("null"));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid JSON that isn't relevant
-        responses.add("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
+        responses.add(bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}"));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid survey with no questions
-        responses.add(
-                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
-        );
+        responses.add(bytes(
+            "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
+        ));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
 
         // Valid survey with a question with no choices
-        responses.add(
+        responses.add(bytes(
                 "{\"surveys\":[ {" +
                         "   \"id\":291," +
                         "   \"questions\":[" +
                         "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[]},\"prompt\":\"Multiple Choice Prompt\"}," +
                         "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
                         "]}"
-        );
+        ));
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
@@ -605,7 +609,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     throw new RuntimeException(e);
                 }
 
-                return new Result(Status.SUCCEEDED, "1\n");
+                return new Result(Status.SUCCEEDED, bytes("1\n"));
             }
         };
 
@@ -738,11 +742,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testHTTPFailures() {
 
         final List<ServerMessage.Result> results = new ArrayList<ServerMessage.Result>();
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
+        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
         results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, "0\n"));
+        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, bytes("0\n")));
         results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
+        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
@@ -1140,7 +1144,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
-    private MixpanelAPI apiForSurvey(final List<String> responses) {
+    private MixpanelAPI apiForSurvey(final List<byte[]> responses) {
         final ServerMessage mockMessage = new ServerMessage() {
             @Override
             public Result get(String endpointUrl, String fallbackUrl) {
@@ -1161,6 +1165,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
         mixpanel.clearPreferences();
         return mixpanel;
+    }
+
+    private byte[] bytes(String s) {
+        try {
+            return s.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("This is not an android device, or a compatible java. WHO ARE YOU?");
+        }
     }
 
     private Future<SharedPreferences> mMockPreferences;

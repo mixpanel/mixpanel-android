@@ -1,11 +1,15 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.test.AndroidTestCase;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +18,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DecideUpdatesTest extends AndroidTestCase {
     public void setUp() throws BadDecideObjectException, JSONException {
         mMockTimeMillis = 0;
+
+        final Bitmap oneRedPx = Bitmap.createBitmap(new int[] { Color.RED }, 1, 1, Bitmap.Config.RGB_565);
+        final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        oneRedPx.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+        final byte[] bitmapBytes = stream.toByteArray();
+        mSuccessImageResult = new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bitmapBytes);
+        mFailureImageResult = new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, null);
+        mImageResult = mSuccessImageResult;
+
+        mMockPoster = new ServerMessage() {
+            public Result get(String imageUrl, String shouldBeNull) {
+                assertNull(shouldBeNull); // No fallback for images
+                return mImageResult;
+            }
+        };
 
         mDecideUpdates = new DecideUpdates("TEST TOKEN") {
             @Override
@@ -24,6 +43,11 @@ public class DecideUpdatesTest extends AndroidTestCase {
             @Override
             protected void runOnIsolatedThread(Runnable task) {
                 task.run();
+            }
+
+            @Override
+            protected ServerMessage newPoster() {
+                return mMockPoster;
             }
         };
 
@@ -298,6 +322,22 @@ public class DecideUpdatesTest extends AndroidTestCase {
         assertEquals(mSurveyCallbacks.seen.get(1).getId(), 100);
     }
 
+    public void testImageResults() {
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertTrue(mNotificationCallbacks.seen.isEmpty());
+
+        mImageResult = mFailureImageResult;
+        mDecideUpdates.reportResults("DISTINCT ID", Collections.<Survey>emptyList(), mSomeNotifications);
+        assertEquals(mNotificationCallbacks.seen.size(), 1);
+        assertNull(mNotificationCallbacks.seen.get(0));
+
+        mNotificationCallbacks.seen.clear();
+        mImageResult = mSuccessImageResult;
+        mDecideUpdates.setInAppCallback(mNotificationCallbacks, "DISTINCT ID", mMockMessages);
+        assertEquals(mNotificationCallbacks.seen.size(), 1);
+        assertEquals(mNotificationCallbacks.seen.get(0), mSomeNotifications.get(1));
+    }
+
     public static class MockMessages extends AnalyticsMessages {
         public MockMessages(Context context) {
             super(context);
@@ -327,8 +367,12 @@ public class DecideUpdatesTest extends AndroidTestCase {
         public final List<InAppNotification> seen = new ArrayList<InAppNotification>();
     }
 
+    private ServerMessage.Result mSuccessImageResult;
+    private ServerMessage.Result mFailureImageResult;
+    private ServerMessage.Result mImageResult;
     private DecideUpdates mDecideUpdates;
     private MockMessages mMockMessages;
+    private ServerMessage mMockPoster;
     private MockSurveyCallbacks mSurveyCallbacks;
     private MockInAppNotificationCallbacks mNotificationCallbacks;
     private List<Survey> mSomeSurveys;
