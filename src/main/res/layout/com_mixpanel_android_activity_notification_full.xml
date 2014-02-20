@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/com_mixpanel_android_notification_full_bg"
     android:orientation="vertical" >
     
     <ImageView
@@ -34,8 +35,7 @@
         android:textColor="#ffffff" />
     
     <Button
+        android:id="@+id/com_mixpanel_android_notification_button"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/com_mixpanel_android_done"
-        android:onClick="dismissNotification" />
+        android:layout_height="wrap_content" />
 </LinearLayout>
