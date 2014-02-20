@@ -1,6 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
 
+import android.app.Notification;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -477,6 +478,102 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel = apiForSurvey(responses);
         mixpanel.getPeople().identify("SURVEY TEST USER");
         getNoSurvey(mixpanel, foundQueue);
+    }
+
+    public void testDecideResponses() {
+        {
+            final String nonsense = "I AM NONSENSE";
+            final DecideChecker.ParseResult parseNonsense = DecideChecker.parseDecideResponse(nonsense);
+            assertTrue(parseNonsense.notifications.isEmpty());
+            assertTrue(parseNonsense.surveys.isEmpty());
+        }
+
+        {
+            final String allNull = "null";
+            final DecideChecker.ParseResult parseAllNull = DecideChecker.parseDecideResponse(allNull);
+            assertTrue(parseAllNull.notifications.isEmpty());
+            assertTrue(parseAllNull.surveys.isEmpty());
+        }
+
+        {
+
+            final String elementsNull = "{\"surveys\": null, \"notifications\": null}";
+            final DecideChecker.ParseResult parseElementsNull = DecideChecker.parseDecideResponse(elementsNull);
+            assertTrue(parseElementsNull.notifications.isEmpty());
+            assertTrue(parseElementsNull.surveys.isEmpty());
+        }
+
+        {
+            final String elementsEmpty = "{\"surveys\": [], \"notifications\": []}";
+            final DecideChecker.ParseResult parseElementsEmpty = DecideChecker.parseDecideResponse(elementsEmpty);
+            assertTrue(parseElementsEmpty.notifications.isEmpty());
+            assertTrue(parseElementsEmpty.surveys.isEmpty());
+        }
+
+        {
+            final String notificationOnly = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\"}]}";
+            final DecideChecker.ParseResult parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
+            assertEquals(parseNotificationOnly.notifications.size(), 1);
+
+            final InAppNotification parsed = parseNotificationOnly.notifications.get(0);
+            assertEquals(parsed.getBody(), "Hook me up, yo!");
+            assertEquals(parsed.getTitle(), "Tranya?");
+            assertEquals(parsed.getMessageId(), 1781);
+            assertEquals(parsed.getImageUrl(), "http://mixpanel.com/Balok.jpg");
+            assertEquals(parsed.getCallToAction(), "I'm Down!");
+            assertEquals(parsed.getCallToActionUrl(), "http://www.mixpanel.com");
+            assertEquals(parsed.getId(), 119911);
+            assertEquals(parsed.getType(), InAppNotification.Type.TAKEOVER);
+
+            assertTrue(parseNotificationOnly.surveys.isEmpty());
+        }
+
+        {
+            final String surveyOnly = "{\"notifications\":[],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
+            final DecideChecker.ParseResult parseSurveyOnly = DecideChecker.parseDecideResponse(surveyOnly);
+            assertTrue(parseSurveyOnly.notifications.isEmpty());
+
+            assertEquals(parseSurveyOnly.surveys.size(), 1);
+            final Survey parsed = parseSurveyOnly.surveys.get(0);
+            assertEquals(parsed.getId(), 397);
+            assertTrue(parsed.getCollectionId() == 3319 || parsed.getCollectionId() == 3329);
+            final List<Survey.Question> questions = parsed.getQuestions();
+            assertEquals(questions.size(), 1);
+            final Survey.Question question = questions.get(0);
+            assertEquals(question.getType(), Survey.QuestionType.TEXT);
+            assertEquals(question.getPrompt(), "prompt text");
+            assertEquals(question.getId(), 457);
+            assertTrue(question.getChoices().isEmpty());
+
+        }
+
+        {
+            final String both = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
+            final DecideChecker.ParseResult parseBoth = DecideChecker.parseDecideResponse(both);
+
+            final InAppNotification parsedNotification = parseBoth.notifications.get(0);
+            assertEquals(parsedNotification.getBody(), "Hook me up, yo!");
+            assertEquals(parsedNotification.getTitle(), "Tranya?");
+            assertEquals(parsedNotification.getMessageId(), 1781);
+            assertEquals(parsedNotification.getImageUrl(), "http://mixpanel.com/Balok.jpg");
+            assertEquals(parsedNotification.getCallToAction(), "I'm Down!");
+            assertEquals(parsedNotification.getCallToActionUrl(), "http://www.mixpanel.com");
+            assertEquals(parsedNotification.getId(), 119911);
+            assertEquals(parsedNotification.getType(), InAppNotification.Type.MINI);
+
+
+            assertEquals(parseBoth.surveys.size(), 1);
+            final Survey parsedSurvey = parseBoth.surveys.get(0);
+            assertEquals(parsedSurvey.getId(), 397);
+            assertTrue(parsedSurvey.getCollectionId() == 3319 || parsedSurvey.getCollectionId() == 3329);
+            final List<Survey.Question> questions = parsedSurvey.getQuestions();
+            assertEquals(questions.size(), 1);
+            final Survey.Question question = questions.get(0);
+            assertEquals(question.getType(), Survey.QuestionType.TEXT);
+            assertEquals(question.getPrompt(), "prompt text");
+            assertEquals(question.getId(), 457);
+            assertTrue(question.getChoices().isEmpty());
+        }
     }
 
     public void testMessageQueuing() {

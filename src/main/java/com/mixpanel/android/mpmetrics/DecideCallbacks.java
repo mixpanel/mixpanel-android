@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
-public interface DecideCallbacks {
-    public void foundResults(Survey s, InAppNotification n);
+import java.util.List;
+
+/* package */ interface DecideCallbacks {
+    public void foundResults(List<Survey> surveys, List<InAppNotification> notifications);
 }

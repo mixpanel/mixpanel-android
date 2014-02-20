@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.os.AsyncTask;
-import android.os.Build;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -10,8 +8,8 @@ import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /* package */ class DecideChecker {
 
@@ -28,23 +26,8 @@ import java.util.Set;
         public String getDistinctId() { return mDistinctId; }
         public String getToken() { return mToken; }
 
-        public void callback(final Survey survey, final InAppNotification notification) {
-            // We don't want to run client callback code inside of
-            // the Mixpanel working thread or UI thread.
-            // (because it may take a long time, throw runtime exceptions, etc.)
-            final DecideCallbacks callbacks = mDecideCallbacks;
-            final Runnable task = new Runnable() {
-                @Override
-                public void run() {
-                    callbacks.foundResults(survey, notification);
-                }
-            };
-            if (Build.VERSION.SDK_INT >= 11) {
-                AsyncTask.execute(task);
-            } else {
-                final Thread callbackThread = new Thread(task);
-                callbackThread.run();
-            }
+        public void callback(final List<Survey> surveys, final List<InAppNotification> notifications) {
+            mDecideCallbacks.foundResults(surveys, notifications);
         }
 
         private final DecideCallbacks mDecideCallbacks;
@@ -54,8 +37,6 @@ import java.util.Set;
 
     public DecideChecker(MPConfig config) {
         mConfig = config;
-        mSeenSurveys = new HashSet<Integer>();
-        mSeenNotifications = new HashSet<Integer>();
     }
 
     /**
@@ -70,18 +51,19 @@ import java.util.Set;
             parsed = parseDecideResponse(responseString);
         }
 
-        if (null != parsed.survey && ! MPConfig.DONT_SEND_SURVEYS) {
-            mSeenSurveys.add(parsed.survey.getId());
-        }
-
-        if (null != parsed.notification && ! MPConfig.DONT_SEND_SURVEYS) {
-            mSeenNotifications.add(parsed.notification.getId());
-        }
-
-        check.callback(parsed.survey, parsed.notification);
+        check.callback(parsed.surveys, parsed.notifications);
     }// runDecideCheck
 
-    private ParseResult parseDecideResponse(String responseString) {
+    /* package */ static class ParseResult {
+        public ParseResult() {
+            surveys = new ArrayList<Survey>();
+            notifications = new ArrayList<InAppNotification>();
+        }
+        public final List<Survey> surveys;
+        public final List<InAppNotification> notifications;
+    }
+
+    /* package */ static ParseResult parseDecideResponse(String responseString) {
         JSONObject response;
         final ParseResult ret = new ParseResult();
 
@@ -103,12 +85,9 @@ import java.util.Set;
 
         for (int i = 0; null != surveys && i < surveys.length(); i++) {
             try {
-                final JSONObject candidateJson = surveys.getJSONObject(i);
-                final Survey candidate = new Survey(candidateJson);
-                if (! mSeenSurveys.contains(candidate.getId())) {
-                    ret.survey = candidate;
-                    break;
-                }
+                final JSONObject surveyJson = surveys.getJSONObject(i);
+                final Survey survey = new Survey(surveyJson);
+                ret.surveys.add(survey);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
             } catch (final BadDecideObjectException e) {
@@ -127,12 +106,9 @@ import java.util.Set;
 
         for (int i = 0; null != notifications && i < notifications.length(); i++) {
             try {
-                final JSONObject candidateJson = surveys.getJSONObject(i);
-                final InAppNotification candidate = new InAppNotification(candidateJson);
-                if (! mSeenNotifications.contains(candidate.getId())) {
-                    ret.notification = candidate;
-                    break;
-                }
+                final JSONObject notificationJson = notifications.getJSONObject(i);
+                final InAppNotification notification = new InAppNotification(notificationJson);
+                ret.notifications.add(notification);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
             } catch (final BadDecideObjectException e) {
@@ -172,13 +148,6 @@ import java.util.Set;
         return result.getResponse();
     }
 
-    private static class ParseResult {
-        public Survey survey;
-        public InAppNotification notification;
-    }
-
-    private final Set<Integer> mSeenSurveys;
-    private final Set<Integer> mSeenNotifications;
     private final MPConfig mConfig;
 
     private static final String LOGTAG = "MixpanelAPI DecideChecker";

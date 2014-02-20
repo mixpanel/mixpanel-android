@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -105,6 +104,7 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
+        mDecideUpdates = new DecideUpdates(token);
 
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
@@ -920,38 +920,25 @@ public class MixpanelAPI {
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-            if (mCheckForSurveysLock.acquire()) {
 
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
-                final String checkToken = mToken;
-                final String checkDistinctId = getDistinctId();
-                final DecideCallbacks callbackWrapper = new DecideCallbacks() {
-                    @Override
-                    public void foundResults(Survey s, InAppNotification n) {
-                        callbacks.foundSurvey(s);
-                        mCheckForSurveysLock.release();
-                    }
-                };
-
-                if (null == callbacks) {
-                    Log.i(LOGTAG, "Skipping survey check, because callback is null.");
-                    return;
-                }
-                if (null == checkDistinctId) {
-                    Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
-                    return;
-                }
-                if (Build.VERSION.SDK_INT < 10) {
-                    Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
-                    callbacks.foundSurvey(null);
-                    return;
-                }
-                final DecideChecker.DecideCheck decideCheck =
-                        new DecideChecker.DecideCheck(callbackWrapper, checkDistinctId, checkToken);
-                mMessages.checkDecideService(decideCheck);
-            } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
+            if (null == callbacks) {
+                Log.i(LOGTAG, "Skipping survey check, because callback is null.");
+                return;
             }
+
+            final String checkDistinctId = getDistinctId();
+            if (null == checkDistinctId) {
+                Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
+                return;
+            }
+
+            if (Build.VERSION.SDK_INT < 10) { // TODO is this correct? Should we grab the surveys and just not DISPLAY them at this API level?
+                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
+                callbacks.foundSurvey(null);
+                return;
+            }
+
+            mDecideUpdates.setSurveyCallback(callbacks, checkDistinctId, mMessages);
         }
 
         @Override
@@ -1184,52 +1171,6 @@ public class MixpanelAPI {
         }
     }
 
-    private static class ExpiringLock {
-
-        private ExpiringLock(long timeoutInMillis) {
-            this.timeoutMillis = timeoutInMillis;
-        }
-
-        public boolean acquire() {
-            if (reentrantLock.tryLock()) {
-                try {
-                    if (this.time > 0 && (System.currentTimeMillis() - this.time) > timeoutMillis) {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
-                        release();
-                    }
-
-                    if (!locked) {
-                        time = System.currentTimeMillis();
-                        locked = true;
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } finally {
-                    reentrantLock.unlock();
-                }
-            } else {
-                return false;
-            }
-        }
-
-        public void release() {
-            if (reentrantLock.tryLock()) {
-                try {
-                    this.locked = false;
-                    this.time = 0;
-                } finally {
-                    reentrantLock.unlock();
-                }
-            }
-        }
-
-        private final ReentrantLock reentrantLock = new ReentrantLock();
-        private boolean locked;
-        private long time;
-        private final long timeoutMillis;
-    }
-
     private static class SurveyAssets {
         public SurveyAssets(int activityHashcode, Bitmap surveyBitmap, int highlightColor) {
             this.activityHashcode = activityHashcode;
@@ -1251,9 +1192,7 @@ public class MixpanelAPI {
     private final PersistentProperties mPersistentProperties;
 
     private final SynchronizedReference<SurveyAssets> mSurveyAssets;
-
-    // Survey check locking
-    private final ExpiringLock mCheckForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
+    private final DecideUpdates mDecideUpdates;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
