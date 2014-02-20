@@ -224,23 +224,27 @@ import java.util.Set;
             @Override
             public void run() {
                 InAppNotification reportNotification = null;
-                if (null != tryNotification) {
-                    final String imageUrl = tryNotification.getImageUrl();
-                    final ServerMessage imageMessage = newPoster();
-                    final ServerMessage.Result result = imageMessage.get(imageUrl, null);
-                    if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                        // Shouldn't drop this notification on the floor if this is a connectivity issue!
-                        Log.i(LOGTAG, "Could not access image at " + imageUrl);
-                    } else {
-                        final byte[] imageBytes = result.getResponseBytes();
-                        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                        if (null == image) {
-                            Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
+                try {
+                    if (null != tryNotification) {
+                        final String imageUrl = tryNotification.getImageUrl();
+                        final ServerMessage imageMessage = newPoster();
+                        final ServerMessage.Result result = imageMessage.get(imageUrl, null);
+                        if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+                            // Shouldn't drop this notification on the floor if this is a connectivity issue!
+                            Log.i(LOGTAG, "Could not access image at " + imageUrl);
                         } else {
-                            reportNotification = tryNotification;
-                            reportNotification.setImage(image);
+                            final byte[] imageBytes = result.getResponseBytes();
+                            final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                            if (null == image) {
+                                Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
+                            } else {
+                                tryNotification.setImage(image);
+                                reportNotification = tryNotification;
+                            }
                         }
                     }
+                } catch (OutOfMemoryError e) {
+                    Log.w(LOGTAG, "Notification image is too big, can't fit it into memory.", e);
                 }
                 callbacks.foundNotification(reportNotification);
             }
