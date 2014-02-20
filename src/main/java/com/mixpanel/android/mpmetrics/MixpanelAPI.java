@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Future;
 
 import org.json.JSONArray;
@@ -776,8 +774,7 @@ public class MixpanelAPI {
          */
         public People withIdentity(String distinctId);
         
-        public void showMiniInAppNotif(Activity parent, String title, String uri);
-        public void showFullInAppNotif(Activity parent, String title, String subtext, String uri);
+        public void showInAppNotif(final Activity parent, InAppNotification notification);
     }
 
     /**
@@ -1194,65 +1191,83 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
+        
+        @Override
+        public void showInAppNotif(final Activity parent, InAppNotification notification) {
+            if (null == notification) {
+                return;
+            }
+            if (notification.getType() == InAppNotification.Type.TAKEOVER) {
+                showTakeoverInAppNotif(parent, notification);
+            } else {
+                showMiniInAppNotif(parent, notification);
+            }
+        }
 
-		@Override
-		public void showMiniInAppNotif(final Activity parent, final String title, final String uri) {
-	    	LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
-	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
-	    	
-		    final PopupWindow pw = new PopupWindow(popupView);
-		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-		    pw.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
-		    
-		    if (uri != null && uri.length() > 0) {
-		    	popupView.setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View arg0) {
-						pw.dismiss();
-				    	Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-				    	parent.startActivity(viewIntent);
-					}
-		    	});
+        private void showMiniInAppNotif(final Activity parent, final InAppNotification notification) {
+            LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
+            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(notification.getTitle());
+            
+            final PopupWindow pw = new PopupWindow(popupView);
+            pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+            pw.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
+            
+            final String uri = notification.getCallToActionUrl();
+            if (uri != null && uri.length() > 0) {
+                popupView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View arg0) {
+                        pw.dismiss();
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                        parent.startActivity(viewIntent);
+                    }
+                });
 
-		    }
-		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-		    
-		    Handler handler = new Handler();
-		    handler.postDelayed(new Runnable() {
+            }
+            pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+            
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
                 public void run() {
                     pw.dismiss();
                 }
             }, 2000);
-		}
-		
-		@Override
-		public void showFullInAppNotif(final Activity parent, final String title, final String subtext, final String uri) {
-			LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-	    	View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
-	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(title);
-	    	((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext)).setText(subtext);
-	    	
-		    final PopupWindow pw = new PopupWindow(popupView);
-		    pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-		    pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
-		    
-		    // The following two lines are needed to make back button dismissal work.
-		    pw.setBackgroundDrawable(new BitmapDrawable());
-		    pw.setFocusable(true);
-		    
-	    	Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
-	    	button.setText("Go to URL");
-	    	button.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View arg0) {
-					pw.dismiss();
-					Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-			    	parent.startActivity(viewIntent);
-				}
-	    	});
-		    pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-		}
+        }
+        
+        private void showTakeoverInAppNotif(final Activity parent, final InAppNotification notification) {
+            LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
+            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(notification.getTitle());
+            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext)).setText(notification.getBody());
+            
+            final PopupWindow pw = new PopupWindow(popupView);
+            pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+            pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
+            
+            // The following two lines are needed to make back button dismissal work.
+            pw.setBackgroundDrawable(new BitmapDrawable());
+            pw.setFocusable(true);
+            
+            final String uri = notification.getCallToActionUrl();
+            final String callToAction = notification.getCallToAction();
+            Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
+            button.setText(R.string.com_mixpanel_android_done);
+            if (callToAction != null && callToAction.length() > 0) {
+                button.setText(callToAction);
+            }
+            button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View arg0) {
+                    pw.dismiss();
+                    if (uri != null && uri.length() > 0) {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(notification.getCallToActionUrl()));
+                        parent.startActivity(viewIntent);
+                    }
+                }
+            });
+            pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
+        }
     }// PeopleImpl
 
     ////////////////////////////////////////////////////

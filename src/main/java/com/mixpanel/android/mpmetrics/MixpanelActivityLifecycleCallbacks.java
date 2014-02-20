@@ -35,7 +35,9 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         final Configuration config = activity.getResources().getConfiguration();
         final boolean dueToOrientationChange = mCurOrientation != null && config.orientation != mCurOrientation;
         if(!dueToOrientationChange && activity.isTaskRoot()) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSureys called from onActivityCreated");
+            checkForInAppNotifications(activity);
+            
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSurveys called from onActivityCreated");
             checkForSurveys(activity);
         }
         mCurOrientation = config.orientation;
@@ -54,6 +56,9 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityStarted(Activity activity) {
         if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
             mCurOrientation = activity.getResources().getConfiguration().orientation;
+            
+            checkForInAppNotifications(activity);
+            
             if (MPConfig.DEBUG) Log.d(LOGTAG, "checkDecideService called from onActivityCreated");
             checkForSurveys(activity);
         }
@@ -127,6 +132,28 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 }
             }
         }, activity);
+    }
+    
+    private void checkForInAppNotifications(final Activity activity) {
+        if (null == activity) {
+            return;
+        }
+        
+        mMpInstance.getPeople().checkForNotification(new InAppNotificationCallbacks() {
+            @Override
+            public void foundNotification(final InAppNotification n) {
+                if (null == n) {
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "No notification found, nothing to show the user.");
+                    return;
+                }
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mMpInstance.getPeople().showInAppNotif(activity, n);
+                    }
+                });
+            }
+        });
     }
 
     private final MixpanelAPI mMpInstance;
