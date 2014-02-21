@@ -149,7 +149,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mMpInstance.getPeople().showInAppNotif(activity, n);
+                    mMpInstance.getPeople().showNotification(n, activity);
                     }
                 });
             }

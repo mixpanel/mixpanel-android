@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.graphics.Bitmap;
 import android.media.Image;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -53,6 +54,20 @@ public class InAppNotification {
         return mDescription.toString();
     }
 
+    /* package */ JSONObject getCampaignProperties() {
+        final JSONObject ret = new JSONObject();
+        try {
+            ret.put("campaign_id", getId());
+            ret.put("message_id", getMessageId());
+            ret.put("message_type", "inapp");
+            ret.put("message_subtype", mType);
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Impossible JSON Exception", e);
+        }
+
+        return ret;
+    }
+
     public int getId() {
         return mId;
     }
@@ -99,6 +114,8 @@ public class InAppNotification {
         return mImage;
     }
 
+    private Bitmap mImage;
+
     private final JSONObject mDescription;
     private final int mId;
     private final int mMessageId;
@@ -108,5 +125,6 @@ public class InAppNotification {
     private final String mImageUrl;
     private final String mCallToAction;
     private final String mCallToActionUrl;
-    private Bitmap mImage;
+
+    private static final String LOGTAG = "MixpanelAPI InAppNotification";
 }

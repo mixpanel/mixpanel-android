@@ -768,13 +768,20 @@ public class MixpanelAPI {
          */
         public void showSurvey(Survey s, Activity parent);
 
+
+        /**
+         * Will show a popup window above the given Activity that presents the content
+         * of the given notification to the user. To get an InAppNotification to show,
+         * use checkForNotification.
+         */
+        public void showNotification(InAppNotification notification, Activity parent);
+
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
          * This is used by Mixpanel Surveys but is likely not needed in your code.
          */
         public People withIdentity(String distinctId);
-        
-        public void showInAppNotif(final Activity parent, InAppNotification notification);
+
     }
 
     /**
@@ -1057,6 +1064,21 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void showNotification(final InAppNotification notification, final Activity parent) {
+            // TODO this shouldn't run in the calling thread.
+            if (null == notification) {
+                return;
+            }
+            if (notification.getType() == InAppNotification.Type.TAKEOVER) {
+                showTakeoverInAppNotif(parent, notification);
+            } else {
+                showMiniInAppNotif(parent, notification);
+            }
+
+            track("$campaign_delivery", notification.getCampaignProperties());
+        }
+
+        @Override
         public void trackCharge(double amount, JSONObject properties) {
             final Date now = new Date();
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
@@ -1191,18 +1213,6 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
-        
-        @Override
-        public void showInAppNotif(final Activity parent, InAppNotification notification) {
-            if (null == notification) {
-                return;
-            }
-            if (notification.getType() == InAppNotification.Type.TAKEOVER) {
-                showTakeoverInAppNotif(parent, notification);
-            } else {
-                showMiniInAppNotif(parent, notification);
-            }
-        }
 
         private void showMiniInAppNotif(final Activity parent, final InAppNotification notification) {
             LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -1218,6 +1228,7 @@ public class MixpanelAPI {
                 popupView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View arg0) {
+                        track("$campaign_open", notification.getCampaignProperties());
                         pw.dismiss();
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
                         parent.startActivity(viewIntent);
@@ -1226,13 +1237,13 @@ public class MixpanelAPI {
 
             }
             pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-            
+
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
                 public void run() {
                     pw.dismiss();
                 }
-            }, 2000);
+            }, 6000);
         }
         
         private void showTakeoverInAppNotif(final Activity parent, final InAppNotification notification) {
@@ -1259,6 +1270,7 @@ public class MixpanelAPI {
             button.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View arg0) {
+                    track("$campaign_open", notification.getCampaignProperties());
                     pw.dismiss();
                     if (uri != null && uri.length() > 0) {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(notification.getCallToActionUrl()));
