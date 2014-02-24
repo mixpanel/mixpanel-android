@@ -1237,26 +1237,28 @@ public class MixpanelAPI {
 
         @Override
         public void onClick(View clicked) {
-            track("$campaign_open", mInAppNotification.getCampaignProperties());
             mPopupWindow.dismiss();
-            String uriString = mInAppNotification.getCallToActionUrl();
-            if (uriString != null && uriString.length() > 0) {
-                Uri uri = null;
-                try {
-                    uri = Uri.parse(uriString);
-                } catch (IllegalArgumentException e) {
-                    Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
-                    return;
-                }
+            if (clicked.getId() == R.id.com_mixpanel_android_notification_button) {
+                track("$campaign_open", mInAppNotification.getCampaignProperties());
+                String uriString = mInAppNotification.getCallToActionUrl();
+                if (uriString != null && uriString.length() > 0) {
+                    Uri uri = null;
+                    try {
+                        uri = Uri.parse(uriString);
+                    } catch (IllegalArgumentException e) {
+                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return;
+                    }
 
-                assert(uri != null);
-                try {
-                    Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
-                    mParent.startActivity(viewIntent);
-                } catch (ActivityNotFoundException e) {
-                    Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    assert(uri != null);
+                    try {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        mParent.startActivity(viewIntent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    }
                 }
-            }
+            } // if button was clicked
         }
 
         private void showMiniInAppNotification() {
@@ -1313,6 +1315,10 @@ public class MixpanelAPI {
                 button.setText(callToAction);
             }
             button.setOnClickListener(this);
+            
+            button = (Button) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+            button.setOnClickListener(this);
+            
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
         }
 

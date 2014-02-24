@@ -4,15 +4,30 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/com_mixpanel_android_notification_full_bg"
+    android:gravity="center_horizontal"
     android:orientation="vertical" >
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="right"
+        android:orientation="vertical" >
+
+       <Button
+            android:id="@+id/com_mixpanel_android_button_exit"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:text="X" />
+    </LinearLayout>
     
     <ImageView
         android:id="@+id/com_mixpanel_android_notification_image"
         android:layout_width="match_parent"
         android:layout_height="0dip"
-        android:layout_weight="1"
-        android:scaleType="fitCenter"
+        android:layout_weight="1.00"
         android:contentDescription="@string/com_mixpanel_android_notification_image"
+        android:padding="30dp"
+        android:scaleType="fitCenter"
         android:src="@drawable/com_mixpanel_android_logo" />
     
     <TextView
@@ -20,6 +35,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="20dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
         android:gravity="center_horizontal"
         android:textSize="20sp"
         android:textColor="#ffffff" />
@@ -30,12 +47,16 @@
         android:layout_height="wrap_content"
         android:paddingTop="20dp"
         android:paddingBottom="20dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
         android:gravity="center_horizontal"
         android:textSize="15sp"
         android:textColor="#ffffff" />
     
     <Button
         android:id="@+id/com_mixpanel_android_notification_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="150dp"
+        android:text="@string/com_mixpanel_android_done" />
 </LinearLayout>
