@@ -7,6 +7,9 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Represents an in-app notification delivered from Mixpanel.
  */
@@ -98,6 +101,10 @@ public class InAppNotification {
         return mImageUrl;
     }
 
+    public String getImage2xUrl() {
+        return twoXFromUrl(mImageUrl);
+    }
+
     public String getCallToAction() {
         return mCallToAction;
     }
@@ -114,6 +121,15 @@ public class InAppNotification {
         return mImage;
     }
 
+    /* package */ static String twoXFromUrl(String url) {
+        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(url);
+        if (matcher.find()) {
+            return matcher.replaceFirst("@2x$1");
+        } else {
+            return url;
+        }
+    }
+
     private Bitmap mImage;
 
     private final JSONObject mDescription;
@@ -127,4 +143,5 @@ public class InAppNotification {
     private final String mCallToActionUrl;
 
     private static final String LOGTAG = "MixpanelAPI InAppNotification";
+    private static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("(\\.[^./]+$)");
 }

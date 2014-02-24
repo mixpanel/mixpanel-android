@@ -1121,6 +1121,20 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertNotNull(inSurveyState.getAnswers());
     }
 
+    public void test2XUrls() {
+        final String twoXBalok = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg");
+        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@2x.jpg");
+
+        final String nothingMatches = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
+        assertEquals(nothingMatches, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
+
+        final String emptyMatch = InAppNotification.twoXFromUrl("");
+        assertEquals(emptyMatch, "");
+
+        final String nothingExtensionful = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/");
+        assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
+    }
+
     private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
             @Override
