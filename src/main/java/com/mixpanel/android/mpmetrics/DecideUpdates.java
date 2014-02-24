@@ -226,7 +226,12 @@ import java.util.Set;
                 InAppNotification reportNotification = null;
                 try {
                     if (null != tryNotification) {
-                        final String imageUrl = tryNotification.getImage2xUrl();
+                        String imageUrl;
+                        if (tryNotification.getType() == InAppNotification.Type.MINI) {
+                            imageUrl = tryNotification.getImageUrl();
+                        } else {
+                            imageUrl = tryNotification.getImage2xUrl();
+                        }
                         final ServerMessage imageMessage = newPoster();
                         final ServerMessage.Result result = imageMessage.get(imageUrl, null);
                         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
