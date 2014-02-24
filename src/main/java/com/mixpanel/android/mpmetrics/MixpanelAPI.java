@@ -280,9 +280,9 @@ public class MixpanelAPI {
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist.
      */
+    // DO NOT DOCUMENT, but track() must be thread safe (It might not always be thread safe)
     public void track(String eventName, JSONObject properties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
-
         try {
             final JSONObject messageProps = new JSONObject();
 
@@ -1025,6 +1025,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        // MUST BE THREAD SAFE.
         public void showSurvey(final Survey survey, final Activity parent) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
@@ -1064,17 +1065,14 @@ public class MixpanelAPI {
         }
 
         @Override
+        // MUST BE THREAD SAFE
         public void showNotification(final InAppNotification notification, final Activity parent) {
-            // TODO this shouldn't run in the calling thread.
             if (null == notification) {
                 return;
             }
-            if (notification.getType() == InAppNotification.Type.TAKEOVER) {
-                showTakeoverInAppNotif(parent, notification);
-            } else {
-                showMiniInAppNotif(parent, notification);
-            }
 
+            final InAppNotificationDisplay display = new InAppNotificationDisplay(notification, parent);
+            parent.runOnUiThread(display);
             track("$campaign_delivery", notification.getCampaignProperties());
         }
 
@@ -1213,76 +1211,94 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
+    }// PeopleImpl
 
-        private void showMiniInAppNotif(final Activity parent, final InAppNotification notification) {
-            LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
-            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(notification.getTitle());
-            
-            final PopupWindow pw = new PopupWindow(popupView);
-            pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-            pw.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
-            
-            final String uri = notification.getCallToActionUrl();
-            if (uri != null && uri.length() > 0) {
-                popupView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View arg0) {
-                        track("$campaign_open", notification.getCampaignProperties());
-                        pw.dismiss();
-                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-                        parent.startActivity(viewIntent);
-                    }
-                });
+    ////////////////////////////////////////////////////
 
+    private class InAppNotificationDisplay implements Runnable, View.OnClickListener {
+
+        public InAppNotificationDisplay(final InAppNotification notification, final Activity parent) {
+            mInAppNotification = notification;
+            mParent = parent;
+            mPopupWindow = null;
+        }
+
+        // Should be run only on the UI thread.
+        @Override
+        public void run() {
+            if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
+                showTakeoverInAppNotification();
+            } else {
+                showMiniInAppNotification();
             }
-            pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+        }
+
+        @Override
+        public void onClick(View clicked) {
+            track("$campaign_open", mInAppNotification.getCampaignProperties());
+            mPopupWindow.dismiss();
+            String uri = mInAppNotification.getCallToActionUrl();
+            if (uri != null && uri.length() > 0) {
+                Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                mParent.startActivity(viewIntent);
+            }
+        }
+
+        private void showMiniInAppNotification() {
+            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
+            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            titleView.setText(mInAppNotification.getTitle());
+
+            mPopupWindow = new PopupWindow(popupView);
+            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+            mPopupWindow.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
+
+            final String uri = mInAppNotification.getCallToActionUrl();
+            if (uri != null && uri.length() > 0) {
+                popupView.setOnClickListener(this);
+            }
+            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
 
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
                 public void run() {
-                    pw.dismiss();
+                    mPopupWindow.dismiss();
                 }
             }, 6000);
         }
-        
-        private void showTakeoverInAppNotif(final Activity parent, final InAppNotification notification) {
-            LayoutInflater inflater = (LayoutInflater) parent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+        private void showTakeoverInAppNotification() {
+            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
-            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title)).setText(notification.getTitle());
-            ((TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext)).setText(notification.getBody());
-            
-            final PopupWindow pw = new PopupWindow(popupView);
-            pw.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-            pw.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
-            
+            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            titleView.setText(mInAppNotification.getTitle());
+
+            TextView bodyView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            bodyView.setText(mInAppNotification.getBody());
+
+            mPopupWindow = new PopupWindow(popupView);
+            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+            mPopupWindow.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
+
             // The following two lines are needed to make back button dismissal work.
-            pw.setBackgroundDrawable(new BitmapDrawable());
-            pw.setFocusable(true);
-            
-            final String uri = notification.getCallToActionUrl();
-            final String callToAction = notification.getCallToAction();
+            mPopupWindow.setBackgroundDrawable(new BitmapDrawable());
+            mPopupWindow.setFocusable(true);
+
+            final String callToAction = mInAppNotification.getCallToAction();
             Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
             button.setText(R.string.com_mixpanel_android_done);
             if (callToAction != null && callToAction.length() > 0) {
                 button.setText(callToAction);
             }
-            button.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View arg0) {
-                    track("$campaign_open", notification.getCampaignProperties());
-                    pw.dismiss();
-                    if (uri != null && uri.length() > 0) {
-                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(notification.getCallToActionUrl()));
-                        parent.startActivity(viewIntent);
-                    }
-                }
-            });
-            pw.showAtLocation(parent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
+            button.setOnClickListener(this);
+            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
         }
-    }// PeopleImpl
 
-    ////////////////////////////////////////////////////
+        private PopupWindow mPopupWindow;
+        private final Activity mParent;
+        private final InAppNotification mInAppNotification;
+    }
 
     private void recordPeopleMessage(JSONObject message) {
         if (message.has("$distinct_id")) {

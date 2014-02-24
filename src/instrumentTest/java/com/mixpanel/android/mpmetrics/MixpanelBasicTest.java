@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-
-import android.app.Notification;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;

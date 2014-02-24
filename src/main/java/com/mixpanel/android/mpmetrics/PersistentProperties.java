@@ -72,15 +72,15 @@ import android.util.Log;
         mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
 			@Override
 			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                synchronized (sReferrerPrefsLock) {
-                    readReferrerProperties();
-                    sReferrerPrefsDirty = false;
-                }
+            synchronized (sReferrerPrefsLock) {
+                readReferrerProperties();
+                sReferrerPrefsDirty = false;
+            }
 			}
 		};
     }
 
-    public JSONObject getSuperProperties() {
+    public synchronized JSONObject getSuperProperties() {
         if (null == mSuperPropertiesCache) {
             readSuperProperties();
         }
@@ -97,14 +97,14 @@ import android.util.Log;
         return mReferrerPropertiesCache;
     }
 
-    public String getEventsDistinctId() {
+    public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
         return mEventsDistinctId;
     }
 
-    public void setEventsDistinctId(String eventsDistinctId) {
+    public synchronized void setEventsDistinctId(String eventsDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -112,14 +112,14 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public String getPeopleDistinctId() {
+    public synchronized String getPeopleDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
         return mPeopleDistinctId;
     }
 
-    public void setPeopleDistinctId(String peopleDistinctId) {
+    public synchronized void setPeopleDistinctId(String peopleDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -127,7 +127,7 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public void storeWaitingPeopleRecord(JSONObject record) {
+    public synchronized void storeWaitingPeopleRecord(JSONObject record) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -138,7 +138,7 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public JSONArray waitingPeopleRecordsForSending() {
+    public synchronized JSONArray waitingPeopleRecordsForSending() {
         JSONArray ret = null;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -152,7 +152,7 @@ import android.util.Log;
         return ret;
     }
 
-    public void clearPreferences() {
+    public synchronized void clearPreferences() {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
@@ -170,7 +170,7 @@ import android.util.Log;
         }
     }
 
-    public void registerSuperProperties(JSONObject superProperties) {
+    public synchronized void registerSuperProperties(JSONObject superProperties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
         final JSONObject propCache = getSuperProperties();
 
@@ -186,7 +186,7 @@ import android.util.Log;
         storeSuperProperties();
     }
 
-    public void storePushId(String registrationId) {
+    public synchronized void storePushId(String registrationId) {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
@@ -199,7 +199,7 @@ import android.util.Log;
         }
     }
 
-    public void clearPushId() {
+    public synchronized void clearPushId() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
@@ -212,7 +212,7 @@ import android.util.Log;
         }
     }
 
-    public String getPushId() {
+    public synchronized String getPushId() {
         String ret = null;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -225,14 +225,14 @@ import android.util.Log;
         return ret;
     }
 
-    public void unregisterSuperProperty(String superPropertyName) {
+    public synchronized void unregisterSuperProperty(String superPropertyName) {
         final JSONObject propCache = getSuperProperties();
         propCache.remove(superPropertyName);
 
         storeSuperProperties();
     }
 
-    public void registerSuperPropertiesOnce(JSONObject superProperties) {
+    public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
         final JSONObject propCache = getSuperProperties();
 
@@ -250,7 +250,7 @@ import android.util.Log;
         storeSuperProperties();
     }
 
-    public void clearSuperProperties() {
+    public synchronized void clearSuperProperties() {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
         mSuperPropertiesCache = new JSONObject();
         storeSuperProperties();
@@ -258,6 +258,7 @@ import android.util.Log;
 
     //////////////////////////////////////////////////
 
+    // All access should be synchronized on this
     private void readSuperProperties() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -278,6 +279,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void readReferrerProperties() {
         mReferrerPropertiesCache = new HashMap<String, String>();
 
@@ -299,6 +301,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void storeSuperProperties() {
         if (null == mSuperPropertiesCache) {
             Log.e(LOGTAG, "storeSuperProperties should not be called with uninitialized superPropertiesCache.");
@@ -320,6 +323,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void readIdentities() {
         SharedPreferences prefs = null;
         try {
@@ -355,6 +359,7 @@ import android.util.Log;
         mIdentitiesLoaded = true;
     }
 
+    // All access should be synchronized on this
     private void writeIdentities() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();

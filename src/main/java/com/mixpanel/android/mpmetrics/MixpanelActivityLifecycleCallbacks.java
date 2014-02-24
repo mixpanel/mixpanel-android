@@ -146,12 +146,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "No notification found, nothing to show the user.");
                     return;
                 }
-                activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                    mMpInstance.getPeople().showNotification(n, activity);
-                    }
-                });
+                mMpInstance.getPeople().showNotification(n, activity);
             }
         });
     }
