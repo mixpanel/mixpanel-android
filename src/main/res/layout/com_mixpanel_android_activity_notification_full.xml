@@ -11,6 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dip"
         android:layout_weight="1"
+        android:padding="20dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/com_mixpanel_android_notification_image"
         android:src="@drawable/com_mixpanel_android_logo" />
