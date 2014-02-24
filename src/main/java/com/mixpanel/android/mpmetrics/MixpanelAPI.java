@@ -19,6 +19,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -1238,10 +1239,23 @@ public class MixpanelAPI {
         public void onClick(View clicked) {
             track("$campaign_open", mInAppNotification.getCampaignProperties());
             mPopupWindow.dismiss();
-            String uri = mInAppNotification.getCallToActionUrl();
-            if (uri != null && uri.length() > 0) {
-                Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-                mParent.startActivity(viewIntent);
+            String uriString = mInAppNotification.getCallToActionUrl();
+            if (uriString != null && uriString.length() > 0) {
+                Uri uri = null;
+                try {
+                    uri = Uri.parse(uriString);
+                } catch (IllegalArgumentException e) {
+                    Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                    return;
+                }
+
+                assert(uri != null);
+                try {
+                    Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                    mParent.startActivity(viewIntent);
+                } catch (ActivityNotFoundException e) {
+                    Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                }
             }
         }
 
