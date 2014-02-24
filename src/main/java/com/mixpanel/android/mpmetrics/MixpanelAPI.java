@@ -1236,12 +1236,15 @@ public class MixpanelAPI {
 
         @Override
         public void onClick(View clicked) {
-            track("$campaign_open", mInAppNotification.getCampaignProperties());
             mPopupWindow.dismiss();
-            String uri = mInAppNotification.getCallToActionUrl();
-            if (uri != null && uri.length() > 0) {
-                Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-                mParent.startActivity(viewIntent);
+            if (clicked.getId() == R.id.com_mixpanel_android_notification_button) {
+                track("$campaign_open", mInAppNotification.getCampaignProperties());
+                
+                String uri = mInAppNotification.getCallToActionUrl();
+                if (uri != null && uri.length() > 0) {
+                    Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                    mParent.startActivity(viewIntent);
+                }
             }
         }
 
@@ -1299,6 +1302,10 @@ public class MixpanelAPI {
                 button.setText(callToAction);
             }
             button.setOnClickListener(this);
+            
+            button = (Button) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+            button.setOnClickListener(this);
+            
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
         }
 
