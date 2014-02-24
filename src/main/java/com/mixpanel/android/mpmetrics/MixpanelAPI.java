@@ -33,6 +33,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
@@ -1254,6 +1255,9 @@ public class MixpanelAPI {
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
             mPopupWindow.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
 
+            ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            notifImage.setImageBitmap(mInAppNotification.getImage());
+
             final String uri = mInAppNotification.getCallToActionUrl();
             if (uri != null && uri.length() > 0) {
                 popupView.setOnClickListener(this);
@@ -1276,6 +1280,9 @@ public class MixpanelAPI {
 
             TextView bodyView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
             bodyView.setText(mInAppNotification.getBody());
+
+            ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            notifImage.setImageBitmap(mInAppNotification.getImage());
 
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
