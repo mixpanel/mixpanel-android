@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="75dp"
-    android:layout_alignParentBottom="true"
     android:background="@color/com_mixpanel_android_notification_mini_bg"
     android:orientation="horizontal">
     
@@ -12,13 +11,12 @@
         android:layout_width="75dp"
         android:layout_height="match_parent"
         android:scaleType="fitCenter"
-        android:contentDescription="@string/com_mixpanel_android_notification_image"
-        android:src="@drawable/com_mixpanel_android_logo" />
+        android:contentDescription="@string/com_mixpanel_android_notification_image" />
     <TextView
         android:id="@+id/com_mixpanel_android_notification_title"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
+        android:layout_weight="100"
         android:paddingLeft="20dp"
         android:gravity="center_vertical"
         android:textSize="20sp"
