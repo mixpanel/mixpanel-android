@@ -28,13 +28,14 @@ public class DecideUpdatesTest extends AndroidTestCase {
         mImageResult = mSuccessImageResult;
 
         mMockPoster = new ServerMessage() {
-            public Result get(String imageUrl, String shouldBeNull) {
+            @Override
+            public Result get(Context context, String imageUrl, String shouldBeNull) {
                 assertNull(shouldBeNull); // No fallback for images
                 return mImageResult;
             }
         };
 
-        mDecideUpdates = new DecideUpdates("TEST TOKEN") {
+        mDecideUpdates = new DecideUpdates(getContext(), "TEST TOKEN") {
             @Override
             long currentTimeMillis() {
                 return mMockTimeMillis;

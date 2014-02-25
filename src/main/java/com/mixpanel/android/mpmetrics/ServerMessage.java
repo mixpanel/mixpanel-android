@@ -19,6 +19,9 @@ import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
@@ -67,7 +70,26 @@ import com.mixpanel.android.util.Base64Coder;
         private final Status mStatus;
     }
 
-    public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+    public boolean isOnline(Context context) {
+        boolean isOnline;
+        try {
+            final ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            final NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+        } catch (final SecurityException e) {
+            isOnline = true;
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
+        }
+        return isOnline;
+    }
+
+    public Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
+        if (! isOnline(context)) {
+            return OFFLINE_RESULT;
+        }
+
         Status status = Status.FAILED_UNRECOVERABLE;
         final String encodedData = Base64Coder.encodeString(rawMessage);
 
@@ -100,7 +122,7 @@ import com.mixpanel.android.util.Base64Coder;
 
         if (baseStatus == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
-            result = postData(rawMessage, fallbackUrl, null);
+            result = postData(context, rawMessage, fallbackUrl, null);
             final Status retryStatus = result.getStatus();
             if (retryStatus != Status.SUCCEEDED) {
                 Log.e(LOGTAG, "Could not post data to Mixpanel");
@@ -112,10 +134,14 @@ import com.mixpanel.android.util.Base64Coder;
         return new Result(status, result.getResponseBytes());
     }
 
-    public Result get(String endpointUrl, String fallbackUrl) {
+    public Result get(Context context, String endpointUrl, String fallbackUrl) {
+        if (! isOnline(context)) {
+            return OFFLINE_RESULT;
+        }
+
         Result ret = performRequest(endpointUrl, null);
         if (ret.getStatus() == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
-            ret = get(fallbackUrl, null);
+            ret = get(context, fallbackUrl, null);
         }
         return ret;
     }
@@ -213,4 +239,5 @@ import com.mixpanel.android.util.Base64Coder;
     }
 
     private static final String LOGTAG = "MixpanelAPI";
+    private static final Result OFFLINE_RESULT = new Result(Status.FAILED_RECOVERABLE, null);
 }

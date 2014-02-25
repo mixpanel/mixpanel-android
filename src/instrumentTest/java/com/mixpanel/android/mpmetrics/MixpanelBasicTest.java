@@ -599,7 +599,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+            public Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(rawMessage);
@@ -750,7 +750,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public ServerMessage.Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+            public ServerMessage.Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
                 try {
                     JSONArray msg = new JSONArray(rawMessage);
                     JSONObject event = msg.getJSONObject(0);
@@ -1159,7 +1159,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     private MixpanelAPI apiForSurvey(final List<byte[]> responses) {
         final ServerMessage mockMessage = new ServerMessage() {
             @Override
-            public Result get(String endpointUrl, String fallbackUrl) {
+            public Result get(Context context, String endpointUrl, String fallbackUrl) {
                 return new Result(Status.SUCCEEDED, responses.remove(0));
             }
         };

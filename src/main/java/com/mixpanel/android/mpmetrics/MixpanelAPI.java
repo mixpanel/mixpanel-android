@@ -118,7 +118,7 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
-        mDecideUpdates = new DecideUpdates(token);
+        mDecideUpdates = new DecideUpdates(mContext, token);
 
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override

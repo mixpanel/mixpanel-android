@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -47,7 +48,8 @@ import java.util.Set;
 //
 //
 /* package */ class DecideUpdates {
-    public DecideUpdates(String token) {
+    public DecideUpdates(Context context, String token) {
+        mContext = context;
         mToken = token;
         mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
@@ -233,7 +235,7 @@ import java.util.Set;
                             imageUrl = tryNotification.getImage2xUrl();
                         }
                         final ServerMessage imageMessage = newPoster();
-                        final ServerMessage.Result result = imageMessage.get(imageUrl, null);
+                        final ServerMessage.Result result = imageMessage.get(mContext, imageUrl, null);
                         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
                             // Shouldn't drop this notification on the floor if this is a connectivity issue!
                             Log.i(LOGTAG, "Could not access image at " + imageUrl);
@@ -288,6 +290,7 @@ import java.util.Set;
         mRequestDistinctId = distinctId;
     }
 
+    private final Context mContext;
     private final String mToken;
     private final Set<Integer> mSurveyIds;
     private final Set<Integer> mNotificationIds;

@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -35,7 +36,8 @@ import java.util.List;
         private final String mToken;
     }
 
-    public DecideChecker(MPConfig config) {
+    public DecideChecker(Context context, MPConfig config) {
+        mContext = context;
         mConfig = config;
     }
 
@@ -140,7 +142,7 @@ import java.util.List;
         Log.d(LOGTAG, "Querying decide server at " + endpointUrl);
         Log.d(LOGTAG, "    (with fallback " + fallbackUrl + ")");
 
-        final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
+        final ServerMessage.Result result = poster.get(mContext, endpointUrl, fallbackUrl);
         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Couldn't reach Mixpanel to check for Surveys. (Or user doesn't exist yet)");
             return null;
@@ -149,6 +151,7 @@ import java.util.List;
     }
 
     private final MPConfig mConfig;
+    private final Context mContext;
 
     private static final String LOGTAG = "MixpanelAPI DecideChecker";
 }
