@@ -24,6 +24,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -1268,12 +1270,23 @@ public class MixpanelAPI {
             TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
             titleView.setText(mInAppNotification.getTitle());
 
+            Bitmap notifImage = mInAppNotification.getImage().copy(Bitmap.Config.ARGB_8888, true);
+            Canvas c = new Canvas(notifImage);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(mParent.getResources().getColor(android.R.color.white));
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(5);
+            c.drawCircle(notifImage.getWidth() / 2, notifImage.getWidth() / 2, 0.8f * notifImage.getWidth() / 2, p);
+            
+            ImageView notifImageView = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            notifImageView.setImageBitmap(notifImage);
+
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-            mPopupWindow.setHeight(WindowManager.LayoutParams.WRAP_CONTENT);
-
-            ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
-            notifImage.setImageBitmap(mInAppNotification.getImage());
+            
+            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to manually calculate pixels
+            float scale = mParent.getResources().getDisplayMetrics().density;
+            mPopupWindow.setHeight((int)(75 * scale + 0.5f));
 
             final String uri = mInAppNotification.getCallToActionUrl();
             if (uri != null && uri.length() > 0) {

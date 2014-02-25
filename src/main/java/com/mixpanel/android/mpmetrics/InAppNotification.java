@@ -35,7 +35,7 @@ public class InAppNotification {
         };
     }
 
-    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
+    /* package */public InAppNotification(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");
@@ -44,6 +44,7 @@ public class InAppNotification {
             mTitle = description.getString("title");
             mBody = description.getString("body");
             mImageUrl = description.getString("image_url");
+            mImage = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888);
 
             // "cta" here is an unfortunate abbreviation of "Call To Action"
             mCallToAction = description.getString("cta");
