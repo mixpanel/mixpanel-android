@@ -3,14 +3,14 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
-import android.os.Build;
 import android.util.Log;
 
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 //
@@ -211,18 +211,17 @@ import java.util.Set;
     }
 
     private void runSurveyCallback(final Survey survey, final SurveyCallbacks callbacks) {
-        final Runnable task = new Runnable() {
+        mWaitingSurveyCallbacks = null;
+        CALLBACK_EXECUTOR.submit(new Runnable() {
             @Override
             public void run() {
                 callbacks.foundSurvey(survey);
             }
-        };
-        mWaitingSurveyCallbacks = null;
-        runOnIsolatedThread(task);
+        });
     }
 
     private void runInAppCallback(final InAppNotification tryNotification, final InAppNotificationCallbacks callbacks) {
-        final Runnable task = new Runnable() {
+        CALLBACK_EXECUTOR.submit(new Runnable() {
             @Override
             public void run() {
                 InAppNotification reportNotification = null;
@@ -255,21 +254,7 @@ import java.util.Set;
                 }
                 callbacks.foundNotification(reportNotification);
             }
-        };
-        runOnIsolatedThread(task);
-    }
-
-    // Protected for TESTING ONLY. DO NOT OVERRIDE outside of tests.
-    protected void runOnIsolatedThread(Runnable task) {
-        // 1) this gets called from multiple threads (possibly the Mixpanel processing thread)
-        // 2) It ends up running arbitrary customer code that could take a long time
-        // or flame out.
-        if (Build.VERSION.SDK_INT >= 11) {
-            AsyncTask.execute(task);
-        } else {
-            final Thread callbackThread = new Thread(task);
-            callbackThread.run();
-        }
+        });
     }
 
     private void resetState(String distinctId) {
@@ -305,4 +290,5 @@ import java.util.Set;
     private String mRequestDistinctId;
 
     private static final String LOGTAG = "MixpanelAPI DecideUpdates";
+    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newSingleThreadExecutor();
 }
