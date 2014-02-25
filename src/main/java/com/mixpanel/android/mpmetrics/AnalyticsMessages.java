@@ -7,17 +7,17 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -29,8 +29,6 @@ import android.util.Log;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
- *
- * Consider refactoring to use AsyncTasks instead of custom Looper/Handler assembly below.
  *
  * <p>This class straddles the thread boundary between user threads and
  * a logical Mixpanel thread.
@@ -302,20 +300,12 @@ import android.util.Log;
 
                         // We don't want to run client callback code inside of this thread
                         // (because it may take a long time, throw runtime exceptions, etc.)
-                        // We run it as an AsyncTask if such things are available,
-                        // Otherwise we run it in an isolated orphan thread.
-                        final Runnable task = new Runnable() {
+                        CALLBACK_EXECUTOR.submit(new Runnable() {
                             @Override
                             public void run() {
                                 check.getCallbacks().foundSurvey(found);
                             }
-                        };
-                        if (Build.VERSION.SDK_INT >= 11) {
-                            AsyncTask.execute(task);
-                        } else {
-                            final Thread callbackThread = new Thread(task);
-                            callbackThread.run();
-                        }
+                        });
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -599,6 +589,8 @@ import android.util.Log;
 
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
+
+    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private static final String LOGTAG = "MixpanelAPI";
 
