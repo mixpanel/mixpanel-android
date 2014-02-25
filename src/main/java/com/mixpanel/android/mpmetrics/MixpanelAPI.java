@@ -1269,17 +1269,9 @@ public class MixpanelAPI {
             View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
             TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
             titleView.setText(mInAppNotification.getTitle());
-
-            Bitmap notifImage = mInAppNotification.getImage().copy(Bitmap.Config.ARGB_8888, true);
-            Canvas c = new Canvas(notifImage);
-            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            p.setColor(mParent.getResources().getColor(android.R.color.white));
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(5);
-            c.drawCircle(notifImage.getWidth() / 2, notifImage.getWidth() / 2, 0.8f * notifImage.getWidth() / 2, p);
             
             ImageView notifImageView = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
-            notifImageView.setImageBitmap(notifImage);
+            notifImageView.setImageBitmap(mInAppNotification.getImage());
 
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
