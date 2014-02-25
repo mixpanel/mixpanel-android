@@ -163,6 +163,7 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     @SuppressWarnings("deprecation")
+    @TargetApi(11)
 	private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         final Notification.Builder builder = new Notification.Builder(context).

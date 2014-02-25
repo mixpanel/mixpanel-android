@@ -21,6 +21,10 @@ android {
         testPackageName "com.mixpanel.android"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 android.libraryVariants.all { variant ->
