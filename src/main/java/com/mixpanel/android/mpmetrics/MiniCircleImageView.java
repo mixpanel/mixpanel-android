@@ -5,7 +5,6 @@ import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.widget.ImageView;
 
@@ -48,8 +47,7 @@ public class MiniCircleImageView extends ImageView {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        
-        Log.i("ASDF", w + " " + h);
+
         this.mCanvasWidth = w;
         this.mCanvasHeight = h;
     }

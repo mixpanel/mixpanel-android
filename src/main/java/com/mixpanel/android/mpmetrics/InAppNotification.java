@@ -1,7 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.graphics.Bitmap;
-import android.media.Image;
 import android.util.Log;
 
 import org.json.JSONException;
