@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -1302,7 +1303,11 @@ public class MixpanelAPI {
 
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-            mPopupWindow.setHeight(WindowManager.LayoutParams.MATCH_PARENT);
+
+            // Handle PopupWindow normally hiding under status bar
+            Rect r = new Rect();
+            mParent.getWindow().getDecorView().getWindowVisibleDisplayFrame(r);
+            mPopupWindow.setHeight(mParent.getWindow().getDecorView().getHeight() - r.top);
 
             // The following two lines are needed to make back button dismissal work.
             mPopupWindow.setBackgroundDrawable(new BitmapDrawable());
@@ -1315,11 +1320,11 @@ public class MixpanelAPI {
                 button.setText(callToAction);
             }
             button.setOnClickListener(this);
-            
+
             button = (Button) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
             button.setOnClickListener(this);
-            
-            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.CENTER, 0, 0);
+
+            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
         }
 
         private PopupWindow mPopupWindow;
