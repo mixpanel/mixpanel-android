@@ -1283,6 +1283,8 @@ public class MixpanelAPI {
             if (uri != null && uri.length() > 0) {
                 popupView.setOnClickListener(this);
             }
+            
+            mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
 
             Handler handler = new Handler();
