@@ -13,11 +13,15 @@
         android:gravity="right"
         android:orientation="vertical" >
 
-       <Button
+        <ImageButton
             android:id="@+id/com_mixpanel_android_button_exit"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:text="X" />
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginRight="20dp"
+            android:background="@drawable/com_mixpanel_android_close"
+            android:contentDescription="@string/com_mixpanel_android_close" />
+
     </LinearLayout>
     
     <ImageView

@@ -36,6 +36,7 @@ import android.view.WindowManager;
 import android.view.animation.Interpolator;
 import android.view.animation.ScaleAnimation;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
@@ -1335,8 +1336,8 @@ public class MixpanelAPI {
             }
             button.setOnClickListener(this);
 
-            button = (Button) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
-            button.setOnClickListener(this);
+            ImageButton iButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+            iButton.setOnClickListener(this);
 
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
         }
