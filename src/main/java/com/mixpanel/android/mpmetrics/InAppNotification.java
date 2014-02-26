@@ -34,7 +34,7 @@ public class InAppNotification {
         };
     }
 
-    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
+    /* package */public InAppNotification(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");

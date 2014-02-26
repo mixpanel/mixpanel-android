@@ -31,7 +31,7 @@ public class MiniCircleImageView extends ImageView {
         
         
         Resources r = getResources();
-        float strokePx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3, r.getDisplayMetrics());
+        float strokePx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2, r.getDisplayMetrics());
         mWhitePaint.setStrokeWidth(strokePx);
     }
 
@@ -41,7 +41,7 @@ public class MiniCircleImageView extends ImageView {
         
         float centerX = mCanvasWidth / 2;
         float centerY = mCanvasHeight / 2;
-        canvas.drawCircle(centerX, centerY, 0.8f * Math.min(centerX, centerY), mWhitePaint);
+        canvas.drawCircle(centerX, centerY, 0.7f * Math.min(centerX, centerY), mWhitePaint);
     }
     
     @Override
