@@ -33,15 +33,12 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
-
+        this.activity = activity;
         final Configuration config = activity.getResources().getConfiguration();
         final boolean dueToOrientationChange = mCurOrientation != null && config.orientation != mCurOrientation;
-        if(!dueToOrientationChange && activity.isTaskRoot()) {
+        if (!dueToOrientationChange && !mHasDoneFirstCheck) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSureys called from onActivityCreated");
-            checkForSurveys(activity);
+            checkForSurveys();
         }
         mCurOrientation = config.orientation;
     }
@@ -57,14 +54,11 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
-
-        if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
+        this.activity = activity;
+        if (!mHasDoneFirstCheck) {
             mCurOrientation = activity.getResources().getConfiguration().orientation;
             if (MPConfig.DEBUG) Log.d(LOGTAG, "checkForSurveys called from onActivityCreated");
-            checkForSurveys(activity);
+            checkForSurveys();
         }
     }
 
@@ -87,55 +81,59 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      * Check for surveys and show one if applicable only if the activity is the task root.
      * We use activity.findViewById(android.R.id.content) to get the root view of the root activity
      * We instantiate a new SurveyCallbacks that auto-shows the survey.
-     * @param activity
      */
-    private void checkForSurveys(final Activity activity) {
+    private void checkForSurveys() {
         if (! ConfigurationChecker.checkSurveyActivityAvailable(activity.getApplicationContext())) {
             return;
         }
 
         final long startTime = System.currentTimeMillis();
-        mHasDoneFirstCheck = true;
         mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {
             @Override
             public void foundSurvey(final Survey survey) {
-                final long endTime = System.currentTimeMillis();
-                final long totalTime = endTime - startTime;
-                if (null == survey) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // do it on main thread to avoid race conditions
+                        if (!isActivityValid()) {
+                            return;
+                        }
+                        mHasDoneFirstCheck = true;
+                        final long endTime = System.currentTimeMillis();
+                        final long totalTime = endTime - startTime;
+                        if (null == survey) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "No survey found, nothing to show the user.");
-                } else if (totalTime <= timeoutMillis) { // If we're quick enough, just show the survey!
+                        } else if (totalTime <= timeoutMillis) { // If we're quick enough, just show the survey!
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
-                    mMpInstance.getPeople().showSurvey(survey, activity);
-                } else {
-                    final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(activity);
-                    alertBuilder.setTitle("We'd love your feedback!");
-                    alertBuilder.setMessage("Mind taking a quick survey?");
-                    alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
                             mMpInstance.getPeople().showSurvey(survey, activity);
-                        }
-                    });
-                    alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            // Don't hassle the user about this particular survey again.
-                            mMpInstance.getPeople().append("$surveys", survey.getId());
-                            mMpInstance.getPeople().append("$collections", survey.getCollectionId());
-                        }
-                    });
-                    activity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
+                        } else {
+                            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(activity);
+                            alertBuilder.setTitle("We'd love your feedback!");
+                            alertBuilder.setMessage("Mind taking a quick survey?");
+                            alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    mMpInstance.getPeople().showSurvey(survey, activity);
+                                }
+                            });
+                            alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    // Don't hassle the user about this particular survey again.
+                                    mMpInstance.getPeople().append("$surveys", survey.getId());
+                                    mMpInstance.getPeople().append("$collections", survey.getCollectionId());
+                                }
+                            });
+
                             alertBuilder.show();
                         }
-                    });
-                }
+                    }
+                });
             }
         }, activity);
     }
 
-    private boolean isActivityValid(Activity activity) {
+    private boolean isActivityValid() {
         if (null == activity) {
             return false;
         }
@@ -156,5 +154,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     private boolean mHasDoneFirstCheck = false;
     private Integer mCurOrientation;
     private final long timeoutMillis = 2000; // 2 second timeout
+    private Activity activity;
     private static final String LOGTAG = "MixpanelAPI:MixpanelActivityLifecycleCallbacks";
 }
