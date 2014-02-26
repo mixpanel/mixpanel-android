@@ -33,6 +33,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.Interpolator;
+import android.view.animation.ScaleAnimation;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
@@ -1276,13 +1278,19 @@ public class MixpanelAPI {
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
             
             // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
-            float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-            mPopupWindow.setHeight((int) px);
+            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+            mPopupWindow.setHeight((int) heightPx);
 
             final String uri = mInAppNotification.getCallToActionUrl();
             if (uri != null && uri.length() > 0) {
                 popupView.setOnClickListener(this);
             }
+            
+            ScaleAnimation sa = new ScaleAnimation(0, 1, 0, 1, heightPx / 2, heightPx / 2);
+            sa.setInterpolator(new SineBounceInterpolator());
+            sa.setDuration(500);
+            sa.setStartOffset(300);
+            notifImageView.startAnimation(sa);
             
             mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
@@ -1332,6 +1340,13 @@ public class MixpanelAPI {
 
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
         }
+        
+        private class SineBounceInterpolator implements Interpolator {
+            public SineBounceInterpolator() { }
+            public float getInterpolation(float t) {
+                return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
+            }
+        } 
 
         private PopupWindow mPopupWindow;
         private final Activity mParent;
