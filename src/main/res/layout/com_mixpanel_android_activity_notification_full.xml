@@ -61,6 +61,11 @@
         android:id="@+id/com_mixpanel_android_notification_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:minWidth="150dp"
-        android:text="@string/com_mixpanel_android_done" />
+        android:text="@string/com_mixpanel_android_done"
+        android:textColor="@android:color/white"
+        android:background="@drawable/com_mixpanel_android_cta_button" />
 </LinearLayout>

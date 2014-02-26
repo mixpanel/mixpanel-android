@@ -31,6 +31,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.Interpolator;
@@ -1335,6 +1336,16 @@ public class MixpanelAPI {
                 button.setText(callToAction);
             }
             button.setOnClickListener(this);
+            button.setOnTouchListener(new View.OnTouchListener() {
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
+                    } else {
+                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
+                    }
+                    return false;
+                }
+            });
 
             ImageButton iButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
             iButton.setOnClickListener(this);
