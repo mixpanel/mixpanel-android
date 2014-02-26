@@ -42,20 +42,20 @@
         android:paddingLeft="20dp"
         android:paddingRight="20dp"
         android:gravity="center_horizontal"
-        android:textSize="20sp"
+        android:textSize="25sp"
         android:textColor="#ffffff" />
 
     <TextView
         android:id="@+id/com_mixpanel_android_notification_subtext"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="20dp"
+        android:paddingTop="10dp"
         android:paddingBottom="20dp"
         android:paddingLeft="20dp"
         android:paddingRight="20dp"
         android:gravity="center_horizontal"
-        android:textSize="15sp"
-        android:textColor="#ffffff" />
+        android:textSize="20sp"
+        android:textColor="#a8a8a8" />
     
     <Button
         android:id="@+id/com_mixpanel_android_notification_button"
@@ -64,8 +64,9 @@
         android:layout_marginBottom="20dp"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
-        android:minWidth="150dp"
+        android:minWidth="175dp"
         android:text="@string/com_mixpanel_android_done"
         android:textColor="@android:color/white"
+        android:textSize="20sp"
         android:background="@drawable/com_mixpanel_android_cta_button" />
 </LinearLayout>
