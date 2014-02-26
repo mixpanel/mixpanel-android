@@ -3,11 +3,12 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
 
 import android.content.Context;
 import android.os.Build;
@@ -21,8 +22,6 @@ import android.util.Log;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
- *
- * Consider refactoring to use AsyncTasks instead of custom Looper/Handler assembly below.
  *
  * <p>This class straddles the thread boundary between user threads and
  * a logical Mixpanel thread.
@@ -475,6 +474,8 @@ import android.util.Log;
 
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
+
+    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private static final String LOGTAG = "MixpanelAPI";
 

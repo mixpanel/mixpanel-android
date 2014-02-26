@@ -1,10 +1,12 @@
 Documentation:
     You can find getting started guides for using Mixpanel at
-    https://mixpanel.com/docs/integration-libraries/android#installing for installation instructions
-    https://mixpanel.com/docs/integration-libraries/android#sending_events for tracking events
-    https://mixpanel.com/docs/integration-libraries/android#creating_profiles for updating people analytics
-    https://mixpanel.com/docs/integration-libraries/android#push_quick_start for sending push notifications
-    https://mixpanel.com/docs/integration-libraries/android#surveys for showing surveys
+    https://mixpanel.com/help/reference/android#installing-eclipse for installing in Eclipse
+    https://mixpanel.com/help/reference/android#installing-as for installing in Android Studio
+    https://mixpanel.com/help/reference/android#initializing for library initialization
+    https://mixpanel.com/help/reference/android#sending_events for tracking events
+    https://mixpanel.com/help/reference/android#creating_profiles for updating people analytics
+    https://mixpanel.com/help/reference/android#push_configure for sending push notifications
+    https://mixpanel.com/help/reference/android#surveys for showing surveys
 
 Demo:
     See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application

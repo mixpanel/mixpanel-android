@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.Application;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -32,6 +33,10 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+        if (! isActivityValid(activity)) {
+            return;
+        }
+
         final Configuration config = activity.getResources().getConfiguration();
         final boolean dueToOrientationChange = mCurOrientation != null && config.orientation != mCurOrientation;
         if(!dueToOrientationChange && activity.isTaskRoot()) {
@@ -54,6 +59,10 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
+        if (! isActivityValid(activity)) {
+            return;
+        }
+
         if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
             mCurOrientation = activity.getResources().getConfiguration().orientation;
             
@@ -86,9 +95,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      * @param activity
      */
     private void checkForSurveys(final Activity activity) {
-        if (null == activity) {
-            return;
-        }
         if (! ConfigurationChecker.checkSurveyActivityAvailable(activity.getApplicationContext())) {
             return;
         }
@@ -149,6 +155,23 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 mMpInstance.getPeople().showNotification(n, activity);
             }
         });
+    }
+
+    private boolean isActivityValid(Activity activity) {
+        if (null == activity) {
+            return false;
+        }
+        if (activity.isFinishing()) {
+            return false;
+        }
+
+        if (Build.VERSION.SDK_INT >= 17) {
+            if (activity.isDestroyed()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private final MixpanelAPI mMpInstance;
