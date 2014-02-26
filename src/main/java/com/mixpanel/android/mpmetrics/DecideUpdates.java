@@ -182,6 +182,10 @@ import java.util.concurrent.Executors;
         return new ServerMessage();
     }
 
+    protected void runOnIsolatedThread(final Runnable r) {
+        CALLBACK_EXECUTOR.submit(r);
+    }
+
     private Survey popSurvey() {
         if (mUnseenSurveys.isEmpty()) {
             return null;
@@ -212,7 +216,7 @@ import java.util.concurrent.Executors;
 
     private void runSurveyCallback(final Survey survey, final SurveyCallbacks callbacks) {
         mWaitingSurveyCallbacks = null;
-        CALLBACK_EXECUTOR.submit(new Runnable() {
+        runOnIsolatedThread(new Runnable() {
             @Override
             public void run() {
                 callbacks.foundSurvey(survey);
@@ -221,7 +225,7 @@ import java.util.concurrent.Executors;
     }
 
     private void runInAppCallback(final InAppNotification tryNotification, final InAppNotificationCallbacks callbacks) {
-        CALLBACK_EXECUTOR.submit(new Runnable() {
+        runOnIsolatedThread(new Runnable() {
             @Override
             public void run() {
                 InAppNotification reportNotification = null;
