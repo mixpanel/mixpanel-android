@@ -13,8 +13,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mixpanel.android.R;
-
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
@@ -30,6 +28,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -38,6 +37,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
+
+import com.mixpanel.android.R;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -1274,9 +1275,9 @@ public class MixpanelAPI {
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
             
-            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to manually calculate pixels
-            float scale = mParent.getResources().getDisplayMetrics().density;
-            mPopupWindow.setHeight((int)(75 * scale + 0.5f));
+            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
+            float px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+            mPopupWindow.setHeight((int) px);
 
             final String uri = mInAppNotification.getCallToActionUrl();
             if (uri != null && uri.length() > 0) {
