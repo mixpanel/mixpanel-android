@@ -34,8 +34,12 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -1288,7 +1292,7 @@ public class MixpanelAPI {
                 popupView.setOnClickListener(this);
             }
             
-            ScaleAnimation sa = new ScaleAnimation(0, 1, 0, 1, heightPx / 2, heightPx / 2);
+            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
             sa.setInterpolator(new SineBounceInterpolator());
             sa.setDuration(500);
             sa.setStartOffset(300);
@@ -1308,13 +1312,14 @@ public class MixpanelAPI {
         private void showTakeoverInAppNotification() {
             LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
-            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            titleView.setText(mInAppNotification.getTitle());
-
-            TextView bodyView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
-            bodyView.setText(mInAppNotification.getBody());
-
             ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            TextView subtextView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            Button ctaButton = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
+            ImageButton closeButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+
+            titleView.setText(mInAppNotification.getTitle());
+            subtextView.setText(mInAppNotification.getBody());
             notifImage.setImageBitmap(mInAppNotification.getImage());
 
             mPopupWindow = new PopupWindow(popupView);
@@ -1330,13 +1335,12 @@ public class MixpanelAPI {
             mPopupWindow.setFocusable(true);
 
             final String callToAction = mInAppNotification.getCallToAction();
-            Button button = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
-            button.setText(R.string.com_mixpanel_android_done);
+            ctaButton.setText(R.string.com_mixpanel_android_done);
             if (callToAction != null && callToAction.length() > 0) {
-                button.setText(callToAction);
+                ctaButton.setText(callToAction);
             }
-            button.setOnClickListener(this);
-            button.setOnTouchListener(new View.OnTouchListener() {
+            ctaButton.setOnClickListener(this);
+            ctaButton.setOnTouchListener(new View.OnTouchListener() {
                 public boolean onTouch(View v, MotionEvent event) {
                     if (event.getAction() == MotionEvent.ACTION_DOWN) {
                         v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
@@ -1346,13 +1350,34 @@ public class MixpanelAPI {
                     return false;
                 }
             });
+            closeButton.setOnClickListener(this);
 
-            ImageButton iButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
-            iButton.setOnClickListener(this);
+            // Begin animations
+            ScaleAnimation sa = new ScaleAnimation(
+                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+            sa.setDuration(200);
+            notifImage.startAnimation(sa);
 
+            TranslateAnimation ta = new TranslateAnimation(
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.5f,
+                 Animation.RELATIVE_TO_SELF, 0.0f
+            );
+            ta.setInterpolator(new DecelerateInterpolator());
+            ta.setDuration(200);
+            titleView.startAnimation(ta);
+            subtextView.startAnimation(ta);
+            ctaButton.startAnimation(ta);
+
+            Animation fadeIn = AnimationUtils.loadAnimation(mParent, R.anim.fade_in);
+            fadeIn.setStartOffset(100);
+            closeButton.startAnimation(fadeIn);
+
+            mPopupWindow.setAnimationStyle(R.style.FadeInOutAnimation);
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
         }
-        
+
         private class SineBounceInterpolator implements Interpolator {
             public SineBounceInterpolator() { }
             public float getInterpolation(float t) {
