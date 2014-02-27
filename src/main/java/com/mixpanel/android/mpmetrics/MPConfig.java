@@ -16,13 +16,15 @@ import android.util.Log;
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
-    // Set to true, Mixpanel will not send survey results.
-    // Should be set to false in production or your surveys
-    // won't work.
-    public static final boolean DONT_SEND_SURVEYS = true;
+    // Minimum number of Milliseconds between decide server requests.
+    /* package */ static final long MAX_DECIDE_REQUEST_FREQUENCY_MILLIS = 60 * 1000;
 
+    // Maximum time to wait for a decide callback to complete before giving up and making another
+    /* package */ static final long DECIDE_REQUEST_TIMEOUT_MILLIS = 10 * 60 * 1000;
+
+    // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 
     public static MPConfig readConfig(Context context) {

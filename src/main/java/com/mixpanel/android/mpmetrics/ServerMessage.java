@@ -1,11 +1,12 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -18,10 +19,12 @@ import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.StringUtils;
 
 /* package */ class ServerMessage {
 
@@ -39,24 +42,54 @@ import com.mixpanel.android.util.StringUtils;
     };
 
     public static class Result {
-        /* package */ Result(Status status, String response) {
+        /* package */ Result(Status status, byte[] responseBytes) {
             mStatus = status;
-            mResponse = response;
+            mResponseBytes = responseBytes;
         }
 
         public Status getStatus() {
             return mStatus;
         }
 
-        public String getResponse() {
-            return mResponse;
+        public byte[] getResponseBytes() {
+            return mResponseBytes;
         }
 
-        private final String mResponse;
+        public String getResponse() {
+            if (null == mResponseBytes) {
+                return null;
+            }
+            try {
+                return new String(mResponseBytes, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                throw new RuntimeException("UTF not supported on this platform?", e);
+            }
+        }
+
+        private final byte[] mResponseBytes;
         private final Status mStatus;
     }
 
-    public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+    public boolean isOnline(Context context) {
+        boolean isOnline;
+        try {
+            final ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            final NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+        } catch (final SecurityException e) {
+            isOnline = true;
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
+        }
+        return isOnline;
+    }
+
+    public Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
+        if (! isOnline(context)) {
+            return OFFLINE_RESULT;
+        }
+
         Status status = Status.FAILED_UNRECOVERABLE;
         final String encodedData = Base64Coder.encodeString(rawMessage);
 
@@ -66,15 +99,15 @@ import com.mixpanel.android.util.StringUtils;
             nameValuePairs.add(new BasicNameValuePair("verbose", "1"));
         }
 
-        final Result baseResult = performRequest(endpointUrl, nameValuePairs);
-        final Status baseStatus = baseResult.getStatus();
-        String response = baseResult.getResponse();
+        Result result = performRequest(endpointUrl, nameValuePairs);
+        final Status baseStatus = result.getStatus();
         if (baseStatus == Status.SUCCEEDED) {
+            final String baseResponse = result.getResponse();
             // Could still be a failure if the application successfully
             // returned an error message...
             if (MPConfig.DEBUG) {
                 try {
-                    final JSONObject verboseResponse = new JSONObject(response);
+                    final JSONObject verboseResponse = new JSONObject(baseResponse);
                     if (verboseResponse.optInt("status") == 1) {
                         status = Status.SUCCEEDED;
                     }
@@ -82,16 +115,15 @@ import com.mixpanel.android.util.StringUtils;
                     status = Status.FAILED_UNRECOVERABLE;
                 }
             }
-            else if (response.equals("1\n")) {
+            else if (baseResponse.equals("1\n")) {
                 status = Status.SUCCEEDED;
             }
         }
 
         if (baseStatus == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Retrying post with new URL: " + fallbackUrl);
-            final Result retryResult = postData(rawMessage, fallbackUrl, null);
-            final Status retryStatus = retryResult.getStatus();
-            response = retryResult.getResponse();
+            result = postData(context, rawMessage, fallbackUrl, null);
+            final Status retryStatus = result.getStatus();
             if (retryStatus != Status.SUCCEEDED) {
                 Log.e(LOGTAG, "Could not post data to Mixpanel");
             } else {
@@ -99,13 +131,17 @@ import com.mixpanel.android.util.StringUtils;
             }
         }
 
-        return new Result(status, response);
+        return new Result(status, result.getResponseBytes());
     }
 
-    public Result get(String endpointUrl, String fallbackUrl) {
+    public Result get(Context context, String endpointUrl, String fallbackUrl) {
+        if (! isOnline(context)) {
+            return OFFLINE_RESULT;
+        }
+
         Result ret = performRequest(endpointUrl, null);
         if (ret.getStatus() == Status.FAILED_RECOVERABLE && fallbackUrl != null) {
-            ret = get(fallbackUrl, null);
+            ret = get(context, fallbackUrl, null);
         }
         return ret;
     }
@@ -118,7 +154,7 @@ import com.mixpanel.android.util.StringUtils;
      */
     private Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
-        String response = null;
+        byte[] response = null;
         try {
             // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
             // libraries- The underlying library will attempt to reuse stale connections,
@@ -128,7 +164,6 @@ import com.mixpanel.android.util.StringUtils;
             boolean succeeded = false;
             while (retries < 3 && !succeeded) {
                 InputStream in = null;
-                BufferedInputStream bin = null;
                 OutputStream out = null;
                 BufferedOutputStream bout = null;
                 HttpURLConnection connection = null;
@@ -150,10 +185,7 @@ import com.mixpanel.android.util.StringUtils;
                         out = null;
                     }
                     in = connection.getInputStream();
-                    bin = new BufferedInputStream(in);
-                    response = StringUtils.inputStreamToString(in);
-                    bin.close();
-                    bin = null;
+                    response = slurp(in);
                     in.close();
                     in = null;
                     succeeded = true;
@@ -165,8 +197,6 @@ import com.mixpanel.android.util.StringUtils;
                         try { bout.close(); } catch (final IOException e) { ; }
                     if (null != out)
                         try { out.close(); } catch (final IOException e) { ; }
-                    if (null != bin)
-                        try { bin.close(); } catch (final IOException e) { ; }
                     if (null != in)
                         try { in.close(); } catch (final IOException e) { ; }
                     if (null != connection)
@@ -174,7 +204,7 @@ import com.mixpanel.android.util.StringUtils;
                 }
             }// while
         } catch (final MalformedURLException e) {
-            Log.e(LOGTAG, "Cannot iterpret " + endpointUrl + " as a URL", e);
+            Log.e(LOGTAG, "Cannot interpret " + endpointUrl + " as a URL", e);
             status = Status.FAILED_UNRECOVERABLE;
         } catch (final IOException e) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Cannot post message to Mixpanel Servers (ok, can retry.)");
@@ -192,5 +222,22 @@ import com.mixpanel.android.util.StringUtils;
         return new Result(status, response);
     }
 
+    // Does not close input streamq
+    private byte[] slurp(final InputStream inputStream)
+        throws IOException {
+        final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+        int nRead;
+        byte[] data = new byte[8192];
+
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+
+        buffer.flush();
+        return buffer.toByteArray();
+    }
+
     private static final String LOGTAG = "MixpanelAPI";
+    private static final Result OFFLINE_RESULT = new Result(Status.FAILED_RECOVERABLE, null);
 }

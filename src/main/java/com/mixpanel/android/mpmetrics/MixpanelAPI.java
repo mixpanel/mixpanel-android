@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,12 +17,36 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.PopupWindow;
+import android.widget.TextView;
+
+import com.mixpanel.android.R;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -104,6 +127,8 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
+        mSurveyAssets = new SynchronizedReference<SurveyAssets>();
+        mDecideUpdates = new DecideUpdates(mContext, token);
 
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
@@ -267,9 +292,9 @@ public class MixpanelAPI {
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist.
      */
+    // DO NOT DOCUMENT, but track() must be thread safe (It might not always be thread safe)
     public void track(String eventName, JSONObject properties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
-
         try {
             final JSONObject messageProps = new JSONObject();
 
@@ -301,8 +326,9 @@ public class MixpanelAPI {
                 }
             }
 
-            final AnalyticsMessages.EventDescription eventDTO = new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
-            mMessages.eventsMessage(eventDTO);
+            final AnalyticsMessages.EventDescription eventDescription =
+                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
+            mMessages.eventsMessage(eventDescription);
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -691,12 +717,12 @@ public class MixpanelAPI {
         /**
          * Checks to see if this user is eligible for any Mixpanel surveys.
          * If the check is successful, it will call its argument's
-         * foundSurvey() method with a (possibly null) {@link Survey} object.
+         * foundSurvey() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.Survey}.
          * The typical use case is similar to
          * <pre>
          * {@code
          * Activity parent = this;
-         * mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
+         * mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
          *     public void foundSurvey(Survey survey) {
          *         if (survey != null) {
          *             mixpanel.getPeople().showSurvey(survey, parent);
@@ -707,13 +733,34 @@ public class MixpanelAPI {
          * </pre>
          *
          * The foundSurvey() may be (and will probably be) called on a different thread
-         * than the one that called checkForSurveys(). The library doesn't guarantee
+         * than the one that called checkForSurvey(). The library doesn't guarantee
          * a particular thread, and callbacks are responsible for their own thread safety.
          *
          * This method is will always call back with null in environments with
          * Android API before Gingerbread/API level 10
          */
         public void checkForSurvey(SurveyCallbacks callbacks);
+
+        /**
+         * Checks to see if this user has any waiting Mixpanel notifications.
+         * If the check is successful, it will call its argument's
+         * foundNotifications() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.InAppNotification}.
+         * The typical use case is similar to
+         * <pre>
+         * {@code
+         * Activity parent = this;
+         * mixpanel.getPeople().checkForNotification(new InAppNotificationCallbacks() {
+         *     public void foundNotification(InAppNotification notification) {
+         *         if (notification != null) {
+         *             mixpanel.getPeople().showNotification(notification, parent);
+         *         }
+         *     }
+         * });
+         * }
+         * </pre>
+         * @param callbacks
+         */
+        public void checkForNotification(InAppNotificationCallbacks callbacks);
 
         /**
          * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
@@ -733,11 +780,20 @@ public class MixpanelAPI {
          */
         public void showSurvey(Survey s, Activity parent);
 
+
+        /**
+         * Will show a popup window above the given Activity that presents the content
+         * of the given notification to the user. To get an InAppNotification to show,
+         * use checkForNotification.
+         */
+        public void showNotification(InAppNotification notification, Activity parent);
+
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
          * This is used by Mixpanel Surveys but is likely not needed in your code.
          */
         public People withIdentity(String distinctId);
+
     }
 
     /**
@@ -750,6 +806,7 @@ public class MixpanelAPI {
      *
      * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
      */
+    @SuppressWarnings("unused")
     public void logPosts() {
         mMessages.logPosts();
     }
@@ -917,59 +974,44 @@ public class MixpanelAPI {
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-            if (checkForSurveysLock.acquire()) {
 
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Acquired checkForSurvey lock...");
-                final String checkToken = mToken;
-                final String checkDistinctId = getDistinctId();
-                final SurveyCallbacks callbackWrapper = new SurveyCallbacks() {
-                    @Override
-                    public void foundSurvey(Survey s) {
-                        callbacks.foundSurvey(s);
-                        checkForSurveysLock.release();
-                    }
-                };
-
-                if (null == callbacks) {
-                    Log.i(LOGTAG, "Skipping survey check, because callback is null.");
-                    return;
-                }
-                if (null == checkDistinctId) {
-                    Log.i(LOGTAG, "Skipping survey check, because user has not yet been identified.");
-                    return;
-                }
-                if (Build.VERSION.SDK_INT < 10) {
-                    Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
-                    callbacks.foundSurvey(null);
-                    return;
-                }
-                final AnalyticsMessages.SurveyCheck surveyCheck =
-                        new AnalyticsMessages.SurveyCheck(callbackWrapper, checkDistinctId, checkToken);
-                mMessages.checkForSurveys(surveyCheck);
-            } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Survey check lock already held");
+            if (null == callbacks) {
+                Log.i(LOGTAG, "Skipping survey check because callback is null.");
+                return;
             }
+
+            final String checkDistinctId = getDistinctId();
+            if (null == checkDistinctId) {
+                Log.i(LOGTAG, "Skipping survey check because user has not yet been identified.");
+                return;
+            }
+
+            if (Build.VERSION.SDK_INT < 10) { // TODO is this correct? Should we grab the surveys and just not DISPLAY them at this API level?
+                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
+                callbacks.foundSurvey(null);
+                return;
+            }
+
+            mDecideUpdates.setSurveyCallback(callbacks, checkDistinctId, mMessages);
         }
 
         @Override
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
-            synchronized(mCachedSurveyAssetsLock) {
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
+            // This is all about waiting to show a "See our survey" dialog until after the survey is
+            // ready to show. We don't get to the end any faster, but we don't make users wait.
+            mSurveyAssets.set(null);
             checkForSurvey(new SurveyCallbacks() {
                 @Override
                 public void foundSurvey(final Survey survey) {
                     BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
                         @Override
                         public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                            synchronized(mCachedSurveyAssetsLock) {
-                                mCachedSurveyBitmap = bitmapCaptured;
-                                mCachedSurveyHighlightColor = highlightColorCaptured;
-                                mCachedSurveyActivityHashcode = parentActivity.hashCode();
-                            }
+                            final SurveyAssets assets = new SurveyAssets(
+                                    parentActivity.hashCode(),
+                                    bitmapCaptured,
+                                    highlightColorCaptured
+                            );
+                            mSurveyAssets.set(assets);
                             callbacks.foundSurvey(survey);
                         }
                     });
@@ -978,7 +1020,25 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void showSurvey(final Survey s, final Activity parent) {
+        public void checkForNotification(final InAppNotificationCallbacks callbacks) {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for notifications...");
+
+            if (null == callbacks) {
+                Log.i(LOGTAG, "Skipping notification check because callback is null.");
+            }
+
+            final String checkDistinctId = getDistinctId();
+            if (null == checkDistinctId) {
+                Log.i(LOGTAG, "Skipping notification check because user has not yet been identified.");
+                return;
+            }
+
+            mDecideUpdates.setInAppCallback(callbacks, checkDistinctId, mMessages);
+        }
+
+        @Override
+        // MUST BE THREAD SAFE.
+        public void showSurvey(final Survey survey, final Activity parent) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
                 return;
@@ -989,28 +1049,43 @@ public class MixpanelAPI {
                 return;
             }
 
-            Bitmap useBitmap = null;
-            int useHighlightColor = -1;
-            synchronized(mCachedSurveyAssetsLock) {
-                if (parent.hashCode() == mCachedSurveyActivityHashcode) {
-                    useBitmap = mCachedSurveyBitmap;
-                    useHighlightColor = mCachedSurveyHighlightColor;
-                }
-                mCachedSurveyBitmap = null;
-                mCachedSurveyHighlightColor = -1;
-                mCachedSurveyActivityHashcode = -1;
-            }
-
-            if (null != useBitmap) {
-                SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, useBitmap, useHighlightColor);
+            final SurveyAssets assets = mSurveyAssets.getAndClear();
+            if (null != assets && assets.activityHashcode == parent.hashCode()) {
+                SurveyState.proposeSurvey(
+                    survey,
+                    parent,
+                    getDistinctId(),
+                    mToken,
+                    assets.surveyBitmap,
+                    assets.highlightColor
+                );
             } else {
                 BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
                     public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        SurveyState.proposeSurvey(s, parent, getDistinctId(), mToken, bitmapCaptured, highlightColorCaptured);
+                        SurveyState.proposeSurvey(
+                            survey,
+                            parent,
+                            getDistinctId(),
+                            mToken,
+                            bitmapCaptured,
+                            highlightColorCaptured
+                        );
                     }
                 });
             }
+        }
+
+        @Override
+        // MUST BE THREAD SAFE
+        public void showNotification(final InAppNotification notification, final Activity parent) {
+            if (null == notification) {
+                return;
+            }
+
+            final InAppNotificationDisplay display = new InAppNotificationDisplay(notification, parent);
+            parent.runOnUiThread(display);
+            track("$campaign_delivery", notification.getCampaignProperties());
         }
 
         @Override
@@ -1152,6 +1227,169 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
+    private class InAppNotificationDisplay implements Runnable, View.OnClickListener {
+
+        public InAppNotificationDisplay(final InAppNotification notification, final Activity parent) {
+            mInAppNotification = notification;
+            mParent = parent;
+            mPopupWindow = null;
+        }
+
+        // Should be run only on the UI thread.
+        @Override
+        public void run() {
+            if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
+                showTakeoverInAppNotification();
+            } else {
+                showMiniInAppNotification();
+            }
+        }
+
+        @Override
+        public void onClick(View clicked) {
+            mPopupWindow.dismiss();
+            if (clicked.getId() == R.id.com_mixpanel_android_notification_button) {
+                track("$campaign_open", mInAppNotification.getCampaignProperties());
+                String uriString = mInAppNotification.getCallToActionUrl();
+                if (uriString != null && uriString.length() > 0) {
+                    Uri uri = null;
+                    try {
+                        uri = Uri.parse(uriString);
+                    } catch (IllegalArgumentException e) {
+                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return;
+                    }
+
+                    assert(uri != null);
+                    try {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        mParent.startActivity(viewIntent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    }
+                }
+            } // if button was clicked
+        }
+
+        private void showMiniInAppNotification() {
+            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
+            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            titleView.setText(mInAppNotification.getTitle());
+            
+            ImageView notifImageView = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            notifImageView.setImageBitmap(mInAppNotification.getImage());
+
+            mPopupWindow = new PopupWindow(popupView);
+            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+            
+            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
+            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+            mPopupWindow.setHeight((int) heightPx);
+
+            final String uri = mInAppNotification.getCallToActionUrl();
+            if (uri != null && uri.length() > 0) {
+                popupView.setOnClickListener(this);
+            }
+            
+            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+            sa.setInterpolator(new SineBounceInterpolator());
+            sa.setDuration(500);
+            sa.setStartOffset(300);
+            notifImageView.startAnimation(sa);
+            
+            mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
+            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                public void run() {
+                    mPopupWindow.dismiss();
+                }
+            }, 6000);
+        }
+
+        private void showTakeoverInAppNotification() {
+            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
+            ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            TextView subtextView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            Button ctaButton = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
+            ImageButton closeButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+
+            titleView.setText(mInAppNotification.getTitle());
+            subtextView.setText(mInAppNotification.getBody());
+            notifImage.setImageBitmap(mInAppNotification.getImage());
+
+            mPopupWindow = new PopupWindow(popupView);
+            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
+
+            // Handle PopupWindow normally hiding under status bar
+            Rect r = new Rect();
+            mParent.getWindow().getDecorView().getWindowVisibleDisplayFrame(r);
+            mPopupWindow.setHeight(mParent.getWindow().getDecorView().getHeight() - r.top);
+
+            // The following two lines are needed to make back button dismissal work.
+            mPopupWindow.setBackgroundDrawable(new BitmapDrawable());
+            mPopupWindow.setFocusable(true);
+
+            final String callToAction = mInAppNotification.getCallToAction();
+            ctaButton.setText(R.string.com_mixpanel_android_done);
+            if (callToAction != null && callToAction.length() > 0) {
+                ctaButton.setText(callToAction);
+            }
+            ctaButton.setOnClickListener(this);
+            ctaButton.setOnTouchListener(new View.OnTouchListener() {
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
+                    } else {
+                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
+                    }
+                    return false;
+                }
+            });
+            closeButton.setOnClickListener(this);
+
+            // Begin animations
+            ScaleAnimation sa = new ScaleAnimation(
+                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+            sa.setDuration(200);
+            notifImage.startAnimation(sa);
+
+            TranslateAnimation ta = new TranslateAnimation(
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.5f,
+                 Animation.RELATIVE_TO_SELF, 0.0f
+            );
+            ta.setInterpolator(new DecelerateInterpolator());
+            ta.setDuration(200);
+            titleView.startAnimation(ta);
+            subtextView.startAnimation(ta);
+            ctaButton.startAnimation(ta);
+
+            Animation fadeIn = AnimationUtils.loadAnimation(mParent, R.anim.fade_in);
+            fadeIn.setStartOffset(100);
+            closeButton.startAnimation(fadeIn);
+
+            mPopupWindow.setAnimationStyle(R.style.FadeInOutAnimation);
+            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
+        }
+
+        private class SineBounceInterpolator implements Interpolator {
+            public SineBounceInterpolator() { }
+            public float getInterpolation(float t) {
+                return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
+            }
+        } 
+
+        private PopupWindow mPopupWindow;
+        private final Activity mParent;
+        private final InAppNotification mInAppNotification;
+    }
+
     private void recordPeopleMessage(JSONObject message) {
         if (message.has("$distinct_id")) {
            mMessages.peopleMessage(message);
@@ -1168,7 +1406,7 @@ public class MixpanelAPI {
     }
 
     // MUST BE THREAD SAFE. Called from crazy places. mPersistentProperties may not exist
-    // when this is called (from it's crazy thread)
+    // when this is called (from its crazy thread)
     private void sendAllPeopleRecords(JSONArray records) {
         for (int i = 0; i < records.length(); i++) {
             try {
@@ -1180,50 +1418,15 @@ public class MixpanelAPI {
         }
     }
 
-    private static class ExpiringLock {
-
-        private ExpiringLock(long timeoutInMillis) {
-            this.timeoutMillis = timeoutInMillis;
+    private static class SurveyAssets {
+        public SurveyAssets(int activityHashcode, Bitmap surveyBitmap, int highlightColor) {
+            this.activityHashcode = activityHashcode;
+            this.surveyBitmap = surveyBitmap;
+            this.highlightColor = highlightColor;
         }
-
-        public boolean acquire() {
-            if (reentrantLock.tryLock()) {
-                try {
-                    if (this.time > 0 && (System.currentTimeMillis() - this.time) > timeoutMillis) {
-                        if (MPConfig.DEBUG) Log.d(LOGTAG, "The previous survey lock has timed out, releasing...");
-                        release();
-                    }
-
-                    if (!locked) {
-                        time = System.currentTimeMillis();
-                        locked = true;
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } finally {
-                    reentrantLock.unlock();
-                }
-            } else {
-                return false;
-            }
-        }
-
-        public void release() {
-            if (reentrantLock.tryLock()) {
-                try {
-                    this.locked = false;
-                    this.time = 0;
-                } finally {
-                    reentrantLock.unlock();
-                }
-            }
-        }
-
-        private final ReentrantLock reentrantLock = new ReentrantLock();
-        private boolean locked;
-        private long time;
-        private final long timeoutMillis;
+        public final int activityHashcode;
+        public final Bitmap surveyBitmap;
+        public final int highlightColor;
     }
 
     private static final String LOGTAG = "MixpanelAPI";
@@ -1235,14 +1438,8 @@ public class MixpanelAPI {
     private final PeopleImpl mPeople;
     private final PersistentProperties mPersistentProperties;
 
-    // Cache of survey assets for showSurveys. Synchronized access only.
-    private final Object mCachedSurveyAssetsLock = new Object();
-    private int mCachedSurveyActivityHashcode = -1;
-    private Bitmap mCachedSurveyBitmap;
-    private int mCachedSurveyHighlightColor;
-
-    // Survey check locking
-    private final ExpiringLock checkForSurveysLock = new ExpiringLock(10 * 1000); // 10 second timeout
+    private final SynchronizedReference<SurveyAssets> mSurveyAssets;
+    private final DecideUpdates mDecideUpdates;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
