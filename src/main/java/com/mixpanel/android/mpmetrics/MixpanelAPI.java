@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -1241,7 +1242,12 @@ public class MixpanelAPI {
             if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
                 showTakeoverInAppNotification();
             } else {
-                showMiniInAppNotification();
+                BackgroundCapture.captureBackground(true, mParent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                    @Override
+                    public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                        showMiniInAppNotification(highlightColorCaptured);
+                    }
+                });
             }
         }
 
@@ -1271,18 +1277,25 @@ public class MixpanelAPI {
             } // if button was clicked
         }
 
-        private void showMiniInAppNotification() {
+        private void showMiniInAppNotification(int backgroundColor) {
             LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
             TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            titleView.setText(mInAppNotification.getTitle());
-            
             ImageView notifImageView = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+            // The backgroundColor returned from BackgroundCapture is an average of the color of the app, and thus
+            // may be too light to be used as the background color for the mini notification, so we darken by HSV
+            float[] hsvBackground = new float[3];
+            Color.colorToHSV(backgroundColor, hsvBackground);
+            hsvBackground[2] = 0.3f; // value
+            popupView.setBackgroundColor(Color.HSVToColor(0xcc, hsvBackground));
+
+            titleView.setText(mInAppNotification.getTitle());
             notifImageView.setImageBitmap(mInAppNotification.getImage());
 
             mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-            
+
             // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
             float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
             mPopupWindow.setHeight((int) heightPx);
@@ -1291,13 +1304,13 @@ public class MixpanelAPI {
             if (uri != null && uri.length() > 0) {
                 popupView.setOnClickListener(this);
             }
-            
+
             ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
             sa.setInterpolator(new SineBounceInterpolator());
             sa.setDuration(500);
             sa.setStartOffset(300);
             notifImageView.startAnimation(sa);
-            
+
             mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
             mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
 
@@ -1383,7 +1396,7 @@ public class MixpanelAPI {
             public float getInterpolation(float t) {
                 return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
             }
-        } 
+        }
 
         private PopupWindow mPopupWindow;
         private final Activity mParent;
