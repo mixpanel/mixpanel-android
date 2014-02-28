@@ -237,6 +237,7 @@ import java.util.concurrent.Executors;
                         } else {
                             imageUrl = tryNotification.getImage2xUrl();
                         }
+                        if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
                         final ServerMessage imageMessage = newPoster();
                         final ServerMessage.Result result = imageMessage.get(mContext, imageUrl, null);
                         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {

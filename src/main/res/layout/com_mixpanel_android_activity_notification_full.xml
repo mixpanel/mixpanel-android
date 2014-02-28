@@ -30,9 +30,11 @@
         android:layout_height="0dip"
         android:layout_weight="1.00"
         android:contentDescription="@string/com_mixpanel_android_notification_image"
+        android:cropToPadding="true"
         android:padding="30dp"
         android:scaleType="fitCenter"
-        android:src="@drawable/com_mixpanel_android_logo" />
+        android:background="@drawable/com_mixpanel_android_square_dropshadow"
+        android:src="@drawable/com_mixpanel_android_notification_placeholder" />
     
     <TextView
         android:id="@+id/com_mixpanel_android_notification_title"

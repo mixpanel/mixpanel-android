@@ -1304,6 +1304,7 @@ public class MixpanelAPI {
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
                 public void run() {
+                    // TODO this crashes the app if the view is dead
                     mPopupWindow.dismiss();
                 }
             }, 6000);
