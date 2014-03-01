@@ -787,7 +787,7 @@ public class MixpanelAPI {
          * of the given notification to the user. To get an InAppNotification to show,
          * use checkForNotification.
          */
-        public void showNotification(InAppNotification notification, Activity parent);
+        public InAppNotificationDisplay showNotification(InAppNotification notification, Activity parent);
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
@@ -1079,14 +1079,11 @@ public class MixpanelAPI {
 
         @Override
         // MUST BE THREAD SAFE
-        public void showNotification(final InAppNotification notification, final Activity parent) {
-            if (null == notification) {
-                return;
-            }
-
+        public InAppNotificationDisplay showNotification(final InAppNotification notification, final Activity parent) {
             final InAppNotificationDisplay display = new InAppNotificationDisplay(notification, parent);
             parent.runOnUiThread(display);
-            track("$campaign_delivery", notification.getCampaignProperties());
+
+            return display;
         }
 
         @Override
@@ -1228,12 +1225,23 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
-    private class InAppNotificationDisplay implements Runnable, View.OnClickListener {
+    public class InAppNotificationDisplay implements Runnable, View.OnClickListener {
 
         public InAppNotificationDisplay(final InAppNotification notification, final Activity parent) {
             mInAppNotification = notification;
             mParent = parent;
-            mPopupWindow = null;
+
+            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
+                mPopupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
+            } else {
+                mPopupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
+            }
+            mPopupWindow = new PopupWindow(mPopupView);
+        }
+
+        public void dismiss() {
+            mPopupWindow.dismiss();
         }
 
         // Should be run only on the UI thread.
@@ -1249,6 +1257,8 @@ public class MixpanelAPI {
                     }
                 });
             }
+
+            track("$campaign_delivery", mInAppNotification.getCampaignProperties());
         }
 
         @Override
@@ -1278,22 +1288,19 @@ public class MixpanelAPI {
         }
 
         private void showMiniInAppNotification(int backgroundColor) {
-            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
-            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            ImageView notifImageView = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            ImageView notifImageView = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
 
             // The backgroundColor returned from BackgroundCapture is an average of the color of the app, and thus
             // may be too light to be used as the background color for the mini notification, so we darken by HSV
             float[] hsvBackground = new float[3];
             Color.colorToHSV(backgroundColor, hsvBackground);
             hsvBackground[2] = 0.3f; // value
-            popupView.setBackgroundColor(Color.HSVToColor(0xcc, hsvBackground));
+            mPopupView.setBackgroundColor(Color.HSVToColor(0xcc, hsvBackground));
 
             titleView.setText(mInAppNotification.getTitle());
             notifImageView.setImageBitmap(mInAppNotification.getImage());
 
-            mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
 
             // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
@@ -1302,7 +1309,7 @@ public class MixpanelAPI {
 
             final String uri = mInAppNotification.getCallToActionUrl();
             if (uri != null && uri.length() > 0) {
-                popupView.setOnClickListener(this);
+                mPopupView.setOnClickListener(this);
             }
 
             ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
@@ -1323,19 +1330,16 @@ public class MixpanelAPI {
         }
 
         private void showTakeoverInAppNotification() {
-            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View popupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
-            ImageView notifImage = (ImageView) popupView.findViewById(R.id.com_mixpanel_android_notification_image);
-            TextView titleView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            TextView subtextView = (TextView) popupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
-            Button ctaButton = (Button) popupView.findViewById(R.id.com_mixpanel_android_notification_button);
-            ImageButton closeButton = (ImageButton) popupView.findViewById(R.id.com_mixpanel_android_button_exit);
+            ImageView notifImage = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
+            TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
+            TextView subtextView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            Button ctaButton = (Button) mPopupView.findViewById(R.id.com_mixpanel_android_notification_button);
+            ImageButton closeButton = (ImageButton) mPopupView.findViewById(R.id.com_mixpanel_android_button_exit);
 
             titleView.setText(mInAppNotification.getTitle());
             subtextView.setText(mInAppNotification.getBody());
             notifImage.setImageBitmap(mInAppNotification.getImage());
 
-            mPopupWindow = new PopupWindow(popupView);
             mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
 
             // Handle PopupWindow normally hiding under status bar
@@ -1399,6 +1403,7 @@ public class MixpanelAPI {
         }
 
         private PopupWindow mPopupWindow;
+        private View mPopupView;
         private final Activity mParent;
         private final InAppNotification mInAppNotification;
     }

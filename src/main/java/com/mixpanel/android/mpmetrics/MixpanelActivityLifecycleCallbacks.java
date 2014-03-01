@@ -9,6 +9,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.mixpanel.android.mpmetrics.MixpanelAPI.InAppNotificationDisplay;
+
 @TargetApi(14)
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
@@ -64,7 +66,11 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityResumed(Activity activity) {}
 
     @Override
-    public void onActivityPaused(Activity activity) {}
+    public void onActivityPaused(Activity activity) {
+        if (null != mCurInAppNotification) {
+            mCurInAppNotification.dismiss();
+        }
+    }
 
     @Override
     public void onActivityStopped(Activity activity) {}
@@ -83,7 +89,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 if (null == n) {
                     checkForSurveys(activity);
                 } else if (isActivityValid(activity)) {
-                    mMpInstance.getPeople().showNotification(n, activity);
+                    mCurInAppNotification = mMpInstance.getPeople().showNotification(n, activity);
                 }
             }
         });
@@ -181,4 +187,5 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     private long mStartTime = -1;
     private final long mTimeoutMillis = 2000; // 2 second timeout
     private static final String LOGTAG = "MixpanelAPI:MixpanelActivityLifecycleCallbacks";
+    private InAppNotificationDisplay mCurInAppNotification = null;
 }
