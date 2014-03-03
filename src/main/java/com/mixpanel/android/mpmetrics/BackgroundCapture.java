@@ -13,11 +13,12 @@ import com.mixpanel.android.util.StackBlurManager;
 
 /* package */ class BackgroundCapture {
 
-    public static void captureBackground(final Activity parentActivity, final OnBackgroundCapturedListener listener) {
+    public static void captureBackground(
+            final boolean blur, final Activity parentActivity, final OnBackgroundCapturedListener listener) {
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final BackgroundCaptureTask task = new BackgroundCaptureTask(parentActivity, listener);
+                final BackgroundCaptureTask task = new BackgroundCaptureTask(blur, parentActivity, listener);
                 task.execute();
             }
         });
@@ -28,9 +29,11 @@ import com.mixpanel.android.util.StackBlurManager;
     }
 
     private static class BackgroundCaptureTask extends AsyncTask<Void, Void, Void> {
-        public BackgroundCaptureTask(Activity parentActivity, OnBackgroundCapturedListener listener) {
+        public BackgroundCaptureTask(boolean blur, Activity parentActivity, OnBackgroundCapturedListener listener) {
             mParentActivity = parentActivity;
             mListener = listener;
+            mCalculatedHighlightColor = Color.BLACK;
+            mBlur = blur;
         }
 
         @Override
@@ -61,29 +64,25 @@ import com.mixpanel.android.util.StackBlurManager;
 
         @Override
         protected Void doInBackground(Void ...params) {
-            if (null == mSourceImage) {
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
-                return null;
-            }
+            if (null != mSourceImage) {
+                try {
+                    final long startTime = System.currentTimeMillis();
 
-            try {
-                final long startTime = System.currentTimeMillis();
-                final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
-                mCalculatedHighlightColor = background1px.getPixel(0, 0);
+                    final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
+                    mCalculatedHighlightColor = background1px.getPixel(0, 0);
+                    if (mBlur) {
+                        StackBlurManager.process(mSourceImage, 20);
+                    }
+                    final Canvas canvas = new Canvas(mSourceImage);
+                    canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
 
-                StackBlurManager.process(mSourceImage, 20);
-
-                final long endTime = System.currentTimeMillis();
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-
-                final Canvas canvas = new Canvas(mSourceImage);
-                canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
-            } catch (final OutOfMemoryError e) {
-                // It's possible that the bitmap processing was what sucked up all of the memory,
-                // So we try to recover here.
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
+                    final long endTime = System.currentTimeMillis();
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Image processing took " + (endTime - startTime) + " millis");
+                } catch (final OutOfMemoryError e) {
+                    // It's possible that the bitmap processing was what sucked up all of the memory,
+                    // So we try to recover here.
+                    mSourceImage = null;
+                }
             }
             return null;
         }
@@ -96,7 +95,8 @@ import com.mixpanel.android.util.StackBlurManager;
         private final OnBackgroundCapturedListener mListener;
         private final Activity mParentActivity;
         private Bitmap mSourceImage;
-        private int  mCalculatedHighlightColor;
+        private int mCalculatedHighlightColor;
+        private boolean mBlur;
     } // SurveyInitializationTask
 
     private static final String LOGTAG = "MixpanelAPI BackgroundCapture";
