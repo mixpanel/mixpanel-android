@@ -23,18 +23,23 @@
             android:contentDescription="@string/com_mixpanel_android_close" />
 
     </LinearLayout>
-    
-    <ImageView
-        android:id="@+id/com_mixpanel_android_notification_image"
-        android:layout_width="match_parent"
-        android:layout_height="0dip"
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
         android:layout_weight="1.00"
-        android:contentDescription="@string/com_mixpanel_android_notification_image"
-        android:cropToPadding="true"
-        android:padding="30dp"
-        android:scaleType="fitCenter"
-        android:background="@drawable/com_mixpanel_android_square_dropshadow"
-        android:src="@drawable/com_mixpanel_android_notification_placeholder" />
+        >
+        <ImageView
+            android:id="@+id/com_mixpanel_android_notification_image"
+            android:layout_centerVertical="true"
+            android:adjustViewBounds="true"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:contentDescription="@string/com_mixpanel_android_notification_image"
+            android:background="@drawable/com_mixpanel_android_square_dropshadow"
+            android:scaleType="fitCenter"
+            android:src="@drawable/com_mixpanel_android_notification_placeholder" />
+            </RelativeLayout>
     
     <TextView
         android:id="@+id/com_mixpanel_android_notification_title"
@@ -45,6 +50,7 @@
         android:paddingRight="20dp"
         android:gravity="center_horizontal"
         android:textSize="25sp"
+        android:text="A Notification"
         android:textColor="#ffffff" />
 
     <TextView
