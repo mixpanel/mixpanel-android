@@ -128,8 +128,9 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
             }
 
             @Override
-            public void showNotification(final InAppNotification notification, final Activity parent) {
+            public InAppNotificationDisplay showNotification(final InAppNotification notification, final Activity parent) {
                 showNotificationCalls.add(notification);
+                return null;
             }
 
             @Override
