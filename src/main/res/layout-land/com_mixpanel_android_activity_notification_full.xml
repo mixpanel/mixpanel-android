@@ -50,8 +50,7 @@
                 android:paddingRight="20dp"
                 android:gravity="center_horizontal"
                 android:textSize="20sp"
-                android:textColor="#ffffff"
-                android:text="arsdrg sdg uhsg uhsgli uhstrgil usrth " />
+                android:textColor="#ffffff" />
         
             <TextView
                 android:id="@+id/com_mixpanel_android_notification_subtext"
@@ -63,8 +62,7 @@
                 android:paddingRight="20dp"
                 android:gravity="center_horizontal"
                 android:textSize="15sp"
-                android:textColor="#ffffff"
-                android:text="aeou adgi udhsfpgiu ehgru dsfguhd aieurhf kzjxc isugh; oerugh ;zfguh ;iesrugh ;esrguh xlkfjgbleirgb eirugb ldirugbelriug " />
+                android:textColor="#ffffff" />
             
             <Button
                 android:id="@+id/com_mixpanel_android_notification_button"
