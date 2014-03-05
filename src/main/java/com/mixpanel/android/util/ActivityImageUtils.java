@@ -37,8 +37,9 @@ public class ActivityImageUtils {
         try {
             final Bitmap screenshot1px = Bitmap.createScaledBitmap(screenshot, 1, 1, true);
             averageColor = screenshot1px.getPixel(0, 0);
-        // It's possible that the bitmap processing sucked up all of the memory,
-        } catch (final OutOfMemoryError e) { }
+        } catch (final OutOfMemoryError e) {
+            // If we have an out of memory error, just go with the black
+        }
 
         // Set a constant value level in HSV, in case the averaged color is too light or too dark.
         float[] hsvBackground = new float[3];
@@ -46,9 +47,5 @@ public class ActivityImageUtils {
         hsvBackground[2] = 0.3f; // value parameter
 
         return Color.HSVToColor(0xcc, hsvBackground);
-    }
-
-    public interface OnBackgroundCapturedListener {
-        public void OnBackgroundCaptured(Bitmap bitmapCaptured);
     }
 }
