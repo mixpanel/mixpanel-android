@@ -7,8 +7,8 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
 import android.util.Log;
-import android.view.View;
 
+import com.mixpanel.android.util.ActivityImageUtils;
 import com.mixpanel.android.util.StackBlurManager;
 
 /* package */ class BackgroundCapture {
@@ -18,7 +18,7 @@ import com.mixpanel.android.util.StackBlurManager;
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final BackgroundCaptureTask task = new BackgroundCaptureTask(blur, parentActivity, listener);
+                final BackgroundCaptureTask task = new BackgroundCaptureTask(parentActivity, listener);
                 task.execute();
             }
         });
@@ -29,37 +29,15 @@ import com.mixpanel.android.util.StackBlurManager;
     }
 
     private static class BackgroundCaptureTask extends AsyncTask<Void, Void, Void> {
-        public BackgroundCaptureTask(boolean blur, Activity parentActivity, OnBackgroundCapturedListener listener) {
+        public BackgroundCaptureTask(Activity parentActivity, OnBackgroundCapturedListener listener) {
             mParentActivity = parentActivity;
             mListener = listener;
             mCalculatedHighlightColor = Color.BLACK;
-            mBlur = blur;
         }
 
         @Override
         protected void onPreExecute() {
-            final View someView = mParentActivity.findViewById(android.R.id.content);
-            final View rootView = someView.getRootView();
-            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-            rootView.setDrawingCacheEnabled(true);
-            rootView.buildDrawingCache(true);
-
-            // We could get a null or zero px bitmap if the rootView hasn't been measured
-            // appropriately, or we grab it before layout.
-            // This is ok, and we should handle it gracefully.
-            final Bitmap original = rootView.getDrawingCache();
-            Bitmap scaled = null;
-            if (null != original && original.getWidth() > 0 && original.getHeight() > 0) {
-                final int scaledWidth = original.getWidth() / 2;
-                final int scaledHeight = original.getHeight() / 2;
-                if (scaledWidth > 0 && scaledHeight > 0) {
-                    scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-                }
-            }
-            if (! originalCacheState) {
-                rootView.setDrawingCacheEnabled(false);
-            }
-            mSourceImage = scaled;
+            mSourceImage = ActivityImageUtils.getScaledScreenshot(mParentActivity);
         }
 
         @Override
@@ -68,16 +46,13 @@ import com.mixpanel.android.util.StackBlurManager;
                 try {
                     final long startTime = System.currentTimeMillis();
 
-                    final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
-                    mCalculatedHighlightColor = background1px.getPixel(0, 0);
-                    if (mBlur) {
-                        StackBlurManager.process(mSourceImage, 20);
-                    }
+                    mCalculatedHighlightColor = ActivityImageUtils.getHighlightColor(mSourceImage);
+                    StackBlurManager.process(mSourceImage, 20);
                     final Canvas canvas = new Canvas(mSourceImage);
                     canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
 
                     final long endTime = System.currentTimeMillis();
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Image processing took " + (endTime - startTime) + " millis");
+                    if (MPConfig.DEBUG) Log.d(LOGTAG, "BackgroundCapture blur took " + (endTime - startTime) + " millis");
                 } catch (final OutOfMemoryError e) {
                     // It's possible that the bitmap processing was what sucked up all of the memory,
                     // So we try to recover here.
@@ -96,7 +71,6 @@ import com.mixpanel.android.util.StackBlurManager;
         private final Activity mParentActivity;
         private Bitmap mSourceImage;
         private int mCalculatedHighlightColor;
-        private boolean mBlur;
     } // SurveyInitializationTask
 
     private static final String LOGTAG = "MixpanelAPI BackgroundCapture";

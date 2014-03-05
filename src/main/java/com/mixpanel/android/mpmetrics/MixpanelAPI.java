@@ -22,7 +22,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
@@ -48,6 +47,7 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -1250,12 +1250,7 @@ public class MixpanelAPI {
             if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
                 showTakeoverInAppNotification();
             } else {
-                BackgroundCapture.captureBackground(true, mParent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                    @Override
-                    public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        showMiniInAppNotification(highlightColorCaptured);
-                    }
-                });
+                showMiniInAppNotification();
             }
 
             track("$campaign_delivery", mInAppNotification.getCampaignProperties());
@@ -1287,16 +1282,11 @@ public class MixpanelAPI {
             } // if button was clicked
         }
 
-        private void showMiniInAppNotification(int backgroundColor) {
+        private void showMiniInAppNotification() {
             TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
             ImageView notifImageView = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-            // The backgroundColor returned from BackgroundCapture is an average of the color of the app, and thus
-            // may be too light to be used as the background color for the mini notification, so we darken by HSV
-            float[] hsvBackground = new float[3];
-            Color.colorToHSV(backgroundColor, hsvBackground);
-            hsvBackground[2] = 0.3f; // value
-            mPopupView.setBackgroundColor(Color.HSVToColor(0xcc, hsvBackground));
+            mPopupView.setBackgroundColor(ActivityImageUtils.getHighlightColor(ActivityImageUtils.getScaledScreenshot(mParent)));
 
             titleView.setText(mInAppNotification.getTitle());
             notifImageView.setImageBitmap(mInAppNotification.getImage());
