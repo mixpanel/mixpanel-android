@@ -794,7 +794,6 @@ public class MixpanelAPI {
          * This is used by Mixpanel Surveys but is likely not needed in your code.
          */
         public People withIdentity(String distinctId);
-
     }
 
     /**
