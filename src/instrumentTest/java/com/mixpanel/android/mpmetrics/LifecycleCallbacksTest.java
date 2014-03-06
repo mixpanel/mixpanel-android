@@ -3,17 +3,14 @@ package com.mixpanel.android.mpmetrics;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.test.AndroidTestCase;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Future;
 
 // THESE TESTS FAIL ON OLD API VERSIONS. We should fix the test runner.
@@ -21,7 +18,7 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
 
     public void setUp() throws BadDecideObjectException, JSONException {
         mPrefsFuture = mPrefsLoader.loadPreferences(getContext(), "EMPTY REFERRER PREFERENCES", null);
-        mMockMixpanel = new MockMixpanel();
+        mMockMixpanel = new CallbacksMockMixpanel(getContext(), mPrefsFuture, "TEST TOKEN FOR LIFECYCLE CALLBACKS");
         mCallbacks = new MixpanelActivityLifecycleCallbacks(mMockMixpanel);
         mValidActivity = new TaskRootActivity();
         mFinishingActivity = new TaskRootActivity() {
@@ -97,21 +94,28 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
         assertEquals(mMockMixpanel.showSurveyCalls.get(0), mSurvey);
     }
 
-    public void testTimeThrottling() {
-        fail("This test (and the associated behavior) hasn't been written yet");
-    }
-
-    private class MockMixpanel extends MixpanelAPI {
-        public MockMixpanel() {
-            super(getContext(), mPrefsFuture, "MOCK MIXPANEL TOKEN FOR TEST");
+    private class TaskRootActivity extends Activity {
+        @Override
+        public boolean isTaskRoot() {
+            return true;
         }
 
         @Override
+        public Context getApplicationContext() {
+            return getContext();
+        }
+    }
+
+    private static class CallbacksMockMixpanel extends MockMixpanel {
+        public CallbacksMockMixpanel(final Context context, final Future<SharedPreferences> prefsFuture, final String testToken) {
+            super(context, prefsFuture, testToken);
+        }
+
         public People getPeople() {
             return mMockPeople;
         }
 
-        private final People mMockPeople = new People() {
+        private People mMockPeople = new MockMixpanel.MockPeople() {
             @Override
             public void checkForNotification(final InAppNotificationCallbacks callbacks) {
                 notificationCallbacks.add(callbacks);
@@ -132,103 +136,6 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
                 showNotificationCalls.add(notification);
                 return null;
             }
-
-            @Override
-            public void identify(final String distinctId) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void set(final String propertyName, final Object value) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void set(final JSONObject properties) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void setOnce(final String propertyName, final Object value) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void setOnce(final JSONObject properties) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void increment(final String name, final double increment) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void increment(final Map<String, ? extends Number> properties) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void append(final String name, final Object value) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void union(final String name, final JSONArray value) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void unset(final String name) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void trackCharge(final double amount, final JSONObject properties) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void clearCharges() {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void deleteUser() {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void initPushHandling(final String senderID) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void setPushRegistrationId(final String registrationId) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public void clearPushRegistrationId() {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public String getDistinctId() {
-                fail("Unexpected call");
-                return null;
-            }
-
-            @Override
-            public void checkForSurvey(final SurveyCallbacks callbacks) {
-                fail("Unexpected call");
-            }
-
-            @Override
-            public People withIdentity(final String distinctId) {
-                fail("Unexpected call");
-                return null;
-            }
         };
 
         public final List<InAppNotificationCallbacks> notificationCallbacks =
@@ -241,21 +148,9 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
                 Collections.synchronizedList(new ArrayList<Survey>());
     }
 
-    private class TaskRootActivity extends Activity {
-        @Override
-        public boolean isTaskRoot() {
-            return true;
-        }
-
-        @Override
-        public Context getApplicationContext() {
-            return getContext();
-        }
-    }
-
     private final SharedPreferencesLoader mPrefsLoader = new SharedPreferencesLoader();
     private Future<SharedPreferences> mPrefsFuture;
-    private MockMixpanel mMockMixpanel;
+    private CallbacksMockMixpanel mMockMixpanel;
     private MixpanelActivityLifecycleCallbacks mCallbacks;
     private Activity mValidActivity;
     private Activity mFinishingActivity, mDestroyedActivity;
