@@ -42,21 +42,23 @@ import com.mixpanel.android.util.StackBlurManager;
 
         @Override
         protected Void doInBackground(Void ...params) {
+            final long startTime = System.currentTimeMillis();
+
             if (null != mSourceImage) {
                 try {
-                    final long startTime = System.currentTimeMillis();
                     StackBlurManager.process(mSourceImage, 20);
                     final Canvas canvas = new Canvas(mSourceImage);
                     canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
-
-                    final long endTime = System.currentTimeMillis();
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "BackgroundCapture blur took " + (endTime - startTime) + " millis");
                 } catch (final OutOfMemoryError e) {
                     // It's possible that the bitmap processing was what sucked up all of the memory,
                     // So we try to recover here.
                     mSourceImage = null;
                 }
             }
+
+            final long endTime = System.currentTimeMillis();
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "BackgroundCapture blur took " + (endTime - startTime) + " millis");
+
             return null;
         }
 
