@@ -781,7 +781,6 @@ public class MixpanelAPI {
          */
         public void showSurvey(Survey s, Activity parent);
 
-
         /**
          * Will show a popup window above the given Activity that presents the content
          * of the given notification to the user. To get an InAppNotification to show,
