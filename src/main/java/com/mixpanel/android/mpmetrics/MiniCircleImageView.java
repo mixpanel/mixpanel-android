@@ -28,8 +28,7 @@ public class MiniCircleImageView extends ImageView {
         mWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mWhitePaint.setColor(getResources().getColor(android.R.color.white));
         mWhitePaint.setStyle(Paint.Style.STROKE);
-        
-        
+
         Resources r = getResources();
         float strokePx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2, r.getDisplayMetrics());
         mWhitePaint.setStrokeWidth(strokePx);
