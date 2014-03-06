@@ -13,8 +13,7 @@ import com.mixpanel.android.util.StackBlurManager;
 
 /* package */ class BackgroundCapture {
 
-    public static void captureBackground(
-            final boolean blur, final Activity parentActivity, final OnBackgroundCapturedListener listener) {
+    public static void captureBackground(final Activity parentActivity, final OnBackgroundCapturedListener listener) {
         parentActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {

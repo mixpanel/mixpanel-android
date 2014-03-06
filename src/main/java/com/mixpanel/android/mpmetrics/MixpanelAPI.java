@@ -1004,7 +1004,7 @@ public class MixpanelAPI {
             checkForSurvey(new SurveyCallbacks() {
                 @Override
                 public void foundSurvey(final Survey survey) {
-                    BackgroundCapture.captureBackground(true, parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
+                    BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
                         @Override
                         public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
                             final SurveyAssets assets = new SurveyAssets(
@@ -1061,7 +1061,7 @@ public class MixpanelAPI {
                     assets.highlightColor
                 );
             } else {
-                BackgroundCapture.captureBackground(true, parent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
                     public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
                         SurveyState.proposeSurvey(
