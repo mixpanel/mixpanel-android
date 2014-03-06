@@ -14,11 +14,12 @@ import java.util.List;
 
 /* package */ class DecideChecker {
 
-    /**
-     * All fields DecideCheck must return non-null values.
-     */
     public static class DecideCheck {
         public DecideCheck(final DecideCallbacks decideCallbacks, final String distinctId, final String token) {
+            assert decideCallbacks != null;
+            assert distinctId != null;
+            assert token != null;
+
             mDecideCallbacks = decideCallbacks;
             mDistinctId = distinctId;
             mToken = token;
