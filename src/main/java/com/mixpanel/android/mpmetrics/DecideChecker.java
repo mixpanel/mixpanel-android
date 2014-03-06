@@ -42,9 +42,6 @@ import java.util.List;
         mConfig = config;
     }
 
-    /**
-     * Will call check's callback with one survey and
-     */
     public void runDecideCheck(final DecideCheck check, final ServerMessage poster) {
         final String responseString = getDecideResponseFromServer(check.getToken(), check.getDistinctId(), poster);
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
