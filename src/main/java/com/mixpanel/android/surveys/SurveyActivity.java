@@ -35,6 +35,7 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         SurveyState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
@@ -48,8 +49,6 @@ public class SurveyActivity extends Activity {
         }
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
-            // It's possible that this mCurrentQuestion isn't relevant to the current survey
-            // (if, for example,
         }
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         final Bitmap background = mSurveyState.getBackground();

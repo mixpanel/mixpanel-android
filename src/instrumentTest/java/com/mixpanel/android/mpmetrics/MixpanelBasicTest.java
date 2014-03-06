@@ -498,7 +498,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         {
-
             final String elementsNull = "{\"surveys\": null, \"notifications\": null}";
             final DecideChecker.ParseResult parseElementsNull = DecideChecker.parseDecideResponse(elementsNull);
             assertTrue(parseElementsNull.notifications.isEmpty());
