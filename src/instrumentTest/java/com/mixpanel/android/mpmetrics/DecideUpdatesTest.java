@@ -2,7 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.test.AndroidTestCase;
 
@@ -13,7 +12,6 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DecideUpdatesTest extends AndroidTestCase {
     public void setUp() throws BadDecideObjectException, JSONException {
@@ -351,11 +349,11 @@ public class DecideUpdatesTest extends AndroidTestCase {
         }
 
         @Override
-        public void checkDecideService(DecideChecker.DecideCheck check) {
+        public void checkDecideService(DecideCheck check) {
             checks.add(check);
         }
 
-        public List<DecideChecker.DecideCheck> checks = new ArrayList<DecideChecker.DecideCheck>();
+        public List<DecideCheck> checks = new ArrayList<DecideCheck>();
     }
 
     public static class MockSurveyCallbacks implements SurveyCallbacks {

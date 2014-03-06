@@ -14,48 +14,8 @@ import java.util.List;
 
 /* package */ class DecideChecker {
 
-    public static class DecideCheck {
-        public DecideCheck(final DecideCallbacks decideCallbacks, final String distinctId, final String token) {
-            assert decideCallbacks != null;
-            assert distinctId != null;
-            assert token != null;
-
-            mDecideCallbacks = decideCallbacks;
-            mDistinctId = distinctId;
-            mToken = token;
-        }
-
-        public String getDistinctId() { return mDistinctId; }
-        public String getToken() { return mToken; }
-
-        public void callback(final List<Survey> surveys, final List<InAppNotification> notifications) {
-            mDecideCallbacks.foundResults(surveys, notifications);
-        }
-
-        private final DecideCallbacks mDecideCallbacks;
-        private final String mDistinctId;
-        private final String mToken;
-    }
-
-    public DecideChecker(Context context, MPConfig config) {
-        mContext = context;
-        mConfig = config;
-    }
-
-    public void runDecideCheck(final DecideCheck check, final ServerMessage poster) {
-        final String responseString = getDecideResponseFromServer(check.getToken(), check.getDistinctId(), poster);
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
-
-        ParseResult parsed = new ParseResult();
-        if (null != responseString) {
-            parsed = parseDecideResponse(responseString);
-        }
-
-        check.callback(parsed.surveys, parsed.notifications);
-    }// runDecideCheck
-
-    /* package */ static class ParseResult {
-        public ParseResult() {
+    /* package */ static class Result {
+        public Result() {
             surveys = new ArrayList<Survey>();
             notifications = new ArrayList<InAppNotification>();
         }
@@ -63,9 +23,26 @@ import java.util.List;
         public final List<InAppNotification> notifications;
     }
 
-    /* package */ static ParseResult parseDecideResponse(String responseString) {
+    public DecideChecker(Context context, MPConfig config) {
+        mContext = context;
+        mConfig = config;
+    }
+
+    public Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
+        final String responseString = getDecideResponseFromServer(token, distinctId, poster);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
+
+        Result parsed = new Result();
+        if (null != responseString) {
+            parsed = parseDecideResponse(responseString);
+        }
+
+       return parsed;
+    }// runDecideCheck
+
+    /* package */ static Result parseDecideResponse(String responseString) {
         JSONObject response;
-        final ParseResult ret = new ParseResult();
+        final Result ret = new Result();
 
         try {
             response = new JSONObject(responseString);

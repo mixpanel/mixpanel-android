@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +28,29 @@ import android.util.Log;
  * a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
+    public static class DecideCheck {
+        public DecideCheck(final DecideCallbacks decideCallbacks, final String distinctId, final String token) {
+            assert decideCallbacks != null;
+            assert distinctId != null;
+            assert token != null;
+
+            mDecideCallbacks = decideCallbacks;
+            mDistinctId = distinctId;
+            mToken = token;
+        }
+
+        public String getDistinctId() { return mDistinctId; }
+        public String getToken() { return mToken; }
+
+        public void callback(final List<Survey> surveys, final List<InAppNotification> notifications) {
+            mDecideCallbacks.foundResults(surveys, notifications);
+        }
+
+        private final DecideCallbacks mDecideCallbacks;
+        private final String mDistinctId;
+        private final String mToken;
+    }
+
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
@@ -110,7 +134,7 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
-    public void checkDecideService(DecideChecker.DecideCheck check) {
+    public void checkDecideService(DecideCheck check) {
         final Message m = Message.obtain();
         m.what = CHECK_DECIDE_SERVICE;
         m.obj = check;
@@ -269,8 +293,9 @@ import android.util.Log;
                     }
                     else if (msg.what == CHECK_DECIDE_SERVICE) {
                         logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
-                        final DecideChecker.DecideCheck check = (DecideChecker.DecideCheck) msg.obj;
-                        mDecideChecker.runDecideCheck(check, getPoster());
+                        final DecideCheck check = (DecideCheck) msg.obj;
+                        final DecideChecker.Result checkResult = mDecideChecker.runDecideCheck(check.getToken(), check.getDistinctId(), getPoster());
+                        check.callback(checkResult.surveys, checkResult.notifications);
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());

@@ -484,35 +484,35 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testDecideResponses() {
         {
             final String nonsense = "I AM NONSENSE";
-            final DecideChecker.ParseResult parseNonsense = DecideChecker.parseDecideResponse(nonsense);
+            final DecideChecker.Result parseNonsense = DecideChecker.parseDecideResponse(nonsense);
             assertTrue(parseNonsense.notifications.isEmpty());
             assertTrue(parseNonsense.surveys.isEmpty());
         }
 
         {
             final String allNull = "null";
-            final DecideChecker.ParseResult parseAllNull = DecideChecker.parseDecideResponse(allNull);
+            final DecideChecker.Result parseAllNull = DecideChecker.parseDecideResponse(allNull);
             assertTrue(parseAllNull.notifications.isEmpty());
             assertTrue(parseAllNull.surveys.isEmpty());
         }
 
         {
             final String elementsNull = "{\"surveys\": null, \"notifications\": null}";
-            final DecideChecker.ParseResult parseElementsNull = DecideChecker.parseDecideResponse(elementsNull);
+            final DecideChecker.Result parseElementsNull = DecideChecker.parseDecideResponse(elementsNull);
             assertTrue(parseElementsNull.notifications.isEmpty());
             assertTrue(parseElementsNull.surveys.isEmpty());
         }
 
         {
             final String elementsEmpty = "{\"surveys\": [], \"notifications\": []}";
-            final DecideChecker.ParseResult parseElementsEmpty = DecideChecker.parseDecideResponse(elementsEmpty);
+            final DecideChecker.Result parseElementsEmpty = DecideChecker.parseDecideResponse(elementsEmpty);
             assertTrue(parseElementsEmpty.notifications.isEmpty());
             assertTrue(parseElementsEmpty.surveys.isEmpty());
         }
 
         {
             final String notificationOnly = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\"}]}";
-            final DecideChecker.ParseResult parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
+            final DecideChecker.Result parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
             assertEquals(parseNotificationOnly.notifications.size(), 1);
 
             final InAppNotification parsed = parseNotificationOnly.notifications.get(0);
@@ -530,7 +530,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         {
             final String surveyOnly = "{\"notifications\":[],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
-            final DecideChecker.ParseResult parseSurveyOnly = DecideChecker.parseDecideResponse(surveyOnly);
+            final DecideChecker.Result parseSurveyOnly = DecideChecker.parseDecideResponse(surveyOnly);
             assertTrue(parseSurveyOnly.notifications.isEmpty());
 
             assertEquals(parseSurveyOnly.surveys.size(), 1);
@@ -549,7 +549,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         {
             final String both = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
-            final DecideChecker.ParseResult parseBoth = DecideChecker.parseDecideResponse(both);
+            final DecideChecker.Result parseBoth = DecideChecker.parseDecideResponse(both);
 
             final InAppNotification parsedNotification = parseBoth.notifications.get(0);
             assertEquals(parsedNotification.getBody(), "Hook me up, yo!");

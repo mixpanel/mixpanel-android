@@ -210,7 +210,7 @@ import java.util.concurrent.Executors;
                 reportResults(distinctId, surveys, notifications);
             }
         };
-        final DecideChecker.DecideCheck check = new DecideChecker.DecideCheck(callbacks, distinctId, mToken);
+        final AnalyticsMessages.DecideCheck check = new AnalyticsMessages.DecideCheck(callbacks, distinctId, mToken);
         messages.checkDecideService(check);
     }
 
