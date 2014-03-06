@@ -1286,7 +1286,8 @@ public class MixpanelAPI {
             TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
             ImageView notifImageView = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-            mPopupView.setBackgroundColor(ActivityImageUtils.getHighlightColor(ActivityImageUtils.getScaledScreenshot(mParent)));
+            int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+            mPopupView.setBackgroundColor(highlightColor);
 
             titleView.setText(mInAppNotification.getTitle());
             notifImageView.setImageBitmap(mInAppNotification.getImage());

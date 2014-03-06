@@ -6,7 +6,8 @@ import android.graphics.Color;
 import android.view.View;
 
 public class ActivityImageUtils {
-    public static Bitmap getScaledScreenshot(final Activity activity) {
+    // May return null.
+    public static Bitmap getScaledScreenshot(final Activity activity, int scaleWidth, int scaleHeight, boolean relativeScaleIfTrue) {
         final View someView = activity.findViewById(android.R.id.content);
         final View rootView = someView.getRootView();
         final boolean originalCacheState = rootView.isDrawingCacheEnabled();
@@ -19,10 +20,12 @@ public class ActivityImageUtils {
         final Bitmap original = rootView.getDrawingCache();
         Bitmap scaled = null;
         if (null != original && original.getWidth() > 0 && original.getHeight() > 0) {
-            final int scaledWidth = original.getWidth() / 2;
-            final int scaledHeight = original.getHeight() / 2;
-            if (scaledWidth > 0 && scaledHeight > 0) {
-                scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
+            if (relativeScaleIfTrue) {
+                scaleWidth = original.getWidth() / scaleWidth;
+                scaleHeight = original.getHeight() / scaleHeight;
+            }
+            if (scaleWidth > 0 && scaleHeight > 0) {
+                scaled = Bitmap.createScaledBitmap(original, scaleWidth, scaleHeight, false);
             }
         }
         if (!originalCacheState) {
@@ -31,19 +34,28 @@ public class ActivityImageUtils {
         return scaled;
     }
 
-    public static int getHighlightColor(final Bitmap screenshot) {
-        int averageColor = Color.BLACK;
-
-        try {
-            final Bitmap screenshot1px = Bitmap.createScaledBitmap(screenshot, 1, 1, true);
-            averageColor = screenshot1px.getPixel(0, 0);
-        } catch (final OutOfMemoryError e) {
-            // If we have an out of memory error, just go with the black
+    public static int getHighlightColorFromBackground(final Activity activity) {
+        int incolor = Color.BLACK;
+        final Bitmap screenshot1px = getScaledScreenshot(activity, 1, 1, false);
+        if (null != screenshot1px) {
+            incolor = screenshot1px.getPixel(0, 0);
         }
+        return getHighlightColor(incolor);
+    }
 
+    public static int getHighlightColorFromBitmap(final Bitmap bitmap) {
+        int incolor = Color.BLACK;
+        if (null != bitmap) {
+            final Bitmap bitmap1px = Bitmap.createScaledBitmap(bitmap, 1, 1, false);
+            incolor = bitmap1px.getPixel(0, 0);
+        }
+        return getHighlightColor(incolor);
+    }
+
+    public static int getHighlightColor(int sampleColor) {
         // Set a constant value level in HSV, in case the averaged color is too light or too dark.
         float[] hsvBackground = new float[3];
-        Color.colorToHSV(averageColor, hsvBackground);
+        Color.colorToHSV(sampleColor, hsvBackground);
         hsvBackground[2] = 0.3f; // value parameter
 
         return Color.HSVToColor(0xcc, hsvBackground);

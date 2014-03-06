@@ -36,7 +36,8 @@ import com.mixpanel.android.util.StackBlurManager;
 
         @Override
         protected void onPreExecute() {
-            mSourceImage = ActivityImageUtils.getScaledScreenshot(mParentActivity);
+            mSourceImage = ActivityImageUtils.getScaledScreenshot(mParentActivity, 2, 2, true);
+            mCalculatedHighlightColor = ActivityImageUtils.getHighlightColorFromBitmap(mSourceImage);
         }
 
         @Override
@@ -44,8 +45,6 @@ import com.mixpanel.android.util.StackBlurManager;
             if (null != mSourceImage) {
                 try {
                     final long startTime = System.currentTimeMillis();
-
-                    mCalculatedHighlightColor = ActivityImageUtils.getHighlightColor(mSourceImage);
                     StackBlurManager.process(mSourceImage, 20);
                     final Canvas canvas = new Canvas(mSourceImage);
                     canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
