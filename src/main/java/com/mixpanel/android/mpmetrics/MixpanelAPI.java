@@ -985,12 +985,6 @@ public class MixpanelAPI {
                 return;
             }
 
-            if (Build.VERSION.SDK_INT < 10) { // TODO is this correct? Should we grab the surveys and just not DISPLAY them at this API level?
-                Log.i(LOGTAG, "Surveys not supported on OS older than API 10, reporting null.");
-                callbacks.foundSurvey(null);
-                return;
-            }
-
             mDecideUpdates.setSurveyCallback(callbacks, checkDistinctId, mMessages);
         }
 
