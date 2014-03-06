@@ -35,7 +35,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
-
         super.setUp();
         final SharedPreferences referrerPreferences = getContext().getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = referrerPreferences.edit();
