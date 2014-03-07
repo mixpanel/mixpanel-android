@@ -70,14 +70,14 @@ import android.util.Log;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
         mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-			@Override
-			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
             synchronized (sReferrerPrefsLock) {
                 readReferrerProperties();
                 sReferrerPrefsDirty = false;
             }
-			}
-		};
+            }
+        };
     }
 
     public synchronized JSONObject getSuperProperties() {
