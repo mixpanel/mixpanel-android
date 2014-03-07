@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -129,20 +130,30 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
-        mDecideUpdates = new DecideUpdates(mContext, token);
+        mDecideUpdates = null;
 
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
             public void onPrefsLoaded(SharedPreferences preferences) {
-                final JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(preferences);
+                final JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(preferences);
                 if (null != records) {
                     sendAllPeopleRecords(records);
                 }
             }
         };
 
-        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token, listener);
-        mPersistentProperties = new PersistentProperties(referrerPreferences, storedPreferences);
+        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
+        mPersistentIdentity = new PersistentIdentity(token, referrerPreferences, storedPreferences);
+
+        // TODO this immediately forces the lazy load of the preferences, and defeats the
+        // purpose of PersistentIdentity's laziness.
+        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
+        if (null != peopleId) {
+            mDecideUpdates = new DecideUpdates(token, peopleId);
+            mMessages.installDecideCheck(mDecideUpdates);
+        }
+
         registerMixpanelActivityLifecycleCallbacks();
     }
 
@@ -244,8 +255,8 @@ public class MixpanelAPI {
         Log.i(
             LOGTAG,
             "MixpanelAPI.enableFallbackServer is deprecated.\n" +
-            "    To disable fallback in your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"true\" />\n" +
+            "    To enable fallback in your application, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
             "    to the <application> section of your AndroidManifest.xml."
         );
         final AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
@@ -278,7 +289,7 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
-       mPersistentProperties.setEventsDistinctId(distinctId);
+       mPersistentIdentity.setEventsDistinctId(distinctId);
     }
 
     /**
@@ -299,14 +310,14 @@ public class MixpanelAPI {
         try {
             final JSONObject messageProps = new JSONObject();
 
-            final Map<String, String> referrerProperties = mPersistentProperties.getReferrerProperties();
+            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
             for (final Map.Entry<String, String> entry:referrerProperties.entrySet()) {
                 final String key = entry.getKey();
                 final String value = entry.getValue();
                 messageProps.put(key, value);
             }
 
-            final JSONObject superProperties = mPersistentProperties.getSuperProperties();
+            final JSONObject superProperties = mPersistentIdentity.getSuperProperties();
             final Iterator<?> superIter = superProperties.keys();
             while (superIter.hasNext()) {
                 final String key = (String) superIter.next();
@@ -367,7 +378,7 @@ public class MixpanelAPI {
      * @see People#getDistinctId()
      */
     public String getDistinctId() {
-        return mPersistentProperties.getEventsDistinctId();
+        return mPersistentIdentity.getEventsDistinctId();
      }
 
     /**
@@ -389,7 +400,7 @@ public class MixpanelAPI {
      * @see #clearSuperProperties()
      */
     public void registerSuperProperties(JSONObject superProperties) {
-        mPersistentProperties.registerSuperProperties(superProperties);
+        mPersistentIdentity.registerSuperProperties(superProperties);
     }
 
     /**
@@ -403,7 +414,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void unregisterSuperProperty(String superPropertyName) {
-        mPersistentProperties.unregisterSuperProperty(superPropertyName);
+        mPersistentIdentity.unregisterSuperProperty(superPropertyName);
     }
 
     /**
@@ -416,7 +427,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
-        mPersistentProperties.registerSuperPropertiesOnce(superProperties);
+        mPersistentIdentity.registerSuperPropertiesOnce(superProperties);
     }
 
     /**
@@ -431,7 +442,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void clearSuperProperties() {
-        mPersistentProperties.clearSuperProperties();
+        mPersistentIdentity.clearSuperProperties();
     }
 
     /**
@@ -861,7 +872,7 @@ public class MixpanelAPI {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
-        mPersistentProperties.clearPreferences();
+        mPersistentIdentity.clearPreferences();
     }
 
     ///////////////////////
@@ -869,7 +880,16 @@ public class MixpanelAPI {
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
-            mPersistentProperties.setPeopleDistinctId(distinctId);
+            mPersistentIdentity.setPeopleDistinctId(distinctId);
+            if (null != mDecideUpdates && mDecideUpdates.getDistinctId() != distinctId) {
+                mDecideUpdates.destroy();
+                mDecideUpdates = null;
+            }
+
+            if (null == mDecideUpdates) {
+                mDecideUpdates = new DecideUpdates(mToken, distinctId);
+                mMessages.installDecideCheck(mDecideUpdates);
+            }
             pushWaitingPeopleRecord();
          }
 
@@ -985,7 +1005,8 @@ public class MixpanelAPI {
                 return;
             }
 
-            mDecideUpdates.setSurveyCallback(callbacks, checkDistinctId, mMessages);
+            Survey found = mDecideUpdates.popSurvey();
+            callbacks.foundSurvey(found); // TODO isolate this thread, per expected behavior
         }
 
         @Override
@@ -1013,6 +1034,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        // TODO REMOVE THIS IN FAVOR OF SIMPLE, SYNCHRONOUS ASSIGNMENT
         public void checkForNotification(final InAppNotificationCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for notifications...");
 
@@ -1026,7 +1048,8 @@ public class MixpanelAPI {
                 return;
             }
 
-            mDecideUpdates.setInAppCallback(callbacks, checkDistinctId, mMessages);
+            final InAppNotification notification = mDecideUpdates.popNotification();
+            callbacks.foundNotification(notification);
         }
 
         @Override
@@ -1127,7 +1150,7 @@ public class MixpanelAPI {
             if (getDistinctId() == null) {
                 return;
             }
-            mPersistentProperties.storePushId(registrationId);
+            mPersistentIdentity.storePushId(registrationId);
             try {
                 union("$android_devices", new JSONArray("[" + registrationId + "]"));
             } catch (final JSONException e) {
@@ -1138,7 +1161,7 @@ public class MixpanelAPI {
         @Override
         public void clearPushRegistrationId() {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
-            mPersistentProperties.clearPushId();
+            mPersistentIdentity.clearPushId();
             set("$android_devices", new JSONArray());
         }
 
@@ -1151,7 +1174,7 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
             else { // Configuration is good for push notifications
-                final String pushId = mPersistentProperties.getPushId();
+                final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
                     if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
 
@@ -1177,7 +1200,7 @@ public class MixpanelAPI {
 
         @Override
         public String getDistinctId() {
-            return mPersistentProperties.getPeopleDistinctId();
+            return mPersistentIdentity.getPeopleDistinctId();
         }
 
         @Override
@@ -1396,18 +1419,18 @@ public class MixpanelAPI {
         if (message.has("$distinct_id")) {
            mMessages.peopleMessage(message);
         } else {
-           mPersistentProperties.storeWaitingPeopleRecord(message);
+           mPersistentIdentity.storeWaitingPeopleRecord(message);
         }
     }
 
     private void pushWaitingPeopleRecord() {
-        final JSONArray records = mPersistentProperties.waitingPeopleRecordsForSending();
+        final JSONArray records = mPersistentIdentity.waitingPeopleRecordsForSending();
         if (null != records) {
             sendAllPeopleRecords(records);
         }
     }
 
-    // MUST BE THREAD SAFE. Called from crazy places. mPersistentProperties may not exist
+    // MUST BE THREAD SAFE. Called from crazy places. mPersistentIdentity may not exist
     // when this is called (from its crazy thread)
     private void sendAllPeopleRecords(JSONArray records) {
         for (int i = 0; i < records.length(); i++) {
@@ -1438,10 +1461,10 @@ public class MixpanelAPI {
     private final AnalyticsMessages mMessages;
     private final String mToken;
     private final PeopleImpl mPeople;
-    private final PersistentProperties mPersistentProperties;
+    private final PersistentIdentity mPersistentIdentity;
 
     private final SynchronizedReference<SurveyAssets> mSurveyAssets;
-    private final DecideUpdates mDecideUpdates;
+    private DecideUpdates mDecideUpdates;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

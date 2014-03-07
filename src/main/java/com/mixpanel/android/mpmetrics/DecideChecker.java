@@ -10,7 +10,11 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /* package */ class DecideChecker {
 
@@ -23,12 +27,30 @@ import java.util.List;
         public final List<InAppNotification> notifications;
     }
 
-    public DecideChecker(Context context, MPConfig config) {
+    public DecideChecker(final Context context, final MPConfig config) {
         mContext = context;
         mConfig = config;
+        mChecks = new LinkedList<DecideUpdates>();
     }
 
-    public Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
+    public void addDecideCheck(final DecideUpdates check) {
+        mChecks.add(check);
+    }
+
+    public void runDecideChecks(final ServerMessage poster) {
+        final Iterator<DecideUpdates> itr = mChecks.iterator();
+        while (itr.hasNext()) {
+            final DecideUpdates updates = itr.next();
+            if (updates.isDestroyed()) {
+                itr.remove();
+            } else {
+                final Result result = runDecideCheck(updates.getToken(), updates.getDistinctId(), poster);
+                updates.reportResults(result.surveys, result.notifications);
+            }
+        }
+    }
+
+    private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
 
@@ -127,6 +149,7 @@ import java.util.List;
 
     private final MPConfig mConfig;
     private final Context mContext;
+    private final List<DecideUpdates> mChecks;
 
     private static final String LOGTAG = "MixpanelAPI DecideChecker";
 }

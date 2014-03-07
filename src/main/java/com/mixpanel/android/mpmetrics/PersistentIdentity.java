@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -15,7 +16,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
-/* package */ class PersistentProperties {
+/* package */ class PersistentIdentity {
 
     // Will be called from crazy threads, BUT will be the only thread that has access to the given
     // SharedPreferences during the run.
@@ -50,6 +51,12 @@ import android.util.Log;
         return ret;
     }
 
+    // TODO this stuff is hacky, we should construct a whole, healthy identity here instead
+    // Likewise, called from a wacky thread, but with exclusive access to the SharedPreferences
+    public static String peopleDistinctId(SharedPreferences storedPreferences) {
+        return storedPreferences.getString("people_distinct_id", null);
+    }
+
     public static void writeReferrerPrefs(Context context, String preferencesName, Map<String, String> properties) {
         synchronized (sReferrerPrefsLock) {
             final SharedPreferences referralInfo = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE);
@@ -63,21 +70,22 @@ import android.util.Log;
         }
     }
 
-    public PersistentProperties(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
+    public PersistentIdentity(String token, Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
+        mToken = token;
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
         mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-			@Override
-			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-            synchronized (sReferrerPrefsLock) {
-                readReferrerProperties();
-                sReferrerPrefsDirty = false;
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+                synchronized (sReferrerPrefsLock) {
+                    readReferrerProperties();
+                    sReferrerPrefsDirty = false;
+                }
             }
-			}
-		};
+        };
     }
 
     public synchronized JSONObject getSuperProperties() {
@@ -342,6 +350,16 @@ import android.util.Log;
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mWaitingPeopleRecords = null;
 
+        if (null != mPeopleDistinctId) {
+            if (null != mDecideUpdates && mDecideUpdates.getDistinctId() != mPeopleDistinctId) {
+                mDecideUpdates.destroy();
+                mDecideUpdates = null;
+            }
+            if (null == mDecideUpdates) {
+                mDecideUpdates = new DecideUpdates(mToken, mPeopleDistinctId);
+            }
+        }
+
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
         if (storedWaitingRecord != null) {
             try {
@@ -381,6 +399,7 @@ import android.util.Log;
         }
     }
 
+    private final String mToken;
     private final Future<SharedPreferences> mLoadStoredPreferences;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
@@ -390,8 +409,9 @@ import android.util.Log;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
+    private DecideUpdates mDecideUpdates;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
-    private static final String LOGTAG = "MixpanelAPI PersistentProperties";
+    private static final String LOGTAG = "MixpanelAPI PersistentIdentity";
 }

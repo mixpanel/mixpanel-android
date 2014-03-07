@@ -2,7 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,33 +27,11 @@ import android.util.Log;
  * a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
-    public static class DecideCheck {
-        public DecideCheck(final DecideCallbacks decideCallbacks, final String distinctId, final String token) {
-            assert decideCallbacks != null;
-            assert distinctId != null;
-            assert token != null;
-
-            mDecideCallbacks = decideCallbacks;
-            mDistinctId = distinctId;
-            mToken = token;
-        }
-
-        public String getDistinctId() { return mDistinctId; }
-        public String getToken() { return mToken; }
-
-        public void callback(final List<Survey> surveys, final List<InAppNotification> notifications) {
-            mDecideCallbacks.foundResults(surveys, notifications);
-        }
-
-        private final DecideCallbacks mDecideCallbacks;
-        private final String mDistinctId;
-        private final String mToken;
-    }
 
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(Context context) {
+    /* package */ AnalyticsMessages(final Context context) {
         mContext = context;
         mConfig = getConfig(context);
         mLogMixpanelMessages = new AtomicBoolean(false);
@@ -68,7 +45,7 @@ import android.util.Log;
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
      */
-    public static AnalyticsMessages getInstance(Context messageContext) {
+    public static AnalyticsMessages getInstance(final Context messageContext) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
@@ -89,7 +66,7 @@ import android.util.Log;
         mLogMixpanelMessages.set(true);
     }
 
-    public void eventsMessage(EventDescription eventDescription) {
+    public void eventsMessage(final EventDescription eventDescription) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
         m.obj = eventDescription;
@@ -97,7 +74,7 @@ import android.util.Log;
     }
 
     // Must be thread safe.
-    public void peopleMessage(JSONObject peopleJson) {
+    public void peopleMessage(final JSONObject peopleJson) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;
         m.obj = peopleJson;
@@ -115,7 +92,7 @@ import android.util.Log;
     /**
      * Remove this when we eliminate the associated deprecated public ifc
      */
-    public void setFlushInterval(long milliseconds) {
+    public void setFlushInterval(final long milliseconds) {
         final Message m = Message.obtain();
         m.what = SET_FLUSH_INTERVAL;
         m.obj = milliseconds;
@@ -134,10 +111,11 @@ import android.util.Log;
         mWorker.runMessage(m);
     }
 
-    public void checkDecideService(DecideCheck check) {
+    public void installDecideCheck(final DecideUpdates check) {
         final Message m = Message.obtain();
-        m.what = CHECK_DECIDE_SERVICE;
+        m.what = INSTALL_DECIDE_CHECK;
         m.obj = check;
+
         mWorker.runMessage(m);
     }
 
@@ -289,13 +267,14 @@ import android.util.Log;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
+                        mDecideChecker.runDecideChecks(getPoster());
                         sendAllData(mDbAdapter);
                     }
-                    else if (msg.what == CHECK_DECIDE_SERVICE) {
-                        logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
-                        final DecideCheck check = (DecideCheck) msg.obj;
-                        final DecideChecker.Result checkResult = mDecideChecker.runDecideCheck(check.getToken(), check.getDistinctId(), getPoster());
-                        check.callback(checkResult.surveys, checkResult.notifications);
+                    else if (msg.what == INSTALL_DECIDE_CHECK) {
+                        logAboutMessageToMixpanel("Installing a check for surveys");
+                        final DecideUpdates check = (DecideUpdates) msg.obj;
+                        mDecideChecker.addDecideCheck(check);
+                        mDecideChecker.runDecideChecks(getPoster());
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -494,8 +473,8 @@ import android.util.Log;
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
-    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the eve
-    private static int CHECK_DECIDE_SERVICE = 11; // Poll the Mixpanel decide API for updates
+    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
+    private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
 
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed

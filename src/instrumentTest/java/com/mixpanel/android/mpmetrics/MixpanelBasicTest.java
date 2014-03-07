@@ -350,31 +350,27 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.getPeople().identify("SURVEY TEST USER");
         mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
             @Override public void foundSurvey(Survey s) {
-                if (Build.VERSION.SDK_INT < 10) {
-                    assertNull(s);
-                } else {
-                    assertEquals(s.getId(), 291);
-                    assertEquals(s.getCollectionId(), 141);
+                assertEquals(s.getId(), 291);
+                assertEquals(s.getCollectionId(), 141);
 
-                    List<Survey.Question> questions = s.getQuestions();
-                    assertEquals(questions.size(), 2);
+                List<Survey.Question> questions = s.getQuestions();
+                assertEquals(questions.size(), 2);
 
-                    Survey.Question mcQuestion = questions.get(0);
-                    assertEquals(mcQuestion.getId(), 275);
-                    assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
-                    assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-                    List<String> mcChoices = mcQuestion.getChoices();
-                    assertEquals(mcChoices.size(), 2);
-                    assertEquals(mcChoices.get(0), "Option 1");
-                    assertEquals(mcChoices.get(1), "Option 2");
+                Survey.Question mcQuestion = questions.get(0);
+                assertEquals(mcQuestion.getId(), 275);
+                assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
+                assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
+                List<String> mcChoices = mcQuestion.getChoices();
+                assertEquals(mcChoices.size(), 2);
+                assertEquals(mcChoices.get(0), "Option 1");
+                assertEquals(mcChoices.get(1), "Option 2");
 
-                    Survey.Question textQuestion = questions.get(1);
-                    assertEquals(textQuestion.getId(), 277);
-                    assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
-                    assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
-                    List<String> textChoices = textQuestion.getChoices();
-                    assertEquals(textChoices.size(), 0);
-                }
+                Survey.Question textQuestion = questions.get(1);
+                assertEquals(textQuestion.getId(), 277);
+                assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
+                assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
+                List<String> textChoices = textQuestion.getChoices();
+                assertEquals(textChoices.size(), 0);
 
                 try {
                     foundQueue.put("OK 1");
