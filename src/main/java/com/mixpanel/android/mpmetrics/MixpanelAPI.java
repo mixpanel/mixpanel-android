@@ -14,9 +14,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
+import android.app.FragmentTransaction;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
@@ -27,9 +29,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -48,7 +48,6 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -1297,43 +1296,13 @@ public class MixpanelAPI {
             } // if button was clicked
         }
 
+        @SuppressLint("NewApi")
         private void showMiniInAppNotification() {
-            TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            ImageView notifImageView = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
-
-            int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-            mPopupView.setBackgroundColor(highlightColor);
-
-            titleView.setText(mInAppNotification.getTitle());
-            notifImageView.setImageBitmap(mInAppNotification.getImage());
-
-            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-
-            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
-            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-            mPopupWindow.setHeight((int) heightPx);
-
-            final String uri = mInAppNotification.getCallToActionUrl();
-            if (uri != null && uri.length() > 0) {
-                mPopupView.setOnClickListener(this);
-            }
-
-            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-            sa.setInterpolator(new SineBounceInterpolator());
-            sa.setDuration(500);
-            sa.setStartOffset(300);
-            notifImageView.startAnimation(sa);
-
-            mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
-            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-
-            Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
-                public void run() {
-                    // TODO this crashes the app if the view is dead
-                    mPopupWindow.dismiss();
-                }
-            }, 6000);
+            InAppFragment inapp = InAppFragment.create(mInAppNotification);
+            FragmentTransaction transaction = mParent.getFragmentManager().beginTransaction();
+            transaction.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
+            transaction.add(android.R.id.content, inapp);
+            transaction.commit();
         }
 
         private void showTakeoverInAppNotification() {
