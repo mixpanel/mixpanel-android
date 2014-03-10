@@ -74,21 +74,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
         return mUnseenNotifications.remove(0);
     }
 
-    /* package */ long currentTimeMillis() {
-        return System.currentTimeMillis();
-    }
-
-    // FOR TESTING ONLY. In the real app, this will be useless and race-condition-tacular
-    // TODO JUST POP FROM THESE INSTEAD
-    /* package */ List<Survey> peekAtSurveyCache() {
-        return mUnseenSurveys;
-    }
-
-    // TODO JUST POP THESE INSTEAD
-    /* package */ List<InAppNotification> peekAtNotificationCache() {
-        return mUnseenNotifications;
-    }
-
     private final String mToken;
     private final String mDistinctId;
     private final Set<Integer> mSurveyIds;
