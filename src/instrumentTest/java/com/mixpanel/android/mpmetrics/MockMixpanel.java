@@ -45,9 +45,8 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public InAppNotificationDisplay showNotification(final InAppNotification notification, final Activity parent) {
+        public void showNotification(final InAppNotification notification, final Activity parent) {
             Assert.fail("Unexpected call");
-            return null;
         }
 
         @Override
