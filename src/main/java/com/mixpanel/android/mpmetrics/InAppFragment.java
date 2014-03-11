@@ -252,17 +252,15 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private void remove() {
         if (mParent != null) {
             FragmentManager fm = mParent.getFragmentManager();
-            FragmentTransaction ft = fm.beginTransaction();
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
             if (mType == InAppNotification.Type.TAKEOVER.toString()) {
                 fm.popBackStack();
-                ft.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
             } else {
-                ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
+                FragmentTransaction ft = fm.beginTransaction();
+                ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down).remove(this).commit();
             }
-            ft.remove(this).commit();
         }
     }
 
