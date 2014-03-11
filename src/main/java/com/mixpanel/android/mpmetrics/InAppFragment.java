@@ -60,13 +60,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        mType = getArguments().getString("type");
-    }
-
-    @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
 
@@ -79,6 +72,14 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
                 InAppFragment.this.remove();
             }
         };
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        mType = getArguments().getString("type");
+        mKill = false;
     }
 
     @Override
@@ -140,10 +141,25 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+
+        if (mKill) {
+            mParent.getFragmentManager().beginTransaction().remove(this).commit();
+        }
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
 
         mHandler.removeCallbacks(mRemover);
+
+        // This Fragment when registered on the Activity is part of its state, and so gets
+        // restored / recreated when the Activity goes away and comes back, so we have to
+        // remember kill it. If the Activity object fully dies, then it is not remembered,
+        // so onSaveInstanceState is not necessary.
+        mKill = true;
     }
 
     @Override
@@ -262,6 +278,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private Runnable mRemover;
     private String mType;
     private View mInAppView;
+
+    private boolean mKill;
 
     private static final String LOGTAG = "InAppFragment";
     private static final int MINI_REMOVE_TIME = 6000;
