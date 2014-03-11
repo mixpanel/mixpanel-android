@@ -13,6 +13,9 @@ import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
+import com.mixpanel.android.util.Base64Coder;
+
+import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -469,28 +472,57 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testHTTPFailures() {
 
-        final List<ServerMessage.Result> results = new ArrayList<ServerMessage.Result>();
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, bytes("0\n")));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
+        final List<ServerMessage.Result> flushResults = new ArrayList<ServerMessage.Result>();
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("0\n"))); // Will be set to FAILED_UNRECOVERABLE at a higher level
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, bytes("1\n")));
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public ServerMessage.Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                if (null == nameValuePairs) {
+                    assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    return new Result(Status.SUCCEEDED, bytes("{}"));
+                }
+                // ELSE
+
                 try {
-                    JSONArray msg = new JSONArray(rawMessage);
+                    assertEquals(nameValuePairs.get(1).getName(), "verbose");
+                    assertEquals(nameValuePairs.get(1).getValue(), "1");
+
+                    assertEquals(nameValuePairs.get(0).getName(), "data");
+                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
+
+                    System.out.println("RETURNING " + flushResults.get(0).getStatus() + ", " + flushResults.get(0).getResponse());
+                    System.out.println("    FOR EVENT " + event.getString("event"));
+
                     attempts.put(event.getString("event"));
                 } catch (JSONException e) {
-                    throw new RuntimeException("Malformed data passed to test mock");
+                    throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException("Could not write message to reporting queue for tests.");
+                    throw new RuntimeException("Could not write message to reporting queue for tests.", e);
                 }
-                return results.remove(0);
+                return flushResults.remove(0);
+            }
+        };
+
+        final MPConfig config = new MPConfig(new Bundle()) {
+            public String getDecideEndpoint() {
+                return "DECIDE ENDPOINT";
+            }
+
+            public String getEventsEndpoint() {
+                return "EVENTS ENDPOINT";
+            }
+
+            public boolean getDisableFallback() {
+                return false;
             }
         };
 
@@ -498,6 +530,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             protected ServerMessage getPoster() {
                 return mockPoster;
+            }
+
+            @Override
+            protected MPConfig getConfig(Context context) {
+                return config;
             }
         };
 

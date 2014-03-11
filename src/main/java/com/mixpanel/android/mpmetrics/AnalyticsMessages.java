@@ -479,8 +479,6 @@ import android.util.Log;
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
 
-    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newSingleThreadExecutor();
-
     private static final String LOGTAG = "MixpanelAPI";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();

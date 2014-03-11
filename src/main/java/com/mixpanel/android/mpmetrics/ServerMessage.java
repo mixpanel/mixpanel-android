@@ -151,8 +151,10 @@ import com.mixpanel.android.util.Base64Coder;
      * and craziness.
      *
      * Will POST if nameValuePairs is not null.
+     *
+     * Package access for testing only.
      */
-    private Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+    /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
         Status status = Status.FAILED_UNRECOVERABLE;
         byte[] response = null;
         try {
