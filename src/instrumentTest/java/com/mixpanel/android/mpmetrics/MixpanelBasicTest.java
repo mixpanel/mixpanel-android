@@ -332,10 +332,21 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public Result postData(Context context, String rawMessage, String endpointUrl, String fallbackUrl) {
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                if (null == nameValuePairs) {
+                    assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    return new Result(Status.SUCCEEDED, bytes("{}"));
+                }
+
+                assertEquals(nameValuePairs.get(1).getName(), "verbose");
+                assertEquals(nameValuePairs.get(1).getValue(), "1");
+
+                assertEquals(nameValuePairs.get(0).getName(), "data");
+                final String decoded = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
-                    messages.put(rawMessage);
+                    messages.put(decoded);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -343,6 +354,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return new Result(Status.SUCCEEDED, bytes("1\n"));
             }
         };
+
 
         final MPConfig mockConfig = new MPConfig(new Bundle()) {
             @Override
@@ -363,6 +375,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             public String getPeopleEndpoint() {
                 return "PEOPLE_ENDPOINT";
+            }
+
+            @Override
+            public String getDecideEndpoint() {
+                return "DECIDE_ENDPOINT";
             }
         };
 
