@@ -2,10 +2,9 @@
 <set xmlns:android="http://schemas.android.com/apk/res/android"
      android:interpolator="@android:anim/accelerate_interpolator"
      android:shareInterpolator="true">
-    <translate
-        android:fromXDelta="0"
-        android:toXDelta="0"
-        android:fromYDelta="0"
-        android:toYDelta="100%p"
-        android:duration="1000" />
+    <objectAnimator
+        android:propertyName="translationY"
+        android:valueFrom="0dp"
+        android:valueTo="75dp"
+        android:duration="300" />
 </set>

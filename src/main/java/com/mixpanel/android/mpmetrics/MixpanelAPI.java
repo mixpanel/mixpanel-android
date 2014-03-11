@@ -8,47 +8,25 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
+import android.app.FragmentTransaction;
 import android.app.PendingIntent;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
 import android.util.Log;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.WindowManager;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.Interpolator;
-import android.view.animation.ScaleAnimation;
-import android.view.animation.TranslateAnimation;
-import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.PopupWindow;
-import android.widget.TextView;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -785,7 +763,7 @@ public class MixpanelAPI {
          * of the given notification to the user. To get an InAppNotification to show,
          * use checkForNotification.
          */
-        public InAppNotificationDisplay showNotification(InAppNotification notification, Activity parent);
+        public void showNotification(InAppNotification notification, Activity parent);
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
@@ -1097,12 +1075,29 @@ public class MixpanelAPI {
         }
 
         @Override
-        // MUST BE THREAD SAFE
-        public InAppNotificationDisplay showNotification(final InAppNotification notification, final Activity parent) {
-            final InAppNotificationDisplay display = new InAppNotificationDisplay(notification, parent);
-            parent.runOnUiThread(display);
+        public void showNotification(final InAppNotification notification, final Activity parent) {
+            // In app notifications are not supported before Honeycomb
+            if (Build.VERSION.SDK_INT < 11) {
+                return;
+            }
 
-            return display;
+            parent.runOnUiThread(new Runnable() {
+                @SuppressLint("NewApi")
+                public void run() {
+                    InAppFragment inapp = InAppFragment.create(notification);
+                    FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+
+                    if (notification.getType() == InAppNotification.Type.TAKEOVER) {
+                        transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
+                    } else {
+                        transaction.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
+                    }
+                    transaction.add(android.R.id.content, inapp);
+                    transaction.commit();
+
+                    track("$campaign_delivery", notification.getCampaignProperties());
+                }
+            });
         }
 
         @Override
@@ -1243,181 +1238,6 @@ public class MixpanelAPI {
     }// PeopleImpl
 
     ////////////////////////////////////////////////////
-
-    public class InAppNotificationDisplay implements Runnable, View.OnClickListener {
-
-        public InAppNotificationDisplay(final InAppNotification notification, final Activity parent) {
-            mInAppNotification = notification;
-            mParent = parent;
-
-            LayoutInflater inflater = (LayoutInflater) mParent.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
-                mPopupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, null, false);
-            } else {
-                mPopupView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, null, false);
-            }
-            mPopupWindow = new PopupWindow(mPopupView);
-        }
-
-        public void dismiss() {
-            mPopupWindow.dismiss();
-        }
-
-        // Should be run only on the UI thread.
-        @Override
-        public void run() {
-            if (mInAppNotification.getType() == InAppNotification.Type.TAKEOVER) {
-                showTakeoverInAppNotification();
-            } else {
-                showMiniInAppNotification();
-            }
-
-            track("$campaign_delivery", mInAppNotification.getCampaignProperties());
-        }
-
-        @Override
-        public void onClick(View clicked) {
-            mPopupWindow.dismiss();
-            if (clicked.getId() == R.id.com_mixpanel_android_notification_button) {
-                track("$campaign_open", mInAppNotification.getCampaignProperties());
-                String uriString = mInAppNotification.getCallToActionUrl();
-                if (uriString != null && uriString.length() > 0) {
-                    Uri uri = null;
-                    try {
-                        uri = Uri.parse(uriString);
-                    } catch (IllegalArgumentException e) {
-                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
-                        return;
-                    }
-
-                    assert(uri != null);
-                    try {
-                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
-                        mParent.startActivity(viewIntent);
-                    } catch (ActivityNotFoundException e) {
-                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
-                    }
-                }
-            } // if button was clicked
-        }
-
-        private void showMiniInAppNotification() {
-            TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            ImageView notifImageView = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
-
-            int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-            mPopupView.setBackgroundColor(highlightColor);
-
-            titleView.setText(mInAppNotification.getTitle());
-            notifImageView.setImageBitmap(mInAppNotification.getImage());
-
-            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-
-            // WRAP_CONTENT behaves strangely, adding a ton more space than necessary, so we have to setHeight ourselves
-            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-            mPopupWindow.setHeight((int) heightPx);
-
-            final String uri = mInAppNotification.getCallToActionUrl();
-            if (uri != null && uri.length() > 0) {
-                mPopupView.setOnClickListener(this);
-            }
-
-            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-            sa.setInterpolator(new SineBounceInterpolator());
-            sa.setDuration(500);
-            sa.setStartOffset(300);
-            notifImageView.startAnimation(sa);
-
-            mPopupWindow.setAnimationStyle(R.style.SlideInOutAnimation);
-            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-
-            Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
-                public void run() {
-                    // TODO this crashes the app if the view is dead
-                    mPopupWindow.dismiss();
-                }
-            }, 6000);
-        }
-
-        private void showTakeoverInAppNotification() {
-            ImageView notifImage = (ImageView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_image);
-            TextView titleView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_title);
-            TextView subtextView = (TextView) mPopupView.findViewById(R.id.com_mixpanel_android_notification_subtext);
-            Button ctaButton = (Button) mPopupView.findViewById(R.id.com_mixpanel_android_notification_button);
-            ImageButton closeButton = (ImageButton) mPopupView.findViewById(R.id.com_mixpanel_android_button_exit);
-
-            titleView.setText(mInAppNotification.getTitle());
-            subtextView.setText(mInAppNotification.getBody());
-            notifImage.setImageBitmap(mInAppNotification.getImage());
-
-            mPopupWindow.setWidth(WindowManager.LayoutParams.MATCH_PARENT);
-
-            // Handle PopupWindow normally hiding under status bar
-            Rect r = new Rect();
-            mParent.getWindow().getDecorView().getWindowVisibleDisplayFrame(r);
-            mPopupWindow.setHeight(mParent.getWindow().getDecorView().getHeight() - r.top);
-
-            // The following two lines are needed to make back button dismissal work.
-            mPopupWindow.setBackgroundDrawable(new BitmapDrawable());
-            mPopupWindow.setFocusable(true);
-
-            final String callToAction = mInAppNotification.getCallToAction();
-            ctaButton.setText(R.string.com_mixpanel_android_done);
-            if (callToAction != null && callToAction.length() > 0) {
-                ctaButton.setText(callToAction);
-            }
-            ctaButton.setOnClickListener(this);
-            ctaButton.setOnTouchListener(new View.OnTouchListener() {
-                public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
-                    } else {
-                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
-                    }
-                    return false;
-                }
-            });
-            closeButton.setOnClickListener(this);
-
-            // Begin animations
-            ScaleAnimation sa = new ScaleAnimation(
-                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
-            sa.setDuration(200);
-            notifImage.startAnimation(sa);
-
-            TranslateAnimation ta = new TranslateAnimation(
-                 Animation.RELATIVE_TO_SELF, 0.0f,
-                 Animation.RELATIVE_TO_SELF, 0.0f,
-                 Animation.RELATIVE_TO_SELF, 0.5f,
-                 Animation.RELATIVE_TO_SELF, 0.0f
-            );
-            ta.setInterpolator(new DecelerateInterpolator());
-            ta.setDuration(200);
-            titleView.startAnimation(ta);
-            subtextView.startAnimation(ta);
-            ctaButton.startAnimation(ta);
-
-            Animation fadeIn = AnimationUtils.loadAnimation(mParent, R.anim.fade_in);
-            fadeIn.setStartOffset(100);
-            closeButton.startAnimation(fadeIn);
-
-            mPopupWindow.setAnimationStyle(R.style.FadeInOutAnimation);
-            mPopupWindow.showAtLocation(mParent.getWindow().getDecorView().findViewById(android.R.id.content), Gravity.BOTTOM, 0, 0);
-        }
-
-        private class SineBounceInterpolator implements Interpolator {
-            public SineBounceInterpolator() { }
-            public float getInterpolation(float t) {
-                return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
-            }
-        }
-
-        private PopupWindow mPopupWindow;
-        private View mPopupView;
-        private final Activity mParent;
-        private final InAppNotification mInAppNotification;
-    }
 
     private void recordPeopleMessage(JSONObject message) {
         if (message.has("$distinct_id")) {
