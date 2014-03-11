@@ -19,5 +19,9 @@ package com.mixpanel.android.mpmetrics;
         return ret;
     }
 
+    public synchronized T get() {
+        return mContents;
+    }
+
     private T mContents;
 }

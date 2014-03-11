@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
         return mIsDestroyed.get();
     }
 
+    // This call should support calls to destroy() and isDestroyed() happening in other threads while it runs.
     /* package */ synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications) {
         for (final Survey s: newSurveys) {
             final int id = s.getId();

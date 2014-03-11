@@ -43,6 +43,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         SharedPreferences.Editor editor = referrerPreferences.edit();
         editor.clear();
         editor.commit();
+
         mMockPreferences = new Future<SharedPreferences>() {
             @Override
             public boolean cancel(final boolean mayInterruptIfRunning) {
@@ -81,7 +82,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();
-        MixpanelAPI mixpanel = MixpanelAPI.getInstance(getContext(), fakeToken);
+        MixpanelAPI mixpanel = new CleanMixpanelAPI(getContext(), mMockPreferences, fakeToken);
         String generatedId1 = mixpanel.getDistinctId();
         assertTrue(generatedId1 != null);
 
@@ -148,7 +149,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return explodingDb;
             }
         };
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
+        MixpanelAPI mixpanel = new CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return explodingMessages;
@@ -184,7 +185,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -245,14 +246,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
-
-        mixpanel.clearPreferences();
 
         MixpanelAPI.People people = mixpanel.getPeople();
         people.increment("the prop", 0L);
@@ -282,8 +281,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testIdentifyAndGetDistinctId() {
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
-        metrics.clearPreferences();
+        MixpanelAPI metrics = new CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+
         String generatedId = metrics.getDistinctId();
         assertNotNull(generatedId);
 
@@ -313,6 +312,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
+        final SynchronizedReference<Boolean> okToDecide = new SynchronizedReference<Boolean>();
+        okToDecide.set(false);
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
@@ -333,10 +334,16 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
             /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                final boolean decideIsOk = okToDecide.get();
                 if (null == nameValuePairs) {
-                    assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    if (decideIsOk) {
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    } else {
+                        fail("User is unidentified, we shouldn't be checking decide. (URL WAS " + endpointUrl + ")");
+                    }
                     return new Result(Status.SUCCEEDED, bytes("{}"));
                 }
+
 
                 assertEquals(nameValuePairs.get(1).getName(), "verbose");
                 assertEquals(nameValuePairs.get(1).getValue(), "1");
@@ -400,13 +407,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
             }
         };
-        // metrics.logPosts();
 
         // Test filling up the message queue
         for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
@@ -414,7 +420,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         metrics.track("final event", null);
-        String expectedJSONMessage = "<No message actually recieved>";
+        String expectedJSONMessage = "<No message actually received>";
 
         try {
             for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
@@ -460,6 +466,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject nextWaveEvent = nextWave.getJSONObject(0);
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
+            okToDecide.set(true);
             metrics.getPeople().identify("new person");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
@@ -555,7 +562,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -610,7 +617,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        class ListeningAPI extends MixpanelAPI {
+        class ListeningAPI extends CleanMixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> referrerPrefs, String token) {
                 super(c, referrerPrefs, token);
             }
@@ -691,6 +698,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         MixpanelAPI differentToken = new ListeningAPI(getContext(), mMockPreferences, "DIFFERENT TOKEN");
+
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
@@ -770,13 +778,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     }
                 };
 
-                MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
+                MixpanelAPI mixpanel = new CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
                     @Override
                     protected AnalyticsMessages getAnalyticsMessages() {
                         return analyticsMessages;
                     }
                 };
-
+                mixpanel.clearPreferences();
                 mixpanel.track("test in thread", new JSONObject());
             }
         }
@@ -919,48 +927,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
     }
 
-    private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
-            @Override
-            public void foundSurvey(final Survey s) {
-                assertNull(s);
-                try {
-                    foundQueue.put("OK NO SURVEY");
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Test was interrupted");
-                }
-            }
-        });
-
-        try {
-            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
-            assertEquals("OK NO SURVEY", ok);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Test was interrupted");
+    private static class CleanMixpanelAPI extends MixpanelAPI {
+        public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+            super(context, referrerPreferences, token);
         }
-    }
 
-    private MixpanelAPI apiForSurvey(final List<byte[]> responses) {
-        final ServerMessage mockMessage = new ServerMessage() {
-            @Override
-            public Result get(Context context, String endpointUrl, String fallbackUrl) {
-                return new Result(Status.SUCCEEDED, responses.remove(0));
-            }
-        };
-        final AnalyticsMessages mockMessages = new AnalyticsMessages(getContext()) {
-            @Override
-            protected ServerMessage getPoster() {
-                return mockMessage;
-            }
-        };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN test checkDecideService") {
-            @Override
-            protected AnalyticsMessages getAnalyticsMessages() {
-                return mockMessages;
-            }
-        };
-        mixpanel.clearPreferences();
-        return mixpanel;
+        @Override
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+            final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+            final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
+            ret.edit().clear().commit();
+
+            return super.getPersistentIdentity(context, referrerPreferences, token);
+        }
     }
 
     private byte[] bytes(String s) {

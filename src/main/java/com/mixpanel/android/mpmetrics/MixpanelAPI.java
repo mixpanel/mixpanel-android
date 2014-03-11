@@ -130,21 +130,9 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
+        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
+
         mDecideUpdates = null;
-
-        final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
-            @Override
-            public void onPrefsLoaded(SharedPreferences preferences) {
-                final JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(preferences);
-                if (null != records) {
-                    sendAllPeopleRecords(records);
-                }
-            }
-        };
-
-        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
-        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
-        mPersistentIdentity = new PersistentIdentity(token, referrerPreferences, storedPreferences);
 
         // TODO this immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
@@ -866,6 +854,22 @@ public class MixpanelAPI {
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
         return AnalyticsMessages.getInstance(mContext);
+    }
+
+    /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
+        final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
+            @Override
+            public void onPrefsLoaded(SharedPreferences preferences) {
+                final JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(preferences);
+                if (null != records) {
+                    sendAllPeopleRecords(records);
+                }
+            }
+        };
+
+        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+        final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
+        return new PersistentIdentity(token, referrerPreferences, storedPreferences);
     }
 
     /* package */ void clearPreferences() {
