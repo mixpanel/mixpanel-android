@@ -7,6 +7,7 @@ import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Fragment;
+import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -61,6 +62,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mType = getArguments().getString("type");
     }
 
     @Override
@@ -82,8 +85,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        String type = getArguments().getString("type");
-        if (type == InAppNotification.Type.TAKEOVER.toString()) {
+        if (mType == InAppNotification.Type.TAKEOVER.toString()) {
             mInAppView = this.createTakeover(inflater, container);
         } else {
             mInAppView = this.createMini(inflater, container);
@@ -98,8 +100,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onResume();
 
         // Begin animations when fragment becomes visible
-        String type = getArguments().getString("type");
-        if (type == InAppNotification.Type.TAKEOVER.toString()) {
+        if (mType == InAppNotification.Type.TAKEOVER.toString()) {
             ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
             TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
             TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
@@ -126,7 +127,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
             fadeIn.setTarget(closeButton);
             fadeIn.start();
-        } else if (type == InAppNotification.Type.MINI.toString()) {
+        } else if (mType == InAppNotification.Type.MINI.toString()) {
             ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
             float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
@@ -234,12 +235,13 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     private void remove() {
         if (mParent != null) {
-            FragmentTransaction ft = mParent.getFragmentManager().beginTransaction();
+            FragmentManager fm = mParent.getFragmentManager();
+            FragmentTransaction ft = fm.beginTransaction();
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
-            String type = getArguments().getString("type");
-            if (type == InAppNotification.Type.TAKEOVER.toString()) {
+            if (mType == InAppNotification.Type.TAKEOVER.toString()) {
+                fm.popBackStack();
                 ft.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
             } else {
                 ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
@@ -258,6 +260,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private Activity mParent;
     private Handler mHandler;
     private Runnable mRemover;
+    private String mType;
     private View mInAppView;
 
     private static final String LOGTAG = "InAppFragment";
