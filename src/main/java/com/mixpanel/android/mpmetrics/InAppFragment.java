@@ -2,6 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import java.nio.ByteBuffer;
 
+import android.animation.AnimatorInflater;
+import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Fragment;
@@ -16,10 +18,16 @@ import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
+import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -58,6 +66,9 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+
+        // We have to hold these references because the Activity does not clear it's Handler
+        // of messages when it disappears, so we have to manually clear the mRemover in onStop
         mParent = activity;
         mHandler = new Handler();
         mRemover = new Runnable() {
@@ -71,32 +82,60 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        Bundle args = getArguments();
-        View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
-        TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
-        ImageView notifImageView = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
+        String type = getArguments().getString("type");
+        if (type == InAppNotification.Type.TAKEOVER.toString()) {
+            mInAppView = this.createTakeover(inflater, container);
+        } else {
+            mInAppView = this.createMini(inflater, container);
+            mInAppView.setOnClickListener(this);
+        }
 
-        int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-        mini.setBackgroundColor(highlightColor);
+        return mInAppView;
+    }
 
-        titleView.setText(args.getString("title"));
+    @Override
+    public void onResume() {
+        super.onResume();
 
-        byte[] imageBytes = args.getByteArray("image");
-        Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        notifImageView.setImageBitmap(image);
+        // Begin animations when fragment becomes visible
+        String type = getArguments().getString("type");
+        if (type == InAppNotification.Type.TAKEOVER.toString()) {
+            ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+            TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+            TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            Button ctaButton = (Button) mInAppView.findViewById(R.id.com_mixpanel_android_notification_button);
+            ImageButton closeButton = (ImageButton) mInAppView.findViewById(R.id.com_mixpanel_android_button_exit);
 
-        float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-        ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-        sa.setInterpolator(new SineBounceInterpolator());
-        sa.setDuration(500);
-        sa.setStartOffset(300);
-        notifImageView.startAnimation(sa);
+            ScaleAnimation sa = new ScaleAnimation(
+                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+            sa.setDuration(200);
+            notifImage.startAnimation(sa);
 
-        mini.setOnClickListener(this);
+            TranslateAnimation ta = new TranslateAnimation(
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.0f,
+                 Animation.RELATIVE_TO_SELF, 0.5f,
+                 Animation.RELATIVE_TO_SELF, 0.0f
+            );
+            ta.setInterpolator(new DecelerateInterpolator());
+            ta.setDuration(200);
+            titleView.startAnimation(ta);
+            subtextView.startAnimation(ta);
+            ctaButton.startAnimation(ta);
 
-        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+            AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
+            fadeIn.setTarget(closeButton);
+            fadeIn.start();
+        } else if (type == InAppNotification.Type.MINI.toString()) {
+            ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-        return mini;
+            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+            sa.setInterpolator(new SineBounceInterpolator());
+            sa.setDuration(500);
+            sa.setStartOffset(300);
+            notifImage.startAnimation(sa);
+        }
     }
 
     @Override
@@ -129,13 +168,83 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             }
         }
 
-        this.remove();
+        remove();
+    }
+
+    private View createMini(LayoutInflater inflater, ViewGroup container) {
+        Bundle args = getArguments();
+        View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
+        TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
+        ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
+
+        int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+        mini.setBackgroundColor(highlightColor);
+
+        titleView.setText(args.getString("title"));
+
+        byte[] imageBytes = args.getByteArray("image");
+        Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        notifImage.setImageBitmap(image);
+
+        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+
+        return mini;
+    }
+
+    private View createTakeover(LayoutInflater inflater, ViewGroup container) {
+        Bundle args = getArguments();
+        View takeover = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, container, false);
+        ImageView notifImage = (ImageView) takeover.findViewById(R.id.com_mixpanel_android_notification_image);
+        TextView titleView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_title);
+        TextView subtextView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_subtext);
+        Button ctaButton = (Button) takeover.findViewById(R.id.com_mixpanel_android_notification_button);
+        ImageButton closeButton = (ImageButton) takeover.findViewById(R.id.com_mixpanel_android_button_exit);
+
+        titleView.setText(args.getString("title"));
+        subtextView.setText(args.getString("body"));
+
+        byte[] imageBytes = args.getByteArray("image");
+        Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        notifImage.setImageBitmap(image);
+
+        final String ctaUrl = args.getString("cta_url");
+        if (ctaUrl != null && ctaUrl.length() > 0) {
+            ctaButton.setText(args.getString("cta"));
+        }
+        ctaButton.setOnClickListener(this);
+        ctaButton.setOnTouchListener(new View.OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
+                } else {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
+                }
+                return false;
+            }
+        });
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                remove();
+            }
+        });
+
+        return takeover;
     }
 
     private void remove() {
         if (mParent != null) {
             FragmentTransaction ft = mParent.getFragmentManager().beginTransaction();
-            ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down).remove(this).commit();
+
+            // setCustomAnimations works on a per transaction level, so the animations set
+            // when this fragment was created do not apply
+            String type = getArguments().getString("type");
+            if (type == InAppNotification.Type.TAKEOVER.toString()) {
+                ft.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
+            } else {
+                ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
+            }
+            ft.remove(this).commit();
         }
     }
 
@@ -149,6 +258,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private Activity mParent;
     private Handler mHandler;
     private Runnable mRemover;
+    private View mInAppView;
 
     private static final String LOGTAG = "InAppFragment";
     private static final int MINI_REMOVE_TIME = 6000;
