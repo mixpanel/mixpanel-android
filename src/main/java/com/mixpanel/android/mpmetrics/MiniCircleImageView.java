@@ -37,18 +37,21 @@ public class MiniCircleImageView extends ImageView {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        
-        float centerX = mCanvasWidth / 2;
-        float centerY = mCanvasHeight / 2;
-        canvas.drawCircle(centerX, centerY, 0.7f * Math.min(centerX, centerY), mWhitePaint);
+
+        final float centerX = mCanvasWidth / 2;
+        final float centerY = mCanvasHeight / 2;
+
+        // The largest circle we can draw that maintains a proportional padding from the edge of the canvas.
+        final float radius = 0.7f * Math.min(centerX, centerY);
+        canvas.drawCircle(centerX, centerY, radius, mWhitePaint);
     }
     
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
 
-        this.mCanvasWidth = w;
-        this.mCanvasHeight = h;
+        mCanvasWidth = w;
+        mCanvasHeight = h;
     }
 
     private Paint mWhitePaint;
