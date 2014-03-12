@@ -49,12 +49,35 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onAttach(activity);
 
         // We have to hold these references because the Activity does not clear it's Handler
-        // of messages when it disappears, so we have to manually clear the mRemover in onStop
+        // of messages when it disappears, so we have to manually clear these Runnables in onStop
+        // in case they exist
         mParent = activity;
         mHandler = new Handler();
         mRemover = new Runnable() {
             public void run() {
                 InAppFragment.this.remove();
+            }
+        };
+        mDisplayMini = new Runnable() {
+            @Override
+            public void run() {
+                mInAppView.setVisibility(View.VISIBLE);
+                final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+                mInAppView.setBackgroundColor(highlightColor);
+
+                final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+                final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+                final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
+                translate.setInterpolator(new DecelerateInterpolator());
+                translate.setDuration(200);
+                mInAppView.startAnimation(translate);
+
+                final ScaleAnimation scale = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+                scale.setInterpolator(new SineBounceInterpolator());
+                scale.setDuration(400);
+                scale.setStartOffset(200);
+                notifImage.startAnimation(scale);
             }
         };
     }
@@ -119,28 +142,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         } else if (mNotification.getType() == InAppNotification.Type.MINI) {
             // getHighlightColorFromBackground doesn't seem to work on onResume because the view
             // has not been fully rendered, so try and delay a little bit
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mInAppView.setVisibility(View.VISIBLE);
-                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-                    mInAppView.setBackgroundColor(highlightColor);
-
-                    final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
-
-                    final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-                    final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
-                    translate.setInterpolator(new DecelerateInterpolator());
-                    translate.setDuration(200);
-                    mInAppView.startAnimation(translate);
-
-                    final ScaleAnimation scale = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-                    scale.setInterpolator(new SineBounceInterpolator());
-                    scale.setDuration(400);
-                    scale.setStartOffset(200);
-                    notifImage.startAnimation(scale);
-                }
-            }, 500);
+            mHandler.postDelayed(mDisplayMini, 500);
         }
     }
 
@@ -158,6 +160,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onStop();
 
         mHandler.removeCallbacks(mRemover);
+        mHandler.removeCallbacks(mDisplayMini);
 
         // This Fragment when registered on the Activity is part of its state, and so gets
         // restored / recreated when the Activity goes away and comes back. We prefer to just not
@@ -265,7 +268,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private Activity mParent;
     private Handler mHandler;
     private InAppNotification mNotification;
-    private Runnable mRemover;
+    private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 
     private boolean mKill;
