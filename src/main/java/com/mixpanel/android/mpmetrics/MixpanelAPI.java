@@ -568,7 +568,6 @@ public class MixpanelAPI {
          */
         void union(String name, JSONArray value);
 
-
         /**
          * permanently removes the property with the given name from the user's profile
          * @param name name of a property to unset
@@ -746,7 +745,6 @@ public class MixpanelAPI {
          */
         public People withIdentity(String distinctId);
 
-
         /**
          * This method is deprecated- use getNextSurvey() instead.
          *
@@ -785,7 +783,6 @@ public class MixpanelAPI {
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
-
     }
 
     /**
