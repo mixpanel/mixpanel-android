@@ -1103,7 +1103,7 @@ public class MixpanelAPI {
                         transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out, R.anim.fade_in, R.anim.fade_out);
                         transaction.addToBackStack(null);
                     } else {
-                        transaction.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
+                        transaction.setCustomAnimations(0, R.anim.slide_down);
                     }
                     transaction.add(android.R.id.content, inapp);
                     transaction.commit();
