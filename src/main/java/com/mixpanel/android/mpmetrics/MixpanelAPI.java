@@ -1100,7 +1100,8 @@ public class MixpanelAPI {
                     FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
 
                     if (notification.getType() == InAppNotification.Type.TAKEOVER) {
-                        transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out);
+                        transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out, R.anim.fade_in, R.anim.fade_out);
+                        transaction.addToBackStack(null);
                     } else {
                         transaction.setCustomAnimations(R.anim.slide_up, R.anim.slide_down);
                     }
