@@ -134,8 +134,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
             ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
             sa.setInterpolator(new SineBounceInterpolator());
-            sa.setDuration(500);
-            sa.setStartOffset(300);
+            sa.setDuration(400);
+            sa.setStartOffset(200);
             notifImage.startAnimation(sa);
         }
     }

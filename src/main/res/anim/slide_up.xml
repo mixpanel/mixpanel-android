@@ -6,5 +6,5 @@
         android:propertyName="translationY"
         android:valueFrom="75dp"
         android:valueTo="0dp"
-        android:duration="300" />
+        android:duration="200" />
 </set>
