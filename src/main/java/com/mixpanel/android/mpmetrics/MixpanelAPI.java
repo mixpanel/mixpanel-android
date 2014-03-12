@@ -270,7 +270,10 @@ public class MixpanelAPI {
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist.
      */
-    // DO NOT DOCUMENT, but track() must be thread safe (It might not always be thread safe)
+    // DO NOT DOCUMENT, but track() must be thread safe since it is used to track events in
+    // notifications from the UI thread, which might not be our MixpanelAPI "home" thread.
+    // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
+    // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
         try {
