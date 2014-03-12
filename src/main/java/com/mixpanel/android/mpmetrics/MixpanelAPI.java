@@ -1096,7 +1096,7 @@ public class MixpanelAPI {
             parent.runOnUiThread(new Runnable() {
                 @SuppressLint("NewApi")
                 public void run() {
-                    InAppFragment inapp = InAppFragment.create(notification);
+                    InAppFragment inapp = new InAppFragment().setNotification(notification);
                     FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
 
                     if (notification.getType() == InAppNotification.Type.TAKEOVER) {
