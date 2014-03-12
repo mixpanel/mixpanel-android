@@ -21,18 +21,6 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
         mMockMixpanel = new CallbacksMockMixpanel(getContext(), mPrefsFuture, "TEST TOKEN FOR LIFECYCLE CALLBACKS");
         mCallbacks = new MixpanelActivityLifecycleCallbacks(mMockMixpanel);
         mValidActivity = new TaskRootActivity();
-        mFinishingActivity = new TaskRootActivity() {
-            @Override
-            public boolean isFinishing() {
-                return true;
-            }
-        };
-        mDestroyedActivity = new TaskRootActivity() {
-            @Override
-            public boolean isDestroyed() {
-                return true;
-            }
-        };
         mInAppNotification = new InAppNotification(
             new JSONObject(
                 "{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\"}"
@@ -46,49 +34,27 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
     }
 
     public void testBothAvailable() {
-        // Should only check on notifications at first.
+        // Should show a notification only if both are available
+        mMockMixpanel.availableNotification.set(mInAppNotification);
+        mMockMixpanel.availableSurvey.set(mSurvey);
+
         mCallbacks.onActivityStarted(mValidActivity);
-        assertEquals(mMockMixpanel.notificationCallbacks.size(), 1);
-        assertTrue(mMockMixpanel.surveyCallbacks.isEmpty());
-        assertTrue(mMockMixpanel.showNotificationCalls.isEmpty());
-        assertTrue(mMockMixpanel.showSurveyCalls.isEmpty());
 
-        // Should show (and not check) if a notification shows up
-        final InAppNotificationCallbacks callback = mMockMixpanel.notificationCallbacks.get(0);
-        mMockMixpanel.notificationCallbacks.clear();
-        callback.foundNotification(mInAppNotification);
-
-        assertTrue(mMockMixpanel.notificationCallbacks.isEmpty());
-        assertTrue(mMockMixpanel.surveyCallbacks.isEmpty());
+        assertNull(mMockMixpanel.availableNotification.get());
+        assertNotNull(mMockMixpanel.availableSurvey.get());
         assertEquals(mMockMixpanel.showNotificationCalls.size(), 1);
+        assertEquals(mMockMixpanel.showNotificationCalls.get(0), mInAppNotification);
         assertTrue(mMockMixpanel.showSurveyCalls.isEmpty());
     }
 
     public void testSurveyAvailable() {
-        // Should only check on notifications at first.
+        // Should only show surveys if no notifications are available
+        mMockMixpanel.availableNotification.set(null);
+        mMockMixpanel.availableSurvey.set(mSurvey);
+
         mCallbacks.onActivityStarted(mValidActivity);
-        assertEquals(mMockMixpanel.notificationCallbacks.size(), 1);
-        assertTrue(mMockMixpanel.surveyCallbacks.isEmpty());
-        assertTrue(mMockMixpanel.showNotificationCalls.isEmpty());
-        assertTrue(mMockMixpanel.showSurveyCalls.isEmpty());
 
-        // Should check Surveys if no notification is available
-        final InAppNotificationCallbacks notificationCallback = mMockMixpanel.notificationCallbacks.get(0);
-        mMockMixpanel.notificationCallbacks.clear();
-        notificationCallback.foundNotification(null);
-
-        assertTrue(mMockMixpanel.notificationCallbacks.isEmpty());
-        assertEquals(mMockMixpanel.surveyCallbacks.size(), 1);
-        assertTrue(mMockMixpanel.showNotificationCalls.isEmpty());
-        assertTrue(mMockMixpanel.showSurveyCalls.isEmpty());
-
-        // Reporting a survey shouldn't spawn any other calls
-        final SurveyCallbacks surveyCallback = mMockMixpanel.surveyCallbacks.get(0);
-        mMockMixpanel.surveyCallbacks.clear();
-        surveyCallback.foundSurvey(mSurvey);
-
-        assertTrue(mMockMixpanel.notificationCallbacks.isEmpty());
-        assertTrue(mMockMixpanel.surveyCallbacks.isEmpty());
+        assertNull(mMockMixpanel.availableSurvey.get());
         assertTrue(mMockMixpanel.showNotificationCalls.isEmpty());
         assertEquals(mMockMixpanel.showSurveyCalls.size(), 1);
         assertEquals(mMockMixpanel.showSurveyCalls.get(0), mSurvey);
@@ -117,13 +83,13 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
 
         private People mMockPeople = new MockMixpanel.MockPeople() {
             @Override
-            public void checkForNotification(final InAppNotificationCallbacks callbacks) {
-                notificationCallbacks.add(callbacks);
+            public InAppNotification getNextInAppNotification() {
+                return availableNotification.getAndClear();
             }
 
             @Override
-            public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parent) {
-                surveyCallbacks.add(callbacks);
+            public Survey getNextSurvey() {
+                return availableSurvey.getAndClear();
             }
 
             @Override
@@ -137,10 +103,8 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
             }
         };
 
-        public final List<InAppNotificationCallbacks> notificationCallbacks =
-                Collections.synchronizedList(new ArrayList<InAppNotificationCallbacks>());
-        public final List<SurveyCallbacks> surveyCallbacks =
-                Collections.synchronizedList(new ArrayList<SurveyCallbacks>());
+        public SynchronizedReference<Survey> availableSurvey = new SynchronizedReference<Survey>();
+        public SynchronizedReference<InAppNotification> availableNotification = new SynchronizedReference<InAppNotification>();
         public final List<InAppNotification> showNotificationCalls =
                 Collections.synchronizedList(new ArrayList<InAppNotification>());
         public final List<Survey> showSurveyCalls =
@@ -152,7 +116,6 @@ public class LifecycleCallbacksTest extends AndroidTestCase {
     private CallbacksMockMixpanel mMockMixpanel;
     private MixpanelActivityLifecycleCallbacks mCallbacks;
     private Activity mValidActivity;
-    private Activity mFinishingActivity, mDestroyedActivity;
     private Survey mSurvey;
     private InAppNotification mInAppNotification;
 }

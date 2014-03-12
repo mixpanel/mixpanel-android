@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.app.Notification;
 import android.content.DialogInterface;
 import android.os.Build;
 import android.os.Bundle;
@@ -77,35 +78,22 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
 
     private void checkForDecideUpdates(final Activity activity) {
         mHasDoneFirstCheck = true;
-        mMpInstance.getPeople().checkForNotification(new InAppNotificationCallbacks() {
-            @Override
-            public void foundNotification(final InAppNotification n) {
-                if (null == n) {
-                    checkForSurveys(activity);
-                } else if (isActivityValid(activity)) {
-                    mMpInstance.getPeople().showNotification(n, activity);
-                }
-            }
-        });
-    }
+        final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
+        if (null != notification && isActivityValid(activity)) {
+            mMpInstance.getPeople().showNotification(notification, activity);
+            return;
+        }
+        // ELSE
 
-    /**
-     * Check for surveys and show one if applicable only if the activity is the task root.
-     * We use activity.findViewById(android.R.id.content) to get the root view of the root activity
-     * We instantiate a new SurveyCallbacks that auto-shows the survey.
-     * @param activity
-     */
-    private void checkForSurveys(final Activity activity) {
         if (! ConfigurationChecker.checkSurveyActivityAvailable(activity.getApplicationContext())) {
             return;
         }
 
-        mMpInstance.getPeople().checkForSurvey(new SurveyCallbacks() {
-            @Override
-            public void foundSurvey(final Survey survey) {
-                showOrAskToShowSurvey(survey, activity);
-            }
-        }, activity);
+        final Survey survey = mMpInstance.getPeople().getNextSurvey();
+        if (null != survey && isActivityValid(activity)) {
+            // TODO NEED TO BLUR HERE.
+            showOrAskToShowSurvey(survey, activity);
+        }
     }
 
     private void showOrAskToShowSurvey(final Survey survey, final Activity activity) {

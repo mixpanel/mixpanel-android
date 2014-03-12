@@ -30,11 +30,6 @@ class MockMixpanel extends MixpanelAPI {
 
     public static class MockPeople implements People {
         @Override
-        public void checkForNotification(final InAppNotificationCallbacks callbacks) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parent) {
             Assert.fail("Unexpected call");
         }
@@ -131,6 +126,18 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public String getDistinctId() {
+            Assert.fail("Unexpected call");
+            return null;
+        }
+
+        @Override
+        public Survey getNextSurvey() {
+            Assert.fail("Unexpected call");
+            return null;
+        }
+
+        @Override
+        public InAppNotification getNextInAppNotification() {
             Assert.fail("Unexpected call");
             return null;
         }

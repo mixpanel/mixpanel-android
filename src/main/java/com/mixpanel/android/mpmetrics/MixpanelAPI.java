@@ -116,7 +116,7 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         if (null != peopleId) {
-            mDecideUpdates = new DecideUpdates(token, peopleId);
+            mDecideUpdates = constructDecideUpdates(token, peopleId);
             mMessages.installDecideCheck(mDecideUpdates);
         }
 
@@ -693,58 +693,30 @@ public class MixpanelAPI {
         public String getDistinctId();
 
         /**
-         * Checks to see if this user is eligible for any Mixpanel surveys.
-         * If the check is successful, it will call its argument's
-         * foundSurvey() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.Survey}.
-         * The typical use case is similar to
-         * <pre>
-         * {@code
-         * Activity parent = this;
-         * mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
-         *     public void foundSurvey(Survey survey) {
-         *         if (survey != null) {
-         *             mixpanel.getPeople().showSurvey(survey, parent);
-         *         }
-         *     }
-         * });
-         * }
-         * </pre>
+         * Returns a survey object if one is available and being held by the library, or null if
+         * no survey is currently available. Callers who want to display surveys should call this
+         * method periodically. A given value will be returned only once from this method, so callers
+         * should be ready to consume any non-null return value.
          *
-         * The foundSurvey() may be (and will probably be) called on a different thread
-         * than the one that called checkForSurvey(). The library doesn't guarantee
-         * a particular thread, and callbacks are responsible for their own thread safety.
+         * Calling getNextSurvey() will return quickly, and will not cause any communication with
+         * Mixpanel's servers.
          *
-         * This method is will always call back with null in environments with
-         * Android API before Gingerbread/API level 10
+         * @return a Survey object if one is available.
          */
-        public void checkForSurvey(SurveyCallbacks callbacks);
+        public Survey getNextSurvey();
 
         /**
-         * Checks to see if this user has any waiting Mixpanel notifications.
-         * If the check is successful, it will call its argument's
-         * foundNotifications() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.InAppNotification}.
-         * The typical use case is similar to
-         * <pre>
-         * {@code
-         * Activity parent = this;
-         * mixpanel.getPeople().checkForNotification(new InAppNotificationCallbacks() {
-         *     public void foundNotification(InAppNotification notification) {
-         *         if (notification != null) {
-         *             mixpanel.getPeople().showNotification(notification, parent);
-         *         }
-         *     }
-         * });
-         * }
-         * </pre>
-         * @param callbacks
+         * Returns an InAppNotification object if one is available and being held by the library, or null if
+         * no survey is currently available. Callers who want to display surveys should call this
+         * method periodically. A given value will be returned only once from this method, so callers
+         * should be ready to consume any non-null return value.
+         *
+         * Calling getNextInAppNotification() will return quickly, and will not cause any communication with
+         * Mixpanel's servers.
+         *
+         * @return a Survey object if one is available.
          */
-        public void checkForNotification(InAppNotificationCallbacks callbacks);
-
-        /**
-         * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
-         * with showing the build in survey activity before calling the user callback.
-         */
-        public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
+        public InAppNotification getNextInAppNotification();
 
         /**
          * Will launch an activity that shows a survey to a user and sends the responses
@@ -770,6 +742,47 @@ public class MixpanelAPI {
          * This is used by Mixpanel Surveys but is likely not needed in your code.
          */
         public People withIdentity(String distinctId);
+
+
+        /**
+         * This method is deprecated- use getNextSurvey() instead.
+         *
+         * Checks to see if this user is eligible for any Mixpanel surveys.
+         * If the check is successful, it will call its argument's
+         * foundSurvey() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.Survey}.
+         * The typical use case is similar to
+         * <pre>
+         * {@code
+         * Activity parent = this;
+         * mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
+         *     public void foundSurvey(Survey survey) {
+         *         if (survey != null) {
+         *             mixpanel.getPeople().showSurvey(survey, parent);
+         *         }
+         *     }
+         * });
+         * }
+         * </pre>
+         *
+         * The foundSurvey() may be (and will probably be) called on a different thread
+         * than the one that called checkForSurvey(). The library doesn't guarantee
+         * a particular thread, and callbacks are responsible for their own thread safety.
+         *
+         * This method is will always call back with null in environments with
+         * Android API before Gingerbread/API level 10
+         */
+        @Deprecated
+        public void checkForSurvey(SurveyCallbacks callbacks);
+
+        /**
+         * This method is deprecated- Use getNextSurvey() instead
+         *
+         * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
+         * with showing the build in survey activity before calling the user callback.
+         */
+        @Deprecated
+        public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
+
     }
 
     /**
@@ -850,6 +863,10 @@ public class MixpanelAPI {
         return new PersistentIdentity(token, referrerPreferences, storedPreferences);
     }
 
+    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId) {
+        return new DecideUpdates(token, peopleId);
+    }
+
     /* package */ void clearPreferences() {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
@@ -869,7 +886,7 @@ public class MixpanelAPI {
             }
 
             if (null == mDecideUpdates) {
-                mDecideUpdates = new DecideUpdates(mToken, distinctId);
+                mDecideUpdates = constructDecideUpdates(mToken, distinctId);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
             pushWaitingPeopleRecord();
@@ -973,6 +990,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
 
@@ -981,17 +999,12 @@ public class MixpanelAPI {
                 return;
             }
 
-            final String checkDistinctId = getDistinctId();
-            if (null == checkDistinctId) {
-                Log.i(LOGTAG, "Skipping survey check because user has not yet been identified.");
-                return;
-            }
-
-            Survey found = mDecideUpdates.popSurvey();
+            final Survey found = getNextSurvey();
             callbacks.foundSurvey(found); // TODO isolate this thread, per expected behavior
         }
 
         @Override
+        @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
             // This is all about waiting to show a "See our survey" dialog until after the survey is
             // ready to show. We don't get to the end any faster, but we don't make users wait.
@@ -1016,22 +1029,21 @@ public class MixpanelAPI {
         }
 
         @Override
-        // TODO REMOVE THIS IN FAVOR OF SIMPLE, SYNCHRONOUS ASSIGNMENT
-        public void checkForNotification(final InAppNotificationCallbacks callbacks) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for notifications...");
-
-            if (null == callbacks) {
-                Log.i(LOGTAG, "Skipping notification check because callback is null.");
+        public InAppNotification getNextInAppNotification() {
+            if (null == getDistinctId()) {
+                return null;
             }
 
-            final String checkDistinctId = getDistinctId();
-            if (null == checkDistinctId) {
-                Log.i(LOGTAG, "Skipping notification check because user has not yet been identified.");
-                return;
+           return mDecideUpdates.popNotification();
+        }
+
+        @Override
+        public Survey getNextSurvey() {
+            if (null == getDistinctId()) {
+                return null;
             }
 
-            final InAppNotification notification = mDecideUpdates.popNotification();
-            callbacks.foundNotification(notification);
+            return mDecideUpdates.popSurvey();
         }
 
         @Override
