@@ -129,14 +129,30 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             fadeIn.setTarget(closeButton);
             fadeIn.start();
         } else if (mType == InAppNotification.Type.MINI.toString()) {
-            ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+            // getHighlightColorFromBackground doesn't seem to work on onResume because the view
+            // has not been fully rendered, so try and delay a little bit
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mInAppView.setVisibility(View.VISIBLE);
+                    int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+                    mInAppView.setBackgroundColor(highlightColor);
 
-            float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-            ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-            sa.setInterpolator(new SineBounceInterpolator());
-            sa.setDuration(500);
-            sa.setStartOffset(300);
-            notifImage.startAnimation(sa);
+                    ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+                    float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+                    TranslateAnimation ta = new TranslateAnimation(0, 0, heightPx, 0);
+                    ta.setInterpolator(new DecelerateInterpolator());
+                    ta.setDuration(200);
+                    mInAppView.startAnimation(ta);
+
+                    ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+                    sa.setInterpolator(new SineBounceInterpolator());
+                    sa.setDuration(400);
+                    sa.setStartOffset(200);
+                    notifImage.startAnimation(sa);
+                }
+            }, 500);
         }
     }
 
@@ -193,9 +209,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
         TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
         ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
-
-        int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-        mini.setBackgroundColor(highlightColor);
 
         titleView.setText(args.getString("title"));
 
@@ -259,7 +272,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
                 fm.popBackStack();
             } else {
                 FragmentTransaction ft = fm.beginTransaction();
-                ft.setCustomAnimations(R.anim.slide_up, R.anim.slide_down).remove(this).commit();
+                ft.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
             }
         }
     }

@@ -5,7 +5,8 @@
     android:layout_height="75dp"
     android:layout_gravity="bottom"
     android:background="@color/com_mixpanel_android_notification_mini_bg"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    android:visibility="gone">
     
     <com.mixpanel.android.mpmetrics.MiniCircleImageView
         android:id="@+id/com_mixpanel_android_notification_image"
