@@ -38,24 +38,24 @@ import com.mixpanel.android.util.ActivityImageUtils;
 @SuppressLint("NewApi")
 public class InAppFragment extends Fragment implements View.OnClickListener {
     static InAppFragment create(InAppNotification notif) {
-        InAppFragment fragment = new InAppFragment();
+        final InAppFragment fragment = new InAppFragment();
 
-        Bundle b = new Bundle();
-        b.putInt("id", notif.getId());
-        b.putInt("message_id", notif.getMessageId());
-        b.putString("type", notif.getType().toString());
-        b.putString("title", notif.getTitle());
-        b.putString("body", notif.getBody());
-        b.putString("image_url", notif.getImageUrl());
-        b.putString("cta", notif.getCallToAction());
-        b.putString("cta_url", notif.getCallToActionUrl());
+        final Bundle bundle = new Bundle();
+        bundle.putInt("id", notif.getId());
+        bundle.putInt("message_id", notif.getMessageId());
+        bundle.putString("type", notif.getType().toString());
+        bundle.putString("title", notif.getTitle());
+        bundle.putString("body", notif.getBody());
+        bundle.putString("image_url", notif.getImageUrl());
+        bundle.putString("cta", notif.getCallToAction());
+        bundle.putString("cta_url", notif.getCallToActionUrl());
 
-        Bitmap image = notif.getImage();
-        ByteBuffer buf = ByteBuffer.allocate(image.getByteCount());
+        final Bitmap image = notif.getImage();
+        final ByteBuffer buf = ByteBuffer.allocate(image.getByteCount());
         image.copyPixelsToBuffer(buf);
-        b.putByteArray("image", buf.array());
+        bundle.putByteArray("image", buf.array());
 
-        fragment.setArguments(b);
+        fragment.setArguments(bundle);
         return fragment;
     }
 
@@ -102,30 +102,30 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
         // Begin animations when fragment becomes visible
         if (mType == InAppNotification.Type.TAKEOVER.toString()) {
-            ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
-            TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
-            TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
-            Button ctaButton = (Button) mInAppView.findViewById(R.id.com_mixpanel_android_notification_button);
-            ImageButton closeButton = (ImageButton) mInAppView.findViewById(R.id.com_mixpanel_android_button_exit);
+            final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+            final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+            final TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
+            final Button ctaButton = (Button) mInAppView.findViewById(R.id.com_mixpanel_android_notification_button);
+            final ImageButton closeButton = (ImageButton) mInAppView.findViewById(R.id.com_mixpanel_android_button_exit);
 
-            ScaleAnimation sa = new ScaleAnimation(
+            final ScaleAnimation scale = new ScaleAnimation(
                 .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
-            sa.setDuration(200);
-            notifImage.startAnimation(sa);
+            scale.setDuration(200);
+            notifImage.startAnimation(scale);
 
-            TranslateAnimation ta = new TranslateAnimation(
+            final TranslateAnimation translate = new TranslateAnimation(
                  Animation.RELATIVE_TO_SELF, 0.0f,
                  Animation.RELATIVE_TO_SELF, 0.0f,
                  Animation.RELATIVE_TO_SELF, 0.5f,
                  Animation.RELATIVE_TO_SELF, 0.0f
             );
-            ta.setInterpolator(new DecelerateInterpolator());
-            ta.setDuration(200);
-            titleView.startAnimation(ta);
-            subtextView.startAnimation(ta);
-            ctaButton.startAnimation(ta);
+            translate.setInterpolator(new DecelerateInterpolator());
+            translate.setDuration(200);
+            titleView.startAnimation(translate);
+            subtextView.startAnimation(translate);
+            ctaButton.startAnimation(translate);
 
-            AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
+            final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
             fadeIn.setTarget(closeButton);
             fadeIn.start();
         } else if (mType == InAppNotification.Type.MINI.toString()) {
@@ -135,22 +135,22 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
                 @Override
                 public void run() {
                     mInAppView.setVisibility(View.VISIBLE);
-                    int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
                     mInAppView.setBackgroundColor(highlightColor);
 
-                    ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+                    final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-                    float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-                    TranslateAnimation ta = new TranslateAnimation(0, 0, heightPx, 0);
-                    ta.setInterpolator(new DecelerateInterpolator());
-                    ta.setDuration(200);
-                    mInAppView.startAnimation(ta);
+                    final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+                    final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
+                    translate.setInterpolator(new DecelerateInterpolator());
+                    translate.setDuration(200);
+                    mInAppView.startAnimation(translate);
 
-                    ScaleAnimation sa = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-                    sa.setInterpolator(new SineBounceInterpolator());
-                    sa.setDuration(400);
-                    sa.setStartOffset(200);
-                    notifImage.startAnimation(sa);
+                    final ScaleAnimation scale = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+                    scale.setInterpolator(new SineBounceInterpolator());
+                    scale.setDuration(400);
+                    scale.setStartOffset(200);
+                    notifImage.startAnimation(scale);
                 }
             }, 500);
         }
@@ -180,9 +180,9 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     @Override
     public void onClick(View clicked) {
-        Bundle b = getArguments();
+        final Bundle bundle = getArguments();
 
-        String uriString = b.getString("cta_url");
+        final String uriString = bundle.getString("cta_url");
         if (uriString != null && uriString.length() > 0) {
             Uri uri = null;
             try {
@@ -205,15 +205,15 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     private View createMini(LayoutInflater inflater, ViewGroup container) {
-        Bundle args = getArguments();
-        View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
-        TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
-        ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
+        final Bundle args = getArguments();
+        final View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
+        final TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
+        final ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
 
         titleView.setText(args.getString("title"));
 
-        byte[] imageBytes = args.getByteArray("image");
-        Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        final byte[] imageBytes = args.getByteArray("image");
+        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         notifImage.setImageBitmap(image);
 
         mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
@@ -222,19 +222,19 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     private View createTakeover(LayoutInflater inflater, ViewGroup container) {
-        Bundle args = getArguments();
-        View takeover = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, container, false);
-        ImageView notifImage = (ImageView) takeover.findViewById(R.id.com_mixpanel_android_notification_image);
-        TextView titleView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_title);
-        TextView subtextView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_subtext);
-        Button ctaButton = (Button) takeover.findViewById(R.id.com_mixpanel_android_notification_button);
-        ImageButton closeButton = (ImageButton) takeover.findViewById(R.id.com_mixpanel_android_button_exit);
+        final Bundle args = getArguments();
+        final View takeover = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, container, false);
+        final ImageView notifImage = (ImageView) takeover.findViewById(R.id.com_mixpanel_android_notification_image);
+        final TextView titleView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) takeover.findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageButton closeButton = (ImageButton) takeover.findViewById(R.id.com_mixpanel_android_button_exit);
 
         titleView.setText(args.getString("title"));
         subtextView.setText(args.getString("body"));
 
-        byte[] imageBytes = args.getByteArray("image");
-        Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        final byte[] imageBytes = args.getByteArray("image");
+        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         notifImage.setImageBitmap(image);
 
         final String ctaUrl = args.getString("cta_url");
@@ -264,15 +264,15 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     private void remove() {
         if (mParent != null) {
-            FragmentManager fm = mParent.getFragmentManager();
+            final FragmentManager fragmentManager = mParent.getFragmentManager();
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
             if (mType == InAppNotification.Type.TAKEOVER.toString()) {
-                fm.popBackStack();
+                fragmentManager.popBackStack();
             } else {
-                FragmentTransaction ft = fm.beginTransaction();
-                ft.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
+                FragmentTransaction transaction = fragmentManager.beginTransaction();
+                transaction.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
             }
         }
     }
