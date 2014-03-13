@@ -103,6 +103,7 @@ public class SurveyActivity extends Activity {
                     SurveyActivity.this.finish();
                 }
             });
+            alertBuilder.setCancelable(false);
             alertBuilder.show();
         } else {
             SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
