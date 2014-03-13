@@ -4,9 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
-import android.app.Notification;
 import android.content.DialogInterface;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -30,9 +28,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
         setStartTimeIfNeeded();
 
         if(activity.isTaskRoot()) {
@@ -51,9 +46,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
         setStartTimeIfNeeded();
 
         if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
@@ -77,9 +69,9 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityDestroyed(Activity activity) {}
 
     private void checkForDecideUpdates(final Activity activity) {
-        mHasDoneFirstCheck = true;
+        // mHasDoneFirstCheck = true;
         final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
-        if (null != notification && isActivityValid(activity)) {
+        if (null != notification) {
             mMpInstance.getPeople().showNotification(notification, activity);
             return;
         }
@@ -90,7 +82,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         }
 
         final Survey survey = mMpInstance.getPeople().getNextSurvey();
-        if (null != survey && isActivityValid(activity)) {
+        if (null != survey) {
             // TODO NEED TO BLUR HERE.
             showOrAskToShowSurvey(survey, activity);
         }
@@ -99,9 +91,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     private void showOrAskToShowSurvey(final Survey survey, final Activity activity) {
         if (null == survey) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "No survey found, nothing to show the user.");
-            return;
-        } else if (! isActivityValid(activity)) {
-            Log.i(LOGTAG, "Activity is dead, can't show a survey");
             return;
         }
 
@@ -135,23 +124,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
                 }
             });
         }
-    }
-
-    private boolean isActivityValid(Activity activity) {
-        if (null == activity) {
-            return false;
-        }
-        if (activity.isFinishing()) {
-            return false;
-        }
-
-        if (Build.VERSION.SDK_INT >= 17) {
-            if (activity.isDestroyed()) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private synchronized void setStartTimeIfNeeded() {
