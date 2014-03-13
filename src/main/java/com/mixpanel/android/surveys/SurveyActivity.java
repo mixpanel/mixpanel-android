@@ -11,6 +11,8 @@ import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -40,7 +42,7 @@ public class SurveyActivity extends Activity {
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
         }
-        mIntentId = getIntent().getIntExtra("intentID", Integer.MAX_VALUE);
+        mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
         mSurveyState = SurveyState.claimSurveyState(saved, mIntentId);
         if (null == mSurveyState) {
             Log.e(LOGTAG, "Survey intent received, but no survey was found.");
@@ -50,6 +52,14 @@ public class SurveyActivity extends Activity {
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
         }
+        final Survey survey = mSurveyState.getSurvey();
+        final String answerDistinctId = mSurveyState.getDistinctId();
+        if (null == answerDistinctId) {
+            Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
+            finish();
+            return;
+        }
+
         setContentView(R.layout.com_mixpanel_android_activity_survey);
         final Bitmap background = mSurveyState.getBackground();
         if (null == background) {
@@ -69,21 +79,36 @@ public class SurveyActivity extends Activity {
                 goToNextQuestion();
             }
         });
+    }
 
-        final Survey survey = mSurveyState.getSurvey();
-        final String answerDistinctId = mSurveyState.getDistinctId();
-        if (null == answerDistinctId) {
-            Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
-            finish();
-            return;
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        trackSurveyAttempted();
+        if (getIntent().getBooleanExtra(SHOW_ASK_DIALOG_KEY, true)) {
+            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+            alertBuilder.setTitle("We'd love your feedback!");
+            alertBuilder.setMessage("Mind taking a quick survey?");
+            alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
+                    showQuestion(mCurrentQuestion);
+                }
+            });
+            alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    SurveyActivity.this.finish();
+                }
+            });
+            alertBuilder.setCancelable(false);
+            alertBuilder.show();
+        } else {
+            SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
+            showQuestion(mCurrentQuestion);
         }
-
-        mMixpanel = MixpanelAPI.getInstance(this, mSurveyState.getToken());
-        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
-        people.append("$surveys", survey.getId());
-        people.append("$collections", survey.getCollectionId());
-        mMixpanel.flush();
-        showQuestion(mCurrentQuestion);
     }
 
 
@@ -157,6 +182,14 @@ public class SurveyActivity extends Activity {
         completeSurvey();
     }
 
+    private void trackSurveyAttempted() {
+        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mSurveyState.getToken());
+        final Survey survey = mSurveyState.getSurvey();
+        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(mSurveyState.getDistinctId());
+        people.append("$surveys", survey.getId());
+        people.append("$collections", survey.getCollectionId());
+    }
+
     private void goToPreviousQuestion() {
         if (mCurrentQuestion > 0) {
             showQuestion(mCurrentQuestion - 1);
@@ -222,6 +255,7 @@ public class SurveyActivity extends Activity {
 
 
     private MixpanelAPI mMixpanel;
+    private View mView;
     private View mPreviousButton;
     private View mNextButton;
     private TextView mProgressTextView;
@@ -235,5 +269,8 @@ public class SurveyActivity extends Activity {
     private static final String SURVEY_STATE_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_STATE_BUNDLE_KEY";
     private static final String LOGTAG = "MixpanelAPI";
     private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
+
+    public static final String INTENT_ID_KEY = "intentId";
+    public static final String SHOW_ASK_DIALOG_KEY = "showAskDialog";
 }
 

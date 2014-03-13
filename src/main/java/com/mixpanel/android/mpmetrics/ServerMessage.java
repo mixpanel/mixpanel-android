@@ -173,6 +173,8 @@ import com.mixpanel.android.util.Base64Coder;
                 try {
                     final URL url = new URL(endpointUrl);
                     connection = (HttpURLConnection) url.openConnection();
+                    connection.setConnectTimeout(2000);
+                    connection.setReadTimeout(10000);
                     if (null != nameValuePairs) {
                         connection.setDoOutput(true);
                         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs, "UTF-8");

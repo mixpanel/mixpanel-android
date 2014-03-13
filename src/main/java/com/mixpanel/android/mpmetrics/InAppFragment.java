@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.nio.ByteBuffer;
-
 import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
@@ -11,8 +9,6 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -37,26 +33,15 @@ import com.mixpanel.android.util.ActivityImageUtils;
 
 @SuppressLint("NewApi")
 public class InAppFragment extends Fragment implements View.OnClickListener {
-    static InAppFragment create(InAppNotification notif) {
-        final InAppFragment fragment = new InAppFragment();
 
-        final Bundle bundle = new Bundle();
-        bundle.putInt("id", notif.getId());
-        bundle.putInt("message_id", notif.getMessageId());
-        bundle.putString("type", notif.getType().toString());
-        bundle.putString("title", notif.getTitle());
-        bundle.putString("body", notif.getBody());
-        bundle.putString("image_url", notif.getImageUrl());
-        bundle.putString("cta", notif.getCallToAction());
-        bundle.putString("cta_url", notif.getCallToActionUrl());
-
-        final Bitmap image = notif.getImage();
-        final ByteBuffer buf = ByteBuffer.allocate(image.getByteCount());
-        image.copyPixelsToBuffer(buf);
-        bundle.putByteArray("image", buf.array());
-
-        fragment.setArguments(bundle);
-        return fragment;
+    public InAppFragment setNotification(InAppNotification notif) {
+        // It would be better to pass in the InAppNotification to the only constructor, but
+        // Fragments require a default constructor that is called when Activities recreate them.
+        // This is not an issue since we kill notifications as soon as the Activity is onStopped.
+        // Android docs recommend passing any state a Fragment needs through a Bundle, but
+        // Bundle's have a 1MB limit on size, which is not good for Bitmaps.
+        mNotification = notif;
+        return this;
     }
 
     @Override
@@ -64,12 +49,35 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onAttach(activity);
 
         // We have to hold these references because the Activity does not clear it's Handler
-        // of messages when it disappears, so we have to manually clear the mRemover in onStop
+        // of messages when it disappears, so we have to manually clear these Runnables in onStop
+        // in case they exist
         mParent = activity;
         mHandler = new Handler();
         mRemover = new Runnable() {
             public void run() {
                 InAppFragment.this.remove();
+            }
+        };
+        mDisplayMini = new Runnable() {
+            @Override
+            public void run() {
+                mInAppView.setVisibility(View.VISIBLE);
+                final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
+                mInAppView.setBackgroundColor(highlightColor);
+
+                final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+                final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+                final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
+                translate.setInterpolator(new DecelerateInterpolator());
+                translate.setDuration(200);
+                mInAppView.startAnimation(translate);
+
+                final ScaleAnimation scale = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
+                scale.setInterpolator(new SineBounceInterpolator());
+                scale.setDuration(400);
+                scale.setStartOffset(200);
+                notifImage.startAnimation(scale);
             }
         };
     }
@@ -78,7 +86,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mType = getArguments().getString("type");
         mKill = false;
     }
 
@@ -86,7 +93,11 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        if (mType == InAppNotification.Type.TAKEOVER.toString()) {
+        if (null == mNotification) {
+            Log.e(LOGTAG, "setNotification was not called with a valid InAppNotification, not creating view");
+            return null;
+        }
+        if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
             mInAppView = this.createTakeover(inflater, container);
         } else {
             mInAppView = this.createMini(inflater, container);
@@ -101,7 +112,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onResume();
 
         // Begin animations when fragment becomes visible
-        if (mType == InAppNotification.Type.TAKEOVER.toString()) {
+        if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
             final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
             final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
             final TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
@@ -128,31 +139,10 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
             fadeIn.setTarget(closeButton);
             fadeIn.start();
-        } else if (mType == InAppNotification.Type.MINI.toString()) {
+        } else if (mNotification.getType() == InAppNotification.Type.MINI) {
             // getHighlightColorFromBackground doesn't seem to work on onResume because the view
             // has not been fully rendered, so try and delay a little bit
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    mInAppView.setVisibility(View.VISIBLE);
-                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-                    mInAppView.setBackgroundColor(highlightColor);
-
-                    final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
-
-                    final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
-                    final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
-                    translate.setInterpolator(new DecelerateInterpolator());
-                    translate.setDuration(200);
-                    mInAppView.startAnimation(translate);
-
-                    final ScaleAnimation scale = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, heightPx / 2, heightPx / 2);
-                    scale.setInterpolator(new SineBounceInterpolator());
-                    scale.setDuration(400);
-                    scale.setStartOffset(200);
-                    notifImage.startAnimation(scale);
-                }
-            }, 500);
+            mHandler.postDelayed(mDisplayMini, 500);
         }
     }
 
@@ -170,19 +160,18 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onStop();
 
         mHandler.removeCallbacks(mRemover);
+        mHandler.removeCallbacks(mDisplayMini);
 
         // This Fragment when registered on the Activity is part of its state, and so gets
-        // restored / recreated when the Activity goes away and comes back, so we have to
-        // remember kill it. If the Activity object fully dies, then it is not remembered,
-        // so onSaveInstanceState is not necessary.
+        // restored / recreated when the Activity goes away and comes back. We prefer to just not
+        // keep the notification around, especially in the case of mini, so we have to remember to kill it.
+        // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
         mKill = true;
     }
 
     @Override
     public void onClick(View clicked) {
-        final Bundle bundle = getArguments();
-
-        final String uriString = bundle.getString("cta_url");
+        final String uriString = mNotification.getCallToActionUrl();
         if (uriString != null && uriString.length() > 0) {
             Uri uri = null;
             try {
@@ -205,16 +194,12 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     private View createMini(LayoutInflater inflater, ViewGroup container) {
-        final Bundle args = getArguments();
         final View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
         final TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
         final ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
 
-        titleView.setText(args.getString("title"));
-
-        final byte[] imageBytes = args.getByteArray("image");
-        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        notifImage.setImageBitmap(image);
+        titleView.setText(mNotification.getTitle());
+        notifImage.setImageBitmap(mNotification.getImage());
 
         mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
 
@@ -222,7 +207,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     private View createTakeover(LayoutInflater inflater, ViewGroup container) {
-        final Bundle args = getArguments();
         final View takeover = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, container, false);
         final ImageView notifImage = (ImageView) takeover.findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_title);
@@ -230,16 +214,13 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         final Button ctaButton = (Button) takeover.findViewById(R.id.com_mixpanel_android_notification_button);
         final ImageButton closeButton = (ImageButton) takeover.findViewById(R.id.com_mixpanel_android_button_exit);
 
-        titleView.setText(args.getString("title"));
-        subtextView.setText(args.getString("body"));
+        titleView.setText(mNotification.getTitle());
+        subtextView.setText(mNotification.getBody());
+        notifImage.setImageBitmap(mNotification.getImage());
 
-        final byte[] imageBytes = args.getByteArray("image");
-        final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        notifImage.setImageBitmap(image);
-
-        final String ctaUrl = args.getString("cta_url");
+        final String ctaUrl = mNotification.getCallToActionUrl();
         if (ctaUrl != null && ctaUrl.length() > 0) {
-            ctaButton.setText(args.getString("cta"));
+            ctaButton.setText(mNotification.getCallToAction());
         }
         ctaButton.setOnClickListener(this);
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
@@ -268,7 +249,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
-            if (mType == InAppNotification.Type.TAKEOVER.toString()) {
+            if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
                 fragmentManager.popBackStack();
             } else {
                 FragmentTransaction transaction = fragmentManager.beginTransaction();
@@ -286,8 +267,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     private Activity mParent;
     private Handler mHandler;
-    private Runnable mRemover;
-    private String mType;
+    private InAppNotification mNotification;
+    private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 
     private boolean mKill;

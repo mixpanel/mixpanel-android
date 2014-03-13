@@ -2,11 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Application;
-import android.app.Notification;
-import android.content.DialogInterface;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -28,9 +24,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
         setStartTimeIfNeeded();
 
         if(activity.isTaskRoot()) {
@@ -49,9 +42,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
-        if (! isActivityValid(activity)) {
-            return;
-        }
         setStartTimeIfNeeded();
 
         if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
@@ -75,9 +65,8 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityDestroyed(Activity activity) {}
 
     private void checkForDecideUpdates(final Activity activity) {
-        // mHasDoneFirstCheck = true; Is this always bad now?
         final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
-        if (null != notification && isActivityValid(activity)) {
+        if (null != notification) {
             mMpInstance.getPeople().showNotification(notification, activity);
             return;
         }
@@ -88,7 +77,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         }
 
         final Survey survey = mMpInstance.getPeople().getNextSurvey();
-        if (null != survey && isActivityValid(activity)) {
+        if (null != survey) {
             // TODO NEED TO BLUR HERE.
             showOrAskToShowSurvey(survey, activity);
         }
@@ -98,9 +87,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         if (null == survey) {
             if (MPConfig.DEBUG) Log.d(LOGTAG, "No survey found, nothing to show the user.");
             return;
-        } else if (! isActivityValid(activity)) {
-            Log.i(LOGTAG, "Activity is dead, can't show a survey");
-            return;
         }
 
         final long endTime = System.currentTimeMillis();
@@ -109,47 +95,8 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
             mMpInstance.getPeople().showSurvey(survey, activity);
         } else {
-            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(activity);
-            alertBuilder.setTitle("We'd love your feedback!");
-            alertBuilder.setMessage("Mind taking a quick survey?");
-            alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mMpInstance.getPeople().showSurvey(survey, activity);
-                }
-            });
-            alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    // Don't hassle the user about this particular survey again.
-                    mMpInstance.getPeople().append("$surveys", survey.getId());
-                    mMpInstance.getPeople().append("$collections", survey.getCollectionId());
-                }
-            });
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    alertBuilder.show();
-                }
-            });
+            mMpInstance.getPeople().showSurvey(survey, activity);
         }
-    }
-
-    private boolean isActivityValid(Activity activity) {
-        if (null == activity) {
-            return false;
-        }
-        if (activity.isFinishing()) {
-            return false;
-        }
-
-        if (Build.VERSION.SDK_INT >= 17) {
-            if (activity.isDestroyed()) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private synchronized void setStartTimeIfNeeded() {

@@ -1,20 +1,20 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.content.Context;
-import android.util.Log;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Log;
 
 /* package */ class DecideChecker {
 
@@ -56,13 +56,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
         Result parsed = new Result();
         if (null != responseString) {
-            parsed = parseDecideResponse(responseString);
+            parsed = parseDecideResponse(responseString, mContext);
         }
 
        return parsed;
     }// runDecideCheck
 
-    /* package */ static Result parseDecideResponse(String responseString) {
+    /* package */ static Result parseDecideResponse(String responseString, Context context) {
         JSONObject response;
         final Result ret = new Result();
 
@@ -107,6 +107,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
             try {
                 final JSONObject notificationJson = notifications.getJSONObject(i);
                 final InAppNotification notification = new InAppNotification(notificationJson);
+
+                String imageUrl;
+                if (notification.getType() == InAppNotification.Type.MINI) {
+                    imageUrl = notification.getImageUrl();
+                } else {
+                    imageUrl = notification.getImage2xUrl();
+                }
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
+                final ServerMessage imageMessage = new ServerMessage();
+                final ServerMessage.Result result = imageMessage.get(context, imageUrl, null);
+                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+                    // Shouldn't drop this notification on the floor if this is a connectivity issue!
+                    Log.i(LOGTAG, "Could not access image at " + imageUrl);
+                } else {
+                    final byte[] imageBytes = result.getResponseBytes();
+                    final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                    if (null == image) {
+                        Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
+                    } else {
+                        notification.setImage(image);
+                    }
+                }
+
                 ret.notifications.add(notification);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);

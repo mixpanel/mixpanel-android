@@ -29,7 +29,8 @@ public class SurveyState implements Parcelable {
             final String distinctId,
             final String token,
             Bitmap background,
-            int highlightColor) {
+            int highlightColor,
+            boolean showAskDialog) {
         if (! ConfigurationChecker.checkSurveyActivityAvailable(parentActivity.getApplicationContext())) {
             return;
         }
@@ -48,7 +49,8 @@ public class SurveyState implements Parcelable {
                 surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
                 SurveyState.sNextIntentId++;
-                surveyIntent.putExtra("intentID", SurveyState.sNextIntentId);
+                surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, SurveyState.sNextIntentId);
+                surveyIntent.putExtra(SurveyActivity.SHOW_ASK_DIALOG_KEY, showAskDialog);
                 parentActivity.startActivity(surveyIntent);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a survey, declining to show another.");
