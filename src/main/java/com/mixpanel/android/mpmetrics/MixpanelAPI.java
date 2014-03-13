@@ -1046,9 +1046,7 @@ public class MixpanelAPI {
             return mDecideUpdates.popSurvey();
         }
 
-        @Override
-        // MUST BE THREAD SAFE.
-        public void showSurvey(final Survey survey, final Activity parent) {
+        private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
             // Surveys are not supported before Gingerbread
             if (Build.VERSION.SDK_INT < 10) {
                 return;
@@ -1067,7 +1065,8 @@ public class MixpanelAPI {
                     getDistinctId(),
                     mToken,
                     assets.surveyBitmap,
-                    assets.highlightColor
+                    assets.highlightColor,
+                    showAskDialog
                 );
             } else {
                 BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
@@ -1079,11 +1078,18 @@ public class MixpanelAPI {
                             getDistinctId(),
                             mToken,
                             bitmapCaptured,
-                            highlightColorCaptured
+                            highlightColorCaptured,
+                            showAskDialog
                         );
                     }
                 });
             }
+        }
+
+        @Override
+        // MUST BE THREAD SAFE.
+        public void showSurvey(final Survey survey, final Activity parent) {
+            showSurvey(survey, parent, true);
         }
 
         @Override

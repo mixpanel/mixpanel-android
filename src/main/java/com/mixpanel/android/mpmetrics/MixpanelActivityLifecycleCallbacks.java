@@ -2,9 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Application;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -100,29 +98,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
             mMpInstance.getPeople().showSurvey(survey, activity);
         } else {
-            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(activity);
-            alertBuilder.setTitle("We'd love your feedback!");
-            alertBuilder.setMessage("Mind taking a quick survey?");
-            alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    mMpInstance.getPeople().showSurvey(survey, activity);
-                }
-            });
-            alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    // Don't hassle the user about this particular survey again.
-                    mMpInstance.getPeople().append("$surveys", survey.getId());
-                    mMpInstance.getPeople().append("$collections", survey.getCollectionId());
-                }
-            });
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    alertBuilder.show();
-                }
-            });
+            mMpInstance.getPeople().showSurvey(survey, activity);
         }
     }
 
