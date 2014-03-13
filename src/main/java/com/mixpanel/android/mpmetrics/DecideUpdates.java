@@ -1,24 +1,23 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.util.Log;
-
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 /* package */ class DecideUpdates {
-    public DecideUpdates(String token, String distinctId) {
+
+    public interface OnNewResultsListener {
+        public void onNewResults(String distinctId);
+    }
+
+    public DecideUpdates(String token, String distinctId, OnNewResultsListener listener) {
         mToken = token;
         mDistinctId = distinctId;
 
+        mListener = listener;
         mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
@@ -42,13 +41,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
         return mIsDestroyed.get();
     }
 
-    // This call should support calls to destroy() and isDestroyed() happening in other threads while it runs.
-    /* package */ synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications) {
+    // Do not consult destroyed status inside of this method.
+    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications) {
+        boolean newContent = false;
+
         for (final Survey s: newSurveys) {
             final int id = s.getId();
             if (! mSurveyIds.contains(id)) {
                 mSurveyIds.add(id);
                 mUnseenSurveys.add(s);
+                newContent = true;
             }
         }
 
@@ -57,7 +59,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
             if (! mNotificationIds.contains(id)) {
                 mNotificationIds.add(id);
                 mUnseenNotifications.add(n);
+                newContent = true;
             }
+        }
+
+        if (newContent && null != mListener) {
+            mListener.onNewResults(getDistinctId());
         }
     }
 
@@ -81,6 +88,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     private final Set<Integer> mNotificationIds;
     private final List<Survey> mUnseenSurveys;
     private final List<InAppNotification> mUnseenNotifications;
+    private final OnNewResultsListener mListener;
     private final AtomicBoolean mIsDestroyed;
 
     @SuppressWarnings("unused")

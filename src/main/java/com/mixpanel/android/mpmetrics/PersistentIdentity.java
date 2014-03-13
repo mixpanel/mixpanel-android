@@ -51,12 +51,6 @@ import android.util.Log;
         return ret;
     }
 
-    // TODO this stuff is hacky, we should construct a whole, healthy identity here instead
-    // Likewise, called from a wacky thread, but with exclusive access to the SharedPreferences
-    public static String peopleDistinctId(SharedPreferences storedPreferences) {
-        return storedPreferences.getString("people_distinct_id", null);
-    }
-
     public static void writeReferrerPrefs(Context context, String preferencesName, Map<String, String> properties) {
         synchronized (sReferrerPrefsLock) {
             final SharedPreferences referralInfo = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE);
@@ -350,16 +344,6 @@ import android.util.Log;
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mWaitingPeopleRecords = null;
 
-        if (null != mPeopleDistinctId) {
-            if (null != mDecideUpdates && mDecideUpdates.getDistinctId() != mPeopleDistinctId) {
-                mDecideUpdates.destroy();
-                mDecideUpdates = null;
-            }
-            if (null == mDecideUpdates) {
-                mDecideUpdates = new DecideUpdates(mToken, mPeopleDistinctId);
-            }
-        }
-
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
         if (storedWaitingRecord != null) {
             try {
@@ -409,7 +393,6 @@ import android.util.Log;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
-    private DecideUpdates mDecideUpdates;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();

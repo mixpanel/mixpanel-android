@@ -18,12 +18,10 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     }
 
     /**
-     * If MixpanelActivityLifecycleCallbacks is registered with the Application then this method
-     * will be called anytime an activity is created. Our goal is to automatically check for and show
-     * an eligible survey when the app is opened. The Mixpanel library is unlikely to be
-     * instantiated in time for this to be called on the initial opening of the application.
-     * However, this method is executed when the application is in memory but closed and the
-     * user re-opens it.
+     * The Mixpanel library is unlikely to be instantiated in time for this to be
+     * called on the initial opening of the application.
+     * However, this method is executed when the application
+     * is in memory but closed and the user re-opens it.
      *
      * @param activity
      * @param savedInstanceState
@@ -77,7 +75,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivityDestroyed(Activity activity) {}
 
     private void checkForDecideUpdates(final Activity activity) {
-        mHasDoneFirstCheck = true;
+        // mHasDoneFirstCheck = true; Is this always bad now?
         final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
         if (null != notification && isActivityValid(activity)) {
             mMpInstance.getPeople().showNotification(notification, activity);

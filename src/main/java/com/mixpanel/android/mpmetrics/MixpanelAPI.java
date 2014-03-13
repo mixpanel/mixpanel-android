@@ -4,9 +4,13 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.json.JSONArray;
@@ -110,6 +114,7 @@ public class MixpanelAPI {
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
 
+        mUpdatesListener = new UpdatesListener();
         mDecideUpdates = null;
 
         // TODO this immediately forces the lazy load of the preferences, and defeats the
@@ -746,40 +751,31 @@ public class MixpanelAPI {
         public People withIdentity(String distinctId);
 
         /**
+         * Adds a new listener that will receive a callback when new updates from Mixpanel
+         * (like Surveys or Notifications) are discovered.
+         *
+         * The given listener will be called when a new batch of updates is detected. Handlers
+         * should be prepared to handle the callback on an arbitrary thread.
+         *
+         * @param listener
+         */
+        public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
+
+        /**
+         * Removes a listener previously registered with addOnMixpanelUpdatesReceivedListener.
+        *
+         * @param listener
+         */
+        public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
+
+        /**
          * This method is deprecated- use getNextSurvey() instead.
-         *
-         * Checks to see if this user is eligible for any Mixpanel surveys.
-         * If the check is successful, it will call its argument's
-         * foundSurvey() method with a (possibly null) {@link com.mixpanel.android.mpmetrics.Survey}.
-         * The typical use case is similar to
-         * <pre>
-         * {@code
-         * Activity parent = this;
-         * mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
-         *     public void foundSurvey(Survey survey) {
-         *         if (survey != null) {
-         *             mixpanel.getPeople().showSurvey(survey, parent);
-         *         }
-         *     }
-         * });
-         * }
-         * </pre>
-         *
-         * The foundSurvey() may be (and will probably be) called on a different thread
-         * than the one that called checkForSurvey(). The library doesn't guarantee
-         * a particular thread, and callbacks are responsible for their own thread safety.
-         *
-         * This method is will always call back with null in environments with
-         * Android API before Gingerbread/API level 10
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
          * This method is deprecated- Use getNextSurvey() instead
-         *
-         * Like {@link #checkForSurvey}, but will prepare visuals and do work associated
-         * with showing the build in survey activity before calling the user callback.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
@@ -864,7 +860,7 @@ public class MixpanelAPI {
     }
 
     /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId) {
-        return new DecideUpdates(token, peopleId);
+        return new DecideUpdates(token, peopleId, mUpdatesListener);
     }
 
     /* package */ void clearPreferences() {
@@ -1233,6 +1229,16 @@ public class MixpanelAPI {
             };
         }
 
+        @Override
+        public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
+            mUpdatesListener.addOnMixpanelUpdatesReceivedListener(listener);
+        }
+
+        @Override
+        public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
+            mUpdatesListener.removeOnMixpanelUpdatesReceivedListener(listener);
+        }
+
         public JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
                 final JSONObject dataObj = new JSONObject();
@@ -1249,6 +1255,30 @@ public class MixpanelAPI {
                 return dataObj;
         }
     }// PeopleImpl
+
+    private class UpdatesListener implements DecideUpdates.OnNewResultsListener, Runnable {
+        @Override
+        public void onNewResults(final String distinctId) {
+            mExecutor.execute(this);
+        }
+
+        public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            mListeners.add(listener);
+        }
+
+        public synchronized void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            mListeners.remove(listener);
+        }
+
+        public synchronized void run() {
+            for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
+                listener.onMixpanelUpdatesReceived();
+            }
+        }
+
+        private final Set<OnMixpanelUpdatesReceivedListener> mListeners = new HashSet<OnMixpanelUpdatesReceivedListener>();
+        private final Executor mExecutor = Executors.newSingleThreadExecutor();
+    }
 
     ////////////////////////////////////////////////////
 
@@ -1299,6 +1329,7 @@ public class MixpanelAPI {
     private final String mToken;
     private final PeopleImpl mPeople;
     private final PersistentIdentity mPersistentIdentity;
+    private final UpdatesListener mUpdatesListener;
 
     private final SynchronizedReference<SurveyAssets> mSurveyAssets;
     private DecideUpdates mDecideUpdates;
