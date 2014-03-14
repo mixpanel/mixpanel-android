@@ -5,9 +5,6 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
-
-import java.util.Map;
 
 @TargetApi(14)
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
@@ -80,11 +77,14 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
 
     // Should always be called on the main thread.
     private void checkForDecideUpdates(final Activity activity) {
-        final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
-        if (null != notification) {
-            mHasChecked = true;
-            mMpInstance.getPeople().showNotification(notification, activity);
-            return;
+        MPConfig mpConfig = MPConfig.readConfig(activity);
+        if (mpConfig.getAutoCheckMixpanelData()) {
+            final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
+            if (null != notification) {
+                mHasChecked = true;
+                mMpInstance.getPeople().showNotification(notification, activity);
+                return;
+            }
         }
         // ELSE
 
@@ -92,12 +92,14 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             return;
         }
 
-        final Survey survey = mMpInstance.getPeople().getNextSurvey();
-        if (null != survey) {
-            // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?
-            mHasChecked = true;
-            mMpInstance.getPeople().showSurvey(survey, activity);
-            return;
+        if (mpConfig.getAutoCheckForSurveys() || mpConfig.getAutoCheckMixpanelData()) {
+            final Survey survey = mMpInstance.getPeople().getNextSurvey();
+            if (null != survey) {
+                // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?
+                mHasChecked = true;
+                mMpInstance.getPeople().showSurvey(survey, activity);
+                return;
+            }
         }
         // ELSE
 

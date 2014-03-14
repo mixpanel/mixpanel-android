@@ -41,11 +41,17 @@ import android.util.Log;
     }
 
     public MPConfig(Bundle metaData) {
+        if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
+            Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
+                          "com.mixpanel.android.MPConfig.AutoCheckMixpanelData. Please update this key as soon as possible.");
+        }
+
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 48); // 48 hours default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mAutoCheckForSurveys = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
+        mAutoCheckMixpanelData = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true);
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
@@ -86,6 +92,7 @@ import android.util.Log;
         if (DEBUG) {
             Log.d(LOGTAG,
                 "Mixpanel configured with:\n" +
+                "    AutoCheckMixpanelData " + getAutoCheckMixpanelData() + "\n" +
                 "    AutoCheckForSurveys " + getAutoCheckForSurveys() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
@@ -155,6 +162,11 @@ import android.util.Log;
         return mAutoCheckForSurveys;
     }
 
+    // Check for and show eligible surveys and in app notifications on Activity changes
+    public boolean getAutoCheckMixpanelData() {
+        return mAutoCheckMixpanelData;
+    }
+
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
     private final int mDataExpiration;
@@ -166,6 +178,7 @@ import android.util.Log;
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoCheckForSurveys;
+    private final boolean mAutoCheckMixpanelData;
 
     private static final String LOGTAG = "MixpanelAPI.MPConfig";
 }
