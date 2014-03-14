@@ -64,8 +64,7 @@ import android.util.Log;
         }
     }
 
-    public PersistentIdentity(String token, Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
-        mToken = token;
+    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mSuperPropertiesCache = null;
@@ -383,7 +382,6 @@ import android.util.Log;
         }
     }
 
-    private final String mToken;
     private final Future<SharedPreferences> mLoadStoredPreferences;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;

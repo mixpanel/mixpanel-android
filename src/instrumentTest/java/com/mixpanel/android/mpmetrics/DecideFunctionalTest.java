@@ -2,10 +2,13 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.os.Bundle;
 import android.test.AndroidTestCase;
 
 import org.apache.http.NameValuePair;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -19,6 +22,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         SharedPreferences.Editor editor = referrerPreferences.edit();
         editor.clear();
         editor.commit();
+
+        final ByteArrayOutputStream imageStream = new ByteArrayOutputStream();
+        final Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+        final Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
+        testBitmap.compress(Bitmap.CompressFormat.JPEG, 50, imageStream);
+        final byte[] imageBytes = imageStream.toByteArray();
 
         mMockPreferences = new Future<SharedPreferences>() {
             @Override
@@ -53,13 +62,21 @@ public class DecideFunctionalTest extends AndroidTestCase {
             /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 synchronized (mExpectations) {
                     if (endpointUrl.equals(mExpectations.expectUrl)) {
-                        System.out.println("EXPECTATIONS A OK! " + mExpectations);
+                        return new Result(Status.SUCCEEDED, TestUtils.bytes(mExpectations.response));
+                    } else if (endpointUrl.equals("http://mixpanel.com/Balok.jpg")){
+                        return new Result(Status.SUCCEEDED, imageBytes);
                     } else {
                         fail("Unexpected URL " + endpointUrl + " in MixpanelAPI");
                     }
-
-                    return new Result(Status.SUCCEEDED, TestUtils.bytes(mExpectations.response));
+                    return null;
                 }
+            }
+        };
+
+        mMockConfig = new MPConfig(new Bundle()) {
+            @Override
+            public boolean getAutoCheckForSurveys() {
+                return false;
             }
         };
 
@@ -68,6 +85,9 @@ public class DecideFunctionalTest extends AndroidTestCase {
             protected ServerMessage getPoster() {
                 return mMockPoster;
             }
+
+            @Override
+            protected MPConfig getConfig(Context context) { return mMockConfig; }
         };
     }
 
@@ -84,8 +104,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideUpdates constructDecideUpdates(String token, String distinctId) {
-                return new MockUpdates(token, distinctId);
+            DecideUpdates constructDecideUpdates(String token, String distinctId, DecideUpdates.OnNewResultsListener listener) {
+                return new MockUpdates(token, distinctId, listener);
             }
         };
 
@@ -203,8 +223,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideUpdates constructDecideUpdates(String token, String distinctId) {
-                return new MockUpdates(token, distinctId);
+            DecideUpdates constructDecideUpdates(String token, String distinctId, DecideUpdates.OnNewResultsListener listener) {
+                return new MockUpdates(token, distinctId, listener);
             }
         };
 
@@ -247,8 +267,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
     }
 
     private class MockUpdates extends DecideUpdates {
-        public MockUpdates(final String token, final String distinctId) {
-            super(token, distinctId);
+        public MockUpdates(final String token, final String distinctId, final OnNewResultsListener listener) {
+            super(token, distinctId, listener);
         }
 
         @Override
@@ -261,6 +281,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
     }
 
+    private MPConfig mMockConfig;
     private Future<SharedPreferences> mMockPreferences;
     private Expectations mExpectations;
     private ServerMessage mMockPoster;

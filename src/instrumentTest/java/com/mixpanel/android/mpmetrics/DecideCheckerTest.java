@@ -14,9 +14,9 @@ public class DecideCheckerTest extends AndroidTestCase {
     public void setUp() {
         mDecideChecker = new DecideChecker(getContext(), MPConfig.readConfig(getContext()));
         mPoster = new MockPoster();
-        mDecideUpdates1 = new DecideUpdates("TOKEN 1", "DISTINCT ID 1");
-        mDecideUpdates2 = new DecideUpdates("TOKEN 2", "DISTINCT ID 2");
-        mDecideUpdates3 = new DecideUpdates("TOKEN 3", "DISTINCT ID 3");
+        mDecideUpdates1 = new DecideUpdates("TOKEN 1", "DISTINCT ID 1", null);
+        mDecideUpdates2 = new DecideUpdates("TOKEN 2", "DISTINCT ID 2", null);
+        mDecideUpdates3 = new DecideUpdates("TOKEN 3", "DISTINCT ID 3", null);
 
     }
 

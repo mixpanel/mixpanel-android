@@ -56,13 +56,25 @@ import android.util.Log;
 
         Result parsed = new Result();
         if (null != responseString) {
-            parsed = parseDecideResponse(responseString, mContext);
+            parsed = parseDecideResponse(responseString);
         }
 
-       return parsed;
+        final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
+        while (notificationIterator.hasNext()) {
+            final InAppNotification notification = notificationIterator.next();
+            final Bitmap image = getNotificationImage(notification, mContext, poster);
+            if (null == image) {
+                Log.i(LOGTAG, "Could not retrieve image for notification, will not show the notification.");
+                notificationIterator.remove();
+            } else {
+                notification.setImage(image);
+            }
+        }
+
+        return parsed;
     }// runDecideCheck
 
-    /* package */ static Result parseDecideResponse(String responseString, Context context) {
+    /* package */ static Result parseDecideResponse(String responseString) {
         JSONObject response;
         final Result ret = new Result();
 
@@ -82,15 +94,18 @@ import android.util.Log;
             }
         }
 
-        for (int i = 0; null != surveys && i < surveys.length(); i++) {
-            try {
-                final JSONObject surveyJson = surveys.getJSONObject(i);
-                final Survey survey = new Survey(surveyJson);
-                ret.surveys.add(survey);
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-            } catch (final BadDecideObjectException e) {
-                Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
+        if (null != surveys) {
+            final int surveysToRead = Math.min(surveys.length(), MPConfig.MAX_UPDATE_CACHE_ELEMENT_COUNT);
+            for (int i = 0; i < surveysToRead; i++) {
+                try {
+                    final JSONObject surveyJson = surveys.getJSONObject(i);
+                    final Survey survey = new Survey(surveyJson);
+                    ret.surveys.add(survey);
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
+                } catch (final BadDecideObjectException e) {
+                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
+                }
             }
         }
 
@@ -103,38 +118,18 @@ import android.util.Log;
             }
         }
 
-        for (int i = 0; null != notifications && i < notifications.length(); i++) {
-            try {
-                final JSONObject notificationJson = notifications.getJSONObject(i);
-                final InAppNotification notification = new InAppNotification(notificationJson);
-
-                String imageUrl;
-                if (notification.getType() == InAppNotification.Type.MINI) {
-                    imageUrl = notification.getImageUrl();
-                } else {
-                    imageUrl = notification.getImage2xUrl();
+        if (null != notifications) {
+            final int notificationsToRead = Math.min(notifications.length(), MPConfig.MAX_UPDATE_CACHE_ELEMENT_COUNT);
+            for (int i = 0; null != notifications && i < notificationsToRead; i++) {
+                try {
+                    final JSONObject notificationJson = notifications.getJSONObject(i);
+                    final InAppNotification notification = new InAppNotification(notificationJson);
+                    ret.notifications.add(notification);
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                } catch (final BadDecideObjectException e) {
+                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 }
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
-                final ServerMessage imageMessage = new ServerMessage();
-                final ServerMessage.Result result = imageMessage.get(context, imageUrl, null);
-                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                    // Shouldn't drop this notification on the floor if this is a connectivity issue!
-                    Log.i(LOGTAG, "Could not access image at " + imageUrl);
-                } else {
-                    final byte[] imageBytes = result.getResponseBytes();
-                    final Bitmap image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                    if (null == image) {
-                        Log.w(LOGTAG, "Notification referred to bad or corrupted image at " + imageUrl);
-                    } else {
-                        notification.setImage(image);
-                    }
-                }
-
-                ret.notifications.add(notification);
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
-            } catch (final BadDecideObjectException e) {
-                Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
             }
         }
 
@@ -168,6 +163,26 @@ import android.util.Log;
             return null;
         }
         return result.getResponse();
+    }
+
+    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
+        Bitmap ret = null;
+        String imageUrl;
+        if (notification.getType() == InAppNotification.Type.MINI) {
+            imageUrl = notification.getImageUrl();
+        } else {
+            imageUrl = notification.getImage2xUrl();
+        }
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
+        final ServerMessage.Result result = poster.get(context, imageUrl, null);
+        if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
+            Log.i(LOGTAG, "Could not access image at " + imageUrl + ", notification will not be shown");
+        } else {
+            final byte[] imageBytes = result.getResponseBytes();
+            ret = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        }
+
+        return ret;
     }
 
     private final MPConfig mConfig;

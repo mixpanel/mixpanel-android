@@ -4,13 +4,17 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
+
+import java.util.Map;
 
 @TargetApi(14)
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance) {
         mMpInstance = mpInstance;
+        mHasChecked = false;
     }
 
     /**
@@ -24,8 +28,6 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        setStartTimeIfNeeded();
-
         if(activity.isTaskRoot()) {
             checkForDecideUpdates(activity);
         }
@@ -42,9 +44,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
-        setStartTimeIfNeeded();
-
-        if (!mHasDoneFirstCheck && activity.isTaskRoot()) {
+        if (activity.isTaskRoot()) {
             checkForDecideUpdates(activity);
         }
     }
@@ -52,21 +52,37 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     @Override
     public void onActivityResumed(Activity activity) {}
 
+    /**
+     * We rely on the fact that the we'll either get an onActivityPaused or onActivityDestroyed
+     * message if/when the activity goes away.
+     */
     @Override
-    public void onActivityPaused(Activity activity) {}
+    public void onActivityPaused(Activity activity) {
+        cleanupActivity(activity);
+    }
 
     @Override
-    public void onActivityStopped(Activity activity) {}
+    public void onActivityStopped(Activity activity) {
+        cleanupActivity(activity);
+    }
 
     @Override
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
 
+    /**
+     * We rely on the fact that the we'll either get an onActivityPaused or onActivityDestroyed
+     * message if/when the activity goes away.
+     */
     @Override
-    public void onActivityDestroyed(Activity activity) {}
+    public void onActivityDestroyed(Activity activity) {
+        cleanupActivity(activity);
+    }
 
+    // Should always be called on the main thread.
     private void checkForDecideUpdates(final Activity activity) {
         final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
         if (null != notification) {
+            mHasChecked = true;
             mMpInstance.getPeople().showNotification(notification, activity);
             return;
         }
@@ -78,40 +94,70 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
 
         final Survey survey = mMpInstance.getPeople().getNextSurvey();
         if (null != survey) {
-            // TODO NEED TO BLUR HERE.
-            showOrAskToShowSurvey(survey, activity);
-        }
-    }
-
-    private void showOrAskToShowSurvey(final Survey survey, final Activity activity) {
-        if (null == survey) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "No survey found, nothing to show the user.");
+            // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?
+            mHasChecked = true;
+            mMpInstance.getPeople().showSurvey(survey, activity);
             return;
         }
+        // ELSE
 
-        final long endTime = System.currentTimeMillis();
-        final long totalTime = endTime - getStartTime();
-        if (totalTime <= mTimeoutMillis) { // If we're quick enough, just show the survey!
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "found survey " + survey.getId() + ", calling showSurvey...");
-            mMpInstance.getPeople().showSurvey(survey, activity);
-        } else {
-            mMpInstance.getPeople().showSurvey(survey, activity);
+        if (! mHasChecked) {
+            mHasChecked = true;
+            mUpdatesListener = new UpdatesListener(activity);
+            mMpInstance.getPeople().addOnMixpanelUpdatesReceivedListener(mUpdatesListener);
         }
     }
 
-    private synchronized void setStartTimeIfNeeded() {
-        if (mStartTime < 0) {
-            mStartTime = System.currentTimeMillis();
+    private void cleanupActivity(Activity activity) {
+        if (null != mUpdatesListener && mUpdatesListener.getActivity() == activity) {
+            mUpdatesListener.disable();
+            mUpdatesListener = null;
         }
     }
 
-    private synchronized long getStartTime() {
-        return mStartTime;
+    // Must be constructed on the main thread
+    private class UpdatesListener implements OnMixpanelUpdatesReceivedListener, Runnable {
+        // Construct on main UI thread only
+        public UpdatesListener(final Activity activity) {
+            mOnBehalfOf = activity;
+            mDisabled = false;
+            mHandler = new Handler();
+        }
+
+        @Override
+        // Will be run on some random thread
+        public void onMixpanelUpdatesReceived() {
+            mHandler.post(this);
+        }
+
+        // Call on main UI thread only
+        public void disable() {
+            mDisabled = true;
+            mOnBehalfOf = null;
+        }
+
+        // Call on main UI thread only
+        public Activity getActivity() {
+            return mOnBehalfOf;
+        }
+
+        @Override
+        // Will be run on the Main UI thread
+        public void run() {
+            if (! mDisabled) {
+                checkForDecideUpdates(mOnBehalfOf);
+            }
+        }
+
+        private Activity mOnBehalfOf;
+        private boolean mDisabled;
+        private final Handler mHandler;
     }
 
     private final MixpanelAPI mMpInstance;
-    private boolean mHasDoneFirstCheck = false;
-    private long mStartTime = -1;
-    private final long mTimeoutMillis = 2000; // 2 second timeout
+    private boolean mHasChecked;
+    private UpdatesListener mUpdatesListener;
+
+    @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI:MixpanelActivityLifecycleCallbacks";
 }

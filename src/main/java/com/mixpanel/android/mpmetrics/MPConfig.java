@@ -21,6 +21,11 @@ import android.util.Log;
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 
+    // Max size of Notification and Survey caches. Since they may contain images, we don't want to
+    // suck up all of the memory on the device, particularly since multiple notifications or surveys
+    // in a single session isn't really an ideal UX
+    /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 4;
+
     public static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
         try {
@@ -81,6 +86,7 @@ import android.util.Log;
         if (DEBUG) {
             Log.d(LOGTAG,
                 "Mixpanel configured with:\n" +
+                "    AutoCheckForSurveys " + getAutoCheckForSurveys() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +

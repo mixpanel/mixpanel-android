@@ -148,6 +148,16 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
         public People withIdentity(final String distinctId) {
             Assert.fail("Unexpected call");
             return null;

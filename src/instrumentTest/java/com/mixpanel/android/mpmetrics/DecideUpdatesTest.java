@@ -7,12 +7,23 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class DecideUpdatesTest extends AndroidTestCase {
 
     @Override
     public void setUp() throws JSONException, BadDecideObjectException {
-        mDecideUpdates = new DecideUpdates("TEST TOKEN", "TEST DISTINCT ID");
+
+        mListenerCalls = new LinkedBlockingQueue<String>();
+        mMockListener = new DecideUpdates.OnNewResultsListener() {
+            @Override
+            public void onNewResults(final String distinctId) {
+                mListenerCalls.add("CALLED");
+            }
+        };
+
+        mDecideUpdates = new DecideUpdates("TEST TOKEN", "TEST DISTINCT ID", mMockListener);
         mSomeSurveys = new ArrayList<Survey>();
         mSomeNotifications = new ArrayList<InAppNotification>();
 
@@ -115,6 +126,31 @@ public class DecideUpdatesTest extends AndroidTestCase {
         assertNull(shouldBeNullNotification);
     }
 
+    public void testListenerCalls() throws JSONException, BadDecideObjectException {
+        assertNull(mListenerCalls.peek());
+        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        assertEquals(mListenerCalls.poll(), "CALLED");
+        assertNull(mListenerCalls.peek());
+
+        // No new info means no new calls
+        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        assertNull(mListenerCalls.peek());
+
+        // New info means new calls
+        JSONObject notificationNewIdDesc = new JSONObject(
+                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22022,\"type\":\"mini\"}"
+        );
+        final InAppNotification unseenNotification = new InAppNotification(notificationNewIdDesc);
+        final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
+        newNotifications.add(unseenNotification);
+
+        mDecideUpdates.reportResults(mSomeSurveys, newNotifications);
+        assertEquals(mListenerCalls.poll(), "CALLED");
+        assertNull(mListenerCalls.peek());
+    }
+
+    private BlockingQueue<String> mListenerCalls;
+    private DecideUpdates.OnNewResultsListener mMockListener;
     private DecideUpdates mDecideUpdates;
     private List<Survey> mSomeSurveys;
     private List<InAppNotification> mSomeNotifications;

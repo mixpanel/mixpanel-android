@@ -63,7 +63,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
             }
         }
 
-        if (newContent && null != mListener) {
+        if (newContent && hasUpdatesAvailable() && null != mListener) {
             mListener.onNewResults(getDistinctId());
         }
     }
@@ -80,6 +80,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
             return null;
         }
         return mUnseenNotifications.remove(0);
+    }
+
+    public synchronized boolean hasUpdatesAvailable() {
+        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty());
     }
 
     private final String mToken;

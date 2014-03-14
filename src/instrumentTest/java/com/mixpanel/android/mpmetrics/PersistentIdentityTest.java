@@ -40,7 +40,7 @@ public class PersistentIdentityTest extends AndroidTestCase {
         Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
         Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
 
-        mPersistentIdentity = new PersistentIdentity("TEST PERSISTENT ID TOKEN", referrerLoader, testLoader);
+        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader);
     }
 
     public void testStaticWaitingPeopleRecordsWithId() throws JSONException {

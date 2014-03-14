@@ -121,7 +121,7 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         if (null != peopleId) {
-            mDecideUpdates = constructDecideUpdates(token, peopleId);
+            mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
             mMessages.installDecideCheck(mDecideUpdates);
         }
 
@@ -757,6 +757,9 @@ public class MixpanelAPI {
          * The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
+         * The callback should be able to accept "False positives"- callbacks when there
+         * aren't actually updates to receive.
+         *
          * @param listener
          */
         public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
@@ -806,16 +809,12 @@ public class MixpanelAPI {
     @TargetApi(14)
     void registerMixpanelActivityLifecycleCallbacks() {
         if (android.os.Build.VERSION.SDK_INT >= 14 && MPConfig.readConfig(mContext).getAutoCheckForSurveys()) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is >= 14");
             if (mContext.getApplicationContext() instanceof Application) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is instanceof Application, registering MixpanelActivityLifecycleCallbacks");
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, auto show surveys will be disabled.");
             }
-        } else {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "OS version is < 14, auto show surveys will be disabled.");
         }
     }
 
@@ -856,11 +855,11 @@ public class MixpanelAPI {
 
         final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
         final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
-        return new PersistentIdentity(token, referrerPreferences, storedPreferences);
+        return new PersistentIdentity(referrerPreferences, storedPreferences);
     }
 
-    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId) {
-        return new DecideUpdates(token, peopleId, mUpdatesListener);
+    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener) {
+        return new DecideUpdates(token, peopleId, listener);
     }
 
     /* package */ void clearPreferences() {
@@ -882,7 +881,7 @@ public class MixpanelAPI {
             }
 
             if (null == mDecideUpdates) {
-                mDecideUpdates = constructDecideUpdates(mToken, distinctId);
+                mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
             pushWaitingPeopleRecord();
@@ -1269,6 +1268,14 @@ public class MixpanelAPI {
         }
 
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            // Workaround for a race between checking for updates using getNextSurvey and getNextInAppNotification
+            // and registering a listener.
+            synchronized (mDecideUpdates) {
+                if (mDecideUpdates.hasUpdatesAvailable()) {
+                    onNewResults(mDecideUpdates.getDistinctId());
+                }
+            }
+
             mListeners.add(listener);
         }
 
@@ -1277,6 +1284,8 @@ public class MixpanelAPI {
         }
 
         public synchronized void run() {
+            // It's possible that by the time this has run the updates we detected are no longer
+            // present, which is ok.
             for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
