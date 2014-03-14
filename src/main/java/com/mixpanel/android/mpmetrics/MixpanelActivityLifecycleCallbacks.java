@@ -25,9 +25,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if(activity.isTaskRoot()) {
-            checkForDecideUpdates(activity);
-        }
+        checkForDecideUpdates(activity);
     }
 
     /**
@@ -41,13 +39,13 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
      */
     @Override
     public void onActivityStarted(Activity activity) {
-        if (activity.isTaskRoot()) {
-            checkForDecideUpdates(activity);
-        }
+        checkForDecideUpdates(activity);
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {}
+    public void onActivityResumed(Activity activity) {
+        checkForDecideUpdates(activity);
+    }
 
     /**
      * We rely on the fact that the we'll either get an onActivityPaused or onActivityDestroyed
@@ -77,6 +75,10 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
 
     // Should always be called on the main thread.
     private void checkForDecideUpdates(final Activity activity) {
+        if (! activity.isTaskRoot()) {
+            return; // No checks, no nothing.
+        }
+
         MPConfig mpConfig = MPConfig.readConfig(activity);
         if (mpConfig.getAutoCheckMixpanelData()) {
             final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();

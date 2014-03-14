@@ -96,7 +96,6 @@ import com.mixpanel.android.R;
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
-
     /**
      * String version of the library.
      */
@@ -122,10 +121,15 @@ public class MixpanelAPI {
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         if (null != peopleId) {
             mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
-            mMessages.installDecideCheck(mDecideUpdates);
         }
 
+        // If we're constructed in onCreate (common case), we want
+        // to have something to show by onStart?
         registerMixpanelActivityLifecycleCallbacks();
+
+        if (null != mDecideUpdates) {
+            mMessages.installDecideCheck(mDecideUpdates);
+        }
     }
 
     /**
@@ -1288,6 +1292,7 @@ public class MixpanelAPI {
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
+            Log.e(LOGTAG, "UPDATE RECIEVED, INFORMING " + mListeners.size() + " LISTENERS");
             for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
