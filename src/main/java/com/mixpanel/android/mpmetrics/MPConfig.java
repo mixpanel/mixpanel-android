@@ -50,8 +50,8 @@ import android.util.Log;
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 48); // 48 hours default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
-        mAutoCheckForSurveys = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
-        mAutoCheckMixpanelData = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true);
+        mAutoCheckMixpanelData = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true) ||
+                                 metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
@@ -93,7 +93,6 @@ import android.util.Log;
             Log.d(LOGTAG,
                 "Mixpanel configured with:\n" +
                 "    AutoCheckMixpanelData " + getAutoCheckMixpanelData() + "\n" +
-                "    AutoCheckForSurveys " + getAutoCheckForSurveys() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
@@ -157,11 +156,6 @@ import android.util.Log;
         return mDecideFallbackEndpoint;
     }
 
-    // Check for and show eligible surveys when the app is opened if true
-    public boolean getAutoCheckForSurveys() {
-        return mAutoCheckForSurveys;
-    }
-
     // Check for and show eligible surveys and in app notifications on Activity changes
     public boolean getAutoCheckMixpanelData() {
         return mAutoCheckMixpanelData;
@@ -177,7 +171,6 @@ import android.util.Log;
     private final String mPeopleFallbackEndpoint;
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
-    private final boolean mAutoCheckForSurveys;
     private final boolean mAutoCheckMixpanelData;
 
     private static final String LOGTAG = "MixpanelAPI.MPConfig";

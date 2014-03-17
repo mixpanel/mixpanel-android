@@ -813,8 +813,7 @@ public class MixpanelAPI {
     @TargetApi(14)
     void registerMixpanelActivityLifecycleCallbacks() {
         MPConfig mpConfig = MPConfig.readConfig(mContext);
-        if (android.os.Build.VERSION.SDK_INT >= 14 &&
-                (mpConfig.getAutoCheckForSurveys() || mpConfig.getAutoCheckMixpanelData())) {
+        if (android.os.Build.VERSION.SDK_INT >= 14 && mpConfig.getAutoCheckMixpanelData()) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
