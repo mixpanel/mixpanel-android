@@ -28,8 +28,8 @@ import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.SurveyState;
 
 /**
- * Activity used internally by Mixpanel to display surveys. You shouldn't send intents directly to this activity-
- * The best way to display a SurveyActivity is to call
+ * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
+ * The best way to display a SurveyActivity for surveys is to call
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
  */
 public class SurveyActivity extends Activity {
@@ -38,6 +38,16 @@ public class SurveyActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mActivityType = Type.SURVEY;
+        if (getIntent().hasExtra(ACTIVITY_TYPE_KEY) && getIntent().getSerializableExtra(ACTIVITY_TYPE_KEY) == Type.INAPP_TAKEOVER) {
+            mActivityType = Type.INAPP_TAKEOVER;
+        } else {
+            onCreateSurvey(savedInstanceState);
+        }
+
+    }
+
+    private void onCreateSurvey(Bundle savedInstanceState) {
         SurveyState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
@@ -52,7 +62,6 @@ public class SurveyActivity extends Activity {
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
         }
-        final Survey survey = mSurveyState.getSurvey();
         final String answerDistinctId = mSurveyState.getDistinctId();
         if (null == answerDistinctId) {
             Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
@@ -85,6 +94,12 @@ public class SurveyActivity extends Activity {
     protected void onStart() {
         super.onStart();
 
+        if (mActivityType == Type.SURVEY) {
+            onStartSurvey();
+        }
+    }
+
+    private void onStartSurvey() {
         trackSurveyAttempted();
         if (getIntent().getBooleanExtra(SHOW_ASK_DIALOG_KEY, true)) {
             final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
@@ -111,10 +126,17 @@ public class SurveyActivity extends Activity {
         }
     }
 
-
-    @SuppressLint("SimpleDateFormat")
     @Override
     protected void onDestroy() {
+        if (mActivityType == Type.SURVEY) {
+            onDestroySurvey();
+        }
+
+        super.onDestroy();
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private void onDestroySurvey() {
         if (null != mMixpanel) {
             if (null != mSurveyState) {
                 final Survey survey = mSurveyState.getSurvey();
@@ -151,19 +173,25 @@ public class SurveyActivity extends Activity {
         } // if we initialized property and we have a mixpanel
 
         SurveyState.releaseSurvey(mIntentId);
-        super.onDestroy();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+
+        if (mActivityType == Type.SURVEY) {
+            onSaveInstanceStateSurvey(outState);
+        }
+    }
+
+    private void onSaveInstanceStateSurvey(Bundle outState) {
         outState.putInt(CURRENT_QUESTION_BUNDLE_KEY, mCurrentQuestion);
         outState.putParcelable(SURVEY_STATE_BUNDLE_KEY, mSurveyState);
     }
 
     @Override
     public void onBackPressed() {
-        if (mCurrentQuestion > 0) {
+        if (mActivityType == Type.SURVEY && mCurrentQuestion > 0) {
             goToPreviousQuestion();
         } else {
             super.onBackPressed();
@@ -253,13 +281,12 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
-
+    private CardCarouselLayout mCardHolder;
     private MixpanelAPI mMixpanel;
-    private View mView;
     private View mPreviousButton;
     private View mNextButton;
     private TextView mProgressTextView;
-    private CardCarouselLayout mCardHolder;
+    private Type mActivityType;
 
     private SurveyState mSurveyState;
     private int mCurrentQuestion = 0;
@@ -270,6 +297,21 @@ public class SurveyActivity extends Activity {
     private static final String LOGTAG = "MixpanelAPI";
     private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
 
+    public static enum Type {
+        INAPP_TAKEOVER {
+            @Override
+            public String toString() {
+                return "inapp_takeover";
+            }
+        },
+        SURVEY {
+            @Override
+            public String toString() {
+                return "survey";
+            }
+        }
+    };
+    public static final String ACTIVITY_TYPE_KEY = "activityType";
     public static final String INTENT_ID_KEY = "intentId";
     public static final String SHOW_ASK_DIALOG_KEY = "showAskDialog";
 }
