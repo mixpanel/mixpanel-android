@@ -56,7 +56,7 @@ public class InAppNotification implements Parcelable {
         mImage = (Bitmap) in.readParcelable(Bitmap.class.getClassLoader());
     }
 
-    /* package */public InAppNotification(JSONObject description) throws BadDecideObjectException {
+    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");
