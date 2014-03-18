@@ -9,8 +9,6 @@ import java.util.TimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.animation.AnimatorInflater;
-import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -27,6 +25,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
@@ -235,9 +234,8 @@ public class SurveyActivity extends Activity {
         subtextView.startAnimation(translate);
         ctaButton.startAnimation(translate);
 
-        final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.anim.fade_in);
-        fadeIn.setTarget(closeButton);
-        fadeIn.start();
+        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
+        closeButton.startAnimation(fadeIn);
     }
 
     @Override
