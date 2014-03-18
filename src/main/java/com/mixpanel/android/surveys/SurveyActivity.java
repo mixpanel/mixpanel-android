@@ -9,19 +9,33 @@ import java.util.TimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.animation.AnimatorInflater;
+import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.mpmetrics.InAppNotification;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
@@ -41,10 +55,70 @@ public class SurveyActivity extends Activity {
         mActivityType = Type.SURVEY;
         if (getIntent().hasExtra(ACTIVITY_TYPE_KEY) && getIntent().getSerializableExtra(ACTIVITY_TYPE_KEY) == Type.INAPP_TAKEOVER) {
             mActivityType = Type.INAPP_TAKEOVER;
+            mInAppNotification = getIntent().getParcelableExtra(INAPP_NOTIFICATION_KEY);
+            onCreateInAppNotification(savedInstanceState);
         } else {
             onCreateSurvey(savedInstanceState);
         }
+    }
 
+    private void onCreateInAppNotification(Bundle savedInstanceState) {
+        setContentView(R.layout.com_mixpanel_android_activity_notification_full);
+
+        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
+
+        titleView.setText(mInAppNotification.getTitle());
+        subtextView.setText(mInAppNotification.getBody());
+        notifImage.setImageBitmap(mInAppNotification.getImage());
+
+        final String ctaUrl = mInAppNotification.getCallToActionUrl();
+        if (ctaUrl != null && ctaUrl.length() > 0) {
+            ctaButton.setText(mInAppNotification.getCallToAction());
+        }
+        ctaButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String uriString = mInAppNotification.getCallToActionUrl();
+                if (uriString != null && uriString.length() > 0) {
+                    Uri uri = null;
+                    try {
+                        uri = Uri.parse(uriString);
+                    } catch (IllegalArgumentException e) {
+                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return;
+                    }
+
+                    assert(uri != null);
+                    try {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        SurveyActivity.this.startActivity(viewIntent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    }
+                }
+                finish();
+            }
+        });
+        ctaButton.setOnTouchListener(new View.OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
+                } else {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
+                }
+                return false;
+            }
+        });
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
@@ -124,6 +198,45 @@ public class SurveyActivity extends Activity {
             SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
             showQuestion(mCurrentQuestion);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (this.mActivityType == Type.INAPP_TAKEOVER) {
+            onResumeInAppNotification();
+        }
+    }
+
+    @SuppressLint("NewApi")
+    private void onResumeInAppNotification() {
+        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
+
+        final ScaleAnimation scale = new ScaleAnimation(
+            .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+        scale.setDuration(200);
+        notifImage.startAnimation(scale);
+
+        final TranslateAnimation translate = new TranslateAnimation(
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.5f,
+             Animation.RELATIVE_TO_SELF, 0.0f
+        );
+        translate.setInterpolator(new DecelerateInterpolator());
+        translate.setDuration(200);
+        titleView.startAnimation(translate);
+        subtextView.startAnimation(translate);
+        ctaButton.startAnimation(translate);
+
+        final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.anim.fade_in);
+        fadeIn.setTarget(closeButton);
+        fadeIn.start();
     }
 
     @Override
@@ -282,6 +395,7 @@ public class SurveyActivity extends Activity {
     }
 
     private CardCarouselLayout mCardHolder;
+    private InAppNotification mInAppNotification;
     private MixpanelAPI mMixpanel;
     private View mPreviousButton;
     private View mNextButton;
@@ -312,6 +426,7 @@ public class SurveyActivity extends Activity {
         }
     };
     public static final String ACTIVITY_TYPE_KEY = "activityType";
+    public static final String INAPP_NOTIFICATION_KEY = "inapp_notification";
     public static final String INTENT_ID_KEY = "intentId";
     public static final String SHOW_ASK_DIALOG_KEY = "showAskDialog";
 }

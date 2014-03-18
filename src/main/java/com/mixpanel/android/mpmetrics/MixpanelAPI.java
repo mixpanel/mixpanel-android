@@ -31,6 +31,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.surveys.SurveyActivity;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -1102,19 +1103,22 @@ public class MixpanelAPI {
             parent.runOnUiThread(new Runnable() {
                 @SuppressLint("NewApi")
                 public void run() {
-                    InAppFragment inapp = new InAppFragment().setNotification(notification);
-                    FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-
                     if (notification.getType() == InAppNotification.Type.TAKEOVER) {
-                        transaction.setCustomAnimations(R.anim.fade_in, R.anim.fade_out, R.anim.fade_in, R.anim.fade_out);
-                        transaction.addToBackStack(null);
+                        final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                        intent.putExtra(SurveyActivity.ACTIVITY_TYPE_KEY, SurveyActivity.Type.INAPP_TAKEOVER);
+                        intent.putExtra(SurveyActivity.INAPP_NOTIFICATION_KEY, notification);
+                        parent.startActivity(intent);
                     } else {
+                        InAppFragment inapp = new InAppFragment().setNotification(notification);
+                        FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                         transaction.setCustomAnimations(0, R.anim.slide_down);
-                    }
-                    transaction.add(android.R.id.content, inapp);
-                    transaction.commit();
+                        transaction.add(android.R.id.content, inapp);
+                        transaction.commit();
 
-                    track("$campaign_delivery", notification.getCampaignProperties());
+                        track("$campaign_delivery", notification.getCampaignProperties());
+                    }
                 }
             });
         }

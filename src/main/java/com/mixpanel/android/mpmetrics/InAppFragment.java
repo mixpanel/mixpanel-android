@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.animation.AnimatorInflater;
-import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Fragment;
@@ -15,16 +13,12 @@ import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
-import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -97,53 +91,18 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             Log.e(LOGTAG, "setNotification was not called with a valid InAppNotification, not creating view");
             return null;
         }
-        if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
-            mInAppView = this.createTakeover(inflater, container);
-        } else {
-            mInAppView = this.createMini(inflater, container);
-            mInAppView.setOnClickListener(this);
-        }
+        mInAppView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
+        final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+        final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+        titleView.setText(mNotification.getTitle());
+        notifImage.setImageBitmap(mNotification.getImage());
+
+        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+
+        mInAppView.setOnClickListener(this);
 
         return mInAppView;
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        // Begin animations when fragment becomes visible
-        if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
-            final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
-            final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
-            final TextView subtextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_subtext);
-            final Button ctaButton = (Button) mInAppView.findViewById(R.id.com_mixpanel_android_notification_button);
-            final ImageButton closeButton = (ImageButton) mInAppView.findViewById(R.id.com_mixpanel_android_button_exit);
-
-            final ScaleAnimation scale = new ScaleAnimation(
-                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
-            scale.setDuration(200);
-            notifImage.startAnimation(scale);
-
-            final TranslateAnimation translate = new TranslateAnimation(
-                 Animation.RELATIVE_TO_SELF, 0.0f,
-                 Animation.RELATIVE_TO_SELF, 0.0f,
-                 Animation.RELATIVE_TO_SELF, 0.5f,
-                 Animation.RELATIVE_TO_SELF, 0.0f
-            );
-            translate.setInterpolator(new DecelerateInterpolator());
-            translate.setDuration(200);
-            titleView.startAnimation(translate);
-            subtextView.startAnimation(translate);
-            ctaButton.startAnimation(translate);
-
-            final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(mParent, R.anim.fade_in);
-            fadeIn.setTarget(closeButton);
-            fadeIn.start();
-        } else if (mNotification.getType() == InAppNotification.Type.MINI) {
-            // getHighlightColorFromBackground doesn't seem to work on onResume because the view
-            // has not been fully rendered, so try and delay a little bit
-            mHandler.postDelayed(mDisplayMini, 500);
-        }
     }
 
     @Override
@@ -153,6 +112,15 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         if (mKill) {
             mParent.getFragmentManager().beginTransaction().remove(this).commit();
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        // getHighlightColorFromBackground doesn't seem to work on onResume because the view
+        // has not been fully rendered, so try and delay a little bit
+        mHandler.postDelayed(mDisplayMini, 500);
     }
 
     @Override
@@ -193,68 +161,14 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         remove();
     }
 
-    private View createMini(LayoutInflater inflater, ViewGroup container) {
-        final View mini = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
-        final TextView titleView = (TextView) mini.findViewById(R.id.com_mixpanel_android_notification_title);
-        final ImageView notifImage = (ImageView) mini.findViewById(R.id.com_mixpanel_android_notification_image);
-
-        titleView.setText(mNotification.getTitle());
-        notifImage.setImageBitmap(mNotification.getImage());
-
-        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
-
-        return mini;
-    }
-
-    private View createTakeover(LayoutInflater inflater, ViewGroup container) {
-        final View takeover = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_full, container, false);
-        final ImageView notifImage = (ImageView) takeover.findViewById(R.id.com_mixpanel_android_notification_image);
-        final TextView titleView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_title);
-        final TextView subtextView = (TextView) takeover.findViewById(R.id.com_mixpanel_android_notification_subtext);
-        final Button ctaButton = (Button) takeover.findViewById(R.id.com_mixpanel_android_notification_button);
-        final ImageButton closeButton = (ImageButton) takeover.findViewById(R.id.com_mixpanel_android_button_exit);
-
-        titleView.setText(mNotification.getTitle());
-        subtextView.setText(mNotification.getBody());
-        notifImage.setImageBitmap(mNotification.getImage());
-
-        final String ctaUrl = mNotification.getCallToActionUrl();
-        if (ctaUrl != null && ctaUrl.length() > 0) {
-            ctaButton.setText(mNotification.getCallToAction());
-        }
-        ctaButton.setOnClickListener(this);
-        ctaButton.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
-                } else {
-                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
-                }
-                return false;
-            }
-        });
-        closeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                remove();
-            }
-        });
-
-        return takeover;
-    }
-
     private void remove() {
         if (mParent != null) {
             final FragmentManager fragmentManager = mParent.getFragmentManager();
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
-            if (mNotification.getType() == InAppNotification.Type.TAKEOVER) {
-                fragmentManager.popBackStack();
-            } else {
-                FragmentTransaction transaction = fragmentManager.beginTransaction();
-                transaction.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
-            }
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+            transaction.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
         }
     }
 
