@@ -8,7 +8,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.widget.ImageView;
 
-public class MiniCircleImageView extends ImageView {
+/* package */ class MiniCircleImageView extends ImageView {
     public MiniCircleImageView(Context context) {
         super(context);
         init();
