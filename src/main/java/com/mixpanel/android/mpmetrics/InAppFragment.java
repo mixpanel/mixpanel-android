@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -31,7 +32,7 @@ import android.widget.TextView;
 import com.mixpanel.android.R;
 import com.mixpanel.android.util.ActivityImageUtils;
 
-@SuppressLint("NewApi")
+@TargetApi(11)
 public class InAppFragment extends Fragment implements View.OnClickListener {
 
     public InAppFragment setNotification(InAppNotification notif) {

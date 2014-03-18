@@ -1095,13 +1095,13 @@ public class MixpanelAPI {
 
         @Override
         public void showNotification(final InAppNotification notification, final Activity parent) {
-            // In app notifications are not supported before Honeycomb
-            if (Build.VERSION.SDK_INT < 11) {
+            // In-app notifications are not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 13) {
                 return;
             }
 
             parent.runOnUiThread(new Runnable() {
-                @SuppressLint("NewApi")
+                @TargetApi(13)
                 public void run() {
                     InAppFragment inapp = new InAppFragment().setNotification(notification);
                     FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
