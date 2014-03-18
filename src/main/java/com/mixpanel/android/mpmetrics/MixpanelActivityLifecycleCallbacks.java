@@ -94,7 +94,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             return;
         }
 
-        if (mpConfig.getAutoCheckForSurveys() || mpConfig.getAutoCheckMixpanelData()) {
+        if (mpConfig.getAutoCheckMixpanelData()) {
             final Survey survey = mMpInstance.getPeople().getNextSurvey();
             if (null != survey) {
                 // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?

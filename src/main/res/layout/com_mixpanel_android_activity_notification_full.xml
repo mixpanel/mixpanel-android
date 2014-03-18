@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/com_mixpanel_android_notification_full_bg"
     android:gravity="center_horizontal"
-    android:orientation="vertical" >
+    android:orientation="vertical">
     
     <LinearLayout
         android:layout_width="match_parent"

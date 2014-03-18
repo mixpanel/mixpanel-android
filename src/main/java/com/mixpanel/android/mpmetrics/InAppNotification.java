@@ -1,18 +1,20 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.graphics.Bitmap;
-import android.util.Log;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import android.graphics.Bitmap;
+import android.os.Parcel;
+import android.os.Parcelable;
+import android.util.Log;
 
 /**
  * Represents an in-app notification delivered from Mixpanel.
  */
-public class InAppNotification {
+public class InAppNotification implements Parcelable {
     public enum Type {
         UNKNOWN {
             @Override
@@ -32,6 +34,26 @@ public class InAppNotification {
                 return "takeover";
             }
         };
+    }
+
+    public InAppNotification(Parcel in) {
+        JSONObject temp = new JSONObject();
+        try {
+            temp = new JSONObject(in.readString());
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Error reading JSON when creating InAppNotification from Parcel");
+        }
+        mDescription = temp; // mDescription is final
+        mId = in.readInt();
+        mMessageId = in.readInt();
+        mType = in.readString();
+        mTitle = in.readString();
+        mBody = in.readString();
+        mImageUrl = in.readString();
+        mCallToAction = in.readString();
+        mCallToActionUrl = in.readString();
+
+        mImage = (Bitmap) in.readParcelable(Bitmap.class.getClassLoader());
     }
 
     /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
@@ -113,7 +135,7 @@ public class InAppNotification {
         return mCallToActionUrl;
     }
 
-    /* package */ void setImage(final Bitmap image) {
+    /* package */public void setImage(final Bitmap image) {
         mImage = image;
     }
 
@@ -129,6 +151,39 @@ public class InAppNotification {
             return url;
         }
     }
+
+    @Override
+    public int describeContents() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(mDescription.toString());
+        dest.writeInt(mId);
+        dest.writeInt(mMessageId);
+        dest.writeString(mType);
+        dest.writeString(mTitle);
+        dest.writeString(mBody);
+        dest.writeString(mImageUrl);
+        dest.writeString(mCallToAction);
+        dest.writeString(mCallToActionUrl);
+        dest.writeParcelable(mImage, flags);
+    }
+
+    public static final Parcelable.Creator<InAppNotification> CREATOR = new Parcelable.Creator<InAppNotification>() {
+
+        @Override
+        public InAppNotification createFromParcel(Parcel source) {
+            return new InAppNotification(source);
+        }
+
+        @Override
+        public InAppNotification[] newArray(int size) {
+            return new InAppNotification[size];
+        }
+    };
 
     private Bitmap mImage;
 

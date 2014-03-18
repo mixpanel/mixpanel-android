@@ -9,27 +9,41 @@ import java.util.TimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.animation.AnimatorInflater;
+import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.ScaleAnimation;
+import android.view.animation.TranslateAnimation;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.mpmetrics.InAppNotification;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.SurveyState;
 
 /**
- * Activity used internally by Mixpanel to display surveys. You shouldn't send intents directly to this activity-
- * The best way to display a SurveyActivity is to call
+ * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
+ * The best way to display a SurveyActivity for surveys is to call
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
  */
 public class SurveyActivity extends Activity {
@@ -38,6 +52,76 @@ public class SurveyActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mActivityType = Type.SURVEY;
+        if (getIntent().hasExtra(ACTIVITY_TYPE_KEY) && getIntent().getSerializableExtra(ACTIVITY_TYPE_KEY) == Type.INAPP_TAKEOVER) {
+            mActivityType = Type.INAPP_TAKEOVER;
+            mInAppNotification = getIntent().getParcelableExtra(INAPP_NOTIFICATION_KEY);
+            onCreateInAppNotification(savedInstanceState);
+        } else {
+            onCreateSurvey(savedInstanceState);
+        }
+    }
+
+    private void onCreateInAppNotification(Bundle savedInstanceState) {
+        setContentView(R.layout.com_mixpanel_android_activity_notification_full);
+
+        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
+
+        titleView.setText(mInAppNotification.getTitle());
+        subtextView.setText(mInAppNotification.getBody());
+        notifImage.setImageBitmap(mInAppNotification.getImage());
+
+        final String ctaUrl = mInAppNotification.getCallToActionUrl();
+        if (ctaUrl != null && ctaUrl.length() > 0) {
+            ctaButton.setText(mInAppNotification.getCallToAction());
+        }
+        ctaButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String uriString = mInAppNotification.getCallToActionUrl();
+                if (uriString != null && uriString.length() > 0) {
+                    Uri uri = null;
+                    try {
+                        uri = Uri.parse(uriString);
+                    } catch (IllegalArgumentException e) {
+                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return;
+                    }
+
+                    assert(uri != null);
+                    try {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        SurveyActivity.this.startActivity(viewIntent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    }
+                }
+                finish();
+            }
+        });
+        ctaButton.setOnTouchListener(new View.OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
+                } else {
+                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
+                }
+                return false;
+            }
+        });
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+    }
+
+    private void onCreateSurvey(Bundle savedInstanceState) {
         SurveyState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
@@ -52,7 +136,6 @@ public class SurveyActivity extends Activity {
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
         }
-        final Survey survey = mSurveyState.getSurvey();
         final String answerDistinctId = mSurveyState.getDistinctId();
         if (null == answerDistinctId) {
             Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
@@ -85,6 +168,12 @@ public class SurveyActivity extends Activity {
     protected void onStart() {
         super.onStart();
 
+        if (mActivityType == Type.SURVEY) {
+            onStartSurvey();
+        }
+    }
+
+    private void onStartSurvey() {
         trackSurveyAttempted();
         if (getIntent().getBooleanExtra(SHOW_ASK_DIALOG_KEY, true)) {
             final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
@@ -111,10 +200,56 @@ public class SurveyActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
 
-    @SuppressLint("SimpleDateFormat")
+        if (this.mActivityType == Type.INAPP_TAKEOVER) {
+            onResumeInAppNotification();
+        }
+    }
+
+    @SuppressLint("NewApi")
+    private void onResumeInAppNotification() {
+        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
+
+        final ScaleAnimation scale = new ScaleAnimation(
+            .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+        scale.setDuration(200);
+        notifImage.startAnimation(scale);
+
+        final TranslateAnimation translate = new TranslateAnimation(
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.5f,
+             Animation.RELATIVE_TO_SELF, 0.0f
+        );
+        translate.setInterpolator(new DecelerateInterpolator());
+        translate.setDuration(200);
+        titleView.startAnimation(translate);
+        subtextView.startAnimation(translate);
+        ctaButton.startAnimation(translate);
+
+        final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.anim.fade_in);
+        fadeIn.setTarget(closeButton);
+        fadeIn.start();
+    }
+
     @Override
     protected void onDestroy() {
+        if (mActivityType == Type.SURVEY) {
+            onDestroySurvey();
+        }
+
+        super.onDestroy();
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private void onDestroySurvey() {
         if (null != mMixpanel) {
             if (null != mSurveyState) {
                 final Survey survey = mSurveyState.getSurvey();
@@ -151,19 +286,25 @@ public class SurveyActivity extends Activity {
         } // if we initialized property and we have a mixpanel
 
         SurveyState.releaseSurvey(mIntentId);
-        super.onDestroy();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+
+        if (mActivityType == Type.SURVEY) {
+            onSaveInstanceStateSurvey(outState);
+        }
+    }
+
+    private void onSaveInstanceStateSurvey(Bundle outState) {
         outState.putInt(CURRENT_QUESTION_BUNDLE_KEY, mCurrentQuestion);
         outState.putParcelable(SURVEY_STATE_BUNDLE_KEY, mSurveyState);
     }
 
     @Override
     public void onBackPressed() {
-        if (mCurrentQuestion > 0) {
+        if (mActivityType == Type.SURVEY && mCurrentQuestion > 0) {
             goToPreviousQuestion();
         } else {
             super.onBackPressed();
@@ -253,13 +394,13 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
-
+    private CardCarouselLayout mCardHolder;
+    private InAppNotification mInAppNotification;
     private MixpanelAPI mMixpanel;
-    private View mView;
     private View mPreviousButton;
     private View mNextButton;
     private TextView mProgressTextView;
-    private CardCarouselLayout mCardHolder;
+    private Type mActivityType;
 
     private SurveyState mSurveyState;
     private int mCurrentQuestion = 0;
@@ -270,6 +411,22 @@ public class SurveyActivity extends Activity {
     private static final String LOGTAG = "MixpanelAPI";
     private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
 
+    public static enum Type {
+        INAPP_TAKEOVER {
+            @Override
+            public String toString() {
+                return "inapp_takeover";
+            }
+        },
+        SURVEY {
+            @Override
+            public String toString() {
+                return "survey";
+            }
+        }
+    };
+    public static final String ACTIVITY_TYPE_KEY = "activityType";
+    public static final String INAPP_NOTIFICATION_KEY = "inapp_notification";
     public static final String INTENT_ID_KEY = "intentId";
     public static final String SHOW_ASK_DIALOG_KEY = "showAskDialog";
 }

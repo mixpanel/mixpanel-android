@@ -51,6 +51,7 @@ public class SurveyState implements Parcelable {
                 SurveyState.sNextIntentId++;
                 surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, SurveyState.sNextIntentId);
                 surveyIntent.putExtra(SurveyActivity.SHOW_ASK_DIALOG_KEY, showAskDialog);
+                surveyIntent.putExtra(SurveyActivity.ACTIVITY_TYPE_KEY, SurveyActivity.Type.SURVEY);
                 parentActivity.startActivity(surveyIntent);
             } else {
                 if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a survey, declining to show another.");
