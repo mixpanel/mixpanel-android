@@ -12,6 +12,7 @@ import org.json.JSONObject;
 import android.animation.AnimatorInflater;
 import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -46,6 +47,7 @@ import com.mixpanel.android.mpmetrics.SurveyState;
  * The best way to display a SurveyActivity for surveys is to call
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
  */
+@TargetApi(11)
 public class SurveyActivity extends Activity {
 
     @Override
@@ -209,7 +211,6 @@ public class SurveyActivity extends Activity {
         }
     }
 
-    @SuppressLint("NewApi")
     private void onResumeInAppNotification() {
         final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);

@@ -8,6 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -23,6 +24,7 @@ import com.mixpanel.android.surveys.SurveyActivity;
  * This is a class intended for internal use by the library.
  * Users of the library should not interact with it directly.
  */
+@TargetApi(11)
 public class SurveyState implements Parcelable {
     public static void proposeSurvey(final Survey s,
             final Activity parentActivity,
