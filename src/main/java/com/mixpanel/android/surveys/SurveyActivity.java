@@ -9,8 +9,6 @@ import java.util.TimeZone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.animation.AnimatorInflater;
-import android.animation.AnimatorSet;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -18,6 +16,7 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -27,6 +26,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
@@ -124,6 +124,8 @@ public class SurveyActivity extends Activity {
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
         SurveyState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
@@ -137,6 +139,7 @@ public class SurveyActivity extends Activity {
         }
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
+            mSurveyBegun = savedInstanceState.getBoolean(SURVEY_BEGUN_BUNDLE_KEY);
         }
         final String answerDistinctId = mSurveyState.getDistinctId();
         if (null == answerDistinctId) {
@@ -176,8 +179,14 @@ public class SurveyActivity extends Activity {
     }
 
     private void onStartSurvey() {
+        if (mSurveyBegun) {
+            return;
+        }
+
         trackSurveyAttempted();
         if (getIntent().getBooleanExtra(SHOW_ASK_DIALOG_KEY, true)) {
+            getIntent().removeExtra(SHOW_ASK_DIALOG_KEY); // Prevent dialog from being shown again if activity goes away
+
             final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
             alertBuilder.setTitle("We'd love your feedback!");
             alertBuilder.setMessage("Mind taking a quick survey?");
@@ -185,6 +194,7 @@ public class SurveyActivity extends Activity {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
+                    mSurveyBegun = true;
                     showQuestion(mCurrentQuestion);
                 }
             });
@@ -235,9 +245,8 @@ public class SurveyActivity extends Activity {
         subtextView.startAnimation(translate);
         ctaButton.startAnimation(translate);
 
-        final AnimatorSet fadeIn = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.anim.fade_in);
-        fadeIn.setTarget(closeButton);
-        fadeIn.start();
+        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
+        closeButton.startAnimation(fadeIn);
     }
 
     @Override
@@ -299,6 +308,7 @@ public class SurveyActivity extends Activity {
     }
 
     private void onSaveInstanceStateSurvey(Bundle outState) {
+        outState.putBoolean(SURVEY_BEGUN_BUNDLE_KEY, mSurveyBegun);
         outState.putInt(CURRENT_QUESTION_BUNDLE_KEY, mCurrentQuestion);
         outState.putParcelable(SURVEY_STATE_BUNDLE_KEY, mSurveyState);
     }
@@ -404,9 +414,11 @@ public class SurveyActivity extends Activity {
     private Type mActivityType;
 
     private SurveyState mSurveyState;
+    private boolean mSurveyBegun = false;
     private int mCurrentQuestion = 0;
     private int mIntentId = -1;
 
+    private static final String SURVEY_BEGUN_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_BEGIN_BUNDLE_KEY";
     private static final String CURRENT_QUESTION_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.CURRENT_QUESTION_BUNDLE_KEY";
     private static final String SURVEY_STATE_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_STATE_BUNDLE_KEY";
     private static final String LOGTAG = "MixpanelAPI";
