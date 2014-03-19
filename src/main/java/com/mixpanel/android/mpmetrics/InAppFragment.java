@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
@@ -27,7 +26,7 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.util.ActivityImageUtils;
 
 @TargetApi(11)
-/* package */ class InAppFragment extends Fragment implements View.OnClickListener {
+public class InAppFragment extends Fragment implements View.OnClickListener {
 
     public InAppFragment setNotification(InAppNotification notif) {
         // It would be better to pass in the InAppNotification to the only constructor, but
