@@ -128,6 +128,11 @@ import android.util.Log;
     }
 
     public static boolean checkSurveyActivityAvailable(Context context) {
+        if (Build.VERSION.SDK_INT < 13) {
+            // No need to log, SurveyActivity doesn't work on this platform.
+            return false;
+        }
+
         final Intent surveyIntent = new Intent(context, SurveyActivity.class);
         surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
