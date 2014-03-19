@@ -16,6 +16,7 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -123,6 +124,8 @@ public class SurveyActivity extends Activity {
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
         SurveyState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
