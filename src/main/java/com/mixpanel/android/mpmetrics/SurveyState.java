@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.Notification;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,6 +27,11 @@ import com.mixpanel.android.surveys.SurveyActivity;
  */
 @TargetApi(11)
 public class SurveyState implements Parcelable {
+
+    /**
+     * Client code should not call this method.
+     *
+     */
     public static void proposeSurvey(final Survey s,
             final Activity parentActivity,
             final String distinctId,
@@ -37,9 +43,10 @@ public class SurveyState implements Parcelable {
             return;
         }
 
-        final long currentTime = System.currentTimeMillis();
-        final long deltaTime = currentTime - sSurveyStateLockMillis;
         synchronized(sSurveyStateLock) {
+            final long currentTime = System.currentTimeMillis();
+            final long deltaTime = currentTime - sSurveyStateLockMillis;
+
             if (sShowingIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
                 Log.i(LOGTAG, "SurveyState set long, long ago, without showing.");
                 sSurveyState = null;
