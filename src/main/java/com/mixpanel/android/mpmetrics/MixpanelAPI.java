@@ -1111,6 +1111,7 @@ public class MixpanelAPI {
                         parent.startActivity(intent);
                     } else {
                         InAppFragment inapp = new InAppFragment().setNotification(notification);
+                        inapp.setRetainInstance(true);
                         FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                         transaction.setCustomAnimations(0, R.anim.slide_down);
                         transaction.add(android.R.id.content, inapp);

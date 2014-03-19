@@ -132,7 +132,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
         // This Fragment when registered on the Activity is part of its state, and so gets
         // restored / recreated when the Activity goes away and comes back. We prefer to just not
-        // keep the notification around, especially in the case of mini, so we have to remember to kill it.
+        // keep the notification around in the case of mini, so we have to remember to kill it.
         // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
         mKill = true;
     }
