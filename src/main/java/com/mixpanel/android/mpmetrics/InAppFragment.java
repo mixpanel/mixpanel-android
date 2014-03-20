@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
@@ -27,7 +26,7 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.util.ActivityImageUtils;
 
 @TargetApi(11)
-/* package */ class InAppFragment extends Fragment implements View.OnClickListener {
+public class InAppFragment extends Fragment implements View.OnClickListener {
 
     public InAppFragment setNotification(InAppNotification notif) {
         // It would be better to pass in the InAppNotification to the only constructor, but
@@ -133,7 +132,7 @@ import com.mixpanel.android.util.ActivityImageUtils;
 
         // This Fragment when registered on the Activity is part of its state, and so gets
         // restored / recreated when the Activity goes away and comes back. We prefer to just not
-        // keep the notification around, especially in the case of mini, so we have to remember to kill it.
+        // keep the notification around in the case of mini, so we have to remember to kill it.
         // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
         mKill = true;
     }

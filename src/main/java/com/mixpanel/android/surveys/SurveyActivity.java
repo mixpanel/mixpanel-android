@@ -124,7 +124,7 @@ public class SurveyActivity extends Activity {
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
 
         UpdateDisplayState saved = null;
         if (null != savedInstanceState) {
