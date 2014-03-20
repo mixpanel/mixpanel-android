@@ -1072,7 +1072,7 @@ public class MixpanelAPI {
                     @Override
                     public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
                         final UpdateDisplayState.DisplayState surveyDisplay =
-                                new UpdateDisplayState.DisplayState.SurveyState(survey, assets.highlightColor, assets.surveyBitmap, showAskDialog);
+                                new UpdateDisplayState.DisplayState.SurveyState(survey, highlightColorCaptured, bitmapCaptured, showAskDialog);
                         UpdateDisplayState.proposeDisplay(surveyDisplay, parent, getDistinctId(), mToken);
                     }
                 });
