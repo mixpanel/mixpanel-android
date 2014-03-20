@@ -219,19 +219,66 @@ public class UpdateDisplayState implements Parcelable {
         public static final String STATE_IMPL_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.DisplayState.STATE_IMPL_KEY";
     }
 
-    public static final Parcelable.Creator<UpdateDisplayState> CREATOR = new Parcelable.Creator<UpdateDisplayState>() {
-        @Override
-        public UpdateDisplayState createFromParcel(Parcel in) {
-            final Bundle read = new Bundle(UpdateDisplayState.class.getClassLoader());
-            read.readFromParcel(in);
-            return new UpdateDisplayState(read);
+    /**
+     * This class is intended for internal use by the Mixpanel library.
+     * Users of the library should not interact directly with this class.
+     */
+    public static class AnswerMap implements Parcelable {
+
+        @SuppressLint("UseSparseArrays")
+        public AnswerMap() {
+            mMap = new HashMap<Integer, String>();
+        }
+
+        public void put(Integer i, String s) {
+            mMap.put(i, s);
+        }
+
+        public String get(Integer i) {
+            return mMap.get(i);
+        }
+
+        public boolean contentEquals(AnswerMap other) {
+            return mMap.equals(other.mMap);
         }
 
         @Override
-        public UpdateDisplayState[] newArray(int size) {
-            return new UpdateDisplayState[size];
+        public int describeContents() {
+            return 0;
         }
-    };
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            final Bundle out = new Bundle();
+            for (final Map.Entry<Integer, String> entry:mMap.entrySet()) {
+                final String keyString = Integer.toString(entry.getKey());
+                out.putString(keyString, entry.getValue());
+            }
+            dest.writeBundle(out);
+        }
+
+        public static final Parcelable.Creator<AnswerMap> CREATOR =
+                new Parcelable.Creator<AnswerMap>() {
+                    @Override
+                    public AnswerMap createFromParcel(Parcel in) {
+                        final Bundle read = new Bundle(AnswerMap.class.getClassLoader());
+                        final AnswerMap ret = new AnswerMap();
+                        read.readFromParcel(in);
+                        for (final String kString:read.keySet()) {
+                            final Integer kInt = Integer.valueOf(kString);
+                            ret.put(kInt, read.getString(kString));
+                        }
+                        return ret;
+                    }
+
+                    @Override
+                    public AnswerMap[] newArray(int size) {
+                        return new AnswerMap[size];
+                    }
+                };
+
+        private final HashMap<Integer, String> mMap;
+    }
 
     /**
      * Client code should not call this method.
@@ -306,6 +353,21 @@ public class UpdateDisplayState implements Parcelable {
         }
     }
 
+    public static final Parcelable.Creator<UpdateDisplayState> CREATOR = new Parcelable.Creator<UpdateDisplayState>() {
+        @Override
+        public UpdateDisplayState createFromParcel(Parcel in) {
+            final Bundle read = new Bundle(UpdateDisplayState.class.getClassLoader());
+            read.readFromParcel(in);
+            return new UpdateDisplayState(read);
+        }
+
+        @Override
+        public UpdateDisplayState[] newArray(int size) {
+            return new UpdateDisplayState[size];
+        }
+    };
+
+
     @Override
     public int describeContents() {
         return 0;
@@ -344,67 +406,6 @@ public class UpdateDisplayState implements Parcelable {
         mDistinctId = read.getString(DISTINCT_ID_BUNDLE_KEY);
         mToken = read.getString(TOKEN_BUNDLE_KEY);
         mDisplayState = read.getParcelable(DISPLAYSTATE_BUNDLE_KEY);
-    }
-
-    /**
-     * This class is intended for internal use by the Mixpanel library.
-     * Users of the library should not interact directly with this class.
-     */
-    public static class AnswerMap implements Parcelable {
-
-        @SuppressLint("UseSparseArrays")
-        public AnswerMap() {
-            mMap = new HashMap<Integer, String>();
-        }
-
-        public void put(Integer i, String s) {
-            mMap.put(i, s);
-        }
-
-        public String get(Integer i) {
-            return mMap.get(i);
-        }
-
-        public boolean contentEquals(AnswerMap other) {
-            return mMap.equals(other.mMap);
-        }
-
-        @Override
-        public int describeContents() {
-            return 0;
-        }
-
-        @Override
-        public void writeToParcel(Parcel dest, int flags) {
-            final Bundle out = new Bundle();
-            for (final Map.Entry<Integer, String> entry:mMap.entrySet()) {
-                final String keyString = Integer.toString(entry.getKey());
-                out.putString(keyString, entry.getValue());
-            }
-            dest.writeBundle(out);
-        }
-
-        public static final Parcelable.Creator<AnswerMap> CREATOR =
-            new Parcelable.Creator<AnswerMap>() {
-            @Override
-            public AnswerMap createFromParcel(Parcel in) {
-                final Bundle read = new Bundle(AnswerMap.class.getClassLoader());
-                final AnswerMap ret = new AnswerMap();
-                read.readFromParcel(in);
-                for (final String kString:read.keySet()) {
-                    final Integer kInt = Integer.valueOf(kString);
-                    ret.put(kInt, read.getString(kString));
-                }
-                return ret;
-            }
-
-            @Override
-            public AnswerMap[] newArray(int size) {
-                return new AnswerMap[size];
-            }
-        };
-
-        private final HashMap<Integer, String> mMap;
     }
 
     private final String mDistinctId;

@@ -55,7 +55,6 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         assertSameNotification(mInAppState, reconstructed);
     }
 
-
     public void testWholeStateParcel() {
         {
             final Parcel parcel = Parcel.obtain();
