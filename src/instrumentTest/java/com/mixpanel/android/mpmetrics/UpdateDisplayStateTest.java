@@ -23,16 +23,16 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
                         "{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287}," +
                         "{\"prompt\":\"PROMPT2\",\"extra_data\":{},\"type\":\"text\",\"id\":289}]}"
         );
-        mSurvey = new Survey(surveyJson);
+        final Survey survey = new Survey(surveyJson);
 
         final JSONObject inAppJson = new JSONObject(
             "{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}"
         );
-        mInApp = new InAppNotification(inAppJson);
-        mInApp.setImage(bitmap);
+        final InAppNotification inApp = new InAppNotification(inAppJson);
+        inApp.setImage(bitmap);
 
-        mSurveyState = new UpdateDisplayState.DisplayState.SurveyState(mSurvey, 0xFF, bitmap, true);
-        mInAppState = new UpdateDisplayState.DisplayState.InAppNotificationState(mInApp, 0xBB);
+        mSurveyState = new UpdateDisplayState.DisplayState.SurveyState(survey, 0xFF, bitmap, true);
+        mInAppState = new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, 0xBB);
     }
 
     public void testSurveyParcelable() {
@@ -42,18 +42,69 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         final UpdateDisplayState.DisplayState.SurveyState reconstructed =
                 UpdateDisplayState.DisplayState.SurveyState.CREATOR.createFromParcel(parcel);
 
-        assertEquals(mSurveyState.getHighlightColor(), reconstructed.getHighlightColor());
-        assertTrue(mSurveyState.getAnswers().contentEquals(reconstructed.getAnswers()));
+        assertSameSurvey(mSurveyState, reconstructed);
+    }
 
-        final Bitmap originalBackground = mSurveyState.getBackground();
+    public void testInAppParcelable() {
+        final Parcel parcel = Parcel.obtain();
+        mInAppState.writeToParcel(parcel, 0);
+        parcel.setDataPosition(0);
+        final UpdateDisplayState.DisplayState.InAppNotificationState reconstructed =
+                UpdateDisplayState.DisplayState.InAppNotificationState.CREATOR.createFromParcel(parcel);
+
+        assertSameNotification(mInAppState, reconstructed);
+    }
+
+
+    public void testWholeStateParcel() {
+        {
+            final Parcel parcel = Parcel.obtain();
+            final UpdateDisplayState original = new UpdateDisplayState(mInAppState, "TEST DISTINCT ID 1", "TEST TOKEN 1");
+            original.writeToParcel(parcel, 0);
+            parcel.setDataPosition(0);
+            final UpdateDisplayState reconstructed = UpdateDisplayState.CREATOR.createFromParcel(parcel);
+
+            assertEquals(original.getDistinctId(), reconstructed.getDistinctId());
+            assertEquals(original.getToken(), reconstructed.getToken());
+
+            final UpdateDisplayState.DisplayState.InAppNotificationState reconstructedDisplay =
+                    (UpdateDisplayState.DisplayState.InAppNotificationState) reconstructed.getDisplayState();
+
+            assertSameNotification(mInAppState, reconstructedDisplay);
+        }
+
+        {
+            final Parcel parcel = Parcel.obtain();
+            final UpdateDisplayState original = new UpdateDisplayState(mSurveyState, "TEST DISTINCT ID 2", "TEST TOKEN 2");
+            original.writeToParcel(parcel, 0);
+            parcel.setDataPosition(0);
+            final UpdateDisplayState reconstructed = UpdateDisplayState.CREATOR.createFromParcel(parcel);
+
+            assertEquals(original.getDistinctId(), reconstructed.getDistinctId());
+            assertEquals(original.getToken(), reconstructed.getToken());
+
+            final UpdateDisplayState.DisplayState.SurveyState reconstructedDisplay =
+                    (UpdateDisplayState.DisplayState.SurveyState) reconstructed.getDisplayState();
+
+            assertSameSurvey(mSurveyState, reconstructedDisplay);
+        }
+    }
+
+    private void assertSameSurvey(UpdateDisplayState.DisplayState.SurveyState original,
+                                  UpdateDisplayState.DisplayState.SurveyState reconstructed) {
+        assertEquals(original.getHighlightColor(), reconstructed.getHighlightColor());
+        assertTrue(original.getAnswers().contentEquals(reconstructed.getAnswers()));
+
+        final Bitmap originalBackground = original.getBackground();
         final Bitmap reconstructedBackground = reconstructed.getBackground();
         assertEquals(originalBackground.getWidth(), reconstructedBackground.getWidth());
         assertEquals(originalBackground.getPixel(0, 0), reconstructedBackground.getPixel(0, 0));
 
+        final Survey originalSurvey = original.getSurvey();
         final Survey reconstructedSurvey = reconstructed.getSurvey();
-        assertEquals(mSurvey.getId(), reconstructedSurvey.getId());
-        assertEquals(mSurvey.getCollectionId(), reconstructedSurvey.getCollectionId());
-        final List<Survey.Question> originalQuestions = mSurvey.getQuestions();
+        assertEquals(originalSurvey.getId(), reconstructedSurvey.getId());
+        assertEquals(originalSurvey.getCollectionId(), reconstructedSurvey.getCollectionId());
+        final List<Survey.Question> originalQuestions = originalSurvey.getQuestions();
         final List<Survey.Question> reconstructedQuestions = reconstructedSurvey.getQuestions();
 
         assertEquals(originalQuestions.size(), reconstructedQuestions.size());
@@ -73,34 +124,27 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         }
     }
 
-    public void testInAppParcelable() {
-        final Parcel parcel = Parcel.obtain();
-        mInAppState.writeToParcel(parcel, 0);
-        parcel.setDataPosition(0);
-        final UpdateDisplayState.DisplayState.InAppNotificationState reconstructed =
-                UpdateDisplayState.DisplayState.InAppNotificationState.CREATOR.createFromParcel(parcel);
+    private void assertSameNotification(UpdateDisplayState.DisplayState.InAppNotificationState original,
+                                      UpdateDisplayState.DisplayState.InAppNotificationState reconstructed) {
+        assertEquals(original.getHighlightColor(), reconstructed.getHighlightColor());
 
-        assertEquals(mInAppState.getHighlightColor(), reconstructed.getHighlightColor());
-
+        final InAppNotification originalInApp = original.getInAppNotification();
         final InAppNotification reconstructedInApp = reconstructed.getInAppNotification();
-        assertEquals(mInApp.getId(), reconstructedInApp.getId());
-        assertEquals(mInApp.getMessageId(), reconstructedInApp.getMessageId());
-        assertEquals(mInApp.getBody(), reconstructedInApp.getBody());
-        assertEquals(mInApp.getCallToAction(), reconstructedInApp.getCallToAction());
-        assertEquals(mInApp.getCallToActionUrl(), reconstructedInApp.getCallToActionUrl());
-        assertEquals(mInApp.getImageUrl(), reconstructedInApp.getImageUrl());
-        assertEquals(mInApp.getTitle(), reconstructedInApp.getTitle());
-        assertEquals(mInApp.getType(), reconstructedInApp.getType());
+        assertEquals(originalInApp.getId(), reconstructedInApp.getId());
+        assertEquals(originalInApp.getMessageId(), reconstructedInApp.getMessageId());
+        assertEquals(originalInApp.getBody(), reconstructedInApp.getBody());
+        assertEquals(originalInApp.getCallToAction(), reconstructedInApp.getCallToAction());
+        assertEquals(originalInApp.getCallToActionUrl(), reconstructedInApp.getCallToActionUrl());
+        assertEquals(originalInApp.getImageUrl(), reconstructedInApp.getImageUrl());
+        assertEquals(originalInApp.getTitle(), reconstructedInApp.getTitle());
+        assertEquals(originalInApp.getType(), reconstructedInApp.getType());
 
-        final Bitmap originalImage = mInApp.getImage();
+        final Bitmap originalImage = originalInApp.getImage();
         final Bitmap reconstructedImage = reconstructedInApp.getImage();
         assertEquals(originalImage.getWidth(), reconstructedImage.getWidth());
         assertEquals(originalImage.getPixel(0, 0), originalImage.getPixel(0, 0));
     }
 
-
-    private Survey mSurvey;
-    private InAppNotification mInApp;
     private UpdateDisplayState.DisplayState.SurveyState mSurveyState;
     private UpdateDisplayState.DisplayState.InAppNotificationState mInAppState;
 }
