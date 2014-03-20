@@ -4,15 +4,13 @@ import android.content.Context;
 import android.test.AndroidTestCase;
 
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class DecideCheckerTest extends AndroidTestCase {
 
     @Override
     public void setUp() {
-        mDecideChecker = new DecideChecker(getContext(), MPConfig.readConfig(getContext()));
+        mDecideChecker = new DecideChecker(getContext(), MPConfig.getInstance(getContext()));
         mPoster = new MockPoster();
         mDecideUpdates1 = new DecideUpdates("TOKEN 1", "DISTINCT ID 1", null);
         mDecideUpdates2 = new DecideUpdates("TOKEN 2", "DISTINCT ID 2", null);

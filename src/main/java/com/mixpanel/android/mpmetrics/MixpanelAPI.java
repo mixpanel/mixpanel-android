@@ -27,7 +27,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Build;
-import android.os.Parcel;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -111,6 +110,7 @@ public class MixpanelAPI {
         mToken = token;
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
+        mConfig = getConfig();
         mSurveyAssets = new SynchronizedReference<SurveyAssets>();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
 
@@ -813,8 +813,8 @@ public class MixpanelAPI {
     /* package */
     @TargetApi(14)
     void registerMixpanelActivityLifecycleCallbacks() {
-        MPConfig mpConfig = MPConfig.readConfig(mContext);
-        if (android.os.Build.VERSION.SDK_INT >= 14 && mpConfig.getAutoCheckMixpanelData()) {
+
+        if (android.os.Build.VERSION.SDK_INT >= 14 && mConfig.getAutoCheckMixpanelData()) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
@@ -846,6 +846,10 @@ public class MixpanelAPI {
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
         return AnalyticsMessages.getInstance(mContext);
+    }
+
+    /* package */ MPConfig getConfig() {
+        return MPConfig.getInstance(mContext);
     }
 
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
@@ -1340,6 +1344,7 @@ public class MixpanelAPI {
 
     private final Context mContext;
     private final AnalyticsMessages mMessages;
+    private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
     private final PersistentIdentity mPersistentIdentity;

@@ -3,8 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONException;
@@ -138,7 +136,7 @@ import android.util.Log;
     }
 
     protected MPConfig getConfig(Context context) {
-        return MPConfig.readConfig(context);
+        return MPConfig.getInstance(context);
     }
 
     protected ServerMessage getPoster() {

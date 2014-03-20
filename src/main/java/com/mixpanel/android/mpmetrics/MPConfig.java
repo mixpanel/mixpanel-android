@@ -25,18 +25,16 @@ import android.util.Log;
     // in a single session isn't really an ideal UX
     /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 4;
 
-    /* package */ static MPConfig readConfig(Context context) {
-        final String packageName = context.getPackageName();
-        try {
-            final ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
-            Bundle configBundle = appInfo.metaData;
-            if (null == configBundle) {
-                configBundle = new Bundle();
+    // Instances are safe to store, since they're immutable and always the same.
+    /* package */ static MPConfig getInstance(Context context) {
+        synchronized (sInstanceLock) {
+            if (null == sInstance) {
+                final Context appContext = context.getApplicationContext();
+                sInstance = readConfig(appContext);
             }
-            return new MPConfig(configBundle);
-        } catch (final NameNotFoundException e) {
-            throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
         }
+
+        return sInstance;
     }
 
     /* package */ MPConfig(Bundle metaData) {
@@ -163,6 +161,23 @@ import android.util.Log;
         return mAutoCheckMixpanelData;
     }
 
+    ///////////////////////////////////////////////
+
+    // Package access for testing only- do not call directly in library code
+    /* package */ static MPConfig readConfig(Context appContext) {
+        final String packageName = appContext.getPackageName();
+        try {
+            final ApplicationInfo appInfo = appContext.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
+            Bundle configBundle = appInfo.metaData;
+            if (null == configBundle) {
+                configBundle = new Bundle();
+            }
+            return new MPConfig(configBundle);
+        } catch (final NameNotFoundException e) {
+            throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
+        }
+    }
+
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
     private final int mDataExpiration;
@@ -175,5 +190,7 @@ import android.util.Log;
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoCheckMixpanelData;
 
+    private static MPConfig sInstance;
+    private static final Object sInstanceLock = new Object();
     private static final String LOGTAG = "MixpanelAPI.MPConfig";
 }

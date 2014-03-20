@@ -79,14 +79,11 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             return; // No checks, no nothing.
         }
 
-        MPConfig mpConfig = MPConfig.readConfig(activity); // NO NO NO NO NO
-        if (mpConfig.getAutoCheckMixpanelData()) {
-            final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
-            if (null != notification) {
-                mHasChecked = true;
-                mMpInstance.getPeople().showNotification(notification, activity);
-                return;
-            }
+        final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
+        if (null != notification) {
+            mHasChecked = true;
+            mMpInstance.getPeople().showNotification(notification, activity);
+            return;
         }
         // ELSE
 
@@ -94,14 +91,12 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             return;
         }
 
-        if (mpConfig.getAutoCheckMixpanelData()) {
-            final Survey survey = mMpInstance.getPeople().getNextSurvey();
-            if (null != survey) {
-                // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?
-                mHasChecked = true;
-                mMpInstance.getPeople().showSurvey(survey, activity);
-                return;
-            }
+        final Survey survey = mMpInstance.getPeople().getNextSurvey();
+        if (null != survey) {
+            // TODO NEED TO BLUR INSIDE OF SURVEY ACTIVITY?
+            mHasChecked = true;
+            mMpInstance.getPeople().showSurvey(survey, activity);
+            return;
         }
         // ELSE
 
