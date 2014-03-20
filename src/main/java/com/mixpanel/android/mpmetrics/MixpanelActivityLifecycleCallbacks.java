@@ -79,7 +79,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
             return; // No checks, no nothing.
         }
 
-        MPConfig mpConfig = MPConfig.readConfig(activity);
+        MPConfig mpConfig = MPConfig.readConfig(activity); // NO NO NO NO NO
         if (mpConfig.getAutoCheckMixpanelData()) {
             final InAppNotification notification = mMpInstance.getPeople().getNextInAppNotification();
             if (null != notification) {

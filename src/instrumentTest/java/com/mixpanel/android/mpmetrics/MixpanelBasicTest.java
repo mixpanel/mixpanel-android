@@ -833,7 +833,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(2, testConfig.getFlushInterval());
         assertEquals(3, testConfig.getDataExpiration());
         assertEquals(true, testConfig.getDisableFallback());
-        assertEquals(false, testConfig.getAutoCheckForSurveys());
+        assertEquals(false, testConfig.getAutoCheckMixpanelData());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
         assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
         assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
@@ -853,11 +853,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
 
-        SurveyState originalSurveyState;
+        UpdateDisplayState originalUpdateDisplayState;
         try {
             final JSONObject surveyJson = new JSONObject(surveyJsonString);
             final Survey s = new Survey(surveyJson);
-            originalSurveyState = new SurveyState(s, "DistinctId", "Token", testBitmap, Color.WHITE);
+            final UpdateDisplayState.DisplayState.SurveyState surveyState =
+                new UpdateDisplayState.DisplayState.SurveyState(s, Color.WHITE, testBitmap, false);
+            originalUpdateDisplayState = new UpdateDisplayState(surveyState, "DistinctId", "Token");
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");
         } catch (BadDecideObjectException e) {
@@ -865,17 +867,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         final Bundle inBundle = new Bundle();
-        inBundle.putParcelable("TEST SURVEY PARCEL", originalSurveyState);
+        inBundle.putParcelable("TEST SURVEY PARCEL", originalUpdateDisplayState);
         final Parcel outerParcel = Parcel.obtain();
         inBundle.writeToParcel(outerParcel, 0);
         outerParcel.setDataPosition(0);
         final Bundle outBundle = outerParcel.readBundle();
-        outBundle.setClassLoader(SurveyState.class.getClassLoader());
-        final SurveyState inSurveyState = outBundle.getParcelable("TEST SURVEY PARCEL");
+        outBundle.setClassLoader(UpdateDisplayState.class.getClassLoader());
+        final UpdateDisplayState inUpdateDisplayState = outBundle.getParcelable("TEST SURVEY PARCEL");
 
-        final Survey inSurvey = inSurveyState.getSurvey();
-        final String inDistinctId = inSurveyState.getDistinctId();
-        final String inToken = inSurveyState.getToken();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState =
+                (UpdateDisplayState.DisplayState.SurveyState) inUpdateDisplayState.getDisplayState();
+        final Survey inSurvey = surveyState.getSurvey();
+        final String inDistinctId = inUpdateDisplayState.getDistinctId();
+        final String inToken = inUpdateDisplayState.getToken();
 
         assertEquals("DistinctId", inDistinctId);
         assertEquals("Token", inToken);
@@ -900,8 +904,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(q2.getPrompt(), "PROMPT2");
         assertEquals(q2.getType(), Survey.QuestionType.TEXT);
 
-        assertNotNull(inSurveyState.getBackground());
-        assertNotNull(inSurveyState.getAnswers());
+        assertNotNull(surveyState.getBackground());
+        assertNotNull(surveyState.getAnswers());
     }
 
     public void test2XUrls() {

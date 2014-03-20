@@ -135,7 +135,7 @@ public class InAppNotification implements Parcelable {
         return mCallToActionUrl;
     }
 
-    /* package */public void setImage(final Bitmap image) {
+    /* package */ void setImage(final Bitmap image) {
         mImage = image;
     }
 
@@ -154,7 +154,6 @@ public class InAppNotification implements Parcelable {
 
     @Override
     public int describeContents() {
-        // TODO Auto-generated method stub
         return 0;
     }
 

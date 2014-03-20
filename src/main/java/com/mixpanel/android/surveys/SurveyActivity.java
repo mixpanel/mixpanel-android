@@ -40,7 +40,7 @@ import com.mixpanel.android.mpmetrics.InAppNotification;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
-import com.mixpanel.android.mpmetrics.SurveyState;
+import com.mixpanel.android.mpmetrics.UpdateDisplayState;
 
 /**
  * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
@@ -126,13 +126,13 @@ public class SurveyActivity extends Activity {
     private void onCreateSurvey(Bundle savedInstanceState) {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
-        SurveyState saved = null;
+        UpdateDisplayState saved = null;
         if (null != savedInstanceState) {
             saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
         }
         mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
-        mSurveyState = SurveyState.claimSurveyState(saved, mIntentId);
-        if (null == mSurveyState) {
+        mUpdateDisplayState = UpdateDisplayState.claimDisplayState(mIntentId);
+        if (null == mUpdateDisplayState) {
             Log.e(LOGTAG, "Survey intent received, but no survey was found.");
             finish();
             return;
@@ -141,7 +141,8 @@ public class SurveyActivity extends Activity {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
             mSurveyBegun = savedInstanceState.getBoolean(SURVEY_BEGUN_BUNDLE_KEY);
         }
-        final String answerDistinctId = mSurveyState.getDistinctId();
+
+        final String answerDistinctId = mUpdateDisplayState.getDistinctId();
         if (null == answerDistinctId) {
             Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
             finish();
@@ -149,6 +150,9 @@ public class SurveyActivity extends Activity {
         }
 
         setContentView(R.layout.com_mixpanel_android_activity_survey);
+        mSurveyState = (UpdateDisplayState.DisplayState.SurveyState) mUpdateDisplayState.getDisplayState();
+        mInAppNotification = null;
+
         final Bitmap background = mSurveyState.getBackground();
         if (null == background) {
             final View contentView = this.findViewById(R.id.com_mixpanel_android_activity_survey_id);
@@ -261,15 +265,15 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void onDestroySurvey() {
         if (null != mMixpanel) {
-            if (null != mSurveyState) {
+            if (null != mUpdateDisplayState && null != mSurveyState) {
                 final Survey survey = mSurveyState.getSurvey();
                 final List<Survey.Question> questionList = survey.getQuestions();
 
-                final String answerDistinctId = mSurveyState.getDistinctId();
+                final String answerDistinctId = mUpdateDisplayState.getDistinctId();
                 final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
                 people.append("$responses", survey.getCollectionId());
 
-                final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
+                final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
                 for (final Survey.Question question:questionList) {
                     final String answerString = answers.get(question.getId());
                     if (null != answerString) {
@@ -295,7 +299,7 @@ public class SurveyActivity extends Activity {
             mMixpanel.flush();
         } // if we initialized property and we have a mixpanel
 
-        SurveyState.releaseSurvey(mIntentId);
+        UpdateDisplayState.releaseDisplayState(mIntentId);
     }
 
     @Override
@@ -310,7 +314,7 @@ public class SurveyActivity extends Activity {
     private void onSaveInstanceStateSurvey(Bundle outState) {
         outState.putBoolean(SURVEY_BEGUN_BUNDLE_KEY, mSurveyBegun);
         outState.putInt(CURRENT_QUESTION_BUNDLE_KEY, mCurrentQuestion);
-        outState.putParcelable(SURVEY_STATE_BUNDLE_KEY, mSurveyState);
+        outState.putParcelable(SURVEY_STATE_BUNDLE_KEY, mUpdateDisplayState);
     }
 
     @Override
@@ -335,9 +339,9 @@ public class SurveyActivity extends Activity {
     }
 
     private void trackSurveyAttempted() {
-        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mSurveyState.getToken());
+        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken());
         final Survey survey = mSurveyState.getSurvey();
-        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(mSurveyState.getDistinctId());
+        final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(mUpdateDisplayState.getDistinctId());
         people.append("$surveys", survey.getId());
         people.append("$collections", survey.getCollectionId());
     }
@@ -374,7 +378,7 @@ public class SurveyActivity extends Activity {
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
         final Survey.Question question = questions.get(idx);
-        final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
+        final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
         final String answerValue = answers.get(question.getId());
         try {
             if (oldQuestion < idx) {
@@ -397,7 +401,7 @@ public class SurveyActivity extends Activity {
     }
 
     private void saveAnswer(Survey.Question question, String answer) {
-        final SurveyState.AnswerMap answers = mSurveyState.getAnswers();
+        final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
     }
 
@@ -413,7 +417,9 @@ public class SurveyActivity extends Activity {
     private TextView mProgressTextView;
     private Type mActivityType;
 
-    private SurveyState mSurveyState;
+    private UpdateDisplayState mUpdateDisplayState;
+    private UpdateDisplayState.DisplayState.SurveyState mSurveyState;
+    private UpdateDisplayState.DisplayState.InAppNotificationState mInAppNotificationState;
     private boolean mSurveyBegun = false;
     private int mCurrentQuestion = 0;
     private int mIntentId = -1;

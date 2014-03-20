@@ -1,5 +1,8 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +31,28 @@ import org.json.JSONObject;
  * }
  * </pre>
  */
-public class Survey {
+public class Survey implements Parcelable {
+
+    public static Creator<Survey> CREATOR =
+            new Creator<Survey>() {
+                @Override
+                public Survey createFromParcel(final Parcel source) {
+                    final String jsonString = source.readString();
+                    try {
+                        final JSONObject json = new JSONObject(jsonString);
+                        return new Survey(json);
+                    } catch (JSONException e) {
+                        throw new RuntimeException("Corrupted JSON object written to survey parcel.", e);
+                    } catch (BadDecideObjectException e) {
+                        throw new RuntimeException("Unexpected or incomplete object written to survey parcel.", e);
+                    }
+                }
+
+                @Override
+                public Survey[] newArray(final int size) {
+                    return new Survey[size];
+                }
+            };
 
     /* package */ Survey(JSONObject description) throws BadDecideObjectException {
         try {
@@ -67,6 +91,16 @@ public class Survey {
 
     public List<Question> getQuestions() {
         return mQuestions;
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(final Parcel dest, final int flags) {
+        dest.writeString(toJSON());
     }
 
     public enum QuestionType {

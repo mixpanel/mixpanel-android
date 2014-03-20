@@ -27,6 +27,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.os.Parcel;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -1059,28 +1060,16 @@ public class MixpanelAPI {
 
             final SurveyAssets assets = mSurveyAssets.getAndClear();
             if (null != assets && assets.activityHashcode == parent.hashCode()) {
-                SurveyState.proposeSurvey(
-                    survey,
-                    parent,
-                    getDistinctId(),
-                    mToken,
-                    assets.surveyBitmap,
-                    assets.highlightColor,
-                    showAskDialog
-                );
+                final UpdateDisplayState.DisplayState surveyDisplay =
+                    new UpdateDisplayState.DisplayState.SurveyState(survey, assets.highlightColor, assets.surveyBitmap, showAskDialog);
+                UpdateDisplayState.proposeDisplay(surveyDisplay, parent, getDistinctId(), mToken);
             } else {
                 BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
                     public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        SurveyState.proposeSurvey(
-                            survey,
-                            parent,
-                            getDistinctId(),
-                            mToken,
-                            bitmapCaptured,
-                            highlightColorCaptured,
-                            showAskDialog
-                        );
+                        final UpdateDisplayState.DisplayState surveyDisplay =
+                                new UpdateDisplayState.DisplayState.SurveyState(survey, assets.highlightColor, assets.surveyBitmap, showAskDialog);
+                        UpdateDisplayState.proposeDisplay(surveyDisplay, parent, getDistinctId(), mToken);
                     }
                 });
             }

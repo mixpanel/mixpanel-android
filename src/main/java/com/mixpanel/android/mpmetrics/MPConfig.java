@@ -9,7 +9,6 @@ import android.util.Log;
 
 /**
  * Stores global configuration options for the Mixpanel library.
- * May be overridden to achieve custom behavior.
  */
 /* package */ class MPConfig {
     public static final String VERSION = "4.0.1-RC1";
@@ -26,7 +25,7 @@ import android.util.Log;
     // in a single session isn't really an ideal UX
     /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 4;
 
-    public static MPConfig readConfig(Context context) {
+    /* package */ static MPConfig readConfig(Context context) {
         final String packageName = context.getPackageName();
         try {
             final ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
@@ -40,7 +39,7 @@ import android.util.Log;
         }
     }
 
-    public MPConfig(Bundle metaData) {
+    /* package */ MPConfig(Bundle metaData) {
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
             Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
                           "com.mixpanel.android.MPConfig.AutoCheckMixpanelData. Please update this key as soon as possible.");
@@ -48,10 +47,13 @@ import android.util.Log;
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 48); // 48 hours default
+        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 48); // 48 hours default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
-        mAutoCheckMixpanelData = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true) ||
-                                 metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
+
+         // Disable if EITHER of these is present and false, otherwise enable
+        boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
+        boolean mixpanelDataAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true);
+        mAutoCheckMixpanelData = surveysAutoCheck && mixpanelDataAutoCheck;
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
