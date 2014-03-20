@@ -283,13 +283,9 @@ public class UpdateDisplayState implements Parcelable {
     /**
      * Client code should not call this method.
      */
-    public static void proposeDisplay(final DisplayState state,
-            final Activity parentActivity,
-            final String distinctId,
-            final String token) {
-        if (! ConfigurationChecker.checkSurveyActivityAvailable(parentActivity.getApplicationContext())) {
-            return;
-        }
+    // Returned id should either be -1, or POSITIVE (nonzero). Don't return zero, please.
+    public static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
+        int ret = -1;
 
         synchronized(sUpdateDisplayLock) {
             final long currentTime = System.currentTimeMillis();
@@ -299,18 +295,16 @@ public class UpdateDisplayState implements Parcelable {
                 Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing.");
                 sUpdateDisplayState = null;
             }
+
             if (null == sUpdateDisplayState) {
                 sUpdateDisplayState = new UpdateDisplayState(state, distinctId, token);
-                final Intent surveyIntent = new Intent(parentActivity.getApplicationContext(), SurveyActivity.class);
-                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-                UpdateDisplayState.sNextIntentId++;
-                surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, UpdateDisplayState.sNextIntentId);
-                parentActivity.startActivity(surveyIntent);
+                sNextIntentId++;
+                ret = sNextIntentId;
             } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a survey, declining to show another.");
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
             }
+
+            return ret;
         } // synchronized
     }
 

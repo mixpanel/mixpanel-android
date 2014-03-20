@@ -54,12 +54,18 @@ public class SurveyActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mActivityType = Type.SURVEY;
-        if (getIntent().hasExtra(ACTIVITY_TYPE_KEY) && getIntent().getSerializableExtra(ACTIVITY_TYPE_KEY) == Type.INAPP_TAKEOVER) {
-            mActivityType = Type.INAPP_TAKEOVER;
-            mInAppNotification = getIntent().getParcelableExtra(INAPP_NOTIFICATION_KEY);
+        mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
+        mUpdateDisplayState = UpdateDisplayState.claimDisplayState(mIntentId);
+        if (null == mUpdateDisplayState) {
+            Log.e(LOGTAG, "SurveyActivity intent received, but nothing was found to show.");
+            finish();
+            return;
+        }
+
+        if (isShowingInApp()) {
             onCreateInAppNotification(savedInstanceState);
-        } else {
+        }
+        if (isShowingSurvey()) {
             onCreateSurvey(savedInstanceState);
         }
     }
@@ -73,18 +79,23 @@ public class SurveyActivity extends Activity {
         final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
         final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
 
-        titleView.setText(mInAppNotification.getTitle());
-        subtextView.setText(mInAppNotification.getBody());
-        notifImage.setImageBitmap(mInAppNotification.getImage());
+        final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
+                (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
 
-        final String ctaUrl = mInAppNotification.getCallToActionUrl();
+        final InAppNotification inApp = notificationState.getInAppNotification();
+
+        titleView.setText(inApp.getTitle());
+        subtextView.setText(inApp.getBody());
+        notifImage.setImageBitmap(inApp.getImage());
+
+        final String ctaUrl = inApp.getCallToActionUrl();
         if (ctaUrl != null && ctaUrl.length() > 0) {
-            ctaButton.setText(mInAppNotification.getCallToAction());
+            ctaButton.setText(inApp.getCallToAction());
         }
         ctaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final String uriString = mInAppNotification.getCallToActionUrl();
+                final String uriString = inApp.getCallToActionUrl();
                 if (uriString != null && uriString.length() > 0) {
                     Uri uri = null;
                     try {
@@ -126,17 +137,7 @@ public class SurveyActivity extends Activity {
     private void onCreateSurvey(Bundle savedInstanceState) {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
 
-        UpdateDisplayState saved = null;
-        if (null != savedInstanceState) {
-            saved = savedInstanceState.getParcelable(SURVEY_STATE_BUNDLE_KEY);
-        }
-        mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
-        mUpdateDisplayState = UpdateDisplayState.claimDisplayState(mIntentId);
-        if (null == mUpdateDisplayState) {
-            Log.e(LOGTAG, "Survey intent received, but no survey was found.");
-            finish();
-            return;
-        }
+
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
             mSurveyBegun = savedInstanceState.getBoolean(SURVEY_BEGUN_BUNDLE_KEY);
@@ -150,10 +151,9 @@ public class SurveyActivity extends Activity {
         }
 
         setContentView(R.layout.com_mixpanel_android_activity_survey);
-        mSurveyState = (UpdateDisplayState.DisplayState.SurveyState) mUpdateDisplayState.getDisplayState();
-        mInAppNotification = null;
 
-        final Bitmap background = mSurveyState.getBackground();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+        final Bitmap background = surveyState.getBackground();
         if (null == background) {
             final View contentView = this.findViewById(R.id.com_mixpanel_android_activity_survey_id);
             contentView.setBackgroundColor(GRAY_30PERCENT);
@@ -177,7 +177,7 @@ public class SurveyActivity extends Activity {
     protected void onStart() {
         super.onStart();
 
-        if (mActivityType == Type.SURVEY) {
+        if (mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE) {
             onStartSurvey();
         }
     }
@@ -186,41 +186,34 @@ public class SurveyActivity extends Activity {
         if (mSurveyBegun) {
             return;
         }
-
         trackSurveyAttempted();
-        if (getIntent().getBooleanExtra(SHOW_ASK_DIALOG_KEY, true)) {
-            getIntent().removeExtra(SHOW_ASK_DIALOG_KEY); // Prevent dialog from being shown again if activity goes away
 
-            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-            alertBuilder.setTitle("We'd love your feedback!");
-            alertBuilder.setMessage("Mind taking a quick survey?");
-            alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
-                    mSurveyBegun = true;
-                    showQuestion(mCurrentQuestion);
-                }
-            });
-            alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    SurveyActivity.this.finish();
-                }
-            });
-            alertBuilder.setCancelable(false);
-            alertBuilder.show();
-        } else {
-            SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
-            showQuestion(mCurrentQuestion);
-        }
+        final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+        alertBuilder.setTitle("We'd love your feedback!");
+        alertBuilder.setMessage("Mind taking a quick survey?");
+        alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
+                mSurveyBegun = true;
+                showQuestion(mCurrentQuestion);
+            }
+        });
+        alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                SurveyActivity.this.finish();
+            }
+        });
+        alertBuilder.setCancelable(false);
+        alertBuilder.show();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (this.mActivityType == Type.INAPP_TAKEOVER) {
+        if (isShowingInApp()) {
             onResumeInAppNotification();
         }
     }
@@ -255,7 +248,7 @@ public class SurveyActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (mActivityType == Type.SURVEY) {
+        if (isShowingSurvey()) {
             onDestroySurvey();
         }
 
@@ -265,15 +258,16 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void onDestroySurvey() {
         if (null != mMixpanel) {
-            if (null != mUpdateDisplayState && null != mSurveyState) {
-                final Survey survey = mSurveyState.getSurvey();
+            if (null != mUpdateDisplayState) {
+                final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+                final Survey survey = surveyState.getSurvey();
                 final List<Survey.Question> questionList = survey.getQuestions();
 
                 final String answerDistinctId = mUpdateDisplayState.getDistinctId();
                 final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
                 people.append("$responses", survey.getCollectionId());
 
-                final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
+                final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
                 for (final Survey.Question question:questionList) {
                     final String answerString = answers.get(question.getId());
                     if (null != answerString) {
@@ -306,7 +300,7 @@ public class SurveyActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        if (mActivityType == Type.SURVEY) {
+        if (isShowingSurvey()) {
             onSaveInstanceStateSurvey(outState);
         }
     }
@@ -319,7 +313,7 @@ public class SurveyActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (mActivityType == Type.SURVEY && mCurrentQuestion > 0) {
+        if (isShowingSurvey() && mCurrentQuestion > 0) {
             goToPreviousQuestion();
         } else {
             super.onBackPressed();
@@ -338,9 +332,27 @@ public class SurveyActivity extends Activity {
         completeSurvey();
     }
 
+    private UpdateDisplayState.DisplayState.SurveyState getSurveyState() {
+        // Throws if this is showing an InApp
+        return (UpdateDisplayState.DisplayState.SurveyState) mUpdateDisplayState.getDisplayState();
+    }
+
+    private UpdateDisplayState.DisplayState.InAppNotificationState getInAppState() {
+        return (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
+    }
+
+    private boolean isShowingSurvey() {
+        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE;
+    }
+
+    private boolean isShowingInApp() {
+        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.InAppNotificationState.TYPE;
+    }
+
     private void trackSurveyAttempted() {
-        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken());
-        final Survey survey = mSurveyState.getSurvey();
+        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken()); // TODO move to onCreate
+        final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+        final Survey survey = surveyState.getSurvey();
         final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(mUpdateDisplayState.getDistinctId());
         people.append("$surveys", survey.getId());
         people.append("$collections", survey.getCollectionId());
@@ -355,7 +367,8 @@ public class SurveyActivity extends Activity {
     }
 
     private void goToNextQuestion() {
-        final int surveySize = mSurveyState.getSurvey().getQuestions().size();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+        final int surveySize = surveyState.getSurvey().getQuestions().size();
         if (mCurrentQuestion < surveySize - 1) {
             showQuestion(mCurrentQuestion + 1);
         } else {
@@ -364,7 +377,8 @@ public class SurveyActivity extends Activity {
     }
 
     private void showQuestion(final int idx) {
-        final List<Question> questions = mSurveyState.getSurvey().getQuestions();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+        final List<Question> questions = surveyState.getSurvey().getQuestions();
         if (0 == idx || questions.size() == 0) {
             mPreviousButton.setEnabled(false);
         } else {
@@ -378,7 +392,7 @@ public class SurveyActivity extends Activity {
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
         final Survey.Question question = questions.get(idx);
-        final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
+        final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         final String answerValue = answers.get(question.getId());
         try {
             if (oldQuestion < idx) {
@@ -401,7 +415,8 @@ public class SurveyActivity extends Activity {
     }
 
     private void saveAnswer(Survey.Question question, String answer) {
-        final UpdateDisplayState.AnswerMap answers = mSurveyState.getAnswers();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
+        final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
     }
 
@@ -410,16 +425,12 @@ public class SurveyActivity extends Activity {
     }
 
     private CardCarouselLayout mCardHolder;
-    private InAppNotification mInAppNotification;
     private MixpanelAPI mMixpanel;
     private View mPreviousButton;
     private View mNextButton;
     private TextView mProgressTextView;
-    private Type mActivityType;
 
     private UpdateDisplayState mUpdateDisplayState;
-    private UpdateDisplayState.DisplayState.SurveyState mSurveyState;
-    private UpdateDisplayState.DisplayState.InAppNotificationState mInAppNotificationState;
     private boolean mSurveyBegun = false;
     private int mCurrentQuestion = 0;
     private int mIntentId = -1;
@@ -430,23 +441,6 @@ public class SurveyActivity extends Activity {
     private static final String LOGTAG = "MixpanelAPI";
     private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
 
-    public static enum Type {
-        INAPP_TAKEOVER {
-            @Override
-            public String toString() {
-                return "inapp_takeover";
-            }
-        },
-        SURVEY {
-            @Override
-            public String toString() {
-                return "survey";
-            }
-        }
-    };
-    public static final String ACTIVITY_TYPE_KEY = "activityType";
-    public static final String INAPP_NOTIFICATION_KEY = "inapp_notification";
     public static final String INTENT_ID_KEY = "intentId";
-    public static final String SHOW_ASK_DIALOG_KEY = "showAskDialog";
 }
 

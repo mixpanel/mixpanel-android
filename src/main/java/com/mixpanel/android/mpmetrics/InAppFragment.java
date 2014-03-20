@@ -28,14 +28,12 @@ import com.mixpanel.android.util.ActivityImageUtils;
 @TargetApi(11)
 public class InAppFragment extends Fragment implements View.OnClickListener {
 
-    public InAppFragment setNotification(InAppNotification notif) {
+    public void setDisplayState(final int stateId, final UpdateDisplayState displayState) {
         // It would be better to pass in the InAppNotification to the only constructor, but
         // Fragments require a default constructor that is called when Activities recreate them.
         // This is not an issue since we kill notifications as soon as the Activity is onStopped.
-        // Android docs recommend passing any state a Fragment needs through a Bundle, but
-        // Bundle's have a 1MB limit on size, which is not good for Bitmaps.
-        mNotification = notif;
-        return this;
+        mDisplayStateId = stateId;
+        mDisplayState = displayState;
     }
 
     @Override
@@ -87,16 +85,17 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        if (null == mNotification) {
-            Log.e(LOGTAG, "setNotification was not called with a valid InAppNotification, not creating view");
-            return null;
-        }
         mInAppView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
         final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
         final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-        titleView.setText(mNotification.getTitle());
-        notifImage.setImageBitmap(mNotification.getImage());
+        UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
+                (UpdateDisplayState.DisplayState.InAppNotificationState) mDisplayState.getDisplayState();
+
+        InAppNotification inApp = notificationState.getInAppNotification();
+
+        titleView.setText(inApp.getTitle());
+        notifImage.setImageBitmap(inApp.getImage());
 
         mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
 
@@ -139,7 +138,12 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     @Override
     public void onClick(View clicked) {
-        final String uriString = mNotification.getCallToActionUrl();
+        final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
+                (UpdateDisplayState.DisplayState.InAppNotificationState) mDisplayState.getDisplayState();
+
+        final InAppNotification inApp = notificationState.getInAppNotification();
+
+        final String uriString = inApp.getCallToActionUrl();
         if (uriString != null && uriString.length() > 0) {
             Uri uri = null;
             try {
@@ -170,6 +174,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             FragmentTransaction transaction = fragmentManager.beginTransaction();
             transaction.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
         }
+        UpdateDisplayState.releaseDisplayState(mDisplayStateId);
     }
 
     private class SineBounceInterpolator implements Interpolator {
@@ -181,7 +186,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     private Activity mParent;
     private Handler mHandler;
-    private InAppNotification mNotification;
+    private int mDisplayStateId;
+    private UpdateDisplayState mDisplayState;
     private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 

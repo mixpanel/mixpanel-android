@@ -21,6 +21,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -31,6 +32,7 @@ import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.surveys.SurveyActivity;
+import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -111,7 +113,6 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
-        mSurveyAssets = new SynchronizedReference<SurveyAssets>();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
 
         mUpdatesListener = new UpdatesListener();
@@ -1011,26 +1012,9 @@ public class MixpanelAPI {
         @Override
         @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
-            // This is all about waiting to show a "See our survey" dialog until after the survey is
-            // ready to show. We don't get to the end any faster, but we don't make users wait.
-            mSurveyAssets.set(null);
-            checkForSurvey(new SurveyCallbacks() {
-                @Override
-                public void foundSurvey(final Survey survey) {
-                    BackgroundCapture.captureBackground(parentActivity, new BackgroundCapture.OnBackgroundCapturedListener() {
-                        @Override
-                        public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                            final SurveyAssets assets = new SurveyAssets(
-                                    parentActivity.hashCode(),
-                                    bitmapCaptured,
-                                    highlightColorCaptured
-                            );
-                            mSurveyAssets.set(assets);
-                            callbacks.foundSurvey(survey);
-                        }
-                    });
-                }
-            });
+            // Originally this call pre-computed UI chrome while it was waiting for the check to run.
+            // Since modern checks run asynchronously, it's useless nowdays.
+            checkForSurvey(callbacks);
         }
 
         @Override
@@ -1051,34 +1035,6 @@ public class MixpanelAPI {
             return mDecideUpdates.popSurvey();
         }
 
-        private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
-            // Surveys are not supported before Gingerbread
-            if (Build.VERSION.SDK_INT < 10) {
-                return;
-            }
-
-            // We can't show surveys if they haven't been configured.
-            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                return;
-            }
-
-            final SurveyAssets assets = mSurveyAssets.getAndClear();
-            if (null != assets && assets.activityHashcode == parent.hashCode()) {
-                final UpdateDisplayState.DisplayState surveyDisplay =
-                    new UpdateDisplayState.DisplayState.SurveyState(survey, assets.highlightColor, assets.surveyBitmap, showAskDialog);
-                UpdateDisplayState.proposeDisplay(surveyDisplay, parent, getDistinctId(), mToken);
-            } else {
-                BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                    @Override
-                    public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        final UpdateDisplayState.DisplayState surveyDisplay =
-                                new UpdateDisplayState.DisplayState.SurveyState(survey, highlightColorCaptured, bitmapCaptured, showAskDialog);
-                        UpdateDisplayState.proposeDisplay(surveyDisplay, parent, getDistinctId(), mToken);
-                    }
-                });
-            }
-        }
-
         @Override
         // MUST BE THREAD SAFE.
         public void showSurvey(final Survey survey, final Activity parent) {
@@ -1086,34 +1042,18 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void showNotification(final InAppNotification notification, final Activity parent) {
-            // In-app notifications are not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 13) {
-                return;
+        public void showNotification(final InAppNotification inApp, final Activity parent) {
+            InAppNotification.Type inAppType = inApp.getType();
+            switch (inAppType) {
+                case MINI:
+                    showMiniNotification(inApp, parent);
+                    break;
+                case TAKEOVER:
+                    showTakeoverNotification(inApp, parent);
+                    break;
+                default:
+                    Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
             }
-
-            parent.runOnUiThread(new Runnable() {
-                @TargetApi(13)
-                public void run() {
-                    if (notification.getType() == InAppNotification.Type.TAKEOVER) {
-                        final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                        intent.putExtra(SurveyActivity.ACTIVITY_TYPE_KEY, SurveyActivity.Type.INAPP_TAKEOVER);
-                        intent.putExtra(SurveyActivity.INAPP_NOTIFICATION_KEY, notification);
-                        parent.startActivity(intent);
-                    } else {
-                        InAppFragment inapp = new InAppFragment().setNotification(notification);
-                        inapp.setRetainInstance(true);
-                        FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                        transaction.setCustomAnimations(0, R.anim.slide_down);
-                        transaction.add(android.R.id.content, inapp);
-                        transaction.commit();
-
-                        track("$campaign_delivery", notification.getCampaignProperties());
-                    }
-                }
-            });
         }
 
         @Override
@@ -1261,6 +1201,98 @@ public class MixpanelAPI {
 
                 return dataObj;
         }
+
+        private void showMiniNotification(final InAppNotification inApp, final Activity parent) {
+            // In-app notifications are not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 13) {
+                return;
+            }
+
+            parent.runOnUiThread(new Runnable() {
+                @TargetApi(13)
+                public void run() {
+                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
+                    final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
+                            new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, highlightColor);
+                    final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+
+                    UpdateDisplayState claimed = null;
+                    if (intentId > 0) {
+                        claimed = UpdateDisplayState.claimDisplayState(intentId);
+                    }
+
+                    if (null != claimed) {
+                        InAppFragment inapp = new InAppFragment();
+                        inapp.setDisplayState(intentId, claimed);
+                        inapp.setRetainInstance(true);
+                        FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+                        transaction.setCustomAnimations(0, R.anim.slide_down);
+                        transaction.add(android.R.id.content, inapp);
+                        transaction.commit();
+
+                        track("$campaign_delivery", inApp.getCampaignProperties()); // TODO MOVE
+                    }
+                }
+            });
+        }
+
+        private void showTakeoverNotification(final InAppNotification inApp, final Activity parent) {
+            // In-app notifications are not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 13) {
+                return;
+            }
+
+            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                return;
+            }
+
+            parent.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
+                    final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
+                            new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, highlightColor);
+                    final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+
+                    if (intentId > 0) {
+                        final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                        intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                        parent.startActivity(intent);
+                    }
+                }
+            });
+        }
+
+        private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
+            // Showing surveys is not supported before Honeycomb MR2
+            if (Build.VERSION.SDK_INT < 13) {
+                return;
+            }
+
+            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                return;
+            }
+
+            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                @Override
+                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                    final UpdateDisplayState.DisplayState surveyDisplay =
+                            new UpdateDisplayState.DisplayState.SurveyState(survey, highlightColorCaptured, bitmapCaptured, showAskDialog);
+                    final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
+
+                    if (intentId > 0) {
+                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                        parent.startActivity(surveyIntent);
+                    }
+                }
+            });
+        }
+
     }// PeopleImpl
 
     private class UpdatesListener implements DecideUpdates.OnNewResultsListener, Runnable {
@@ -1350,7 +1382,6 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 
-    private final SynchronizedReference<SurveyAssets> mSurveyAssets;
     private DecideUpdates mDecideUpdates;
 
     // Maps each token to a singleton MixpanelAPI instance
