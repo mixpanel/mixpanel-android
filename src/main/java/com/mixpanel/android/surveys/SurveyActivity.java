@@ -114,6 +114,7 @@ public class SurveyActivity extends Activity {
                     }
                 }
                 finish();
+                UpdateDisplayState.releaseDisplayState(mIntentId);
             }
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
@@ -130,6 +131,7 @@ public class SurveyActivity extends Activity {
             @Override
             public void onClick(View v) {
                 finish();
+                UpdateDisplayState.releaseDisplayState(mIntentId);
             }
         });
     }
@@ -316,6 +318,9 @@ public class SurveyActivity extends Activity {
         if (isShowingSurvey() && mCurrentQuestion > 0) {
             goToPreviousQuestion();
         } else {
+            if (isShowingInApp()) {
+                UpdateDisplayState.releaseDisplayState(mIntentId);
+            }
             super.onBackPressed();
         }
     }
