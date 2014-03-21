@@ -31,12 +31,13 @@ public class FadingImageView extends ImageView {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        final Rect clip = canvas.getClipBounds();
+        int restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
         super.onDraw(canvas);
-
-        final Rect clip = canvas.getClipBounds(); // EXACTLY WRONG?
         mGradientMatrix.setScale(1, clip.height());
         mGradientShader.setLocalMatrix(mGradientMatrix);
         canvas.drawRect(0, 0, clip.width(), clip.height(), mGradientPaint);
+        canvas.restoreToCount(restoreTo);
     }
 
     private void initFadingImageView() {
@@ -51,7 +52,7 @@ public class FadingImageView extends ImageView {
         );
 
         mGradientPaint.setShader(mGradientShader);
-        mGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
+        mGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
 
     }
 
