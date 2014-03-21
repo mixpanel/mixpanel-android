@@ -291,12 +291,13 @@ public class UpdateDisplayState implements Parcelable {
             final long currentTime = System.currentTimeMillis();
             final long deltaTime = currentTime - sUpdateDisplayLockMillis;
 
-            if (sShowingIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
+            if (sNextIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
                 Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing.");
                 sUpdateDisplayState = null;
             }
 
             if (null == sUpdateDisplayState) {
+                sUpdateDisplayLockMillis = currentTime;
                 sUpdateDisplayState = new UpdateDisplayState(state, distinctId, token);
                 sNextIntentId++;
                 ret = sNextIntentId;
@@ -325,14 +326,6 @@ public class UpdateDisplayState implements Parcelable {
      */
     public static UpdateDisplayState claimDisplayState(final int intentId) {
         synchronized(sUpdateDisplayLock) {
-            final long currentTime = System.currentTimeMillis();
-            final long deltaTime = currentTime - sIntentIdLockMillis;
-
-            if (sShowingIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
-                Log.i(LOGTAG, "Survey activity claimed but never released lock, possible force quit.");
-                sShowingIntentId = -1;
-            }
-
             if (sShowingIntentId > 0 && sShowingIntentId != intentId) {
                 // Someone else has claimed another intent already
                 return null;
@@ -341,6 +334,7 @@ public class UpdateDisplayState implements Parcelable {
                 return null;
             } else {
                 // Claim is successful
+                sUpdateDisplayLockMillis = System.currentTimeMillis();
                 sShowingIntentId = intentId;
                 return sUpdateDisplayState;
             }
@@ -360,7 +354,6 @@ public class UpdateDisplayState implements Parcelable {
             return new UpdateDisplayState[size];
         }
     };
-
 
     @Override
     public int describeContents() {
@@ -410,7 +403,6 @@ public class UpdateDisplayState implements Parcelable {
     private static long sUpdateDisplayLockMillis = -1;
     private static UpdateDisplayState sUpdateDisplayState = null;
     private static int sNextIntentId = 0;
-    private static long sIntentIdLockMillis = -1;
     private static int sShowingIntentId = -1;
 
     private static final String LOGTAG = "MixpanelAPI UpdateDisplayState";
