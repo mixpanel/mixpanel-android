@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <style name="SurveyActivityAnimation">
-    <item name="android:windowEnterAnimation">@anim/fade_in</item>
-    <item name="android:windowExitAnimation">@anim/fade_out</item>
+  <style name="com_mixpanel_android_SurveyActivityAnimation">
+    <item name="android:windowEnterAnimation">@anim/com_mixpanel_android_fade_in</item>
+    <item name="android:windowExitAnimation">@anim/com_mixpanel_android_fade_out</item>
   </style>
-  <style name="com.mixpanel.android.mpmetrics.SurveyActivityTheme" parent="android:Theme">
+  <style name="com_mixpanel_android_SurveyActivityTheme" parent="android:Theme">
     <item name="android:windowIsTranslucent">true</item>
     <item name="android:windowBackground">@color/com_mixpanel_android_notification_full_bg</item>
     <item name="android:windowContentOverlay">@null</item>
     <item name="android:windowNoTitle">true</item>
     <item name="android:backgroundDimEnabled">false</item>
-    <item name="android:windowAnimationStyle">@style/SurveyActivityAnimation</item>
+    <item name="android:windowAnimationStyle">@style/com_mixpanel_android_SurveyActivityAnimation</item>
   </style>
 </resources>

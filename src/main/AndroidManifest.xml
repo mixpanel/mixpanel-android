@@ -19,6 +19,6 @@
     <application>
         <!-- This activity allows your application to show Mixpanel surveys -->
         <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
-            android:theme="@style/com.mixpanel.android.mpmetrics.SurveyActivityTheme" />
+            android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
     </application>
 </manifest>
