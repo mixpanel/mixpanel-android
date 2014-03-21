@@ -134,6 +134,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         // keep the notification around in the case of mini, so we have to remember to kill it.
         // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
         mKill = true;
+        UpdateDisplayState.releaseDisplayState(mDisplayStateId);
     }
 
     @Override
@@ -174,7 +175,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             FragmentTransaction transaction = fragmentManager.beginTransaction();
             transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down).remove(this).commit();
         }
-        UpdateDisplayState.releaseDisplayState(mDisplayStateId);
     }
 
     private class SineBounceInterpolator implements Interpolator {
