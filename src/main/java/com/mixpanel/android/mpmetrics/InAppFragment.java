@@ -172,7 +172,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
             FragmentTransaction transaction = fragmentManager.beginTransaction();
-            transaction.setCustomAnimations(0, R.anim.slide_down).remove(this).commit();
+            transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down).remove(this).commit();
         }
         UpdateDisplayState.releaseDisplayState(mDisplayStateId);
     }

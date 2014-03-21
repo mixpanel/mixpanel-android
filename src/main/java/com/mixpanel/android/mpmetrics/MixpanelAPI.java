@@ -21,7 +21,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
-import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -1226,7 +1225,7 @@ public class MixpanelAPI {
                         inapp.setDisplayState(intentId, claimed);
                         inapp.setRetainInstance(true);
                         FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                        transaction.setCustomAnimations(0, R.anim.slide_down);
+                        transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                         transaction.add(android.R.id.content, inapp);
                         transaction.commit();
 
