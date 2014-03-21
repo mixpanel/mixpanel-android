@@ -49,7 +49,6 @@ import com.mixpanel.android.mpmetrics.UpdateDisplayState;
  */
 @TargetApi(11)
 public class SurveyActivity extends Activity {
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +60,7 @@ public class SurveyActivity extends Activity {
             finish();
             return;
         }
+        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken());
 
         if (isShowingInApp()) {
             onCreateInAppNotification(savedInstanceState);
@@ -350,7 +350,6 @@ public class SurveyActivity extends Activity {
     }
 
     private void trackSurveyAttempted() {
-        mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken()); // TODO move to onCreate
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final Survey survey = surveyState.getSurvey();
         final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(mUpdateDisplayState.getDistinctId());
