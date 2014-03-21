@@ -12,7 +12,6 @@
         android:layout_height="wrap_content"
         android:gravity="right"
         android:orientation="vertical" >
-
         <ImageButton
             android:id="@+id/com_mixpanel_android_button_exit"
             android:layout_width="30dp"
@@ -21,14 +20,12 @@
             android:layout_marginRight="20dp"
             android:background="@drawable/com_mixpanel_android_close"
             android:contentDescription="@string/com_mixpanel_android_close" />
-
     </LinearLayout>
 
     <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="0dp"
-        android:layout_weight="1.00"
-        >
+        android:layout_weight="1.00">
         <com.mixpanel.android.surveys.FadingImageView
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_centerVertical="true"
@@ -39,7 +36,7 @@
             android:background="@drawable/com_mixpanel_android_square_dropshadow"
             android:scaleType="fitCenter"
             android:src="@drawable/com_mixpanel_android_notification_placeholder" />
-            </RelativeLayout>
+    </RelativeLayout>
     
     <TextView
         android:id="@+id/com_mixpanel_android_notification_title"
@@ -50,7 +47,6 @@
         android:paddingRight="20dp"
         android:gravity="center_horizontal"
         android:textSize="25sp"
-        android:text="A Notification"
         android:textColor="#ffffff" />
 
     <TextView
@@ -69,9 +65,11 @@
         android:id="@+id/com_mixpanel_android_notification_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="40dp"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
         android:minWidth="175dp"
         android:text="@string/com_mixpanel_android_done"
         android:textColor="@android:color/white"
