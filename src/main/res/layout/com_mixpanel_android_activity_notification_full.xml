@@ -29,7 +29,7 @@
         android:layout_height="0dp"
         android:layout_weight="1.00"
         >
-        <ImageView
+        <com.mixpanel.android.surveys.FadingImageView
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_centerVertical="true"
             android:adjustViewBounds="true"
