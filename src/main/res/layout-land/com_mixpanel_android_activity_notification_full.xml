@@ -1,83 +1,97 @@
 <?xml version="1.0" ?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_vertical"
     android:orientation="horizontal" >
-    
 
-    <RelativeLayout
-        android:layout_width="0dp"
+    <ImageView
+        android:id="@+id/com_mixpanel_android_notification_gradient"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="50"
-        android:gravity="center"
-        android:orientation="horizontal">
-        <com.mixpanel.android.surveys.FadingImageView
-            android:id="@+id/com_mixpanel_android_notification_image"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/com_mixpanel_android_notification_image"
-            android:background="@drawable/com_mixpanel_android_square_dropshadow"
-            android:scaleType="fitCenter"
-            android:src="@drawable/com_mixpanel_android_logo" />
-    </RelativeLayout>
+        android:paddingRight="50dp"
+        android:contentDescription="@string/com_mixpanel_android_notification_image" />
 
-    <RelativeLayout
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="50"
-        android:orientation="vertical">
-        <ImageButton
-            android:id="@+id/com_mixpanel_android_button_exit"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginRight="20dp"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentRight="true"
-            android:background="@drawable/com_mixpanel_android_close"
-            android:contentDescription="@string/com_mixpanel_android_close" />
-        <LinearLayout
-            android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:baselineAligned="false">
+        <RelativeLayout
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center">
-            <TextView
-                android:id="@+id/com_mixpanel_android_notification_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:gravity="center_horizontal"
-                android:textSize="25sp"
-                android:textColor="#ffffff" />
-        
-            <TextView
-                android:id="@+id/com_mixpanel_android_notification_subtext"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingTop="10dp"
-                android:paddingBottom="20dp"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:gravity="center_horizontal"
-                android:textSize="20sp"
-                android:textColor="#a8a8a8" />
-            
-            <Button
-                android:id="@+id/com_mixpanel_android_notification_button"
+            android:layout_weight="50"
+            android:gravity="center"
+            android:orientation="horizontal">
+    
+            <com.mixpanel.android.surveys.FadingImageView
+                android:id="@+id/com_mixpanel_android_notification_image"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="150dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:text="@string/com_mixpanel_android_done"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
-                android:background="@drawable/com_mixpanel_android_cta_button" />
+                android:contentDescription="@string/com_mixpanel_android_notification_image"
+                android:background="@drawable/com_mixpanel_android_square_dropshadow"
+                android:scaleType="fitCenter"
+                android:layout_centerInParent="true"
+                android:src="@drawable/com_mixpanel_android_logo" />
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="50"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/com_mixpanel_android_button_exit"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginRight="20dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentRight="true"
+                android:background="@drawable/com_mixpanel_android_close"
+                android:contentDescription="@string/com_mixpanel_android_close" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
+                <TextView
+                    android:id="@+id/com_mixpanel_android_notification_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:gravity="center_horizontal"
+                    android:textSize="25sp"
+                    android:textColor="#ffffff" />
+
+                <TextView
+                    android:id="@+id/com_mixpanel_android_notification_subtext"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="20dp"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:gravity="center_horizontal"
+                    android:textSize="20sp"
+                    android:textColor="#a8a8a8" />
+
+                <Button
+                    android:id="@+id/com_mixpanel_android_notification_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="150dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:text="@string/com_mixpanel_android_done"
+                    android:textColor="@android:color/white"
+                    android:textSize="20sp"
+                    android:background="@drawable/com_mixpanel_android_cta_button" />
             </LinearLayout>
-    </RelativeLayout>
-</LinearLayout>
+        </RelativeLayout>
+    </LinearLayout>
+</RelativeLayout>
