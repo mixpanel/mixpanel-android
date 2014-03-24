@@ -26,12 +26,18 @@
         android:layout_width="wrap_content"
         android:layout_height="0dp"
         android:layout_weight="1.00">
+        <ImageView
+            android:id="@+id/com_mixpanel_android_notification_gradient"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/com_mixpanel_android_notification_image" />
         <com.mixpanel.android.surveys.FadingImageView
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_centerVertical="true"
             android:adjustViewBounds="true"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
+            android:layout_centerInParent="true"
             android:contentDescription="@string/com_mixpanel_android_notification_image"
             android:scaleType="fitCenter"
             android:src="@drawable/com_mixpanel_android_notification_placeholder" />

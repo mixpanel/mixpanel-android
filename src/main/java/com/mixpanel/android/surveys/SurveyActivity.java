@@ -17,12 +17,16 @@ import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
@@ -71,9 +75,11 @@ public class SurveyActivity extends Activity {
         }
     }
 
+    @SuppressLint("NewApi") // Remove when we bump up TargetAPI to 14 for ICS
     private void onCreateInAppNotification(Bundle savedInstanceState) {
         setContentView(R.layout.com_mixpanel_android_activity_notification_full);
 
+        final ImageView notifGradient = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
         final FadingImageView inAppImageView = (FadingImageView) findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
@@ -82,8 +88,21 @@ public class SurveyActivity extends Activity {
 
         final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
                 (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
-
         final InAppNotification inApp = notificationState.getInAppNotification();
+
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+        GradientDrawable gd = new GradientDrawable();
+        gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        gd.setColors(new int[]{ 0xaaffffff, 0x00ffffff });
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            gd.setGradientCenter(0.25f, 0.5f);
+            gd.setGradientRadius(Math.min(size.x, size.y) * 0.6f);
+        } else {
+            gd.setGradientRadius(Math.min(size.x, size.y) * 0.5f);
+        }
+        notifGradient.setBackground(gd);
 
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());
@@ -130,6 +149,7 @@ public class SurveyActivity extends Activity {
                     }
                 }
                 finish();
+                UpdateDisplayState.releaseDisplayState(mIntentId);
             }
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
@@ -146,13 +166,13 @@ public class SurveyActivity extends Activity {
             @Override
             public void onClick(View v) {
                 finish();
+                UpdateDisplayState.releaseDisplayState(mIntentId);
             }
         });
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
-
 
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
@@ -332,6 +352,9 @@ public class SurveyActivity extends Activity {
         if (isShowingSurvey() && mCurrentQuestion > 0) {
             goToPreviousQuestion();
         } else {
+            if (isShowingInApp()) {
+                UpdateDisplayState.releaseDisplayState(mIntentId);
+            }
             super.onBackPressed();
         }
     }
