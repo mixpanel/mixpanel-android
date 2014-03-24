@@ -52,7 +52,7 @@ import com.mixpanel.android.util.ActivityImageUtils;
  * The best way to display a SurveyActivity for surveys is to call
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
  */
-@TargetApi(11)
+@TargetApi(14)
 public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,11 +75,10 @@ public class SurveyActivity extends Activity {
         }
     }
 
-    @SuppressLint("NewApi") // Remove when we bump up TargetAPI to 14 for ICS
     private void onCreateInAppNotification(Bundle savedInstanceState) {
         setContentView(R.layout.com_mixpanel_android_activity_notification_full);
 
-        final ImageView notifGradient = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
+        final ImageView backgroundImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
         final FadingImageView inAppImageView = (FadingImageView) findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
@@ -93,16 +92,18 @@ public class SurveyActivity extends Activity {
         Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
         display.getSize(size);
-        GradientDrawable gd = new GradientDrawable();
+        GradientDrawable gd = new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
+            new int[]{ 0xaaffffff, 0x00ffffff }
+        );
         gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        gd.setColors(new int[]{ 0xaaffffff, 0x00ffffff });
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             gd.setGradientCenter(0.25f, 0.5f);
             gd.setGradientRadius(Math.min(size.x, size.y) * 0.6f);
         } else {
             gd.setGradientRadius(Math.min(size.x, size.y) * 0.5f);
         }
-        notifGradient.setBackground(gd);
+        backgroundImage.setBackgroundDrawable(gd);
 
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());

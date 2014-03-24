@@ -813,7 +813,6 @@ public class MixpanelAPI {
     /* package */
     @TargetApi(14)
     void registerMixpanelActivityLifecycleCallbacks() {
-
         if (android.os.Build.VERSION.SDK_INT >= 14 && mConfig.getAutoCheckMixpanelData()) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
@@ -1203,12 +1202,12 @@ public class MixpanelAPI {
 
         private void showMiniNotification(final InAppNotification inApp, final Activity parent) {
             // In-app notifications are not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 13) {
+            if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 
             parent.runOnUiThread(new Runnable() {
-                @TargetApi(13)
+                @TargetApi(14)
                 public void run() {
                     final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
                     final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
@@ -1237,7 +1236,7 @@ public class MixpanelAPI {
 
         private void showTakeoverNotification(final InAppNotification inApp, final Activity parent) {
             // In-app notifications are not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 13) {
+            if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 
@@ -1265,8 +1264,8 @@ public class MixpanelAPI {
         }
 
         private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
-            // Showing surveys is not supported before Honeycomb MR2
-            if (Build.VERSION.SDK_INT < 13) {
+            // Showing surveys is not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 

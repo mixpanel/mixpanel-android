@@ -25,7 +25,7 @@ import android.widget.TextView;
 import com.mixpanel.android.R;
 import com.mixpanel.android.util.ActivityImageUtils;
 
-@TargetApi(11)
+@TargetApi(14)
 public class InAppFragment extends Fragment implements View.OnClickListener {
 
     public void setDisplayState(final int stateId, final UpdateDisplayState displayState) {

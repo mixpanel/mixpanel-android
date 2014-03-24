@@ -23,7 +23,7 @@ import com.mixpanel.android.surveys.SurveyActivity;
  *
  * The interface to this class may change or disappear from release to release.
  */
-@TargetApi(11)
+@TargetApi(14)
 public class UpdateDisplayState implements Parcelable {
 
     public static abstract class DisplayState implements Parcelable {
