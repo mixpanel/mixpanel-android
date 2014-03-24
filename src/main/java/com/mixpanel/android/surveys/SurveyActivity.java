@@ -41,6 +41,7 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
+import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
@@ -73,7 +74,7 @@ public class SurveyActivity extends Activity {
     private void onCreateInAppNotification(Bundle savedInstanceState) {
         setContentView(R.layout.com_mixpanel_android_activity_notification_full);
 
-        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
+        final FadingImageView inAppImageView = (FadingImageView) findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
         final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
@@ -86,7 +87,22 @@ public class SurveyActivity extends Activity {
 
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());
-        notifImage.setImageBitmap(inApp.getImage());
+
+        final Bitmap inAppImage = inApp.getImage();
+        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_dropshadow);
+
+        if (inAppImage.getWidth() < SHADOW_SIZE_THRESHOLD_PX || inAppImage.getHeight() < SHADOW_SIZE_THRESHOLD_PX) {
+            inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
+        } else {
+            final Bitmap scaledImage = Bitmap.createScaledBitmap(inAppImage, 1, 1, false);
+            final int averageColor = scaledImage.getPixel(0, 0);
+            final int averageAlpha = Color.alpha(averageColor);
+
+            if (averageAlpha < 0xFF) {
+                inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
+            }
+        }
+        inAppImageView.setImageBitmap(inAppImage);
 
         final String ctaUrl = inApp.getCallToActionUrl();
         if (ctaUrl != null && ctaUrl.length() > 0) {
@@ -437,9 +453,12 @@ public class SurveyActivity extends Activity {
     private static final String SURVEY_BEGUN_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_BEGIN_BUNDLE_KEY";
     private static final String CURRENT_QUESTION_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.CURRENT_QUESTION_BUNDLE_KEY";
     private static final String SURVEY_STATE_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_STATE_BUNDLE_KEY";
-    private static final String LOGTAG = "MixpanelAPI";
     private static final int GRAY_30PERCENT = Color.argb(255, 90, 90, 90);
+    private static final int SHADOW_SIZE_THRESHOLD_PX = 100;
 
-    public static final String INTENT_ID_KEY = "intentId";
+    @SuppressWarnings("unused")
+    private static final String LOGTAG = "MixpanelAPI SurveyActivity";
+
+    public static final String INTENT_ID_KEY = "intentId"; // TODO NAMESPACE THIS KEY
 }
 

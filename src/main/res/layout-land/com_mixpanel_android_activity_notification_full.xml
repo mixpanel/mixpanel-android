@@ -18,7 +18,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/com_mixpanel_android_notification_image"
-            android:background="@drawable/com_mixpanel_android_square_dropshadow"
             android:scaleType="fitCenter"
             android:src="@drawable/com_mixpanel_android_logo" />
     </RelativeLayout>
