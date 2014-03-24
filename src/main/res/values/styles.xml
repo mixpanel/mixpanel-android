@@ -6,7 +6,7 @@
   </style>
   <style name="com_mixpanel_android_SurveyActivityTheme" parent="android:Theme">
     <item name="android:windowIsTranslucent">true</item>
-    <item name="android:windowBackground">@color/com_mixpanel_android_notification_full_bg</item>
+    <item name="android:windowBackground">@android:color/transparent</item>
     <item name="android:windowContentOverlay">@null</item>
     <item name="android:windowNoTitle">true</item>
     <item name="android:backgroundDimEnabled">false</item>

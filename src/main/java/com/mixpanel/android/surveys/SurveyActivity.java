@@ -94,14 +94,15 @@ public class SurveyActivity extends Activity {
         display.getSize(size);
         GradientDrawable gd = new GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
-            new int[]{ 0xaaffffff, 0x00ffffff }
+            new int[]{ 0xE560607C, 0xE548485D, 0xE518181F, 0xE518181F }
         );
         gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             gd.setGradientCenter(0.25f, 0.5f);
             gd.setGradientRadius(Math.min(size.x, size.y) * 0.6f);
         } else {
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.5f);
+            gd.setGradientCenter(0.5f, 0.33f);
+            gd.setGradientRadius(Math.min(size.x, size.y) * 0.7f);
         }
         backgroundImage.setBackgroundDrawable(gd);
 

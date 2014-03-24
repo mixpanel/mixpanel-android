@@ -34,9 +34,12 @@ public class FadingImageView extends ImageView {
         final Rect clip = canvas.getClipBounds();
         final int restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
         super.onDraw(canvas);
-        mGradientMatrix.setScale(1, clip.height());
+
+        final int height = getHeight();
+        final int width = getWidth();
+        mGradientMatrix.setScale(1, height);
         mGradientShader.setLocalMatrix(mGradientMatrix);
-        canvas.drawRect(0, 0, clip.width(), clip.height(), mGradientPaint);
+        canvas.drawRect(0, 0, width, height, mGradientPaint);
         canvas.restoreToCount(restoreTo);
     }
 
