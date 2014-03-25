@@ -713,39 +713,49 @@ public class MixpanelAPI {
          * Calling getNextSurvey() will return quickly, and will not cause any communication with
          * Mixpanel's servers.
          *
-         * @return a Survey object if one is available.
+         * @return a Survey object if one is available, null otherwise.
          */
         public Survey getNextSurvey();
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display surveys should call this
+         * no survey is currently available. Callers who want to display in app notifications should call this
          * method periodically. A given value will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
          * Calling getNextInAppNotification() will return quickly, and will not cause any communication with
          * Mixpanel's servers.
          *
-         * @return a Survey object if one is available.
+         * @return an InAppNotification object if one is available, null otherwise.
          */
         public InAppNotification getNextInAppNotification();
 
         /**
          * Will launch an activity that shows a survey to a user and sends the responses
-         * to Mixpanel. To get a survey to show, use checkForSurvey()
+         * to Mixpanel. To get a survey to show, use getNextSurvey()
          *
          * The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
-         * This method is a noop in environments with
-         * Android API before Gingerbread/API level 10
+         * If s is null, this method is a no-op.
+         *
+         * This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14
          */
         public void showSurvey(Survey s, Activity parent);
 
         /**
-         * Will show a popup window above the given Activity that presents the content
-         * of the given notification to the user. To get an InAppNotification to show,
-         * use checkForNotification.
+         * Will show an in app notification to the user. If the notification is a mini notification,
+         * this method will attach and remove a Fragment to parent. The lifecycle of the Fragment
+         * is handled entirely by the Mixpanel library, and no extra handling is necessary.
+         *
+         * If the notification is a takeover notification, a SurveyActivity will be launched to
+         * display the Takeover notification.
+         *
+         * If notification is null, this method is a no-op.
+         *
+         * This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14.
          */
         public void showNotification(InAppNotification notification, Activity parent);
 
@@ -757,13 +767,16 @@ public class MixpanelAPI {
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like Surveys or Notifications) are discovered.
+         * (like surveys or in app notifications) are discovered.
          *
          * The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * The callback should be able to accept "False positives"- callbacks when there
-         * aren't actually updates to receive.
+         * Once this listener is called, you may call getNextSurvey() or getNextInAppNotification()
+         * to retrieve a Survey or InAppNotification object. However, if you have multiple
+         * listeners registered, one listener may have consumed the available Survey or
+         * InAppNotification, and so the other listeners may obtain null when calling
+         * getNextSurvey() or getNextInAppNotification().
          *
          * @param listener
          */
@@ -806,9 +819,10 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show surveys when the application is opened.
+     * Once registered, we can automatically check for and show surveys and in app notifications
+     * when any Activity is opened.
      * This is only available if the android version is >= 14. You can disable this by setting
-     * com.mixpanel.android.MPConfig.AutoCheckForSurveys to false in your AndroidManifest.xml
+     * com.mixpanel.android.MPConfig.AutoCheckMixpanelData to false in your AndroidManifest.xml
      */
     /* package */
     @TargetApi(14)
@@ -1041,6 +1055,10 @@ public class MixpanelAPI {
 
         @Override
         public void showNotification(final InAppNotification inApp, final Activity parent) {
+            if (null == inApp) {
+                return;
+            }
+
             InAppNotification.Type inAppType = inApp.getType();
             switch (inAppType) {
                 case MINI:
@@ -1266,6 +1284,9 @@ public class MixpanelAPI {
         private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
             // Showing surveys is not supported before Ice Cream Sandwich
             if (Build.VERSION.SDK_INT < 14) {
+                return;
+            }
+            if (null == survey) {
                 return;
             }
 
