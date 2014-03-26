@@ -167,12 +167,7 @@ import android.util.Log;
 
     private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
         Bitmap ret = null;
-        String imageUrl;
-        if (notification.getType() == InAppNotification.Type.MINI) {
-            imageUrl = notification.getImageUrl();
-        } else {
-            imageUrl = notification.getImage2xUrl();
-        }
+        String imageUrl = notification.getImage2xUrl();
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
         final ServerMessage.Result result = poster.get(context, imageUrl, null);
         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
