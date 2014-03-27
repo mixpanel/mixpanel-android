@@ -63,7 +63,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                 synchronized (mExpectations) {
                     if (endpointUrl.equals(mExpectations.expectUrl)) {
                         return new Result(Status.SUCCEEDED, TestUtils.bytes(mExpectations.response));
-                    } else if (endpointUrl.equals("http://mixpanel.com/Balok.jpg")){
+                    } else if (endpointUrl.equals("http://mixpanel.com/Balok@2x.jpg")){
                         return new Result(Status.SUCCEEDED, imageBytes);
                     } else {
                         fail("Unexpected URL " + endpointUrl + " in MixpanelAPI");
