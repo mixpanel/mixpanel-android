@@ -827,17 +827,17 @@ public class MixpanelAPI {
      * Once registered, we can automatically check for and show surveys and in app notifications
      * when any Activity is opened.
      * This is only available if the android version is >= 14. You can disable this by setting
-     * com.mixpanel.android.MPConfig.AutoCheckMixpanelData to false in your AndroidManifest.xml
+     * com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      */
     /* package */
     @TargetApi(14)
     void registerMixpanelActivityLifecycleCallbacks() {
-        if (android.os.Build.VERSION.SDK_INT >= 14 && mConfig.getAutoCheckMixpanelData()) {
+        if (android.os.Build.VERSION.SDK_INT >= 14 && mConfig.getAutoShowMixpanelUpdates()) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, auto show surveys will be disabled.");
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, AutoShowMixpanelUpdates will be disabled.");
             }
         }
     }

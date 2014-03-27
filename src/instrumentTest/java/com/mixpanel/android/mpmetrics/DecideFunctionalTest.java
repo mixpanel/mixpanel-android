@@ -75,7 +75,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         mMockConfig = new MPConfig(new Bundle()) {
             @Override
-            public boolean getAutoCheckMixpanelData() {
+            public boolean getAutoShowMixpanelUpdates() {
                 return false;
             }
         };

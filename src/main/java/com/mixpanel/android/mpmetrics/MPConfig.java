@@ -40,7 +40,7 @@ import android.util.Log;
     /* package */ MPConfig(Bundle metaData) {
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
             Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
-                          "com.mixpanel.android.MPConfig.AutoCheckMixpanelData. Please update this key as soon as possible.");
+                          "com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates. Please update this key as soon as possible.");
         }
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
@@ -50,8 +50,8 @@ import android.util.Log;
 
          // Disable if EITHER of these is present and false, otherwise enable
         boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
-        boolean mixpanelDataAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckMixpanelData", true);
-        mAutoCheckMixpanelData = surveysAutoCheck && mixpanelDataAutoCheck;
+        boolean mixpanelUpdatesAutoShow = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
+        mAutoShowMixpanelUpdates = surveysAutoCheck && mixpanelUpdatesAutoShow;
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
@@ -92,7 +92,7 @@ import android.util.Log;
         if (DEBUG) {
             Log.d(LOGTAG,
                 "Mixpanel configured with:\n" +
-                "    AutoCheckMixpanelData " + getAutoCheckMixpanelData() + "\n" +
+                "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
@@ -157,8 +157,8 @@ import android.util.Log;
     }
 
     // Check for and show eligible surveys and in app notifications on Activity changes
-    public boolean getAutoCheckMixpanelData() {
-        return mAutoCheckMixpanelData;
+    public boolean getAutoShowMixpanelUpdates() {
+        return mAutoShowMixpanelUpdates;
     }
 
     ///////////////////////////////////////////////
@@ -188,7 +188,7 @@ import android.util.Log;
     private final String mPeopleFallbackEndpoint;
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
-    private final boolean mAutoCheckMixpanelData;
+    private final boolean mAutoShowMixpanelUpdates;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();
