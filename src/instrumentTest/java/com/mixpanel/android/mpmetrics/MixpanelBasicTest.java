@@ -798,7 +798,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", false);
+        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
 
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EVENTS FALLBACK ENDPOINT");
@@ -833,7 +833,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(2, testConfig.getFlushInterval());
         assertEquals(3, testConfig.getDataExpiration());
         assertEquals(true, testConfig.getDisableFallback());
-        assertEquals(false, testConfig.getAutoCheckMixpanelData());
+        assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
         assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
         assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
