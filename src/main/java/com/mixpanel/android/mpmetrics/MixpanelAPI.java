@@ -705,8 +705,32 @@ public class MixpanelAPI {
          */
         public String getDistinctId();
 
+        /**
+         * If a survey is currently available, this method will launch an activity that shows a
+         * survey to the user and then send the responses to Mixpanel. It is safe to call this method
+         * any time you potentially want to show the user a survey.
+         *
+         * The survey activity will use the root of the given view to take a screenshot
+         * for its background.
+         *
+         * This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14
+         */
         public void showSurveyIfAvailable(Activity parent);
 
+        /**
+         * Will show an in app notification to the user if one is available. If the notification
+         * is a mini notification, this method will attach and remove a Fragment to parent.
+         * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
+         *
+         * If the notification is a takeover notification, a SurveyActivity will be launched to
+         * display the Takeover notification.
+         *
+         * It is safe to call this method any time you want to potentially display an in app notification.
+         *
+         * This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14.
+         */
         public void showNotificationIfAvailable(Activity parent);
 
         /**
@@ -734,35 +758,6 @@ public class MixpanelAPI {
          * @return an InAppNotification object if one is available, null otherwise.
          */
         public InAppNotification getNextInAppNotification();
-
-        /**
-         * Will launch an activity that shows a survey to a user and sends the responses
-         * to Mixpanel. To get a survey to show, use getNextSurvey()
-         *
-         * The survey activity will use the root of the given view to take a screenshot
-         * for its background.
-         *
-         * If s is null, this method is a no-op.
-         *
-         * This method is a no-op in environments with
-         * Android API before Ice Cream Sandwich/API level 14
-         */
-        public void showSurvey(Survey s, Activity parent);
-
-        /**
-         * Will show an in app notification to the user. If the notification is a mini notification,
-         * this method will attach and remove a Fragment to parent. The lifecycle of the Fragment
-         * is handled entirely by the Mixpanel library, and no extra handling is necessary.
-         *
-         * If the notification is a takeover notification, a SurveyActivity will be launched to
-         * display the Takeover notification.
-         *
-         * If notification is null, this method is a no-op.
-         *
-         * This method is a no-op in environments with
-         * Android API before Ice Cream Sandwich/API level 14.
-         */
-        public void showNotification(InAppNotification notification, Activity parent);
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
@@ -794,6 +789,11 @@ public class MixpanelAPI {
          */
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
+        /**
+         * This method is deprecated- use showSurveyIfAvailable() instead.
+         */
+
+        public void showSurvey(Survey s, Activity parent);
         /**
          * This method is deprecated- use getNextSurvey() instead.
          */
@@ -1053,7 +1053,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        // MUST BE THREAD SAFE.
+        @Deprecated
         public void showSurvey(final Survey survey, final Activity parent) {
             // Showing surveys is not supported before Ice Cream Sandwich
             if (Build.VERSION.SDK_INT < 14) {
@@ -1101,23 +1101,77 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void showNotification(final InAppNotification inApp, final Activity parent) {
-            // In-app notifications are not supported before Ice Cream Sandwich
+        public void showSurveyIfAvailable(final Activity parent) {
             if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 
-            showNotificationSDK14OrHigher(inApp, parent);
-        }
-
-        @Override
-        public void showSurveyIfAvailable(final Activity parent) {
             showSurvey(null, parent);
         }
 
         @Override
         public void showNotificationIfAvailable(final Activity parent) {
-            showNotification(null, parent);
+            if (Build.VERSION.SDK_INT < 14) {
+                return;
+            }
+
+            parent.runOnUiThread(new Runnable() {
+                @Override
+                @TargetApi(14)
+                public void run() {
+                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
+                    lock.lock();
+                    try {
+                        if (UpdateDisplayState.hasCurrentProposal()) {
+                            return; // Already being used.
+                        }
+
+                        InAppNotification showInApp = getNextInAppNotification();
+                        if (null == showInApp) {
+                            return; // Nothing to show
+                        }
+
+                        final InAppNotification.Type inAppType = showInApp.getType();
+                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                            return; // Can't show due to config.
+                        }
+
+                        final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
+                        final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
+                                new UpdateDisplayState.DisplayState.InAppNotificationState(showInApp, highlightColor);
+                        final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
+
+                        switch (inAppType) {
+                            case MINI: {
+                                final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
+                                InAppFragment inapp = new InAppFragment();
+                                inapp.setDisplayState(intentId, claimed);
+                                inapp.setRetainInstance(true);
+                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
+                                transaction.add(android.R.id.content, inapp);
+                                transaction.commit();
+                                track("$campaign_delivery", showInApp.getCampaignProperties()); // TODO Move?
+                            }
+                            break;
+                            case TAKEOVER: {
+                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                                parent.startActivity(intent);
+                            }
+                            break;
+                            default:
+                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
+                        }
+
+                    } finally {
+                        lock.unlock();
+                    }
+                }// run()
+            });
         }
 
         @Override
@@ -1264,70 +1318,6 @@ public class MixpanelAPI {
                 }
 
                 return dataObj;
-        }
-
-        @TargetApi(14)
-        private void showNotificationSDK14OrHigher(final InAppNotification givenApp, final Activity parent) {
-            parent.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
-                    lock.lock();
-                    try {
-                        if (UpdateDisplayState.hasCurrentProposal()) {
-                            return; // Already being used.
-                        }
-
-                        InAppNotification showInApp = givenApp;
-                        if (null == showInApp) {
-                            showInApp = getNextInAppNotification();
-                        }
-
-                        if (null == showInApp) {
-                            return; // Nothing to show
-                        }
-
-                        final InAppNotification.Type inAppType = showInApp.getType();
-                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                            return; // Can't show due to config.
-                        }
-
-                        final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
-                        final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
-                                new UpdateDisplayState.DisplayState.InAppNotificationState(showInApp, highlightColor);
-                        final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
-
-                        switch (inAppType) {
-                            case MINI: {
-                                final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
-                                InAppFragment inapp = new InAppFragment();
-                                inapp.setDisplayState(intentId, claimed);
-                                inapp.setRetainInstance(true);
-                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
-                                transaction.add(android.R.id.content, inapp);
-                                transaction.commit();
-                                track("$campaign_delivery", showInApp.getCampaignProperties()); // TODO Move?
-                            }
-                            break;
-                            case TAKEOVER: {
-                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                                parent.startActivity(intent);
-                            }
-                            break;
-                            default:
-                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
-                        }
-
-                    } finally {
-                        lock.unlock();
-                    }
-                }// run()
-            });
         }
     }// PeopleImpl
 
