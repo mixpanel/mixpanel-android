@@ -3,19 +3,16 @@ package com.mixpanel.android.mpmetrics;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
-
-import com.mixpanel.android.surveys.SurveyActivity;
 
 /**
  * This is a class intended for internal use by the library.
@@ -112,8 +109,7 @@ public class UpdateDisplayState implements Parcelable {
                         }
                     };
 
-            public SurveyState(final Survey survey, final int highlightColor, final Bitmap background, final boolean showAskDialog) {
-                mShowAskDialog = showAskDialog;
+            public SurveyState(final Survey survey, final int highlightColor, final Bitmap background) {
                 mSurvey = survey;
                 mHighlightColor = highlightColor;
                 mBackground = background;
@@ -149,7 +145,6 @@ public class UpdateDisplayState implements Parcelable {
             @Override
             public void writeToParcel(final Parcel dest, final int flags) {
                 final Bundle out = new Bundle();
-                out.putBoolean(SHOW_ASK_BUNDLE_KEY, mShowAskDialog);
                 out.putInt(HIGHLIGHT_COLOR_BUNDLE_KEY, mHighlightColor);
                 out.putParcelable(ANSWERS_BUNDLE_KEY, mAnswers);
 
@@ -165,7 +160,6 @@ public class UpdateDisplayState implements Parcelable {
             }
 
             private SurveyState(Bundle in) {
-                mShowAskDialog = in.getBoolean(SHOW_ASK_BUNDLE_KEY);
                 mHighlightColor = in.getInt(HIGHLIGHT_COLOR_BUNDLE_KEY);
                 mAnswers = in.getParcelable(ANSWERS_BUNDLE_KEY);
 
@@ -179,13 +173,11 @@ public class UpdateDisplayState implements Parcelable {
                 mSurvey = in.getParcelable(SURVEY_BUNDLE_KEY);
             }
 
-            private final boolean mShowAskDialog;
             private final Survey mSurvey;
             private final int mHighlightColor;
             private final AnswerMap mAnswers;
             private final Bitmap mBackground;
 
-            private static final String SHOW_ASK_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.SHOW_ASK_BUNDLE_KEY";
             private static final String SURVEY_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.SURVEY_BUNDLE_KEY";
             private static final String HIGHLIGHT_COLOR_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.HIGHLIGHT_COLOR_BUNDLE_KEY";
             private static final String ANSWERS_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.ANSWERS_BUNDLE_KEY";
@@ -280,44 +272,55 @@ public class UpdateDisplayState implements Parcelable {
         private final HashMap<Integer, String> mMap;
     }
 
-    /**
-     * Client code should not call this method.
-     */
+    /* package */ static ReentrantLock getLockObject() {
+        // Returns an unlocked lock object. Does *not* acquire a lock!
+        return sUpdateDisplayLock;
+    }
+
+    /* package */ static boolean hasCurrentProposal() {
+        // Almost certainly a race condition of caller doesn't hold our lock object.
+        assert sUpdateDisplayLock.isHeldByCurrentThread();
+
+        final long currentTime = System.currentTimeMillis();
+        final long deltaTime = currentTime - sUpdateDisplayLockMillis;
+
+        if (sNextIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
+            Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing.");
+            sUpdateDisplayState = null;
+        }
+
+        return null != sUpdateDisplayState;
+    }
+
     // Returned id should either be -1, or POSITIVE (nonzero). Don't return zero, please.
-    public static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
+    /* package */ static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
         int ret = -1;
 
-        synchronized(sUpdateDisplayLock) {
-            final long currentTime = System.currentTimeMillis();
-            final long deltaTime = currentTime - sUpdateDisplayLockMillis;
+        assert sUpdateDisplayLock.isHeldByCurrentThread();
+        if (! hasCurrentProposal()) {
+            sUpdateDisplayLockMillis = System.currentTimeMillis();
+            sUpdateDisplayState = new UpdateDisplayState(state, distinctId, token);
+            sNextIntentId++;
+            ret = sNextIntentId;
+        } else {
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
+        }
 
-            if (sNextIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
-                Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing.");
-                sUpdateDisplayState = null;
-            }
-
-            if (null == sUpdateDisplayState) {
-                sUpdateDisplayLockMillis = currentTime;
-                sUpdateDisplayState = new UpdateDisplayState(state, distinctId, token);
-                sNextIntentId++;
-                ret = sNextIntentId;
-            } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
-            }
-
-            return ret;
-        } // synchronized
+        return ret;
     }
 
     /**
      * Client code should not call this method.
      */
     public static void releaseDisplayState(int intentId) {
-        synchronized(sUpdateDisplayLock) {
+        sUpdateDisplayLock.lock();
+        try {
             if (intentId == sShowingIntentId) {
                 sShowingIntentId = -1;
                 sUpdateDisplayState = null;
             }
+        } finally {
+            sUpdateDisplayLock.unlock();
         }
     }
 
@@ -325,7 +328,8 @@ public class UpdateDisplayState implements Parcelable {
      * Client code should not call this method.
      */
     public static UpdateDisplayState claimDisplayState(final int intentId) {
-        synchronized(sUpdateDisplayLock) {
+        sUpdateDisplayLock.lock();
+        try {
             if (sShowingIntentId > 0 && sShowingIntentId != intentId) {
                 // Someone else has claimed another intent already
                 return null;
@@ -338,6 +342,8 @@ public class UpdateDisplayState implements Parcelable {
                 sShowingIntentId = intentId;
                 return sUpdateDisplayState;
             }
+        } finally {
+            sUpdateDisplayLock.unlock();
         }
     }
 
@@ -399,7 +405,7 @@ public class UpdateDisplayState implements Parcelable {
     private final String mToken;
     private final DisplayState mDisplayState;
 
-    private static final Object sUpdateDisplayLock = new Object();
+    private static final ReentrantLock sUpdateDisplayLock = new ReentrantLock();
     private static long sUpdateDisplayLockMillis = -1;
     private static UpdateDisplayState sUpdateDisplayState = null;
     private static int sNextIntentId = 0;

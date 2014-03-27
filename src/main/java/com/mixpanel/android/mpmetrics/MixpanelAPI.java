@@ -12,6 +12,7 @@ import java.util.TimeZone;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -704,6 +705,10 @@ public class MixpanelAPI {
          */
         public String getDistinctId();
 
+        public void showSurveyIfAvailable(Activity parent);
+
+        public void showNotificationIfAvailable(Activity parent);
+
         /**
          * Returns a survey object if one is available and being held by the library, or null if
          * no survey is currently available. Callers who want to display surveys should call this
@@ -1036,22 +1041,69 @@ public class MixpanelAPI {
         @Override
         // MUST BE THREAD SAFE.
         public void showSurvey(final Survey survey, final Activity parent) {
-            showSurvey(survey, parent, true);
+            // Showing surveys is not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 14) {
+                return;
+            }
+
+            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                return;
+            }
+
+            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
+                @Override
+                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
+                    lock.lock();
+                    try {
+                        if (UpdateDisplayState.hasCurrentProposal()) {
+                            return; // Already being used.
+                        }
+
+                        Survey toShow = survey;
+                        if (null == toShow) {
+                            toShow = getNextSurvey();
+                        }
+
+                        if (null == toShow) {
+                            return; // Nothing to show
+                        }
+
+                        final UpdateDisplayState.DisplayState surveyDisplay =
+                                new UpdateDisplayState.DisplayState.SurveyState(toShow, highlightColorCaptured, bitmapCaptured);
+                        final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
+                        assert intentId > 0; // Since we hold the lock, and !hasCurrentProposal
+
+                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                        parent.startActivity(surveyIntent);
+                    } finally {
+                        lock.unlock();
+                    }
+                }
+            });
         }
 
         @Override
         public void showNotification(final InAppNotification inApp, final Activity parent) {
-            InAppNotification.Type inAppType = inApp.getType();
-            switch (inAppType) {
-                case MINI:
-                    showMiniNotification(inApp, parent);
-                    break;
-                case TAKEOVER:
-                    showTakeoverNotification(inApp, parent);
-                    break;
-                default:
-                    Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
+            // In-app notifications are not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 14) {
+                return;
             }
+
+            showNotificationSDK14OrHigher(inApp, parent);
+        }
+
+        @Override
+        public void showSurveyIfAvailable(final Activity parent) {
+            showSurvey(null, parent);
+        }
+
+        @Override
+        public void showNotificationIfAvailable(final Activity parent) {
+            showNotification(null, parent);
         }
 
         @Override
@@ -1200,97 +1252,69 @@ public class MixpanelAPI {
                 return dataObj;
         }
 
-        private void showMiniNotification(final InAppNotification inApp, final Activity parent) {
-            // In-app notifications are not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 14) {
-                return;
-            }
-
-            parent.runOnUiThread(new Runnable() {
-                @TargetApi(14)
-                public void run() {
-                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
-                    final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
-                            new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, highlightColor);
-                    final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-
-                    UpdateDisplayState claimed = null;
-                    if (intentId > 0) {
-                        claimed = UpdateDisplayState.claimDisplayState(intentId);
-                    }
-
-                    if (null != claimed) {
-                        InAppFragment inapp = new InAppFragment();
-                        inapp.setDisplayState(intentId, claimed);
-                        inapp.setRetainInstance(true);
-                        FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                        transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
-                        transaction.add(android.R.id.content, inapp);
-                        transaction.commit();
-
-                        track("$campaign_delivery", inApp.getCampaignProperties()); // TODO MOVE
-                    }
-                }
-            });
-        }
-
-        private void showTakeoverNotification(final InAppNotification inApp, final Activity parent) {
-            // In-app notifications are not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 14) {
-                return;
-            }
-
-            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                return;
-            }
-
+        @TargetApi(14)
+        private void showNotificationSDK14OrHigher(final InAppNotification givenApp, final Activity parent) {
             parent.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
-                    final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
-                            new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, highlightColor);
-                    final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
+                    lock.lock();
+                    try {
+                        if (UpdateDisplayState.hasCurrentProposal()) {
+                            return; // Already being used.
+                        }
 
-                    if (intentId > 0) {
-                        final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                        intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                        parent.startActivity(intent);
+                        InAppNotification showInApp = givenApp;
+                        if (null == showInApp) {
+                            showInApp = getNextInAppNotification();
+                        }
+
+                        if (null == showInApp) {
+                            return; // Nothing to show
+                        }
+
+                        final InAppNotification.Type inAppType = showInApp.getType();
+                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                            return; // Can't show due to config.
+                        }
+
+                        final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
+                        final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
+                                new UpdateDisplayState.DisplayState.InAppNotificationState(showInApp, highlightColor);
+                        final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
+
+                        switch (inAppType) {
+                            case MINI: {
+                                final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
+                                InAppFragment inapp = new InAppFragment();
+                                inapp.setDisplayState(intentId, claimed);
+                                inapp.setRetainInstance(true);
+                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
+                                transaction.add(android.R.id.content, inapp);
+                                transaction.commit();
+                                track("$campaign_delivery", showInApp.getCampaignProperties()); // TODO Move?
+                            }
+                            break;
+                            case TAKEOVER: {
+                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                                parent.startActivity(intent);
+                            }
+                            break;
+                            default:
+                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
+                        }
+
+                    } finally {
+                        lock.unlock();
                     }
-                }
+                }// run()
             });
         }
-
-        private void showSurvey(final Survey survey, final Activity parent, final boolean showAskDialog) {
-            // Showing surveys is not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 14) {
-                return;
-            }
-
-            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                return;
-            }
-
-            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                @Override
-                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                    final UpdateDisplayState.DisplayState surveyDisplay =
-                            new UpdateDisplayState.DisplayState.SurveyState(survey, highlightColorCaptured, bitmapCaptured, showAskDialog);
-                    final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-
-                    if (intentId > 0) {
-                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                        parent.startActivity(surveyIntent);
-                    }
-                }
-            });
-        }
-
     }// PeopleImpl
 
     private class UpdatesListener implements DecideUpdates.OnNewResultsListener, Runnable {
@@ -1356,17 +1380,6 @@ public class MixpanelAPI {
                 Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
             }
         }
-    }
-
-    private static class SurveyAssets {
-        public SurveyAssets(int activityHashcode, Bitmap surveyBitmap, int highlightColor) {
-            this.activityHashcode = activityHashcode;
-            this.surveyBitmap = surveyBitmap;
-            this.highlightColor = highlightColor;
-        }
-        public final int activityHashcode;
-        public final Bitmap surveyBitmap;
-        public final int highlightColor;
     }
 
     private static final String LOGTAG = "MixpanelAPI";

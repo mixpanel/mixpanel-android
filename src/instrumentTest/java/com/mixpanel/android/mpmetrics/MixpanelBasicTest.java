@@ -858,7 +858,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             final JSONObject surveyJson = new JSONObject(surveyJsonString);
             final Survey s = new Survey(surveyJson);
             final UpdateDisplayState.DisplayState.SurveyState surveyState =
-                new UpdateDisplayState.DisplayState.SurveyState(s, Color.WHITE, testBitmap, false);
+                new UpdateDisplayState.DisplayState.SurveyState(s, Color.WHITE, testBitmap);
             originalUpdateDisplayState = new UpdateDisplayState(surveyState, "DistinctId", "Token");
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");

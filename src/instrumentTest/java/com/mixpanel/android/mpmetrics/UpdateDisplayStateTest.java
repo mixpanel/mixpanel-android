@@ -31,7 +31,7 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         final InAppNotification inApp = new InAppNotification(inAppJson);
         inApp.setImage(bitmap);
 
-        mSurveyState = new UpdateDisplayState.DisplayState.SurveyState(survey, 0xFF, bitmap, true);
+        mSurveyState = new UpdateDisplayState.DisplayState.SurveyState(survey, 0xFF, bitmap);
         mInAppState = new UpdateDisplayState.DisplayState.InAppNotificationState(inApp, 0xBB);
     }
 
