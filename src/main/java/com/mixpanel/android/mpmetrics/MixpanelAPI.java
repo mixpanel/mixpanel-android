@@ -792,8 +792,8 @@ public class MixpanelAPI {
         /**
          * This method is deprecated- use showSurveyIfAvailable() instead.
          */
-
         public void showSurvey(Survey s, Activity parent);
+
         /**
          * This method is deprecated- use getNextSurvey() instead.
          */
