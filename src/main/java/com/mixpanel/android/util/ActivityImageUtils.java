@@ -56,8 +56,8 @@ public class ActivityImageUtils {
         // Set a constant value level in HSV, in case the averaged color is too light or too dark.
         float[] hsvBackground = new float[3];
         Color.colorToHSV(sampleColor, hsvBackground);
-        hsvBackground[2] = 0.3f; // value parameter
+        hsvBackground[2] = 0.2f; // value parameter
 
-        return Color.HSVToColor(0xcc, hsvBackground);
+        return Color.HSVToColor(0xf2, hsvBackground);
     }
 }
