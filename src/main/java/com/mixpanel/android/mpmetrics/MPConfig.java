@@ -11,7 +11,7 @@ import android.util.Log;
  * Stores global configuration options for the Mixpanel library.
  */
 /* package */ class MPConfig {
-    public static final String VERSION = "4.0.1-RC1";
+    public static final String VERSION = "4.0.2-SNAPSHOT";
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
@@ -45,7 +45,7 @@ import android.util.Log;
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 48); // 48 hours default
+        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
 
          // Disable if EITHER of these is present and false, otherwise enable
