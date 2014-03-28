@@ -43,8 +43,8 @@ This version adds support for Android in app notifications.
 
   * `showSurvey()` and `checkForSurvey()` functions have been deprecated.
 
-* The option to disable the automatic displaying of surveys whenever a new Activity is shown has been renamed
-  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It also now is for both surveys and in app
+* `com.mixpanel.android.MPConfig.AutoCheckForSurveys` has been deprecated. The option has been renamed
+  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It is also now used for both surveys and in app
   notifications.
 
 * The minimum Android version necessary for surveys and in app notifications has been increased to 14,
