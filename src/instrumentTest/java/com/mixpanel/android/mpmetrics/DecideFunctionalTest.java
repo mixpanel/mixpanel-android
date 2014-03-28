@@ -111,7 +111,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // Could be too early to see anything, but if so we'll pick it up when we
         // set the next round of expectations.
-        final Survey shouldBeNull = api.getPeople().getNextSurvey();
+        final Survey shouldBeNull = api.getPeople().getSurveyIfAvailable();
         assertNull(shouldBeNull);
 
         // Should make a request on identify
@@ -128,14 +128,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // We should be done, and Updates should have our goodies waiting
         {
-            final Survey shouldExistSurvey = api.getPeople().getNextSurvey();
+            final Survey shouldExistSurvey = api.getPeople().getSurveyIfAvailable();
             assertEquals(shouldExistSurvey.getId(), 397);
-            final InAppNotification shouldExistNotification = api.getPeople().getNextInAppNotification();
+            final InAppNotification shouldExistNotification = api.getPeople().getNotificationIfAvailable();
             assertEquals(shouldExistNotification.getId(), 119911);
         }
 
-        assertNull(api.getPeople().getNextSurvey());
-        assertNull(api.getPeople().getNextInAppNotification());
+        assertNull(api.getPeople().getSurveyIfAvailable());
+        assertNull(api.getPeople().getNotificationIfAvailable());
 
         // We should run a new check on every flush (right before the flush)
         synchronized (mExpectations) {
@@ -150,14 +150,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mExpectations.checkExpectations();
 
         {
-            final Survey shouldExistSurvey = api.getPeople().getNextSurvey();
+            final Survey shouldExistSurvey = api.getPeople().getSurveyIfAvailable();
             assertEquals(shouldExistSurvey.getId(), 8888);
-            final InAppNotification shouldExistNotification = api.getPeople().getNextInAppNotification();
+            final InAppNotification shouldExistNotification = api.getPeople().getNotificationIfAvailable();
             assertEquals(shouldExistNotification.getId(), 3333);
         }
 
-        assertNull(api.getPeople().getNextSurvey());
-        assertNull(api.getPeople().getNextInAppNotification());
+        assertNull(api.getPeople().getSurveyIfAvailable());
+        assertNull(api.getPeople().getNotificationIfAvailable());
 
         // We should check, but IGNORE repeated objects when we see them come through
         synchronized (mExpectations) {
@@ -170,8 +170,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
         api.flush();
         mExpectations.checkExpectations();
-        assertNull(api.getPeople().getNextSurvey());
-        assertNull(api.getPeople().getNextInAppNotification());
+        assertNull(api.getPeople().getSurveyIfAvailable());
+        assertNull(api.getPeople().getNotificationIfAvailable());
 
         // We should rewrite our memory, including seen objects, when we call identify
         synchronized (mExpectations) {
@@ -187,14 +187,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mExpectations.checkExpectations();
 
         {
-            final Survey shouldExistSurvey = api.getPeople().getNextSurvey();
+            final Survey shouldExistSurvey = api.getPeople().getSurveyIfAvailable();
             assertEquals(shouldExistSurvey.getId(), 8888);
-            final InAppNotification shouldExistNotification = api.getPeople().getNextInAppNotification();
+            final InAppNotification shouldExistNotification = api.getPeople().getNotificationIfAvailable();
             assertEquals(shouldExistNotification.getId(), 3333);
         }
 
-        assertNull(api.getPeople().getNextSurvey());
-        assertNull(api.getPeople().getNextInAppNotification());
+        assertNull(api.getPeople().getSurveyIfAvailable());
+        assertNull(api.getPeople().getNotificationIfAvailable());
     }
 
     public void testDecideChecksOnConstruction() {
@@ -229,8 +229,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
         };
 
         mExpectations.checkExpectations();
-        final Survey foundSurvey = api.getPeople().getNextSurvey();
-        final InAppNotification foundNotification = api.getPeople().getNextInAppNotification();
+        final Survey foundSurvey = api.getPeople().getSurveyIfAvailable();
+        final InAppNotification foundNotification = api.getPeople().getNotificationIfAvailable();
 
         assertEquals(foundSurvey.getId(), 8888);
         assertEquals(foundNotification.getId(), 3333);

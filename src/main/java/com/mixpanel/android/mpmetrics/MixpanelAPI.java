@@ -739,12 +739,12 @@ public class MixpanelAPI {
          * method periodically. A given value will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
-         * Calling getNextSurvey() will return quickly, and will not cause any communication with
+         * Calling getSurveyIfAvailable() will return quickly, and will not cause any communication with
          * Mixpanel's servers.
          *
          * @return a Survey object if one is available, null otherwise.
          */
-        public Survey getNextSurvey();
+        public Survey getSurveyIfAvailable();
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
@@ -752,12 +752,12 @@ public class MixpanelAPI {
          * method periodically. A given value will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
-         * Calling getNextInAppNotification() will return quickly, and will not cause any communication with
+         * Calling getNotificationIfAvailable() will return quickly, and will not cause any communication with
          * Mixpanel's servers.
          *
          * @return an InAppNotification object if one is available, null otherwise.
          */
-        public InAppNotification getNextInAppNotification();
+        public InAppNotification getNotificationIfAvailable();
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
@@ -772,11 +772,11 @@ public class MixpanelAPI {
          * The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * Once this listener is called, you may call getNextSurvey() or getNextInAppNotification()
+         * Once this listener is called, you may call getSurveyIfAvailable() or getNotificationIfAvailable()
          * to retrieve a Survey or InAppNotification object. However, if you have multiple
          * listeners registered, one listener may have consumed the available Survey or
          * InAppNotification, and so the other listeners may obtain null when calling
-         * getNextSurvey() or getNextInAppNotification().
+         * getSurveyIfAvailable() or getNotificationIfAvailable().
          *
          * @param listener
          */
@@ -792,16 +792,17 @@ public class MixpanelAPI {
         /**
          * This method is deprecated- use showSurveyIfAvailable() instead.
          */
+        @Deprecated
         public void showSurvey(Survey s, Activity parent);
 
         /**
-         * This method is deprecated- use getNextSurvey() instead.
+         * This method is deprecated- use getSurveyIfAvailable() instead.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
-         * This method is deprecated- Use getNextSurvey() instead
+         * This method is deprecated- Use getSurveyIfAvailable() instead
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
@@ -1022,7 +1023,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            final Survey found = getNextSurvey();
+            final Survey found = getSurveyIfAvailable();
             callbacks.foundSurvey(found); // TODO isolate this thread, per expected behavior
         }
 
@@ -1035,7 +1036,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public InAppNotification getNextInAppNotification() {
+        public InAppNotification getNotificationIfAvailable() {
             if (null == getDistinctId()) {
                 return null;
             }
@@ -1044,7 +1045,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public Survey getNextSurvey() {
+        public Survey getSurveyIfAvailable() {
             if (null == getDistinctId()) {
                 return null;
             }
@@ -1076,7 +1077,7 @@ public class MixpanelAPI {
 
                         Survey toShow = survey;
                         if (null == toShow) {
-                            toShow = getNextSurvey();
+                            toShow = getSurveyIfAvailable();
                         }
 
                         if (null == toShow) {
@@ -1126,7 +1127,7 @@ public class MixpanelAPI {
                             return; // Already being used.
                         }
 
-                        InAppNotification showInApp = getNextInAppNotification();
+                        InAppNotification showInApp = getNotificationIfAvailable();
                         if (null == showInApp) {
                             return; // Nothing to show
                         }
@@ -1328,7 +1329,7 @@ public class MixpanelAPI {
         }
 
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            // Workaround for a race between checking for updates using getNextSurvey and getNextInAppNotification
+            // Workaround for a race between checking for updates using getSurveyIfAvailable() and getNotificationIfAvailable()
             // and registering a listener.
             synchronized (mDecideUpdates) {
                 if (mDecideUpdates.hasUpdatesAvailable()) {

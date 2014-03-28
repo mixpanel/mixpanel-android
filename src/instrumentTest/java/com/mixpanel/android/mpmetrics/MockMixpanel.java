@@ -40,11 +40,6 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public void showNotification(final InAppNotification notification, final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
         public void identify(final String distinctId) {
             Assert.fail("Unexpected call");
         }
@@ -141,13 +136,13 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public Survey getNextSurvey() {
+        public Survey getSurveyIfAvailable() {
             Assert.fail("Unexpected call");
             return null;
         }
 
         @Override
-        public InAppNotification getNextInAppNotification() {
+        public InAppNotification getNotificationIfAvailable() {
             Assert.fail("Unexpected call");
             return null;
         }
