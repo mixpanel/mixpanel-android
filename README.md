@@ -15,6 +15,41 @@ See https://github.com/mixpanel/sample-android-mixpanel-integration for a full f
 Changelog
 ---------
 
+#### v4.1.0
+
+This version adds support for Android in app notifications.
+
+* There is now an additional theme parameter on the SurveyActivity declaration in AndroidManifest.xml
+  that is used for full screen in app notifications.
+
+  ```
+  <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
+            android:theme="@style/com_mixpanel_android_SurveyActivityTheme"/>
+  ```
+
+* A new unified set of functions have been created to make it easier to fetch and display surveys
+  and in app notifications.
+
+  * `getSurveyIfAvailable()` and `getNotificationIfAvailable()` have been added to fetch Survey and
+    InAppNotification objects when the library has successfully received them. You may use these objects
+    to display your own custom surveys or in app notifications.
+
+  * `showSurveyIfAvailable()` and `showNotificationIfAvailable()` have been added to display surveys and
+    notifications when the library has successfully received them.
+
+  * `addOnMixpanelUpdatesReceivedListener()` and `removeOnMixpanelUpdatesReceivedListener()` have been added
+    so you may be notified when the library has successfully received a survey or in app notification in the
+    background.
+
+  * `showSurvey()` and `checkForSurvey()` functions have been deprecated.
+
+* The option to disable the automatic displaying of surveys whenever a new Activity is shown has been renamed
+  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It also now is for both surveys and in app
+  notifications.
+
+* The minimum Android version necessary for surveys and in app notifications has been increased to 14,
+  Ice Cream Sandwich to improve stability.
+
 #### v4.0.0
 
 This is a major release, with significant changes to library behavior.
