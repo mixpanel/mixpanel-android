@@ -1,8 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,48 +8,36 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
- * Represents a Survey, configured in Mixpanel, suitable for showing to a user.
+ * Represents a Survey, configured in Mixpanel.
  *
- * Unless you have disabled automatic survey display, you shouldn't need to work with this class directly.
- *
- * The typical use of this class follows the pattern.
- * <pre>
- * {@code
- *   Activity parent = this;
- *   mixpanel.getPeople().checkDecideService(new SurveyCallbacks() {
- *       {@literal @}Override
- *       public void foundSurvey(Survey survey) {
- *           if (survey != null) {
- *               mixpanel.getPeople().showSurvey(survey, parent);
- *           }
- *       }
- *   });
- * }
- * </pre>
+ * You only need to work with this class if you call getSurveyIfAvailable() and want to
+ * display a custom interface for the survey yourself.
  */
 public class Survey implements Parcelable {
 
-    public static Creator<Survey> CREATOR =
-            new Creator<Survey>() {
-                @Override
-                public Survey createFromParcel(final Parcel source) {
-                    final String jsonString = source.readString();
-                    try {
-                        final JSONObject json = new JSONObject(jsonString);
-                        return new Survey(json);
-                    } catch (JSONException e) {
-                        throw new RuntimeException("Corrupted JSON object written to survey parcel.", e);
-                    } catch (BadDecideObjectException e) {
-                        throw new RuntimeException("Unexpected or incomplete object written to survey parcel.", e);
-                    }
-                }
+    public static Creator<Survey> CREATOR = new Creator<Survey>() {
+        @Override
+        public Survey createFromParcel(final Parcel source) {
+            final String jsonString = source.readString();
+            try {
+                final JSONObject json = new JSONObject(jsonString);
+                return new Survey(json);
+            } catch (JSONException e) {
+                throw new RuntimeException("Corrupted JSON object written to survey parcel.", e);
+            } catch (BadDecideObjectException e) {
+                throw new RuntimeException("Unexpected or incomplete object written to survey parcel.", e);
+            }
+        }
 
-                @Override
-                public Survey[] newArray(final int size) {
-                    return new Survey[size];
-                }
-            };
+        @Override
+        public Survey[] newArray(final int size) {
+            return new Survey[size];
+        }
+    };
 
     /* package */ Survey(JSONObject description) throws BadDecideObjectException {
         try {
