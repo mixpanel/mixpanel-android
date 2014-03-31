@@ -23,12 +23,20 @@ import android.util.Log;
 @TargetApi(14)
 public class UpdateDisplayState implements Parcelable {
 
+    /**
+     * This class is intended for internal use by the Mixpanel library.
+     * Users of the library should not interact directly with this class.
+     */
     public static abstract class DisplayState implements Parcelable {
 
         private DisplayState() {}
 
         public abstract String getType();
 
+        /**
+         * This class is intended for internal use by the Mixpanel library.
+         * Users of the library should not interact directly with this class.
+         */
         public static final class InAppNotificationState extends DisplayState {
             public static final String TYPE = "InAppNotificationState";
 
@@ -91,6 +99,10 @@ public class UpdateDisplayState implements Parcelable {
             private static String HIGHLIGHT_KEY = "com.com.mixpanel.android.mpmetrics.UpdateDisplayState.InAppNotificationState.HIGHLIGHT_KEY";
         }
 
+        /**
+         * This class is intended for internal use by the Mixpanel library.
+         * Users of the library should not interact directly with this class.
+         */
         public static final class SurveyState extends DisplayState {
             public static final String TYPE = "SurveyState";
 

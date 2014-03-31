@@ -12,7 +12,7 @@ import android.os.Parcelable;
 import android.util.Log;
 
 /**
- * Represents an in-app notification delivered from Mixpanel.
+ * Represents a fullscreen in-app notification delivered from Mixpanel.
  */
 public class InAppNotification implements Parcelable {
     public enum Type {

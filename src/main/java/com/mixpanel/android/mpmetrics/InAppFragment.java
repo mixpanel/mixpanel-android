@@ -25,6 +25,9 @@ import android.widget.TextView;
 import com.mixpanel.android.R;
 import com.mixpanel.android.util.ActivityImageUtils;
 
+/**
+ * Attached to an Activity when you display a mini in-app notification.
+ */
 @TargetApi(14)
 public class InAppFragment extends Fragment implements View.OnClickListener {
 

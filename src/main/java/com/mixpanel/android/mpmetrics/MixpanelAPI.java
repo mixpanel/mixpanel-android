@@ -519,7 +519,7 @@ public class MixpanelAPI {
         public void set(JSONObject properties);
 
         /**
-         * Works just like set(), except it will not overwrite existing property values. This is useful for properties like "First login date".
+         * Works just like {@link People#set(String, Object)}, except it will not overwrite existing property values. This is useful for properties like "First login date".
          *
          * @param propertyName The name of the Mixpanel property. This must be a String, for example "Zip Code"
          * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
@@ -527,7 +527,7 @@ public class MixpanelAPI {
         public void setOnce(String propertyName, Object value);
 
         /**
-         * Like set(), but will not set properties that already exist on a record.
+         * Like {@link People#set(String, Object)}, but will not set properties that already exist on a record.
          *
          * @param properties a JSONObject containing the collection of properties you wish to apply
          *      to the identified user. Each key in the JSONObject will be associated with
@@ -612,7 +612,7 @@ public class MixpanelAPI {
          * <p>Calling this method will allow the Mixpanel libraries to handle GCM user
          * registration, and enable Mixpanel to show alerts when GCM messages arrive.
          *
-         * <p>To use initPushHandling(), you will need to add the following to your application manifest:
+         * <p>To use {@link People#initPushHandling}, you will need to add the following to your application manifest:
          *
          * <pre>
          * {@code
@@ -627,7 +627,7 @@ public class MixpanelAPI {
          * }
          * </pre>
          *
-         * <p>Be sure to replace "YOUR_PACKAGE_NAME" with the name of your package. For
+         * Be sure to replace "YOUR_PACKAGE_NAME" with the name of your package. For
          * more information and a list of necessary permissions, see {@link GCMReceiver}.
          *
          * <p>If you're planning to use end-to-end support for Messaging, we recommend you
@@ -635,11 +635,10 @@ public class MixpanelAPI {
          * early in your application's life cycle. (for example, in the onCreate method of your
          * main application activity.)
          *
-         * <p>Calls to initPushHandling should not be mixed with calls to
+         * <p>Calls to {@link People#initPushHandling} should not be mixed with calls to
          * {@link #setPushRegistrationId(String)} and {@link #clearPushRegistrationId()}
          * in the same application. Application authors should choose one or the other
          * method for handling Mixpanel GCM messages.
-         *
          *
          * @param senderID of the Google API Project that registered for Google Cloud Messaging
          *     You can find your ID by looking at the URL of in your Google API Console
@@ -661,7 +660,7 @@ public class MixpanelAPI {
          *
          * <p>setPushRegistrationId should only be called after {@link #identify(String)} has been called.
          *
-         * <p>Calls to setPushRegistrationId should not be mixed with calls to {@link #initPushHandling(String)}
+         * <p>Calls to {@link People#setPushRegistrationId} should not be mixed with calls to {@link #initPushHandling(String)}
          * in the same application. In addition, applications that call setPushRegistrationId
          * should also call {@link #clearPushRegistrationId()} when they receive an intent to unregister
          * (a com.google.android.c2dm.intent.REGISTRATION intent with getStringExtra("unregistered") != null)
@@ -681,7 +680,7 @@ public class MixpanelAPI {
          * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
          * with getStringExtra("unregistered") != null
          *
-         * <p>clearPushRegistrationId should only be called after {@link #identify(String)} has been called.
+         * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
          * removePushRegistrationId, and no applications that call {@link #initPushHandling(String)} should
@@ -710,10 +709,10 @@ public class MixpanelAPI {
          * survey to the user and then send the responses to Mixpanel. It is safe to call this method
          * any time you potentially want to show the user a survey.
          *
-         * The survey activity will use the root of the given view to take a screenshot
+         * <p>The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
-         * This method is a no-op in environments with
+         * <p>This method is a no-op in environments with
          * Android API before Ice Cream Sandwich/API level 14
          *
          * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
@@ -722,16 +721,16 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Will show an in app notification to the user if one is available. If the notification
+         * Shows an in app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
-         * If the notification is a takeover notification, a SurveyActivity will be launched to
+         * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
          * display the Takeover notification.
          *
-         * It is safe to call this method any time you want to potentially display an in app notification.
+         * <p>It is safe to call this method any time you want to potentially display an in app notification.
          *
-         * This method is a no-op in environments with
+         * <p>This method is a no-op in environments with
          * Android API before Ice Cream Sandwich/API level 14.
          *
          * @param parent the Activity that the mini notification will be displayed in, or the Activity
@@ -745,7 +744,7 @@ public class MixpanelAPI {
          * should call this method to get the Survey data. A given survey will be returned only once
          * from this method, so callers should be ready to consume any non-null return value.
          *
-         * Calling getSurveyIfAvailable() will always return quickly, and will not cause any communication with
+         * <p>This function will always return quickly, and will not cause any communication with
          * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
          * @return a Survey object if one is available, null otherwise.
@@ -758,7 +757,7 @@ public class MixpanelAPI {
          * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
-         * Calling getNotificationIfAvailable() will return quickly, and will not cause any communication with
+         * <p>This function will return quickly, and will not cause any communication with
          * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
          * @return an InAppNotification object if one is available, null otherwise.
@@ -775,40 +774,41 @@ public class MixpanelAPI {
          * Adds a new listener that will receive a callback when new updates from Mixpanel
          * (like surveys or in app notifications) are discovered.
          *
-         * The given listener will be called when a new batch of updates is detected. Handlers
+         * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * Once this listener is called, you may call getSurveyIfAvailable() or getNotificationIfAvailable()
+         * <p>Once this listener is called, you may call {@link People#getSurveyIfAvailable()}
+         * or {@link People#getNotificationIfAvailable()}
          * to retrieve a Survey or InAppNotification object. However, if you have multiple
          * listeners registered, one listener may have consumed the available Survey or
          * InAppNotification, and so the other listeners may obtain null when calling
-         * getSurveyIfAvailable() or getNotificationIfAvailable().
+         * {@link People#getSurveyIfAvailable()} or {@link People#getNotificationIfAvailable()}.
          *
-         * @param listener
+         * @param listener the listener to add
          */
         public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
         /**
          * Removes a listener previously registered with addOnMixpanelUpdatesReceivedListener.
          *
-         * @param listener
+         * @param listener the listener to add
          */
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
         /**
-         * This method is deprecated- use showSurveyIfAvailable() instead.
+         * @deprecated Use showSurveyIfAvailable() instead.
          */
         @Deprecated
         public void showSurvey(Survey s, Activity parent);
 
         /**
-         * This method is deprecated- use getSurveyIfAvailable() instead.
+         * @deprecated Use getSurveyIfAvailable() instead.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
-         * This method is deprecated- Use getSurveyIfAvailable() instead
+         * @deprecated Use getSurveyIfAvailable() instead.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
