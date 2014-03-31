@@ -45,12 +45,13 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
-import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
- * The best way to display a SurveyActivity for surveys is to call
- * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurvey(com.mixpanel.android.mpmetrics.Survey, android.app.Activity)}
+ *
+ * You should not send Intent's directly to display this activity. Instead use
+ * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurveyIfAvailable()} and
+ * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable()}
  */
 @TargetApi(14)
 public class SurveyActivity extends Activity {
