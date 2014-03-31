@@ -29,9 +29,11 @@ import com.mixpanel.android.util.ActivityImageUtils;
 public class InAppFragment extends Fragment implements View.OnClickListener {
 
     public void setDisplayState(final int stateId, final UpdateDisplayState displayState) {
-        // It would be better to pass in the InAppNotification to the only constructor, but
+        // It would be better to pass in displayState to the only constructor, but
         // Fragments require a default constructor that is called when Activities recreate them.
-        // This is not an issue since we kill notifications as soon as the Activity is onStopped.
+        // This means that when the Activity recreates this Fragment (due to rotation, or
+        // the Activity going away and coming back), mDisplayStateId and mDisplayState are not
+        // initialized, but this is okay since we remove the Fragment in onStart.
         mDisplayStateId = stateId;
         mDisplayState = displayState;
     }
@@ -40,9 +42,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     public void onAttach(Activity activity) {
         super.onAttach(activity);
 
-        // We have to hold these references because the Activity does not clear it's Handler
-        // of messages when it disappears, so we have to manually clear these Runnables in onStop
-        // in case they exist
+        // We have to manually clear these Runnables in onStop in case they exist, since they
+        // do illegal operations when onSaveInstanceState has been called already.
         mParent = activity;
         mHandler = new Handler();
         mRemover = new Runnable() {
@@ -118,7 +119,8 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         super.onResume();
 
         // getHighlightColorFromBackground doesn't seem to work on onResume because the view
-        // has not been fully rendered, so try and delay a little bit
+        // has not been fully rendered, so try and delay a little bit. This is also a bit better UX
+        // by giving the user some time to process the new Activity before displaying the notification.
         mHandler.postDelayed(mDisplayMini, 500);
     }
 
