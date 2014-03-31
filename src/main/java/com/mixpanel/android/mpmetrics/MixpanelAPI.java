@@ -715,6 +715,9 @@ public class MixpanelAPI {
          *
          * This method is a no-op in environments with
          * Android API before Ice Cream Sandwich/API level 14
+         *
+         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
+         * taken of parent to be used as a blurred background.
          */
         public void showSurveyIfAvailable(Activity parent);
 
@@ -730,17 +733,20 @@ public class MixpanelAPI {
          *
          * This method is a no-op in environments with
          * Android API before Ice Cream Sandwich/API level 14.
+         *
+         * @param parent the Activity that the mini notification will be displayed in, or the Activity
+         * that will be used to launch SurveyActivity for the takeover notification.
          */
         public void showNotificationIfAvailable(Activity parent);
 
         /**
          * Returns a survey object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display surveys should call this
-         * method periodically. A given value will be returned only once from this method, so callers
-         * should be ready to consume any non-null return value.
+         * no survey is currently available. Callers who want to display surveys with their own UI
+         * should call this method to get the Survey data. A given survey will be returned only once
+         * from this method, so callers should be ready to consume any non-null return value.
          *
-         * Calling getSurveyIfAvailable() will return quickly, and will not cause any communication with
-         * Mixpanel's servers.
+         * Calling getSurveyIfAvailable() will always return quickly, and will not cause any communication with
+         * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
          * @return a Survey object if one is available, null otherwise.
          */
@@ -749,11 +755,11 @@ public class MixpanelAPI {
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
          * no survey is currently available. Callers who want to display in app notifications should call this
-         * method periodically. A given value will be returned only once from this method, so callers
+         * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
          * Calling getNotificationIfAvailable() will return quickly, and will not cause any communication with
-         * Mixpanel's servers.
+         * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
          * @return an InAppNotification object if one is available, null otherwise.
          */
@@ -784,7 +790,7 @@ public class MixpanelAPI {
 
         /**
          * Removes a listener previously registered with addOnMixpanelUpdatesReceivedListener.
-        *
+         *
          * @param listener
          */
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
@@ -827,8 +833,12 @@ public class MixpanelAPI {
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
      * Once registered, we can automatically check for and show surveys and in app notifications
      * when any Activity is opened.
+     *
      * This is only available if the android version is >= 14. You can disable this by setting
      * com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
+     *
+     * This function is automatically called when the library is initialized unless you explicitly
+     * set com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      */
     /* package */
     @TargetApi(14)
@@ -1171,7 +1181,7 @@ public class MixpanelAPI {
                     } finally {
                         lock.unlock();
                     }
-                }// run()
+                } // run()
             });
         }
 
