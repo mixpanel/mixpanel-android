@@ -15,7 +15,7 @@ import android.util.Log;
 
     // Set to true to see lots of internal debugging logcat output.
     // This should be set to false in production builds
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
 
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
