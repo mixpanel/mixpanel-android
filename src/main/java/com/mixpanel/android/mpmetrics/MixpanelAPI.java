@@ -1163,7 +1163,7 @@ public class MixpanelAPI {
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
                                 transaction.commit();
-                                track("$campaign_delivery", showInApp.getCampaignProperties()); // TODO Move?
+                                trackNotificationSeen(showInApp);
                             }
                             break;
                             case TAKEOVER: {
@@ -1172,6 +1172,7 @@ public class MixpanelAPI {
                                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                                 intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
                                 parent.startActivity(intent);
+                                trackNotificationSeen(showInApp);
                             }
                             break;
                             default:
@@ -1182,6 +1183,21 @@ public class MixpanelAPI {
                         lock.unlock();
                     }
                 } // run()
+
+                private void trackNotificationSeen(InAppNotification notif) {
+                    track("$campaign_delivery", notif.getCampaignProperties());
+
+                    final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
+                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+                    final JSONObject notifProperties = notif.getCampaignProperties();
+                    try {
+                        notifProperties.put("$time", dateFormat.format(new Date()));
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+                    }
+                    people.append("$campaigns", notif.getId());
+                    people.append("$notifications", notifProperties);
+                }
             });
         }
 
