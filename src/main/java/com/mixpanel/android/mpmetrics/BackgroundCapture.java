@@ -49,6 +49,10 @@ import com.mixpanel.android.util.StackBlurManager;
                     StackBlurManager.process(mSourceImage, 20);
                     final Canvas canvas = new Canvas(mSourceImage);
                     canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
+                } catch (final ArrayIndexOutOfBoundsException e) {
+                    // Workaround for a bug in the algorithm while we wait
+                    // for folks to move to gradle/AndroidStudio/other Renderscript-friendly build tools
+                    mSourceImage = null;
                 } catch (final OutOfMemoryError e) {
                     // It's possible that the bitmap processing was what sucked up all of the memory,
                     // So we try to recover here.
