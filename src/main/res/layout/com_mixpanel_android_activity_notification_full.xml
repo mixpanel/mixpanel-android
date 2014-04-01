@@ -30,22 +30,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/com_mixpanel_android_button_exit_wrapper"
-        android:gravity="top|center_horizontal"
-        android:orientation="horizontal">
-        <com.mixpanel.android.surveys.FadingImageView
-            android:id="@+id/com_mixpanel_android_notification_image"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/com_mixpanel_android_notification_image"
-            android:scaleType="fitCenter"
-            android:adjustViewBounds="true"
-            android:src="@drawable/com_mixpanel_android_logo" />
-    </LinearLayout>
-
-    <LinearLayout
+        android:id="@+id/com_mixpanel_android_notification_bottom_wrapper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -54,7 +39,6 @@
             android:id="@+id/com_mixpanel_android_notification_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="20dp"
             android:paddingLeft="20dp"
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
@@ -90,5 +74,24 @@
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:background="@drawable/com_mixpanel_android_cta_button" />
+    </LinearLayout>
+
+    <!-- This LinearLayout must follow com_mixpanel_android_notification_bottom_wrapper
+         since the FadingImageView relies on com_mixpanel_android_notification_bottom_wrapper
+         being measured before itself. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/com_mixpanel_android_button_exit_wrapper"
+        android:gravity="top|center_horizontal"
+        android:orientation="horizontal">
+        <com.mixpanel.android.surveys.FadingImageView
+            android:id="@+id/com_mixpanel_android_notification_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/com_mixpanel_android_notification_image"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:src="@drawable/com_mixpanel_android_logo" />
     </LinearLayout>
 </RelativeLayout>
