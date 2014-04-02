@@ -335,10 +335,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     return new Result(Status.SUCCEEDED, TestUtils.bytes("{}"));
                 }
 
-
-                assertEquals(nameValuePairs.get(1).getName(), "verbose");
-                assertEquals(nameValuePairs.get(1).getValue(), "1");
-
                 assertEquals(nameValuePairs.get(0).getName(), "data");
                 final String decoded = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
 
@@ -506,9 +502,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 // ELSE
 
                 try {
-                    assertEquals(nameValuePairs.get(1).getName(), "verbose");
-                    assertEquals(nameValuePairs.get(1).getValue(), "1");
-
                     assertEquals(nameValuePairs.get(0).getName(), "data");
                     final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
                     JSONArray msg = new JSONArray(jsonData);
