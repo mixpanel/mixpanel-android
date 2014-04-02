@@ -19,7 +19,8 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="100"
-        android:paddingLeft="20dp"
+        android:paddingLeft="15dp"
+        android:paddingRight="15dp"
         android:gravity="center_vertical"
         android:textSize="20sp"
         android:textColor="#ffffff" />
