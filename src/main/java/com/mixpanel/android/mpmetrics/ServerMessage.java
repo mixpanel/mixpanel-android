@@ -220,7 +220,6 @@ import com.mixpanel.android.util.Base64Coder;
 
         if (null != response) {
             status = Status.SUCCEEDED;
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Request returned:\n" + response);
         }
 
         return new Result(status, response);
