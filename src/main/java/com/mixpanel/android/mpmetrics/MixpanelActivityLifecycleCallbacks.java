@@ -14,62 +14,13 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         mHasChecked = false;
     }
 
-    /**
-     * The Mixpanel library is unlikely to be instantiated in time for this to be
-     * called on the initial opening of the application.
-     * However, this method is executed when the application
-     * is in memory but closed and the user re-opens it.
-     *
-     * @param activity
-     * @param savedInstanceState
-     */
-    @Override
-    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        checkForDecideUpdates(activity);
-    }
-
-    /**
-     * This method is called anytime an activity is started (which is quite frequently). The only
-     * reason we are interested in this call is to check and show an eligible survey on initial app
-     * open. Unfortunately, by the time MixpanelActivityLifecycleCallbacks is registered, we've
-     * already missed the onActivityCreated call. We'll use this event to "catch up".
-     * checkDecideService is only called if hasn't been previously called in the life of the app.
-     *
-     * @param activity
-     */
-    @Override
-    public void onActivityStarted(Activity activity) {
-        checkForDecideUpdates(activity);
-    }
-
     @Override
     public void onActivityResumed(Activity activity) {
         checkForDecideUpdates(activity);
     }
 
-    /**
-     * We rely on the fact that the we'll either get an onActivityPaused or onActivityDestroyed
-     * message if/when the activity goes away.
-     */
     @Override
     public void onActivityPaused(Activity activity) {
-        cleanupActivity(activity);
-    }
-
-    @Override
-    public void onActivityStopped(Activity activity) {
-        cleanupActivity(activity);
-    }
-
-    @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
-
-    /**
-     * We rely on the fact that the we'll either get an onActivityPaused or onActivityDestroyed
-     * message if/when the activity goes away.
-     */
-    @Override
-    public void onActivityDestroyed(Activity activity) {
         cleanupActivity(activity);
     }
 
@@ -141,4 +92,19 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI:MixpanelActivityLifecycleCallbacks";
+
+    @Override
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) { }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) { }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) { }
+
+    @Override
+    public void onActivityStarted(Activity activity) { }
+
+    @Override
+    public void onActivityStopped(Activity activity) { }
 }
