@@ -706,14 +706,19 @@ public class MixpanelAPI {
 
         /**
          * If a survey is currently available, this method will launch an activity that shows a
-         * survey to the user and then send the responses to Mixpanel. It is safe to call this method
-         * any time you potentially want to show the user a survey.
+         * survey to the user and then send the responses to Mixpanel.
          *
          * <p>The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
+         * <p>It is safe to call this method any time you want to potentially display an in app notification.
+         * This method will be a no-op if there is already a survey or in app notification being displayed.
+         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
+         * only one of them will be displayed.
+         *
          * <p>This method is a no-op in environments with
-         * Android API before Ice Cream Sandwich/API level 14
+         * Android API before Ice Cream Sandwich/API level 14.
          *
          * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
          * taken of parent to be used as a blurred background.
@@ -721,7 +726,7 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Shows an in app notification to the user if one is available. If the notification
+         * Shows an in app not3ification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
@@ -729,6 +734,10 @@ public class MixpanelAPI {
          * display the Takeover notification.
          *
          * <p>It is safe to call this method any time you want to potentially display an in app notification.
+         * This method will be a no-op if there is already a survey or in app notification being displayed.
+         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
+         * only one of them will be displayed.
          *
          * <p>This method is a no-op in environments with
          * Android API before Ice Cream Sandwich/API level 14.
