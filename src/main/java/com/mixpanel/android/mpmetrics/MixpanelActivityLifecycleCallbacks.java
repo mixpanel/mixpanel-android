@@ -15,7 +15,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {
+    public void onActivityStarted(Activity activity) {
         checkForDecideUpdates(activity);
     }
 
@@ -103,7 +103,7 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) { }
 
     @Override
-    public void onActivityStarted(Activity activity) { }
+    public void onActivityResumed(Activity activity) { }
 
     @Override
     public void onActivityStopped(Activity activity) { }
