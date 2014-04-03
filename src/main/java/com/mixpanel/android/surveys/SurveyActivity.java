@@ -100,7 +100,7 @@ public class SurveyActivity extends Activity {
         gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             gd.setGradientCenter(0.25f, 0.5f);
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.6f);
+            gd.setGradientRadius(Math.min(size.x, size.y) * 0.8f);
         } else {
             gd.setGradientCenter(0.5f, 0.33f);
             gd.setGradientRadius(Math.min(size.x, size.y) * 0.7f);
