@@ -65,7 +65,8 @@ public class FadingImageView extends ImageView {
         } else {
             mGradientMatrix.setScale(1, parentHeight);
         }
-        mGradientShader.setLocalMatrix(mGradientMatrix);
+        mAlphaGradientShader.setLocalMatrix(mGradientMatrix);
+        mDarkenGradientShader.setLocalMatrix(mGradientMatrix);
     }
 
     @Override
@@ -78,28 +79,47 @@ public class FadingImageView extends ImageView {
 
         super.draw(canvas);
 
-        canvas.drawRect(0, 0, mWidth, mHeight, mGradientPaint);
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
+        } else {
+            canvas.drawRect(getPaddingLeft(), getPaddingTop(),
+                            mWidth - getPaddingRight(),
+                            mHeight - getPaddingBottom(),
+                            mDarkenGradientPaint);
+        }
         canvas.restoreToCount(restoreTo);
     }
 
     private void initFadingImageView() {
         // Approach modeled after View.ScrollabilityCache from the framework
-        mGradientPaint = new Paint();
         mGradientMatrix = new Matrix();
-        mGradientShader = new LinearGradient(
+
+        mAlphaGradientPaint = new Paint();
+        mAlphaGradientShader = new LinearGradient(
             0, 0, 0, 1, // x0, y0, x1, y1
             new int[]  {0xFF000000, 0xFF000000, 0xE5000000, 0x00000000},
             new float[]{0.0f,       0.7f,       0.8f,       1.0f},
             Shader.TileMode.CLAMP
         );
+        mAlphaGradientPaint.setShader(mAlphaGradientShader);
+        mAlphaGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
 
-        mGradientPaint.setShader(mGradientShader);
-        mGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+        mDarkenGradientPaint = new Paint();
+        mDarkenGradientShader = new LinearGradient(
+            0, 0, 0, 1, // x0, y0, x1, y1
+            new int[]  {0x00000000, 0x00000000, 0xFF000000, 0xFF000000},
+            new float[]{0.0f,       0.85f,      0.98f,      1.0f      },
+            Shader.TileMode.CLAMP
+        );
+        mDarkenGradientPaint.setShader(mDarkenGradientShader);
+        mAlphaGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
     }
 
-    private Paint mGradientPaint;
     private Matrix mGradientMatrix;
-    private Shader mGradientShader;
+    private Paint mAlphaGradientPaint;
+    private Shader mAlphaGradientShader;
+    private Paint mDarkenGradientPaint;
+    private Shader mDarkenGradientShader;
     private int mHeight;
     private int mWidth;
 }
