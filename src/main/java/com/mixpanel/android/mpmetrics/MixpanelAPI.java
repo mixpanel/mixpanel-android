@@ -125,8 +125,6 @@ public class MixpanelAPI {
             mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
         }
 
-        // If we're constructed in onCreate (common case), we want
-        // to have something to show by onStart?
         registerMixpanelActivityLifecycleCallbacks();
 
         if (null != mDecideUpdates) {
