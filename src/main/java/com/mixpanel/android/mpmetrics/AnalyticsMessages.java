@@ -269,7 +269,7 @@ import android.util.Log;
                         sendAllData(mDbAdapter);
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
-                        logAboutMessageToMixpanel("Installing a check for surveys");
+                        logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
                         final DecideUpdates check = (DecideUpdates) msg.obj;
                         mDecideChecker.addDecideCheck(check);
                         mDecideChecker.runDecideChecks(getPoster());
