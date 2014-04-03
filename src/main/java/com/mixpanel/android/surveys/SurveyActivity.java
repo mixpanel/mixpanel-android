@@ -37,6 +37,8 @@ import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
@@ -85,6 +87,7 @@ public class SurveyActivity extends Activity {
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
         final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
         final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
+        final LinearLayout closeButtonWrapper = (LinearLayout) findViewById(R.id.com_mixpanel_android_button_exit_wrapper);
 
         final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
                 (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
@@ -93,6 +96,13 @@ public class SurveyActivity extends Activity {
         Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
         display.getSize(size);
+
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) closeButtonWrapper.getLayoutParams();
+            params.setMargins(0, 0, 0, (int) (size.y * 0.06f)); // make bottom margin 6% of screen height
+            closeButtonWrapper.setLayoutParams(params);
+        }
+
         GradientDrawable gd = new GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
             new int[]{ 0xE560607C, 0xE548485D, 0xE518181F, 0xE518181F }
