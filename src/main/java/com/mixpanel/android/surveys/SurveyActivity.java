@@ -495,6 +495,6 @@ public class SurveyActivity extends Activity {
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI SurveyActivity";
 
-    public static final String INTENT_ID_KEY = "intentId"; // TODO NAMESPACE THIS KEY
+    public static final String INTENT_ID_KEY = "com.mixpanel.android.surveys.SurveyActivity.INTENT_ID_KEY";
 }
 
