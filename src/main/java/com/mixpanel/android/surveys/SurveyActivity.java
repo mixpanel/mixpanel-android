@@ -93,6 +93,7 @@ public class SurveyActivity extends Activity {
                 (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
         final InAppNotification inApp = notificationState.getInAppNotification();
 
+        // Layout
         Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
         display.getSize(size);
@@ -140,6 +141,8 @@ public class SurveyActivity extends Activity {
         if (ctaUrl != null && ctaUrl.length() > 0) {
             ctaButton.setText(inApp.getCallToAction());
         }
+
+        // Listeners
         ctaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -182,6 +185,27 @@ public class SurveyActivity extends Activity {
                 UpdateDisplayState.releaseDisplayState(mIntentId);
             }
         });
+
+        // Animations
+        final ScaleAnimation scale = new ScaleAnimation(
+            .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+        scale.setDuration(200);
+        inAppImageView.startAnimation(scale);
+
+        final TranslateAnimation translate = new TranslateAnimation(
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.0f,
+             Animation.RELATIVE_TO_SELF, 0.5f,
+             Animation.RELATIVE_TO_SELF, 0.0f
+        );
+        translate.setInterpolator(new DecelerateInterpolator());
+        translate.setDuration(200);
+        titleView.startAnimation(translate);
+        subtextView.startAnimation(translate);
+        ctaButton.startAnimation(translate);
+
+        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
+        closeButton.startAnimation(fadeIn);
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
@@ -256,43 +280,6 @@ public class SurveyActivity extends Activity {
         });
         alertBuilder.setCancelable(false);
         alertBuilder.show();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (isShowingInApp()) {
-            onResumeInAppNotification();
-        }
-    }
-
-    private void onResumeInAppNotification() {
-        final ImageView notifImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_image);
-        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
-        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
-        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
-        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
-
-        final ScaleAnimation scale = new ScaleAnimation(
-            .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
-        scale.setDuration(200);
-        notifImage.startAnimation(scale);
-
-        final TranslateAnimation translate = new TranslateAnimation(
-             Animation.RELATIVE_TO_SELF, 0.0f,
-             Animation.RELATIVE_TO_SELF, 0.0f,
-             Animation.RELATIVE_TO_SELF, 0.5f,
-             Animation.RELATIVE_TO_SELF, 0.0f
-        );
-        translate.setInterpolator(new DecelerateInterpolator());
-        translate.setDuration(200);
-        titleView.startAnimation(translate);
-        subtextView.startAnimation(translate);
-        ctaButton.startAnimation(translate);
-
-        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
-        closeButton.startAnimation(fadeIn);
     }
 
     @Override
