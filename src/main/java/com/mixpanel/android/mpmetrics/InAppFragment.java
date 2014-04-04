@@ -23,7 +23,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.util.ActivityImageUtils;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
@@ -31,7 +30,7 @@ import com.mixpanel.android.util.ActivityImageUtils;
 @TargetApi(14)
 public class InAppFragment extends Fragment implements View.OnClickListener {
 
-    public void setDisplayState(final int stateId, final UpdateDisplayState displayState) {
+    public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
         // Fragments require a default constructor that is called when Activities recreate them.
         // This means that when the Activity recreates this Fragment (due to rotation, or
@@ -58,8 +57,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             @Override
             public void run() {
                 mInAppView.setVisibility(View.VISIBLE);
-                final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(mParent);
-                mInAppView.setBackgroundColor(highlightColor);
+                mInAppView.setBackgroundColor(mDisplayState.getHighlightColor());
 
                 final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
@@ -93,10 +91,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
         final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-        UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
-                (UpdateDisplayState.DisplayState.InAppNotificationState) mDisplayState.getDisplayState();
-
-        InAppNotification inApp = notificationState.getInAppNotification();
+        InAppNotification inApp = mDisplayState.getInAppNotification();
 
         titleView.setText(inApp.getTitle());
         notifImage.setImageBitmap(inApp.getImage());
@@ -144,10 +139,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
 
     @Override
     public void onClick(View clicked) {
-        final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
-                (UpdateDisplayState.DisplayState.InAppNotificationState) mDisplayState.getDisplayState();
-
-        final InAppNotification inApp = notificationState.getInAppNotification();
+        final InAppNotification inApp = mDisplayState.getInAppNotification();
 
         final String uriString = inApp.getCallToActionUrl();
         if (uriString != null && uriString.length() > 0) {
@@ -192,7 +184,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     private Activity mParent;
     private Handler mHandler;
     private int mDisplayStateId;
-    private UpdateDisplayState mDisplayState;
+    private UpdateDisplayState.DisplayState.InAppNotificationState mDisplayState;
     private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 

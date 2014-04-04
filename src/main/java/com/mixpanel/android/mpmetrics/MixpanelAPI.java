@@ -1164,7 +1164,7 @@ public class MixpanelAPI {
                             case MINI: {
                                 final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
                                 InAppFragment inapp = new InAppFragment();
-                                inapp.setDisplayState(intentId, claimed);
+                                inapp.setDisplayState(intentId, (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState());
                                 inapp.setRetainInstance(true);
                                 FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
