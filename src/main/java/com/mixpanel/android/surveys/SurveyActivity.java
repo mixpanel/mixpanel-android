@@ -35,7 +35,6 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.ScaleAnimation;
 import android.view.animation.TranslateAnimation;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -86,7 +85,6 @@ public class SurveyActivity extends Activity {
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
         final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
-        final ImageButton closeButton = (ImageButton) findViewById(R.id.com_mixpanel_android_button_exit);
         final LinearLayout closeButtonWrapper = (LinearLayout) findViewById(R.id.com_mixpanel_android_button_exit_wrapper);
 
         final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
@@ -178,7 +176,7 @@ public class SurveyActivity extends Activity {
                 return false;
             }
         });
-        closeButton.setOnClickListener(new View.OnClickListener() {
+        closeButtonWrapper.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 finish();
@@ -205,7 +203,7 @@ public class SurveyActivity extends Activity {
         ctaButton.startAnimation(translate);
 
         Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
-        closeButton.startAnimation(fadeIn);
+        closeButtonWrapper.startAnimation(fadeIn);
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {

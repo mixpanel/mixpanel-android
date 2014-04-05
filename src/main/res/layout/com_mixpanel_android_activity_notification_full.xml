@@ -14,16 +14,13 @@
 
     <LinearLayout
         android:id="@+id/com_mixpanel_android_button_exit_wrapper"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="right"
-        android:orientation="vertical" >
-        <ImageButton
-            android:id="@+id/com_mixpanel_android_button_exit"
+        android:layout_alignParentRight="true"
+        android:padding="20dp">
+        <ImageView
             android:layout_width="30dp"
             android:layout_height="30dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginRight="20dp"
             android:background="@drawable/com_mixpanel_android_close"
             android:contentDescription="@string/com_mixpanel_android_close" />
     </LinearLayout>

@@ -26,7 +26,7 @@
             android:gravity="center"
             android:orientation="horizontal">
     
-            <com.mixpanel.android.surveys.FadingImageView
+            <!-- <com.mixpanel.android.surveys.FadingImageView
                 android:id="@+id/com_mixpanel_android_notification_image"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -34,7 +34,7 @@
                 android:scaleType="fitCenter"
                 android:layout_centerInParent="true"
                 android:adjustViewBounds="true"
-                android:src="@drawable/com_mixpanel_android_logo" />
+                android:src="@drawable/com_mixpanel_android_logo" />-->
         </RelativeLayout>
 
         <RelativeLayout
@@ -42,16 +42,19 @@
             android:layout_height="match_parent"
             android:layout_weight="50"
             android:orientation="vertical">
-            <ImageButton
-                android:id="@+id/com_mixpanel_android_button_exit"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginTop="20dp"
-                android:layout_marginRight="20dp"
+            <LinearLayout
+                android:id="@+id/com_mixpanel_android_button_exit_wrapper"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
                 android:layout_alignParentRight="true"
-                android:background="@drawable/com_mixpanel_android_close"
-                android:contentDescription="@string/com_mixpanel_android_close" />
+                android:padding="20dp">
+                <ImageView
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:background="@drawable/com_mixpanel_android_close"
+                    android:contentDescription="@string/com_mixpanel_android_close" />
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
