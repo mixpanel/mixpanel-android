@@ -99,6 +99,8 @@ public class MPConfig {
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
+                "    EnableDebugLogging " + DEBUG + "\n" +
+                "    TestMode " + getTestMode() + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
                 "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
                 "    DecideEndpoint " + getDecideEndpoint() + "\n" +
