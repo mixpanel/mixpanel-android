@@ -46,12 +46,10 @@ import android.util.Log;
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
             }
             else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
                 ret = sInstances.get(appContext);
             }
             return ret;
@@ -189,7 +187,7 @@ import android.util.Log;
             synchronized(mHandlerLock) {
                 if (mHandler == null) {
                     // We died under suspicious circumstances. Don't try to send any more events.
-                    logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg);
+                    logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
                 } else {
                     mHandler.sendMessage(msg);
                 }

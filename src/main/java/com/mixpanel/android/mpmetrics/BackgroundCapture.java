@@ -6,7 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
-import android.util.Log;
 
 import com.mixpanel.android.util.ActivityImageUtils;
 import com.mixpanel.android.util.StackBlurManager;
@@ -42,8 +41,6 @@ import com.mixpanel.android.util.StackBlurManager;
 
         @Override
         protected Void doInBackground(Void ...params) {
-            final long startTime = System.currentTimeMillis();
-
             if (null != mSourceImage) {
                 try {
                     StackBlurManager.process(mSourceImage, 20);
@@ -59,9 +56,6 @@ import com.mixpanel.android.util.StackBlurManager;
                     mSourceImage = null;
                 }
             }
-
-            final long endTime = System.currentTimeMillis();
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "BackgroundCapture blur took " + (endTime - startTime) + " millis");
 
             return null;
         }

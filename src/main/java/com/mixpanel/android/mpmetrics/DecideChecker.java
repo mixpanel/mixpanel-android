@@ -52,7 +52,7 @@ import android.util.Log;
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was\n" + responseString);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
 
         Result parsed = new Result();
         if (null != responseString) {
@@ -64,7 +64,8 @@ import android.util.Log;
             final InAppNotification notification = notificationIterator.next();
             final Bitmap image = getNotificationImage(notification, mContext, poster);
             if (null == image) {
-                Log.i(LOGTAG, "Could not retrieve image for notification, will not show the notification.");
+                Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                              ", will not show the notification.");
                 notificationIterator.remove();
             } else {
                 notification.setImage(image);

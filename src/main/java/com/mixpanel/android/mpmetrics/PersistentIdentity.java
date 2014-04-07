@@ -2,7 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -12,6 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
@@ -174,7 +174,6 @@ import android.util.Log;
     }
 
     public synchronized void registerSuperProperties(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
         final JSONObject propCache = getSuperProperties();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
@@ -236,7 +235,6 @@ import android.util.Log;
     }
 
     public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
         final JSONObject propCache = getSuperProperties();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
@@ -254,7 +252,6 @@ import android.util.Log;
     }
 
     public synchronized void clearSuperProperties() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
         mSuperPropertiesCache = new JSONObject();
         storeSuperProperties();
     }
@@ -384,6 +381,7 @@ import android.util.Log;
         }
     }
 
+    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
     private static void writeEdits(final SharedPreferences.Editor editor) {
         if (Build.VERSION.SDK_INT >= 9) {
             editor.apply();

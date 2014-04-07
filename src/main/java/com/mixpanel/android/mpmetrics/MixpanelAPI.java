@@ -284,7 +284,6 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "track " + eventName);
         try {
             final JSONObject messageProps = new JSONObject();
 
@@ -336,8 +335,6 @@ public class MixpanelAPI {
      * your main application activity.
      */
     public void flush() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "flushEvents");
-
         mMessages.postToServer();
     }
 
@@ -941,8 +938,6 @@ public class MixpanelAPI {
 
         @Override
         public void set(JSONObject properties) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "set " + properties.toString());
-
             try {
                 final JSONObject message = stdPeopleMessage("$set", properties);
                 recordPeopleMessage(message);
@@ -962,8 +957,6 @@ public class MixpanelAPI {
 
         @Override
         public void setOnce(JSONObject properties) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "setOnce " + properties.toString());
-
             try {
                 final JSONObject message = stdPeopleMessage("$set_once", properties);
                 recordPeopleMessage(message);
@@ -984,7 +977,6 @@ public class MixpanelAPI {
         @Override
         public void increment(Map<String, ? extends Number> properties) {
             final JSONObject json = new JSONObject(properties);
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "increment " + json.toString());
             try {
                 final JSONObject message = stdPeopleMessage("$add", json);
                 recordPeopleMessage(message);
@@ -1039,8 +1031,6 @@ public class MixpanelAPI {
         @Override
         @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Checking for surveys...");
-
             if (null == callbacks) {
                 Log.i(LOGTAG, "Skipping survey check because callback is null.");
                 return;
@@ -1246,7 +1236,6 @@ public class MixpanelAPI {
 
         @Override
         public void deleteUser() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "delete");
             try {
                 final JSONObject message = stdPeopleMessage("$delete", JSONObject.NULL);
                 recordPeopleMessage(message);
@@ -1257,7 +1246,6 @@ public class MixpanelAPI {
 
         @Override
         public void setPushRegistrationId(String registrationId) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "setting push registration id: " + registrationId);
             if (getDistinctId() == null) {
                 return;
             }
@@ -1271,15 +1259,12 @@ public class MixpanelAPI {
 
         @Override
         public void clearPushRegistrationId() {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "removing push registration id");
             mPersistentIdentity.clearPushId();
             set("$android_devices", new JSONArray());
         }
 
         @Override
         public void initPushHandling(String senderID) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "initPushHandling");
-
             if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
                 Log.i(LOGTAG, "Can't start push notification service. Push notifications will not work.");
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
