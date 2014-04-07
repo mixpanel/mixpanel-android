@@ -12,8 +12,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnTouchListener;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
@@ -28,7 +31,7 @@ import com.mixpanel.android.R;
  * Attached to an Activity when you display a mini in-app notification.
  */
 @TargetApi(14)
-public class InAppFragment extends Fragment implements View.OnClickListener {
+public class InAppFragment extends Fragment {
 
     public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
@@ -58,6 +61,12 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
             public void run() {
                 mInAppView.setVisibility(View.VISIBLE);
                 mInAppView.setBackgroundColor(mDisplayState.getHighlightColor());
+                mInAppView.setOnTouchListener(new OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View view, MotionEvent event) {
+                        return InAppFragment.this.mDetector.onTouchEvent(event);
+                    }
+                });
 
                 final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
@@ -74,6 +83,59 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
                 notifImage.startAnimation(scale);
             }
         };
+        mDetector = new GestureDetector(activity, new GestureDetector.OnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2,
+                    float velocityX, float velocityY) {
+                if (velocityY > 0) {
+                    remove();
+                }
+                return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) { }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2,
+                    float distanceX, float distanceY) {
+                return false;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) { }
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent event) {
+                final InAppNotification inApp = mDisplayState.getInAppNotification();
+
+                final String uriString = inApp.getCallToActionUrl();
+                if (uriString != null && uriString.length() > 0) {
+                    Uri uri = null;
+                    try {
+                        uri = Uri.parse(uriString);
+                    } catch (IllegalArgumentException e) {
+                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                    }
+
+                    assert(uri != null);
+                    try {
+                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        mParent.startActivity(viewIntent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                    }
+                }
+
+                remove();
+                return true;
+            }
+        });
     }
 
     @Override
@@ -97,8 +159,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         notifImage.setImageBitmap(inApp.getImage());
 
         mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
-
-        mInAppView.setOnClickListener(this);
 
         return mInAppView;
     }
@@ -137,32 +197,6 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
         UpdateDisplayState.releaseDisplayState(mDisplayStateId);
     }
 
-    @Override
-    public void onClick(View clicked) {
-        final InAppNotification inApp = mDisplayState.getInAppNotification();
-
-        final String uriString = inApp.getCallToActionUrl();
-        if (uriString != null && uriString.length() > 0) {
-            Uri uri = null;
-            try {
-                uri = Uri.parse(uriString);
-            } catch (IllegalArgumentException e) {
-                Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
-                return;
-            }
-
-            assert(uri != null);
-            try {
-                Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
-                mParent.startActivity(viewIntent);
-            } catch (ActivityNotFoundException e) {
-                Log.i(LOGTAG, "User doesn't have an activity for notification URI");
-            }
-        }
-
-        remove();
-    }
-
     private void remove() {
         if (mParent != null) {
             final FragmentManager fragmentManager = mParent.getFragmentManager();
@@ -182,6 +216,7 @@ public class InAppFragment extends Fragment implements View.OnClickListener {
     }
 
     private Activity mParent;
+    private GestureDetector mDetector;
     private Handler mHandler;
     private int mDisplayStateId;
     private UpdateDisplayState.DisplayState.InAppNotificationState mDisplayState;
