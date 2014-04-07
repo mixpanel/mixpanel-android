@@ -10,7 +10,7 @@ import android.util.Log;
 /**
  * Stores global configuration options for the Mixpanel library.
  */
-/* package */ class MPConfig {
+public class MPConfig {
     public static final String VERSION = "4.1.0-RC1";
 
     // Set to true to see lots of internal debugging logcat output.
@@ -26,7 +26,7 @@ import android.util.Log;
     /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 4;
 
     // Instances are safe to store, since they're immutable and always the same.
-    /* package */ static MPConfig getInstance(Context context) {
+    public static MPConfig getInstance(Context context) {
         synchronized (sInstanceLock) {
             if (null == sInstance) {
                 final Context appContext = context.getApplicationContext();
@@ -52,6 +52,8 @@ import android.util.Log;
         boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
         boolean mixpanelUpdatesAutoShow = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
         mAutoShowMixpanelUpdates = surveysAutoCheck && mixpanelUpdatesAutoShow;
+
+        mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
@@ -126,6 +128,10 @@ import android.util.Log;
         return mDisableFallback;
     }
 
+    public boolean getTestMode() {
+        return mTestMode;
+    }
+
     // Preferred URL for tracking events
     public String getEventsEndpoint() {
         return mEventsEndpoint;
@@ -182,6 +188,7 @@ import android.util.Log;
     private final int mFlushInterval;
     private final int mDataExpiration;
     private final boolean mDisableFallback;
+    private final boolean mTestMode;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;

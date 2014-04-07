@@ -68,18 +68,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
         }
     }
 
-    public synchronized Survey popSurvey() {
+    public synchronized Survey getSurvey(boolean replace) {
         if (mUnseenSurveys.isEmpty()) {
             return null;
         }
-        return mUnseenSurveys.remove(0);
+        Survey s = mUnseenSurveys.remove(0);
+        if (replace) {
+            mUnseenSurveys.add(mUnseenSurveys.size(), s);
+        }
+        return s;
     }
 
-    public synchronized InAppNotification popNotification() {
+    public synchronized InAppNotification getNotification(boolean replace) {
         if (mUnseenNotifications.isEmpty()) {
             return null;
         }
-        return mUnseenNotifications.remove(0);
+        InAppNotification n = mUnseenNotifications.remove(0);
+        if (replace) {
+            mUnseenNotifications.add(mUnseenNotifications.size(), n);
+        }
+        return n;
     }
 
     public synchronized boolean hasUpdatesAvailable() {

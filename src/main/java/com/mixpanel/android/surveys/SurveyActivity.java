@@ -42,6 +42,7 @@ import android.widget.TextView;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.InAppNotification;
+import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
@@ -257,7 +258,9 @@ public class SurveyActivity extends Activity {
         if (mSurveyBegun) {
             return;
         }
-        trackSurveyAttempted();
+        if (!MPConfig.getInstance(this).getTestMode()) {
+            trackSurveyAttempted();
+        }
 
         final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
         alertBuilder.setTitle("We'd love your feedback!");

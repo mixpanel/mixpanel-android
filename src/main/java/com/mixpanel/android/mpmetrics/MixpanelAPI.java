@@ -1057,8 +1057,7 @@ public class MixpanelAPI {
             if (null == getDistinctId()) {
                 return null;
             }
-
-           return mDecideUpdates.popNotification();
+            return mDecideUpdates.getNotification(mConfig.getTestMode());
         }
 
         @Override
@@ -1066,8 +1065,7 @@ public class MixpanelAPI {
             if (null == getDistinctId()) {
                 return null;
             }
-
-            return mDecideUpdates.popSurvey();
+            return mDecideUpdates.getSurvey(mConfig.getTestMode());
         }
 
         @Override
@@ -1144,19 +1142,19 @@ public class MixpanelAPI {
                             return; // Already being used.
                         }
 
-                        InAppNotification showInApp = getNotificationIfAvailable();
-                        if (null == showInApp) {
+                        InAppNotification notif = getNotificationIfAvailable();
+                        if (null == notif) {
                             return; // Nothing to show
                         }
 
-                        final InAppNotification.Type inAppType = showInApp.getType();
+                        final InAppNotification.Type inAppType = notif.getType();
                         if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
                             return; // Can't show due to config.
                         }
 
                         final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
                         final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
-                                new UpdateDisplayState.DisplayState.InAppNotificationState(showInApp, highlightColor);
+                                new UpdateDisplayState.DisplayState.InAppNotificationState(notif, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
                         assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
 
@@ -1170,7 +1168,6 @@ public class MixpanelAPI {
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
                                 transaction.commit();
-                                trackNotificationSeen(showInApp);
                             }
                             break;
                             case TAKEOVER: {
@@ -1179,13 +1176,14 @@ public class MixpanelAPI {
                                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                                 intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
                                 parent.startActivity(intent);
-                                trackNotificationSeen(showInApp);
                             }
                             break;
                             default:
                                 Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
                         }
-
+                        if (!mConfig.getTestMode()) {
+                            trackNotificationSeen(notif);
+                        }
                     } finally {
                         lock.unlock();
                     }
