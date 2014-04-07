@@ -3,7 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,7 +31,6 @@ import android.util.Log;
     /* package */ AnalyticsMessages(final Context context) {
         mContext = context;
         mConfig = getConfig(context);
-        mLogMixpanelMessages = new AtomicBoolean(false);
         mWorker = new Worker();
     }
 
@@ -58,10 +56,6 @@ import android.util.Log;
             }
             return ret;
         }
-    }
-
-    public void logPosts() {
-        mLogMixpanelMessages.set(true);
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -172,8 +166,8 @@ import android.util.Log;
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
-        if (mLogMixpanelMessages.get() || MPConfig.DEBUG) {
-            Log.i(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
         }
     }
 
@@ -462,7 +456,6 @@ import android.util.Log;
     /////////////////////////////////////////////////////////
 
     // Used across thread boundaries
-    private final AtomicBoolean mLogMixpanelMessages;
     private final Worker mWorker;
     private final Context mContext;
     private final MPConfig mConfig;

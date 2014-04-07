@@ -831,9 +831,15 @@ public class MixpanelAPI {
      *
      * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
      */
-    @SuppressWarnings("unused")
+    @Deprecated
     public void logPosts() {
-        mMessages.logPosts();
+        Log.i(
+            LOGTAG,
+            "MixpanelAPI.logPosts() is deprecated.\n" +
+            "    To get verbose debug level logging, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" />\n" +
+            "    to the <application> section of your AndroidManifest.xml."
+        );
     }
 
     /**
