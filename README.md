@@ -51,6 +51,9 @@ This version adds support for Android in app notifications.
   your in app notifications and surveys but not track that they have been displayed. If you have multiple
   notifications/surveys, calls the respective show/get methods will simply rotate through them.
 
+* `MixpanelAPI.logPosts()` has been deprecated. Set the `com.mixpanel.android.MPConfig.EnableDebugLogging`
+  flag to true to now get extensive debugging output.
+
 * The minimum Android version necessary for surveys and in app notifications has been increased to 14,
   Ice Cream Sandwich to improve stability.
 
