@@ -154,8 +154,10 @@ import android.util.Log;
         final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
         final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
 
-        Log.d(LOGTAG, "Querying decide server at " + endpointUrl);
-        Log.d(LOGTAG, "    (with fallback " + fallbackUrl + ")");
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, "Querying decide server at " + endpointUrl);
+            Log.d(LOGTAG, "    (with fallback " + fallbackUrl + ")");
+        }
 
         final ServerMessage.Result result = poster.get(mContext, endpointUrl, fallbackUrl);
         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
