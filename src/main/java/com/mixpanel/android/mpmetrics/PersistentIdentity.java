@@ -14,6 +14,7 @@ import org.json.JSONObject;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.util.Log;
 
 /* package */ class PersistentIdentity {
@@ -46,7 +47,7 @@ import android.util.Log;
 
             final SharedPreferences.Editor editor = storedPreferences.edit();
             editor.remove("waiting_array");
-            editor.commit();
+            writeEdits(editor);
         }
         return ret;
     }
@@ -59,7 +60,7 @@ import android.util.Log;
             for (final Map.Entry<String, String> entry:properties.entrySet()) {
                 editor.putString(entry.getKey(), entry.getValue());
             }
-            editor.commit();
+            writeEdits(editor);
             sReferrerPrefsDirty = true;
         }
     }
@@ -161,7 +162,8 @@ import android.util.Log;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEdit = prefs.edit();
-            prefsEdit.clear().commit();
+            prefsEdit.clear();
+            writeEdits(prefsEdit);
             readSuperProperties();
             readIdentities();
         } catch (final ExecutionException e) {
@@ -192,7 +194,7 @@ import android.util.Log;
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putString("push_id", registrationId);
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
         } catch (final InterruptedException e) {
@@ -205,7 +207,7 @@ import android.util.Log;
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.remove("push_id");
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
         } catch (final InterruptedException e) {
@@ -316,7 +318,7 @@ import android.util.Log;
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putString("super_properties", props);
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Cannot store superProperties in shared preferences.", e.getCause());
         } catch (final InterruptedException e) {
@@ -374,11 +376,19 @@ import android.util.Log;
             else {
                 prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
             }
-            prefsEditor.commit();
+            writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write distinct ids to shared preferences.", e.getCause());
         } catch (final InterruptedException e) {
             Log.e(LOGTAG, "Can't write distinct ids to shared preferences.", e);
+        }
+    }
+
+    private static void writeEdits(final SharedPreferences.Editor editor) {
+        if (Build.VERSION.SDK_INT >= 9) {
+            editor.apply();
+        } else {
+            editor.commit();
         }
     }
 
