@@ -47,6 +47,10 @@ This version adds support for Android in app notifications.
   to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It is also now used for both surveys and in app
   notifications.
 
+* `com.mixpanel.android.MPConfig.TestMode` has been added. This option, when set to true, will render
+  your in app notifications and surveys but not track that they have been displayed. If you have multiple
+  notifications/surveys, calls the respective show/get methods will simply rotate through them.
+
 * The minimum Android version necessary for surveys and in app notifications has been increased to 14,
   Ice Cream Sandwich to improve stability.
 
