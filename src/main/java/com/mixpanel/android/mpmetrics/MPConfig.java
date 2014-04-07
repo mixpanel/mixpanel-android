@@ -13,9 +13,7 @@ import android.util.Log;
 public class MPConfig {
     public static final String VERSION = "4.1.0-RC1";
 
-    // Set to true to see lots of internal debugging logcat output.
-    // This should be set to false in production builds
-    public static final boolean DEBUG = false;
+    public static boolean DEBUG = false;
 
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
@@ -38,6 +36,8 @@ public class MPConfig {
     }
 
     /* package */ MPConfig(Bundle metaData) {
+        DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
+
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
             Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
                           "com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates. Please update this key as soon as possible.");
