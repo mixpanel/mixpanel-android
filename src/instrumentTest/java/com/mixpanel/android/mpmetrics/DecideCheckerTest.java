@@ -22,13 +22,13 @@ public class DecideCheckerTest extends AndroidTestCase {
 
         mPoster.response = bytes("{}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
     }
 
     public void testReadSurvey1() {
@@ -45,9 +45,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         );
 
         mDecideChecker.runDecideChecks(mPoster);
-        final Survey found = mDecideUpdates1.popSurvey();
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        final Survey found = mDecideUpdates1.getSurvey(false);
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         assertEquals(found.getId(), 291);
         assertEquals(found.getCollectionId(), 141);
@@ -79,9 +79,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         );
 
         mDecideChecker.runDecideChecks(mPoster);
-        final Survey found = mDecideUpdates1.popSurvey();
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        final Survey found = mDecideUpdates1.getSurvey(false);
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         assertEquals(found.getId(), 299);
         assertEquals(found.getCollectionId(), 151);
@@ -106,36 +106,36 @@ public class DecideCheckerTest extends AndroidTestCase {
         // Corrupted or crazy responses.
         mPoster.response = bytes("{ WONT PARSE");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         // Valid JSON but bad (no name)
         mPoster.response = bytes(
                 "{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}"
         );
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         // Just pure craziness
         mPoster.response = bytes("null");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         // Valid survey with no questions
         mPoster.response = bytes(
                 "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
         );
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
 
         // Valid survey with a question with no choices
         mPoster.response = bytes(
@@ -147,8 +147,8 @@ public class DecideCheckerTest extends AndroidTestCase {
                         "]}"
         );
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideUpdates1.popSurvey());
-        assertNull(mDecideUpdates1.popNotification());
+        assertNull(mDecideUpdates1.getSurvey(false));
+        assertNull(mDecideUpdates1.getNotification(false));
     }
 
     public void testDecideResponses() {

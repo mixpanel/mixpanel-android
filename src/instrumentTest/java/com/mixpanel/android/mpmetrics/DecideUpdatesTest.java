@@ -60,22 +60,22 @@ public class DecideUpdatesTest extends AndroidTestCase {
         final List<Survey> fakeSurveys = new ArrayList<Survey>(mSomeSurveys.size());
         for (final Survey real: mSomeSurveys) {
             fakeSurveys.add(new Survey(new JSONObject(real.toJSON())));
-            assertEquals(mDecideUpdates.popSurvey(), real);
+            assertEquals(mDecideUpdates.getSurvey(false), real);
         }
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
             fakeNotifications.add(new InAppNotification(new JSONObject(real.toJSON())));
-            assertEquals(mDecideUpdates.popNotification(), real);
+            assertEquals(mDecideUpdates.getNotification(false), real);
         }
 
-        assertNull(mDecideUpdates.popSurvey());
-        assertNull(mDecideUpdates.popNotification());
+        assertNull(mDecideUpdates.getSurvey(false));
+        assertNull(mDecideUpdates.getNotification(false));
 
         mDecideUpdates.reportResults(fakeSurveys, fakeNotifications);
 
-        assertNull(mDecideUpdates.popSurvey());
-        assertNull(mDecideUpdates.popNotification());
+        assertNull(mDecideUpdates.getSurvey(false));
+        assertNull(mDecideUpdates.getNotification(false));
 
         JSONObject surveyNewIdDesc = new JSONObject(
                 "{\"collections\":[{\"id\":1,\"selector\":\"true\"}],\"id\":1001,\"questions\":[{\"prompt\":\"a\",\"extra_data\":{\"$choices\":[\"1\",\"2\"]},\"type\":\"multiple_choice\",\"id\":1}]}"
@@ -91,38 +91,38 @@ public class DecideUpdatesTest extends AndroidTestCase {
 
         mDecideUpdates.reportResults(fakeSurveys, fakeNotifications);
 
-        assertEquals(mDecideUpdates.popSurvey(), unseenSurvey);
-        assertEquals(mDecideUpdates.popNotification(), unseenNotification);
+        assertEquals(mDecideUpdates.getSurvey(false), unseenSurvey);
+        assertEquals(mDecideUpdates.getNotification(false), unseenNotification);
 
-        assertNull(mDecideUpdates.popSurvey());
-        assertNull(mDecideUpdates.popNotification());
+        assertNull(mDecideUpdates.getSurvey(false));
+        assertNull(mDecideUpdates.getNotification(false));
     }
 
     public void testPops() {
-        final Survey nullBeforeSurvey = mDecideUpdates.popSurvey();
+        final Survey nullBeforeSurvey = mDecideUpdates.getSurvey(false);
         assertNull(nullBeforeSurvey);
 
-        final InAppNotification nullBeforeNotification = mDecideUpdates.popNotification();
+        final InAppNotification nullBeforeNotification = mDecideUpdates.getNotification(false);
         assertNull(nullBeforeNotification);
 
         mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
 
-        final Survey s1 = mDecideUpdates.popSurvey();
+        final Survey s1 = mDecideUpdates.getSurvey(false);
         assertEquals(mSomeSurveys.get(0), s1);
 
-        final Survey s2 = mDecideUpdates.popSurvey();
+        final Survey s2 = mDecideUpdates.getSurvey(false);
         assertEquals(mSomeSurveys.get(1), s2);
 
-        final Survey shouldBeNullSurvey = mDecideUpdates.popSurvey();
+        final Survey shouldBeNullSurvey = mDecideUpdates.getSurvey(false);
         assertNull(shouldBeNullSurvey);
 
-        final InAppNotification n1 = mDecideUpdates.popNotification();
+        final InAppNotification n1 = mDecideUpdates.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
 
-        final InAppNotification n2 = mDecideUpdates.popNotification();
+        final InAppNotification n2 = mDecideUpdates.getNotification(false);
         assertEquals(mSomeNotifications.get(1), n2);
 
-        final InAppNotification shouldBeNullNotification = mDecideUpdates.popNotification();
+        final InAppNotification shouldBeNullNotification = mDecideUpdates.getNotification(false);
         assertNull(shouldBeNullNotification);
     }
 
