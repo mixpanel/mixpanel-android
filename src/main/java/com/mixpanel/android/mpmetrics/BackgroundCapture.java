@@ -10,7 +10,7 @@ import android.os.AsyncTask;
 import com.mixpanel.android.util.ActivityImageUtils;
 import com.mixpanel.android.util.StackBlurManager;
 
-/* package */ class BackgroundCapture {
+public class BackgroundCapture {
 
     public static void captureBackground(final Activity parentActivity, final OnBackgroundCapturedListener listener) {
         parentActivity.runOnUiThread(new Runnable() {
