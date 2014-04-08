@@ -23,7 +23,7 @@ public class BackgroundCapture {
     }
 
     public interface OnBackgroundCapturedListener {
-        public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured);
+        public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured);
     }
 
     private static class BackgroundCaptureTask extends AsyncTask<Void, Void, Void> {
@@ -62,7 +62,7 @@ public class BackgroundCapture {
 
         @Override
         protected void onPostExecute(Void _) {
-            mListener.OnBackgroundCaptured(mSourceImage, mCalculatedHighlightColor);
+            mListener.onBackgroundCaptured(mSourceImage, mCalculatedHighlightColor);
         }
 
         private final OnBackgroundCapturedListener mListener;

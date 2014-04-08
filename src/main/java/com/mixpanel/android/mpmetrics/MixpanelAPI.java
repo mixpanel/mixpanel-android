@@ -1078,7 +1078,7 @@ public class MixpanelAPI {
 
             BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
                 @Override
-                public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
                     final ReentrantLock lock = UpdateDisplayState.getLockObject();
                     lock.lock();
                     try {
