@@ -20,7 +20,9 @@
         <!-- This activity allows your application to show Mixpanel surveys and takeover in app notifications.
              If you only wish to show mini in app notifications, you do not need to declare this Activity.
              You may also specify a different theme to better fit the look and feel of your application. -->
+        <!--
         <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
                   android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
+        -->
     </application>
 </manifest>
