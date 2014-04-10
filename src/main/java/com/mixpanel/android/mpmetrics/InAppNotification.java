@@ -1,15 +1,15 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Represents a fullscreen in-app notification delivered from Mixpanel.
@@ -124,7 +124,21 @@ public class InAppNotification implements Parcelable {
     }
 
     public String getImage2xUrl() {
-        return twoXFromUrl(mImageUrl);
+        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(mImageUrl);
+        if (matcher.find()) {
+            return matcher.replaceFirst("@2x$1");
+        } else {
+            return mImageUrl;
+        }
+    }
+
+    public String getImage4xUrl() {
+        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(mImageUrl);
+        if (matcher.find()) {
+            return matcher.replaceFirst("@4x$1");
+        } else {
+            return mImageUrl;
+        }
     }
 
     public String getCallToAction() {
@@ -141,15 +155,6 @@ public class InAppNotification implements Parcelable {
 
     public Bitmap getImage() {
         return mImage;
-    }
-
-    /* package */ static String twoXFromUrl(String url) {
-        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(url);
-        if (matcher.find()) {
-            return matcher.replaceFirst("@2x$1");
-        } else {
-            return url;
-        }
     }
 
     @Override

@@ -1,20 +1,22 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Log;
+import android.view.Display;
+import android.view.WindowManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.util.Log;
 
 /* package */ class DecideChecker {
 
@@ -171,6 +173,13 @@ import android.util.Log;
     private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
         Bitmap ret = null;
         String imageUrl = notification.getImage2xUrl();
+
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        if (display.getWidth() >= 720) {
+            imageUrl = notification.getImage4xUrl();
+        }
+
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
         final ServerMessage.Result result = poster.get(context, imageUrl, null);
         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
