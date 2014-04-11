@@ -39,7 +39,7 @@ public class Survey implements Parcelable {
         }
     };
 
-    public Survey(JSONObject description) throws BadDecideObjectException {
+    /* package */ Survey(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");

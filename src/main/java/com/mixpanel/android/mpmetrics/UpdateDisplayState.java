@@ -316,7 +316,7 @@ public class UpdateDisplayState implements Parcelable {
     }
 
     // Returned id should either be -1, or POSITIVE (nonzero). Don't return zero, please.
-    public static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
+    /* package */ static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
         int ret = -1;
 
         assert sUpdateDisplayLock.isHeldByCurrentThread();
