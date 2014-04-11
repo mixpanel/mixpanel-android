@@ -9,6 +9,7 @@ import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -121,11 +122,19 @@ public class UpdateDisplayState implements Parcelable {
                         }
                     };
 
-            public SurveyState(final Survey survey, final int highlightColor, final Bitmap background) {
+            public SurveyState(final Survey survey) {
                 mSurvey = survey;
-                mHighlightColor = highlightColor;
-                mBackground = background;
                 mAnswers = new AnswerMap();
+                mHighlightColor = Color.BLACK;
+                mBackground = null;
+            }
+
+            public void setBackground(final Bitmap background) {
+                mBackground = background;
+            }
+
+            public void setHighlightColor(final int highlightColor) {
+                mHighlightColor = highlightColor;
             }
 
             public Bitmap getBackground() {
@@ -186,9 +195,11 @@ public class UpdateDisplayState implements Parcelable {
             }
 
             private final Survey mSurvey;
-            private final int mHighlightColor;
             private final AnswerMap mAnswers;
-            private final Bitmap mBackground;
+
+            // TODO need to think about threading here...
+            private Bitmap mBackground;
+            private int mHighlightColor;
 
             private static final String SURVEY_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.SURVEY_BUNDLE_KEY";
             private static final String HIGHLIGHT_COLOR_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.HIGHLIGHT_COLOR_BUNDLE_KEY";

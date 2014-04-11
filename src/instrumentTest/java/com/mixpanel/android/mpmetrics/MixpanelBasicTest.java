@@ -568,19 +568,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
             Thread.sleep(200);
             metrics.flush();
 
-            String success1 = attempts.poll(1, TimeUnit.SECONDS);
+            String success1 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(success1, "Should Succeed");
 
-            String recoverable2 = attempts.poll(1, TimeUnit.SECONDS);
+            String recoverable2 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(recoverable2, "Should Retry, then Fail");
 
-            String hard_fail3 = attempts.poll(1, TimeUnit.SECONDS);
+            String hard_fail3 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(hard_fail3, "Should Retry, then Fail");
 
-            String recoverable4 = attempts.poll(1, TimeUnit.SECONDS);
+            String recoverable4 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(recoverable4, "Should Retry, then Succeed");
 
-            String success5 = attempts.poll(1, TimeUnit.SECONDS);
+            String success5 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(success5, "Should Retry, then Succeed");
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
@@ -851,7 +851,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
             final JSONObject surveyJson = new JSONObject(surveyJsonString);
             final Survey s = new Survey(surveyJson);
             final UpdateDisplayState.DisplayState.SurveyState surveyState =
-                new UpdateDisplayState.DisplayState.SurveyState(s, Color.WHITE, testBitmap);
+                new UpdateDisplayState.DisplayState.SurveyState(s);
+            surveyState.setHighlightColor(Color.WHITE);
+            surveyState.setBackground(testBitmap);
             originalUpdateDisplayState = new UpdateDisplayState(surveyState, "DistinctId", "Token");
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");
@@ -902,16 +904,16 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void test2XUrls() {
-        final String twoXBalok = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg");
-        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@2x.jpg");
+        final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
+        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@BANANAS.jpg");
 
-        final String nothingMatches = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
+        final String nothingMatches = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..", "@BANANAS");
         assertEquals(nothingMatches, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
 
-        final String emptyMatch = InAppNotification.twoXFromUrl("");
+        final String emptyMatch = InAppNotification.sizeSuffixUrl("", "@BANANAS");
         assertEquals(emptyMatch, "");
 
-        final String nothingExtensionful = InAppNotification.twoXFromUrl("http://images.mxpnl.com/112690/");
+        final String nothingExtensionful = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/", "@BANANAS");
         assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
     }
 

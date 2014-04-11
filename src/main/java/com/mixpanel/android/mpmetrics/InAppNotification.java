@@ -124,21 +124,11 @@ public class InAppNotification implements Parcelable {
     }
 
     public String getImage2xUrl() {
-        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(mImageUrl);
-        if (matcher.find()) {
-            return matcher.replaceFirst("@2x$1");
-        } else {
-            return mImageUrl;
-        }
+        return sizeSuffixUrl(mImageUrl, "@2x");
     }
 
     public String getImage4xUrl() {
-        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(mImageUrl);
-        if (matcher.find()) {
-            return matcher.replaceFirst("@4x$1");
-        } else {
-            return mImageUrl;
-        }
+        return sizeSuffixUrl(mImageUrl, "@4x");
     }
 
     public String getCallToAction() {
@@ -188,6 +178,15 @@ public class InAppNotification implements Parcelable {
             return new InAppNotification[size];
         }
     };
+
+    /* package */ static String sizeSuffixUrl(String url, String sizeSuffix) {
+        final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(url);
+        if (matcher.find()) {
+            return matcher.replaceFirst(sizeSuffix + "$1");
+        } else {
+            return url;
+        }
+    }
 
     private Bitmap mImage;
 

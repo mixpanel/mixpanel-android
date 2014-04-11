@@ -831,11 +831,11 @@ public class MixpanelAPI {
     @Deprecated
     public void logPosts() {
         Log.i(
-            LOGTAG,
-            "MixpanelAPI.logPosts() is deprecated.\n" +
-            "    To get verbose debug level logging, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
+                LOGTAG,
+                "MixpanelAPI.logPosts() is deprecated.\n" +
+                        "    To get verbose debug level logging, add\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" />\n" +
+                        "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
@@ -1037,7 +1037,7 @@ public class MixpanelAPI {
             }
 
             final Survey found = getSurveyIfAvailable();
-            callbacks.foundSurvey(found); // TODO isolate this thread, per expected behavior
+            callbacks.foundSurvey(found);
         }
 
         @Override
@@ -1067,49 +1067,7 @@ public class MixpanelAPI {
         @Override
         @Deprecated
         public void showSurvey(final Survey survey, final Activity parent) {
-            // Showing surveys is not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 14) {
-                return;
-            }
-
-            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                return;
-            }
-
-            BackgroundCapture.captureBackground(parent, new BackgroundCapture.OnBackgroundCapturedListener() {
-                @Override
-                public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
-                    lock.lock();
-                    try {
-                        if (UpdateDisplayState.hasCurrentProposal()) {
-                            return; // Already being used.
-                        }
-
-                        Survey toShow = survey;
-                        if (null == toShow) {
-                            toShow = getSurveyIfAvailable();
-                        }
-
-                        if (null == toShow) {
-                            return; // Nothing to show
-                        }
-
-                        final UpdateDisplayState.DisplayState surveyDisplay =
-                                new UpdateDisplayState.DisplayState.SurveyState(toShow, highlightColorCaptured, bitmapCaptured);
-                        final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-                        assert intentId > 0; // Since we hold the lock, and !hasCurrentProposal
-
-                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                        parent.startActivity(surveyIntent);
-                    } finally {
-                        lock.unlock();
-                    }
-                }
-            });
+            showGivenOrAvailableSurvey(survey, parent);
         }
 
         @Override
@@ -1118,7 +1076,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            showSurvey(null, parent);
+            showGivenOrAvailableSurvey(null, parent);
         }
 
         @Override
@@ -1341,6 +1299,58 @@ public class MixpanelAPI {
                 }
 
                 return dataObj;
+        }
+
+        private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
+            // Showing surveys is not supported before Ice Cream Sandwich
+            if (Build.VERSION.SDK_INT < 14) {
+                return;
+            }
+
+            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                return;
+            }
+
+            BackgroundCapture.OnBackgroundCapturedListener listener = null;
+            final ReentrantLock lock = UpdateDisplayState.getLockObject();
+            lock.lock();
+            try {
+                if (UpdateDisplayState.hasCurrentProposal()) {
+                    return; // Already being used.
+                }
+                Survey toShow = surveyOrNull;
+                if (null == toShow) {
+                    toShow = getSurveyIfAvailable();
+                }
+                if (null == toShow) {
+                    return; // Nothing to show
+                }
+
+                final UpdateDisplayState.DisplayState.SurveyState surveyDisplay =
+                        new UpdateDisplayState.DisplayState.SurveyState(toShow);
+
+                final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
+                assert intentId > 0; // Since we hold the lock, and !hasCurrentProposal
+
+                listener = new BackgroundCapture.OnBackgroundCapturedListener() {
+                    @Override
+                    public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
+                        surveyDisplay.setBackground(bitmapCaptured);
+                        surveyDisplay.setHighlightColor(highlightColorCaptured);
+
+                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                        parent.startActivity(surveyIntent);
+                    }
+                };
+            } finally {
+                lock.unlock();
+            }
+
+            assert listener != null;
+            BackgroundCapture.captureBackground(parent, listener);
         }
     }// PeopleImpl
 

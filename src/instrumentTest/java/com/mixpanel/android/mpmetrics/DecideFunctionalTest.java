@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 public class DecideFunctionalTest extends AndroidTestCase {
 
@@ -63,7 +64,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                 synchronized (mExpectations) {
                     if (endpointUrl.equals(mExpectations.expectUrl)) {
                         return new Result(Status.SUCCEEDED, TestUtils.bytes(mExpectations.response));
-                    } else if (endpointUrl.equals("http://mixpanel.com/Balok@2x.jpg")){
+                    } else if (Pattern.matches("^http://mixpanel.com/Balok.{0,3}\\.jpg$", endpointUrl)){
                         return new Result(Status.SUCCEEDED, imageBytes);
                     } else {
                         fail("Unexpected URL " + endpointUrl + " in MixpanelAPI");
