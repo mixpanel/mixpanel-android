@@ -176,7 +176,7 @@ import java.util.List;
 
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
-        if (display.getWidth() >= 720) {
+        if (notification.getType() == InAppNotification.Type.TAKEOVER && display.getWidth() >= 720) {
             imageUrl = notification.getImage4xUrl();
         }
 
