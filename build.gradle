@@ -18,7 +18,7 @@ android {
     defaultConfig {
         minSdkVersion 7
         targetSdkVersion 19
-        testPackageName "com.mixpanel.android.tests"
+        testPackageName "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
     }
 
