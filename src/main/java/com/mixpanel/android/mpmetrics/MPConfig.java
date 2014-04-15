@@ -21,7 +21,7 @@ public class MPConfig {
     // Max size of Notification and Survey caches. Since they may contain images, we don't want to
     // suck up all of the memory on the device, particularly since multiple notifications or surveys
     // in a single session isn't really an ideal UX
-    /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 4;
+    /* package */ static final int MAX_UPDATE_CACHE_ELEMENT_COUNT = 2;
 
     // Instances are safe to store, since they're immutable and always the same.
     public static MPConfig getInstance(Context context) {
