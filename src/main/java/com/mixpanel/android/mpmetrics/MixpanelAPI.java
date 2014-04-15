@@ -924,7 +924,7 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             mPersistentIdentity.setPeopleDistinctId(distinctId);
-            if (null != mDecideUpdates && mDecideUpdates.getDistinctId().equals(distinctId)) {
+            if (null != mDecideUpdates && !mDecideUpdates.getDistinctId().equals(distinctId)) {
                 mDecideUpdates.destroy();
                 mDecideUpdates = null;
             }
