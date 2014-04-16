@@ -917,5 +917,45 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
     }
 
+    public void testAlias() {
+        final ServerMessage mockPoster = new ServerMessage() {
+            @Override
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                try {
+                    assertEquals(nameValuePairs.get(0).getName(), "data");
+                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONArray msg = new JSONArray(jsonData);
+                    JSONObject event = msg.getJSONObject(0);
+                    JSONObject properties = event.getJSONObject("properties");
+
+                    assertEquals(event.getString("event"), "$create_alias");
+                    assertEquals(properties.getString("distinct_id"), "old id");
+                    assertEquals(properties.getString("alias"), "new id");
+                } catch (JSONException e) {
+                    throw new RuntimeException("Malformed data passed to test mock", e);
+                }
+                return new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n"));
+            }
+        };
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            protected ServerMessage getPoster() {
+                return mockPoster;
+            }
+        };
+
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                 return listener;
+            }
+        };
+
+        // Check that we post the alias immediately
+        metrics.identify("old id");
+        metrics.alias("new id", "old id");
+    }
+
     private Future<SharedPreferences> mMockPreferences;
 }
