@@ -57,6 +57,8 @@ This version adds support for Android in app notifications.
 * The minimum Android version necessary for surveys and in app notifications has been increased to 14,
   Ice Cream Sandwich to improve stability.
 
+* `MixpanelAPI.alias()` has been added.
+
 #### v4.0.0
 
 This is a major release, with significant changes to library behavior.
