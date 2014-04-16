@@ -266,6 +266,7 @@ public class MixpanelAPI {
         } catch (JSONException e) {
             Log.e(LOGTAG, "Failed to alias", e);
         }
+        flush();
     }
 
     /**
