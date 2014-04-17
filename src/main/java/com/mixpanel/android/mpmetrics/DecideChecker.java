@@ -181,12 +181,18 @@ import java.util.List;
         }
 
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
-        final ServerMessage.Result result = poster.get(context, imageUrl, null);
+        ServerMessage.Result result = poster.get(context, imageUrl, null);
         if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-            Log.i(LOGTAG, "Could not access image at " + imageUrl + ", notification will not be shown");
-        } else {
+            imageUrl = notification.getImage2xUrl();
+            Log.i(LOGTAG, "Could not access 4x image, attempting " + imageUrl);
+            result = poster.get(context, imageUrl, null);
+        }
+
+        if (result.getStatus() == ServerMessage.Status.SUCCEEDED) {
             final byte[] imageBytes = result.getResponseBytes();
             ret = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        } else {
+            Log.i(LOGTAG, imageUrl + " also failed, notification will not be shown.");
         }
 
         return ret;
