@@ -1,25 +1,25 @@
 package com.mixpanel.android.mpmetrics;
 
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
+import com.mixpanel.android.util.Base64Coder;
+
+import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +40,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         SharedPreferences.Editor editor = referrerPreferences.edit();
         editor.clear();
         editor.commit();
+
         mMockPreferences = new Future<SharedPreferences>() {
             @Override
             public boolean cancel(final boolean mayInterruptIfRunning) {
@@ -67,7 +68,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
         Thread.sleep(500);
@@ -79,7 +79,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();
-        MixpanelAPI mixpanel = MixpanelAPI.getInstance(getContext(), fakeToken);
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, fakeToken);
         String generatedId1 = mixpanel.getDistinctId();
         assertTrue(generatedId1 != null);
 
@@ -146,7 +146,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return explodingDb;
             }
         };
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return explodingMessages;
@@ -182,7 +182,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -243,14 +243,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
-
-        mixpanel.clearPreferences();
 
         MixpanelAPI.People people = mixpanel.getPeople();
         people.increment("the prop", 0L);
@@ -280,8 +278,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testIdentifyAndGetDistinctId() {
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
-        metrics.clearPreferences();
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+
         String generatedId = metrics.getDistinctId();
         assertNotNull(generatedId);
 
@@ -303,185 +301,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals("People Id", setPeopleId);
     }
 
-    public void testSurveys() {
-        final List<String> responses = Collections.synchronizedList(new ArrayList<String>());
-        final BlockingQueue<String> foundQueue = new LinkedBlockingQueue<String>();
-        MixpanelAPI mixpanel = apiForSurvey(responses);
-
-        responses.add("{\"surveys\":[]}");
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
-            @Override
-            public void foundSurvey(final Survey s) {
-                fail("Shouldn't check for surveys if the user is not identified.");
-            }
-        });
-
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
-            @Override
-            public void foundSurvey(Survey s) {
-                assertNull(s);
-                try {
-                    foundQueue.put("OK 0");
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Test Interrupted");
-                }
-            }
-        });
-
-        try {
-            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
-            assertEquals("OK 0", ok);
-        } catch(InterruptedException e) {
-            fail("checkForSurvey never returned");
-        }
-
-        responses.add(
-                "{\"surveys\":[ {" +
-                "   \"id\":291," +
-                "   \"questions\":[" +
-                "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[\"Option 1\",\"Option 2\"]},\"prompt\":\"Multiple Choice Prompt\"}," +
-                "       {\"id\":277,\"type\":\"text\",\"extra_data\":{},\"prompt\":\"Text Field Prompt\"}]," +
-                "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
-                "]}"
-        );
-
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
-            @Override public void foundSurvey(Survey s) {
-                if (Build.VERSION.SDK_INT < 10) {
-                    assertNull(s);
-                } else {
-                    assertEquals(s.getId(), 291);
-                    assertEquals(s.getCollectionId(), 141);
-
-                    List<Survey.Question> questions = s.getQuestions();
-                    assertEquals(questions.size(), 2);
-
-                    Survey.Question mcQuestion = questions.get(0);
-                    assertEquals(mcQuestion.getId(), 275);
-                    assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
-                    assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-                    List<String> mcChoices = mcQuestion.getChoices();
-                    assertEquals(mcChoices.size(), 2);
-                    assertEquals(mcChoices.get(0), "Option 1");
-                    assertEquals(mcChoices.get(1), "Option 2");
-
-                    Survey.Question textQuestion = questions.get(1);
-                    assertEquals(textQuestion.getId(), 277);
-                    assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
-                    assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
-                    List<String> textChoices = textQuestion.getChoices();
-                    assertEquals(textChoices.size(), 0);
-                }
-
-                try {
-                    foundQueue.put("OK 1");
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Test was interrupted");
-                }
-            }
-        });
-
-        try {
-            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
-            assertEquals("OK 1", ok);
-        } catch(InterruptedException e) {
-            fail("checkForSurvey never returned");
-        }
-
-        responses.add(
-               "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
-        );
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks(){
-            @Override public void foundSurvey(Survey s) {
-                if (Build.VERSION.SDK_INT < 10) {
-                    assertNull(s);
-                } else {
-                    assertEquals(s.getId(), 299);
-                    assertEquals(s.getCollectionId(), 151);
-
-                    List<Survey.Question> questions = s.getQuestions();
-                    assertEquals(questions.size(), 2);
-
-                    Survey.Question mcQuestion = questions.get(0);
-                    assertEquals(mcQuestion.getId(), 287);
-                    assertEquals(mcQuestion.getPrompt(), "PROMPT1");
-                    assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-                    List<String> mcChoices = mcQuestion.getChoices();
-                    assertEquals(mcChoices.size(), 3);
-                    assertEquals(mcChoices.get(0), "Answer1,1");
-                    assertEquals(mcChoices.get(1), "Answer1,2");
-                    assertEquals(mcChoices.get(2), "Answer1,3");
-                }
-
-                try {
-                    foundQueue.put("OK 2");
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Test was interrupted");
-                }
-            }
-        });
-
-        try {
-            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
-            assertEquals("OK 2", ok);
-        } catch(InterruptedException e) {
-            fail("checkForSurvey never returned");
-        }
-
-        // Corrupted or crazy responses.
-        responses.add("{ WONT PARSE");
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-
-        // Valid JSON but bad (no name)
-        responses.add("{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}");
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-
-        // Just pure craziness
-        responses.add("null");
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-
-        // Valid JSON that isn't relevant
-        responses.add("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-
-        // Valid survey with no questions
-        responses.add(
-                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
-        );
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-
-        // Valid survey with a question with no choices
-        responses.add(
-                "{\"surveys\":[ {" +
-                        "   \"id\":291," +
-                        "   \"questions\":[" +
-                        "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[]},\"prompt\":\"Multiple Choice Prompt\"}," +
-                        "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
-                        "]}"
-        );
-        mixpanel = apiForSurvey(responses);
-        mixpanel.getPeople().identify("SURVEY TEST USER");
-        getNoSurvey(mixpanel, foundQueue);
-    }
-
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
+        final SynchronizedReference<Boolean> okToDecide = new SynchronizedReference<Boolean>();
+        okToDecide.set(false);
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
@@ -501,17 +324,31 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                final boolean decideIsOk = okToDecide.get();
+                if (null == nameValuePairs) {
+                    if (decideIsOk) {
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    } else {
+                        fail("User is unidentified, we shouldn't be checking decide. (URL WAS " + endpointUrl + ")");
+                    }
+                    return new Result(Status.SUCCEEDED, TestUtils.bytes("{}"));
+                }
+
+                assertEquals(nameValuePairs.get(0).getName(), "data");
+                final String decoded = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+
                 try {
                     messages.put("SENT FLUSH " + endpointUrl);
-                    messages.put(rawMessage);
+                    messages.put(decoded);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
 
-                return new Result(Status.SUCCEEDED, "1\n");
+                return new Result(Status.SUCCEEDED, TestUtils.bytes("1\n"));
             }
         };
+
 
         final MPConfig mockConfig = new MPConfig(new Bundle()) {
             @Override
@@ -533,6 +370,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             public String getPeopleEndpoint() {
                 return "PEOPLE_ENDPOINT";
             }
+
+            @Override
+            public String getDecideEndpoint() {
+                return "DECIDE_ENDPOINT";
+            }
         };
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
@@ -552,13 +394,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
             }
         };
-        // metrics.logPosts();
 
         // Test filling up the message queue
         for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
@@ -566,7 +407,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         metrics.track("final event", null);
-        String expectedJSONMessage = "<No message actually recieved>";
+        String expectedJSONMessage = "<No message actually received>";
 
         try {
             for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
@@ -612,6 +453,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject nextWaveEvent = nextWave.getJSONObject(0);
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
+            okToDecide.set(true);
             metrics.getPeople().identify("new person");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
@@ -641,28 +483,54 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testHTTPFailures() {
 
-        final List<ServerMessage.Result> results = new ArrayList<ServerMessage.Result>();
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_UNRECOVERABLE, "0\n"));
-        results.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        results.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, "1\n"));
+        final List<ServerMessage.Result> flushResults = new ArrayList<ServerMessage.Result>();
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n")));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("0\n"))); // Will be set to FAILED_UNRECOVERABLE at a higher level
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
+        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n")));
 
         final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public ServerMessage.Result postData(String rawMessage, String endpointUrl, String fallbackUrl) {
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+                if (null == nameValuePairs) {
+                    assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    return new Result(Status.SUCCEEDED, TestUtils.bytes("{}"));
+                }
+                // ELSE
+
                 try {
-                    JSONArray msg = new JSONArray(rawMessage);
+                    assertEquals(nameValuePairs.get(0).getName(), "data");
+                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
+
+                    System.out.println("RETURNING " + flushResults.get(0).getStatus() + ", " + flushResults.get(0).getResponse());
+                    System.out.println("    FOR EVENT " + event.getString("event"));
+
                     attempts.put(event.getString("event"));
                 } catch (JSONException e) {
-                    throw new RuntimeException("Malformed data passed to test mock");
+                    throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException("Could not write message to reporting queue for tests.");
+                    throw new RuntimeException("Could not write message to reporting queue for tests.", e);
                 }
-                return results.remove(0);
+                return flushResults.remove(0);
+            }
+        };
+
+        final MPConfig config = new MPConfig(new Bundle()) {
+            public String getDecideEndpoint() {
+                return "DECIDE ENDPOINT";
+            }
+
+            public String getEventsEndpoint() {
+                return "EVENTS ENDPOINT";
+            }
+
+            public boolean getDisableFallback() {
+                return false;
             }
         };
 
@@ -671,9 +539,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
             protected ServerMessage getPoster() {
                 return mockPoster;
             }
+
+            @Override
+            protected MPConfig getConfig(Context context) {
+                return config;
+            }
         };
 
-        MixpanelAPI metrics = new MixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -695,19 +568,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
             Thread.sleep(200);
             metrics.flush();
 
-            String success1 = attempts.poll(1, TimeUnit.SECONDS);
+            String success1 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(success1, "Should Succeed");
 
-            String recoverable2 = attempts.poll(1, TimeUnit.SECONDS);
+            String recoverable2 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(recoverable2, "Should Retry, then Fail");
 
-            String hard_fail3 = attempts.poll(1, TimeUnit.SECONDS);
+            String hard_fail3 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(hard_fail3, "Should Retry, then Fail");
 
-            String recoverable4 = attempts.poll(1, TimeUnit.SECONDS);
+            String recoverable4 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(recoverable4, "Should Retry, then Succeed");
 
-            String success5 = attempts.poll(1, TimeUnit.SECONDS);
+            String success5 = attempts.poll(2, TimeUnit.SECONDS);
             assertEquals(success5, "Should Retry, then Succeed");
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
@@ -728,7 +601,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        class ListeningAPI extends MixpanelAPI {
+        class ListeningAPI extends TestUtils.CleanMixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> referrerPrefs, String token) {
                 super(c, referrerPrefs, token);
             }
@@ -809,6 +682,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         MixpanelAPI differentToken = new ListeningAPI(getContext(), mMockPreferences, "DIFFERENT TOKEN");
+
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
@@ -888,13 +762,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     }
                 };
 
-                MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
+                MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
                     @Override
                     protected AnalyticsMessages getAnalyticsMessages() {
                         return analyticsMessages;
                     }
                 };
-
+                mixpanel.clearPreferences();
                 mixpanel.track("test in thread", new JSONObject());
             }
         }
@@ -917,7 +791,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", false);
+        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
 
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EVENTS FALLBACK ENDPOINT");
@@ -952,7 +826,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(2, testConfig.getFlushInterval());
         assertEquals(3, testConfig.getDataExpiration());
         assertEquals(true, testConfig.getDisableFallback());
-        assertEquals(false, testConfig.getAutoCheckForSurveys());
+        assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
         assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
         assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
@@ -972,29 +846,35 @@ public class MixpanelBasicTest extends AndroidTestCase {
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
 
-        SurveyState originalSurveyState;
+        UpdateDisplayState originalUpdateDisplayState;
         try {
             final JSONObject surveyJson = new JSONObject(surveyJsonString);
             final Survey s = new Survey(surveyJson);
-            originalSurveyState = new SurveyState(s, "DistinctId", "Token", testBitmap, Color.WHITE);
+            final UpdateDisplayState.DisplayState.SurveyState surveyState =
+                new UpdateDisplayState.DisplayState.SurveyState(s);
+            surveyState.setHighlightColor(Color.WHITE);
+            surveyState.setBackground(testBitmap);
+            originalUpdateDisplayState = new UpdateDisplayState(surveyState, "DistinctId", "Token");
         } catch (JSONException e) {
             throw new RuntimeException("Survey string in test doesn't parse");
-        } catch (Survey.BadSurveyException e) {
+        } catch (BadDecideObjectException e) {
             throw new RuntimeException("Test survey string couldn't be made into a survey");
         }
 
         final Bundle inBundle = new Bundle();
-        inBundle.putParcelable("TEST SURVEY PARCEL", originalSurveyState);
+        inBundle.putParcelable("TEST SURVEY PARCEL", originalUpdateDisplayState);
         final Parcel outerParcel = Parcel.obtain();
         inBundle.writeToParcel(outerParcel, 0);
         outerParcel.setDataPosition(0);
         final Bundle outBundle = outerParcel.readBundle();
-        outBundle.setClassLoader(SurveyState.class.getClassLoader());
-        final SurveyState inSurveyState = outBundle.getParcelable("TEST SURVEY PARCEL");
+        outBundle.setClassLoader(UpdateDisplayState.class.getClassLoader());
+        final UpdateDisplayState inUpdateDisplayState = outBundle.getParcelable("TEST SURVEY PARCEL");
 
-        final Survey inSurvey = inSurveyState.getSurvey();
-        final String inDistinctId = inSurveyState.getDistinctId();
-        final String inToken = inSurveyState.getToken();
+        final UpdateDisplayState.DisplayState.SurveyState surveyState =
+                (UpdateDisplayState.DisplayState.SurveyState) inUpdateDisplayState.getDisplayState();
+        final Survey inSurvey = surveyState.getSurvey();
+        final String inDistinctId = inUpdateDisplayState.getDistinctId();
+        final String inToken = inUpdateDisplayState.getToken();
 
         assertEquals("DistinctId", inDistinctId);
         assertEquals("Token", inToken);
@@ -1019,52 +899,62 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(q2.getPrompt(), "PROMPT2");
         assertEquals(q2.getType(), Survey.QuestionType.TEXT);
 
-        assertNotNull(inSurveyState.getBackground());
-        assertNotNull(inSurveyState.getAnswers());
+        assertNotNull(surveyState.getBackground());
+        assertNotNull(surveyState.getAnswers());
     }
 
-    private void getNoSurvey(final MixpanelAPI mixpanel, final BlockingQueue<String> foundQueue) {
-        mixpanel.getPeople().checkForSurvey(new SurveyCallbacks() {
+    public void test2XUrls() {
+        final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
+        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@BANANAS.jpg");
+
+        final String nothingMatches = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..", "@BANANAS");
+        assertEquals(nothingMatches, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
+
+        final String emptyMatch = InAppNotification.sizeSuffixUrl("", "@BANANAS");
+        assertEquals(emptyMatch, "");
+
+        final String nothingExtensionful = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/", "@BANANAS");
+        assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
+    }
+
+    public void testAlias() {
+        final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public void foundSurvey(final Survey s) {
-                assertNull(s);
+            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 try {
-                    foundQueue.put("OK NO SURVEY");
-                } catch (InterruptedException e) {
-                    throw new RuntimeException("Test was interrupted");
+                    assertEquals(nameValuePairs.get(0).getName(), "data");
+                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONArray msg = new JSONArray(jsonData);
+                    JSONObject event = msg.getJSONObject(0);
+                    JSONObject properties = event.getJSONObject("properties");
+
+                    assertEquals(event.getString("event"), "$create_alias");
+                    assertEquals(properties.getString("distinct_id"), "old id");
+                    assertEquals(properties.getString("alias"), "new id");
+                } catch (JSONException e) {
+                    throw new RuntimeException("Malformed data passed to test mock", e);
                 }
-            }
-        });
-
-        try {
-            final String ok = foundQueue.poll(1, TimeUnit.SECONDS);
-            assertEquals("OK NO SURVEY", ok);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Test was interrupted");
-        }
-    }
-
-    private MixpanelAPI apiForSurvey(final List<String> responses) {
-        final ServerMessage mockMessage = new ServerMessage() {
-            @Override
-            public Result get(String endpointUrl, String fallbackUrl) {
-                return new Result(Status.SUCCEEDED, responses.remove(0));
+                return new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n"));
             }
         };
-        final AnalyticsMessages mockMessages = new AnalyticsMessages(getContext()) {
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             protected ServerMessage getPoster() {
-                return mockMessage;
+                return mockPoster;
             }
         };
-        final MixpanelAPI mixpanel = new MixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN test checkForSurveys") {
+
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
-                return mockMessages;
+                 return listener;
             }
         };
-        mixpanel.clearPreferences();
-        return mixpanel;
+
+        // Check that we post the alias immediately
+        metrics.identify("old id");
+        metrics.alias("new id", "old id");
     }
 
     private Future<SharedPreferences> mMockPreferences;

@@ -7,18 +7,18 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.7.+'
+        classpath 'com.android.tools.build:gradle:0.9.+'
     }
 }
 
 android {
-    compileSdkVersion 18
-    buildToolsVersion "17.0.0"
+    compileSdkVersion 19
+    buildToolsVersion "19.0.3"
 
     defaultConfig {
         minSdkVersion 7
-        targetSdkVersion 18
-        testPackageName "com.mixpanel.android"
+        targetSdkVersion 19
+        testPackageName "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
     }
 
@@ -108,6 +108,8 @@ uploadArchives {
              * sonatypeUsername=
              * sonatypePassword=
              */
+            sonatypeUsername=
+            sonatypePassword=
 
             beforeDeployment {
                 MavenDeployment deployment -> signing.signPom(deployment)

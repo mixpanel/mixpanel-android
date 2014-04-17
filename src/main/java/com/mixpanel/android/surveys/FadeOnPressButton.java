@@ -1,5 +1,6 @@
 package com.mixpanel.android.surveys;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.os.Build;
 import android.util.AttributeSet;
@@ -7,6 +8,7 @@ import android.widget.Button;
 
 import android.R.attr;
 
+@TargetApi(14)
 /* package */ class FadeOnPressButton extends Button {
 
     public FadeOnPressButton(Context context) {
@@ -40,9 +42,7 @@ import android.R.attr;
     }
 
     private void setAlphaBySDK(float alpha) {
-        if (Build.VERSION.SDK_INT >= 11) {
-            setAlpha(alpha);
-        }
+        setAlpha(alpha);
     }
 
     private boolean mIsFaded;

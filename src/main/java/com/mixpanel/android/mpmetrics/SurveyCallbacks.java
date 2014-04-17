@@ -2,7 +2,10 @@ package com.mixpanel.android.mpmetrics;
 
 /**
  * For use with MixpanelAPI.checkForSurvey. SurveyCallbacks.foundSurvey() will be called when the library gets a survey from Mixpanel.
+ *
+ * @deprecated Use {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#getSurveyIfAvailable()} instead.
  */
+@Deprecated
 public interface SurveyCallbacks {
     /**
      * foundSurvey will be called when the MixpanelAPI check for available surveys

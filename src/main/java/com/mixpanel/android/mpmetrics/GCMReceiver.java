@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
-
 import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -14,6 +12,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
 import android.util.Log;
+
+import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
 /**
 * BroadcastReciever for handling Google Cloud Messaging intents.
@@ -102,7 +102,7 @@ public class GCMReceiver extends BroadcastReceiver {
         if (intent.getStringExtra("error") != null) {
             Log.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
         } else if (registration != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "registering GCM ID: " + registration);
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering GCM ID: " + registration);
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
@@ -110,7 +110,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 }
             });
         } else if (intent.getStringExtra("unregistered") != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "unregistering from GCM");
+            if (MPConfig.DEBUG) Log.d(LOGTAG, "Unregistering from GCM");
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
