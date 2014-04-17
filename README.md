@@ -66,9 +66,8 @@ This version adds support for Android in app notifications.
 
   ```
   <application>
-          <!-- This activity allows your application to show Mixpanel surveys and takeover in app notifications.
-               If you only wish to show mini in app notifications, you do not need to declare this Activity.
-               You may also specify a different theme to better fit the look and feel of your application. -->
+          <!-- This activity allows your application to show Mixpanel
+               surveys and takeover in app notifications. -->
           <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
                     android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
 
@@ -83,7 +82,8 @@ This version adds support for Android in app notifications.
               </intent-filter>
           </receiver>
 
-          <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
+          <!-- This receiver will allow your application to record referrer
+               parameters as super properties automatically -->
           <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
               <intent-filter>
                   <action android:name="com.android.vending.INSTALL_REFERRER" />
