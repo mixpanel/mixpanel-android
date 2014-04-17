@@ -59,6 +59,43 @@ This version adds support for Android in app notifications.
 
 * `MixpanelAPI.alias()` has been added.
 
+* The default library manifest no longer merges in recommended tags by default, as this was breaking
+  builds for some users. You'll need to follow the steps in https://mixpanel.com/help/reference/android
+  to configure your manifest for automatic referrer tracking, push notifications, in-app messages,
+  and surveys. The recommended `<application>` tag in your app is
+
+  ```
+  <application>
+          <!-- This activity allows your application to show Mixpanel surveys and takeover in app notifications.
+               If you only wish to show mini in app notifications, you do not need to declare this Activity.
+               You may also specify a different theme to better fit the look and feel of your application. -->
+          <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
+                    android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
+
+          <!-- This receiver will allow your application to register for and receive Mixpanel push notifications.
+               Make sure to change YOUR_PACKAGE_NAME to your own applications package. -->
+          <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+              android:permission="com.google.android.c2dm.permission.SEND" >
+              <intent-filter>
+                  <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                  <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+                  <category android:name="YOUR_PACKAGE_NAME" />
+              </intent-filter>
+          </receiver>
+
+          <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
+          <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
+              <intent-filter>
+                  <action android:name="com.android.vending.INSTALL_REFERRER" />
+              </intent-filter>
+          </receiver>
+  </application>
+  ```
+
+#### v4.0.1
+
+* Default event storage is now 5 days.
+
 #### v4.0.0
 
 This is a major release, with significant changes to library behavior.
