@@ -108,8 +108,6 @@ uploadArchives {
              * sonatypeUsername=
              * sonatypePassword=
              */
-            sonatypeUsername=
-            sonatypePassword=
 
             beforeDeployment {
                 MavenDeployment deployment -> signing.signPom(deployment)
