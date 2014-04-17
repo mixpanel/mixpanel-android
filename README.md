@@ -71,7 +71,8 @@ This version adds support for Android in app notifications.
           <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
                     android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
 
-          <!-- This receiver will allow your application to register for and receive Mixpanel push notifications.
+          <!-- This receiver will allow your application to register for
+               and receive Mixpanel push notifications.
                Make sure to change YOUR_PACKAGE_NAME to your own applications package. -->
           <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
               android:permission="com.google.android.c2dm.permission.SEND" >
