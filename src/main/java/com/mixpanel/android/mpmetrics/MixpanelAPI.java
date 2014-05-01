@@ -970,7 +970,20 @@ public class MixpanelAPI {
         @Override
         public void set(JSONObject properties) {
             try {
-                final JSONObject message = stdPeopleMessage("$set", properties);
+                final JSONObject sendProperties = new JSONObject();
+                sendProperties.put("$android_lib_version", MPConfig.VERSION);
+                sendProperties.put("$android_os", "Android");
+                sendProperties.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+                sendProperties.put("$android_manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
+                sendProperties.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+                sendProperties.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
+
+                for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                    final String key = (String) iter.next();
+                    sendProperties.put(key, properties.get(key));
+                }
+
+                final JSONObject message = stdPeopleMessage("$set", sendProperties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception setting people properties", e);
