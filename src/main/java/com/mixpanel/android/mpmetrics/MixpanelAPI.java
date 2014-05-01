@@ -964,6 +964,21 @@ public class MixpanelAPI {
                 mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
+
+            // Set default properties
+            try {
+                JSONObject defaultProps = new JSONObject();
+                defaultProps.put("$lib_version", MPConfig.VERSION);
+                defaultProps.put("$os", "Android");
+                defaultProps.put("$os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+                defaultProps.put("$manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
+                defaultProps.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+                defaultProps.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
+                set(defaultProps);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception setting default people properties.", e);
+            }
+
             pushWaitingPeopleRecord();
          }
 
