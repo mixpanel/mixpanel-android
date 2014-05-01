@@ -8,6 +8,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.util.Log;
@@ -974,6 +976,13 @@ public class MixpanelAPI {
                 sendProperties.put("$android_lib_version", MPConfig.VERSION);
                 sendProperties.put("$android_os", "Android");
                 sendProperties.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+                try {
+                    PackageManager manager = mContext.getPackageManager();
+                    PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
+                    sendProperties.put("$android_app_version", info.versionName);
+                } catch (PackageManager.NameNotFoundException e) {
+                    Log.e(LOGTAG, "Exception getting app version name", e);
+                }
                 sendProperties.put("$android_manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
                 sendProperties.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
                 sendProperties.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
