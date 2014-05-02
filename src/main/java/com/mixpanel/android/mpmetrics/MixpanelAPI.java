@@ -754,7 +754,7 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Shows an in app not3ification to the user if one is available. If the notification
+         * Shows an in app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
@@ -776,7 +776,7 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
-         * Returns a survey object if one is available and being held by the library, or null if
+         * Returns a Survey object if one is available and being held by the library, or null if
          * no survey is currently available. Callers who want to display surveys with their own UI
          * should call this method to get the Survey data. A given survey will be returned only once
          * from this method, so callers should be ready to consume any non-null return value.
@@ -800,6 +800,26 @@ public class MixpanelAPI {
          * @return an InAppNotification object if one is available, null otherwise.
          */
         public InAppNotification getNotificationIfAvailable();
+
+        /**
+         * Shows a survey identified by id. The behavior of this is otherwise identical to
+         * {@link People#showSurveyIfAvailable(Activity)}.
+         *
+         * @param id the id of the Survey you wish to show.
+         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
+         * taken of parent to be used as a blurred background.
+         */
+        public void showSurveyById(int id, final Activity parent);
+
+        /**
+         * Shows an in app notification identified by id. The behavior of this is otherwise identical to
+         * {@link People#showNotificationIfAvailable(Activity)}.
+         *
+         * @param id the id of the InAppNotification you wish to show.
+         * @param parent  the Activity that the mini notification will be displayed in, or the Activity
+         * that will be used to launch SurveyActivity for the takeover notification.
+         */
+        public void showNotificationById(int id, final Activity parent);
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
@@ -1133,84 +1153,28 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void showSurveyById(int id, final Activity parent) {
+            Survey s = mDecideUpdates.getSurvey(id, mConfig.getTestMode());
+            if (s != null) {
+                showGivenOrAvailableSurvey(s, parent);
+            }
+        }
+
+        @Override
         public void showNotificationIfAvailable(final Activity parent) {
             if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 
-            parent.runOnUiThread(new Runnable() {
-                @Override
-                @TargetApi(14)
-                public void run() {
-                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
-                    lock.lock();
-                    try {
-                        if (UpdateDisplayState.hasCurrentProposal()) {
-                            return; // Already being used.
-                        }
+            showGivenOrAvailableNotification(null, parent);
+        }
 
-                        InAppNotification notif = getNotificationIfAvailable();
-                        if (null == notif) {
-                            return; // Nothing to show
-                        }
-
-                        final InAppNotification.Type inAppType = notif.getType();
-                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                            return; // Can't show due to config.
-                        }
-
-                        final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
-                        final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
-                                new UpdateDisplayState.DisplayState.InAppNotificationState(notif, highlightColor);
-                        final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
-
-                        switch (inAppType) {
-                            case MINI: {
-                                final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
-                                InAppFragment inapp = new InAppFragment();
-                                inapp.setDisplayState(intentId, (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState());
-                                inapp.setRetainInstance(true);
-                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
-                                transaction.add(android.R.id.content, inapp);
-                                transaction.commit();
-                            }
-                            break;
-                            case TAKEOVER: {
-                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                                parent.startActivity(intent);
-                            }
-                            break;
-                            default:
-                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
-                        }
-                        if (!mConfig.getTestMode()) {
-                            trackNotificationSeen(notif);
-                        }
-                    } finally {
-                        lock.unlock();
-                    }
-                } // run()
-
-                private void trackNotificationSeen(InAppNotification notif) {
-                    track("$campaign_delivery", notif.getCampaignProperties());
-
-                    final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
-                    final JSONObject notifProperties = notif.getCampaignProperties();
-                    try {
-                        notifProperties.put("$time", dateFormat.format(new Date()));
-                    } catch (JSONException e) {
-                        Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
-                    }
-                    people.append("$campaigns", notif.getId());
-                    people.append("$notifications", notifProperties);
-                }
-            });
+        @Override
+        public void showNotificationById(int id, final Activity parent) {
+            InAppNotification notif = mDecideUpdates.getNotification(id, mConfig.getTestMode());
+            if (notif != null) {
+                showGivenOrAvailableNotification(notif, parent);
+            }
         }
 
         @Override
@@ -1404,6 +1368,89 @@ public class MixpanelAPI {
 
             assert listener != null;
             BackgroundCapture.captureBackground(parent, listener);
+        }
+
+        private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
+            if (Build.VERSION.SDK_INT < 14) {
+                return;
+            }
+
+            parent.runOnUiThread(new Runnable() {
+                @Override
+                @TargetApi(14)
+                public void run() {
+                    final ReentrantLock lock = UpdateDisplayState.getLockObject();
+                    lock.lock();
+                    try {
+                        if (UpdateDisplayState.hasCurrentProposal()) {
+                            return; // Already being used.
+                        }
+
+                        InAppNotification toShow = notifOrNull;
+                        if (null == toShow) {
+                            toShow = getNotificationIfAvailable();
+                        }
+                        if (null == toShow) {
+                            return; // Nothing to show
+                        }
+
+                        final InAppNotification.Type inAppType = toShow.getType();
+                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                            return; // Can't show due to config.
+                        }
+
+                        final int highlightColor = ActivityImageUtils.getHighlightColorFromBackground(parent);
+                        final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
+                                new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
+                        final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
+                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
+
+                        switch (inAppType) {
+                            case MINI: {
+                                final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
+                                InAppFragment inapp = new InAppFragment();
+                                inapp.setDisplayState(intentId, (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState());
+                                inapp.setRetainInstance(true);
+                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
+                                transaction.add(android.R.id.content, inapp);
+                                transaction.commit();
+                            }
+                            break;
+                            case TAKEOVER: {
+                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                                parent.startActivity(intent);
+                            }
+                            break;
+                            default:
+                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
+                        }
+                        if (!mConfig.getTestMode()) {
+                            trackNotificationSeen(toShow);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                } // run()
+
+                private void trackNotificationSeen(InAppNotification notif) {
+                    track("$campaign_delivery", notif.getCampaignProperties());
+
+                    final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
+                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+                    final JSONObject notifProperties = notif.getCampaignProperties();
+                    try {
+                        notifProperties.put("$time", dateFormat.format(new Date()));
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+                    }
+                    people.append("$campaigns", notif.getId());
+                    people.append("$notifications", notifProperties);
+                }
+            });
         }
     }// PeopleImpl
 
