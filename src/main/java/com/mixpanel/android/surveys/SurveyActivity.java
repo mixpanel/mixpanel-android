@@ -1,14 +1,5 @@
 package com.mixpanel.android.surveys;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -47,6 +38,15 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 
 /**
  * Activity used internally by Mixpanel to display surveys and inapp takeover notifications.
@@ -280,7 +280,17 @@ public class SurveyActivity extends Activity {
             }
         });
         alertBuilder.setCancelable(false);
-        alertBuilder.show();
+        mDialog = alertBuilder.create();
+        mDialog.show();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mDialog != null) {
+            mDialog.dismiss();
+            mDialog = null;
+        }
     }
 
     @Override
@@ -463,6 +473,7 @@ public class SurveyActivity extends Activity {
         finish();
     }
 
+    private AlertDialog mDialog;
     private CardCarouselLayout mCardHolder;
     private MixpanelAPI mMixpanel;
     private View mPreviousButton;
