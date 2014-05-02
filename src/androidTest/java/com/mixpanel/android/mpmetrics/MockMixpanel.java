@@ -148,6 +148,16 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void showSurveyById(int id, final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void showNotificationById(int id, final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             Assert.fail("Unexpected call");
         }
