@@ -24,8 +24,6 @@ Changelog
   automatically include the application version name, Android version, and manufacturer, make, and
   model of the phone.
 
-*
-
 #### v4.1.0
 
 This version adds support for Android in app notifications.
