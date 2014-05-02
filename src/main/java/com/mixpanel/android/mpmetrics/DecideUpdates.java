@@ -84,7 +84,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
             return null;
         }
         Survey survey = null;
-        for (int i = 0;i < mUnseenSurveys.size();i++) {
+        for (int i = 0; i < mUnseenSurveys.size(); i++) {
             if (mUnseenSurveys.get(i).getId() == id) {
                 survey = mUnseenSurveys.get(i);
                 if (!replace) {
@@ -112,7 +112,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
             return null;
         }
         InAppNotification notif = null;
-        for (int i = 0;i < mUnseenNotifications.size();i++) {
+        for (int i = 0; i < mUnseenNotifications.size(); i++) {
             if (mUnseenNotifications.get(i).getId() == id) {
                 notif = mUnseenNotifications.get(i);
                 if (!replace) {
