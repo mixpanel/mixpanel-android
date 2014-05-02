@@ -15,6 +15,17 @@ See https://github.com/mixpanel/sample-android-mixpanel-integration for a full f
 Changelog
 ---------
 
+#### v4.2.0
+
+* `showSurveyById` and `showNotificationById` have been added for precise control over which
+  survey or notification should be displayed.
+
+* Added several default properties for Mixpanel People profiles. Each call to `set()` will now
+  automatically include the application version name, Android version, and manufacturer, make, and
+  model of the phone.
+
+*
+
 #### v4.1.0
 
 This version adds support for Android in app notifications.
