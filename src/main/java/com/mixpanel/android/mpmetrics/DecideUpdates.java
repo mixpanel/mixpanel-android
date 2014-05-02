@@ -79,6 +79,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
         return s;
     }
 
+    public synchronized Survey getSurvey(int id, boolean replace) {
+        if (mUnseenSurveys == null) {
+            return null;
+        }
+        Survey survey = null;
+        for (int i = 0;i < mUnseenSurveys.size();i++) {
+            if (mUnseenSurveys.get(i).getId() == id) {
+                survey = mUnseenSurveys.get(i);
+                if (!replace) {
+                    mUnseenSurveys.remove(i);
+                }
+                break;
+            }
+        }
+        return survey;
+    }
+
     public synchronized InAppNotification getNotification(boolean replace) {
         if (mUnseenNotifications.isEmpty()) {
             return null;
@@ -88,6 +105,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
             mUnseenNotifications.add(mUnseenNotifications.size(), n);
         }
         return n;
+    }
+
+    public synchronized InAppNotification getNotification(int id, boolean replace) {
+        if (mUnseenNotifications == null) {
+            return null;
+        }
+        InAppNotification notif = null;
+        for (int i = 0;i < mUnseenNotifications.size();i++) {
+            if (mUnseenNotifications.get(i).getId() == id) {
+                notif = mUnseenNotifications.get(i);
+                if (!replace) {
+                    mUnseenNotifications.remove(i);
+                }
+                break;
+            }
+        }
+        return notif;
     }
 
     public synchronized boolean hasUpdatesAvailable() {
