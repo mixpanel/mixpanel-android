@@ -98,8 +98,7 @@ import java.util.List;
         }
 
         if (null != surveys) {
-            final int surveysToRead = Math.min(surveys.length(), MPConfig.MAX_UPDATE_CACHE_ELEMENT_COUNT);
-            for (int i = 0; i < surveysToRead; i++) {
+            for (int i = 0; i < surveys.length(); i++) {
                 try {
                     final JSONObject surveyJson = surveys.getJSONObject(i);
                     final Survey survey = new Survey(surveyJson);
@@ -122,7 +121,7 @@ import java.util.List;
         }
 
         if (null != notifications) {
-            final int notificationsToRead = Math.min(notifications.length(), MPConfig.MAX_UPDATE_CACHE_ELEMENT_COUNT);
+            final int notificationsToRead = Math.min(notifications.length(), MPConfig.MAX_NOTIFICATION_CACHE_COUNT);
             for (int i = 0; null != notifications && i < notificationsToRead; i++) {
                 try {
                     final JSONObject notificationJson = notifications.getJSONObject(i);
