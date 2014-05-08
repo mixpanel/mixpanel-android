@@ -153,46 +153,41 @@ import java.util.List;
                 .append("&distinct_id=")
                 .append(escapedId)
                 .toString();
-        final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
-        final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
+        final String[] urls = { mConfig.getDecideEndpoint() + checkQuery, mConfig.getDecideFallbackEndpoint() + checkQuery };
 
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, "Querying decide server at " + endpointUrl);
-            Log.d(LOGTAG, "    (with fallback " + fallbackUrl + ")");
+            Log.d(LOGTAG, "Querying decide server at " + urls[0]);
+            Log.d(LOGTAG, "    (with fallback " + urls[1] + ")");
         }
 
-        final ServerMessage.Result result = poster.get(mContext, endpointUrl, fallbackUrl);
-        if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Couldn't reach Mixpanel to check for Surveys. (Or user doesn't exist yet)");
+        byte[] response = poster.getUrls(mContext, urls);
+        if (null == response) {
             return null;
         }
-        return result.getResponse();
+        try {
+            return new String(response, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("UTF not supported on this platform?", e);
+        }
     }
 
     private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
         Bitmap ret = null;
-        String imageUrl = notification.getImage2xUrl();
+        String[] urls = { notification.getImage2xUrl() };
 
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
         if (notification.getType() == InAppNotification.Type.TAKEOVER && display.getWidth() >= 720) {
-            imageUrl = notification.getImage4xUrl();
+            urls = new String[]{ notification.getImage4xUrl(), notification.getImage2xUrl() };
         }
 
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Downloading image from URL " + imageUrl);
-        ServerMessage.Result result = poster.get(context, imageUrl, null);
-        if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-            imageUrl = notification.getImage2xUrl();
-            Log.i(LOGTAG, "Could not access 4x image, attempting " + imageUrl);
-            result = poster.get(context, imageUrl, null);
-        }
-
-        if (result.getStatus() == ServerMessage.Status.SUCCEEDED) {
-            final byte[] imageBytes = result.getResponseBytes();
-            ret = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        byte[] response = poster.getUrls(context, urls);
+        if (null != response) {
+            ret = BitmapFactory.decodeByteArray(response, 0, response.length);
         } else {
-            Log.i(LOGTAG, imageUrl + " also failed, notification will not be shown.");
+            Log.i(LOGTAG, "Failed to download images from " + urls.toString());
         }
+
 
         return ret;
     }
