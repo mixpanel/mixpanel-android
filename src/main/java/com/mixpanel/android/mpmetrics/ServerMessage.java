@@ -45,6 +45,7 @@ import java.util.List;
         for (String url : urls) {
             try {
                 response = performRequest(url, null);
+                break;
             } catch (final MalformedURLException e) {
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final IOException e) {
