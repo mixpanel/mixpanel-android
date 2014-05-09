@@ -60,7 +60,7 @@ import java.util.List;
         return response;
     }
 
-    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException, OutOfMemoryError {
+    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException {
         if (MPConfig.DEBUG) Log.d(LOGTAG, "Attempting request to " + endpointUrl);
         byte[] response = null;
 
