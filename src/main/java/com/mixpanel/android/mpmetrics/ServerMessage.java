@@ -50,7 +50,7 @@ import java.util.List;
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final IOException e) {
                 if (MPConfig.DEBUG)
-                    Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
+                    Log.d(LOGTAG, "Cannot get " + url + ".", e);
             } catch (final OutOfMemoryError e) {
                 Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
                 break;
