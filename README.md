@@ -15,6 +15,11 @@ See https://github.com/mixpanel/sample-android-mixpanel-integration for a full f
 Changelog
 ---------
 
+#### v4.2.1
+
+ * Fixed a bug that would cause events to be dropped when the device thinks it has a valid network
+   connection, but cannot actually send data over it.
+
 #### v4.2.0
 
 * `showSurveyById` and `showNotificationById` have been added for precise control over which
