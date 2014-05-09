@@ -19,6 +19,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -324,7 +326,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 final boolean decideIsOk = okToDecide.get();
                 if (null == nameValuePairs) {
                     if (decideIsOk) {
@@ -332,7 +334,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     } else {
                         fail("User is unidentified, we shouldn't be checking decide. (URL WAS " + endpointUrl + ")");
                     }
-                    return new Result(Status.SUCCEEDED, TestUtils.bytes("{}"));
+                    return TestUtils.bytes("{}");
                 }
 
                 assertEquals(nameValuePairs.get(0).getName(), "data");
@@ -345,7 +347,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     throw new RuntimeException(e);
                 }
 
-                return new Result(Status.SUCCEEDED, TestUtils.bytes("1\n"));
+                return TestUtils.bytes("1\n");
             }
         };
 
@@ -482,41 +484,36 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testHTTPFailures() {
-
-        final List<ServerMessage.Result> flushResults = new ArrayList<ServerMessage.Result>();
-        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n")));
-        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("0\n"))); // Will be set to FAILED_UNRECOVERABLE at a higher level
-        flushResults.add(new ServerMessage.Result(ServerMessage.Status.FAILED_RECOVERABLE, null));
-        flushResults.add(new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n")));
-
-        final BlockingQueue<String> attempts = new LinkedBlockingQueue<String>();
+        final List<Object> flushResults = new ArrayList<Object>();
+        final BlockingQueue<String> performRequestCalls = new LinkedBlockingQueue<String>();
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) throws IOException {
                 if (null == nameValuePairs) {
                     assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
-                    return new Result(Status.SUCCEEDED, TestUtils.bytes("{}"));
+                    return TestUtils.bytes("{}");
                 }
-                // ELSE
 
+                Object obj = flushResults.remove(0);
                 try {
                     assertEquals(nameValuePairs.get(0).getName(), "data");
                     final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
+                    performRequestCalls.put(event.getString("event"));
 
-                    System.out.println("RETURNING " + flushResults.get(0).getStatus() + ", " + flushResults.get(0).getResponse());
-                    System.out.println("    FOR EVENT " + event.getString("event"));
-
-                    attempts.put(event.getString("event"));
+                    if (obj instanceof IOException) {
+                        throw (IOException)obj;
+                    } else if (obj instanceof MalformedURLException) {
+                        throw (MalformedURLException)obj;
+                    }
                 } catch (JSONException e) {
                     throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {
                     throw new RuntimeException("Could not write message to reporting queue for tests.", e);
                 }
-                return flushResults.remove(0);
+                return (byte[])obj;
             }
         };
 
@@ -534,7 +531,21 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
+        final List<String> cleanupCalls = new ArrayList<String>();
+        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public void cleanupEvents(String last_id, Table table) {
+                cleanupCalls.add("called");
+                super.cleanupEvents(last_id, table);
+            }
+        };
+
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+
             @Override
             protected ServerMessage getPoster() {
                 return mockPoster;
@@ -554,34 +565,54 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
         try {
+            // Basic succeed on first, non-fallback url
+            cleanupCalls.clear();
+            flushResults.add(TestUtils.bytes("1\n"));
             metrics.track("Should Succeed", null);
-            metrics.flush(); // Should result in SUCCEEDED
-            Thread.sleep(200);
-
-            metrics.track("Should Retry, then Fail", null);
             metrics.flush();
-            Thread.sleep(200);
+            Thread.sleep(500);
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(1, cleanupCalls.size());
+
+            // Fallback test--first URL throws IOException
+            cleanupCalls.clear();
+            flushResults.add(new IOException());
+            flushResults.add(TestUtils.bytes("1\n"));
+            metrics.track("Should Succeed", null);
             metrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(1, cleanupCalls.size());
 
-            metrics.track("Should Retry, then Succeed", null);
+            // Two IOExceptions -- assume temporary network failure, no cleanup should happen until
+            // second flush
+            cleanupCalls.clear();
+            flushResults.add(new IOException());
+            flushResults.add(new IOException());
+            flushResults.add(TestUtils.bytes("1\n"));
+            metrics.track("Should Succeed", null);
             metrics.flush();
-            Thread.sleep(200);
+            Thread.sleep(500);
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(0, cleanupCalls.size());
             metrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(1, cleanupCalls.size());
 
-            String success1 = attempts.poll(2, TimeUnit.SECONDS);
-            assertEquals(success1, "Should Succeed");
-
-            String recoverable2 = attempts.poll(2, TimeUnit.SECONDS);
-            assertEquals(recoverable2, "Should Retry, then Fail");
-
-            String hard_fail3 = attempts.poll(2, TimeUnit.SECONDS);
-            assertEquals(hard_fail3, "Should Retry, then Fail");
-
-            String recoverable4 = attempts.poll(2, TimeUnit.SECONDS);
-            assertEquals(recoverable4, "Should Retry, then Succeed");
-
-            String success5 = attempts.poll(2, TimeUnit.SECONDS);
-            assertEquals(success5, "Should Retry, then Succeed");
+            // MalformedURLException -- should dump the events since this will probably never succeed
+            cleanupCalls.clear();
+            flushResults.add(new MalformedURLException());
+            metrics.track("Should Fail", null);
+            metrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Fail", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals(1, cleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }
@@ -920,7 +951,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testAlias() {
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 try {
                     assertEquals(nameValuePairs.get(0).getName(), "data");
                     final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
@@ -934,7 +965,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 } catch (JSONException e) {
                     throw new RuntimeException("Malformed data passed to test mock", e);
                 }
-                return new ServerMessage.Result(ServerMessage.Status.SUCCEEDED, TestUtils.bytes("1\n"));
+                return TestUtils.bytes("1\n");
             }
         };
 

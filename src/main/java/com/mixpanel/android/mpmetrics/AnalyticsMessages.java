@@ -9,11 +9,20 @@ import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
+import com.mixpanel.android.util.Base64Coder;
+
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 
@@ -311,44 +320,82 @@ import java.util.Map;
 
 
             private void sendAllData(MPDbAdapter dbAdapter) {
-                logAboutMessageToMixpanel("Sending records to Mixpanel");
-                if (mDisableFallback) {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), null);
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), null);
-                 } else {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint());
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
-                }
-            }
-
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl, String fallbackUrl) {
                 final ServerMessage poster = getPoster();
                 if (! poster.isOnline(mContext)) {
-                    logAboutMessageToMixpanel("Can't send data to " + endpointUrl + ", because the device is not connected to the internet");
+                    logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
                     return;
                 }
 
+                logAboutMessageToMixpanel("Sending records to Mixpanel");
+                if (mDisableFallback) {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
+                 } else {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
+                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
+                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
+                }
+            }
+
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
+                final ServerMessage poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
                     final String lastId = eventsData[0];
                     final String rawMessage = eventsData[1];
-                    final ServerMessage.Result eventsPosted = poster.postData(mContext, rawMessage, endpointUrl, fallbackUrl);
-                    final ServerMessage.Status postStatus = eventsPosted.getStatus();
 
-                    if (postStatus == ServerMessage.Status.SUCCEEDED) {
-                        logAboutMessageToMixpanel("Posted to " + endpointUrl);
-                        logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
-                        dbAdapter.cleanupEvents(lastId, table);
+                    final String encodedData = Base64Coder.encodeString(rawMessage);
+                    final List<NameValuePair> params = new ArrayList<NameValuePair>(1);
+                    params.add(new BasicNameValuePair("data", encodedData));
+                    if (MPConfig.DEBUG) {
+                        params.add(new BasicNameValuePair("verbose", "1"));
                     }
-                    else if (postStatus == ServerMessage.Status.FAILED_RECOVERABLE) {
-                        // Try again later
+
+                    boolean deleteEvents = true;
+                    byte[] response;
+                    for (String url : urls) {
+                        try {
+                            response = poster.performRequest(url, params);
+                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
+                            if (null == response) {
+                                if (MPConfig.DEBUG) {
+                                    Log.d(LOGTAG, "Response was null, unexpected failure posting to " + url + ".");
+                                }
+                            } else {
+                                String parsedResponse;
+                                try {
+                                    parsedResponse = new String(response, "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new RuntimeException("UTF not supported on this platform?", e);
+                                }
+
+                                logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                                logAboutMessageToMixpanel("Response was " + parsedResponse);
+                            }
+                            break;
+                        } catch (final OutOfMemoryError e) {
+                            Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                            break;
+                        } catch (final MalformedURLException e) {
+                            Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                            break;
+                        } catch (final IOException e) {
+                            if (MPConfig.DEBUG)
+                                Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
+                        }
+                    }
+
+                    if (deleteEvents) {
+                        logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
+                        dbAdapter.cleanupEvents(lastId, table);
+                    } else {
+                        logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
-                    }
-                    else { // give up, we have an unrecoverable failure.
-                        dbAdapter.cleanupEvents(lastId, table);
                     }
                 }
             }
