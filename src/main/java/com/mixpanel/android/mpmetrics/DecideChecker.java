@@ -14,6 +14,7 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -185,7 +186,7 @@ import java.util.List;
         if (null != response) {
             ret = BitmapFactory.decodeByteArray(response, 0, response.length);
         } else {
-            Log.i(LOGTAG, "Failed to download images from " + urls.toString());
+            Log.i(LOGTAG, "Failed to download images from " + Arrays.toString(urls));
         }
 
 

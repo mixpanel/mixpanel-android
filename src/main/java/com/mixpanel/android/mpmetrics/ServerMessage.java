@@ -61,7 +61,7 @@ import java.util.List;
     }
 
     public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException, OutOfMemoryError {
-        Log.d(LOGTAG, "Attempting request to " + endpointUrl);
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "Attempting request to " + endpointUrl);
         byte[] response = null;
 
         // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
