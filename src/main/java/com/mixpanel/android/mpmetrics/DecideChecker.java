@@ -189,7 +189,6 @@ import java.util.List;
             Log.i(LOGTAG, "Failed to download images from " + Arrays.toString(urls));
         }
 
-
         return ret;
     }
 
