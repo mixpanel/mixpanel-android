@@ -358,6 +358,16 @@ import java.util.Map;
                     for (String url : urls) {
                         try {
                             response = poster.performRequest(url, params);
+                            if (null == response) {
+                                if (MPConfig.DEBUG)
+                                    Log.d(LOGTAG, "Response was null, unexpected failure posting to " + url + ".");
+                                deleteEvents = true;
+                                break;
+                            }
+                        } catch (final OutOfMemoryError e) {
+                            Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                            deleteEvents = true;
+                            break;
                         } catch (final MalformedURLException e) {
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             deleteEvents = true;
@@ -366,10 +376,6 @@ import java.util.Map;
                             if (MPConfig.DEBUG)
                                 Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
                             continue;
-                        } catch (final OutOfMemoryError e) {
-                            Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
-                            deleteEvents = true;
-                            break;
                         }
 
                         if (isSuccessfulResponse(response)) {
