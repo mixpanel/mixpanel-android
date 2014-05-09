@@ -530,7 +530,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return false;
             }
         };
-        config.DEBUG = true;
 
         final List<String> cleanupCalls = new ArrayList<String>();
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
