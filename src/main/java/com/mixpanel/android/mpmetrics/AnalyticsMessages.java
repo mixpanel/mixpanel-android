@@ -353,35 +353,38 @@ import java.util.Map;
                         params.add(new BasicNameValuePair("verbose", "1"));
                     }
 
-                    boolean deleteEvents = false;
+                    boolean deleteEvents = true;
                     byte[] response;
                     for (String url : urls) {
                         try {
                             response = poster.performRequest(url, params);
+                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                             if (null == response) {
-                                if (MPConfig.DEBUG)
+                                if (MPConfig.DEBUG) {
                                     Log.d(LOGTAG, "Response was null, unexpected failure posting to " + url + ".");
-                                deleteEvents = true;
-                                break;
+                                }
+                            } else {
+                                String parsedResponse;
+                                try {
+                                    parsedResponse = new String(response, "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new RuntimeException("UTF not supported on this platform?", e);
+                                }
+
+                                logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                                logAboutMessageToMixpanel("Response was " + parsedResponse);
                             }
+                            break;
                         } catch (final OutOfMemoryError e) {
                             Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
-                            deleteEvents = true;
                             break;
                         } catch (final MalformedURLException e) {
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-                            deleteEvents = true;
                             break;
                         } catch (final IOException e) {
                             if (MPConfig.DEBUG)
                                 Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
-                            continue;
-                        }
-
-                        if (isSuccessfulResponse(response)) {
-                            logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
-                            deleteEvents = true;
-                            break;
+                            deleteEvents = false;
                         }
                     }
 
@@ -395,34 +398,6 @@ import java.util.Map;
                         }
                     }
                 }
-            }
-
-            private boolean isSuccessfulResponse(byte[] response) {
-                if (null == response) {
-                    return false;
-                }
-
-                String parsedResponse;
-                try {
-                    parsedResponse = new String(response, "UTF-8");
-                } catch (UnsupportedEncodingException e) {
-                    throw new RuntimeException("UTF not supported on this platform?", e);
-                }
-
-                logAboutMessageToMixpanel("Received response of " + parsedResponse);
-                if (parsedResponse.equals("1\n")) {
-                    return true;
-                }
-
-                if (MPConfig.DEBUG) {
-                    try {
-                        final JSONObject verboseResponse = new JSONObject(parsedResponse);
-                        if (verboseResponse.optInt("status") == 1) {
-                            return true;
-                        }
-                    } catch (final JSONException e) { }
-                }
-                return false;
             }
 
             private JSONObject getDefaultEventProperties()
