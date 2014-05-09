@@ -256,15 +256,11 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     private class MockPoster extends ServerMessage {
         @Override
-        public Result get(Context context, String endpointUrl, String fallbackUrl) {
-            this.endpointUrl = endpointUrl;
-            this.fallbackUrl = fallbackUrl;
-            return new Result(Status.SUCCEEDED, response);
+        public byte[] getUrls(Context context, String[] urls) {
+            return response;
         }
 
         public byte[] response = null;
-        public String endpointUrl = null;
-        public String fallbackUrl = null;
     }
 
     private DecideChecker mDecideChecker;

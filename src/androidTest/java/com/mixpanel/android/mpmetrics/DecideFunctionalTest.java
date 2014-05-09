@@ -60,12 +60,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mExpectations = new Expectations();
         mMockPoster = new ServerMessage() {
             @Override
-            /* package */ Result performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 synchronized (mExpectations) {
                     if (endpointUrl.equals(mExpectations.expectUrl)) {
-                        return new Result(Status.SUCCEEDED, TestUtils.bytes(mExpectations.response));
+                        return TestUtils.bytes(mExpectations.response);
                     } else if (Pattern.matches("^http://mixpanel.com/Balok.{0,3}\\.jpg$", endpointUrl)){
-                        return new Result(Status.SUCCEEDED, imageBytes);
+                        return imageBytes;
                     } else {
                         fail("Unexpected URL " + endpointUrl + " in MixpanelAPI");
                     }
