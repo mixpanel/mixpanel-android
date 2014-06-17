@@ -11,9 +11,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
-import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
+import com.mixpanel.android.util.Log;
 
 /**
 * BroadcastReciever for handling Google Cloud Messaging intents.

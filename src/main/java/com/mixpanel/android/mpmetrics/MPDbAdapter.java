@@ -12,7 +12,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
+
+import com.mixpanel.android.util.Log;
 
 /**
  * SQLite database adapter for MixpanelAPI.

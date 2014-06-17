@@ -13,9 +13,10 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
+
+import com.mixpanel.android.util.Log;
 
 /**
  * Abstracts away possibly non-present system information classes,

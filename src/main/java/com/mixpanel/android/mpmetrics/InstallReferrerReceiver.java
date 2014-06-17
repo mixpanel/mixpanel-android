@@ -11,7 +11,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+
+import com.mixpanel.android.util.Log;
 
 /**
  * BroadcastReceiver for automatically storing Google Play Store referrer information as Mixpanel Super Properties.

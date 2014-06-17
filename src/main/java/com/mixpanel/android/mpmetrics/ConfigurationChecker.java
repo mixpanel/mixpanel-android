@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.mixpanel.android.surveys.SurveyActivity;
+import com.mixpanel.android.util.Log;
 
 import android.content.Context;
 import android.content.Intent;
@@ -14,7 +15,6 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
-import android.util.Log;
 
 /*
  * Copyright 2012 Google Inc.
