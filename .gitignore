@@ -8,3 +8,7 @@ docs
 *.iml
 .idea
 build/
+.classpath
+.gradle
+.project
+.settings
