@@ -94,6 +94,11 @@ uploadArchives {
                 }
             }
         }
+        
+        /* Skip deploy if missing deploy variables. */
+        if (!hasProperty('sonatypeUsername') || !hasProperty('sonatypePassword')) {
+            return;
+        }
 
         if (isReleaseVersion()) {
             /**
