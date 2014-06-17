@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
@@ -26,6 +25,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.util.Log;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.

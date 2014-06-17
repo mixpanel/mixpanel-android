@@ -13,7 +13,8 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
+
+import com.mixpanel.android.util.Log;
 
 /**
  * This is a class intended for internal use by the library.

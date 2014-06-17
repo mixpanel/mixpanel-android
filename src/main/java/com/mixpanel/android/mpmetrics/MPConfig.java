@@ -5,7 +5,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
-import android.util.Log;
+
+import com.mixpanel.android.util.Log;
 
 /**
  * Stores global configuration options for the Mixpanel library.

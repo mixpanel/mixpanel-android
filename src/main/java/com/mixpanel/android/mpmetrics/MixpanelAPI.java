@@ -12,11 +12,11 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
-import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
+import com.mixpanel.android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
