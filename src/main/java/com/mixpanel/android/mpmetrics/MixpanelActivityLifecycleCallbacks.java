@@ -4,6 +4,11 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewTreeObserver;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @TargetApi(14)
 class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
@@ -22,13 +27,14 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
         mMpInstance.getPeople().showSurveyIfAvailable(activity);
     }
 
-    private final MixpanelAPI mMpInstance;
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) { }
 
     @Override
-    public void onActivityPaused(Activity activity) { }
+    public void onActivityPaused(Activity activity) {
+        mMpInstance.getPeople().unregisterActivityForEdits(activity);
+    }
 
     @Override
     public void onActivityDestroyed(Activity activity) { }
@@ -37,8 +43,12 @@ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycl
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) { }
 
     @Override
-    public void onActivityResumed(Activity activity) { }
+    public void onActivityResumed(Activity activity) {
+        mMpInstance.getPeople().registerActivityForEdits(activity);
+    }
 
     @Override
     public void onActivityStopped(Activity activity) { }
+
+    private final MixpanelAPI mMpInstance;
 }
