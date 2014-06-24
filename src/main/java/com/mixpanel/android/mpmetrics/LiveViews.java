@@ -6,19 +6,19 @@ import com.mixpanel.android.introspector.EditInstructions;
 
 public class LiveViews {
 
-    public void registerActivity(final Activity a) {
+    public synchronized void registerActivity(final Activity a) {
         // TODO register activities, add OnGlobalLayoutListeners to DecorView
     }
 
-    public void unregisterActivity(final Activity a) {
+    public synchronized void unregisterActivity(final Activity a) {
         // TODO unregister activities, remove OnGlobalLayoutListeners to DecorView
     }
 
-    public void applyEdit(final EditInstructions edit) {
+    public synchronized void applyEdit(final EditInstructions edit) {
         // TODO the right stuff
     }
 
-    public void removeEdit() {
+    public synchronized void removeEdit() {
         // TODO remove the edit
     }
 }
