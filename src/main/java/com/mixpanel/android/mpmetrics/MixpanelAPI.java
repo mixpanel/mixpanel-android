@@ -113,10 +113,10 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
+        mABTesting = new ABTesting();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
-        mLiveViews = getLiveViews();
 
         mUpdatesListener = new UpdatesListener();
         mDecideUpdates = null;
@@ -133,6 +133,8 @@ public class MixpanelAPI {
         if (null != mDecideUpdates) {
             mMessages.installDecideCheck(mDecideUpdates);
         }
+
+
     }
 
     /**
@@ -828,31 +830,6 @@ public class MixpanelAPI {
          */
         public People withIdentity(String distinctId);
 
-
-        /**
-         * Make the Mixpanel library aware that there may be edits (for example, due to A/B tests)
-         * associated with the given Activity. Most users will not have to call this directly,
-         * since it is called automatically in the default Mixpanel configuration.
-         *
-         * If this is called manually, callers should be sure to call unregisterActivityForEdits
-         * before or during Activity.onPause
-         *
-         * @param activity an activity that may be a candidate for edits
-         */
-        public void registerActivityForEdits(Activity activity);
-
-        /**
-         * Unregister an activity that has previously been registered by registerActivityForEdits().
-         * Most users will never have to call this method directly, since it is called automatically
-         * in default Mixpanel configurations.
-         *
-         * If you call registerActivityForEdits() manually, you should call unregisterActivityForEdits
-         * on the same activity before or during Activity.onPause.
-         *
-         * @param activity an activity that may be a candidate for edits
-         */
-        public void unregisterActivityForEdits(Activity activity);
-
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
          * (like surveys or in app notifications) are discovered.
@@ -988,10 +965,6 @@ public class MixpanelAPI {
 
     /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener) {
         return new DecideUpdates(token, peopleId, listener);
-    }
-
-    /* package */ LiveViews getLiveViews() {
-        return new LiveViews();
     }
 
     /* package */ void clearPreferences() {
@@ -1323,16 +1296,6 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void registerActivityForEdits(Activity activity) {
-            mLiveViews.registerActivity(activity);
-        }
-
-        @Override
-        public void unregisterActivityForEdits(Activity activity) {
-            mLiveViews.unregisterActivity(activity);
-        }
-
-        @Override
         public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
             mUpdatesListener.addOnMixpanelUpdatesReceivedListener(listener);
         }
@@ -1567,9 +1530,10 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
+    private final ABTesting mABTesting;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
-    private final LiveViews mLiveViews;
+
 
     private DecideUpdates mDecideUpdates;
 

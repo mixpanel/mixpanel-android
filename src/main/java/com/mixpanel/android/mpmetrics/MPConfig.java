@@ -11,7 +11,7 @@ import android.util.Log;
  * Stores global configuration options for the Mixpanel library.
  */
 public class MPConfig {
-    public static final String VERSION = "4.2.1";
+    public static final String VERSION = "4.2.2-SNAPSHOT";
 
     public static boolean DEBUG = false;
 
@@ -90,6 +90,12 @@ public class MPConfig {
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;
 
+        String abTestingProxyUrl = metaData.getString("com.mixpanel.android.MPConfig.ABTestingProxyUrl");
+        if (null == abTestingProxyUrl) {
+            abTestingProxyUrl = "http://decide.mixpanel.com/abtesting";
+        }
+        mABTestingProxyUrl = abTestingProxyUrl;
+
         if (DEBUG) {
             Log.d(LOGTAG,
                 "Mixpanel configured with:\n" +
@@ -105,7 +111,8 @@ public class MPConfig {
                 "    DecideEndpoint " + getDecideEndpoint() + "\n" +
                 "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
-                "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n"
+                "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
+                "    ABTestingProxyUrl " + getABTestingProxyUrl() + "\n"
             );
         }
     }
@@ -168,6 +175,10 @@ public class MPConfig {
         return mAutoShowMixpanelUpdates;
     }
 
+    public String getABTestingProxyUrl() {
+        return mABTestingProxyUrl;
+    }
+
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
@@ -197,6 +208,7 @@ public class MPConfig {
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
+    private final String mABTestingProxyUrl;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();
