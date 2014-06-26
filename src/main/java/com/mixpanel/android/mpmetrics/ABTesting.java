@@ -27,7 +27,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     ABTesting(Context context) {
         mContext = context;
-        Log.i("ASDF", "creating ABTESTING");
 
         if (android.os.Build.VERSION.SDK_INT >= 14) {
             final Application app = (Application) mContext.getApplicationContext();
@@ -50,7 +49,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     @Override
-    public void onActivityCreated(Activity activity, Bundle bundle) {
+    public void onActivityCreated(Activity activity, Bundle bundle) { }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
         activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -70,9 +72,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             private int mDown = 0;
         });
     }
-
-    @Override
-    public void onActivityStarted(Activity activity) { }
 
     @Override
     public void onActivityResumed(Activity activity) { }
