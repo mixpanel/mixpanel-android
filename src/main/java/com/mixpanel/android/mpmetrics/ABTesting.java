@@ -3,17 +3,26 @@ package com.mixpanel.android.mpmetrics;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Base64OutputStream;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -126,7 +135,37 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private void sendStateForEditing(Context context) {
-            Log.v(LOGTAG, "sendStateForEditing called");
+            final Writer writer = new OutputStreamWriter(new WebSocketOutputStream(mProxyClient));
+            try {
+                writer.write("{\"type\": \"snapshot_response\",");
+
+                boolean first = true;
+                writer.write("\"activities\": [");
+                for (Activity a : liveActivities) {
+                    if (!first) {
+                        writer.write(",");
+                    }
+
+                    View rootView = a.getWindow().getDecorView().getRootView();
+                    writer.write("{\"class\":");
+                    writer.write("\"" + a.getClass().getCanonicalName() + "\"");
+                    writer.write(",");
+
+                    writer.write("\"screenshot\":");
+                    writeScreenshot(rootView, writer);
+                    writer.write(",");
+
+                    writer.write("\"view\": [");
+                    writer.write(serializeView(rootView, 1).toString());
+
+                    writer.write("}]");
+
+                    first = false;
+                }
+                writer.write("\n}");
+            } catch (IOException e) {
+                Log.e(LOGTAG, "Can't write snapshot request to server", e);
+            }
         }
 
         private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
@@ -147,6 +186,96 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private void applyChanges(Activity activity, JSONObject changes) {
             Log.v(LOGTAG, "applyChanges called on " + activity.getClass().getCanonicalName());
         }
+
+        // Writes a QUOTED, Base64 string to writer, or the string "null" if no bitmap could be written
+        // due to memory or rendering issues.
+        private void writeScreenshot(View rootView, Writer writer) throws IOException {
+            // This screenshot method is not how the Android folks do it in View.createSnapshot,
+            // but they use all kinds of secret internal stuff like clearing and setting
+            // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
+            // can do without privileged access
+            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
+            rootView.setDrawingCacheEnabled(true);
+            rootView.buildDrawingCache(true);
+
+            // We could get a null or zero px bitmap if the rootView hasn't been measured
+            // appropriately, or we grab it before layout.
+            // This is ok, and we should handle it gracefully.
+            final Bitmap bitmap = rootView.getDrawingCache();
+            if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
+                writer.write("\"");
+                final Base64OutputStream b64out = new Base64OutputStream(writer);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, b64out);
+                b64out.close();
+                writer.write("\"");
+            } else {
+                writer.write("null");
+            }
+
+            if (!originalCacheState) {
+                rootView.setDrawingCacheEnabled(false);
+            }
+        }
+
+    private JSONObject serializeView(View view, int index) throws IOException {
+        final JSONObject dump = new JSONObject();
+        try {
+            dump.put("hashCode", view.hashCode());
+            dump.put("id", view.getId());
+            dump.put("tag", view.getTag());
+
+            dump.put("top", view.getTop());
+            dump.put("left", view.getLeft());
+            dump.put("width", view.getWidth());
+            dump.put("height", view.getHeight());
+
+            final JSONArray classes = new JSONArray();
+            Class klass = view.getClass();
+            do {
+                classes.put(klass.getName());
+                klass = klass.getSuperclass();
+            } while (klass != Object.class);
+            dump.put("classes", classes);
+
+            JSONArray methodList = new JSONArray();
+            for (Method m : view.getClass().getMethods()) {
+                JSONObject method = new JSONObject();
+                if (m.getName().startsWith("set")) {
+                    JSONArray argTypes = new JSONArray();
+                    for (Class c : m.getParameterTypes()) {
+                        argTypes.put(c.getCanonicalName());
+                    }
+
+                    method.put("name", m.getName());
+                    method.put("args", argTypes);
+                    methodList.put(method);
+                }
+            }
+            dump.put("methods", methodList);
+
+            JSONArray children = new JSONArray();
+            if (view instanceof ViewGroup) {
+                final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
+                final ViewGroup group = (ViewGroup) view;
+                final int childCount = group.getChildCount();
+
+                for (int i = 0; i < childCount; i++) {
+                    final View child = group.getChildAt(i);
+                    int childIndex = 1;
+                    if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
+                        childIndex = viewIndex.get(child.getClass().getCanonicalName()) + 1;
+                    }
+                    viewIndex.put(child.getClass().getCanonicalName(), childIndex);
+                    children.put(serializeView(child, childIndex));
+                }
+            }
+            dump.put("children", children);
+            dump.put("index", index);
+        } catch (JSONException impossible) {
+            throw new RuntimeException("Apparently Impossible JSONException", impossible);
+        }
+        return dump;
+    }
 
         private ProxyClient mProxyClient;
         private List<Activity> liveActivities = new ArrayList<Activity>();
