@@ -113,7 +113,7 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
-        mABTesting = new ABTesting();
+        mABTesting = new ABTesting(mContext);
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
@@ -133,8 +133,6 @@ public class MixpanelAPI {
         if (null != mDecideUpdates) {
             mMessages.installDecideCheck(mDecideUpdates);
         }
-
-
     }
 
     /**
