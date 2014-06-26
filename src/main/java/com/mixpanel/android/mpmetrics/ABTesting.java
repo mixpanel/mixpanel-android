@@ -9,20 +9,23 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Base64OutputStream;
+import android.util.Base64;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +47,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             HandlerThread thread = new HandlerThread(getClass().getCanonicalName());
             thread.start();
             mHandler = new ABHandler(thread.getLooper());
-            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY, "ws://anluswang.com/websocket_proxy/THE_KEY"));
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
         }
     }
 
@@ -110,7 +113,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         public void handleMessage(Message msg) {
             switch(msg.what) {
                 case MESSAGE_CONNECT_TO_PROXY:
-                    this.connectToProxy((String)msg.obj);
+                    this.connectToProxy();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     this.sendStateForEditing((Context) msg.obj);
@@ -122,11 +125,15 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-        private void connectToProxy(String url) {
+        private void connectToProxy() {
             Log.v(LOGTAG, "connectToProxy called");
 
             if (mProxyClient == null) {
-                mProxyClient = new ProxyClient(url);
+                try {
+                    mProxyClient = new ProxyClient(new URI(PROXY_URL));
+                } catch (URISyntaxException e) {
+                    Log.e(LOGTAG, "Error parsing URI for proxy", e);
+                }
             }
 
             if (!mProxyClient.isConnected()) {
@@ -135,34 +142,33 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private void sendStateForEditing(Context context) {
-            final Writer writer = new OutputStreamWriter(new WebSocketOutputStream(mProxyClient));
             try {
-                writer.write("{\"type\": \"snapshot_response\",");
+                mProxyClient.send("{\"type\": \"snapshot_response\",");
 
                 boolean first = true;
-                writer.write("\"activities\": [");
+                 mProxyClient.send("\"activities\": [");
                 for (Activity a : liveActivities) {
                     if (!first) {
-                        writer.write(",");
+                          mProxyClient.send(",");
                     }
 
                     View rootView = a.getWindow().getDecorView().getRootView();
-                    writer.write("{\"class\":");
-                    writer.write("\"" + a.getClass().getCanonicalName() + "\"");
-                    writer.write(",");
+                    mProxyClient.send("{\"class\":");
+                    mProxyClient.send("\"" + a.getClass().getCanonicalName() + "\"");
+                    mProxyClient.send(",");
 
-                    writer.write("\"screenshot\":");
-                    writeScreenshot(rootView, writer);
-                    writer.write(",");
+                    mProxyClient.send("\"screenshot\":");
+                    writeScreenshot(rootView);
+                    mProxyClient.send(",");
 
-                    writer.write("\"view\": [");
-                    writer.write(serializeView(rootView, 1).toString());
+                    mProxyClient.send("\"view\": [");
+                    mProxyClient.send(serializeView(rootView, 1).toString());
 
-                    writer.write("}]");
+                    mProxyClient.send("}]");
 
                     first = false;
                 }
-                writer.write("\n}");
+                 mProxyClient.send("\n}");
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             }
@@ -189,7 +195,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
         // Writes a QUOTED, Base64 string to writer, or the string "null" if no bitmap could be written
         // due to memory or rendering issues.
-        private void writeScreenshot(View rootView, Writer writer) throws IOException {
+        private void writeScreenshot(View rootView) throws IOException {
             // This screenshot method is not how the Android folks do it in View.createSnapshot,
             // but they use all kinds of secret internal stuff like clearing and setting
             // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
@@ -203,13 +209,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             // This is ok, and we should handle it gracefully.
             final Bitmap bitmap = rootView.getDrawingCache();
             if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                writer.write("\"");
-                final Base64OutputStream b64out = new Base64OutputStream(writer);
+                mProxyClient.send("\"");
+                final Base64OutputStream b64out = new Base64OutputStream(mProxyClient);
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 30, b64out);
                 b64out.close();
-                writer.write("\"");
+                mProxyClient.send("\"");
             } else {
-                writer.write("null");
+                mProxyClient.send("null");
             }
 
             if (!originalCacheState) {
@@ -282,30 +288,98 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private JSONObject liveChanges; // this will probably become a custom strongly-typed object instead of JSON
     }
 
-
     /**
      * ProxyClient should handle all communication to and from the socket. It should be fairly naive and
      * only know how to delegate messages to the ABHandler class.
      */
-    private class ProxyClient {
-        private ProxyClient(String url) {
-            PROXY_URL = url;
+    private class ProxyClient extends WebSocketClient {
+        public ProxyClient(URI uri) {
+            super(uri);
+            mConnected = false;
         }
 
-        boolean isConnected() {
-            return false;
+        @Override
+        public void onOpen(ServerHandshake handshakedata) {
+            Log.i(LOGTAG, "Connected");
+            mConnected = true;
         }
 
-        void connect() {
-            Log.v(LOGTAG, "connecting to proxy at " + PROXY_URL + "...");
+        @Override
+        public void onMessage(String message) {
+            String messageType;
+            JSONObject payload = null;
+            Log.d(LOGTAG, "message: " + message);
+            try {
+                final JSONObject messageJson = new JSONObject(message);
+                messageType = messageJson.getString("type");
+                if (messageJson.has("payload")) {
+                    payload = messageJson.getJSONObject("payload");
+                }
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Bad JSON received" , e);
+            }
         }
 
-        private final String PROXY_URL;
+        @Override
+        public void onClose(int code, String reason, boolean remote) {
+            mConnected = false;
+            Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
+        }
+
+        @Override
+        public void onError(Exception ex) {
+            if (ex != null && ex.getMessage() != null) {
+                Log.e(LOGTAG, "error: " + ex.getMessage());
+            } else {
+                Log.e(LOGTAG, "an error occurred");
+            }
+        }
+
+        public boolean isConnected() {
+            return mConnected;
+        }
+
+        private boolean mConnected;
+    }
+
+    private static class Base64OutputStream extends OutputStream {
+        public Base64OutputStream(ProxyClient proxyClient) {
+            mProxyClient = proxyClient;
+            mBuffer = new byte[4]; // size must be a multiple of 4. TODO SHOULD BE BIGGER THAN THIS
+            mBufferSize = 0;
+        }
+
+        @Override
+        public void write(int oneByte) throws IOException { // TODO support write(byte[] b, int off, int len) directly
+            if (mBufferSize == mBuffer.length - 1) {
+                String encoded = Base64.encodeToString(mBuffer, 0, mBufferSize, Base64.NO_PADDING | Base64.NO_WRAP);
+                assert(encoded.charAt(encoded.length() - 1) != '=');
+                mProxyClient.send(encoded);
+                mBufferSize = 0;
+            }
+
+            mBuffer[mBufferSize] = (byte) oneByte;
+            mBufferSize++;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (mBufferSize > 0) {
+                String tail = Base64.encodeToString(mBuffer, 0, mBufferSize, Base64.NO_PADDING | Base64.NO_WRAP);
+                mProxyClient.send(tail);
+                mBufferSize = 0;
+            }
+        }
+
+        private final ProxyClient mProxyClient;
+        private short mBufferSize;
+        private final byte[] mBuffer;
     }
 
     private ABHandler mHandler;
 
     private final Context mContext;
+    private static final String PROXY_URL = "ws://anluswang.com/websocket_proxy/THE_KEY";
     private static final int MESSAGE_CONNECT_TO_PROXY = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
