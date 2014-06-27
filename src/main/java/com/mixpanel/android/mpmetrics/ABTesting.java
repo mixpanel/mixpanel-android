@@ -15,16 +15,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.mixpanel.android.abtesting.Tweaks;
-
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -51,10 +49,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             mHandler = new ABHandler(thread.getLooper());
             mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
         }
-    }
-
-    public Tweaks getTweaks() {
-        return mTweaks;
     }
 
     void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
@@ -92,10 +86,14 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     @Override
-    public void onActivityResumed(Activity activity) { }
+    public void onActivityResumed(Activity activity) {
+        mLiveActivities.add(activity);
+    }
 
     @Override
-    public void onActivityPaused(Activity activity) { }
+    public void onActivityPaused(Activity activity) {
+        mLiveActivities.remove(activity);
+    }
 
     @Override
     public void onActivityStopped(Activity activity) { }
@@ -123,7 +121,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     this.connectToProxy();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
-                    this.sendStateForEditing((Context) msg.obj);
+                    this.sendStateForEditing();
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
                     Map<String, Object> args = (Map<String, Object>) msg.obj;
@@ -148,34 +146,45 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-        private void sendStateForEditing(Context context) {
+        private void sendStateForEditing() {
+            Log.v(LOGTAG, "sendStateForEditing");
             try {
-                mProxyClient.send("{\"type\": \"snapshot_response\",");
+                StringBuilder sb = new StringBuilder();
+                sb.append("{\"type\": \"snapshot_response\",");
 
                 boolean first = true;
-                 mProxyClient.send("\"activities\": [");
-                for (Activity a : liveActivities) {
-                    if (!first) {
-                          mProxyClient.send(",");
-                    }
 
+                sb.append("\"activities\": [");
+                for (Activity a : mLiveActivities) {
                     View rootView = a.getWindow().getDecorView().getRootView();
-                    mProxyClient.send("{\"class\":");
-                    mProxyClient.send("\"" + a.getClass().getCanonicalName() + "\"");
-                    mProxyClient.send(",");
-
-                    mProxyClient.send("\"screenshot\":");
-                    writeScreenshot(rootView);
-                    mProxyClient.send(",");
-
-                    mProxyClient.send("\"view\": [");
-                    mProxyClient.send(serializeView(rootView, 1).toString());
-
-                    mProxyClient.send("}]");
-
+                    if (!first) {
+                          sb.append(",");
+                    }
                     first = false;
+
+                    sb.append("{");
+
+                    sb.append("\"class\":");
+                    sb.append("\"" + a.getClass().getCanonicalName() + "\"");
+                    sb.append(",");
+
+                    sb.append("\"screenshot\": ");
+                    writeScreenshot(rootView, sb);
+                    sb.append(",");
+
+                    sb.append("\"view\": [");
+                    sb.append(serializeView(rootView, 1).toString());
+                    sb.append("]");
+
+                    sb.append("}");
                 }
-                 mProxyClient.send("\n}");
+                sb.append("],");
+
+                sb.append("\"tweaks\":");
+                sb.append(new JSONObject(mTweaks.getAll()).toString());
+
+                sb.append("}");
+                mProxyClient.send(sb.toString());
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             }
@@ -190,7 +199,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
 
             if (applyToLive) {
-                for(Activity activity : liveActivities) {
+                for(Activity activity : mLiveActivities) {
                     applyChanges(activity, changes);
                 }
             }
@@ -202,7 +211,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
         // Writes a QUOTED, Base64 string to writer, or the string "null" if no bitmap could be written
         // due to memory or rendering issues.
-        private void writeScreenshot(View rootView) throws IOException {
+        private void writeScreenshot(View rootView, StringBuilder sb) throws IOException {
             // This screenshot method is not how the Android folks do it in View.createSnapshot,
             // but they use all kinds of secret internal stuff like clearing and setting
             // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
@@ -216,13 +225,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             // This is ok, and we should handle it gracefully.
             final Bitmap bitmap = rootView.getDrawingCache();
             if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                mProxyClient.send("\"");
-                final Base64OutputStream b64out = new Base64OutputStream(mProxyClient);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, b64out);
-                b64out.close();
-                mProxyClient.send("\"");
+                sb.append("\"");
+                final ByteArrayOutputStream out = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, out);
+                sb.append(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP));
+                sb.append("\"");
             } else {
-                mProxyClient.send("null");
+                sb.append("null");
             }
 
             if (!originalCacheState) {
@@ -291,7 +300,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private ProxyClient mProxyClient;
-        private List<Activity> liveActivities = new ArrayList<Activity>();
         private JSONObject liveChanges; // this will probably become a custom strongly-typed object instead of JSON
     }
 
@@ -349,43 +357,114 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private boolean mConnected;
     }
 
-    private static class Base64OutputStream extends OutputStream {
-        public Base64OutputStream(ProxyClient proxyClient) {
-            mProxyClient = proxyClient;
-            mBuffer = new byte[4]; // size must be a multiple of 4. TODO SHOULD BE BIGGER THAN THIS
-            mBufferSize = 0;
+    /**
+     * Tweaks allows applications to specify dynamic variables that can be modified in the Mixpanel UI
+     * and reflected in the app.
+     *
+     * Example (assignment):
+     *              String welcomeMsg = getTweaks().getString("welcome message", "Welcome to the app!");
+     *
+     *
+     * Example (callback):
+     *              final Button mButton = (Button) findViewById(R.id.button2);
+     *              getTweaks().bind("Start button", "Click to start!", new ABTesting.TweakChangeCallback() {
+     *                  @Override
+     *                  public void onChange(Object o) {
+     *                      mButton.setText((String) o);
+     *                  }
+     *              });
+     *
+     */
+    public class Tweaks {
+        Map<String, Object> tweaks = new HashMap<String, Object>();
+        Map<String, List<TweakChangeCallback>> bindings = new HashMap<String, List<TweakChangeCallback>>();
+
+        public String getString(String tweakName, String defaultValue) {
+            return (String) get(tweakName, defaultValue);
         }
 
-        @Override
-        public void write(int oneByte) throws IOException { // TODO support write(byte[] b, int off, int len) directly
-            if (mBufferSize == mBuffer.length - 1) {
-                String encoded = Base64.encodeToString(mBuffer, 0, mBufferSize, Base64.NO_PADDING | Base64.NO_WRAP);
-                assert(encoded.charAt(encoded.length() - 1) != '=');
-                mProxyClient.send(encoded);
-                mBufferSize = 0;
+        public Integer getInteger(String tweakName, Integer defaultValue) {
+            return (Integer) get(tweakName, defaultValue);
+        }
+
+        public Long getLong(String tweakName, Long defaultValue) {
+            return (Long) get(tweakName, defaultValue);
+        }
+
+        public Float getFloat(String tweakName, Float defaultValue) {
+            return (Float) get(tweakName, defaultValue);
+        }
+
+        public Double getDouble(String tweakName, Double defaultValue) {
+            return (Double) get(tweakName, defaultValue);
+        }
+
+        public Object get(String tweakName, Object defaultValue) {
+            Object value;
+            synchronized (tweaks) {
+                if (!tweaks.containsKey(tweakName)) {
+                    set(tweakName, defaultValue, true);
+                }
+                value = tweaks.get(tweakName);
+            }
+            return value;
+        }
+
+        public Map<String, Object> getAll() {
+            HashMap<String, Object> copy;
+            synchronized (tweaks) {
+                copy = new HashMap<String, Object>(tweaks);
+            }
+            return copy;
+        }
+
+        public void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
+            synchronized (bindings) {
+                if (!bindings.containsKey(tweakName)) {
+                    bindings.put(tweakName, new ArrayList<TweakChangeCallback>());
+                }
+                bindings.get(tweakName).add(callback);
+            }
+            callback.onChange(get(tweakName, defaultValue));
+        }
+
+        public void set(String tweakName, Object value) {
+            set(tweakName, value, false);
+        }
+
+        public void set(Map<String, Object> tweakUpdates) {
+            for(String tweakName : tweakUpdates.keySet()) {
+                set(tweakName, tweakUpdates.get(tweakName));
+            }
+        }
+
+        private void set(String tweakName, Object value, boolean isDefault) {
+            synchronized (tweaks) {
+                tweaks.put(tweakName, value);
             }
 
-            mBuffer[mBufferSize] = (byte) oneByte;
-            mBufferSize++;
-        }
-
-        @Override
-        public void close() throws IOException {
-            if (mBufferSize > 0) {
-                String tail = Base64.encodeToString(mBuffer, 0, mBufferSize, Base64.NO_PADDING | Base64.NO_WRAP);
-                mProxyClient.send(tail);
-                mBufferSize = 0;
+            synchronized (bindings) {
+                if (!isDefault && bindings.containsKey(tweakName)) {
+                    for(TweakChangeCallback changeCallback : bindings.get(tweakName)) {
+                        changeCallback.onChange(value); // todo: should we run this on the UIThread?
+                    }
+                }
             }
         }
+    }
 
-        private final ProxyClient mProxyClient;
-        private short mBufferSize;
-        private final byte[] mBuffer;
+    public interface TweakChangeCallback {
+        public void onChange(Object value);
+    }
+
+    public Tweaks getTweaks() {
+        return mTweaks;
     }
 
     private ABHandler mHandler;
     private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
+    private List<Activity> mLiveActivities = new ArrayList<Activity>();
     private static final String PROXY_URL = "ws://anluswang.com/websocket_proxy/THE_KEY";
     private static final int MESSAGE_CONNECT_TO_PROXY = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
