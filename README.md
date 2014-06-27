@@ -12,6 +12,24 @@ You can find getting started guides for using Mixpanel at:
 
 See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application.
 
+
+License
+-------
+
+See LICENSE File for details. The Base64Coder,
+ConfigurationChecker, and StackBlurManager classes used by this
+software have been licensed from non-Mixpanel sources and modified
+for use in the library.  Please see the relevant source files for
+details.
+
+The StackBlurManager class uses an algorithm by Mario Klingemann <mario@quansimondo.com>
+You can learn more about the algorithm at
+http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html.
+
+The Mixpanel library for Android also includes a binary version of Java-WebSockets,
+Copyright (c) 2010-2012 Nathan Rajlich, which is licensed under terms mentioned
+in the libs/ directory
+
 Changelog
 ---------
 
@@ -428,16 +446,3 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
-
-License
--------
-
-See LICENSE File for details. The Base64Coder,
-ConfigurationChecker, and StackBlurManager classes used by this
-software have been licensed from non-Mixpanel sources and modified
-for use in the library.  Please see the relevant source files for
-details.
-
-The StackBlurManager class uses an algorithm by Mario Klingemann <mario@quansimondo.com>
-You can learn more about the algorithm at
-http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html.
