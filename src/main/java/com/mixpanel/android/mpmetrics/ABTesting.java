@@ -153,7 +153,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 mProxyClient.send("{\"type\": \"snapshot_response\",");
 
                 boolean first = true;
-                 mProxyClient.send("\"activities\": [");
+                mProxyClient.send("\"activities\": [");
                 for (Activity a : liveActivities) {
                     if (!first) {
                           mProxyClient.send(",");
@@ -170,12 +170,14 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
                     mProxyClient.send("\"view\": [");
                     mProxyClient.send(serializeView(rootView, 1).toString());
-
-                    mProxyClient.send("}]");
+                    mProxyClient.send("]");
 
                     first = false;
                 }
-                 mProxyClient.send("\n}");
+                mProxyClient.send(", \"tweaks\":");
+                mProxyClient.send(new JSONObject(mTweaks.getAll()).toString());
+                mProxyClient.send("\n}");
+
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             }
