@@ -15,6 +15,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mixpanel.android.abtesting.Tweaks;
+
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
@@ -49,6 +51,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             mHandler = new ABHandler(thread.getLooper());
             mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
         }
+    }
+
+    public Tweaks getTweaks() {
+        return mTweaks;
     }
 
     void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
@@ -99,6 +105,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityDestroyed(Activity activity) { }
+
 
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
@@ -223,65 +230,65 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-    private JSONObject serializeView(View view, int index) throws IOException {
-        final JSONObject dump = new JSONObject();
-        try {
-            dump.put("hashCode", view.hashCode());
-            dump.put("id", view.getId());
-            dump.put("tag", view.getTag());
+        private JSONObject serializeView(View view, int index) throws IOException {
+            final JSONObject dump = new JSONObject();
+            try {
+                dump.put("hashCode", view.hashCode());
+                dump.put("id", view.getId());
+                dump.put("tag", view.getTag());
 
-            dump.put("top", view.getTop());
-            dump.put("left", view.getLeft());
-            dump.put("width", view.getWidth());
-            dump.put("height", view.getHeight());
+                dump.put("top", view.getTop());
+                dump.put("left", view.getLeft());
+                dump.put("width", view.getWidth());
+                dump.put("height", view.getHeight());
 
-            final JSONArray classes = new JSONArray();
-            Class klass = view.getClass();
-            do {
-                classes.put(klass.getName());
-                klass = klass.getSuperclass();
-            } while (klass != Object.class);
-            dump.put("classes", classes);
+                final JSONArray classes = new JSONArray();
+                Class klass = view.getClass();
+                do {
+                    classes.put(klass.getName());
+                    klass = klass.getSuperclass();
+                } while (klass != Object.class);
+                dump.put("classes", classes);
 
-            JSONArray methodList = new JSONArray();
-            for (Method m : view.getClass().getMethods()) {
-                JSONObject method = new JSONObject();
-                if (m.getName().startsWith("set")) {
-                    JSONArray argTypes = new JSONArray();
-                    for (Class c : m.getParameterTypes()) {
-                        argTypes.put(c.getCanonicalName());
+                JSONArray methodList = new JSONArray();
+                for (Method m : view.getClass().getMethods()) {
+                    JSONObject method = new JSONObject();
+                    if (m.getName().startsWith("set")) {
+                        JSONArray argTypes = new JSONArray();
+                        for (Class c : m.getParameterTypes()) {
+                            argTypes.put(c.getCanonicalName());
+                        }
+
+                        method.put("name", m.getName());
+                        method.put("args", argTypes);
+                        methodList.put(method);
                     }
-
-                    method.put("name", m.getName());
-                    method.put("args", argTypes);
-                    methodList.put(method);
                 }
-            }
-            dump.put("methods", methodList);
+                dump.put("methods", methodList);
 
-            JSONArray children = new JSONArray();
-            if (view instanceof ViewGroup) {
-                final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
-                final ViewGroup group = (ViewGroup) view;
-                final int childCount = group.getChildCount();
+                JSONArray children = new JSONArray();
+                if (view instanceof ViewGroup) {
+                    final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
+                    final ViewGroup group = (ViewGroup) view;
+                    final int childCount = group.getChildCount();
 
-                for (int i = 0; i < childCount; i++) {
-                    final View child = group.getChildAt(i);
-                    int childIndex = 1;
-                    if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
-                        childIndex = viewIndex.get(child.getClass().getCanonicalName()) + 1;
+                    for (int i = 0; i < childCount; i++) {
+                        final View child = group.getChildAt(i);
+                        int childIndex = 1;
+                        if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
+                            childIndex = viewIndex.get(child.getClass().getCanonicalName()) + 1;
+                        }
+                        viewIndex.put(child.getClass().getCanonicalName(), childIndex);
+                        children.put(serializeView(child, childIndex));
                     }
-                    viewIndex.put(child.getClass().getCanonicalName(), childIndex);
-                    children.put(serializeView(child, childIndex));
                 }
+                dump.put("children", children);
+                dump.put("index", index);
+            } catch (JSONException impossible) {
+                throw new RuntimeException("Apparently Impossible JSONException", impossible);
             }
-            dump.put("children", children);
-            dump.put("index", index);
-        } catch (JSONException impossible) {
-            throw new RuntimeException("Apparently Impossible JSONException", impossible);
+            return dump;
         }
-        return dump;
-    }
 
         private ProxyClient mProxyClient;
         private List<Activity> liveActivities = new ArrayList<Activity>();
@@ -377,7 +384,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     private ABHandler mHandler;
-
+    private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
     private static final String PROXY_URL = "ws://anluswang.com/websocket_proxy/THE_KEY";
     private static final int MESSAGE_CONNECT_TO_PROXY = 0;

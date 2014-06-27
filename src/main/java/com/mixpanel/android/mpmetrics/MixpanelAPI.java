@@ -465,6 +465,10 @@ public class MixpanelAPI {
         return mPeople;
     }
 
+    public ABTesting getABTesting() {
+        return mABTesting;
+    }
+
     /**
      * Core interface for using Mixpanel People Analytics features.
      * You can get an instance by calling {@link MixpanelAPI#getPeople()}
