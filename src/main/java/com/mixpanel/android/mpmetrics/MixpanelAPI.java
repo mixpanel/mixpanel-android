@@ -113,7 +113,7 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
-        mABTesting = new ABTesting(mContext);
+        mABTesting = new ABTesting(mContext, mToken);
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);

@@ -90,11 +90,11 @@ public class MPConfig {
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;
 
-        String abTestingProxyUrl = metaData.getString("com.mixpanel.android.MPConfig.ABTestingProxyUrl");
-        if (null == abTestingProxyUrl) {
-            abTestingProxyUrl = "http://decide.mixpanel.com/abtesting";
+        String abTestingUrl = metaData.getString("com.mixpanel.android.MPConfig.ABTestingUrl"); // TODO rename to editor url
+        if (null == abTestingUrl) {
+            abTestingUrl = "ws://mixpanel.com/websocket_proxy/";
         }
-        mABTestingProxyUrl = abTestingProxyUrl;
+        mABTestingUrl = abTestingUrl;
 
         if (DEBUG) {
             Log.d(LOGTAG,
@@ -112,7 +112,7 @@ public class MPConfig {
                 "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
-                "    ABTestingProxyUrl " + getABTestingProxyUrl() + "\n"
+                "    ABTestingUrl " + getABTestingUrl() + "\n"
             );
         }
     }
@@ -175,8 +175,9 @@ public class MPConfig {
         return mAutoShowMixpanelUpdates;
     }
 
-    public String getABTestingProxyUrl() {
-        return mABTestingProxyUrl;
+    // Preferred URL for connecting to the editor websocket
+    public String getABTestingUrl() {
+        return mABTestingUrl;
     }
 
     ///////////////////////////////////////////////
@@ -208,7 +209,7 @@ public class MPConfig {
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
-    private final String mABTestingProxyUrl;
+    private final String mABTestingUrl; // TODO rename to "editor" or something less specific to A/B
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();

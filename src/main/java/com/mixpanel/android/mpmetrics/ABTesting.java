@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
@@ -35,19 +36,19 @@ import java.util.Map;
  * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
  * the ABHandler which runs on a HandlerThread
  */
-public class ABTesting implements Application.ActivityLifecycleCallbacks {
+public class ABTesting {
 
-    ABTesting(Context context) {
+    ABTesting(Context context, String token) {
         mContext = context;
+        mToken = token;
 
         if (android.os.Build.VERSION.SDK_INT >= 14) {
             final Application app = (Application) mContext.getApplicationContext();
-            app.registerActivityLifecycleCallbacks(this);
+            app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
 
-            HandlerThread thread = new HandlerThread(getClass().getCanonicalName());
+            HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
             thread.start();
             mHandler = new ABHandler(thread.getLooper());
-            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
         }
     }
 
@@ -60,50 +61,54 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         mHandler.sendMessage(m);
     }
 
-    @Override
-    public void onActivityCreated(Activity activity, Bundle bundle) { }
+    @TargetApi(14)
+    private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
+        public void onActivityCreated(Activity activity, Bundle bundle) {
+        }
 
-    @Override
-    public void onActivityStarted(Activity activity) {
-        activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                int action = motionEvent.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-                    mDown++;
-                    if (mDown == 5) {
-                        Message m = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING, mContext);
-                        mHandler.sendMessage(m);
+        @Override
+        public void onActivityStarted(Activity activity) {
+            activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View view, MotionEvent motionEvent) {
+                    int action = motionEvent.getActionMasked();
+                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                        mDown++;
+                        if (mDown == 5) {
+                            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
+                        }
+                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+                        mDown--;
                     }
-                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                    mDown--;
+                    return true;
                 }
-                return true;
-            }
 
-            private int mDown = 0;
-        });
+                private int mDown = 0;
+            });
+        }
+
+        @Override
+        public void onActivityResumed(Activity activity) {
+            mLiveActivities.add(activity);
+        }
+
+        @Override
+        public void onActivityPaused(Activity activity) {
+            mLiveActivities.remove(activity);
+        }
+
+        @Override
+        public void onActivityStopped(Activity activity) {
+        }
+
+        @Override
+        public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
+        }
+
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+        }
     }
-
-    @Override
-    public void onActivityResumed(Activity activity) {
-        mLiveActivities.add(activity);
-    }
-
-    @Override
-    public void onActivityPaused(Activity activity) {
-        mLiveActivities.remove(activity);
-    }
-
-    @Override
-    public void onActivityStopped(Activity activity) { }
-
-    @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {  }
-
-    @Override
-    public void onActivityDestroyed(Activity activity) { }
-
 
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
@@ -133,16 +138,24 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private void connectToProxy() {
             Log.v(LOGTAG, "connectToProxy called");
 
-            if (mProxyClient == null) {
+            if (mProxyClient == null || !mProxyClient.isAlive()) {
+                final String baseUrl = MPConfig.getInstance(mContext).getABTestingUrl();
                 try {
-                    mProxyClient = new ProxyClient(new URI(PROXY_URL));
+                    mProxyClient = new ProxyClient(new URI(baseUrl + mToken));
                 } catch (URISyntaxException e) {
                     Log.e(LOGTAG, "Error parsing URI for proxy", e);
                 }
-            }
 
-            if (!mProxyClient.isConnected()) {
-                mProxyClient.connect();
+                try {
+                    boolean connected = mProxyClient.connectBlocking();
+                    if (! connected) {
+                        Log.d(LOGTAG, "Can't connect to endpoint " + baseUrl);
+                        mProxyClient = null;
+                    }
+                } catch (InterruptedException e) {
+                    mProxyClient = null;
+                    Log.e(LOGTAG, "Editor client was interrupted during connection", e);
+                }
             }
         }
 
@@ -299,8 +312,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             return dump;
         }
 
-        private ProxyClient mProxyClient;
-        private JSONObject liveChanges; // this will probably become a custom strongly-typed object instead of JSON
+        private ProxyClient mProxyClient; // TODO rename, we don't need this to be a proxy
+        private JSONObject liveChanges; // TODO this will probably become a custom strongly-typed object instead of JSON
     }
 
     /**
@@ -310,51 +323,73 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     private class ProxyClient extends WebSocketClient {
         public ProxyClient(URI uri) {
             super(uri);
-            mConnected = false;
+            mAlive = true;
+            mProtocol = new Protocol();
         }
 
         @Override
         public void onOpen(ServerHandshake handshakedata) {
             Log.i(LOGTAG, "Connected");
-            mConnected = true;
         }
 
         @Override
         public void onMessage(String message) {
-            String messageType;
-            JSONObject payload = null;
             Log.d(LOGTAG, "message: " + message);
             try {
                 final JSONObject messageJson = new JSONObject(message);
-                messageType = messageJson.getString("type");
-                if (messageJson.has("payload")) {
-                    payload = messageJson.getJSONObject("payload");
-                }
+                mProtocol.respond(messageJson);
             } catch (JSONException e) {
-                Log.e(LOGTAG, "Bad JSON received" , e);
+                Log.e(LOGTAG, "Bad JSON received:" + message, e);
             }
         }
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
-            mConnected = false;
+            synchronized (this) {
+                mAlive = false;
+            }
             Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
         }
 
         @Override
         public void onError(Exception ex) {
             if (ex != null && ex.getMessage() != null) {
-                Log.e(LOGTAG, "error: " + ex.getMessage());
+                Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
             } else {
-                Log.e(LOGTAG, "an error occurred");
+                Log.e(LOGTAG, "a Websocket error occurred");
             }
         }
 
-        public boolean isConnected() {
-            return mConnected;
+        public boolean isAlive() {
+            synchronized (this) {
+                return mAlive;
+            }
         }
 
-        private boolean mConnected;
+        private boolean mAlive;
+        private final Protocol mProtocol;
+    }
+
+    /*
+     * Protocol knows how to turn inbound JSON into instructions.
+     */
+    private class Protocol { // TODO MOVE JSON STUFF HERE
+        public void respond(JSONObject messageJson) {
+            try {
+                String messageType;
+                JSONObject payload = null;
+                messageType = messageJson.getString("type");
+                if (messageJson.has("payload")) {
+                    payload = messageJson.getJSONObject("payload");
+                }
+
+                // TODO actual multiplexing messages based on messageType
+                Message m = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING, mContext);
+                mHandler.sendMessage(m);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Can't interpret message due to missing fields: " + messageJson.toString(), e);
+            }
+        }
     }
 
     /**
@@ -464,8 +499,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     private ABHandler mHandler;
     private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
-    private List<Activity> mLiveActivities = new ArrayList<Activity>();
-    private static final String PROXY_URL = "ws://anluswang.com/websocket_proxy/THE_KEY";
+    private final List<Activity> mLiveActivities = new ArrayList<Activity>();
+    private final String mToken;
+
     private static final int MESSAGE_CONNECT_TO_PROXY = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
