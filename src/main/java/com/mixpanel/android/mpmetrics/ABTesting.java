@@ -16,6 +16,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
 
 import org.java_websocket.client.WebSocketClient;
@@ -57,6 +58,9 @@ public class ABTesting {
             thread.start();
             mHandler = new ABHandler(thread.getLooper());
         }
+
+        Log.v(LOGTAG, "using hierarchy config:");
+        Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
     void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
@@ -467,6 +471,14 @@ public class ABTesting {
         return mTweaks;
     }
 
+    public JSONObject getHierarchyConfig() {
+        try {
+            return SampleConfig.get();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
     private ABHandler mHandler;
     private final Tweaks mTweaks = new Tweaks();
