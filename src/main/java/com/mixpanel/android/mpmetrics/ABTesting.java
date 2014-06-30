@@ -206,8 +206,6 @@ public class ABTesting {
         }
 
         private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
-            liveChanges = changes;
-
             if (persist) {
                 Log.v(LOGTAG, "persisting received changes");
                 // todo: write persistence logic for changes
@@ -315,7 +313,6 @@ public class ABTesting {
         }
 
         private ProxyClient mProxyClient; // TODO rename, we don't need this to be a proxy
-        private JSONObject liveChanges; // TODO this will probably become a custom strongly-typed object instead of JSON
     }
 
     /**
