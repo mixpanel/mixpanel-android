@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import com.mixpanel.android.abtesting.Tweaks;
 
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -26,9 +27,13 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -123,7 +128,7 @@ public class ABTesting {
 
         @Override
         public void handleMessage(Message msg) {
-            switch(msg.what) {
+            switch (msg.what) {
                 case MESSAGE_CONNECT_TO_EDITOR:
                     this.connectToEditor();
                     break;
@@ -140,22 +145,22 @@ public class ABTesting {
         private void connectToEditor() {
             Log.v(LOGTAG, "connectToEditor called");
 
-            if (mEditorClient == null || !mEditorClient.isAlive()) {
+            if (mEditorConnection == null || !mEditorConnection.isAlive()) {
                 final String baseUrl = MPConfig.getInstance(mContext).getABTestingUrl();
                 try {
-                    mEditorClient = new EditorClient(new URI(baseUrl + mToken));
+                    mEditorConnection = new EditorConnection(new URI(baseUrl + mToken));
                 } catch (URISyntaxException e) {
                     Log.e(LOGTAG, "Error parsing URI for editor websocket", e);
                 }
 
                 try {
-                    boolean connected = mEditorClient.connectBlocking();
-                    if (! connected) {
+                    boolean connected = mEditorConnection.connectBlocking();
+                    if (!connected) {
                         Log.d(LOGTAG, "Can't connect to endpoint " + baseUrl);
-                        mEditorClient = null;
+                        mEditorConnection = null;
                     }
                 } catch (InterruptedException e) {
-                    mEditorClient = null;
+                    mEditorConnection = null;
                     Log.e(LOGTAG, "Editor client was interrupted during connection", e);
                 }
             }
@@ -163,45 +168,52 @@ public class ABTesting {
 
         private void sendStateForEditing() {
             Log.v(LOGTAG, "sendStateForEditing");
+            final OutputStream out = mEditorConnection.getOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
             try {
-                StringBuilder sb = new StringBuilder();
-                sb.append("{\"type\": \"snapshot_response\",");
+                writer.write("{\"type\": \"snapshot_response\",");
 
                 boolean first = true;
 
-                sb.append("\"activities\": [");
+                writer.write("\"activities\": [");
                 for (Activity a : mLiveActivities) {
                     View rootView = a.getWindow().getDecorView().getRootView();
                     if (!first) {
-                          sb.append(",");
+                        writer.write(",");
                     }
                     first = false;
 
-                    sb.append("{");
+                    writer.write("{");
 
-                    sb.append("\"class\":");
-                    sb.append("\"" + a.getClass().getCanonicalName() + "\"");
-                    sb.append(",");
+                    writer.write("\"class\":");
+                    writer.write("\"" + a.getClass().getCanonicalName() + "\"");
+                    writer.write(",");
 
-                    sb.append("\"screenshot\": ");
-                    writeScreenshot(rootView, sb);
-                    sb.append(",");
+                    writer.write("\"screenshot\": ");
+                    writeScreenshot(rootView, writer);
+                    writer.write(",");
 
-                    sb.append("\"view\": [");
-                    sb.append(serializeView(rootView, 1).toString());
-                    sb.append("]");
+                    writer.write("\"view\": [");
+                    writer.write(serializeView(rootView, 1).toString());
+                    writer.write("]");
 
-                    sb.append("}");
+                    writer.write("}");
                 }
-                sb.append("],");
+                writer.write("],");
 
-                sb.append("\"tweaks\":");
-                sb.append(new JSONObject(mTweaks.getAll()).toString());
+                writer.write("\"tweaks\":");
+                writer.write(new JSONObject(mTweaks.getAll()).toString());
 
-                sb.append("}");
-                mEditorClient.send(sb.toString());
+                writer.write("}");
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
+            } finally {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "    Can't close writer.", e);
+                }
+                mEditorConnection.releaseOutputStream(out);
             }
         }
 
@@ -212,7 +224,7 @@ public class ABTesting {
             }
 
             if (applyToLive) {
-                for(Activity activity : mLiveActivities) {
+                for (Activity activity : mLiveActivities) {
                     applyChanges(activity, changes);
                 }
             }
@@ -222,9 +234,9 @@ public class ABTesting {
             Log.v(LOGTAG, "applyChanges called on " + activity.getClass().getCanonicalName());
         }
 
-        // Writes a QUOTED, Base64 string to the given StringBuilder, or the string "null" if no bitmap could be written
+        // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
         // due to memory or rendering issues.
-        private void writeScreenshot(View rootView, StringBuilder sb) throws IOException {
+        private void writeScreenshot(View rootView, Writer writer) throws IOException {
             // This screenshot method is not how the Android folks do it in View.createSnapshot,
             // but they use all kinds of secret internal stuff like clearing and setting
             // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
@@ -238,13 +250,13 @@ public class ABTesting {
             // This is ok, and we should handle it gracefully.
             final Bitmap bitmap = rootView.getDrawingCache();
             if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                sb.append("\"");
+                writer.write("\"");
                 final ByteArrayOutputStream out = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 30, out);
-                sb.append(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP));
-                sb.append("\"");
+                writer.write(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP)); // TODO I think this NO_PADDING is gonna break stuff?
+                writer.write("\"");
             } else {
-                sb.append("null");
+                writer.write("null");
             }
 
             if (!originalCacheState) {
@@ -312,83 +324,139 @@ public class ABTesting {
             return dump;
         }
 
-        private EditorClient mEditorClient;
-    }
-
-    /**
-     * EditorClient should handle all communication to and from the socket. It should be fairly naive and
-     * only know how to delegate messages to the ABHandler class.
-     */
-    private class EditorClient extends WebSocketClient {
-        public EditorClient(URI uri) {
-            super(uri);
-            mAlive = true;
-            mProtocol = new Protocol();
-        }
-
-        @Override
-        public void onOpen(ServerHandshake handshakedata) {
-            Log.i(LOGTAG, "Connected");
-        }
-
-        @Override
-        public void onMessage(String message) {
-            Log.d(LOGTAG, "message: " + message);
-            try {
-                final JSONObject messageJson = new JSONObject(message);
-                mProtocol.respond(messageJson);
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "Bad JSON received:" + message, e);
+        private class EditorConnection {
+            public EditorConnection(URI uri) {
+                mClient = new EditorClient(uri);
+                mInUse = null;
             }
-        }
 
-        @Override
-        public void onClose(int code, String reason, boolean remote) {
-            synchronized (this) {
-                mAlive = false;
+            public boolean isAlive() {
+                return mClient.isAlive();
             }
-            Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
-        }
 
-        @Override
-        public void onError(Exception ex) {
-            if (ex != null && ex.getMessage() != null) {
-                Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
-            } else {
-                Log.e(LOGTAG, "a Websocket error occurred");
+            public boolean connectBlocking() throws InterruptedException {
+                return mClient.connectBlocking();
             }
-        }
 
-        public boolean isAlive() {
-            synchronized (this) {
-                return mAlive;
+            public OutputStream getOutputStream() {
+                if (null != mInUse) {
+                    throw new RuntimeException("Only one websocket output stream should be in use at a time");
+                }
+                mInUse = new WebSocketOutputStream();
+                return mInUse;
             }
-        }
 
-        private boolean mAlive;
-        private final Protocol mProtocol;
-    }
+            public void releaseOutputStream(OutputStream out) {
+                if (out != mInUse) {
+                    throw new RuntimeException("Only one output stream should be in use at a time");
+                }
+            }
 
-    /*
-     * Protocol knows how to turn inbound JSON into instructions.
-     */
-    private class Protocol { // TODO MOVE JSON STUFF HERE
-        public void respond(JSONObject messageJson) {
-            try {
-                String messageType;
-                JSONObject payload = null;
-                messageType = messageJson.getString("type");
-                if (messageJson.has("payload")) {
-                    payload = messageJson.getJSONObject("payload");
+            /* WILL SEND GARBAGE if multiple responses end up interleaved.
+             * Only one response should be in progress at a time.
+             */
+            private class WebSocketOutputStream extends ByteArrayOutputStream {
+                @Override
+                public void write(int b) {
+                    checkFlush();
+                    super.write(b);
                 }
 
-                // TODO actual multiplexing messages based on messageType
-                Message m = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING, mContext);
-                mHandler.sendMessage(m);
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "Can't interpret message due to missing fields: " + messageJson.toString(), e);
+                @Override
+                public void write(byte[] b, int off, int len) {
+                    checkFlush();
+                    super.write(b, off, len);
+                }
+
+                @Override
+                public void close() {
+                    final ByteBuffer message = ByteBuffer.wrap(toByteArray());
+                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, true);
+                    reset();
+                }
+
+                private void checkFlush() {
+                    if (size() > MAX_BUFFER_SIZE) {
+                        final ByteBuffer message = ByteBuffer.wrap(toByteArray());
+                        mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
+                        reset();
+                    }
+                }
+
+                private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
             }
+
+            private WebSocketOutputStream mInUse;
+            private final EditorClient mClient;
         }
+
+        /**
+         * EditorClient should handle all communication to and from the socket. It should be fairly naive and
+         * only know how to delegate messages to the ABHandler class.
+         *
+         * EditorClient should ONLY EVER Write from the Handler thread, and only ever pass
+         * reads directly to the handler thread.
+         *
+         * And really, the wweb
+         */
+        private class EditorClient extends WebSocketClient {
+            public EditorClient(URI uri) {
+                super(uri);
+                mAlive = true;
+            }
+
+            @Override
+            public void onOpen(ServerHandshake handshakedata) {
+                Log.i(LOGTAG, "Connected");
+            }
+
+            @Override
+            public void onMessage(String message) {
+                Log.d(LOGTAG, "message: " + message);
+                try {
+                    final JSONObject messageJson = new JSONObject(message);
+                    String messageType;
+                    JSONObject payload = null;
+                    messageType = messageJson.getString("type");
+                    if (messageJson.has("payload")) {
+                        payload = messageJson.getJSONObject("payload");
+                    }
+
+                    // TODO actual multiplexing messages based on messageType
+                    Message m = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING, mContext);
+                    mHandler.sendMessage(m);
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Bad JSON received:" + message, e);
+                }
+            }
+
+            @Override
+            public void onClose(int code, String reason, boolean remote) {
+                synchronized (this) {
+                    mAlive = false;
+                }
+                Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
+            }
+
+            @Override
+            public void onError(Exception ex) {
+                if (ex != null && ex.getMessage() != null) {
+                    Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
+                } else {
+                    Log.e(LOGTAG, "a Websocket error occurred");
+                }
+            }
+
+            public boolean isAlive() {
+                synchronized (this) {
+                    return mAlive;
+                }
+            }
+
+            private boolean mAlive;
+        }
+
+        private EditorConnection mEditorConnection;
     }
 
     public interface TweakChangeCallback {
@@ -399,6 +467,7 @@ public class ABTesting {
         return mTweaks;
     }
 
+
     private ABHandler mHandler;
     private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
@@ -408,5 +477,7 @@ public class ABTesting {
     private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
+
+    @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";
 }
