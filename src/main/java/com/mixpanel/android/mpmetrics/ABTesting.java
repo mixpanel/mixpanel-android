@@ -77,7 +77,7 @@ public class ABTesting {
                     if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                         mDown++;
                         if (mDown == 5) {
-                            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_PROXY));
+                            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
                         }
                     } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
                         mDown--;
@@ -124,8 +124,8 @@ public class ABTesting {
         @Override
         public void handleMessage(Message msg) {
             switch(msg.what) {
-                case MESSAGE_CONNECT_TO_PROXY:
-                    this.connectToProxy();
+                case MESSAGE_CONNECT_TO_EDITOR:
+                    this.connectToEditor();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     this.sendStateForEditing();
@@ -137,25 +137,25 @@ public class ABTesting {
             }
         }
 
-        private void connectToProxy() {
-            Log.v(LOGTAG, "connectToProxy called");
+        private void connectToEditor() {
+            Log.v(LOGTAG, "connectToEditor called");
 
-            if (mProxyClient == null || !mProxyClient.isAlive()) {
+            if (mEditorClient == null || !mEditorClient.isAlive()) {
                 final String baseUrl = MPConfig.getInstance(mContext).getABTestingUrl();
                 try {
-                    mProxyClient = new ProxyClient(new URI(baseUrl + mToken));
+                    mEditorClient = new EditorClient(new URI(baseUrl + mToken));
                 } catch (URISyntaxException e) {
-                    Log.e(LOGTAG, "Error parsing URI for proxy", e);
+                    Log.e(LOGTAG, "Error parsing URI for editor websocket", e);
                 }
 
                 try {
-                    boolean connected = mProxyClient.connectBlocking();
+                    boolean connected = mEditorClient.connectBlocking();
                     if (! connected) {
                         Log.d(LOGTAG, "Can't connect to endpoint " + baseUrl);
-                        mProxyClient = null;
+                        mEditorClient = null;
                     }
                 } catch (InterruptedException e) {
-                    mProxyClient = null;
+                    mEditorClient = null;
                     Log.e(LOGTAG, "Editor client was interrupted during connection", e);
                 }
             }
@@ -199,7 +199,7 @@ public class ABTesting {
                 sb.append(new JSONObject(mTweaks.getAll()).toString());
 
                 sb.append("}");
-                mProxyClient.send(sb.toString());
+                mEditorClient.send(sb.toString());
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             }
@@ -312,15 +312,15 @@ public class ABTesting {
             return dump;
         }
 
-        private ProxyClient mProxyClient; // TODO rename, we don't need this to be a proxy
+        private EditorClient mEditorClient;
     }
 
     /**
-     * ProxyClient should handle all communication to and from the socket. It should be fairly naive and
+     * EditorClient should handle all communication to and from the socket. It should be fairly naive and
      * only know how to delegate messages to the ABHandler class.
      */
-    private class ProxyClient extends WebSocketClient {
-        public ProxyClient(URI uri) {
+    private class EditorClient extends WebSocketClient {
+        public EditorClient(URI uri) {
             super(uri);
             mAlive = true;
             mProtocol = new Protocol();
@@ -405,7 +405,7 @@ public class ABTesting {
     private final List<Activity> mLiveActivities = new ArrayList<Activity>();
     private final String mToken;
 
-    private static final int MESSAGE_CONNECT_TO_PROXY = 0;
+    private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
     private static final String LOGTAG = "ABTesting";
