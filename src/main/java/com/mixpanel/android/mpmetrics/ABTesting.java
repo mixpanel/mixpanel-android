@@ -222,7 +222,7 @@ public class ABTesting {
             Log.v(LOGTAG, "applyChanges called on " + activity.getClass().getCanonicalName());
         }
 
-        // Writes a QUOTED, Base64 string to writer, or the string "null" if no bitmap could be written
+        // Writes a QUOTED, Base64 string to the given StringBuilder, or the string "null" if no bitmap could be written
         // due to memory or rendering issues.
         private void writeScreenshot(View rootView, StringBuilder sb) throws IOException {
             // This screenshot method is not how the Android folks do it in View.createSnapshot,
