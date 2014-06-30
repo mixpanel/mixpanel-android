@@ -409,6 +409,7 @@ public class ABTesting {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        return null;
     }
 
     private ABHandler mHandler;
