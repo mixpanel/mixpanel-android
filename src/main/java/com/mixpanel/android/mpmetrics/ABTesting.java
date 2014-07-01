@@ -18,6 +18,7 @@ import android.view.ViewGroup;
 
 import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
+import com.mixpanel.android.abtesting.ViewTraversal;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.framing.Framedata;
@@ -37,6 +38,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -196,9 +198,21 @@ public class ABTesting {
                     writer.write("\"screenshot\": ");
                     writeScreenshot(rootView, writer);
                     writer.write(",");
+                    writer.write("\"rootView\": ");
+                    writer.write(Integer.toString(rootView.hashCode()));
+                    writer.write(",");
 
-                    writer.write("\"view\": [");
-                    writer.write(serializeView(rootView, 1).toString());
+                    writer.write("\"views\": [");
+                    final ViewTraversal traversal = new ViewTraversal(rootView);
+                    boolean firstView = true;
+                    while (traversal.hasNext()) {
+                        if (firstView) {
+                            firstView = false;
+                        } else {
+                            writer.write(", ");
+                        }
+                        writer.write(serializeView(traversal.next()).toString());
+                    }
                     writer.write("]");
 
                     writer.write("}");
@@ -268,7 +282,7 @@ public class ABTesting {
             }
         }
 
-        private JSONObject serializeView(View view, int index) throws IOException {
+        private JSONObject serializeView(View view) throws IOException {
             final JSONObject dump = new JSONObject();
             try {
                 dump.put("hashCode", view.hashCode());
@@ -288,6 +302,7 @@ public class ABTesting {
                 } while (klass != Object.class);
                 dump.put("classes", classes);
 
+                // TODO interpret whitelist for methods
                 JSONArray methodList = new JSONArray();
                 for (Method m : view.getClass().getMethods()) {
                     JSONObject method = new JSONObject();
@@ -306,22 +321,14 @@ public class ABTesting {
 
                 JSONArray children = new JSONArray();
                 if (view instanceof ViewGroup) {
-                    final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
                     final ViewGroup group = (ViewGroup) view;
                     final int childCount = group.getChildCount();
-
                     for (int i = 0; i < childCount; i++) {
                         final View child = group.getChildAt(i);
-                        int childIndex = 1;
-                        if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
-                            childIndex = viewIndex.get(child.getClass().getCanonicalName()) + 1;
-                        }
-                        viewIndex.put(child.getClass().getCanonicalName(), childIndex);
-                        children.put(serializeView(child, childIndex));
+                        children.put(child.hashCode());
                     }
                 }
                 dump.put("children", children);
-                dump.put("index", index);
             } catch (JSONException impossible) {
                 throw new RuntimeException("Apparently Impossible JSONException", impossible);
             }
@@ -397,11 +404,6 @@ public class ABTesting {
         /**
          * EditorClient should handle all communication to and from the socket. It should be fairly naive and
          * only know how to delegate messages to the ABHandler class.
-         *
-         * EditorClient should ONLY EVER Write from the Handler thread, and only ever pass
-         * reads directly to the handler thread.
-         *
-         * And really, the wweb
          */
         private class EditorClient extends WebSocketClient {
             public EditorClient(URI uri) {
