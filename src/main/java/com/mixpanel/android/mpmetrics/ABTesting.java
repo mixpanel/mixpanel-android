@@ -372,6 +372,7 @@ public class ABTesting {
                 if (out != mInUse) {
                     throw new RuntimeException("Only one output stream should be in use at a time");
                 }
+                mInUse = null;
             }
 
             /* WILL SEND GARBAGE if multiple responses end up interleaved.
