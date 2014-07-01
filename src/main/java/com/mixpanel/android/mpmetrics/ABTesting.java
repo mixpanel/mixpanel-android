@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mixpanel.android.abtesting.SampleConfig;
+import com.mixpanel.android.abtesting.ViewEdit;
 import com.mixpanel.android.abtesting.Tweaks;
 
 import org.java_websocket.client.WebSocketClient;
@@ -96,20 +97,20 @@ public class ABTesting {
 
                 private int mDown = 0;
             });
-        }
-
-        @Override
-        public void onActivityResumed(Activity activity) {
             mLiveActivities.add(activity);
         }
 
         @Override
+        public void onActivityResumed(Activity activity) {
+        }
+
+        @Override
         public void onActivityPaused(Activity activity) {
-            mLiveActivities.remove(activity);
         }
 
         @Override
         public void onActivityStopped(Activity activity) {
+            mLiveActivities.remove(activity);
         }
 
         @Override
@@ -140,8 +141,7 @@ public class ABTesting {
                     this.sendStateForEditing();
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
-                    Map<String, Object> args = (Map<String, Object>) msg.obj;
-                    this.handleChangesReceived((JSONObject) args.get("changes"), (Boolean) args.get("persist"), (Boolean) args.get("applyToLive"));
+                    handleChangesReceived((JSONObject) msg.obj, true, true);
                     break;
             }
         }
@@ -150,18 +150,20 @@ public class ABTesting {
             Log.v(LOGTAG, "connectToEditor called");
 
             if (mEditorConnection == null || !mEditorConnection.isAlive()) {
-                final String baseUrl = MPConfig.getInstance(mContext).getABTestingUrl();
+                final String url = MPConfig.getInstance(mContext).getABTestingUrl() + mToken;
                 try {
-                    mEditorConnection = new EditorConnection(new URI(baseUrl + mToken));
+                    mEditorConnection = new EditorConnection(new URI(url));
+
                 } catch (URISyntaxException e) {
-                    Log.e(LOGTAG, "Error parsing URI for editor websocket", e);
+                    Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
                 }
 
                 try {
                     boolean connected = mEditorConnection.connectBlocking();
                     if (!connected) {
-                        Log.d(LOGTAG, "Can't connect to endpoint " + baseUrl);
+                        Log.d(LOGTAG, "Can't connect to endpoint " + url);
                         mEditorConnection = null;
+
                     }
                 } catch (InterruptedException e) {
                     mEditorConnection = null;
@@ -228,14 +230,23 @@ public class ABTesting {
             }
 
             if (applyToLive) {
-                for (Activity activity : mLiveActivities) {
-                    applyChanges(activity, changes);
+
+                try {
+                    String targetActivity = changes.getString("target");
+                    for (Activity a : mLiveActivities) {
+                        if (a.getClass().getCanonicalName().equals(targetActivity)) {
+                            ViewEdit inst = new ViewEdit(
+                                changes.getJSONObject("change"), a.getWindow().getDecorView().getRootView());
+                            a.runOnUiThread(inst);
+                            break;
+                        }
+                    }
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Bad JSON received for changes", e);
+                } catch (ViewEdit.BadInstructionsException e) {
+                    Log.e(LOGTAG, "Bad JSON received for changes", e);
                 }
             }
-        }
-
-        private void applyChanges(Activity activity, JSONObject changes) {
-            Log.v(LOGTAG, "applyChanges called on " + activity.getClass().getCanonicalName());
         }
 
         // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
@@ -419,16 +430,17 @@ public class ABTesting {
                 Log.d(LOGTAG, "message: " + message);
                 try {
                     final JSONObject messageJson = new JSONObject(message);
-                    String messageType;
-                    JSONObject payload = null;
-                    messageType = messageJson.getString("type");
-                    if (messageJson.has("payload")) {
-                        payload = messageJson.getJSONObject("payload");
-                    }
+                    String type = messageJson.getString("type");
+                    if (type.equals("snapshot_request")) {
+                        Message msg = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING);
+                        mHandler.sendMessage(msg);
+                    } else if (type.equals("change_request")) {
+                        Message msg = mHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED);
+                        msg.obj = messageJson;
+                        mHandler.sendMessage(msg);
 
-                    // TODO actual multiplexing messages based on messageType
-                    Message m = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING, mContext);
-                    mHandler.sendMessage(m);
+                        // TODO actual multiplexing messages based on messageType
+                    }
                 } catch (JSONException e) {
                     Log.e(LOGTAG, "Bad JSON received:" + message, e);
                 }
