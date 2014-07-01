@@ -18,14 +18,13 @@ import java.util.Map;
 
 
 public class ViewEdit implements Runnable {
-
     public class BadInstructionsException extends Exception {
-        private BadInstructionsException(String message) {
+        public BadInstructionsException(String message) {
             super(message);
         }
 
-        private BadInstructionsException(String message, Throwable exception) {
-            super(message, exception);
+        public BadInstructionsException(String message, Exception e) {
+            super(message, e);
         }
     }
 

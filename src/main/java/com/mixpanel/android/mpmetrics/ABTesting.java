@@ -66,15 +66,6 @@ public class ABTesting {
         Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
-    void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
-        Map<String, Object> args = new HashMap<String, Object>();
-        args.put("changes", changes);
-        args.put("persist", persist);
-        args.put("applyToLive", applyToLive);
-        Message m = mHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED, args);
-        mHandler.sendMessage(m);
-    }
-
     @TargetApi(14)
     private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
         public void onActivityCreated(Activity activity, Bundle bundle) {
@@ -100,6 +91,21 @@ public class ABTesting {
                 private int mDown = 0;
             });
             mLiveActivities.add(activity);
+
+            synchronized(mChanges) {
+                ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
+                if (null != changes) {
+                    for (JSONObject j : changes) {
+                        try {
+                            ViewEdit inst = new ViewEdit(j, activity.getWindow().getDecorView().getRootView());
+                            activity.runOnUiThread(inst);
+                        } catch (ViewEdit.BadInstructionsException e) {
+                            Log.e(LOGTAG, "Bad change request saved in mChanges", e);
+                        }
+                    }
+                    mChanges.remove(activity.getClass().getCanonicalName());
+                }
+            }
         }
 
         @Override
@@ -143,7 +149,11 @@ public class ABTesting {
                     this.sendStateForEditing();
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
-                    handleChangesReceived((JSONObject) msg.obj, true, true);
+                    try {
+                        handleChangesReceived((JSONObject) msg.obj, true, true);
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Bad change request received", e);
+                    }
                     break;
             }
         }
@@ -237,29 +247,38 @@ public class ABTesting {
             }
         }
 
-        private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
-            if (persist) {
-                Log.v(LOGTAG, "persisting received changes");
-                // todo: write persistence logic for changes
-            }
+        private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) throws JSONException {
+            String targetActivity = changes.getString("target");
+            JSONObject change = changes.getJSONObject("change");
 
             if (applyToLive) {
-
                 try {
-                    String targetActivity = changes.getString("target");
                     for (Activity a : mLiveActivities) {
                         if (a.getClass().getCanonicalName().equals(targetActivity)) {
-                            ViewEdit inst = new ViewEdit(
-                                changes.getJSONObject("change"), a.getWindow().getDecorView().getRootView());
+                            ViewEdit inst = new ViewEdit(change, a.getWindow().getDecorView().getRootView());
                             a.runOnUiThread(inst);
                             break;
                         }
                     }
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Bad JSON received for changes", e);
                 } catch (ViewEdit.BadInstructionsException e) {
-                    Log.e(LOGTAG, "Bad JSON received for changes", e);
+                    Log.e(LOGTAG, "Bad instructions received", e);
                 }
+            } else {
+                synchronized(mChanges) {
+                    ArrayList<JSONObject> changeList;
+                    if (mChanges.containsKey(targetActivity)) {
+                        changeList = mChanges.get(targetActivity);
+                    } else {
+                        changeList = new ArrayList<JSONObject>();
+                        mChanges.put(targetActivity, changeList);
+                    }
+                    changeList.add(change);
+                }
+            }
+
+            if (persist) {
+                Log.v(LOGTAG, "persisting received changes");
+                // todo: write persistence logic for changes
             }
         }
 
@@ -499,6 +518,8 @@ public class ABTesting {
     private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
     private final List<Activity> mLiveActivities = new ArrayList<Activity>();
+    private final Map<String, ArrayList<JSONObject>> mChanges =
+            new HashMap<String, ArrayList<JSONObject>>();
     private final String mToken;
 
     private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
