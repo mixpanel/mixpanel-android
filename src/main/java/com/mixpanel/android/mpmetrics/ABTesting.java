@@ -41,7 +41,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -139,6 +138,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             switch (msg.what) {
                 case MESSAGE_INITIALIZE_CHANGES:
                     this.initializeChanges();
+                    break;
                 case MESSAGE_CONNECT_TO_EDITOR:
                     this.connectToEditor();
                     break;
