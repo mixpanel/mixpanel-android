@@ -28,18 +28,20 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -140,7 +142,7 @@ public class ABTesting {
                     this.connectToEditor();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
-                    this.sendStateForEditing();
+                    this.sendStateForEditing((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
                     handleChangesReceived((JSONObject) msg.obj, true, true);
@@ -174,8 +176,51 @@ public class ABTesting {
             }
         }
 
-        private void sendStateForEditing() {
+        private void sendError(String errorMessage) {
+            final JSONObject errorObject = new JSONObject();
+            try {
+                errorObject.put("error_message", errorMessage);
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Apparently impossible JSONException", e);
+            }
+
+            final OutputStream out = mEditorConnection.getOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
+            try {
+                writer.write("{\"type\": \"error\", ");
+                writer.write("\"payload\": ");
+                writer.write(errorObject.toString());
+                writer.write("}");
+            } catch (IOException e) {
+                Log.e(LOGTAG, "Can't write error message to editor", e);
+            } finally {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "    Could not close output writer to editor", e);
+                }
+                mEditorConnection.releaseOutputStream(out);
+            }
+        }
+
+        private void sendStateForEditing(JSONObject message) {
             Log.v(LOGTAG, "sendStateForEditing");
+
+            SnapshotConfig config;
+            try {
+                final JSONObject payload = message.getJSONObject("payload");
+                config = new SnapshotConfig(payload); // TODO should this just be an EditInstructions?
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
+                sendError("Payload with snapshot config required with snapshot request");
+                return;
+            } catch (BadConfigException e) {
+                Log.e(LOGTAG, "Editor sent malformed message with snapshot request", e);
+                sendError(e.getMessage());
+                return;
+            }
+            // ELSE config is valid:
+
             final OutputStream out = mEditorConnection.getOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
             try {
@@ -213,7 +258,7 @@ public class ABTesting {
                         } else {
                             writer.write(", ");
                         }
-                        writer.write(serializeView(traversal.next()).toString());
+                        writer.write(snapshotView(traversal.next(), config).toString());
                     }
                     writer.write("]");
 
@@ -282,7 +327,7 @@ public class ABTesting {
                 writer.write("\"");
                 final ByteArrayOutputStream out = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 30, out);
-                writer.write(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP)); // TODO I think this NO_PADDING is gonna break stuff?
+                writer.write(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP)); // TODO We can stream the base64, and this could be a *lot* of memory otherwise
                 writer.write("\"");
             } else {
                 writer.write("null");
@@ -293,7 +338,7 @@ public class ABTesting {
             }
         }
 
-        private JSONObject serializeView(View view) throws IOException {
+        private JSONObject snapshotView(View view, SnapshotConfig config) throws IOException {
             final JSONObject dump = new JSONObject();
             try {
                 dump.put("hashCode", view.hashCode());
@@ -313,22 +358,7 @@ public class ABTesting {
                 } while (klass != Object.class);
                 dump.put("classes", classes);
 
-                // TODO interpret whitelist for methods
-                JSONArray methodList = new JSONArray();
-                for (Method m : view.getClass().getMethods()) {
-                    JSONObject method = new JSONObject();
-                    if (m.getName().startsWith("set")) {
-                        JSONArray argTypes = new JSONArray();
-                        for (Class c : m.getParameterTypes()) {
-                            argTypes.put(c.getCanonicalName());
-                        }
-
-                        method.put("name", m.getName());
-                        method.put("args", argTypes);
-                        methodList.put(method);
-                    }
-                }
-                dump.put("methods", methodList);
+                config.addProperties(view, dump);
 
                 JSONArray children = new JSONArray();
                 if (view instanceof ViewGroup) {
@@ -364,7 +394,7 @@ public class ABTesting {
                 if (null != mInUse) {
                     throw new RuntimeException("Only one websocket output stream should be in use at a time");
                 }
-                mInUse = new WebSocketOutputStream();
+                mInUse = new BufferedOutputStream(new WebSocketOutputStream(), MAX_BUFFER_SIZE);
                 return mInUse;
             }
 
@@ -378,38 +408,33 @@ public class ABTesting {
             /* WILL SEND GARBAGE if multiple responses end up interleaved.
              * Only one response should be in progress at a time.
              */
-            private class WebSocketOutputStream extends ByteArrayOutputStream {
+            private class WebSocketOutputStream extends OutputStream {
                 @Override
                 public void write(int b) {
-                    checkFlush();
-                    super.write(b);
+                    // This should never be called.
+                    byte[] oneByte = new byte[1];
+                    oneByte[0] = (byte) b;
+                    write(oneByte, 0, 1);
+                }
+
+                @Override
+                public void write(byte[] b) {
+                    write(b, 0, b.length);
                 }
 
                 @Override
                 public void write(byte[] b, int off, int len) {
-                    checkFlush();
-                    super.write(b, off, len);
+                    final ByteBuffer message = ByteBuffer.wrap(b, off, len);
+                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
                 }
 
                 @Override
                 public void close() {
-                    final ByteBuffer message = ByteBuffer.wrap(toByteArray());
-                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, true);
-                    reset();
+                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, EMPTY_BYTE_BUFFER, true);
                 }
-
-                private void checkFlush() {
-                    if (size() > MAX_BUFFER_SIZE) {
-                        final ByteBuffer message = ByteBuffer.wrap(toByteArray());
-                        mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
-                        reset();
-                    }
-                }
-
-                private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
             }
 
-            private WebSocketOutputStream mInUse;
+            private BufferedOutputStream mInUse;
             private final EditorClient mClient;
         }
 
@@ -436,13 +461,12 @@ public class ABTesting {
                     String type = messageJson.getString("type");
                     if (type.equals("snapshot_request")) {
                         Message msg = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING);
+                        msg.obj = messageJson;
                         mHandler.sendMessage(msg);
                     } else if (type.equals("change_request")) {
                         Message msg = mHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED);
                         msg.obj = messageJson;
                         mHandler.sendMessage(msg);
-
-                        // TODO actual multiplexing messages based on messageType
                     }
                 } catch (JSONException e) {
                     Log.e(LOGTAG, "Bad JSON received:" + message, e);
@@ -478,6 +502,102 @@ public class ABTesting {
         private EditorConnection mEditorConnection;
     }
 
+    private static class BadConfigException extends Exception {
+        public BadConfigException(String message) {
+            super(message);
+        }
+
+        public BadConfigException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    private static class SnapshotConfig {
+        public SnapshotConfig(JSONObject config)
+            throws BadConfigException {
+            mProperties = new ArrayList<PropertyDescription>();
+
+            try {
+                final JSONArray classes = config.getJSONArray("classes");
+                for (int classIx = 0; classIx < classes.length(); classIx++) {
+                    final JSONObject classDesc = classes.getJSONObject(classIx);
+                    final String targetClassName = classDesc.getString("name");
+                    final Class targetClass = Class.forName(targetClassName);
+
+                    final JSONArray propertyDescs = classDesc.getJSONArray("properties");
+                    for (int i = 0; i < propertyDescs.length(); i++) {
+                        final JSONObject propertyDesc = propertyDescs.getJSONObject(i);
+                        final String propName = propertyDesc.getString("name");
+                        final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
+                        final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
+
+                        final String accessorName = accessorConfig.getString("selector");
+                        final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
+                        final Class accessorResultType = Class.forName(accessorResultTypeName);
+                        final Method accessorMethod = ViewEdit.getCompatibleMethod(targetClass, accessorName, NO_PARAMS, accessorResultType);
+                        if (null == accessorMethod) {
+                            throw new BadConfigException("Property accessor " + accessorName + " doesn't appear on type " + targetClassName + " (or param/return types are incorrect)");
+                        }
+
+                        final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
+                        final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
+                        for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
+                            final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
+                            mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
+                        }
+                        final String mutatorName = mutatorConfig.getString("selector");
+                        final Method mutatorMethod = ViewEdit.getCompatibleMethod(targetClass, mutatorName, mutatorParamTypes, Void.TYPE);
+                        if (null == mutatorMethod) {
+                            throw new BadConfigException("Property accessor " + mutatorName + " doesn't appear on type " + targetClassName + " (or param/return types are incorrect)");
+                        }
+
+                        final PropertyDescription desc = new PropertyDescription(propName, targetClass, accessorMethod, mutatorMethod);
+                        mProperties.add(desc);
+                    }
+                }
+            } catch (JSONException e) {
+                throw new BadConfigException("Can't read snapshot configuration", e);
+            } catch (ClassNotFoundException e) {
+                throw new BadConfigException("Can't resolve types for snapshot configuration", e);
+            }
+        }
+
+        public void addProperties(View v, JSONObject out) {
+            for (PropertyDescription desc: mProperties) {
+                if (desc.targetClass.isAssignableFrom(v.getClass())) {
+                    try {
+                        Object value = desc.accessor.invoke(v); // TODO Marshalling this value?
+                        out.put(desc.name, value);
+                    } catch (IllegalAccessException e) {
+                        Log.e(LOGTAG, "Can't call property access method " + desc.name + " - it is private or protected.", e);
+                    } catch (InvocationTargetException e) {
+                        Log.e(LOGTAG, "Encountered an exception while calling " + desc.name + " to read property.", e);
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Can't marshall value of property " + desc.name + " into JSON.", e);
+                    }
+                }
+            }
+        }
+
+        private static class PropertyDescription {
+            public PropertyDescription(String nm, Class target, Method access, Method mutate) {
+                name = nm;
+                targetClass = target;
+                accessor = access;
+                mutator = mutate;
+            }
+
+            public final String name;
+            public final Class targetClass;
+            public final Method accessor;
+            public final Method mutator;
+        }
+
+        private final List<PropertyDescription> mProperties;
+
+        private static final Class[] NO_PARAMS = new Class[0];
+    }
+
     public interface TweakChangeCallback {
         public void onChange(Object value);
     }
@@ -504,6 +624,9 @@ public class ABTesting {
     private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
+
+    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
+    private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";

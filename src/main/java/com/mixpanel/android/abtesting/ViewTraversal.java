@@ -5,7 +5,7 @@ import android.view.ViewGroup;
 
 import java.util.Iterator;
 
-public class ViewTraversal implements Iterator<View> {
+public class ViewTraversal implements Iterator<View> { // TODO cut this and just recur during serializeView
     public ViewTraversal(View v) {
         mHead = v;
         if (v instanceof ViewGroup) {

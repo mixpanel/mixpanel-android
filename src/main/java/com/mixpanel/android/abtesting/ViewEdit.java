@@ -29,6 +29,52 @@ public class ViewEdit implements Runnable {
         }
     }
 
+    /*
+     * Apparently this is the actual state of the actual art.
+     */
+    public static Method getCompatibleMethod(Class klass, String methodName, Class[] args, Class result) {
+        for (Method method : klass.getMethods()) {
+            final String foundName = method.getName();
+            final Class[] params = method.getParameterTypes();
+
+            if (!foundName.equals(methodName) || params.length != args.length) {
+                continue;
+            }
+
+            final Class resultType = method.getReturnType();
+            if (! result.isAssignableFrom(resultType)) { // TODO need a test Void.TYPE.isAssignableFrom(Void.TYPE)
+                continue;
+            }
+
+            boolean assignable = true;
+            for (int i = 0; i < params.length && assignable; i++) {
+                Class argumentType = args[i];
+
+                // a.isAssignableFrom(b) only tests if b is a
+                // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
+                // b is an Integer, so we have to make the Object types primitive types. When the
+                // function is finally invoked, autoboxing will take care of the the cast.
+                if (argumentType == Integer.class) {
+                    argumentType = int.class;
+                } else if (argumentType == Float.class) {
+                    argumentType = float.class;
+                } else if (argumentType == Double.class) {
+                    argumentType = double.class;
+                } else if (argumentType == Boolean.class) {
+                    argumentType = boolean.class;
+                }
+
+                assignable = params[i].isAssignableFrom(argumentType);
+            }
+
+            if (assignable) {
+                return method;
+            }
+        }
+
+        return null;
+    }
+
     public ViewEdit(JSONObject source, View rootView) throws BadInstructionsException {
         mSource = source;
         mRootView = rootView;
@@ -46,21 +92,7 @@ public class ViewEdit implements Runnable {
                 final Object jsonArg = argPlusType.get(0);
                 final String argType = argPlusType.getString(1);
                 mMethodArgs[i] = convertArgument(jsonArg, argType);
-
-                // a.isAssignableFrom(b) which we use in getCompatibleMethod only tests if b is a
-                // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
-                // b is an Integer, so we have to make the Object types primitive types. When the
-                // function is finally invoked, autoboxing will take care of the the cast.
                 mMethodTypes[i] = mMethodArgs[i].getClass();
-                if (mMethodTypes[i] == Integer.class) {
-                    mMethodTypes[i] = int.class;
-                } else if (mMethodTypes[i] == Float.class) {
-                    mMethodTypes[i] = float.class;
-                } else if (mMethodTypes[i] == Double.class) {
-                    mMethodTypes[i] = double.class;
-                } else if (mMethodTypes[i] == Boolean.class) {
-                    mMethodTypes[i] = boolean.class;
-                }
             }
 
             if (mPath.length() == 0) {
@@ -111,31 +143,6 @@ public class ViewEdit implements Runnable {
         }
     }
 
-    /*
-     * Apparently this is the actual state of the actual art.
-     */
-    private Method getCompatibleMethod(Class klass, String methodName, Class[] args) {
-        for (Method method : klass.getMethods()) {
-            final String foundName = method.getName();
-            final Class[] params = method.getParameterTypes();
-
-            if (!foundName.equals(methodName) || params.length != args.length) {
-                continue;
-            }
-
-            boolean assignable = true;
-            for (int i = 0; i < params.length && assignable; i++) {
-                assignable = params[i].isAssignableFrom(args[i]);
-            }
-
-            if (assignable) {
-                return method;
-            }
-        }
-
-        return null;
-    }
-
     private Object convertArgument(Object jsonArgument, String type)
             throws BadInstructionsException {
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
@@ -174,7 +181,7 @@ public class ViewEdit implements Runnable {
 
         try {
             final Class viewClass = target.getClass();
-            final Method editMethod = getCompatibleMethod(viewClass, mMethodName, mMethodTypes);
+            final Method editMethod = getCompatibleMethod(viewClass, mMethodName, mMethodTypes, Void.TYPE);
 
             if (editMethod != null) {
                 editMethod.invoke(target, mMethodArgs);
