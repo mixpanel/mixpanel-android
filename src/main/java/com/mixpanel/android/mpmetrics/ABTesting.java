@@ -68,8 +68,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
-    public void onActivityCreated(Activity activity, Bundle bundle) {
-    }
+    public void onActivityCreated(Activity activity, Bundle bundle) { }
 
     @Override
     public void onActivityStarted(Activity activity) {
@@ -108,12 +107,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {
-    }
+    public void onActivityResumed(Activity activity) { }
 
     @Override
-    public void onActivityPaused(Activity activity) {
-    }
+    public void onActivityPaused(Activity activity) { }
 
     @Override
     public void onActivityStopped(Activity activity) {
@@ -121,12 +118,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
-    }
+    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) { }
 
     @Override
-    public void onActivityDestroyed(Activity activity) {
-    }
+    public void onActivityDestroyed(Activity activity) { }
 
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
