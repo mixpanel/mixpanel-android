@@ -51,18 +51,21 @@ import java.util.Map;
 public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     ABTesting(Context context, String token) {
+        if (android.os.Build.VERSION.SDK_INT < 14) {
+            Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
+            return;
+        }
+
         mContext = context;
         mToken = token;
 
-        if (android.os.Build.VERSION.SDK_INT >= 14) {
-            final Application app = (Application) mContext.getApplicationContext();
-            app.registerActivityLifecycleCallbacks(this);
+        final Application app = (Application) mContext.getApplicationContext();
+        app.registerActivityLifecycleCallbacks(this);
 
-            HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
-            thread.start();
-            mHandler = new ABHandler(thread.getLooper());
-            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
-        }
+        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        thread.start();
+        mHandler = new ABHandler(thread.getLooper());
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         Log.v(LOGTAG, "using hierarchy config:");
         Log.v(LOGTAG, getHierarchyConfig().toString());
