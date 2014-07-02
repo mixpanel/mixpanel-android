@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,8 +18,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mixpanel.android.abtesting.SampleConfig;
-import com.mixpanel.android.abtesting.ViewEdit;
 import com.mixpanel.android.abtesting.Tweaks;
+import com.mixpanel.android.abtesting.ViewEdit;
 import com.mixpanel.android.abtesting.ViewTraversal;
 
 import org.java_websocket.client.WebSocketClient;
@@ -39,7 +40,6 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +60,7 @@ public class ABTesting {
             HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
             thread.start();
             mHandler = new ABHandler(thread.getLooper());
+            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
         }
 
         Log.v(LOGTAG, "using hierarchy config:");
@@ -103,7 +104,6 @@ public class ABTesting {
                             Log.e(LOGTAG, "Bad change request saved in mChanges", e);
                         }
                     }
-                    mChanges.remove(activity.getClass().getCanonicalName());
                 }
             }
         }
@@ -142,6 +142,8 @@ public class ABTesting {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
+                case MESSAGE_INITIALIZE_CHANGES:
+                    this.initializeChanges();
                 case MESSAGE_CONNECT_TO_EDITOR:
                     this.connectToEditor();
                     break;
@@ -150,12 +152,27 @@ public class ABTesting {
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
                     try {
-                        handleChangesReceived((JSONObject) msg.obj, true, true);
+                        handleChangesReceived((JSONObject) msg.obj, true, false);
                     } catch (JSONException e) {
                         Log.e(LOGTAG, "Bad change request received", e);
                     }
                     break;
             }
+        }
+
+        private void initializeChanges() {
+            SharedPreferences prefs =
+                mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE);
+            String changes = prefs.getString(SHARED_PREF_CHANGES_KEY, null);
+            if (null != changes) {
+                try {
+                    handleChangesReceived(new JSONObject(changes), false, false);
+                } catch (JSONException e) {
+                    Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
+                    return;
+                }
+            }
+
         }
 
         private void connectToEditor() {
@@ -277,8 +294,11 @@ public class ABTesting {
             }
 
             if (persist) {
-                Log.v(LOGTAG, "persisting received changes");
-                // todo: write persistence logic for changes
+                Log.v(LOGTAG, "Persisting received changes");
+                SharedPreferences.Editor editor =
+                    mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE).edit();
+                editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
+                editor.commit();
             }
         }
 
@@ -522,9 +542,12 @@ public class ABTesting {
             new HashMap<String, ArrayList<JSONObject>>();
     private final String mToken;
 
-    private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
-    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
-    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
+    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
+    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
+    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
+    private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
+    private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";
