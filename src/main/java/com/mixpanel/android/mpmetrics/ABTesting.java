@@ -20,7 +20,6 @@ import android.view.ViewGroup;
 import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
 import com.mixpanel.android.abtesting.ViewEdit;
-import com.mixpanel.android.abtesting.ViewTraversal;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.framing.Framedata;
@@ -269,16 +268,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     writer.write(",");
 
                     writer.write("\"views\": [");
-                    final ViewTraversal traversal = new ViewTraversal(rootView);
-                    boolean firstView = true;
-                    while (traversal.hasNext()) {
-                        if (firstView) {
-                            firstView = false;
-                        } else {
-                            writer.write(", ");
-                        }
-                        writer.write(snapshotView(traversal.next(), config).toString());
-                    }
+                    snapshotView(writer, rootView, config, true);
                     writer.write("]");
 
                     writer.write("}");
@@ -369,7 +359,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-        private JSONObject snapshotView(View view, SnapshotConfig config) throws IOException {
+        private void snapshotView(Writer writer, View view, SnapshotConfig config, boolean first)
+                throws IOException {
             final JSONObject dump = new JSONObject();
             try {
                 dump.put("hashCode", view.hashCode());
@@ -404,7 +395,21 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             } catch (JSONException impossible) {
                 throw new RuntimeException("Apparently Impossible JSONException", impossible);
             }
-            return dump;
+
+            if (! first) {
+                writer.write(", ");
+            }
+
+            writer.write(dump.toString());
+
+            if (view instanceof ViewGroup) {
+                final ViewGroup group = (ViewGroup) view;
+                final int childCount = group.getChildCount();
+                for (int i = 0; i < childCount; i++) {
+                    final View child = group.getChildAt(i);
+                    snapshotView(writer, child, config, false);
+                }
+            }
         }
 
         private class EditorConnection {
