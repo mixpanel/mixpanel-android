@@ -51,11 +51,6 @@ import java.util.Map;
 public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     ABTesting(Context context, String token) {
-        if (android.os.Build.VERSION.SDK_INT < 14) {
-            Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
-            return;
-        }
-
         mContext = context;
         mToken = token;
 
