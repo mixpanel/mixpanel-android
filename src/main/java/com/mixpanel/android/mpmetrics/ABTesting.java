@@ -47,7 +47,8 @@ import java.util.Map;
  * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
  * the ABHandler which runs on a HandlerThread
  */
-public class ABTesting {
+@TargetApi(14)
+public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     ABTesting(Context context, String token) {
         mContext = context;
@@ -55,7 +56,7 @@ public class ABTesting {
 
         if (android.os.Build.VERSION.SDK_INT >= 14) {
             final Application app = (Application) mContext.getApplicationContext();
-            app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
+            app.registerActivityLifecycleCallbacks(this);
 
             HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
             thread.start();
@@ -67,67 +68,64 @@ public class ABTesting {
         Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
-    @TargetApi(14)
-    private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
-        public void onActivityCreated(Activity activity, Bundle bundle) {
-        }
+    public void onActivityCreated(Activity activity, Bundle bundle) {
+    }
 
-        @Override
-        public void onActivityStarted(Activity activity) {
-            activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    int action = motionEvent.getActionMasked();
-                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-                        mDown++;
-                        if (mDown == 5) {
-                            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
-                        }
-                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                        mDown--;
+    @Override
+    public void onActivityStarted(Activity activity) {
+        activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                int action = motionEvent.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                    mDown++;
+                    if (mDown == 5) {
+                        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
                     }
-                    return true;
+                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+                    mDown--;
                 }
+                return true;
+            }
 
-                private int mDown = 0;
-            });
-            mLiveActivities.add(activity);
+            private int mDown = 0;
+        });
+        mLiveActivities.add(activity);
 
-            synchronized(mChanges) {
-                ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
-                if (null != changes) {
-                    for (JSONObject j : changes) {
-                        try {
-                            ViewEdit inst = new ViewEdit(j, activity.getWindow().getDecorView().getRootView());
-                            activity.runOnUiThread(inst);
-                        } catch (ViewEdit.BadInstructionsException e) {
-                            Log.e(LOGTAG, "Bad change request saved in mChanges", e);
-                        }
+        synchronized(mChanges) {
+            ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
+            if (null != changes) {
+                for (JSONObject j : changes) {
+                    try {
+                        ViewEdit inst = new ViewEdit(j, activity.getWindow().getDecorView().getRootView());
+                        activity.runOnUiThread(inst);
+                    } catch (ViewEdit.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad change request saved in mChanges", e);
                     }
                 }
             }
         }
+    }
 
-        @Override
-        public void onActivityResumed(Activity activity) {
-        }
+    @Override
+    public void onActivityResumed(Activity activity) {
+    }
 
-        @Override
-        public void onActivityPaused(Activity activity) {
-        }
+    @Override
+    public void onActivityPaused(Activity activity) {
+    }
 
-        @Override
-        public void onActivityStopped(Activity activity) {
-            mLiveActivities.remove(activity);
-        }
+    @Override
+    public void onActivityStopped(Activity activity) {
+        mLiveActivities.remove(activity);
+    }
 
-        @Override
-        public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
-        }
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
+    }
 
-        @Override
-        public void onActivityDestroyed(Activity activity) {
-        }
+    @Override
+    public void onActivityDestroyed(Activity activity) {
     }
 
     /**
