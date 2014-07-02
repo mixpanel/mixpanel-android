@@ -13,6 +13,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,6 +56,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     ABTesting(Context context, String token) {
         mContext = context;
         mToken = token;
+        mChanges = null;
 
         final Application app = (Application) mContext.getApplicationContext();
         app.registerActivityLifecycleCallbacks(this);
@@ -308,6 +310,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     Log.e(LOGTAG, "Bad instructions received", e);
                 }
             } else {
+                mChanges = new HashMap<String, ArrayList<JSONObject>>();
                 synchronized(mChanges) {
                     ArrayList<JSONObject> changeList;
                     if (mChanges.containsKey(targetActivity)) {
@@ -318,6 +321,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     }
                     changeList.add(change);
                 }
+                runABTestReceivedListeners();
             }
 
             if (persist) {
@@ -651,13 +655,41 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         return null;
     }
 
+    public interface OnMixpanelABTestReceivedListener {
+        public abstract void onMixpanelABTestReceived();
+    }
+
+    public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
+        synchronized(mABTestReceivedListeners) {
+            mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
+        }
+        if (null != mChanges) {
+            runABTestReceivedListeners();
+        }
+    }
+
+    private void runABTestReceivedListeners() {
+        synchronized (mABTestReceivedListeners) {
+            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
+                p.first.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        p.second.onMixpanelABTestReceived();
+                    }
+                });
+            }
+        }
+    }
+
     private ABHandler mHandler;
-    private final Tweaks mTweaks = new Tweaks();
+    private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
+            new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
+    private  Map<String, ArrayList<JSONObject>> mChanges;
+
     private final Context mContext;
-    private final List<Activity> mLiveActivities = new ArrayList<Activity>();
-    private final Map<String, ArrayList<JSONObject>> mChanges =
-            new HashMap<String, ArrayList<JSONObject>>();
     private final String mToken;
+    private final Tweaks mTweaks = new Tweaks();
+    private final List<Activity> mLiveActivities = new ArrayList<Activity>();
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
