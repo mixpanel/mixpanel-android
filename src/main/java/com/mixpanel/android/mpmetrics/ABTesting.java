@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,8 +18,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mixpanel.android.abtesting.SampleConfig;
-import com.mixpanel.android.abtesting.ViewEdit;
 import com.mixpanel.android.abtesting.Tweaks;
+import com.mixpanel.android.abtesting.ViewEdit;
 import com.mixpanel.android.abtesting.ViewTraversal;
 
 import org.java_websocket.client.WebSocketClient;
@@ -49,82 +50,79 @@ import java.util.Map;
  * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
  * the ABHandler which runs on a HandlerThread
  */
-public class ABTesting {
+@TargetApi(14)
+public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     ABTesting(Context context, String token) {
         mContext = context;
         mToken = token;
 
-        if (android.os.Build.VERSION.SDK_INT >= 14) {
-            final Application app = (Application) mContext.getApplicationContext();
-            app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
+        final Application app = (Application) mContext.getApplicationContext();
+        app.registerActivityLifecycleCallbacks(this);
 
-            HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
-            thread.start();
-            mHandler = new ABHandler(thread.getLooper());
-        }
+        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        thread.start();
+        mHandler = new ABHandler(thread.getLooper());
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         Log.v(LOGTAG, "using hierarchy config:");
         Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
-    void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
-        Map<String, Object> args = new HashMap<String, Object>();
-        args.put("changes", changes);
-        args.put("persist", persist);
-        args.put("applyToLive", applyToLive);
-        Message m = mHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED, args);
-        mHandler.sendMessage(m);
-    }
+    public void onActivityCreated(Activity activity, Bundle bundle) { }
 
-    @TargetApi(14)
-    private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
-        public void onActivityCreated(Activity activity, Bundle bundle) {
-        }
-
-        @Override
-        public void onActivityStarted(Activity activity) {
-            activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    int action = motionEvent.getActionMasked();
-                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-                        mDown++;
-                        if (mDown == 5) {
-                            mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
-                        }
-                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                        mDown--;
+    @Override
+    public void onActivityStarted(Activity activity) {
+        activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                int action = motionEvent.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                    mDown++;
+                    if (mDown == 5) {
+                        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
                     }
-                    return true;
+                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+                    mDown--;
                 }
+                return true;
+            }
 
-                private int mDown = 0;
-            });
-            mLiveActivities.add(activity);
-        }
+            private int mDown = 0;
+        });
+        mLiveActivities.add(activity);
 
-        @Override
-        public void onActivityResumed(Activity activity) {
-        }
-
-        @Override
-        public void onActivityPaused(Activity activity) {
-        }
-
-        @Override
-        public void onActivityStopped(Activity activity) {
-            mLiveActivities.remove(activity);
-        }
-
-        @Override
-        public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
-        }
-
-        @Override
-        public void onActivityDestroyed(Activity activity) {
+        synchronized(mChanges) {
+            ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
+            if (null != changes) {
+                for (JSONObject j : changes) {
+                    try {
+                        ViewEdit inst = new ViewEdit(j, activity.getWindow().getDecorView().getRootView());
+                        activity.runOnUiThread(inst);
+                    } catch (ViewEdit.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad change request saved in mChanges", e);
+                    }
+                }
+            }
         }
     }
+
+    @Override
+    public void onActivityResumed(Activity activity) { }
+
+    @Override
+    public void onActivityPaused(Activity activity) { }
+
+    @Override
+    public void onActivityStopped(Activity activity) {
+        mLiveActivities.remove(activity);
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) { }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) { }
 
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
@@ -138,6 +136,8 @@ public class ABTesting {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
+                case MESSAGE_INITIALIZE_CHANGES:
+                    this.initializeChanges();
                 case MESSAGE_CONNECT_TO_EDITOR:
                     this.connectToEditor();
                     break;
@@ -145,9 +145,28 @@ public class ABTesting {
                     this.sendStateForEditing((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
-                    handleChangesReceived((JSONObject) msg.obj, true, true);
+                    try {
+                        handleChangesReceived((JSONObject) msg.obj, true, false);
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Bad change request received", e);
+                    }
                     break;
             }
+        }
+
+        private void initializeChanges() {
+            SharedPreferences prefs =
+                mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE);
+            String changes = prefs.getString(SHARED_PREF_CHANGES_KEY, null);
+            if (null != changes) {
+                try {
+                    handleChangesReceived(new JSONObject(changes), false, false);
+                } catch (JSONException e) {
+                    Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
+                    return;
+                }
+            }
+
         }
 
         private void connectToEditor() {
@@ -282,29 +301,41 @@ public class ABTesting {
             }
         }
 
-        private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) {
-            if (persist) {
-                Log.v(LOGTAG, "persisting received changes");
-                // todo: write persistence logic for changes
-            }
+        private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) throws JSONException {
+            String targetActivity = changes.getString("target");
+            JSONObject change = changes.getJSONObject("change");
 
             if (applyToLive) {
-
                 try {
-                    String targetActivity = changes.getString("target");
                     for (Activity a : mLiveActivities) {
                         if (a.getClass().getCanonicalName().equals(targetActivity)) {
-                            ViewEdit inst = new ViewEdit(
-                                changes.getJSONObject("change"), a.getWindow().getDecorView().getRootView());
+                            ViewEdit inst = new ViewEdit(change, a.getWindow().getDecorView().getRootView());
                             a.runOnUiThread(inst);
                             break;
                         }
                     }
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Bad JSON received for changes", e);
                 } catch (ViewEdit.BadInstructionsException e) {
-                    Log.e(LOGTAG, "Bad JSON received for changes", e);
+                    Log.e(LOGTAG, "Bad instructions received", e);
                 }
+            } else {
+                synchronized(mChanges) {
+                    ArrayList<JSONObject> changeList;
+                    if (mChanges.containsKey(targetActivity)) {
+                        changeList = mChanges.get(targetActivity);
+                    } else {
+                        changeList = new ArrayList<JSONObject>();
+                        mChanges.put(targetActivity, changeList);
+                    }
+                    changeList.add(change);
+                }
+            }
+
+            if (persist) {
+                Log.v(LOGTAG, "Persisting received changes");
+                SharedPreferences.Editor editor =
+                    mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE).edit();
+                editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
+                editor.commit();
             }
         }
 
@@ -619,11 +650,16 @@ public class ABTesting {
     private final Tweaks mTweaks = new Tweaks();
     private final Context mContext;
     private final List<Activity> mLiveActivities = new ArrayList<Activity>();
+    private final Map<String, ArrayList<JSONObject>> mChanges =
+            new HashMap<String, ArrayList<JSONObject>>();
     private final String mToken;
 
-    private static final int MESSAGE_CONNECT_TO_EDITOR = 0;
-    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 1;
-    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 2;
+    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
+    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
+    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
+    private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
+    private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";
 
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
