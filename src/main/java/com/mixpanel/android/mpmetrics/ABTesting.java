@@ -243,7 +243,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             SnapshotConfig config;
             try {
                 final JSONObject payload = message.getJSONObject("payload");
-                config = new SnapshotConfig(payload); // TODO should this just be an EditInstructions?
+                config = mProtocol.readSnapshotConfig(payload);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
@@ -465,47 +465,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     }
 
     private static class SnapshotConfig {
-        public SnapshotConfig(JSONObject config)
-            throws BadConfigException {
-            mProperties = new ArrayList<PropertyDescription>();
-
-            try {
-                final JSONArray classes = config.getJSONArray("classes");
-                for (int classIx = 0; classIx < classes.length(); classIx++) {
-                    final JSONObject classDesc = classes.getJSONObject(classIx);
-                    final String targetClassName = classDesc.getString("name");
-                    final Class targetClass = Class.forName(targetClassName);
-
-                    final JSONArray propertyDescs = classDesc.getJSONArray("properties");
-                    for (int i = 0; i < propertyDescs.length(); i++) {
-                        final JSONObject propertyDesc = propertyDescs.getJSONObject(i);
-                        final String propName = propertyDesc.getString("name");
-                        final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
-                        final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
-
-                        final String accessorName = accessorConfig.getString("selector");
-                        final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
-                        final Class accessorResultType = Class.forName(accessorResultTypeName);
-                        final ViewEdit.Caller accessor = new ViewEdit.Caller(accessorName, NO_PARAMS, accessorResultType);
-
-                        final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
-                        final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
-                        for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
-                            final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
-                            mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
-                        }
-                        final String mutatorName = mutatorConfig.getString("selector");
-                        final ViewEdit.Caller mutator = new ViewEdit.Caller(mutatorName, mutatorParamTypes, Void.TYPE);
-
-                        final PropertyDescription desc = new PropertyDescription(propName, targetClass, accessor, mutator);
-                        mProperties.add(desc);
-                    }
-                }
-            } catch (JSONException e) {
-                throw new BadConfigException("Can't read snapshot configuration", e);
-            } catch (ClassNotFoundException e) {
-                throw new BadConfigException("Can't resolve types for snapshot configuration", e);
-            }
+        public SnapshotConfig(final List<PropertyDescription> properties) {
+            mProperties = properties;
         }
 
         public void addProperties(View v, JSONObject out) {
@@ -536,8 +497,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private final List<PropertyDescription> mProperties;
-
-        private static final Class[] NO_PARAMS = new Class[0];
     }
 
     private static class EditProtocol {
@@ -591,6 +550,51 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
+        private SnapshotConfig readSnapshotConfig(JSONObject source)
+            throws BadConfigException {
+            final List<SnapshotConfig.PropertyDescription> properties = new ArrayList<SnapshotConfig.PropertyDescription>();
+
+            try {
+                final JSONArray classes = source.getJSONArray("classes");
+                for (int classIx = 0; classIx < classes.length(); classIx++) {
+                    final JSONObject classDesc = classes.getJSONObject(classIx);
+                    final String targetClassName = classDesc.getString("name");
+                    final Class targetClass = Class.forName(targetClassName);
+
+                    final JSONArray propertyDescs = classDesc.getJSONArray("properties");
+                    for (int i = 0; i < propertyDescs.length(); i++) {
+                        final JSONObject propertyDesc = propertyDescs.getJSONObject(i);
+                        final String propName = propertyDesc.getString("name");
+                        final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
+                        final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
+
+                        final String accessorName = accessorConfig.getString("selector");
+                        final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
+                        final Class accessorResultType = Class.forName(accessorResultTypeName);
+                        final ViewEdit.Caller accessor = new ViewEdit.Caller(accessorName, NO_PARAMS, accessorResultType);
+
+                        final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
+                        final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
+                        for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
+                            final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
+                            mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
+                        }
+                        final String mutatorName = mutatorConfig.getString("selector");
+                        final ViewEdit.Caller mutator = new ViewEdit.Caller(mutatorName, mutatorParamTypes, Void.TYPE);
+
+                        final SnapshotConfig.PropertyDescription desc = new SnapshotConfig.PropertyDescription(propName, targetClass, accessor, mutator);
+                        properties.add(desc);
+                    }
+                }
+
+                return new SnapshotConfig(properties);
+            } catch (JSONException e) {
+                throw new BadConfigException("Can't read snapshot configuration", e);
+            } catch (ClassNotFoundException e) {
+                throw new BadConfigException("Can't resolve types for snapshot configuration", e);
+            }
+        }
+
         private Object convertArgument(Object jsonArgument, String type)
                 throws BadInstructionsException {
             // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
@@ -616,6 +620,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 throw new BadInstructionsException("Couldn't interpret <" + jsonArgument + "> as " + type);
             }
         }
+
+        private static final Class[] NO_PARAMS = new Class[0];
     }
 
     private void runABTestReceivedListeners() {
