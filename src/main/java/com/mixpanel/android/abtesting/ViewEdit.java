@@ -13,11 +13,13 @@ import org.json.JSONObject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
-public class ViewEdit implements Runnable {
+public class ViewEdit {
     public class BadInstructionsException extends Exception {
         public BadInstructionsException(String message) {
             super(message);
@@ -28,26 +30,76 @@ public class ViewEdit implements Runnable {
         }
     }
 
-    /*
-     * Apparently this is the actual state of the actual art.
-     */
-    public static Method getCompatibleMethod(Class klass, String methodName, Class[] args, Class result) {
+    public ViewEdit(JSONObject source) throws BadInstructionsException {
+        mSource = source;
+        try {
+            mViewId = mSource.getInt("view_id");
+
+            final JSONArray path = source.getJSONArray("path");
+            mPath = new ArrayList<PathElement>();
+            for(int i = 0; i < path.length(); i++) {
+                final JSONObject targetView = path.getJSONObject(i);
+                final String targetViewClass = targetView.getString("view_class");
+                final int targetIndex = targetView.getInt("index");
+                mPath.add(new PathElement(targetViewClass, targetIndex));
+            }
+
+            mMethodName = mSource.getString("method");
+
+            final JSONArray argsAndTypes = mSource.getJSONArray("args");
+            mMethodArgs = new Object[argsAndTypes.length()];
+            mMethodTypes = new Class[argsAndTypes.length()];
+            mMethodResultType = Void.TYPE; // TODO temporary, need a way around this for the interrogator
+
+            for (int i = 0; i < argsAndTypes.length(); i++) {
+                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                final Object jsonArg = argPlusType.get(0);
+                final String argType = argPlusType.getString(1);
+                mMethodArgs[i] = convertArgument(jsonArg, argType);
+                mMethodTypes[i] = mMethodArgs[i].getClass();
+            }
+
+            if (mPath.size() == 0) {
+                throw new BadInstructionsException("Path selector was empty");
+            }
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
+        }
+    }
+
+    /** Call ONLY on the UI thread **/
+    public void edit(View rootView) {
+        final View target = findTarget(rootView);
+        applyMethod(target);
+    }
+
+    public View findTarget(View rootView) {
+        if (mViewId != -1) {
+            return rootView.findViewById(mViewId);
+        } else {
+            return findTargetOnPath(rootView, mPath, 0);
+        }
+    }
+
+    public Object applyMethod(View target) {
+        final Class klass = target.getClass();
+
         for (Method method : klass.getMethods()) {
             final String foundName = method.getName();
             final Class[] params = method.getParameterTypes();
 
-            if (!foundName.equals(methodName) || params.length != args.length) {
+            if (!foundName.equals(mMethodName) || params.length != mMethodArgs.length) {
                 continue;
             }
 
             final Class resultType = method.getReturnType();
-            if (! result.isAssignableFrom(resultType)) { // TODO need a test Void.TYPE.isAssignableFrom(Void.TYPE)
+            if (! mMethodResultType.isAssignableFrom(resultType)) {
                 continue;
             }
 
             boolean assignable = true;
             for (int i = 0; i < params.length && assignable; i++) {
-                Class argumentType = args[i];
+                Class argumentType = mMethodTypes[i];
 
                 // a.isAssignableFrom(b) only tests if b is a
                 // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
@@ -67,79 +119,57 @@ public class ViewEdit implements Runnable {
             }
 
             if (assignable) {
-                return method;
+                try {
+                    return method.invoke(target, mMethodArgs);
+                } catch (IllegalAccessException e) {
+                    Log.e(LOGTAG, "Can't invoke method " + method.getName(), e);
+                    // Don't return, keep trying
+                } catch (InvocationTargetException e) {
+                    Log.e(LOGTAG, "Method " + method.getName() + " threw an exception", e);
+                    return null;
+                }
             }
         }
 
         return null;
     }
 
-    public ViewEdit(JSONObject source, View rootView) throws BadInstructionsException {
-        mSource = source;
-        mRootView = rootView;
-        try {
-            mPath = source.getJSONArray("path");
-            mViewId = mSource.getInt("view_id");
-            mMethodName = mSource.getString("method");
-
-            final JSONArray argsAndTypes = mSource.getJSONArray("args");
-            mMethodArgs = new Object[argsAndTypes.length()];
-            mMethodTypes = new Class[argsAndTypes.length()];
-
-            for (int i = 0; i < argsAndTypes.length(); i++) {
-                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                final Object jsonArg = argPlusType.get(0);
-                final String argType = argPlusType.getString(1);
-                mMethodArgs[i] = convertArgument(jsonArg, argType);
-                mMethodTypes[i] = mMethodArgs[i].getClass();
-            }
-
-            if (mPath.length() == 0) {
-                throw new BadInstructionsException("Path selector was empty");
-            }
-        } catch (JSONException e) {
-            throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
+    private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
+        if (path.isEmpty()) {
+            return null; // The empty path matches nothing in this model
         }
-    }
 
-    private View findTarget(View curView, JSONArray path, int curIndex) {
-        try {
-            path = new JSONArray(path.toString()); // Need to copy since we don't want remove(0) here to affect the parent calls
-            JSONObject targetView = path.getJSONObject(0);
-            String targetViewClass = targetView.getString("view_class");
-            int targetIndex = targetView.getInt("index");
-            path.remove(0);
+        final PathElement targetView = path.get(0);
+        final String targetViewClass = targetView.viewClass;
+        final int targetIndex = targetView.index;
 
-            if (targetViewClass.equals(curView.getClass().getCanonicalName()) && targetIndex == curIndex) {
-                if (path.length() == 0) {
-                    return curView;
-                }
-                if (!(curView instanceof ViewGroup)) {
-                    return null;
-                }
-
-                final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
-                ViewGroup viewGroup = (ViewGroup) curView;
-                for (int i = 0; i < viewGroup.getChildCount(); i++) {
-                    final View child = viewGroup.getChildAt(i);
-                    int index = 1;
-                    if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
-                        index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
-                    }
-                    viewIndex.put(child.getClass().getCanonicalName(), index);
-
-                    View target = findTarget(viewGroup.getChildAt(i), path, index);
-                    if (target != null) {
-                        return target;
-                    }
-                }
+        if (targetViewClass.equals(curView.getClass().getCanonicalName()) && targetIndex == curIndex) {
+            final List<PathElement> childPath = path.subList(1, path.size());
+            if (childPath.size() == 0) {
+                return curView;
+            }
+            if (!(curView instanceof ViewGroup)) {
+                return null;
             }
 
-            return null;
-        } catch (JSONException e) {
-            Log.e(LOGTAG, "Exception finding target view", e);
-            return null;
+            final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
+            ViewGroup viewGroup = (ViewGroup) curView;
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                final View child = viewGroup.getChildAt(i);
+                int index = 1;
+                if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
+                    index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
+                }
+                viewIndex.put(child.getClass().getCanonicalName(), index);
+
+                View target = findTargetOnPath(viewGroup.getChildAt(i), childPath, index);
+                if (target != null) {
+                    return target;
+                }
+            }
         }
+
+        return null;
     }
 
     private Object convertArgument(Object jsonArgument, String type)
@@ -168,39 +198,23 @@ public class ViewEdit implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        View target;
-        if (mViewId != -1) {
-            Log.i(LOGTAG, "Looking for view with ID " + mViewId);
-            target = mRootView.findViewById(mViewId);
-        } else {
-            target = findTarget(mRootView, mPath, 1);
+    private static class PathElement {
+        public PathElement(String vClass, int ix) {
+            viewClass = vClass;
+            index = ix;
         }
 
-        try {
-            final Class viewClass = target.getClass();
-            final Method editMethod = getCompatibleMethod(viewClass, mMethodName, mMethodTypes, Void.TYPE);
-
-            if (editMethod != null) {
-                editMethod.invoke(target, mMethodArgs);
-            } else {
-            }
-        } catch (IllegalAccessException e) {
-            Log.e(LOGTAG, "Exception thrown during edit", e);
-        } catch (InvocationTargetException e) {
-            Log.e(LOGTAG, "Exception thrown during edit", e);
-        }
+        public final String viewClass;
+        public final int index;
     }
 
-
     private int mViewId = -1;
-    private final JSONArray mPath;
+    private final List<PathElement> mPath;
     private final JSONObject mSource;
-    private final View mRootView;
     private final String mMethodName;
     private final Object[] mMethodArgs;
     private final Class[] mMethodTypes;
+    private final Class mMethodResultType;
 
     private static final String LOGTAG = "Mixpanel.Introspector.ViewEdit";
 }

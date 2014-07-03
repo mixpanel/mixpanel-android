@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.DocumentsContract;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
@@ -42,8 +43,14 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
@@ -62,8 +69,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
         HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
         thread.start();
-        mHandler = new ABHandler(thread.getLooper());
-        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+        mMessageThreadHandler = new ABHandler(thread.getLooper());
+        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+
+        mUiThreadHandler = new Handler(Looper.getMainLooper());
 
         Log.v(LOGTAG, "using hierarchy config:");
         Log.v(LOGTAG, getHierarchyConfig().toString());
@@ -80,7 +89,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                     mDown++;
                     if (mDown == 5) {
-                        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
+                        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
                     }
                 } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
                     mDown--;
@@ -90,15 +99,18 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
             private int mDown = 0;
         });
-        mLiveActivities.add(activity);
+
+        synchronized (mLiveActivities) {
+            mLiveActivities.add(activity);
+        }
 
         synchronized(mChanges) {
             ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
             if (null != changes) {
                 for (JSONObject j : changes) {
                     try {
-                        ViewEdit inst = new ViewEdit(j, activity.getWindow().getDecorView().getRootView());
-                        activity.runOnUiThread(inst);
+                        ViewEdit inst = new ViewEdit(j);
+                        inst.edit(activity.getWindow().getDecorView().getRootView());
                     } catch (ViewEdit.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad change request saved in mChanges", e);
                     }
@@ -115,7 +127,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityStopped(Activity activity) {
-        mLiveActivities.remove(activity);
+        synchronized (mLiveActivities) {
+            mLiveActivities.remove(activity);
+        }
     }
 
     @Override
@@ -157,7 +171,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
         private void initializeChanges() {
             SharedPreferences prefs =
-                mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE);
+                    mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE);
             String changes = prefs.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != changes) {
                 try {
@@ -243,14 +257,28 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
             final OutputStream out = mEditorConnection.getOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
+
+            final List<RootViewInfo> rootViews = new ArrayList<RootViewInfo>();
+
+            synchronized (mLiveActivities) {
+                for (Activity a : mLiveActivities) {
+                    final String activityName = a.getClass().getCanonicalName();
+
+                    // We know (since we're synched w/ the UI thread on activity changes)
+                    // that the activities in mLiveActivities are valid here.
+                    final View rootView = a.getWindow().getDecorView().getRootView();
+                    final RootViewInfo info = new RootViewInfo(activityName, rootView);
+                    rootViews.add(info);
+                }
+            }
+
             try {
                 writer.write("{\"type\": \"snapshot_response\",");
 
                 boolean first = true;
 
                 writer.write("\"activities\": [");
-                for (Activity a : mLiveActivities) {
-                    View rootView = a.getWindow().getDecorView().getRootView();
+                for (RootViewInfo info: rootViews) {
                     if (!first) {
                         writer.write(",");
                     }
@@ -259,9 +287,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     writer.write("{");
 
                     writer.write("\"class\":");
-                    writer.write("\"" + a.getClass().getCanonicalName() + "\"");
+                    writer.write("\"" + info.activityName + "\"");
                     writer.write(",");
 
+                    final View rootView = info.rootView;
                     writer.write("\"screenshot\": ");
                     writeScreenshot(rootView, writer);
                     writer.write(",");
@@ -294,24 +323,28 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) throws JSONException {
-            String targetActivity = changes.getString("target");
-            JSONObject change = changes.getJSONObject("change");
+            final String targetActivity = changes.getString("target");
+            final JSONObject change = changes.getJSONObject("change");
 
             if (applyToLive) {
                 try {
-                    for (Activity a : mLiveActivities) {
-                        if (a.getClass().getCanonicalName().equals(targetActivity)) {
-                            ViewEdit inst = new ViewEdit(change, a.getWindow().getDecorView().getRootView());
-                            a.runOnUiThread(inst);
-                            break;
+                    final ViewEdit edit = new ViewEdit(change);
+                    mUiThreadHandler.post(new Runnable() {
+                        public void run() {
+                            for (Activity a : mLiveActivities) {
+                                if (a.getClass().getCanonicalName().equals(targetActivity)) {
+                                    edit.edit(a.getWindow().getDecorView().getRootView());
+                                }
+                            }
                         }
-                    }
+                    });
                 } catch (ViewEdit.BadInstructionsException e) {
                     Log.e(LOGTAG, "Bad instructions received", e);
+                    return;
                 }
             } else {
                 mChanges = new HashMap<String, ArrayList<JSONObject>>();
-                synchronized(mChanges) {
+                synchronized (mChanges) {
                     ArrayList<JSONObject> changeList;
                     if (mChanges.containsKey(targetActivity)) {
                         changeList = mChanges.get(targetActivity);
@@ -327,7 +360,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             if (persist) {
                 Log.v(LOGTAG, "Persisting received changes");
                 SharedPreferences.Editor editor =
-                    mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE).edit();
+                        mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE).edit();
                 editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
                 editor.commit();
             }
@@ -400,7 +433,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 throw new RuntimeException("Apparently Impossible JSONException", impossible);
             }
 
-            if (! first) {
+            if (!first) {
                 writer.write(", ");
             }
 
@@ -500,13 +533,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     final JSONObject messageJson = new JSONObject(message);
                     String type = messageJson.getString("type");
                     if (type.equals("snapshot_request")) {
-                        Message msg = mHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING);
+                        Message msg = mMessageThreadHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING);
                         msg.obj = messageJson;
-                        mHandler.sendMessage(msg);
+                        mMessageThreadHandler.sendMessage(msg);
                     } else if (type.equals("change_request")) {
-                        Message msg = mHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED);
+                        Message msg = mMessageThreadHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED);
                         msg.obj = messageJson;
-                        mHandler.sendMessage(msg);
+                        mMessageThreadHandler.sendMessage(msg);
                     }
                 } catch (JSONException e) {
                     Log.e(LOGTAG, "Bad JSON received:" + message, e);
@@ -540,7 +573,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private EditorConnection mEditorConnection;
-    }
+    } // ABHandler
 
     private static class BadConfigException extends Exception {
         public BadConfigException(String message) {
@@ -681,15 +714,27 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
     }
 
-    private ABHandler mHandler;
+    private static class RootViewInfo {
+        public RootViewInfo(String activityName, View rootView) {
+            this.activityName = activityName;
+            this.rootView = rootView;
+        }
+
+        public final String activityName;
+        public final View rootView;
+    }
+
+    private ABHandler mMessageThreadHandler;
     private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
     private  Map<String, ArrayList<JSONObject>> mChanges;
 
     private final Context mContext;
     private final String mToken;
-    private final Tweaks mTweaks = new Tweaks();
-    private final List<Activity> mLiveActivities = new ArrayList<Activity>();
+    private final Tweaks mTweaks = new Tweaks(); // TODO think about threading here
+    private final Handler mUiThreadHandler;
+
+    private final Set<Activity> mLiveActivities = new HashSet<Activity>(); // SYNCHRONIZE ACCESS
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
