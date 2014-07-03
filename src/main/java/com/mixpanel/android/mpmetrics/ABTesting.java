@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.provider.DocumentsContract;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
@@ -19,39 +18,30 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+
 import com.mixpanel.android.abtesting.EditProtocol;
+import com.mixpanel.android.abtesting.EditorConnection;
 import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
 import com.mixpanel.android.abtesting.ViewEdit;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.framing.Framedata;
-import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
@@ -156,14 +146,16 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                     this.initializeChanges();
                     break;
                 case MESSAGE_CONNECT_TO_EDITOR:
-                    this.connectToEditor();
+                    if (mEditorConnection == null || !mEditorConnection.isValid()) {
+                        this.connectToEditor();
+                    }
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     this.sendStateForEditing((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
                     try {
-                        handleChangesReceived((JSONObject) msg.obj, true, false);
+                        handleChangesReceived((JSONObject) msg.obj, false, true);
                     } catch (JSONException e) {
                         Log.e(LOGTAG, "Bad change request received", e);
                     }
@@ -189,26 +181,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private void connectToEditor() {
             Log.v(LOGTAG, "connectToEditor called");
 
-            if (mEditorConnection == null || !mEditorConnection.isAlive()) {
-                final String url = MPConfig.getInstance(mContext).getABTestingUrl() + mToken;
-                try {
-                    mEditorConnection = new EditorConnection(new URI(url));
-
-                } catch (URISyntaxException e) {
-                    Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
-                }
-
-                try {
-                    boolean connected = mEditorConnection.connectBlocking();
-                    if (!connected) {
-                        Log.d(LOGTAG, "Can't connect to endpoint " + url);
-                        mEditorConnection = null;
-
-                    }
-                } catch (InterruptedException e) {
-                    mEditorConnection = null;
-                    Log.e(LOGTAG, "Editor client was interrupted during connection", e);
-                }
+            final String url = MPConfig.getInstance(mContext).getABTestingUrl() + mToken;
+            try {
+                mEditorConnection = new EditorConnection(new URI(url), mMessageThreadHandler);
+            } catch (URISyntaxException e) {
+                Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
+            } catch (InterruptedException e) {
+                Log.e(LOGTAG, "Error connecting to URI " + url, e);
             }
         }
 
@@ -220,8 +199,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 Log.e(LOGTAG, "Apparently impossible JSONException", e);
             }
 
-            final OutputStream out = mEditorConnection.getOutputStream();
-            final OutputStreamWriter writer = new OutputStreamWriter(out);
+            final OutputStreamWriter writer = new OutputStreamWriter(mEditorConnection.getBufferedOutputStream());
             try {
                 writer.write("{\"type\": \"error\", ");
                 writer.write("\"payload\": ");
@@ -235,12 +213,15 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 } catch (IOException e) {
                     Log.e(LOGTAG, "    Could not close output writer to editor", e);
                 }
-                mEditorConnection.releaseOutputStream(out);
             }
         }
 
         private void sendStateForEditing(JSONObject message) {
             Log.v(LOGTAG, "sendStateForEditing");
+
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+                this.connectToEditor();
+            }
 
             SnapshotConfig config;
             try {
@@ -257,7 +238,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
             // ELSE config is valid:
 
-            final OutputStream out = mEditorConnection.getOutputStream();
+            final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
 
             final List<RootViewInfo> rootViews = new ArrayList<RootViewInfo>();
@@ -320,7 +301,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 } catch (IOException e) {
                     Log.e(LOGTAG, "    Can't close writer.", e);
                 }
-                mEditorConnection.releaseOutputStream(out);
             }
         }
 
@@ -450,132 +430,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 }
             }
         }
-
-        private class EditorConnection {
-            public EditorConnection(URI uri) {
-                mClient = new EditorClient(uri);
-                mInUse = null;
-            }
-
-            public boolean isAlive() {
-                return mClient.isAlive();
-            }
-
-            public boolean connectBlocking() throws InterruptedException {
-                return mClient.connectBlocking();
-            }
-
-            public OutputStream getOutputStream() {
-                if (null != mInUse) {
-                    throw new RuntimeException("Only one websocket output stream should be in use at a time");
-                }
-                mInUse = new BufferedOutputStream(new WebSocketOutputStream(), MAX_BUFFER_SIZE);
-                return mInUse;
-            }
-
-            public void releaseOutputStream(OutputStream out) {
-                if (out != mInUse) {
-                    throw new RuntimeException("Only one output stream should be in use at a time");
-                }
-                mInUse = null;
-            }
-
-            /* WILL SEND GARBAGE if multiple responses end up interleaved.
-             * Only one response should be in progress at a time.
-             */
-            private class WebSocketOutputStream extends OutputStream {
-                @Override
-                public void write(int b) {
-                    // This should never be called.
-                    byte[] oneByte = new byte[1];
-                    oneByte[0] = (byte) b;
-                    write(oneByte, 0, 1);
-                }
-
-                @Override
-                public void write(byte[] b) {
-                    write(b, 0, b.length);
-                }
-
-                @Override
-                public void write(byte[] b, int off, int len) {
-                    final ByteBuffer message = ByteBuffer.wrap(b, off, len);
-                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
-                }
-
-                @Override
-                public void close() {
-                    mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, EMPTY_BYTE_BUFFER, true);
-                }
-            }
-
-            private BufferedOutputStream mInUse;
-            private final EditorClient mClient;
-        }
-
-        /**
-         * EditorClient should handle all communication to and from the socket. It should be fairly naive and
-         * only know how to delegate messages to the ABHandler class.
-         */
-        private class EditorClient extends WebSocketClient {
-            public EditorClient(URI uri) {
-                super(uri);
-                mAlive = true;
-            }
-
-            @Override
-            public void onOpen(ServerHandshake handshakedata) {
-                Log.i(LOGTAG, "Connected");
-            }
-
-            @Override
-            public void onMessage(String message) {
-                Log.d(LOGTAG, "message: " + message);
-                try {
-                    final JSONObject messageJson = new JSONObject(message);
-                    String type = messageJson.getString("type");
-                    if (type.equals("snapshot_request")) {
-                        Message msg = mMessageThreadHandler.obtainMessage(MESSAGE_SEND_STATE_FOR_EDITING);
-                        msg.obj = messageJson;
-                        mMessageThreadHandler.sendMessage(msg);
-                    } else if (type.equals("change_request")) {
-                        Message msg = mMessageThreadHandler.obtainMessage(MESSAGE_HANDLE_CHANGES_RECEIVED);
-                        msg.obj = messageJson;
-                        mMessageThreadHandler.sendMessage(msg);
-                    }
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Bad JSON received:" + message, e);
-                }
-            }
-
-            @Override
-            public void onClose(int code, String reason, boolean remote) {
-                synchronized (this) {
-                    mAlive = false;
-                }
-                Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
-            }
-
-            @Override
-            public void onError(Exception ex) {
-                if (ex != null && ex.getMessage() != null) {
-                    Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
-                } else {
-                    Log.e(LOGTAG, "a Websocket error occurred");
-                }
-            }
-
-            public boolean isAlive() {
-                synchronized (this) {
-                    return mAlive;
-                }
-            }
-
-            private boolean mAlive;
-        }
-
-        private EditorConnection mEditorConnection;
-    } // ABHandler
+    }
 
     private static class BadConfigException extends Exception {
         public BadConfigException(String message) {
@@ -723,6 +578,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
     private final Map<String, ArrayList<JSONObject>> mChanges;
+    private EditorConnection mEditorConnection;
 
     private final Context mContext;
     private final String mToken;
@@ -734,13 +590,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
-    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
-    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
     private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";
 
-    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
+
+    public static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    public static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";
