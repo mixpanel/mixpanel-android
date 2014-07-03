@@ -12,6 +12,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Base64;
+import android.util.Base64OutputStream;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MotionEvent;
@@ -275,7 +276,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
                     final View rootView = info.rootView;
                     writer.write("\"screenshot\": ");
-                    writeScreenshot(rootView, writer);
+                    writer.flush();
+                    writeScreenshot(rootView, out);
                     writer.write(",");
                     writer.write("\"rootView\": ");
                     writer.write(Integer.toString(rootView.hashCode()));
@@ -350,7 +352,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
         // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
         // due to memory or rendering issues.
-        private void writeScreenshot(View rootView, Writer writer) throws IOException {
+        private void writeScreenshot(View rootView, OutputStream out) throws IOException {
             // This screenshot method is not how the Android folks do it in View.createSnapshot,
             // but they use all kinds of secret internal stuff like clearing and setting
             // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
@@ -364,13 +366,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             // This is ok, and we should handle it gracefully.
             final Bitmap bitmap = rootView.getDrawingCache();
             if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                writer.write("\"");
-                final ByteArrayOutputStream out = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, out);
-                writer.write(Base64.encodeToString(out.toByteArray(), Base64.NO_PADDING | Base64.NO_WRAP)); // TODO We can stream the base64, and this could be a *lot* of memory otherwise
-                writer.write("\"");
+                out.write('"');
+                final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, imageOut);
+                imageOut.flush();
+                out.write('\"');
             } else {
-                writer.write("null");
+                out.write("null".getBytes());
             }
 
             if (!originalCacheState) {
@@ -572,6 +574,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         public final String activityName;
         public final View rootView;
     }
+
 
     private ABHandler mMessageThreadHandler;
     private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
