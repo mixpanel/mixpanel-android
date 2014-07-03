@@ -561,8 +561,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         public final View rootView;
     }
 
-
-    private ABHandler mMessageThreadHandler;
     private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
@@ -573,6 +571,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     private final String mToken;
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
+    private final ABHandler mMessageThreadHandler;
     private final EditProtocol mProtocol;
 
     private final Set<Activity> mLiveActivities = new HashSet<Activity>(); // SYNCHRONIZE ACCESS
