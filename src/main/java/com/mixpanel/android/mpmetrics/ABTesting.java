@@ -574,7 +574,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     private final ABHandler mMessageThreadHandler;
     private final EditProtocol mProtocol;
 
-    private final Set<Activity> mLiveActivities = new HashSet<Activity>(); // SYNCHRONIZE ACCESS
+    // mLiveActivites is accessed across multiple threads, and must be synchronized.
+    private final Set<Activity> mLiveActivities = new HashSet<Activity>();
 
     private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";

@@ -4,10 +4,8 @@ import android.test.AndroidTestCase;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.CountDownLatch;
 
-/**
- * Created by josh on 6/27/14.
- */
 public class TweaksTest extends AndroidTestCase {
 
     @Override
@@ -24,16 +22,37 @@ public class TweaksTest extends AndroidTestCase {
         assertEquals("testval2", val2);
     }
 
-    public void testCallback() throws Exception {
+    public void testInitialValueCallback() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+
         final HashMap<String, Object> vals = new HashMap<String, Object>();
         mTweaks.bind("callbacktest", "first val", new Tweaks.TweakChangeCallback() {
             @Override
             public void onChange(Object value) {
                 vals.put((String) value, value);
+                latch.countDown();
             }
         });
+
+        latch.await();
         assertTrue(vals.containsKey("first val"));
+    }
+
+    public void testCallback() throws Exception {
+        final CountDownLatch latch = new CountDownLatch(2);
+
+        final HashMap<String, Object> vals = new HashMap<String, Object>();
+        mTweaks.bind("callbacktest", "first val", new Tweaks.TweakChangeCallback() {
+            @Override
+            public void onChange(Object value) {
+                vals.put((String) value, value);
+                latch.countDown();
+            }
+        });
+
         mTweaks.set("callbacktest", "new value");
+
+        latch.await();
         assertTrue(vals.containsKey("new value"));
     }
 

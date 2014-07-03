@@ -1,5 +1,8 @@
 package com.mixpanel.android.abtesting;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,10 +25,20 @@ import java.util.Map;
  *                  }
  *              });
  *
+ * Tweaks will be accessed from multiple threads, and must be thread safe.
+ *
  */
 public class Tweaks {
-    Map<String, Object> tweaks = new HashMap<String, Object>();
-    Map<String, List<TweakChangeCallback>> bindings = new HashMap<String, List<TweakChangeCallback>>();
+
+    public interface TweakChangeCallback {
+        public void onChange(Object value);
+    }
+
+    public Tweaks() {
+        mTweaks = new HashMap<String, Object>();
+        mBindings = new HashMap<String, List<TweakChangeCallback>>();
+        mUiHandler = new Handler(Looper.getMainLooper());
+    }
 
     public String getString(String tweakName, String defaultValue) {
         return (String) get(tweakName, defaultValue);
@@ -47,33 +60,23 @@ public class Tweaks {
         return (Double) get(tweakName, defaultValue);
     }
 
-    public Object get(String tweakName, Object defaultValue) {
-        Object value;
-        synchronized (tweaks) {
-            if (!tweaks.containsKey(tweakName)) {
-                set(tweakName, defaultValue, true);
-            }
-            value = tweaks.get(tweakName);
+    public synchronized Object get(String tweakName, Object defaultValue) {
+        if (!mTweaks.containsKey(tweakName)) {
+            set(tweakName, defaultValue, true);
         }
-        return value;
+        return mTweaks.get(tweakName);
     }
 
-    public Map<String, Object> getAll() {
-        HashMap<String, Object> copy;
-        synchronized (tweaks) {
-            copy = new HashMap<String, Object>(tweaks);
-        }
-        return copy;
+    public synchronized Map<String, Object> getAll() {
+        return new HashMap<String, Object>(mTweaks);
     }
 
-    public void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
-        synchronized (bindings) {
-            if (!bindings.containsKey(tweakName)) {
-                bindings.put(tweakName, new ArrayList<TweakChangeCallback>());
-            }
-            bindings.get(tweakName).add(callback);
+    public synchronized void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
+        if (!mBindings.containsKey(tweakName)) {
+            mBindings.put(tweakName, new ArrayList<TweakChangeCallback>());
         }
-        callback.onChange(get(tweakName, defaultValue));
+        mBindings.get(tweakName).add(callback);
+        runCallback(callback, get(tweakName, defaultValue));
     }
 
     public void set(String tweakName, Object value) {
@@ -86,21 +89,26 @@ public class Tweaks {
         }
     }
 
-    private void set(String tweakName, Object value, boolean isDefault) {
-        synchronized (tweaks) {
-            tweaks.put(tweakName, value);
-        }
+    private synchronized void set(String tweakName, Object value, boolean isDefault) {
+        mTweaks.put(tweakName, value);
 
-        synchronized (bindings) {
-            if (!isDefault && bindings.containsKey(tweakName)) {
-                for(TweakChangeCallback changeCallback : bindings.get(tweakName)) {
-                    changeCallback.onChange(value); // todo: should we run this on the UIThread?
-                }
+        if (!isDefault && mBindings.containsKey(tweakName)) {
+            for(TweakChangeCallback changeCallback : mBindings.get(tweakName)) {
+                runCallback(changeCallback, value);
             }
         }
     }
 
-    public interface TweakChangeCallback {
-        public void onChange(Object value);
+    private void runCallback(final TweakChangeCallback callback, final Object value) {
+        mUiHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onChange(value);
+            }
+        });
     }
+
+    private final Map<String, Object> mTweaks;
+    private final Map<String, List<TweakChangeCallback>> mBindings;
+    private final Handler mUiHandler;
 }
