@@ -50,23 +50,26 @@ import java.util.Set;
 @TargetApi(14)
 public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
-    ABTesting(Context context, String token) {
-        mContext = context;
-        mToken = token;
-        mChanges = new HashMap<String, ArrayList<JSONObject>>();
-        mProtocol = new EditProtocol();
-
-        final Application app = (Application) mContext.getApplicationContext();
-        app.registerActivityLifecycleCallbacks(this);
-
-        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
-        thread.start();
-        mMessageThreadHandler = new ABHandler(thread.getLooper());
-        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
-
-        mUiThreadHandler = new Handler(Looper.getMainLooper());
+    public Tweaks getTweaks() {
+        return mTweaks;
     }
 
+    public interface OnMixpanelABTestReceivedListener {
+        public abstract void onMixpanelABTestReceived();
+    }
+
+    public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
+        synchronized(mABTestReceivedListeners) {
+            mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
+        }
+        synchronized (mChanges) {
+            if (! mChanges.isEmpty()) {
+                runABTestReceivedListeners();
+            }
+        }
+    }
+
+    @Override
     public void onActivityCreated(Activity activity, Bundle bundle) { }
 
     @Override
@@ -127,13 +130,30 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     @Override
     public void onActivityDestroyed(Activity activity) { }
 
+    /* package */ ABTesting(Context context, String token) {
+        mChanges = new HashMap<String, ArrayList<JSONObject>>();
+        mProtocol = new EditProtocol();
+
+        final Application app = (Application) context.getApplicationContext();
+        app.registerActivityLifecycleCallbacks(this);
+
+        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        thread.start();
+        mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
+        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+
+        mUiThreadHandler = new Handler(Looper.getMainLooper());
+    }
+
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
      */
-    public class ABHandler extends Handler {
+    private class ABHandler extends Handler {
 
-        public ABHandler(Looper looper) {
+        public ABHandler(Context context, String token, Looper looper) {
             super(looper);
+            mContext = context;
+            mToken = token;
         }
 
         @Override
@@ -258,7 +278,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 boolean first = true;
 
                 writer.write("\"activities\": [");
-                for (RootViewInfo info: rootViews) {
+                for (RootViewInfo info : rootViews) {
                     if (!first) {
                         writer.write(",");
                     }
@@ -428,6 +448,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 }
             }
         }
+
+        private final Context mContext;
+        private final String mToken;
     }
 
     private static class BadConfigException extends Exception {
@@ -594,30 +617,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
     }
 
-
-    public interface TweakChangeCallback {
-        public void onChange(Object value);
-    }
-
-    public Tweaks getTweaks() {
-        return mTweaks;
-    }
-
-    public interface OnMixpanelABTestReceivedListener {
-        public abstract void onMixpanelABTestReceived();
-    }
-
-    public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
-        synchronized(mABTestReceivedListeners) {
-            mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
-        }
-        synchronized (mChanges) {
-            if (! mChanges.isEmpty()) {
-                runABTestReceivedListeners();
-            }
-        }
-    }
-
     private void runABTestReceivedListeners() {
         synchronized (mABTestReceivedListeners) {
             for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
@@ -641,18 +640,17 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         public final View rootView;
     }
 
-    private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
+    private final EditProtocol mProtocol;
+
+    private final ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
     private final Map<String, ArrayList<JSONObject>> mChanges;
     private EditorConnection mEditorConnection;
 
-    private final Context mContext;
-    private final String mToken;
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
     private final ABHandler mMessageThreadHandler;
-    private final EditProtocol mProtocol;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
