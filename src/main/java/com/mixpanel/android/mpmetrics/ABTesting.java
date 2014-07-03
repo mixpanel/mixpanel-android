@@ -571,19 +571,17 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     private final Context mContext;
     private final String mToken;
-    private final Tweaks mTweaks = new Tweaks(); // TODO think about threading here
+    private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
     private final EditProtocol mProtocol;
 
     private final Set<Activity> mLiveActivities = new HashSet<Activity>(); // SYNCHRONIZE ACCESS
 
-    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
-    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
     private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";
 
-    private static final int MAX_BUFFER_SIZE = 4096; // TODO too small?
-
+    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
+    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
     public static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
     public static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
 
