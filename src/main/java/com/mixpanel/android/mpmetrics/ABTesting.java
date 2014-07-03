@@ -19,6 +19,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mixpanel.android.abtesting.EditProtocol;
 import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
 import com.mixpanel.android.abtesting.ViewEdit;
@@ -62,7 +63,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     ABTesting(Context context, String token) {
         mContext = context;
         mToken = token;
-        mChanges = null;
+        mChanges = new HashMap<String, ArrayList<JSONObject>>();
+        mProtocol = new EditProtocol();
 
         final Application app = (Application) mContext.getApplicationContext();
         app.registerActivityLifecycleCallbacks(this);
@@ -109,9 +111,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             if (null != changes) {
                 for (JSONObject j : changes) {
                     try {
-                        ViewEdit inst = new ViewEdit(j);
+                        ViewEdit inst = mProtocol.readEdit(j);
                         inst.edit(activity.getWindow().getDecorView().getRootView());
-                    } catch (ViewEdit.BadInstructionsException e) {
+                    } catch (EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad change request saved in mChanges", e);
                     }
                 }
@@ -328,7 +330,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
             if (applyToLive) {
                 try {
-                    final ViewEdit edit = new ViewEdit(change);
+                    final ViewEdit edit = mProtocol.readEdit(change);
                     mUiThreadHandler.post(new Runnable() {
                         public void run() {
                             for (Activity a : mLiveActivities) {
@@ -338,13 +340,13 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                             }
                         }
                     });
-                } catch (ViewEdit.BadInstructionsException e) {
+                } catch (EditProtocol.BadInstructionsException e) {
                     Log.e(LOGTAG, "Bad instructions received", e);
                     return;
                 }
             } else {
-                mChanges = new HashMap<String, ArrayList<JSONObject>>();
                 synchronized (mChanges) {
+                    mChanges.clear();
                     ArrayList<JSONObject> changeList;
                     if (mChanges.containsKey(targetActivity)) {
                         changeList = mChanges.get(targetActivity);
@@ -607,10 +609,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                         final String accessorName = accessorConfig.getString("selector");
                         final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                         final Class accessorResultType = Class.forName(accessorResultTypeName);
-                        final Method accessorMethod = ViewEdit.getCompatibleMethod(targetClass, accessorName, NO_PARAMS, accessorResultType);
-                        if (null == accessorMethod) {
-                            throw new BadConfigException("Property accessor " + accessorName + " doesn't appear on type " + targetClassName + " (or param/return types are incorrect)");
-                        }
+                        final ViewEdit.Caller accessor = new ViewEdit.Caller(accessorName, NO_PARAMS, accessorResultType);
 
                         final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
                         final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
@@ -619,12 +618,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                             mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
                         }
                         final String mutatorName = mutatorConfig.getString("selector");
-                        final Method mutatorMethod = ViewEdit.getCompatibleMethod(targetClass, mutatorName, mutatorParamTypes, Void.TYPE);
-                        if (null == mutatorMethod) {
-                            throw new BadConfigException("Property accessor " + mutatorName + " doesn't appear on type " + targetClassName + " (or param/return types are incorrect)");
-                        }
+                        final ViewEdit.Caller mutator = new ViewEdit.Caller(mutatorName, mutatorParamTypes, Void.TYPE);
 
-                        final PropertyDescription desc = new PropertyDescription(propName, targetClass, accessorMethod, mutatorMethod);
+                        final PropertyDescription desc = new PropertyDescription(propName, targetClass, accessor, mutator);
                         mProperties.add(desc);
                     }
                 }
@@ -639,12 +635,8 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             for (PropertyDescription desc: mProperties) {
                 if (desc.targetClass.isAssignableFrom(v.getClass())) {
                     try {
-                        Object value = desc.accessor.invoke(v); // TODO Marshalling this value?
+                        Object value = desc.accessor.applyMethod(v);
                         out.put(desc.name, value);
-                    } catch (IllegalAccessException e) {
-                        Log.e(LOGTAG, "Can't call property access method " + desc.name + " - it is private or protected.", e);
-                    } catch (InvocationTargetException e) {
-                        Log.e(LOGTAG, "Encountered an exception while calling " + desc.name + " to read property.", e);
                     } catch (JSONException e) {
                         Log.e(LOGTAG, "Can't marshall value of property " + desc.name + " into JSON.", e);
                     }
@@ -653,17 +645,17 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
 
         private static class PropertyDescription {
-            public PropertyDescription(String nm, Class target, Method access, Method mutate) {
-                name = nm;
-                targetClass = target;
-                accessor = access;
-                mutator = mutate;
+            public PropertyDescription(String name, Class targetClass, ViewEdit.Caller accessor, ViewEdit.Caller mutator) {
+                this.name = name;
+                this.targetClass = targetClass;
+                this.accessor = accessor;
+                this.mutator = mutator;
             }
 
             public final String name;
             public final Class targetClass;
-            public final Method accessor;
-            public final Method mutator;
+            public final ViewEdit.Caller accessor;
+            public final ViewEdit.Caller mutator;
         }
 
         private final List<PropertyDescription> mProperties;
@@ -696,8 +688,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         synchronized(mABTestReceivedListeners) {
             mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
         }
-        if (null != mChanges) {
-            runABTestReceivedListeners();
+        synchronized (mChanges) {
+            if (! mChanges.isEmpty()) {
+                runABTestReceivedListeners();
+            }
         }
     }
 
@@ -727,12 +721,14 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
     private ABHandler mMessageThreadHandler;
     private ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
-    private  Map<String, ArrayList<JSONObject>> mChanges;
+
+    private final Map<String, ArrayList<JSONObject>> mChanges;
 
     private final Context mContext;
     private final String mToken;
     private final Tweaks mTweaks = new Tweaks(); // TODO think about threading here
     private final Handler mUiThreadHandler;
+    private final EditProtocol mProtocol;
 
     private final Set<Activity> mLiveActivities = new HashSet<Activity>(); // SYNCHRONIZE ACCESS
 
