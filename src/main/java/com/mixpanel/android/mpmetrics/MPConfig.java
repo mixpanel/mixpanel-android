@@ -90,11 +90,11 @@ public class MPConfig {
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;
 
-        String abTestingUrl = metaData.getString("com.mixpanel.android.MPConfig.ABTestingUrl"); // TODO rename to editor url
-        if (null == abTestingUrl) {
-            abTestingUrl = "ws://mixpanel.com/websocket_proxy/";
+        String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
+        if (null == editorUrl) {
+            editorUrl = "ws://mixpanel.com/websocket_proxy/";
         }
-        mABTestingUrl = abTestingUrl;
+        mEditorUrl = editorUrl;
 
         if (DEBUG) {
             Log.d(LOGTAG,
@@ -112,7 +112,7 @@ public class MPConfig {
                 "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
-                "    ABTestingUrl " + getABTestingUrl() + "\n"
+                "    EditorUrl " + getEditorUrl() + "\n"
             );
         }
     }
@@ -176,8 +176,8 @@ public class MPConfig {
     }
 
     // Preferred URL for connecting to the editor websocket
-    public String getABTestingUrl() {
-        return mABTestingUrl;
+    public String getEditorUrl() {
+        return mEditorUrl;
     }
 
     ///////////////////////////////////////////////
@@ -209,7 +209,7 @@ public class MPConfig {
     private final String mDecideEndpoint;
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
-    private final String mABTestingUrl; // TODO rename to "editor" or something less specific to A/B
+    private final String mEditorUrl;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();

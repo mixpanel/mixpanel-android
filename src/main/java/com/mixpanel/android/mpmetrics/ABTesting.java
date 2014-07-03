@@ -198,7 +198,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         private void connectToEditor() {
             Log.v(LOGTAG, "connectToEditor called");
 
-            final String url = MPConfig.getInstance(mContext).getABTestingUrl() + mToken;
+            final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
                 mEditorConnection = new EditorConnection(new URI(url), mMessageThreadHandler);
             } catch (URISyntaxException e) {
