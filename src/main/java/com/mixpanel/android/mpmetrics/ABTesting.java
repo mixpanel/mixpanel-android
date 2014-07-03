@@ -396,7 +396,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 final JSONArray classes = new JSONArray();
                 Class klass = view.getClass();
                 do {
-                    classes.put(klass.getName());
+                    classes.put(klass.getCanonicalName());
                     klass = klass.getSuperclass();
                 } while (klass != Object.class);
                 dump.put("classes", classes);

@@ -19,6 +19,10 @@ public class ViewEdit {
             index = ix;
         }
 
+        public String toString() {
+            return "{\"viewClass\": " + viewClass + ", \"index\": " + index + "}";
+        }
+
         public final String viewClass;
         public final int index;
     }
@@ -103,7 +107,11 @@ public class ViewEdit {
     /** Call ONLY on the UI thread **/
     public void edit(View rootView) {
         final View target = findTarget(rootView);
-        mCaller.applyMethod(target);
+        if (target != null) {
+            mCaller.applyMethod(target);
+        } else {
+            Log.i(LOGTAG, "Could not find target with id " + mViewId + " or path " + mPath.toString());
+        }
     }
 
     public View findTarget(View rootView) {
