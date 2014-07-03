@@ -449,6 +449,7 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
+        private EditorConnection mEditorConnection;
         private final Context mContext;
         private final String mToken;
     }
@@ -646,7 +647,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
     private final Map<String, ArrayList<JSONObject>> mChanges;
-    private EditorConnection mEditorConnection;
 
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
