@@ -22,7 +22,6 @@ import android.view.ViewGroup;
 
 import com.mixpanel.android.abtesting.EditProtocol;
 import com.mixpanel.android.abtesting.EditorConnection;
-import com.mixpanel.android.abtesting.SampleConfig;
 import com.mixpanel.android.abtesting.Tweaks;
 import com.mixpanel.android.abtesting.ViewEdit;
 
@@ -30,7 +29,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -66,9 +64,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         mUiThreadHandler = new Handler(Looper.getMainLooper());
-
-        Log.v(LOGTAG, "using hierarchy config:");
-        Log.v(LOGTAG, getHierarchyConfig().toString());
     }
 
     public void onActivityCreated(Activity activity, Bundle bundle) { }
@@ -526,15 +521,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
 
     public Tweaks getTweaks() {
         return mTweaks;
-    }
-
-    public JSONObject getHierarchyConfig() {
-        try {
-            return SampleConfig.get();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public interface OnMixpanelABTestReceivedListener {
