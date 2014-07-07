@@ -144,7 +144,7 @@ public class ViewEdit {
             ViewGroup viewGroup = (ViewGroup) curView;
             for (int i = 0; i < viewGroup.getChildCount(); i++) {
                 final View child = viewGroup.getChildAt(i);
-                int index = 1;
+                int index = 0;
                 if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
                     index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
                 }
