@@ -6,10 +6,10 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.ABTesting;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.drafts.Draft_17;
-import org.java_websocket.framing.Framedata;
-import org.java_websocket.handshake.ServerHandshake;
+import com.mixpanel.java_websocket.client.WebSocketClient;
+import com.mixpanel.java_websocket.drafts.Draft_17;
+import com.mixpanel.java_websocket.framing.Framedata;
+import com.mixpanel.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
 
