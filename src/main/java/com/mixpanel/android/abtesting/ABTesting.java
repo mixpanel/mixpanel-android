@@ -281,6 +281,7 @@ public class ABTesting {
                 boolean first = true;
 
                 writer.write("\"activities\": [");
+                writer.flush();
                 for (RootViewInfo info : rootViews) {
                     if (!first) {
                         writer.write(",");
