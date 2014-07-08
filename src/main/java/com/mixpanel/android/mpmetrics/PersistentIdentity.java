@@ -19,8 +19,7 @@ import android.util.Log;
 
 /* package */ class PersistentIdentity {
 
-    // Will be called from crazy threads, BUT will be the only thread that has access to the given
-    // SharedPreferences during the run.
+    // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
     public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
         JSONArray ret = null;
         final String peopleDistinctId = storedPreferences.getString("people_distinct_id", null);
