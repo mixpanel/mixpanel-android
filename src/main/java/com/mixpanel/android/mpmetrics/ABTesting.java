@@ -24,6 +24,7 @@ import android.view.ViewGroup;
 import com.mixpanel.android.abtesting.EditorConnection;
 import com.mixpanel.android.abtesting.Tweaks;
 import com.mixpanel.android.abtesting.ViewEdit;
+import com.mixpanel.android.abtesting.ViewSnapshot;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -240,10 +241,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 this.connectToEditor();
             }
 
-            SnapshotConfig config;
+            ViewSnapshot snapshot;
             try {
                 final JSONObject payload = message.getJSONObject("payload");
-                config = mProtocol.readSnapshotConfig(payload);
+                snapshot = mProtocol.readSnapshotConfig(payload);
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
@@ -281,29 +282,10 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 for (RootViewInfo info : rootViews) {
                     if (!first) {
                         writer.write(",");
+                        writer.flush();
                     }
                     first = false;
-
-                    writer.write("{");
-
-                    writer.write("\"class\":");
-                    writer.write("\"" + info.activityName + "\"");
-                    writer.write(",");
-
-                    final View rootView = info.rootView;
-                    writer.write("\"screenshot\": ");
-                    writer.flush();
-                    writeScreenshot(rootView, out);
-                    writer.write(",");
-                    writer.write("\"rootView\": ");
-                    writer.write(Integer.toString(rootView.hashCode()));
-                    writer.write(",");
-
-                    writer.write("\"views\": [");
-                    snapshotView(writer, rootView, config, true);
-                    writer.write("]");
-
-                    writer.write("}");
+                    snapshot.snapshot(info.activityName, info.rootView, out);
                 }
                 writer.write("],");
 
@@ -366,89 +348,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-        // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
-        // due to memory or rendering issues.
-        private void writeScreenshot(View rootView, OutputStream out) throws IOException {
-            // This screenshot method is not how the Android folks do it in View.createSnapshot,
-            // but they use all kinds of secret internal stuff like clearing and setting
-            // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
-            // can do without privileged access
-            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-            rootView.setDrawingCacheEnabled(true);
-            rootView.buildDrawingCache(true);
-
-            // We could get a null or zero px bitmap if the rootView hasn't been measured
-            // appropriately, or we grab it before layout.
-            // This is ok, and we should handle it gracefully.
-            final Bitmap bitmap = rootView.getDrawingCache();
-            if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                out.write('"');
-                final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 30, imageOut);
-                imageOut.flush();
-                out.write('\"');
-            } else {
-                out.write("null".getBytes());
-            }
-
-            if (!originalCacheState) {
-                rootView.setDrawingCacheEnabled(false);
-            }
-        }
-
-        private void snapshotView(Writer writer, View view, SnapshotConfig config, boolean first)
-                throws IOException {
-            final JSONObject dump = new JSONObject();
-            try {
-                dump.put("hashCode", view.hashCode());
-                dump.put("id", view.getId());
-                dump.put("tag", view.getTag());
-
-                dump.put("top", view.getTop());
-                dump.put("left", view.getLeft());
-                dump.put("width", view.getWidth());
-                dump.put("height", view.getHeight());
-
-                final JSONArray classes = new JSONArray();
-                Class klass = view.getClass();
-                do {
-                    classes.put(klass.getCanonicalName());
-                    klass = klass.getSuperclass();
-                } while (klass != Object.class);
-                dump.put("classes", classes);
-
-                config.addProperties(view, dump);
-
-                JSONArray children = new JSONArray();
-                if (view instanceof ViewGroup) {
-                    final ViewGroup group = (ViewGroup) view;
-                    final int childCount = group.getChildCount();
-                    for (int i = 0; i < childCount; i++) {
-                        final View child = group.getChildAt(i);
-                        children.put(child.hashCode());
-                    }
-                }
-                dump.put("children", children);
-            } catch (JSONException impossible) {
-                throw new RuntimeException("Apparently Impossible JSONException", impossible);
-            }
-
-            if (!first) {
-                writer.write(", ");
-            }
-
-            writer.write(dump.toString());
-
-            if (view instanceof ViewGroup) {
-                final ViewGroup group = (ViewGroup) view;
-                final int childCount = group.getChildCount();
-                for (int i = 0; i < childCount; i++) {
-                    final View child = group.getChildAt(i);
-                    snapshotView(writer, child, config, false);
-                }
-            }
-        }
-
         private EditorConnection mEditorConnection;
         private final Context mContext;
         private final String mToken;
@@ -462,41 +361,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         public BadConfigException(String message, Throwable cause) {
             super(message, cause);
         }
-    }
-
-    private static class SnapshotConfig {
-        public SnapshotConfig(final List<PropertyDescription> properties) {
-            mProperties = properties;
-        }
-
-        public void addProperties(View v, JSONObject out) {
-            for (PropertyDescription desc: mProperties) {
-                if (desc.targetClass.isAssignableFrom(v.getClass())) {
-                    try {
-                        Object value = desc.accessor.applyMethod(v);
-                        out.put(desc.name, value);
-                    } catch (JSONException e) {
-                        Log.e(LOGTAG, "Can't marshall value of property " + desc.name + " into JSON.", e);
-                    }
-                }
-            }
-        }
-
-        private static class PropertyDescription {
-            public PropertyDescription(String name, Class targetClass, ViewEdit.Caller accessor, ViewEdit.Caller mutator) {
-                this.name = name;
-                this.targetClass = targetClass;
-                this.accessor = accessor;
-                this.mutator = mutator;
-            }
-
-            public final String name;
-            public final Class targetClass;
-            public final ViewEdit.Caller accessor;
-            public final ViewEdit.Caller mutator;
-        }
-
-        private final List<PropertyDescription> mProperties;
     }
 
     private static class EditProtocol {
@@ -550,9 +414,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
             }
         }
 
-        private SnapshotConfig readSnapshotConfig(JSONObject source)
+        private ViewSnapshot readSnapshotConfig(JSONObject source)
             throws BadConfigException {
-            final List<SnapshotConfig.PropertyDescription> properties = new ArrayList<SnapshotConfig.PropertyDescription>();
+            final List<ViewSnapshot.PropertyDescription> properties = new ArrayList<ViewSnapshot.PropertyDescription>();
 
             try {
                 final JSONArray classes = source.getJSONArray("classes");
@@ -582,12 +446,12 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                         final String mutatorName = mutatorConfig.getString("selector");
                         final ViewEdit.Caller mutator = new ViewEdit.Caller(mutatorName, mutatorParamTypes, Void.TYPE);
 
-                        final SnapshotConfig.PropertyDescription desc = new SnapshotConfig.PropertyDescription(propName, targetClass, accessor, mutator);
+                        final ViewSnapshot.PropertyDescription desc = new ViewSnapshot.PropertyDescription(propName, targetClass, accessor, mutator);
                         properties.add(desc);
                     }
                 }
 
-                return new SnapshotConfig(properties);
+                return new ViewSnapshot(properties);
             } catch (JSONException e) {
                 throw new BadConfigException("Can't read snapshot configuration", e);
             } catch (ClassNotFoundException e) {

@@ -8,8 +8,10 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -57,34 +59,47 @@ public class TestView extends FrameLayout {
 
         mAdHocButton1 = new AdHocButton1(getContext());
         mAdHocButton1.setTag(SIMPLE_TAG);
+        mAdHocButton1.setText("{Hi!}");
         buttons.addView(mAdHocButton1);
         mAllViews.add(mAdHocButton1);
         mFourthLayer.add(mAdHocButton1);
 
         mAdHocButton2 = new AdHocButton2(getContext());
+        mAdHocButton2.setText("Hello \" There");
         buttons.addView(mAdHocButton2);
         mAllViews.add(mAdHocButton2);
         mFourthLayer.add(mAdHocButton2);
 
         mAdHocButton3 = new AdHocButton3(getContext());
+        mAdHocButton2.setText("Howdy: ]");
         mAdHocButton3.setId(BUTTON_ID);
         buttons.addView(mAdHocButton3);
         mAllViews.add(mAdHocButton3);
         mFourthLayer.add(mAdHocButton3);
 
         mButtonParentView = buttons;
+
+        mViewsByHashcode = new HashMap<Integer, View>();
+        for (View v:mAllViews) {
+            mViewsByHashcode.put(v.hashCode(), v);
+        }
     }
 
     public int viewCount() {
         return 1 + mSecondLayer.size() + mThirdLayer.size() + mFourthLayer.size();
     }
 
-    public static class AdHocButton1 extends Button {
+    public interface CustomPropButton {
+        public CharSequence getCustomProperty();
+        public void setCustomProperty(CharSequence s);
+    }
+
+    public static class AdHocButton1 extends Button implements CustomPropButton {
         public AdHocButton1(Context context) {
             super(context);
         }
 
-        public String getCustomProperty() {
+        public CharSequence getCustomProperty() {
             return SIMPLE_TAG;
         }
 
@@ -97,19 +112,15 @@ public class TestView extends FrameLayout {
         public AdHocButton2(Context context) {
             super(context);
         }
-
-        private String getCustomProperty() {
-            return SIMPLE_TAG;
-        }
     }
 
-    public static class AdHocButton3 extends Button {
+    public static class AdHocButton3 extends Button implements CustomPropButton {
         public AdHocButton3(Context context) {
             super(context);
         }
 
-        public int getCustomProperty() {
-            return BUTTON_ID;
+        public CharSequence getCustomProperty() {
+            throw new RuntimeException("BANG!");
         }
 
         public void setCustomProperty(CharSequence s) {
@@ -119,12 +130,13 @@ public class TestView extends FrameLayout {
 
     public final Set<View> mAllViews;
     public final View mButtonParentView;
-    public final View mAdHocButton1;
-    public final View mAdHocButton2;
-    public final View mAdHocButton3;
+    public final AdHocButton1 mAdHocButton1;
+    public final AdHocButton2 mAdHocButton2;
+    public final AdHocButton3 mAdHocButton3;
     public final Set<View> mSecondLayer;
     public final Set<View> mThirdLayer;
     public final Set<View> mFourthLayer;
+    public final Map<Integer, View> mViewsByHashcode;
 
     public static final int ROOT_ID = 1000;
     public static final int BUTTON_ID = 2000;
