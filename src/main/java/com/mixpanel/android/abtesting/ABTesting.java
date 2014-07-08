@@ -1,11 +1,10 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.abtesting;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,18 +12,13 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Base64;
-import android.util.Base64OutputStream;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 
 
-import com.mixpanel.android.abtesting.EditorConnection;
-import com.mixpanel.android.abtesting.Tweaks;
-import com.mixpanel.android.abtesting.ViewEdit;
-import com.mixpanel.android.abtesting.ViewSnapshot;
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -33,7 +27,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -49,7 +42,22 @@ import java.util.Set;
  * the ABHandler which runs on a HandlerThread
  */
 @TargetApi(14)
-public class ABTesting implements Application.ActivityLifecycleCallbacks {
+public class ABTesting {
+
+    public ABTesting(Context context, String token) {
+        mChanges = new HashMap<String, ArrayList<JSONObject>>();
+        mProtocol = new EditProtocol();
+
+        final Application app = (Application) context.getApplicationContext();
+        app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
+
+        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        thread.start();
+        mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
+        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+
+        mUiThreadHandler = new Handler(Looper.getMainLooper());
+    }
 
     public Tweaks getTweaks() {
         return mTweaks;
@@ -70,80 +78,73 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
         }
     }
 
-    @Override
-    public void onActivityCreated(Activity activity, Bundle bundle) { }
+    private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
-    @Override
-    public void onActivityStarted(Activity activity) {
-        activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                int action = motionEvent.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-                    mDown++;
-                    if (mDown == 5) {
-                        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
+        @Override
+        public void onActivityCreated(Activity activity, Bundle bundle) {
+        }
+
+        @Override
+        public void onActivityStarted(Activity activity) {
+            activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View view, MotionEvent motionEvent) {
+                    int action = motionEvent.getActionMasked();
+                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                        mDown++;
+                        if (mDown == 5) {
+                            mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
+                        }
+                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+                        mDown--;
                     }
-                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                    mDown--;
+                    return true;
                 }
-                return true;
+
+                private int mDown = 0;
+            });
+
+            synchronized (mLiveActivities) {
+                mLiveActivities.add(activity);
             }
 
-            private int mDown = 0;
-        });
-
-        synchronized (mLiveActivities) {
-            mLiveActivities.add(activity);
-        }
-
-        synchronized(mChanges) {
-            ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
-            if (null != changes) {
-                for (JSONObject j : changes) {
-                    try {
-                        ViewEdit inst = mProtocol.readEdit(j);
-                        inst.edit(activity.getWindow().getDecorView().getRootView());
-                    } catch (EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad change request saved in mChanges", e);
+            synchronized (mChanges) {
+                ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
+                if (null != changes) {
+                    for (JSONObject j : changes) {
+                        try {
+                            ViewEdit inst = mProtocol.readEdit(j);
+                            inst.edit(activity.getWindow().getDecorView().getRootView());
+                        } catch (EditProtocol.BadInstructionsException e) {
+                            Log.e(LOGTAG, "Bad change request saved in mChanges", e);
+                        }
                     }
                 }
             }
         }
-    }
 
-    @Override
-    public void onActivityResumed(Activity activity) { }
-
-    @Override
-    public void onActivityPaused(Activity activity) { }
-
-    @Override
-    public void onActivityStopped(Activity activity) {
-        synchronized (mLiveActivities) {
-            mLiveActivities.remove(activity);
+        @Override
+        public void onActivityResumed(Activity activity) {
         }
-    }
 
-    @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle bundle) { }
+        @Override
+        public void onActivityPaused(Activity activity) {
+        }
 
-    @Override
-    public void onActivityDestroyed(Activity activity) { }
+        @Override
+        public void onActivityStopped(Activity activity) {
+            synchronized (mLiveActivities) {
+                mLiveActivities.remove(activity);
+            }
+        }
 
-    /* package */ ABTesting(Context context, String token) {
-        mChanges = new HashMap<String, ArrayList<JSONObject>>();
-        mProtocol = new EditProtocol();
+        @Override
+        public void onActivitySaveInstanceState(Activity activity, Bundle bundle) {
+        }
 
-        final Application app = (Application) context.getApplicationContext();
-        app.registerActivityLifecycleCallbacks(this);
-
-        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
-        thread.start();
-        mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
-        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
-
-        mUiThreadHandler = new Handler(Looper.getMainLooper());
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+        }
     }
 
     /**

@@ -18,7 +18,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
 
-public class ViewSnapshot {
+/* package */ class ViewSnapshot {
 
     public static class PropertyDescription {
         public PropertyDescription(String name, Class targetClass, ViewEdit.Caller accessor, ViewEdit.Caller mutator) {

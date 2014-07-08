@@ -4,8 +4,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import com.mixpanel.android.mpmetrics.ABTesting;
-
 import com.mixpanel.java_websocket.client.WebSocketClient;
 import com.mixpanel.java_websocket.drafts.Draft_17;
 import com.mixpanel.java_websocket.framing.Framedata;
@@ -22,7 +20,7 @@ import java.nio.ByteBuffer;
  * EditorClient should handle all communication to and from the socket. It should be fairly naive and
  * only know how to delegate messages to the ABHandler class.
  */
-public class EditorConnection {
+/* package */ class EditorConnection {
     public EditorConnection(URI uri, Handler handler) throws InterruptedException {
         mHandler = handler;
         mClient = new EditorClient(uri, CONNECT_TIMEOUT);

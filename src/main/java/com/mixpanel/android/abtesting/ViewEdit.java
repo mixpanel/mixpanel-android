@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class ViewEdit {
+/* package */ class ViewEdit {
 
     public static class PathElement {
         public PathElement(String vClass, int ix) {
