@@ -203,7 +203,7 @@ public class ABTesting {
 
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
-                mEditorConnection = new EditorConnection(new URI(url), mMessageThreadHandler);
+                mEditorConnection = new EditorConnection(new URI(url), new EditorService());
             } catch (URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
             } catch (InterruptedException e) {
@@ -354,6 +354,23 @@ public class ABTesting {
         private SharedPreferences mPreferences;
         private final Context mContext;
         private final String mToken;
+    }
+
+    private class EditorService implements EditorConnection.EditorService {
+
+        @Override
+        public void sendSnapshot(JSONObject message) {
+            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_SEND_STATE_FOR_EDITING);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void performEdit(JSONObject message) {
+            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_CHANGES_RECEIVED);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
     }
 
     private static class BadConfigException extends Exception {
@@ -532,8 +549,8 @@ public class ABTesting {
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
-    public static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
-    public static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
+    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";

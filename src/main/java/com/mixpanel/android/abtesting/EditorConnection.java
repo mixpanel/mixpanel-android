@@ -21,8 +21,14 @@ import java.nio.ByteBuffer;
  * only know how to delegate messages to the ABHandler class.
  */
 /* package */ class EditorConnection {
-    public EditorConnection(URI uri, Handler handler) throws InterruptedException {
-        mHandler = handler;
+
+    public interface EditorService {
+        public void sendSnapshot(JSONObject message);
+        public void performEdit(JSONObject message);
+    }
+
+    public EditorConnection(URI uri, EditorService service) throws InterruptedException {
+        mService = service;
         mClient = new EditorClient(uri, CONNECT_TIMEOUT);
         mClient.connectBlocking();
     }
@@ -52,13 +58,9 @@ import java.nio.ByteBuffer;
                 final JSONObject messageJson = new JSONObject(message);
                 String type = messageJson.getString("type");
                 if (type.equals("snapshot_request")) {
-                    Message msg = mHandler.obtainMessage(ABTesting.MESSAGE_SEND_STATE_FOR_EDITING);
-                    msg.obj = messageJson;
-                    mHandler.sendMessage(msg);
+                    mService.sendSnapshot(messageJson);
                 } else if (type.equals("change_request")) {
-                    Message msg = mHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_CHANGES_RECEIVED);
-                    msg.obj = messageJson;
-                    mHandler.sendMessage(msg);
+                    mService.performEdit(messageJson);
                 }
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Bad JSON received:" + message, e);
@@ -109,9 +111,8 @@ import java.nio.ByteBuffer;
         }
     }
 
-    private Handler mHandler;
-    private EditorClient mClient;
-
+    private final EditorService mService;
+    private final EditorClient mClient;
 
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
