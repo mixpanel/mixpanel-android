@@ -113,12 +113,7 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
-        if (android.os.Build.VERSION.SDK_INT < 14) {
-            Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
-            mABTesting = null;
-        } else {
-            mABTesting = new ABTesting(mContext, mToken);
-        }
+        mABTesting = constructABTesting(context, token);
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
@@ -972,6 +967,15 @@ public class MixpanelAPI {
 
     /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener) {
         return new DecideUpdates(token, peopleId, listener);
+    }
+
+    /* package */ ABTesting constructABTesting(final Context context, final String token) {
+        if (android.os.Build.VERSION.SDK_INT < 14) {
+            Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
+            return null;
+        } else {
+            return new ABTesting(mContext, mToken);
+        }
     }
 
     /* package */ void clearPreferences() {
