@@ -379,9 +379,9 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 throws BadInstructionsException {
             try {
                 final int viewId = source.getInt("view_id");
-
                 final JSONArray pathDesc = source.getJSONArray("path");
                 final List<ViewEdit.PathElement> path = new ArrayList<ViewEdit.PathElement>();
+
                 for(int i = 0; i < pathDesc.length(); i++) {
                     final JSONObject targetView = pathDesc.getJSONObject(i);
                     final String targetViewClass = targetView.getString("view_class");
@@ -390,7 +390,6 @@ public class ABTesting implements Application.ActivityLifecycleCallbacks {
                 }
 
                 final String methodName = source.getString("method");
-
                 final JSONArray argsAndTypes = source.getJSONArray("args");
                 final Object[] methodArgs = new Object[argsAndTypes.length()];
                 final Class[] methodTypes = new Class[argsAndTypes.length()];
