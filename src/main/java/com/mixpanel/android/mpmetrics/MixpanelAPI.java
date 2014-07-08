@@ -1541,7 +1541,6 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 
-
     private DecideUpdates mDecideUpdates;
 
     // Maps each token to a singleton MixpanelAPI instance
