@@ -51,7 +51,7 @@ public class ABTesting {
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
 
-        HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        final HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
@@ -110,11 +110,11 @@ public class ABTesting {
             }
 
             synchronized (mChanges) {
-                ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
+                final ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
                 if (null != changes) {
                     for (JSONObject j : changes) {
                         try {
-                            ViewEdit inst = mProtocol.readEdit(j);
+                            final ViewEdit inst = mProtocol.readEdit(j);
                             inst.edit(activity.getWindow().getDecorView().getRootView());
                         } catch (EditProtocol.BadInstructionsException e) {
                             Log.e(LOGTAG, "Bad change request saved in mChanges", e);
@@ -184,9 +184,9 @@ public class ABTesting {
         }
 
         private void initializeChanges() {
-            SharedPreferences prefs =
-                    mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE);
-            String changes = prefs.getString(SHARED_PREF_CHANGES_KEY, null);
+            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
+            mPreferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+            final String changes = mPreferences.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != changes) {
                 try {
                     handleChangesReceived(new JSONObject(changes), false, false);
@@ -329,7 +329,7 @@ public class ABTesting {
             } else {
                 synchronized (mChanges) {
                     mChanges.clear();
-                    ArrayList<JSONObject> changeList;
+                    final ArrayList<JSONObject> changeList;
                     if (mChanges.containsKey(targetActivity)) {
                         changeList = mChanges.get(targetActivity);
                     } else {
@@ -343,14 +343,14 @@ public class ABTesting {
 
             if (persist) {
                 Log.v(LOGTAG, "Persisting received changes");
-                SharedPreferences.Editor editor =
-                        mContext.getSharedPreferences(SHARED_PREF_CHANGES_FILE, Context.MODE_PRIVATE).edit();
+                final SharedPreferences.Editor editor = mPreferences.edit();
                 editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
                 editor.commit();
             }
         }
 
         private EditorConnection mEditorConnection;
+        private SharedPreferences mPreferences;
         private final Context mContext;
         private final String mToken;
     }
