@@ -18,7 +18,6 @@ import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 
-
 import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.json.JSONArray;
