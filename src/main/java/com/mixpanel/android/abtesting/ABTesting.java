@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
@@ -52,6 +53,7 @@ public class ABTesting {
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
 
         HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
