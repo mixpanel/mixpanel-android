@@ -426,7 +426,7 @@ public class ABTesting {
                     throw new BadInstructionsException("Path selector was empty");
                 }
 
-                final ViewEdit.Caller caller = new ViewEdit.Caller(methodName, methodArgs, Void.TYPE);
+                final Caller caller = new Caller(methodName, methodArgs, Void.TYPE);
                 return new ViewEdit(viewId, path, caller);
             } catch (JSONException e) {
                 throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
@@ -454,7 +454,7 @@ public class ABTesting {
                         final String accessorName = accessorConfig.getString("selector");
                         final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                         final Class accessorResultType = Class.forName(accessorResultTypeName);
-                        final ViewEdit.Caller accessor = new ViewEdit.Caller(accessorName, NO_PARAMS, accessorResultType);
+                        final Caller accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
 
                         final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
                         final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
@@ -463,7 +463,7 @@ public class ABTesting {
                             mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
                         }
                         final String mutatorName = mutatorConfig.getString("selector");
-                        final ViewEdit.Caller mutator = new ViewEdit.Caller(mutatorName, mutatorParamTypes, Void.TYPE);
+                        final Caller mutator = new Caller(mutatorName, mutatorParamTypes, Void.TYPE);
 
                         final ViewSnapshot.PropertyDescription desc = new ViewSnapshot.PropertyDescription(propName, targetClass, accessor, mutator);
                         properties.add(desc);

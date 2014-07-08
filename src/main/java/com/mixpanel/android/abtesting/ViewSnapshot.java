@@ -21,7 +21,7 @@ import java.util.List;
 /* package */ class ViewSnapshot {
 
     public static class PropertyDescription {
-        public PropertyDescription(String name, Class targetClass, ViewEdit.Caller accessor, ViewEdit.Caller mutator) {
+        public PropertyDescription(String name, Class targetClass, Caller accessor, Caller mutator) {
             this.name = name;
             this.targetClass = targetClass;
             this.accessor = accessor;
@@ -30,8 +30,8 @@ import java.util.List;
 
         public final String name;
         public final Class targetClass;
-        public final ViewEdit.Caller accessor;
-        public final ViewEdit.Caller mutator;
+        public final Caller accessor;
+        public final Caller mutator;
     }
 
     public ViewSnapshot(List<PropertyDescription> properties) {
