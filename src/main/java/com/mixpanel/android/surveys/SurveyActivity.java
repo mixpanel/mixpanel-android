@@ -263,9 +263,9 @@ public class SurveyActivity extends Activity {
         }
 
         final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-        alertBuilder.setTitle("We'd love your feedback!");
-        alertBuilder.setMessage("Mind taking a quick survey?");
-        alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+        alertBuilder.setTitle(R.string.com_mixpanel_android_survey_alert_title);
+        alertBuilder.setMessage(R.string.com_mixpanel_android_survey_alert_message);
+        alertBuilder.setPositiveButton(R.string.com_mixpanel_android_survey_alert_ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
@@ -273,7 +273,7 @@ public class SurveyActivity extends Activity {
                 showQuestion(mCurrentQuestion);
             }
         });
-        alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+        alertBuilder.setNegativeButton(R.string.com_mixpanel_android_survey_alert_cancel, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.finish();
