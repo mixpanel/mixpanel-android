@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
@@ -29,9 +30,12 @@ import com.mixpanel.android.R;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
+ *
+ * Users of the library should not reference this class directly.
  */
 @TargetApi(14)
-public class InAppFragment extends Fragment {
+@SuppressLint("ClickableViewAccessibility")
+public class InAppFragment extends Fragment { // TODO why is this public?
 
     public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
@@ -83,6 +87,7 @@ public class InAppFragment extends Fragment {
                 notifImage.startAnimation(scale);
             }
         };
+
         mDetector = new GestureDetector(activity, new GestureDetector.OnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {

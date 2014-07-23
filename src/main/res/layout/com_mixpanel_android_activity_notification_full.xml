@@ -40,7 +40,6 @@
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
             android:textSize="25sp"
-            android:text="Placeholder Title Text"
             android:textColor="#ffffff"
             android:textStyle="bold" />
 
@@ -53,7 +52,6 @@
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
             android:textSize="20sp"
-            android:text="Placeholder Body Text"
             android:textColor="#a9b5c5" />
 
         <Button

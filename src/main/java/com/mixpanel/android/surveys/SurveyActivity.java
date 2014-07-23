@@ -58,6 +58,7 @@ import java.util.TimeZone;
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable(Activity)}
  */
 @TargetApi(14)
+@SuppressLint("ClickableViewAccessibility")
 public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
