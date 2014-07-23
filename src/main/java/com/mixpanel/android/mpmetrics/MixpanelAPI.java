@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
@@ -28,6 +29,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -1103,6 +1105,7 @@ public class MixpanelAPI {
 
         @Override
         @Deprecated
+        @SuppressWarnings("deprecation")
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (null == callbacks) {
                 Log.i(LOGTAG, "Skipping survey check because callback is null.");
@@ -1115,7 +1118,9 @@ public class MixpanelAPI {
 
         @Override
         @Deprecated
-        public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
+        @SuppressWarnings("deprecation")
+        public void checkForSurvey(final SurveyCallbacks callbacks,
+                final Activity parentActivity) {
             // Originally this call pre-computed UI chrome while it was waiting for the check to run.
             // Since modern checks run asynchronously, it's useless nowdays.
             checkForSurvey(callbacks);
@@ -1180,7 +1185,7 @@ public class MixpanelAPI {
         @Override
         public void trackCharge(double amount, JSONObject properties) {
             final Date now = new Date();
-            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
             try {
@@ -1347,7 +1352,7 @@ public class MixpanelAPI {
                         new UpdateDisplayState.DisplayState.SurveyState(toShow);
 
                 final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-                assert intentId > 0; // Since we hold the lock, and !hasCurrentProposal
+                // assert intentId > 0 Since we hold the lock, and !hasCurrentProposal
 
                 listener = new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
@@ -1366,7 +1371,7 @@ public class MixpanelAPI {
                 lock.unlock();
             }
 
-            assert listener != null;
+            // assert listener != null;
             BackgroundCapture.captureBackground(parent, listener);
         }
 
@@ -1403,7 +1408,7 @@ public class MixpanelAPI {
                         final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
                                 new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
+                        // assert intentId > 0 Since we're holding the lock and !hasCurrentProposal
 
                         switch (inAppType) {
                             case MINI: {
@@ -1440,7 +1445,7 @@ public class MixpanelAPI {
                     track("$campaign_delivery", notif.getCampaignProperties());
 
                     final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
                     final JSONObject notifProperties = notif.getCampaignProperties();
                     try {
                         notifProperties.put("$time", dateFormat.format(new Date()));

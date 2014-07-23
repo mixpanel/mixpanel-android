@@ -8,9 +8,11 @@ https://groups.google.com/forum/#!msg/android-developers/qcclW4oekVY/IeQtoAruCTg
 
  -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:targetApi="ICE_CREAM_SANDWICH">
 
     <TextView
         android:tag="com_mixpanel_android_TAG_prompt_text"

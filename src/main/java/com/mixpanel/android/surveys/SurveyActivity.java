@@ -13,8 +13,10 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Display;
@@ -115,7 +117,8 @@ public class SurveyActivity extends Activity {
             gd.setGradientCenter(0.5f, 0.33f);
             gd.setGradientRadius(Math.min(size.x, size.y) * 0.7f);
         }
-        backgroundImage.setBackgroundDrawable(gd);
+
+        setViewBackground(backgroundImage, gd);
 
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());
@@ -467,6 +470,16 @@ public class SurveyActivity extends Activity {
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
+    }
+
+    @SuppressWarnings("deprecation")
+    @SuppressLint("NewApi")
+    private void setViewBackground(View v, Drawable d) {
+        if (Build.VERSION.SDK_INT < 16) {
+            v.setBackgroundDrawable(d);
+        } else {
+            v.setBackground(d);
+        }
     }
 
     private void completeSurvey() {

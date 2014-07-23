@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -162,7 +163,6 @@ public class GCMReceiver extends BroadcastReceiver {
         nm.notify(0, n);
     }
 
-    @SuppressWarnings("deprecation")
     @TargetApi(11)
 	private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -173,14 +173,19 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(title).
                 setContentText(message).
                 setContentIntent(intent);
-        Notification n;
-        if (Build.VERSION.SDK_INT < 16) {
-            n = builder.getNotification();
-        } else {
-            n = builder.build();
-        }
 
+        final Notification n = runBuilder(builder);
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         nm.notify(0, n);
+    }
+
+    @SuppressWarnings("deprecation")
+    @SuppressLint("NewApi")
+    private Notification runBuilder(final Notification.Builder builder) {
+        if (Build.VERSION.SDK_INT < 16) {
+            return builder.getNotification();
+        } else {
+            return builder.build();
+        }
     }
 }

@@ -10,8 +10,12 @@ import android.view.animation.Animation;
 import android.view.animation.Transformation;
 import android.widget.CheckedTextView;
 
-
-/* package */ class SurveyChoiceView extends CheckedTextView {
+/**
+ * Part of the Mixpanel Notifications user interface.
+ *
+ * Users of the library should not instantiate this class directly.
+ */
+public class SurveyChoiceView extends CheckedTextView {
 
     public SurveyChoiceView(Context context) {
         super(context);

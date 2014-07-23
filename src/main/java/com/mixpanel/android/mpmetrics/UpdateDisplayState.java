@@ -302,7 +302,7 @@ public class UpdateDisplayState implements Parcelable {
 
     /* package */ static boolean hasCurrentProposal() {
         // Almost certainly a race condition of caller doesn't hold our lock object.
-        assert sUpdateDisplayLock.isHeldByCurrentThread();
+        if (!sUpdateDisplayLock.isHeldByCurrentThread()) throw new AssertionError();
 
         final long currentTime = System.currentTimeMillis();
         final long deltaTime = currentTime - sUpdateDisplayLockMillis;
@@ -319,7 +319,7 @@ public class UpdateDisplayState implements Parcelable {
     /* package */ static int proposeDisplay(final DisplayState state, final String distinctId, final String token) {
         int ret = -1;
 
-        assert sUpdateDisplayLock.isHeldByCurrentThread();
+        if (!sUpdateDisplayLock.isHeldByCurrentThread()) throw new AssertionError();
         if (! hasCurrentProposal()) {
             sUpdateDisplayLockMillis = System.currentTimeMillis();
             sUpdateDisplayState = new UpdateDisplayState(state, distinctId, token);

@@ -11,12 +11,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
+// In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
+@SuppressLint("CommitPrefEdits")
 /* package */ class PersistentIdentity {
 
     // Will be called from crazy threads, BUT will be the only thread that has access to the given

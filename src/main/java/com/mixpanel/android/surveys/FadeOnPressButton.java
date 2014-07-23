@@ -9,7 +9,12 @@ import android.widget.Button;
 import android.R.attr;
 
 @TargetApi(14)
-/* package */ class FadeOnPressButton extends Button {
+/**
+ * Part of the Mixpanel Surveys user interface.
+ *
+ * Users of the library should not instantiate this class directly.
+ */
+public class FadeOnPressButton extends Button {
 
     public FadeOnPressButton(Context context) {
         super(context);

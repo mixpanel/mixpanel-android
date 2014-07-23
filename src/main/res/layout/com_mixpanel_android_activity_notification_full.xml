@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:ignore="InconsistentLayout">
 
     <ImageView
         android:id="@+id/com_mixpanel_android_notification_gradient"

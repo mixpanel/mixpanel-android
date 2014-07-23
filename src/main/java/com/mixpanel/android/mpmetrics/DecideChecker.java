@@ -1,8 +1,11 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Point;
+import android.os.Build;
 import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
@@ -178,7 +181,9 @@ import java.util.List;
 
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
-        if (notification.getType() == InAppNotification.Type.TAKEOVER && display.getWidth() >= 720) {
+        int displayWidth = getDisplayWidth(display);
+
+        if (notification.getType() == InAppNotification.Type.TAKEOVER && displayWidth >= 720) {
             urls = new String[]{ notification.getImage4xUrl(), notification.getImage2xUrl() };
         }
 
@@ -190,6 +195,18 @@ import java.util.List;
         }
 
         return ret;
+    }
+
+    @SuppressWarnings("deprecation")
+    @SuppressLint("NewApi")
+    private static int getDisplayWidth(final Display display) {
+        if (Build.VERSION.SDK_INT < 13) {
+            return display.getWidth();
+        } else {
+            final Point displaySize = new Point();
+            display.getSize(displaySize);
+            return displaySize.x;
+        }
     }
 
     private final MPConfig mConfig;
