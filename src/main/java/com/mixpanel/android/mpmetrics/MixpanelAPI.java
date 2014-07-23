@@ -1105,7 +1105,6 @@ public class MixpanelAPI {
 
         @Override
         @Deprecated
-        @SuppressWarnings("deprecation")
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (null == callbacks) {
                 Log.i(LOGTAG, "Skipping survey check because callback is null.");
@@ -1118,7 +1117,6 @@ public class MixpanelAPI {
 
         @Override
         @Deprecated
-        @SuppressWarnings("deprecation")
         public void checkForSurvey(final SurveyCallbacks callbacks,
                 final Activity parentActivity) {
             // Originally this call pre-computed UI chrome while it was waiting for the check to run.
