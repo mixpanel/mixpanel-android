@@ -22,14 +22,10 @@ android {
         targetSdkVersion 20
         testPackageName "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
-    }
-}
 
-// TODO do not commit
-allprojects {
-    gradle.projectsEvaluated {
-        tasks.withType(JavaCompile) {
-            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        lintOptions {
+            abortOnError true
+            warningsAsErrors true
         }
     }
 }
