@@ -212,7 +212,7 @@ public class SurveyActivity extends Activity {
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+        requestOrientationLock();
 
         if (null != savedInstanceState) {
             mCurrentQuestion = savedInstanceState.getInt(CURRENT_QUESTION_BUNDLE_KEY, 0);
@@ -480,6 +480,20 @@ public class SurveyActivity extends Activity {
             v.setBackgroundDrawable(d);
         } else {
             v.setBackground(d);
+        }
+    }
+
+    @SuppressLint("NewApi")
+    private void requestOrientationLock() {
+        if (Build.VERSION.SDK_INT >= 18) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+        } else {
+            final int currentOrientation = getResources().getConfiguration().orientation;
+            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            } else if (currentOrientation == Configuration.ORIENTATION_PORTRAIT) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            }
         }
     }
 
