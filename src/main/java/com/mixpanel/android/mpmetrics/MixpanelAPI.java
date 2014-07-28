@@ -973,6 +973,10 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
     }
 
+    /* package */ boolean canUpdate() {
+        return mDecideUpdates != null;
+    }
+
     ///////////////////////
 
     private class PeopleImpl implements People {
