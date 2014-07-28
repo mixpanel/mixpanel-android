@@ -984,7 +984,7 @@ public class MixpanelAPI {
                 mDecideUpdates = null;
             }
 
-            if (null == mDecideUpdates) {
+            if (null == mDecideUpdates && null != distinctId) {
                 mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
@@ -1126,6 +1126,7 @@ public class MixpanelAPI {
 
         @Override
         public InAppNotification getNotificationIfAvailable() {
+            // assert if(null == getDistinctId()) { null == mDecideUpdates }
             if (null == getDistinctId()) {
                 return null;
             }
@@ -1134,6 +1135,7 @@ public class MixpanelAPI {
 
         @Override
         public Survey getSurveyIfAvailable() {
+            // assert if(null == getDistinctId()) { null == mDecideUpdates }
             if (null == getDistinctId()) {
                 return null;
             }
@@ -1157,6 +1159,10 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
+            if (null == mDecideUpdates) {
+                return;
+            }
+
             Survey s = mDecideUpdates.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
                 showGivenOrAvailableSurvey(s, parent);
@@ -1174,6 +1180,10 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationById(int id, final Activity parent) {
+            if (null == mDecideUpdates) {
+                return;
+            }
+
             InAppNotification notif = mDecideUpdates.getNotification(id, mConfig.getTestMode());
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
@@ -1464,9 +1474,7 @@ public class MixpanelAPI {
         }
 
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            // Workaround for a race between checking for updates using getSurveyIfAvailable() and getNotificationIfAvailable()
-            // and registering a listener.
-            synchronized (mDecideUpdates) {
+            if (null != mDecideUpdates) {
                 if (mDecideUpdates.hasUpdatesAvailable()) {
                     onNewResults(mDecideUpdates.getDistinctId());
                 }
@@ -1482,7 +1490,6 @@ public class MixpanelAPI {
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            Log.e(LOGTAG, "UPDATE RECIEVED, INFORMING " + mListeners.size() + " LISTENERS");
             for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
@@ -1533,7 +1540,7 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 
-    private DecideUpdates mDecideUpdates;
+    private DecideUpdates mDecideUpdates; // Possibly null
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
