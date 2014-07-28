@@ -151,7 +151,7 @@ public class SurveyActivity extends Activity {
             public void onClick(View v) {
                 final String uriString = inApp.getCallToActionUrl();
                 if (uriString != null && uriString.length() > 0) {
-                    Uri uri = null;
+                    Uri uri;
                     try {
                         uri = Uri.parse(uriString);
                     } catch (IllegalArgumentException e) {
@@ -159,7 +159,6 @@ public class SurveyActivity extends Activity {
                         return;
                     }
 
-                    assert(uri != null);
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         SurveyActivity.this.startActivity(viewIntent);

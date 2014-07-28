@@ -121,14 +121,14 @@ public class InAppFragment extends Fragment {
 
                 final String uriString = inApp.getCallToActionUrl();
                 if (uriString != null && uriString.length() > 0) {
-                    Uri uri = null;
+                    Uri uri;
                     try {
                         uri = Uri.parse(uriString);
                     } catch (IllegalArgumentException e) {
                         Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return true;
                     }
 
-                    assert(uri != null);
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         mParent.startActivity(viewIntent);

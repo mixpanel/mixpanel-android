@@ -1130,8 +1130,7 @@ public class MixpanelAPI {
 
         @Override
         public InAppNotification getNotificationIfAvailable() {
-            // assert if(null == getDistinctId()) { null == mDecideUpdates }
-            if (null == getDistinctId()) {
+            if (! canUpdate()) {
                 return null;
             }
             return mDecideUpdates.getNotification(mConfig.getTestMode());
@@ -1139,8 +1138,7 @@ public class MixpanelAPI {
 
         @Override
         public Survey getSurveyIfAvailable() {
-            // assert if(null == getDistinctId()) { null == mDecideUpdates }
-            if (null == getDistinctId()) {
+            if (! canUpdate()) {
                 return null;
             }
             return mDecideUpdates.getSurvey(mConfig.getTestMode());
@@ -1364,7 +1362,10 @@ public class MixpanelAPI {
                         new UpdateDisplayState.DisplayState.SurveyState(toShow);
 
                 final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-                // assert intentId > 0 Since we hold the lock, and !hasCurrentProposal
+                if (intentId <= 0) {
+                    Log.e(LOGTAG, "DisplayState Lock is in an inconsistent state! Please report this issue to Mixpanel");
+                    return;
+                }
 
                 listener = new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
@@ -1383,7 +1384,6 @@ public class MixpanelAPI {
                 lock.unlock();
             }
 
-            // assert listener != null;
             BackgroundCapture.captureBackground(parent, listener);
         }
 
@@ -1420,7 +1420,10 @@ public class MixpanelAPI {
                         final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
                                 new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-                        // assert intentId > 0 Since we're holding the lock and !hasCurrentProposal
+                        if (intentId <= 0) {
+                            Log.d(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
+                            return;
+                        }
 
                         switch (inAppType) {
                             case MINI: {
