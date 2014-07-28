@@ -35,7 +35,7 @@ import com.mixpanel.android.R;
  */
 @TargetApi(14)
 @SuppressLint("ClickableViewAccessibility")
-public class InAppFragment extends Fragment { // TODO why is this public?
+public class InAppFragment extends Fragment {
 
     public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
