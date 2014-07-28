@@ -135,6 +135,8 @@ import java.util.List;
                     Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final BadDecideObjectException e) {
                     Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                } catch (final OutOfMemoryError e) {
+                    Log.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
                 }
             }
         }
