@@ -52,7 +52,6 @@
     <uses-permission android:name="${application_package}.permission.C2D_MESSAGE" />
     -->
 
-    <!-- TODO revisit manifest merging with node="replace"? Maybe give it a shot? -->
     <application tools:ignore="AllowBackup">
         <!-- to support 2.2 (Froyo) and older devices, your application should allow fallback
              to HTTP if modern HTTPS certificates aren't supported. -->

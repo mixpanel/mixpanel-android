@@ -1,4 +1,4 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.surveys;
 
 import android.content.Context;
 import android.content.res.Resources;

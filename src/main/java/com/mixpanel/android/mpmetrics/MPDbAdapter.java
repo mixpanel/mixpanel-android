@@ -21,7 +21,7 @@ import android.util.Log;
  * by a single thread.
  *
  */
-class MPDbAdapter {
+/* package */ class MPDbAdapter {
     private static final String LOGTAG = "MixpanelAPI";
 
     public enum Table {
