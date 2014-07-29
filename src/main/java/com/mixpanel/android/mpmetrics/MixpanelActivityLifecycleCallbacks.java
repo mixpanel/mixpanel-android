@@ -6,7 +6,7 @@ import android.app.Application;
 import android.os.Bundle;
 
 @TargetApi(14)
-class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
+/* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance) {
         mMpInstance = mpInstance;

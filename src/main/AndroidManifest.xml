@@ -1,7 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.mixpanel.android">
+    <!-- To support customers who build from source with Eclipse, we have to
+         include this redundant versioning here. If you change
+         minSdkVersion or targetSdkVersion here, you must also
+         change the relevant properties in build.gradle -->
     <uses-sdk android:minSdkVersion="8"
-              android:targetSdkVersion="19"/>
+              android:targetSdkVersion="20"
+              tools:ignore="GradleOverrides"/>
 
     <!--
       This permission is required to allow the application to send events and properties to Mixpanel.
@@ -46,7 +52,7 @@
     <uses-permission android:name="${application_package}.permission.C2D_MESSAGE" />
     -->
 
-    <application>
+    <application tools:ignore="AllowBackup">
         <!-- to support 2.2 (Froyo) and older devices, your application should allow fallback
              to HTTP if modern HTTPS certificates aren't supported. -->
         <!--

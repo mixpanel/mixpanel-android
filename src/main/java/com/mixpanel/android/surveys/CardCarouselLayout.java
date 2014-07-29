@@ -32,10 +32,11 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.Survey;
 
 /**
- * Simple, single-purpose layout for juggling question cards.
- * Much less general than it appears.
+ * Part of the Mixpanel Surveys user interface.
+ *
+ * Users of the library should not instantiate this class directly.
  */
-/* package */ class CardCarouselLayout extends ViewGroup {
+public class CardCarouselLayout extends ViewGroup {
 
     public static class UnrecognizedAnswerTypeException extends Exception {
         private UnrecognizedAnswerTypeException(String string) {

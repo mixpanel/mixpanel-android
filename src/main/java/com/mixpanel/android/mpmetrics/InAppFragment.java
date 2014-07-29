@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
@@ -29,8 +30,11 @@ import com.mixpanel.android.R;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
+ *
+ * Users of the library should not reference this class directly.
  */
 @TargetApi(14)
+@SuppressLint("ClickableViewAccessibility")
 public class InAppFragment extends Fragment {
 
     public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
@@ -83,6 +87,7 @@ public class InAppFragment extends Fragment {
                 notifImage.startAnimation(scale);
             }
         };
+
         mDetector = new GestureDetector(activity, new GestureDetector.OnGestureListener() {
             @Override
             public boolean onDown(MotionEvent e) {
@@ -116,14 +121,14 @@ public class InAppFragment extends Fragment {
 
                 final String uriString = inApp.getCallToActionUrl();
                 if (uriString != null && uriString.length() > 0) {
-                    Uri uri = null;
+                    Uri uri;
                     try {
                         uri = Uri.parse(uriString);
                     } catch (IllegalArgumentException e) {
                         Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        return true;
                     }
 
-                    assert(uri != null);
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         mParent.startActivity(viewIntent);

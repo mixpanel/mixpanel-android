@@ -16,14 +16,17 @@ android {
     buildToolsVersion "19.1.0"
 
     defaultConfig {
+        // If you change minSdkVersion or targetSdkVersion below, you must also change
+        // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
         minSdkVersion 8
-        targetSdkVersion 19
+        targetSdkVersion 20
         testPackageName "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
-    }
 
-    lintOptions {
-        abortOnError false
+        lintOptions {
+            abortOnError true
+            warningsAsErrors true
+        }
     }
 }
 
@@ -62,6 +65,7 @@ if (isReleaseVersion()) {
         sign configurations.archives
     }
 }
+
 
 uploadArchives {
     configuration = configurations.archives

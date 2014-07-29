@@ -33,6 +33,15 @@ in the libs/ directory
 Changelog
 ---------
 
+#### v4.2.2
+
+ * Removed lint warnings from build
+
+ * Fixed issue that could cause NullPointerExceptions to be thrown from the library
+   if a user was identified as null
+
+ * Handle attempts to load In-app notifications in low memory conditions
+
 #### v4.2.1
 
  * Fixed a bug that would cause events to be dropped when the device thinks it has a valid network

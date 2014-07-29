@@ -8,8 +8,10 @@ import android.widget.EditText;
 
 /**
  * View used by the default Mixpanel Survey Display.
+ *
+ * Users of the library should not instantiate this class directly.
  */
-/* package */ class AlwaysSubmittableEditText extends EditText {
+public class AlwaysSubmittableEditText extends EditText {
 
     public AlwaysSubmittableEditText(Context context) {
         super(context);

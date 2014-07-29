@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
@@ -29,6 +30,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -986,6 +988,10 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
     }
 
+    /* package */ boolean canUpdate() {
+        return mDecideUpdates != null;
+    }
+
     ///////////////////////
 
     private class PeopleImpl implements People {
@@ -997,7 +1003,7 @@ public class MixpanelAPI {
                 mDecideUpdates = null;
             }
 
-            if (null == mDecideUpdates) {
+            if (null == mDecideUpdates && null != distinctId) {
                 mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
@@ -1130,7 +1136,8 @@ public class MixpanelAPI {
 
         @Override
         @Deprecated
-        public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parentActivity) {
+        public void checkForSurvey(final SurveyCallbacks callbacks,
+                final Activity parentActivity) {
             // Originally this call pre-computed UI chrome while it was waiting for the check to run.
             // Since modern checks run asynchronously, it's useless nowdays.
             checkForSurvey(callbacks);
@@ -1138,7 +1145,7 @@ public class MixpanelAPI {
 
         @Override
         public InAppNotification getNotificationIfAvailable() {
-            if (null == getDistinctId()) {
+            if (! canUpdate()) {
                 return null;
             }
             return mDecideUpdates.getNotification(mConfig.getTestMode());
@@ -1146,7 +1153,7 @@ public class MixpanelAPI {
 
         @Override
         public Survey getSurveyIfAvailable() {
-            if (null == getDistinctId()) {
+            if (! canUpdate()) {
                 return null;
             }
             return mDecideUpdates.getSurvey(mConfig.getTestMode());
@@ -1169,6 +1176,10 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
+            if (null == mDecideUpdates) {
+                return;
+            }
+
             Survey s = mDecideUpdates.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
                 showGivenOrAvailableSurvey(s, parent);
@@ -1186,6 +1197,10 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationById(int id, final Activity parent) {
+            if (null == mDecideUpdates) {
+                return;
+            }
+
             InAppNotification notif = mDecideUpdates.getNotification(id, mConfig.getTestMode());
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
@@ -1195,7 +1210,7 @@ public class MixpanelAPI {
         @Override
         public void trackCharge(double amount, JSONObject properties) {
             final Date now = new Date();
-            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
             try {
@@ -1362,7 +1377,10 @@ public class MixpanelAPI {
                         new UpdateDisplayState.DisplayState.SurveyState(toShow);
 
                 final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-                assert intentId > 0; // Since we hold the lock, and !hasCurrentProposal
+                if (intentId <= 0) {
+                    Log.e(LOGTAG, "DisplayState Lock is in an inconsistent state! Please report this issue to Mixpanel");
+                    return;
+                }
 
                 listener = new BackgroundCapture.OnBackgroundCapturedListener() {
                     @Override
@@ -1381,7 +1399,6 @@ public class MixpanelAPI {
                 lock.unlock();
             }
 
-            assert listener != null;
             BackgroundCapture.captureBackground(parent, listener);
         }
 
@@ -1418,7 +1435,10 @@ public class MixpanelAPI {
                         final UpdateDisplayState.DisplayState.InAppNotificationState proposal =
                                 new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
-                        assert intentId > 0; // Since we're holding the lock and !hasCurrentProposal
+                        if (intentId <= 0) {
+                            Log.d(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
+                            return;
+                        }
 
                         switch (inAppType) {
                             case MINI: {
@@ -1455,7 +1475,7 @@ public class MixpanelAPI {
                     track("$campaign_delivery", notif.getCampaignProperties());
 
                     final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING);
+                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
                     final JSONObject notifProperties = notif.getCampaignProperties();
                     try {
                         notifProperties.put("$time", dateFormat.format(new Date()));
@@ -1476,9 +1496,7 @@ public class MixpanelAPI {
         }
 
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            // Workaround for a race between checking for updates using getSurveyIfAvailable() and getNotificationIfAvailable()
-            // and registering a listener.
-            synchronized (mDecideUpdates) {
+            if (null != mDecideUpdates) {
                 if (mDecideUpdates.hasUpdatesAvailable()) {
                     onNewResults(mDecideUpdates.getDistinctId());
                 }
@@ -1494,7 +1512,6 @@ public class MixpanelAPI {
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            Log.e(LOGTAG, "UPDATE RECIEVED, INFORMING " + mListeners.size() + " LISTENERS");
             for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
@@ -1546,7 +1563,7 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 
-    private DecideUpdates mDecideUpdates;
+    private DecideUpdates mDecideUpdates; // Possibly null
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

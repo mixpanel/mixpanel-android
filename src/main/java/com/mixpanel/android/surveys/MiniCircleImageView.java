@@ -1,4 +1,4 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.surveys;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -8,7 +8,12 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.widget.ImageView;
 
-/* package */ class MiniCircleImageView extends ImageView {
+/**
+ * Part of the Mixpanel Notifications user interface.
+ *
+ * Users of the library should not instantiate this class directly.
+ */
+public class MiniCircleImageView extends ImageView { // TODO move to surveys package
     public MiniCircleImageView(Context context) {
         super(context);
         init();
