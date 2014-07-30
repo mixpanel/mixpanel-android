@@ -42,7 +42,7 @@ import java.util.Set;
  * the ABHandler which runs on a HandlerThread
  */
 @TargetApi(14)
-public class ABTesting {
+public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
 
     public ABTesting(Context context, String token) {
         mChanges = new HashMap<String, ArrayList<JSONObject>>();
