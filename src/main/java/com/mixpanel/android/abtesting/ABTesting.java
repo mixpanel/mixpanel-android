@@ -170,6 +170,9 @@ public class ABTesting {
                         this.connectToEditor();
                     }
                     break;
+                case MESSAGE_SEND_DEVICE_INFO:
+                    this.sendDeviceInfo();
+                    break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     this.sendStateForEditing((JSONObject) msg.obj);
                     break;
@@ -236,6 +239,32 @@ public class ABTesting {
             }
         }
 
+        private void sendDeviceInfo() {
+            Log.v(LOGTAG, "sendDeviceInfo");
+
+            final OutputStream out = mEditorConnection.getBufferedOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
+
+            try {
+                writer.write("{\"type\": \"device_info_response\",");
+                writer.write("\"payload\": {");
+                writer.write("\"available_font_families\": [],"); // TODO temp value during development
+                writer.write("\"device_name\": \"Android Device\",");
+                writer.write("\"tweaks\":");
+                writer.write(new JSONObject(mTweaks.getAll()).toString());
+                writer.write("}"); // payload
+                writer.write("}");
+            } catch (IOException e) {
+                Log.e(LOGTAG, "Can't write device_info to server", e);
+            } finally {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "Can't close websocket writer", e);
+                }
+            }
+        }
+
         private void sendStateForEditing(JSONObject message) {
             Log.v(LOGTAG, "sendStateForEditing");
 
@@ -290,11 +319,7 @@ public class ABTesting {
                     first = false;
                     snapshot.snapshot(info.activityName, info.rootView, out);
                 }
-                writer.write("],");
-
-                writer.write("\"tweaks\":");
-                writer.write(new JSONObject(mTweaks.getAll()).toString());
-
+                writer.write("]");
                 writer.write("}");
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
@@ -369,6 +394,12 @@ public class ABTesting {
         public void performEdit(JSONObject message) {
             Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_CHANGES_RECEIVED);
             msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void sendDeviceInfo() {
+            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_SEND_DEVICE_INFO);
             mMessageThreadHandler.sendMessage(msg);
         }
     }
@@ -551,6 +582,7 @@ public class ABTesting {
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
+    private static final int MESSAGE_SEND_DEVICE_INFO = 4;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";

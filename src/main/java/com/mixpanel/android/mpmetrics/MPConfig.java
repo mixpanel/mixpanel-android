@@ -92,7 +92,7 @@ public class MPConfig {
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
         if (null == editorUrl) {
-            editorUrl = "ws://mixpanel.com/websocket_proxy/";
+            editorUrl = "ws://switchboard.mixpanel.com/connect/"; // TODO should be wss://
         }
         mEditorUrl = editorUrl;
 

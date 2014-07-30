@@ -468,6 +468,7 @@ public class MixpanelAPI {
         return mPeople;
     }
 
+    // TODO this API is wrong
     public ABTesting getABTesting() {
         return mABTesting;
     }

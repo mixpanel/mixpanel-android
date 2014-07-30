@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
     public interface EditorService {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
+        public void sendDeviceInfo();
     }
 
     public EditorConnection(URI uri, EditorService service) throws InterruptedException {
@@ -57,7 +58,9 @@ import java.nio.ByteBuffer;
             try {
                 final JSONObject messageJson = new JSONObject(message);
                 String type = messageJson.getString("type");
-                if (type.equals("snapshot_request")) {
+                if (type.equals("device_info_request")) {
+                    mService.sendDeviceInfo();
+                } else if (type.equals("snapshot_request")) {
                     mService.sendSnapshot(messageJson);
                 } else if (type.equals("change_request")) {
                     mService.performEdit(messageJson);
