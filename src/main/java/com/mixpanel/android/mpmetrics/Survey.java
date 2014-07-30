@@ -8,41 +8,38 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
- * Represents a Survey, configured in Mixpanel, suitable for showing to a user.
+ * Represents a Survey, configured in Mixpanel.
  *
- * Unless you have disabled automatic survey display, you shouldn't need to work with this class directly.
- *
- * The typical use of this class follows the pattern.
- * <pre>
- * {@code
- *   Activity parent = this;
- *   mixpanel.getPeople().checkForSurveys(new SurveyCallbacks() {
- *       {@literal @}Override
- *       public void foundSurvey(Survey survey) {
- *           if (survey != null) {
- *               mixpanel.getPeople().showSurvey(survey, parent);
- *           }
- *       }
- *   });
- * }
- * </pre>
+ * You only need to work with this class if you call getSurveyIfAvailable() and want to
+ * display a custom interface for the survey yourself.
  */
-public class Survey {
+public class Survey implements Parcelable {
 
-    /* package */ static class BadSurveyException extends Exception {
-        public BadSurveyException(String detailMessage) {
-            super(detailMessage);
+    public static Creator<Survey> CREATOR = new Creator<Survey>() {
+        @Override
+        public Survey createFromParcel(final Parcel source) {
+            final String jsonString = source.readString();
+            try {
+                final JSONObject json = new JSONObject(jsonString);
+                return new Survey(json);
+            } catch (JSONException e) {
+                throw new RuntimeException("Corrupted JSON object written to survey parcel.", e);
+            } catch (BadDecideObjectException e) {
+                throw new RuntimeException("Unexpected or incomplete object written to survey parcel.", e);
+            }
         }
 
-        public BadSurveyException(String detailMessage, Throwable throwable) {
-            super(detailMessage, throwable);
+        @Override
+        public Survey[] newArray(final int size) {
+            return new Survey[size];
         }
+    };
 
-        private static final long serialVersionUID = 4858739193395706341L;
-    }
-
-    /* package */ Survey(JSONObject description) throws BadSurveyException {
+    /* package */ Survey(JSONObject description) throws BadDecideObjectException {
         try {
             mDescription = description;
             mId = description.getInt("id");
@@ -52,7 +49,7 @@ public class Survey {
 
             final JSONArray questionsJArray = description.getJSONArray("questions");
             if (questionsJArray.length() == 0) {
-                throw new BadSurveyException("Survey has no questions.");
+                throw new BadDecideObjectException("Survey has no questions.");
             }
             final List<Question> questionsList = new ArrayList<Question>(questionsJArray.length());
             for (int i = 0; i < questionsJArray.length(); i++) {
@@ -61,7 +58,7 @@ public class Survey {
             }
             mQuestions = Collections.unmodifiableList(questionsList);
         } catch (final JSONException e) {
-            throw new BadSurveyException("Survey JSON was unexpected or bad", e);
+            throw new BadDecideObjectException("Survey JSON was unexpected or bad", e);
         }
     }
 
@@ -81,27 +78,41 @@ public class Survey {
         return mQuestions;
     }
 
-    public enum QuestionType {
-        UNKNOWN,
-        MULTIPLE_CHOICE,
-        TEXT;
+    @Override
+    public int describeContents() {
+        return 0;
+    }
 
-        @Override
-        public String toString() {
-            if (MULTIPLE_CHOICE == this) {
+    @Override
+    public void writeToParcel(final Parcel dest, final int flags) {
+        dest.writeString(toJSON());
+    }
+
+    public enum QuestionType {
+        UNKNOWN {
+            @Override
+           public String toString() {
+                return "*unknown_type*";
+            }
+        },
+        MULTIPLE_CHOICE {
+            @Override
+            public String toString() {
                 return "multiple_choice";
             }
-            if (TEXT == this) {
+        },
+        TEXT {
+            @Override
+            public String toString() {
                 return "text";
             }
-            return "*unknown_type*";
-        }
+        };
     };
 
     public class Question {
-        private Question(JSONObject question) throws JSONException, BadSurveyException {
+        private Question(JSONObject question) throws JSONException, BadDecideObjectException {
             mQuestionId = question.getInt("id");
-            mQuestionType = question.getString("type").intern();
+            mQuestionType = question.getString("type");
             mPrompt = question.getString("prompt");
 
             List<String> choicesList = Collections.<String>emptyList();
@@ -117,7 +128,7 @@ public class Survey {
             }
             mChoices = Collections.unmodifiableList(choicesList);
             if (getType() == QuestionType.MULTIPLE_CHOICE && mChoices.size() == 0) {
-                throw new BadSurveyException("Question is multiple choice but has no answers:" + question.toString());
+                throw new BadDecideObjectException("Question is multiple choice but has no answers:" + question.toString());
             }
         }
 

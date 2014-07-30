@@ -6,9 +6,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
-import android.util.Log;
-import android.view.View;
 
+import com.mixpanel.android.util.ActivityImageUtils;
 import com.mixpanel.android.util.StackBlurManager;
 
 /* package */ class BackgroundCapture {
@@ -24,81 +23,57 @@ import com.mixpanel.android.util.StackBlurManager;
     }
 
     public interface OnBackgroundCapturedListener {
-        public void OnBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured);
+        public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured);
     }
 
     private static class BackgroundCaptureTask extends AsyncTask<Void, Void, Void> {
         public BackgroundCaptureTask(Activity parentActivity, OnBackgroundCapturedListener listener) {
             mParentActivity = parentActivity;
             mListener = listener;
+            mCalculatedHighlightColor = Color.BLACK;
         }
 
         @Override
         protected void onPreExecute() {
-            final View someView = mParentActivity.findViewById(android.R.id.content);
-            final View rootView = someView.getRootView();
-            final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-            rootView.setDrawingCacheEnabled(true);
-            rootView.buildDrawingCache(true);
-
-            // We could get a null or zero px bitmap if the rootView hasn't been measured
-            // appropriately, or we grab it before layout.
-            // This is ok, and we should handle it gracefully.
-            final Bitmap original = rootView.getDrawingCache();
-            Bitmap scaled = null;
-            if (null != original && original.getWidth() > 0 && original.getHeight() > 0) {
-                final int scaledWidth = original.getWidth() / 2;
-                final int scaledHeight = original.getHeight() / 2;
-                if (scaledWidth > 0 && scaledHeight > 0) {
-                    scaled = Bitmap.createScaledBitmap(original, scaledWidth, scaledHeight, false);
-                }
-            }
-            if (! originalCacheState) {
-                rootView.setDrawingCacheEnabled(false);
-            }
-            mSourceImage = scaled;
+            mSourceImage = ActivityImageUtils.getScaledScreenshot(mParentActivity, 2, 2, true);
+            mCalculatedHighlightColor = ActivityImageUtils.getHighlightColorFromBitmap(mSourceImage);
         }
 
         @Override
         protected Void doInBackground(Void ...params) {
-            if (null == mSourceImage) {
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
-                return null;
+            if (null != mSourceImage) {
+                try {
+                    StackBlurManager.process(mSourceImage, 20);
+                    final Canvas canvas = new Canvas(mSourceImage);
+                    canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
+                } catch (final ArrayIndexOutOfBoundsException e) {
+                    // Workaround for a bug in the algorithm while we wait
+                    // for folks to move to gradle/AndroidStudio/other Renderscript-friendly build tools
+                    mSourceImage = null;
+                } catch (final OutOfMemoryError e) {
+                    // It's possible that the bitmap processing was what sucked up all of the memory,
+                    // So we try to recover here.
+                    mSourceImage = null;
+                }
             }
 
-            try {
-                final long startTime = System.currentTimeMillis();
-                final Bitmap background1px = Bitmap.createScaledBitmap(mSourceImage, 1, 1, true);
-                mCalculatedHighlightColor = background1px.getPixel(0, 0);
-
-                StackBlurManager.process(mSourceImage, 20);
-
-                final long endTime = System.currentTimeMillis();
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Blur took " + (endTime - startTime) + " millis");
-
-                final Canvas canvas = new Canvas(mSourceImage);
-                canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);
-            } catch (final OutOfMemoryError e) {
-                // It's possible that the bitmap processing was what sucked up all of the memory,
-                // So we try to recover here.
-                mCalculatedHighlightColor = Color.WHITE;
-                mSourceImage = null;
-            }
             return null;
         }
 
         @Override
         protected void onPostExecute(Void _) {
-            mListener.OnBackgroundCaptured(mSourceImage, mCalculatedHighlightColor);
+            mListener.onBackgroundCaptured(mSourceImage, mCalculatedHighlightColor);
         }
 
         private final OnBackgroundCapturedListener mListener;
         private final Activity mParentActivity;
         private Bitmap mSourceImage;
-        private int  mCalculatedHighlightColor;
-    } // SurveyInitializationTask
+        private int mCalculatedHighlightColor;
+    }
 
-    private static final String LOGTAG = "MixpanelAPI BackgroundCapture";
+
     private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
+
+    @SuppressWarnings("unused")
+    private static final String LOGTAG = "MixpanelAPI BackgroundCapture";
 }

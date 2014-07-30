@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
-public class PersistentPropertiesTest extends AndroidTestCase {
+public class PersistentIdentityTest extends AndroidTestCase {
     public void setUp() {
         SharedPreferences referrerPrefs = getContext().getSharedPreferences(TEST_REFERRER_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor referrerEditor = referrerPrefs.edit();
@@ -40,65 +40,65 @@ public class PersistentPropertiesTest extends AndroidTestCase {
         Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
         Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
 
-        mPersistentProperties = new PersistentProperties(referrerLoader, testLoader);
+        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader);
     }
 
     public void testStaticWaitingPeopleRecordsWithId() throws JSONException {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
-        JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(testPreferences);
+        JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(testPreferences);
         assertEquals(records.length(), 2);
         for (int i = 0; i < records.length(); i++) {
             JSONObject obj = records.getJSONObject(i);
             assertTrue(obj.has("thing"));
             assertEquals(obj.getString("$distinct_id"), "PEOPLE DISTINCT ID");
         }
-        JSONArray unseenRecords = PersistentProperties.waitingPeopleRecordsForSending(testPreferences);
+        JSONArray unseenRecords = PersistentIdentity.waitingPeopleRecordsForSending(testPreferences);
         assertNull(unseenRecords);
     }
 
     public void testStaticWaitingPeopleRecordsNoId() {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("people_distinct_id").commit();
-        JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(testPreferences);
+        JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(testPreferences);
         assertNull(records);
     }
 
     public void testStaticWaitingPeopleRecordsNoRecords() {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("waiting_array").commit();
-        JSONArray records = PersistentProperties.waitingPeopleRecordsForSending(testPreferences);
+        JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(testPreferences);
         assertNull(records);
     }
 
     public void testWaitingPeopleRecordsWithId() throws JSONException {
-        JSONArray records = mPersistentProperties.waitingPeopleRecordsForSending();
+        JSONArray records = mPersistentIdentity.waitingPeopleRecordsForSending();
         assertEquals(records.length(), 2);
         for (int i = 0; i < records.length(); i++) {
             JSONObject obj = records.getJSONObject(i);
             assertTrue(obj.has("thing"));
             assertEquals(obj.getString("$distinct_id"), "PEOPLE DISTINCT ID");
         }
-        JSONArray unseenRecords = mPersistentProperties.waitingPeopleRecordsForSending();
+        JSONArray unseenRecords = mPersistentIdentity.waitingPeopleRecordsForSending();
         assertNull(unseenRecords);
     }
 
     public void testWaitingPeopleRecordsWithNoId() throws JSONException {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("people_distinct_id").commit();
-        JSONArray unseenRecords = mPersistentProperties.waitingPeopleRecordsForSending();
+        JSONArray unseenRecords = mPersistentIdentity.waitingPeopleRecordsForSending();
         assertNull(unseenRecords);
     }
 
     public void testWaitingPeopleRecordsWithNoRecords() throws JSONException {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("waiting_array").commit();
-        JSONArray unseenRecords = mPersistentProperties.waitingPeopleRecordsForSending();
+        JSONArray unseenRecords = mPersistentIdentity.waitingPeopleRecordsForSending();
         assertNull(unseenRecords);
     }
 
     public void testStoreWaitingPeopleRecord() throws JSONException {
-        mPersistentProperties.storeWaitingPeopleRecord(new JSONObject("{\"new1\": 1}"));
-        mPersistentProperties.storeWaitingPeopleRecord(new JSONObject("{\"new2\": 2}"));
+        mPersistentIdentity.storeWaitingPeopleRecord(new JSONObject("{\"new1\": 1}"));
+        mPersistentIdentity.storeWaitingPeopleRecord(new JSONObject("{\"new2\": 2}"));
 
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         String waitingString = testPreferences.getString("waiting_array", "FAIL");
@@ -111,7 +111,7 @@ public class PersistentPropertiesTest extends AndroidTestCase {
     }
 
     public void testReferrerProperties() {
-        final Map<String, String> props = mPersistentProperties.getReferrerProperties();
+        final Map<String, String> props = mPersistentIdentity.getReferrerProperties();
         assertEquals("REFERRER", props.get("referrer"));
         assertEquals("SOURCE VALUE", props.get("utm_source"));
         assertEquals("MEDIUM VALUE", props.get("utm_medium"));
@@ -123,9 +123,9 @@ public class PersistentPropertiesTest extends AndroidTestCase {
         newPrefs.put("referrer", "BJORK");
         newPrefs.put("mystery", "BOO!");
         newPrefs.put("utm_term", "NEW TERM");
-        PersistentProperties.writeReferrerPrefs(getContext(), TEST_REFERRER_PREFERENCES, newPrefs);
+        PersistentIdentity.writeReferrerPrefs(getContext(), TEST_REFERRER_PREFERENCES, newPrefs);
 
-        final Map<String, String> propsAfterChange = mPersistentProperties.getReferrerProperties();
+        final Map<String, String> propsAfterChange = mPersistentIdentity.getReferrerProperties();
         assertFalse(propsAfterChange.containsKey("utm_medium"));
         assertFalse(propsAfterChange.containsKey("utm_source"));
         assertFalse(propsAfterChange.containsKey("utm_campaign"));
@@ -138,14 +138,14 @@ public class PersistentPropertiesTest extends AndroidTestCase {
     public void testUnsetEventsId() {
         final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
-        final String eventsId = mPersistentProperties.getEventsDistinctId();
+        final String eventsId = mPersistentIdentity.getEventsDistinctId();
         assertTrue(Pattern.matches("^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$", eventsId));
 
         final String autoId = testPreferences.getString("events_distinct_id", "NOPE");
         assertEquals(autoId, eventsId);
 
-        mPersistentProperties.setEventsDistinctId("TEST ID TO SET");
-        final String heardId = mPersistentProperties.getEventsDistinctId();
+        mPersistentIdentity.setEventsDistinctId("TEST ID TO SET");
+        final String heardId = mPersistentIdentity.getEventsDistinctId();
         assertEquals("TEST ID TO SET", heardId);
 
         final String storedId = testPreferences.getString("events_distinct_id", "NOPE");
@@ -155,11 +155,11 @@ public class PersistentPropertiesTest extends AndroidTestCase {
     public void testUnsetPeopleId() {
         final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
-        final String peopleId = mPersistentProperties.getPeopleDistinctId();
+        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         assertNull(peopleId);
 
-        mPersistentProperties.setPeopleDistinctId("TEST ID TO SET");
-        final String heardId = mPersistentProperties.getPeopleDistinctId();
+        mPersistentIdentity.setPeopleDistinctId("TEST ID TO SET");
+        final String heardId = mPersistentIdentity.getPeopleDistinctId();
         assertEquals("TEST ID TO SET", heardId);
 
         final String storedId = testPreferences.getString("people_distinct_id", "NOPE");
@@ -167,22 +167,22 @@ public class PersistentPropertiesTest extends AndroidTestCase {
     }
 
     public void testPushId() {
-        final String pushId = mPersistentProperties.getPushId();
+        final String pushId = mPersistentIdentity.getPushId();
         assertEquals("PUSH ID", pushId);
 
-        mPersistentProperties.clearPushId();
-        final String noId = mPersistentProperties.getPushId();
+        mPersistentIdentity.clearPushId();
+        final String noId = mPersistentIdentity.getPushId();
         assertNull(noId);
 
-        mPersistentProperties.storePushId("STORED PUSH ID");
-        final String storedId = mPersistentProperties.getPushId();
+        mPersistentIdentity.storePushId("STORED PUSH ID");
+        final String storedId = mPersistentIdentity.getPushId();
         assertEquals("STORED PUSH ID", storedId);
 
         final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         assertEquals("STORED PUSH ID", testPreferences.getString("push_id", "FAIL"));
     }
 
-    private PersistentProperties mPersistentProperties;
+    private PersistentIdentity mPersistentIdentity;
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
     private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
 }

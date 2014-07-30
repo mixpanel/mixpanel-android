@@ -6,7 +6,8 @@
     android:layout_height="fill_parent"
     android:padding="20dp"
     android:clickable="true"
-    android:orientation="vertical" >
+    android:orientation="vertical"
+    android:visibility="gone" >
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -30,7 +31,8 @@
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:textSize="20dp"
-            android:textColor="#ffffff" />
+            android:textColor="#ffffff"
+            tools:ignore="SpUsage" />
 
         <ImageButton
             android:id="@+id/com_mixpanel_android_button_next"
@@ -79,7 +81,8 @@
             android:text="@string/com_mixpanel_android_exit"
             android:gravity="right|center_vertical"
             android:onClick="completeSurvey"
-            android:layout_marginBottom="3dp" />
+            android:layout_marginBottom="3dp"
+            tools:ignore="SpUsage"/>
 
     </RelativeLayout>
 

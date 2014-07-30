@@ -15,6 +15,111 @@ See https://github.com/mixpanel/sample-android-mixpanel-integration for a full f
 Changelog
 ---------
 
+#### v4.2.2
+
+ * Removed lint warnings from build
+
+ * Fixed issue that could cause NullPointerExceptions to be thrown from the library
+   if a user was identified as null
+
+ * Handle attempts to load In-app notifications in low memory conditions
+
+#### v4.2.1
+
+ * Fixed a bug that would cause events to be dropped when the device thinks it has a valid network
+   connection, but cannot actually send data over it.
+
+#### v4.2.0
+
+* `showSurveyById` and `showNotificationById` have been added for precise control over which
+  survey or notification should be displayed.
+
+* Added several default properties for Mixpanel People profiles. Each call to `set()` will now
+  automatically include the application version name, Android version, and manufacturer, make, and
+  model of the phone.
+
+#### v4.1.0
+
+This version adds support for Android in app notifications.
+
+* There is now an additional theme parameter on the SurveyActivity declaration in AndroidManifest.xml
+  that is used for full screen in app notifications.
+
+  ```
+  <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
+            android:theme="@style/com_mixpanel_android_SurveyActivityTheme"/>
+  ```
+
+* A new unified set of functions have been created to make it easier to fetch and display surveys
+  and in app notifications.
+
+  * `getSurveyIfAvailable()` and `getNotificationIfAvailable()` have been added to fetch Survey and
+    InAppNotification objects when the library has successfully received them. You may use these objects
+    to display your own custom surveys or in app notifications.
+
+  * `showSurveyIfAvailable()` and `showNotificationIfAvailable()` have been added to display surveys and
+    notifications when the library has successfully received them.
+
+  * `addOnMixpanelUpdatesReceivedListener()` and `removeOnMixpanelUpdatesReceivedListener()` have been added
+    so you may be notified when the library has successfully received a survey or in app notification in the
+    background.
+
+  * `showSurvey()` and `checkForSurvey()` functions have been deprecated.
+
+* `com.mixpanel.android.MPConfig.AutoCheckForSurveys` has been deprecated. The option has been renamed
+  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It is also now used for both surveys and in app
+  notifications.
+
+* `com.mixpanel.android.MPConfig.TestMode` has been added. This option, when set to true, will render
+  your in app notifications and surveys but not track that they have been displayed. If you have multiple
+  notifications/surveys, calls the respective show/get methods will simply rotate through them.
+
+* `MixpanelAPI.logPosts()` has been deprecated. Set the `com.mixpanel.android.MPConfig.EnableDebugLogging`
+  flag to true to now get extensive debugging output.
+
+* The minimum Android version necessary for surveys and in app notifications has been increased to 14,
+  Ice Cream Sandwich to improve stability.
+
+* `MixpanelAPI.alias()` has been added.
+
+* The default library manifest no longer merges in recommended tags by default, as this was breaking
+  builds for some users. You'll need to follow the steps in https://mixpanel.com/help/reference/android
+  to configure your manifest for automatic referrer tracking, push notifications, in-app messages,
+  and surveys. The recommended `<application>` tag in your app is
+
+  ```
+  <application>
+          <!-- This activity allows your application to show Mixpanel
+               surveys and takeover in app notifications. -->
+          <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
+                    android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
+
+          <!-- This receiver will allow your application to register for
+               and receive Mixpanel push notifications.
+               Make sure to change YOUR_PACKAGE_NAME to your own applications package. -->
+          <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+              android:permission="com.google.android.c2dm.permission.SEND" >
+              <intent-filter>
+                  <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                  <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+                  <category android:name="YOUR_PACKAGE_NAME" />
+              </intent-filter>
+          </receiver>
+
+          <!-- This receiver will allow your application to record referrer
+               parameters as super properties automatically -->
+          <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
+              <intent-filter>
+                  <action android:name="com.android.vending.INSTALL_REFERRER" />
+              </intent-filter>
+          </receiver>
+  </application>
+  ```
+
+#### v4.0.1
+
+* Default event storage is now 5 days.
+
 #### v4.0.0
 
 This is a major release, with significant changes to library behavior.

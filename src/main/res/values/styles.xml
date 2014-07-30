@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="com_mixpanel_android_SurveyActivityAnimation">
+    <item name="android:windowEnterAnimation">@anim/com_mixpanel_android_fade_in</item>
+    <item name="android:windowExitAnimation">@anim/com_mixpanel_android_fade_out</item>
+  </style>
+  <style name="com_mixpanel_android_SurveyActivityTheme" parent="android:Theme">
+    <item name="android:windowIsTranslucent">true</item>
+    <item name="android:windowBackground">@android:color/transparent</item>
+    <item name="android:windowContentOverlay">@null</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:backgroundDimEnabled">false</item>
+    <item name="android:windowAnimationStyle">@style/com_mixpanel_android_SurveyActivityAnimation</item>
+  </style>
+</resources>

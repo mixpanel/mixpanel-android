@@ -1,7 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.mixpanel.android">
+    <!-- To support customers who build from source with Eclipse, we have to
+         include this redundant versioning here. If you change
+         minSdkVersion or targetSdkVersion here, you must also
+         change the relevant properties in build.gradle -->
     <uses-sdk android:minSdkVersion="8"
-              android:targetSdkVersion="19"/>
+              android:targetSdkVersion="20"
+              tools:ignore="GradleOverrides"/>
 
     <!--
       This permission is required to allow the application to send events and properties to Mixpanel.
@@ -9,22 +15,103 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      These permissions are optional but recommended so we can be smart about when to send data,
-      and send more complete data about your users automatically.
-
-      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-      <uses-permission android:name="android.permission.BLUETOOTH" />
+      This permission is optional but recommended so we can be smart about when to send data.
+     -->
+    <!--
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     -->
 
-    <application>
-        <!-- This activity allows your application to show Mixpanel surveys -->
-        <activity android:name="com.mixpanel.android.surveys.SurveyActivity" />
+    <!--
+      This permission is optional but recommended so events will contain information about bluetooth state
+    -->
+    <!--
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    -->
+
+    <!--
+      These permissions are required to allow the application to receive and display
+      Google Cloud Messaging notifications from Mixpanel. If you want Android push notifications
+      to work, then enable these permissions.
+     -->
+    <!--
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    -->
+
+    <!--
+      This custom permission is also required for Google Cloud Messaging. In your
+      own applications, you will need to be sure that the permission name is
+
+           ${application_package}.C2D_MESSAGE
+
+      where ${application_package} is the package name declared in your <manifest> element.
+     -->
+    <!--
+    <permission android:name="${application_package}.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+    <uses-permission android:name="${application_package}.permission.C2D_MESSAGE" />
+    -->
+
+    <application tools:ignore="AllowBackup">
+        <!-- to support 2.2 (Froyo) and older devices, your application should allow fallback
+             to HTTP if modern HTTPS certificates aren't supported. -->
+        <!--
+        <meta-data android:name="com.mixpanel.android.MPConfig.DisableFallback"
+            android:value="false" />
+        -->
+
+        <!-- The Mixpanel library will automatically attempt to show available surveys or in
+             app notifications every time a new Activity is displayed. To disable this behavior,
+             add the following line. The default value for this option is set to true. -->
+        <!--
+        <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
+            android:value="false" />
+        -->
+
+        <!-- Set this option to true if you wish for in app notifications and surveys to be displayed without
+             being tracked by Mixpanel. This is useful for testing the integration with your Android app.
+             The default value is false. -->
+        <!--
+        <meta-data android:name="com.mixpanel.android.MPConfig.TestMode"
+            android:value="true" />
+        -->
+
+        <!-- Set the following option to true if you wish to see the debug output from the Mixpanel Android
+             library. This may be useful in determining when track calls go out or in app notifications or
+             surveys are fetched. The default value is false. -->
+        <!--
+        <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging"
+            android:value="true" />
+        -->
+
+        <!-- This activity allows your application to show Mixpanel surveys and takeover in app notifications.
+             If you only wish to show mini in app notifications, you do not need to declare this Activity.
+             You may also specify a different theme to better fit the look and feel of your application. -->
+        <!--
+        <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
+                  android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
+        -->
+
+        <!-- This receiver will allow your application to register for and receive Mixpanel push notifications.
+             Make sure to change YOUR_PACKAGE_NAME to your own applications package. -->
+        <!--
+        <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+            android:permission="com.google.android.c2dm.permission.SEND" >
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+                <category android:name="YOUR_PACKAGE_NAME" />
+            </intent-filter>
+        </receiver>
+        -->
 
         <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
+        <!--
         <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="com.android.vending.INSTALL_REFERRER" />
             </intent-filter>
         </receiver>
+        -->
     </application>
 </manifest>

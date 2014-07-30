@@ -11,11 +11,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.util.Log;
 
-/* package */ class PersistentProperties {
+// In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
+@SuppressLint("CommitPrefEdits")
+/* package */ class PersistentIdentity {
 
     // Will be called from crazy threads, BUT will be the only thread that has access to the given
     // SharedPreferences during the run.
@@ -45,7 +50,7 @@ import android.util.Log;
 
             final SharedPreferences.Editor editor = storedPreferences.edit();
             editor.remove("waiting_array");
-            editor.commit();
+            writeEdits(editor);
         }
         return ret;
     }
@@ -58,29 +63,29 @@ import android.util.Log;
             for (final Map.Entry<String, String> entry:properties.entrySet()) {
                 editor.putString(entry.getKey(), entry.getValue());
             }
-            editor.commit();
+            writeEdits(editor);
             sReferrerPrefsDirty = true;
         }
     }
 
-    public PersistentProperties(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
+    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
         mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-			@Override
-			public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
                 synchronized (sReferrerPrefsLock) {
                     readReferrerProperties();
                     sReferrerPrefsDirty = false;
                 }
-			}
-		};
+            }
+        };
     }
 
-    public JSONObject getSuperProperties() {
+    public synchronized JSONObject getSuperProperties() {
         if (null == mSuperPropertiesCache) {
             readSuperProperties();
         }
@@ -97,14 +102,14 @@ import android.util.Log;
         return mReferrerPropertiesCache;
     }
 
-    public String getEventsDistinctId() {
+    public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
         return mEventsDistinctId;
     }
 
-    public void setEventsDistinctId(String eventsDistinctId) {
+    public synchronized void setEventsDistinctId(String eventsDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -112,14 +117,14 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public String getPeopleDistinctId() {
+    public synchronized String getPeopleDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
         return mPeopleDistinctId;
     }
 
-    public void setPeopleDistinctId(String peopleDistinctId) {
+    public synchronized void setPeopleDistinctId(String peopleDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -127,7 +132,7 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public void storeWaitingPeopleRecord(JSONObject record) {
+    public synchronized void storeWaitingPeopleRecord(JSONObject record) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
@@ -138,7 +143,7 @@ import android.util.Log;
         writeIdentities();
     }
 
-    public JSONArray waitingPeopleRecordsForSending() {
+    public synchronized JSONArray waitingPeopleRecordsForSending() {
         JSONArray ret = null;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -152,7 +157,7 @@ import android.util.Log;
         return ret;
     }
 
-    public void clearPreferences() {
+    public synchronized void clearPreferences() {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
@@ -160,7 +165,8 @@ import android.util.Log;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEdit = prefs.edit();
-            prefsEdit.clear().commit();
+            prefsEdit.clear();
+            writeEdits(prefsEdit);
             readSuperProperties();
             readIdentities();
         } catch (final ExecutionException e) {
@@ -170,8 +176,7 @@ import android.util.Log;
         }
     }
 
-    public void registerSuperProperties(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperProperties");
+    public synchronized void registerSuperProperties(JSONObject superProperties) {
         final JSONObject propCache = getSuperProperties();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
@@ -186,12 +191,12 @@ import android.util.Log;
         storeSuperProperties();
     }
 
-    public void storePushId(String registrationId) {
+    public synchronized void storePushId(String registrationId) {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putString("push_id", registrationId);
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
         } catch (final InterruptedException e) {
@@ -199,12 +204,12 @@ import android.util.Log;
         }
     }
 
-    public void clearPushId() {
+    public synchronized void clearPushId() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.remove("push_id");
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
         } catch (final InterruptedException e) {
@@ -212,7 +217,7 @@ import android.util.Log;
         }
     }
 
-    public String getPushId() {
+    public synchronized String getPushId() {
         String ret = null;
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -225,15 +230,14 @@ import android.util.Log;
         return ret;
     }
 
-    public void unregisterSuperProperty(String superPropertyName) {
+    public synchronized void unregisterSuperProperty(String superPropertyName) {
         final JSONObject propCache = getSuperProperties();
         propCache.remove(superPropertyName);
 
         storeSuperProperties();
     }
 
-    public void registerSuperPropertiesOnce(JSONObject superProperties) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "registerSuperPropertiesOnce");
+    public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
         final JSONObject propCache = getSuperProperties();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
@@ -250,14 +254,14 @@ import android.util.Log;
         storeSuperProperties();
     }
 
-    public void clearSuperProperties() {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "clearSuperProperties");
+    public synchronized void clearSuperProperties() {
         mSuperPropertiesCache = new JSONObject();
         storeSuperProperties();
     }
 
     //////////////////////////////////////////////////
 
+    // All access should be synchronized on this
     private void readSuperProperties() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -278,6 +282,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void readReferrerProperties() {
         mReferrerPropertiesCache = new HashMap<String, String>();
 
@@ -299,6 +304,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void storeSuperProperties() {
         if (null == mSuperPropertiesCache) {
             Log.e(LOGTAG, "storeSuperProperties should not be called with uninitialized superPropertiesCache.");
@@ -312,7 +318,7 @@ import android.util.Log;
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putString("super_properties", props);
-            editor.commit();
+            writeEdits(editor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Cannot store superProperties in shared preferences.", e.getCause());
         } catch (final InterruptedException e) {
@@ -320,6 +326,7 @@ import android.util.Log;
         }
     }
 
+    // All access should be synchronized on this
     private void readIdentities() {
         SharedPreferences prefs = null;
         try {
@@ -355,6 +362,7 @@ import android.util.Log;
         mIdentitiesLoaded = true;
     }
 
+    // All access should be synchronized on this
     private void writeIdentities() {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -368,11 +376,20 @@ import android.util.Log;
             else {
                 prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
             }
-            prefsEditor.commit();
+            writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write distinct ids to shared preferences.", e.getCause());
         } catch (final InterruptedException e) {
             Log.e(LOGTAG, "Can't write distinct ids to shared preferences.", e);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
+    private static void writeEdits(final SharedPreferences.Editor editor) {
+        if (Build.VERSION.SDK_INT >= 9) {
+            editor.apply();
+        } else {
+            editor.commit();
         }
     }
 
@@ -388,5 +405,5 @@ import android.util.Log;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
-    private static final String LOGTAG = "MixpanelAPI PersistentProperties";
+    private static final String LOGTAG = "MixpanelAPI PersistentIdentity";
 }

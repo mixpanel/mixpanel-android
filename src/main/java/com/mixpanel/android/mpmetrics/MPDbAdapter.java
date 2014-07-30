@@ -21,7 +21,7 @@ import android.util.Log;
  * by a single thread.
  *
  */
-class MPDbAdapter {
+/* package */ class MPDbAdapter {
     private static final String LOGTAG = "MixpanelAPI";
 
     public enum Table {
@@ -106,8 +106,6 @@ class MPDbAdapter {
     }
 
     public MPDbAdapter(Context context, String dbName) {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel Database (" + dbName + ") adapter constructed in context " + context);
-
         mDb = new MPDatabaseHelper(context, dbName);
     }
 
@@ -120,7 +118,6 @@ class MPDbAdapter {
      */
     public int addJSON(JSONObject j, Table table) {
         final String tableName = table.getName();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "addJSON " + tableName);
 
         Cursor c = null;
         int count = -1;
@@ -164,7 +161,6 @@ class MPDbAdapter {
      */
     public void cleanupEvents(String last_id, Table table) {
         final String tableName = table.getName();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "cleanupEvents _id " + last_id + " from table " + tableName);
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
@@ -189,7 +185,6 @@ class MPDbAdapter {
      */
     public void cleanupEvents(long time, Table table) {
         final String tableName = table.getName();
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "cleanupEvents time " + time + " from table " + tableName);
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();

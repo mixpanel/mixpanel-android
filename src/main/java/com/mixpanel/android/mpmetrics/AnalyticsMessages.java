@@ -1,23 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -25,6 +8,22 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.DisplayMetrics;
 import android.util.Log;
+
+import com.mixpanel.android.util.Base64Coder;
+
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -34,13 +33,13 @@ import android.util.Log;
  * a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
+
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(Context context) {
+    /* package */ AnalyticsMessages(final Context context) {
         mContext = context;
         mConfig = getConfig(context);
-        mLogMixpanelMessages = new AtomicBoolean(false);
         mWorker = new Worker();
     }
 
@@ -51,28 +50,22 @@ import android.util.Log;
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
      */
-    public static AnalyticsMessages getInstance(Context messageContext) {
+    public static AnalyticsMessages getInstance(final Context messageContext) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Constructing new AnalyticsMessages for Context " + appContext);
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
             }
             else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "AnalyticsMessages for Context " + appContext + " already exists- returning");
                 ret = sInstances.get(appContext);
             }
             return ret;
         }
     }
 
-    public void logPosts() {
-        mLogMixpanelMessages.set(true);
-    }
-
-    public void eventsMessage(EventDescription eventDescription) {
+    public void eventsMessage(final EventDescription eventDescription) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
         m.obj = eventDescription;
@@ -80,7 +73,7 @@ import android.util.Log;
     }
 
     // Must be thread safe.
-    public void peopleMessage(JSONObject peopleJson) {
+    public void peopleMessage(final JSONObject peopleJson) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;
         m.obj = peopleJson;
@@ -98,10 +91,10 @@ import android.util.Log;
     /**
      * Remove this when we eliminate the associated deprecated public ifc
      */
-    public void setFlushInterval(long milliseconds) {
+    public void setFlushInterval(final long milliseconds) {
         final Message m = Message.obtain();
         m.what = SET_FLUSH_INTERVAL;
-        m.obj = Long.valueOf(milliseconds);
+        m.obj = milliseconds;
 
         mWorker.runMessage(m);
     }
@@ -112,34 +105,16 @@ import android.util.Log;
     public void setDisableFallback(boolean disableIfTrue) {
         final Message m = Message.obtain();
         m.what = SET_DISABLE_FALLBACK;
-        m.obj = Boolean.valueOf(disableIfTrue);
+        m.obj = disableIfTrue;
 
         mWorker.runMessage(m);
     }
 
-    /**
-     * All fields SurveyCheck must return non-null values.
-     */
-    public static class SurveyCheck {
-        public SurveyCheck(final SurveyCallbacks surveyCallbacks, final String distinctId, final String token) {
-            mSurveyCallbacks = surveyCallbacks;
-            mDistinctId = distinctId;
-            mToken = token;
-        }
-
-        public SurveyCallbacks getCallbacks() { return mSurveyCallbacks; }
-        public String getDistinctId() { return mDistinctId; }
-        public String getToken() { return mToken; }
-
-        private final SurveyCallbacks mSurveyCallbacks;
-        private final String mDistinctId;
-        private final String mToken;
-    }
-
-    public void checkForSurveys(SurveyCheck check) {
+    public void installDecideCheck(final DecideUpdates check) {
         final Message m = Message.obtain();
-        m.what = CHECK_FOR_SURVEYS;
+        m.what = INSTALL_DECIDE_CHECK;
         m.obj = check;
+
         mWorker.runMessage(m);
     }
 
@@ -162,7 +137,7 @@ import android.util.Log;
     }
 
     protected MPConfig getConfig(Context context) {
-        return MPConfig.readConfig(context);
+        return MPConfig.getInstance(context);
     }
 
     protected ServerMessage getPoster() {
@@ -198,8 +173,8 @@ import android.util.Log;
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
-        if (mLogMixpanelMessages.get() || MPConfig.DEBUG) {
-            Log.i(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
         }
     }
 
@@ -221,7 +196,7 @@ import android.util.Log;
             synchronized(mHandlerLock) {
                 if (mHandler == null) {
                     // We died under suspicious circumstances. Don't try to send any more events.
-                    logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg);
+                    logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
                 } else {
                     mHandler.sendMessage(msg);
                 }
@@ -241,7 +216,7 @@ import android.util.Log;
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
-                mSeenSurveys = new HashSet<Integer>();
+                mDecideChecker = new DecideChecker(mContext, mConfig);
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
@@ -291,21 +266,14 @@ import android.util.Log;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
+                        mDecideChecker.runDecideChecks(getPoster());
                         sendAllData(mDbAdapter);
                     }
-                    else if (msg.what == CHECK_FOR_SURVEYS) {
-                        logAboutMessageToMixpanel("Checking Mixpanel for available surveys");
-                        final SurveyCheck check = (SurveyCheck) msg.obj;
-                        final Survey found = runSurveyCheck(check);
-
-                        // We don't want to run client callback code inside of this thread
-                        // (because it may take a long time, throw runtime exceptions, etc.)
-                        CALLBACK_EXECUTOR.submit(new Runnable() {
-                            @Override
-                            public void run() {
-                                check.getCallbacks().foundSurvey(found);
-                            }
-                        });
+                    else if (msg.what == INSTALL_DECIDE_CHECK) {
+                        logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
+                        final DecideUpdates check = (DecideUpdates) msg.obj;
+                        mDecideChecker.addDecideCheck(check);
+                        mDecideChecker.runDecideChecks(getPoster());
                     }
                     else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
@@ -350,126 +318,84 @@ import android.util.Log;
                 }
             }// handleMessage
 
-            /**
-             * @return a Survey that the current identified user is eligible for, or null if no survey could be found.
-             */
-            private Survey runSurveyCheck(final SurveyCheck check) {
-                final String response = getSurveyFromServer(check.getToken(), check.getDistinctId());
-                if (null == response) {
-                    return null;
-                }
-                JSONArray surveys = null;
-                try {
-                    final JSONObject parsed = new JSONObject(response);
-                    surveys = parsed.getJSONArray("surveys");
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Mixpanel endpoint returned invalid JSON " + response);
-                    return null;
-                }
-                Survey found = null;
-                for (int i = 0; found == null && i < surveys.length(); i++) {
-                    try {
-                        final JSONObject candidateJson = surveys.getJSONObject(i);
-                        final Survey candidate = new Survey(candidateJson);
-                        if (mSeenSurveys.contains(candidate.getId())) {
-                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Received a duplicate survey from Mixpanel, ignoring.");
-                        } else {
-                            found = candidate;
-                            if (! MPConfig.DONT_SEND_SURVEYS) {
-                                mSeenSurveys.add(found.getId());
-                            }
-                        }
-                    } catch (final JSONException e) {
-                        Log.i(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                        found = null;
-                    } catch (final Survey.BadSurveyException e) {
-                        Log.i(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                        found = null;
-                    }
-                }
-
-                return found;
-            }// runSurveyCheck
-
-            private String getSurveyFromServer(String unescapedToken, String unescapedDistinctId) {
-                String escapedToken;
-                String escapedId;
-                try {
-                    escapedToken = URLEncoder.encode(unescapedToken, "utf-8");
-                    escapedId = URLEncoder.encode(unescapedDistinctId, "utf-8");
-                } catch(final UnsupportedEncodingException e) {
-                    throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
-                }
-                final String checkQuery = new StringBuilder()
-                    .append("?version=1&lib=android&token=")
-                    .append(escapedToken)
-                    .append("&distinct_id=")
-                    .append(escapedId)
-                    .toString();
-                final String endpointUrl = mConfig.getDecideEndpoint() + checkQuery;
-                final String fallbackUrl = mConfig.getDecideFallbackEndpoint() + checkQuery;
-                final ServerMessage poster = getPoster();
-                final ServerMessage.Result result = poster.get(endpointUrl, fallbackUrl);
-                if (result.getStatus() != ServerMessage.Status.SUCCEEDED) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Couldn't reach Mixpanel to check for Surveys. (Or user doesn't exist yet)");
-                    return null;
-                }
-                return result.getResponse();
-            }
-
-            private boolean isOnline() {
-                boolean isOnline;
-                try {
-                    final ConnectivityManager cm =
-                            (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-                    final NetworkInfo netInfo = cm.getActiveNetworkInfo();
-                    isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
-                } catch (final SecurityException e) {
-                    isOnline = true;
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
-                }
-                return isOnline;
-            }
 
             private void sendAllData(MPDbAdapter dbAdapter) {
-                if (isOnline()) {
-                    logAboutMessageToMixpanel("Sending records to Mixpanel");
-                    if (mDisableFallback) {
-                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), null);
-                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), null);
-                    } else {
-                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint());
-                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint());
-                    }
-                } else {
-                    logAboutMessageToMixpanel("Can't send data to mixpanel, because the device is not connected to the internet");
+                final ServerMessage poster = getPoster();
+                if (! poster.isOnline(mContext)) {
+                    logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
+                    return;
+                }
+
+                logAboutMessageToMixpanel("Sending records to Mixpanel");
+                if (mDisableFallback) {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
+                 } else {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
+                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
+                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
                 }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String endpointUrl, String fallbackUrl) {
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
+                final ServerMessage poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
                     final String lastId = eventsData[0];
                     final String rawMessage = eventsData[1];
-                    final ServerMessage poster = getPoster();
-                    final ServerMessage.Result eventsPosted = poster.postData(rawMessage, endpointUrl, fallbackUrl);
-                    final ServerMessage.Status postStatus = eventsPosted.getStatus();
 
-                    if (postStatus == ServerMessage.Status.SUCCEEDED) {
-                        logAboutMessageToMixpanel("Posted to " + endpointUrl);
-                        logAboutMessageToMixpanel("Sent Message\n" + rawMessage);
-                        dbAdapter.cleanupEvents(lastId, table);
+                    final String encodedData = Base64Coder.encodeString(rawMessage);
+                    final List<NameValuePair> params = new ArrayList<NameValuePair>(1);
+                    params.add(new BasicNameValuePair("data", encodedData));
+                    if (MPConfig.DEBUG) {
+                        params.add(new BasicNameValuePair("verbose", "1"));
                     }
-                    else if (postStatus == ServerMessage.Status.FAILED_RECOVERABLE) {
-                        // Try again later
+
+                    boolean deleteEvents = true;
+                    byte[] response;
+                    for (String url : urls) {
+                        try {
+                            response = poster.performRequest(url, params);
+                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
+                            if (null == response) {
+                                if (MPConfig.DEBUG) {
+                                    Log.d(LOGTAG, "Response was null, unexpected failure posting to " + url + ".");
+                                }
+                            } else {
+                                String parsedResponse;
+                                try {
+                                    parsedResponse = new String(response, "UTF-8");
+                                } catch (UnsupportedEncodingException e) {
+                                    throw new RuntimeException("UTF not supported on this platform?", e);
+                                }
+
+                                logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                                logAboutMessageToMixpanel("Response was " + parsedResponse);
+                            }
+                            break;
+                        } catch (final OutOfMemoryError e) {
+                            Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                            break;
+                        } catch (final MalformedURLException e) {
+                            Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                            break;
+                        } catch (final IOException e) {
+                            if (MPConfig.DEBUG)
+                                Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
+                        }
+                    }
+
+                    if (deleteEvents) {
+                        logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
+                        dbAdapter.cleanupEvents(lastId, table);
+                    } else {
+                        logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
-                    }
-                    else { // give up, we have an unrecoverable failure.
-                        dbAdapter.cleanupEvents(lastId, table);
                     }
                 }
             }
@@ -542,9 +468,9 @@ import android.util.Log;
             }
 
             private MPDbAdapter mDbAdapter;
-            private final Set<Integer> mSeenSurveys;
             private long mFlushInterval; // XXX remove when associated deprecated APIs are removed
             private boolean mDisableFallback; // XXX remove when associated deprecated APIs are removed
+            private final DecideChecker mDecideChecker;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -575,7 +501,6 @@ import android.util.Log;
     /////////////////////////////////////////////////////////
 
     // Used across thread boundaries
-    private final AtomicBoolean mLogMixpanelMessages;
     private final Worker mWorker;
     private final Context mContext;
     private final MPConfig mConfig;
@@ -584,13 +509,11 @@ import android.util.Log;
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
     private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
-    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the eve
-    private static int CHECK_FOR_SURVEYS = 11; // Poll the Mixpanel decide API for surveys
+    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
+    private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
 
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
-
-    private static final ExecutorService CALLBACK_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private static final String LOGTAG = "MixpanelAPI";
 

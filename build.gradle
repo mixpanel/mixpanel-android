@@ -7,23 +7,26 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.7.+'
+        classpath 'com.android.tools.build:gradle:0.12.+'
     }
 }
 
 android {
-    compileSdkVersion 18
-    buildToolsVersion "17.0.0"
+    compileSdkVersion 19
+    buildToolsVersion "19.1.0"
 
     defaultConfig {
-        minSdkVersion 7
-        targetSdkVersion 18
-        testPackageName "com.mixpanel.android"
+        // If you change minSdkVersion or targetSdkVersion below, you must also change
+        // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
+        minSdkVersion 8
+        targetSdkVersion 20
+        testPackageName "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
-    }
 
-    lintOptions {
-        abortOnError false
+        lintOptions {
+            abortOnError true
+            warningsAsErrors true
+        }
     }
 }
 
@@ -31,7 +34,7 @@ android.libraryVariants.all { variant ->
     task("generate${variant.name}Javadoc", type: Javadoc) {
         description "Generates Javadoc for $variant.name."
         source = variant.javaCompile.source
-        ext.androidJar = "${android.plugin.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
+        ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
         classpath = files(variant.javaCompile.classpath.files) + files(ext.androidJar)
         exclude '**/R.*', '**/BuildConfig.java'
         options {
@@ -58,6 +61,7 @@ if (isReleaseVersion()) {
         sign configurations.archives
     }
 }
+
 
 uploadArchives {
     configuration = configurations.archives
