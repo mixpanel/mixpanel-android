@@ -29,46 +29,53 @@ import java.lang.reflect.Method;
                 continue;
             }
 
-            final Class resultType = method.getReturnType();
-            if (! mMethodResultType.isAssignableFrom(resultType)) {
+            final Class assignType = assignableArgType(mMethodResultType);
+            final Class resultType = assignableArgType(method.getReturnType());
+            if (! assignType.isAssignableFrom(resultType)) {
                 continue;
             }
 
             boolean assignable = true;
             for (int i = 0; i < params.length && assignable; i++) {
-                Class argumentType = mMethodTypes[i];
-
-                // a.isAssignableFrom(b) only tests if b is a
-                // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
-                // b is an Integer, so we have to make the Object types primitive types. When the
-                // function is finally invoked, autoboxing will take care of the the cast.
-                if (argumentType == Integer.class) {
-                    argumentType = int.class;
-                } else if (argumentType == Float.class) {
-                    argumentType = float.class;
-                } else if (argumentType == Double.class) {
-                    argumentType = double.class;
-                } else if (argumentType == Boolean.class) {
-                    argumentType = boolean.class;
-                }
-
-                assignable = params[i].isAssignableFrom(argumentType);
+                final Class argumentType = assignableArgType(mMethodTypes[i]);
+                final Class paramType = assignableArgType(params[i]);
+                assignable = paramType.isAssignableFrom(argumentType);
             }
 
-            if (assignable) {
-                try {
-                    return method.invoke(target, mMethodArgs);
-                } catch (IllegalAccessException e) {
-                    Log.e(LOGTAG, "Can't invoke method " + method.getName(), e);
-                    // Don't return, keep trying
-                } catch (InvocationTargetException e) {
-                    Log.e(LOGTAG, "Method " + method.getName() + " threw an exception", e);
-                    return null;
-                }
+            if (! assignable) {
+                continue;
+            }
+
+            try {
+                return method.invoke(target, mMethodArgs);
+            } catch (IllegalAccessException e) {
+                Log.e(LOGTAG, "Can't invoke method " + method.getName(), e);
+                // Don't return, keep trying
+            } catch (InvocationTargetException e) {
+                Log.e(LOGTAG, "Method " + method.getName() + " threw an exception", e);
+                return null;
             }
         }
 
         return null;
+    }
+
+    private static Class assignableArgType(Class type) { // TODO this will fail for args that extend Integer, Float etc.
+        // a.isAssignableFrom(b) only tests if b is a
+        // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
+        // b is an Integer, so we have to make the Object types primitive types. When the
+        // function is finally invoked, autoboxing will take care of the the cast.
+        if (type == Integer.class) {
+            type = int.class;
+        } else if (type == Float.class) {
+            type = float.class;
+        } else if (type == Double.class) {
+            type = double.class;
+        } else if (type == Boolean.class) {
+            type = boolean.class;
+        }
+
+        return type;
     }
 
     private final String mMethodName;
