@@ -479,22 +479,28 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     for (int i = 0; i < propertyDescs.length(); i++) {
                         final JSONObject propertyDesc = propertyDescs.getJSONObject(i);
                         final String propName = propertyDesc.getString("name");
-                        final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
-                        final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
 
-                        final String accessorName = accessorConfig.getString("selector");
-                        final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
-                        final Class accessorResultType = Class.forName(accessorResultTypeName);
-                        final Caller accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
-
-                        final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
-                        final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
-                        for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
-                            final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
-                            mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
+                        Caller accessor = null;
+                        if (propertyDesc.has("get")) {
+                            final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
+                            final String accessorName = accessorConfig.getString("selector");
+                            final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
+                            final Class accessorResultType = Class.forName(accessorResultTypeName);
+                            accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
                         }
-                        final String mutatorName = mutatorConfig.getString("selector");
-                        final Caller mutator = new Caller(mutatorName, mutatorParamTypes, Void.TYPE);
+
+                        Caller mutator = null;
+                        if (propertyDesc.has("set")) {
+                            final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
+                            final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
+                            final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
+                            for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
+                                final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
+                                mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
+                            }
+                            final String mutatorName = mutatorConfig.getString("selector");
+                            mutator = new Caller(mutatorName, mutatorParamTypes, Void.TYPE);
+                        }
 
                         final ViewSnapshot.PropertyDescription desc = new ViewSnapshot.PropertyDescription(propName, targetClass, accessor, mutator);
                         properties.add(desc);
@@ -566,6 +572,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
     private final ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
+    // Map from canonical activity class name to description of changes
     private final Map<String, ArrayList<JSONObject>> mChanges;
 
     private final Tweaks mTweaks = new Tweaks();

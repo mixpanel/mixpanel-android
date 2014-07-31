@@ -148,7 +148,7 @@ import java.util.List;
 
     private void addProperties(View v, JSONObject out) {
         for (PropertyDescription desc: mProperties) {
-            if (desc.targetClass.isAssignableFrom(v.getClass())) {
+            if (desc.targetClass.isAssignableFrom(v.getClass()) && null != desc.accessor) {
                 try {
                     Object value = desc.accessor.applyMethod(v);
                     out.put(desc.name, value);
