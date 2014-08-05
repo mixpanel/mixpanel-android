@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
@@ -56,7 +57,10 @@ import java.util.Map;
                 @Override
                 public void sendAccessibilityEvent(View host, int eventType) {
                     Log.d(LOGTAG, "EVENT SEEN!");
-                    mMixpanel.track(mEventName, null);
+                    if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+                        mMixpanel.track(mEventName, null);
+                    }
+
                     if (null != realDelegate) {
                         realDelegate.sendAccessibilityEvent(host, eventType);
                     }
