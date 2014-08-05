@@ -19,6 +19,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,7 +45,7 @@ import java.util.Set;
 @TargetApi(14)
 public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
 
-    public ABTesting(Context context, String token) {
+    public ABTesting(Context context, String token, MixpanelAPI mixpanel) {
         mChanges = new HashMap<String, ArrayList<JSONObject>>();
         mProtocol = new EditProtocol();
 
@@ -58,6 +59,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         mUiThreadHandler = new Handler(Looper.getMainLooper());
+        mMixpanel = mixpanel;
     }
 
     public Tweaks getTweaks() {
@@ -414,7 +416,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
     }
 
-    private static class EditProtocol {
+    private class EditProtocol {
 
         public class BadInstructionsException extends Exception {
             public BadInstructionsException(String message) {
@@ -440,25 +442,34 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     path.add(new ViewEdit.PathElement(targetViewClass, targetIndex));
                 }
 
-                final String methodName = source.getString("method");
-                final JSONArray argsAndTypes = source.getJSONArray("args");
-                final Object[] methodArgs = new Object[argsAndTypes.length()];
-                final Class[] methodTypes = new Class[argsAndTypes.length()];
-
-                for (int i = 0; i < argsAndTypes.length(); i++) {
-                    final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                    final Object jsonArg = argPlusType.get(0);
-                    final String argType = argPlusType.getString(1);
-                    methodArgs[i] = convertArgument(jsonArg, argType);
-                    methodTypes[i] = methodArgs[i].getClass();
+                if (viewId == -1 && path.size() == 0) {
+                    throw new BadInstructionsException("Path selector was empty and no view id was provided.");
                 }
 
-                if (path.size() == 0) {
-                    throw new BadInstructionsException("Path selector was empty");
+                if (source.has("method")) {
+                    final String methodName = source.getString("method");
+                    final JSONArray argsAndTypes = source.getJSONArray("args");
+                    final Object[] methodArgs = new Object[argsAndTypes.length()];
+                    final Class[] methodTypes = new Class[argsAndTypes.length()];
+
+                    for (int i = 0; i < argsAndTypes.length(); i++) {
+                        final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                        final Object jsonArg = argPlusType.get(0);
+                        final String argType = argPlusType.getString(1);
+                        methodArgs[i] = convertArgument(jsonArg, argType);
+                        methodTypes[i] = methodArgs[i].getClass();
+                    }
+
+                    final Caller caller = new Caller(methodName, methodArgs, Void.TYPE);
+                    return new ViewEdit.PropertySetEdit(viewId, path, caller);
                 }
 
-                final Caller caller = new Caller(methodName, methodArgs, Void.TYPE);
-                return new ViewEdit(viewId, path, caller);
+                if (source.has("event_name")) {
+                    final String eventName = source.getString("event_name");
+                    return new ViewEdit.AddListenerEdit(viewId, path, eventName, mMixpanel);
+                }
+
+                throw new BadInstructionsException("Instructions contained neither a method to call nor an event to track");
             } catch (JSONException e) {
                 throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
             }
@@ -540,8 +551,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 throw new BadInstructionsException("Couldn't interpret <" + jsonArgument + "> as " + type);
             }
         }
-
-        private static final Class[] NO_PARAMS = new Class[0];
     }
 
     private void runABTestReceivedListeners() {
@@ -578,9 +587,12 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
     private final ABHandler mMessageThreadHandler;
+    private final MixpanelAPI mMixpanel;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
+
+    private static final Class[] NO_PARAMS = new Class[0];
 
     private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";

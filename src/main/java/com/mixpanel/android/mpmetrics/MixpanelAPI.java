@@ -116,7 +116,6 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
-        mABTesting = constructABTesting(context, token);
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
@@ -130,6 +129,8 @@ public class MixpanelAPI {
         if (null != peopleId) {
             mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
         }
+
+        mABTesting = constructABTesting(context, token);
 
         registerMixpanelActivityLifecycleCallbacks();
 
@@ -978,7 +979,7 @@ public class MixpanelAPI {
             Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
             return null;
         } else {
-            return new ABTesting(mContext, mToken);
+            return new ABTesting(mContext, mToken, this);
         }
     }
 

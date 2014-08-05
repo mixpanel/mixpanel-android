@@ -1,8 +1,11 @@
 package com.mixpanel.android.abtesting;
 
+import android.annotation.TargetApi;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -10,8 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
-/* package */ class ViewEdit {
+@TargetApi(14)
+/* package */ abstract class ViewEdit {
 
     public static class PathElement {
         public PathElement(String vClass, int ix) {
@@ -27,17 +30,72 @@ import java.util.Map;
         public final int index;
     }
 
-    public ViewEdit(int viewId, List<PathElement> path, Caller caller) {
+    public static class PropertySetEdit extends ViewEdit {
+        public PropertySetEdit(int viewId, List<PathElement> path, Caller caller) {
+            super(viewId, path);
+            mCaller = caller;
+        }
+
+        public void applyEdit(View target) {
+            mCaller.applyMethod(target);
+        }
+
+        private final Caller mCaller;
+    }
+
+    public static class AddListenerEdit extends ViewEdit {
+        public AddListenerEdit(int viewId, List<PathElement> path, String eventName, MixpanelAPI mixpanel) {
+            super(viewId, path);
+            mEventName = eventName;
+            mMixpanel = mixpanel;
+        }
+
+        public void applyEdit(View target) {
+            final View.AccessibilityDelegate realDelegate = getOldDelegate(target);
+            target.setAccessibilityDelegate(new View.AccessibilityDelegate() {
+                @Override
+                public void sendAccessibilityEvent(View host, int eventType) {
+                    Log.d(LOGTAG, "EVENT SEEN!");
+                    mMixpanel.track(mEventName, null);
+                    if (null != realDelegate) {
+                        realDelegate.sendAccessibilityEvent(host, eventType);
+                    }
+                }
+            });
+        }
+
+        // TODO must API LEVEL check here
+        private View.AccessibilityDelegate getOldDelegate(View v) {
+            View.AccessibilityDelegate ret = null;
+            try {
+                Class klass = v.getClass();
+                Method m = klass.getMethod("getAccessibilityDelegate");
+                ret = (View.AccessibilityDelegate) m.invoke(v);
+            } catch (NoSuchMethodException e) {
+                Log.e(LOGTAG, "View has no getAccessibilityDelegate method", e);
+            } catch (IllegalAccessException e) {
+                Log.e(LOGTAG, "View does not have a public getAccessibilityDelegate method", e);
+            } catch (InvocationTargetException e) {
+                Log.e(LOGTAG, "getAccessibilityDelegate threw an apparently impossible exception", e);
+            }
+
+            return ret;
+        }
+
+        private final String mEventName;
+        private final MixpanelAPI mMixpanel;
+    }
+
+    public ViewEdit(int viewId, List<PathElement> path) {
         mViewId = viewId;
         mPath = path;
-        mCaller = caller;
     }
 
     /** Call ONLY on the UI thread **/
     public void edit(View rootView) {
         final View target = findTarget(rootView);
         if (target != null) {
-            mCaller.applyMethod(target);
+            applyEdit(target);
         } else {
             Log.i(LOGTAG, "Could not find target with id " + mViewId + " or path " + mPath.toString());
         }
@@ -50,6 +108,8 @@ import java.util.Map;
             return findTargetOnPath(rootView, mPath, 0);
         }
     }
+
+    protected abstract void applyEdit(View targetView);
 
     private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
         if (path.isEmpty()) {
@@ -91,7 +151,6 @@ import java.util.Map;
 
     private int mViewId = -1;
     private final List<PathElement> mPath;
-    private final Caller mCaller;
 
     private static final String LOGTAG = "Mixpanel.Introspector.ViewEdit";
 }
