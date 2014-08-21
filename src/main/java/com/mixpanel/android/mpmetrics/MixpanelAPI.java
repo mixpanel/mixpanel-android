@@ -397,7 +397,6 @@ public class MixpanelAPI {
      * @see #identify(String)
      * @see People#getDistinctId()
      */
-
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
      }
