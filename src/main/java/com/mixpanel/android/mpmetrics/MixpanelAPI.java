@@ -1572,9 +1572,9 @@ public class MixpanelAPI {
         } catch (InvocationTargetException e) {
             Log.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
         } catch (ClassNotFoundException e) {
-            Log.d(APP_LINKS_LOGTAG, "android.support.v4.content.LocalBroadcastManager not found -- App Links tracking will not be enabled -- " + e.getMessage());
+            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
         } catch (NoSuchMethodException e) {
-            Log.d(APP_LINKS_LOGTAG, "registerReceiver method not found on android.support.v4.content.LocalBroadcastManager -- App Links tracking will not be enabled -- " + e.getMessage());
+            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
         } catch (IllegalAccessException e) {
             Log.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
         }
