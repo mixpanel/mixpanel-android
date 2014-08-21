@@ -15,6 +15,11 @@ See https://github.com/mixpanel/sample-android-mixpanel-integration for a full f
 Changelog
 ---------
 
+#### v4.3.0
+ * Added support for App Links tracking
+
+ * Added a way to get super properties
+
 #### v4.2.2
 
  * Removed lint warnings from build
