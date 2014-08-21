@@ -49,6 +49,11 @@ android.libraryVariants.all { variant ->
     }
 }
 
+// Add properties named "wp.xxx" to our BuildConfig
+android.buildTypes.all { buildType ->
+    buildType.buildConfigField "String", "MIXPANEL_VERSION", "\"${project.properties.version}\""
+}
+
 def isReleaseVersion() {
     return !version.endsWith("SNAPSHOT");
 }

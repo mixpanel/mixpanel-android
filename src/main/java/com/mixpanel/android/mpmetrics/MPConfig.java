@@ -7,11 +7,13 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.mixpanel.android.BuildConfig;
+
 /**
  * Stores global configuration options for the Mixpanel library.
  */
 public class MPConfig {
-    public static final String VERSION = "4.3-SNAPSHOT";
+    public static final String VERSION = BuildConfig.MIXPANEL_VERSION;
 
     public static boolean DEBUG = false;
 
