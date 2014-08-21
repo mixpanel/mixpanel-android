@@ -138,34 +138,6 @@ public class MixpanelAPI {
         if (null != mDecideUpdates) {
             mMessages.installDecideCheck(mDecideUpdates);
         }
-
-        // register receiver for bolts App Links support
-        try {
-            Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
-            Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
-            Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
-            Object localBroadcastManager = methodGetInstance.invoke(null, context);
-            final MixpanelAPI instance = this;
-            methodRegisterReceiver.invoke(localBroadcastManager, new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    JSONObject properties = new JSONObject();
-                    Bundle args = intent.getBundleExtra("event_args");
-                    if (args != null) {
-                        for (String key : args.keySet()) {
-                            try {
-                                properties.put(key, args.get(key));
-                            } catch (JSONException e) {
-                                Log.d(LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
-                            }
-                        }
-                    }
-                    instance.track("$" + intent.getStringExtra("event_name"), properties);
-                }
-            }, new IntentFilter("com.parse.bolts.measurement_event"));
-        } catch (Exception e) {
-            Log.d(LOGTAG, "App Links tracking will not be enabled due to this exception.", e);
-        }
     }
 
     /**
@@ -214,23 +186,8 @@ public class MixpanelAPI {
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance) {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
+                registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
-            }
-
-            // call the Bolts getTargetUrlFromInboundIntent method
-            // if the intent is the result of an App Link, it'll trigger al_nav_in
-            // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
-            if (context instanceof Activity) {
-                try {
-                    Class<?> clazz = Class.forName("bolts.AppLinks");
-                    Intent intent = ((Activity) context).getIntent();
-                    Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
-                    getTargetUrlFromInboundIntent.invoke(null, context, intent);
-                } catch (Exception e) {
-                    Log.d(LOGTAG, "Unable to detect inbound App Links.", e);
-                }
-            } else {
-                Log.d(LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
             }
 
             return instance;
@@ -1582,6 +1539,51 @@ public class MixpanelAPI {
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
             }
+        }
+    }
+
+    private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {
+        // Register a BroadcastReceiver to receive com.parse.bolts.measurement_event and track a call to mixpanel
+        try {
+            Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
+            Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
+            Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
+            Object localBroadcastManager = methodGetInstance.invoke(null, context);
+            methodRegisterReceiver.invoke(localBroadcastManager, new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    JSONObject properties = new JSONObject();
+                    Bundle args = intent.getBundleExtra("event_args");
+                    if (args != null) {
+                        for (String key : args.keySet()) {
+                            try {
+                                properties.put(key, args.get(key));
+                            } catch (JSONException e) {
+                                Log.d(LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
+                            }
+                        }
+                    }
+                    mixpanel.track("$" + intent.getStringExtra("event_name"), properties);
+                }
+            }, new IntentFilter("com.parse.bolts.measurement_event"));
+        } catch (Exception e) {
+            Log.d(LOGTAG, "App Links tracking will not be enabled due to this exception.", e);
+        }
+
+        // call the Bolts getTargetUrlFromInboundIntent method simply for a side effect
+        // if the intent is the result of an App Link, it'll trigger al_nav_in
+        // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
+        if (context instanceof Activity) {
+            try {
+                Class<?> clazz = Class.forName("bolts.AppLinks");
+                Intent intent = ((Activity) context).getIntent();
+                Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
+                getTargetUrlFromInboundIntent.invoke(null, context, intent);
+            } catch (Exception e) {
+                Log.d(LOGTAG, "Unable to detect inbound App Links.", e);
+            }
+        } else {
+            Log.d(LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
         }
     }
 
