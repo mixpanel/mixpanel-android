@@ -11,7 +11,7 @@ import android.util.Log;
  * Stores global configuration options for the Mixpanel library.
  */
 public class MPConfig {
-    public static final String VERSION = "4.3-SNAPSHOT";
+    public static final String VERSION = "4.3.0-SNAPSHOT";
 
     public static boolean DEBUG = false;
 

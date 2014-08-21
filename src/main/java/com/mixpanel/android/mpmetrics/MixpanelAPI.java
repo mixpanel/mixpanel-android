@@ -26,6 +26,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -189,6 +190,8 @@ public class MixpanelAPI {
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
+
+            checkIntentForInboundAppLink(context);
 
             return instance;
         }
@@ -1559,17 +1562,25 @@ public class MixpanelAPI {
                             try {
                                 properties.put(key, args.get(key));
                             } catch (JSONException e) {
-                                Log.d(LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
+                                Log.e(APP_LINKS_LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
                             }
                         }
                     }
                     mixpanel.track("$" + intent.getStringExtra("event_name"), properties);
                 }
             }, new IntentFilter("com.parse.bolts.measurement_event"));
-        } catch (Exception e) {
-            Log.d(LOGTAG, "App Links tracking will not be enabled due to this exception.", e);
+        } catch (InvocationTargetException e) {
+            Log.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
+        } catch (ClassNotFoundException e) {
+            Log.d(APP_LINKS_LOGTAG, "android.support.v4.content.LocalBroadcastManager not found -- App Links tracking will not be enabled -- " + e.getMessage());
+        } catch (NoSuchMethodException e) {
+            Log.d(APP_LINKS_LOGTAG, "registerReceiver method not found on android.support.v4.content.LocalBroadcastManager -- App Links tracking will not be enabled -- " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Log.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
         }
+    }
 
+    private static void checkIntentForInboundAppLink(Context context) {
         // call the Bolts getTargetUrlFromInboundIntent method simply for a side effect
         // if the intent is the result of an App Link, it'll trigger al_nav_in
         // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
@@ -1579,15 +1590,22 @@ public class MixpanelAPI {
                 Intent intent = ((Activity) context).getIntent();
                 Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
                 getTargetUrlFromInboundIntent.invoke(null, context, intent);
-            } catch (Exception e) {
-                Log.d(LOGTAG, "Unable to detect inbound App Links.", e);
+            } catch (InvocationTargetException e) {
+                Log.d(APP_LINKS_LOGTAG, "Failed to invoke bolts.AppLinks.getTargetUrlFromInboundIntent() -- Unable to detect inbound App Links", e);
+            } catch (ClassNotFoundException e) {
+                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+            } catch (NoSuchMethodException e) {
+                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+            } catch (IllegalAccessException e) {
+                Log.d(APP_LINKS_LOGTAG, "Unable to detect inbound App Links: " + e.getMessage());
             }
         } else {
-            Log.d(LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
+            Log.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
         }
     }
 
     private static final String LOGTAG = "MixpanelAPI";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     private final Context mContext;
