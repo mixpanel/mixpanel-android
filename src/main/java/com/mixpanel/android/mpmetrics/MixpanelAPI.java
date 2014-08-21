@@ -6,13 +6,16 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -23,6 +26,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -134,6 +138,34 @@ public class MixpanelAPI {
         if (null != mDecideUpdates) {
             mMessages.installDecideCheck(mDecideUpdates);
         }
+
+        // register receiver for bolts App Links support
+        try {
+            Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
+            Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
+            Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
+            Object localBroadcastManager = methodGetInstance.invoke(null, context);
+            final MixpanelAPI instance = this;
+            methodRegisterReceiver.invoke(localBroadcastManager, new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    JSONObject properties = new JSONObject();
+                    Bundle args = intent.getBundleExtra("event_args");
+                    if (args != null) {
+                        for (String key : args.keySet()) {
+                            try {
+                                properties.put(key, args.get(key));
+                            } catch (JSONException e) {
+                                Log.d(LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
+                            }
+                        }
+                    }
+                    instance.track("$" + intent.getStringExtra("event_name"), properties);
+                }
+            }, new IntentFilter("com.parse.bolts.measurement_event"));
+        } catch (Exception e) {
+            Log.d(LOGTAG, "App Links tracking will not be enabled due to this exception.", e);
+        }
     }
 
     /**
@@ -184,6 +216,23 @@ public class MixpanelAPI {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
                 instances.put(appContext, instance);
             }
+
+            // call the Bolts getTargetUrlFromInboundIntent method
+            // if the intent is the result of an App Link, it'll trigger al_nav_in
+            // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
+            if (context instanceof Activity) {
+                try {
+                    Class<?> clazz = Class.forName("bolts.AppLinks");
+                    Intent intent = ((Activity) context).getIntent();
+                    Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
+                    getTargetUrlFromInboundIntent.invoke(null, context, intent);
+                } catch (Exception e) {
+                    Log.d(LOGTAG, "Unable to detect inbound App Links.", e);
+                }
+            } else {
+                Log.d(LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
+            }
+
             return instance;
         }
     }
