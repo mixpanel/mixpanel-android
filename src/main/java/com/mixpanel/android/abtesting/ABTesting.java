@@ -6,6 +6,10 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -15,7 +19,6 @@ import android.os.Process;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
-import android.view.MotionEvent;
 import android.view.View;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -32,6 +35,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -81,6 +85,85 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
     }
 
+    private class FlipListener implements SensorEventListener {
+        public FlipListener() {
+            Log.d(LOGTAG, "FlipListener constructed, starting trigger state " + mTriggerState);
+        }
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            final long timestamp = event.timestamp;
+            // Options - artificially downsample to
+
+            final float[] smoothed = smoothXYZ(event.values);
+
+            final int oldFlipState = mFlipState;
+
+            // TODO wrong, must account for transitions between flipped up and flipped down
+            // This only works on Earth, where gravity is near 9.8 m/s*s
+            if (smoothed[0] > 2.0 || smoothed[0] < -2.0) {
+                mFlipState = FLIP_STATE_NONE;
+            } else if (smoothed[1] > 2.0 || smoothed[1] < -2.0) {
+                mFlipState = FLIP_STATE_NONE;
+            } else if (smoothed[2] > 9.0) {
+                mFlipState = FLIP_STATE_UP;
+            } else if (smoothed[2] < -9.0) {
+                mFlipState = FLIP_STATE_DOWN;
+            } else {
+                mFlipState = FLIP_STATE_NONE;
+            }
+
+            if (oldFlipState != mFlipState) {
+                mLastFlipTime = event.timestamp;
+            }
+
+            final long flipDurationNanos = event.timestamp - mLastFlipTime;
+
+            if (mFlipState == FLIP_STATE_NONE && mTriggerState != 0) {
+                if (flipDurationNanos > 1000000000) { // 1 sec to flip
+                    mTriggerState = 0;
+                    Log.d(LOGTAG, "No Flip, Resetting trigger to zero, duration " + flipDurationNanos);
+                }
+            } else if (mFlipState == FLIP_STATE_UP && mTriggerState == 0) {
+                if (flipDurationNanos > 1000000000) { // 1 secs up
+                    mTriggerState = 1;
+                    Log.d(LOGTAG, "Flipped up! Setting trigger to 1 duration " + flipDurationNanos);
+                }
+            } else if (mFlipState == FLIP_STATE_DOWN && mTriggerState == 1) {
+                if (flipDurationNanos > 1000000000) { // 1 secs down
+                    mTriggerState = 2;
+                    Log.d(LOGTAG, "Flipped Down! Setting trigger to 2 duration " + flipDurationNanos);
+                }
+            } else if (mFlipState == FLIP_STATE_UP && mTriggerState == 2) {
+                if (flipDurationNanos > 1000000000) { // 1 secs up
+                    mTriggerState = 0;
+                    Log.d(LOGTAG, "Connection triggered! Attempting to connect duration " + flipDurationNanos);
+                    final Message message = mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR);
+                    mMessageThreadHandler.sendMessage(message);
+                }
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            ; // Do nothing
+        }
+
+        private float[] smoothXYZ(final float[] samples) {
+            for (int i = 0; i < 3; i++) {
+                final float oldVal = mSmoothed[i];
+                mSmoothed[i] = oldVal + (ACCELEROMETER_SMOOTHING * (samples[i] - oldVal));
+            }
+
+            return mSmoothed;
+        }
+
+        int mTriggerState = -1;
+        int mFlipState = FLIP_STATE_NONE;
+        long mLastFlipTime = -1;
+        final float[] mSmoothed = new float[3];
+    }
+
     private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
         @Override
@@ -89,24 +172,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
         @Override
         public void onActivityStarted(Activity activity) {
-            activity.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    int action = motionEvent.getActionMasked();
-                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-                        mDown++;
-                        if (mDown == 5) {
-                            mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR));
-                        }
-                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-                        mDown--;
-                    }
-                    return true;
-                }
-
-                private int mDown = 0;
-            });
-
             synchronized (mLiveActivities) {
                 mLiveActivities.add(activity);
             }
@@ -128,10 +193,16 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
         @Override
         public void onActivityResumed(Activity activity) {
+            Log.e(LOGTAG, "onActivityResumed was called with " + activity);
+            final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
+            final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            sensorManager.registerListener(mFlipListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
+            final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
+            sensorManager.unregisterListener(mFlipListener);
         }
 
         @Override
@@ -148,6 +219,8 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         @Override
         public void onActivityDestroyed(Activity activity) {
         }
+
+        private final FlipListener mFlipListener = new FlipListener();
     }
 
     /**
@@ -602,6 +675,11 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
     private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
+
+    private static final int FLIP_STATE_UP = -1;
+    private static final int FLIP_STATE_NONE = 0;
+    private static final int FLIP_STATE_DOWN = 1;
+    private static final float ACCELEROMETER_SMOOTHING = 0.3f;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "ABTesting";
