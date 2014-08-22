@@ -2,6 +2,7 @@ package com.mixpanel.android.abtesting;
 
 
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.util.Log;
@@ -105,6 +106,16 @@ import java.util.List;
             dump.put("left", view.getLeft());
             dump.put("width", view.getWidth());
             dump.put("height", view.getHeight());
+
+            float translationX = 0;
+            float translationY = 0;
+            if (Build.VERSION.SDK_INT >= 11) {
+                translationX = view.getTranslationX();
+                translationY = view.getTranslationY();
+            }
+
+            dump.put("translationX", translationX);
+            dump.put("translationY", translationY);
 
             final JSONArray classes = new JSONArray();
             Class klass = view.getClass();
