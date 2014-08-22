@@ -56,7 +56,7 @@ import java.util.Map;
             target.setAccessibilityDelegate(new View.AccessibilityDelegate() {
                 @Override
                 public void sendAccessibilityEvent(View host, int eventType) {
-                    Log.d(LOGTAG, "EVENT SEEN!");
+                    Log.d(LOGTAG, "EVENT SEEN: " + mEventName);
                     if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
                         mMixpanel.track(mEventName, null);
                     }
@@ -68,7 +68,7 @@ import java.util.Map;
             });
         }
 
-        // TODO must API LEVEL check here
+        // TODO must API LEVEL check here (Method appears in API 19)
         private View.AccessibilityDelegate getOldDelegate(View v) {
             View.AccessibilityDelegate ret = null;
             try {
@@ -76,9 +76,9 @@ import java.util.Map;
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {
-                Log.e(LOGTAG, "View has no getAccessibilityDelegate method", e);
+                Log.e(LOGTAG, "View has no getAccessibilityDelegate method - clobbering existing delegate");
             } catch (IllegalAccessException e) {
-                Log.e(LOGTAG, "View does not have a public getAccessibilityDelegate method", e);
+                Log.e(LOGTAG, "View does not have a public getAccessibilityDelegate method - clobbering existing delegate");
             } catch (InvocationTargetException e) {
                 Log.e(LOGTAG, "getAccessibilityDelegate threw an apparently impossible exception", e);
             }
