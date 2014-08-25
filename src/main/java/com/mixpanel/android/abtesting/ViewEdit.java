@@ -76,9 +76,9 @@ import java.util.Map;
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {
-                Log.e(LOGTAG, "View has no getAccessibilityDelegate method - clobbering existing delegate");
+                Log.d(LOGTAG, "View has no getAccessibilityDelegate method - clobbering existing delegate");
             } catch (IllegalAccessException e) {
-                Log.e(LOGTAG, "View does not have a public getAccessibilityDelegate method - clobbering existing delegate");
+                Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - clobbering existing delegate");
             } catch (InvocationTargetException e) {
                 Log.e(LOGTAG, "getAccessibilityDelegate threw an apparently impossible exception", e);
             }
