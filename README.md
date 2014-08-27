@@ -12,6 +12,11 @@ You can find getting started guides for using Mixpanel at:
 
 See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application.
 
+Want to Contribute?
+-------------------
+The Mixpanel library for Android is an open source project, and we'd love to see your contributions!
+We'd also love for you to come and work with us! Check out http://boards.greenhouse.io/mixpanel/jobs/25078#.U_4BBEhORKU for details.
+
 Changelog
 ---------
 
