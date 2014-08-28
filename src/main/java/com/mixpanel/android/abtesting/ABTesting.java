@@ -20,6 +20,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -31,6 +32,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -68,10 +70,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         return mTweaks;
     }
 
-    public interface OnMixpanelABTestReceivedListener {
-        public abstract void onMixpanelABTestReceived();
-    }
-
     public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
         synchronized(mABTestReceivedListeners) {
             mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
@@ -83,11 +81,24 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
     }
 
-    private class FlipListener implements SensorEventListener {
-        public FlipListener() {
-            Log.d(LOGTAG, "FlipListener constructed, starting trigger state " + mTriggerState);
+    private void runABTestReceivedListeners() {
+        synchronized (mABTestReceivedListeners) {
+            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
+                p.first.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        p.second.onMixpanelABTestReceived();
+                    }
+                });
+            }
         }
+    }
 
+    public interface OnMixpanelABTestReceivedListener {
+        public abstract void onMixpanelABTestReceived();
+    }
+
+    private class FlipListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
             final long timestamp = event.timestamp;
@@ -180,7 +191,9 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     for (JSONObject j : changes) {
                         try {
                             final ViewEdit inst = mProtocol.readEdit(j);
-                            inst.edit(activity.getWindow().getDecorView().getRootView());
+                            final View rootView = activity.getWindow().getDecorView().getRootView();
+                            final EditBinding binding = new EditBinding(rootView, inst);
+                            binding.performEdit();
                         } catch (EditProtocol.BadInstructionsException e) {
                             Log.e(LOGTAG, "Bad change request saved in mChanges", e);
                         }
@@ -219,19 +232,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
 
         private final FlipListener mFlipListener = new FlipListener();
-    }
-
-    private void runABTestReceivedListeners() {
-        synchronized (mABTestReceivedListeners) {
-            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
-                p.first.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        p.second.onMixpanelABTestReceived();
-                    }
-                });
-            }
-        }
     }
 
     /**
@@ -418,6 +418,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             }
         }
 
+        // TODO this should be two separate methods, one for persisting changes, and one for applying them immediately in preview
         private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) throws JSONException {
             final String targetActivity = changes.getString("target");
             final JSONObject change = changes.getJSONObject("change");
@@ -429,7 +430,9 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                         public void run() {
                             for (Activity a : mLiveActivities) {
                                 if (a.getClass().getCanonicalName().equals(targetActivity)) {
-                                    edit.edit(a.getWindow().getDecorView().getRootView());
+                                    final View rootView = a.getWindow().getDecorView().getRootView();
+                                    final EditBinding binding = new EditBinding(rootView, edit);
+                                    binding.performEdit();
                                 }
                             }
                         }
@@ -630,6 +633,42 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
     }
 
+    /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
+    private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener {
+        public EditBinding(View viewRoot, ViewEdit edit) {
+            mEdit = edit;
+            mViewRoot = new WeakReference<View>(viewRoot);
+            ViewTreeObserver observer = viewRoot.getViewTreeObserver();
+            performEdit();
+
+            if (observer.isAlive()) {
+                observer.addOnGlobalLayoutListener(this);
+            }
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            performEdit();
+        }
+
+        public void performEdit() {
+            View viewRoot = mViewRoot.get();
+            if (null == viewRoot) {
+                return;
+            }
+            // ELSE View is alive
+
+            mEdit.edit(viewRoot);
+        }
+
+        public boolean viewIsAlive() {
+            return mViewRoot.get() != null;
+        }
+
+        private final WeakReference<View> mViewRoot;
+        private final ViewEdit mEdit;
+    }
+
     private static class RootViewInfo {
         public RootViewInfo(String activityName, View rootView) {
             this.activityName = activityName;
@@ -640,21 +679,22 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         public final View rootView;
     }
 
-    private final EditProtocol mProtocol;
-
+    // mABTestReceivedListeners is accessed on multiple threads and must be synchronized
     private final ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
             new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
     // Map from canonical activity class name to description of changes
+    // Accessed from Multiple Threads, must be synchronized
     private final Map<String, ArrayList<JSONObject>> mChanges;
 
+    // mLiveActivites is accessed across multiple threads, and must be synchronized.
+    private final Set<Activity> mLiveActivities = new HashSet<Activity>();
+
+    private final EditProtocol mProtocol;
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
     private final ABHandler mMessageThreadHandler;
     private final MixpanelAPI mMixpanel;
-
-    // mLiveActivites is accessed across multiple threads, and must be synchronized.
-    private final Set<Activity> mLiveActivities = new HashSet<Activity>();
 
     private static final Class[] NO_PARAMS = new Class[0];
 

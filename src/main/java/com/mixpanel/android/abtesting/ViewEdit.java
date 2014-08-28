@@ -51,21 +51,16 @@ import java.util.Map;
             mMixpanel = mixpanel;
         }
 
+        // TODO needs test for duplicate tracking prevention...
+        // TODO what about tracking two different events on the same target?
         public void applyEdit(View target) {
             final View.AccessibilityDelegate realDelegate = getOldDelegate(target);
-            target.setAccessibilityDelegate(new View.AccessibilityDelegate() {
-                @Override
-                public void sendAccessibilityEvent(View host, int eventType) {
-                    Log.d(LOGTAG, "EVENT SEEN: " + mEventName);
-                    if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-                        mMixpanel.track(mEventName, null);
-                    }
+            if (realDelegate instanceof TrackingAccessibilityDelegate) {
+                return;
+            }
 
-                    if (null != realDelegate) {
-                        realDelegate.sendAccessibilityEvent(host, eventType);
-                    }
-                }
-            });
+            View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(mEventName, realDelegate);
+            target.setAccessibilityDelegate(newDelegate);
         }
 
         // TODO must API LEVEL check here (Method appears in API 19)
@@ -84,6 +79,27 @@ import java.util.Map;
             }
 
             return ret;
+        }
+
+        private class TrackingAccessibilityDelegate extends View.AccessibilityDelegate {
+            public TrackingAccessibilityDelegate(String eventName, View.AccessibilityDelegate realDelegate) {
+                mEventName = eventName;
+                mRealDelegate = realDelegate;
+            }
+
+            @Override
+            public void sendAccessibilityEvent(View host, int eventType) {
+                if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+                    mMixpanel.track(mEventName, null);
+                }
+
+                if (null != mRealDelegate) {
+                    mRealDelegate.sendAccessibilityEvent(host, eventType);
+                }
+            }
+
+            private final String mEventName;
+            private final View.AccessibilityDelegate mRealDelegate;
         }
 
         private final String mEventName;
@@ -109,12 +125,15 @@ import java.util.Map;
 
     private View findTarget(View rootView) {
         if (mViewId != -1) {
+            // TODO BUGGY IN TWO WAYS
+            // - Will do screwy stuff when we have duplicate ids
+            // - Will never match multiple views
             return rootView.findViewById(mViewId);
-        } else {
-            return findTargetOnPath(rootView, mPath, 0);
         }
-    }
+        // ELSE
 
+        return findTargetOnPath(rootView, mPath, 0);
+    }
 
     private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
         if (path.isEmpty()) {
@@ -130,6 +149,7 @@ import java.util.Map;
             if (childPath.size() == 0) {
                 return curView;
             }
+
             if (!(curView instanceof ViewGroup)) {
                 return null;
             }
@@ -153,6 +173,7 @@ import java.util.Map;
 
         return null;
     }
+
 
     private int mViewId = -1;
     private final List<PathElement> mPath;
