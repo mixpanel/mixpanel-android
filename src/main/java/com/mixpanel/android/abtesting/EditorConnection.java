@@ -120,5 +120,5 @@ import java.nio.ByteBuffer;
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
-    private static final String LOGTAG = "MixpanelAPI.ABTesting.EditorClient";
+    private static final String LOGTAG = "MixpanelAPI.ABTesting.EditorConnection";
 }

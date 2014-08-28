@@ -31,11 +31,9 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -221,6 +219,19 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
 
         private final FlipListener mFlipListener = new FlipListener();
+    }
+
+    private void runABTestReceivedListeners() {
+        synchronized (mABTestReceivedListeners) {
+            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
+                p.first.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        p.second.onMixpanelABTestReceived();
+                    }
+                });
+            }
+        }
     }
 
     /**
@@ -480,10 +491,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
     }
 
     private static class BadConfigException extends Exception {
-        public BadConfigException(String message) {
-            super(message);
-        }
-
         public BadConfigException(String message, Throwable cause) {
             super(message, cause);
         }
@@ -605,36 +612,20 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             try {
                 if ("java.lang.CharSequence".equals(type)) { // Because we're assignable
                     return (String) jsonArgument;
-                } else if ("boolean".equals(type)) {
+                } else if ("boolean".equals(type) || "java.lang.Boolean".equals(type)) {
                     return (Boolean) jsonArgument;
-                } else if ("int".equals(type)) {
+                } else if ("int".equals(type) || "java.lang.Integer".equals(type)) {
                     return ((Number) jsonArgument).intValue();
-                } else if ("float".equals(type)) {
+                } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                     return ((Number) jsonArgument).floatValue();
-                } else if ("B64Drawable".equals(type)) {
+                } else if ("android.graphics.Bitmap".equals(type)) {
                     byte[] bytes = Base64.decode((String) jsonArgument, 0);
                     return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                } else if ("hexstring".equals(type)) {
-                    int ret = new BigInteger((String) jsonArgument, 16).intValue();
-                    return ret;
                 } else {
                     throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
                 }
             } catch (ClassCastException e) {
                 throw new BadInstructionsException("Couldn't interpret <" + jsonArgument + "> as " + type);
-            }
-        }
-    }
-
-    private void runABTestReceivedListeners() {
-        synchronized (mABTestReceivedListeners) {
-            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
-                p.first.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        p.second.onMixpanelABTestReceived();
-                    }
-                });
             }
         }
     }

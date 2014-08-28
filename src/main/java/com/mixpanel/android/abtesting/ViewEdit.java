@@ -105,7 +105,9 @@ import java.util.Map;
         }
     }
 
-    public View findTarget(View rootView) {
+    protected abstract void applyEdit(View targetView);
+
+    private View findTarget(View rootView) {
         if (mViewId != -1) {
             return rootView.findViewById(mViewId);
         } else {
@@ -113,7 +115,6 @@ import java.util.Map;
         }
     }
 
-    protected abstract void applyEdit(View targetView);
 
     private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
         if (path.isEmpty()) {
