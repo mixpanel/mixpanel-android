@@ -50,7 +50,8 @@ import java.util.Set;
 public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
 
     public ABTesting(Context context, String token, MixpanelAPI mixpanel) {
-        mChanges = new HashMap<String, ArrayList<JSONObject>>();
+        mPersistentChanges = new HashMap<String, List<JSONObject>>();
+        mEditorChanges = new HashMap<String, List<JSONObject>>();
         mProtocol = new EditProtocol();
 
         final Application app = (Application) context.getApplicationContext();
@@ -70,12 +71,14 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         return mTweaks;
     }
 
+    // TODO this is (or will be) part of the public API of the lib.
+    @SuppressWarnings("unused")
     public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
-        synchronized(mABTestReceivedListeners) {
+        synchronized (mABTestReceivedListeners) {
             mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
         }
-        synchronized (mChanges) {
-            if (! mChanges.isEmpty()) {
+        synchronized (mPersistentChanges) {
+            if (!mPersistentChanges.isEmpty()) {
                 runABTestReceivedListeners();
             }
         }
@@ -96,6 +99,44 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
     public interface OnMixpanelABTestReceivedListener {
         public abstract void onMixpanelABTestReceived();
+    }
+
+    // TODO Must be called on UI Thread
+    private void applyAllChanges() {
+        synchronized (mLiveActivities) {
+            for (Activity activity : mLiveActivities) {
+                final String activityName = activity.getClass().getCanonicalName();
+
+                final List<JSONObject> persistentChanges;
+                synchronized (mPersistentChanges) {
+                    persistentChanges = mPersistentChanges.get(activityName);
+                    applyTheseChanges(activity, persistentChanges);
+                }
+
+
+                final List<JSONObject> editorChanges;
+                synchronized (mEditorChanges) {
+                    editorChanges = mEditorChanges.get(activityName);
+                    applyTheseChanges(activity, editorChanges);
+                }
+            }
+        }
+    }
+
+    // TODO Must be called on UI Thread
+    private void applyTheseChanges(Activity activity, List<JSONObject> changes) {
+        if (null != changes) {
+            for (JSONObject j : changes) {
+                try {
+                    final ViewEdit inst = mProtocol.readEdit(j);
+                    final View rootView = activity.getWindow().getDecorView().getRootView();
+                    final EditBinding binding = new EditBinding(rootView, inst);
+                    binding.performEdit();
+                } catch (EditProtocol.BadInstructionsException e) {
+                    Log.e(LOGTAG, "Bad change request cannot be applied", e);
+                }
+            }
+        }
     }
 
     private class FlipListener implements SensorEventListener {
@@ -185,21 +226,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 mLiveActivities.add(activity);
             }
 
-            synchronized (mChanges) {
-                final ArrayList<JSONObject> changes = mChanges.get(activity.getClass().getCanonicalName());
-                if (null != changes) {
-                    for (JSONObject j : changes) {
-                        try {
-                            final ViewEdit inst = mProtocol.readEdit(j);
-                            final View rootView = activity.getWindow().getDecorView().getRootView();
-                            final EditBinding binding = new EditBinding(rootView, inst);
-                            binding.performEdit();
-                        } catch (EditProtocol.BadInstructionsException e) {
-                            Log.e(LOGTAG, "Bad change request saved in mChanges", e);
-                        }
-                    }
-                }
-            }
+            applyAllChanges();
         }
 
         @Override
@@ -230,6 +257,8 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         @Override
         public void onActivityDestroyed(Activity activity) {
         }
+
+
 
         private final FlipListener mFlipListener = new FlipListener();
     }
@@ -264,7 +293,15 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     break;
                 case MESSAGE_HANDLE_CHANGES_RECEIVED:
                     try {
-                        handleChangesReceived((JSONObject) msg.obj, false, true);
+                        final JSONObject change = (JSONObject) msg.obj;
+                        loadChange(mEditorChanges, change);
+                        mUiThreadHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                applyAllChanges();
+                            }
+                        });
+                        // handleChangesReceived((JSONObject) msg.obj, false, true);
                     } catch (JSONException e) {
                         Log.e(LOGTAG, "Bad change request received", e);
                     }
@@ -278,7 +315,8 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             final String changes = mPreferences.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != changes) {
                 try {
-                    handleChangesReceived(new JSONObject(changes), false, false);
+                    loadChange(mPersistentChanges, new JSONObject(changes));
+                    runABTestReceivedListeners();
                 } catch (JSONException e) {
                     Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
                     return;
@@ -418,49 +456,20 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             }
         }
 
-        // TODO this should be two separate methods, one for persisting changes, and one for applying them immediately in preview
-        private void handleChangesReceived(JSONObject changes, boolean persist, boolean applyToLive) throws JSONException {
-            final String targetActivity = changes.getString("target");
-            final JSONObject change = changes.getJSONObject("change");
+        private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange) throws JSONException {
+            final String targetActivity = newChange.getString("target");
+            final JSONObject change = newChange.getJSONObject("change");
 
-            if (applyToLive) {
-                try {
-                    final ViewEdit edit = mProtocol.readEdit(change);
-                    mUiThreadHandler.post(new Runnable() {
-                        public void run() {
-                            for (Activity a : mLiveActivities) {
-                                if (a.getClass().getCanonicalName().equals(targetActivity)) {
-                                    final View rootView = a.getWindow().getDecorView().getRootView();
-                                    final EditBinding binding = new EditBinding(rootView, edit);
-                                    binding.performEdit();
-                                }
-                            }
-                        }
-                    });
-                } catch (EditProtocol.BadInstructionsException e) {
-                    Log.e(LOGTAG, "Bad instructions received", e);
-                    return;
+            synchronized (changes) {
+                changes.clear();
+                final List<JSONObject> changeList;
+                if (changes.containsKey(targetActivity)) {
+                    changeList = changes.get(targetActivity);
+                } else {
+                    changeList = new ArrayList<JSONObject>();
+                    changes.put(targetActivity, changeList);
                 }
-            } else {
-                synchronized (mChanges) {
-                    mChanges.clear();
-                    final ArrayList<JSONObject> changeList;
-                    if (mChanges.containsKey(targetActivity)) {
-                        changeList = mChanges.get(targetActivity);
-                    } else {
-                        changeList = new ArrayList<JSONObject>();
-                        mChanges.put(targetActivity, changeList);
-                    }
-                    changeList.add(change);
-                }
-                runABTestReceivedListeners();
-            }
-
-            if (persist) {
-                Log.v(LOGTAG, "Persisting received changes");
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
-                editor.commit();
+                changeList.add(change);
             }
         }
 
@@ -685,7 +694,8 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
     // Map from canonical activity class name to description of changes
     // Accessed from Multiple Threads, must be synchronized
-    private final Map<String, ArrayList<JSONObject>> mChanges;
+    private final Map<String, List<JSONObject>> mPersistentChanges;
+    private final Map<String, List<JSONObject>> mEditorChanges;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
