@@ -21,20 +21,6 @@ import java.util.List;
 
 /* package */ class ViewSnapshot {
 
-    public static class PropertyDescription {
-        public PropertyDescription(String name, Class targetClass, Caller accessor, Caller mutator) {
-            this.name = name;
-            this.targetClass = targetClass;
-            this.accessor = accessor;
-            this.mutator = mutator;
-        }
-
-        public final String name;
-        public final Class targetClass;
-        public final Caller accessor;
-        public final Caller mutator;
-    }
-
     public ViewSnapshot(List<PropertyDescription> properties) {
         mProperties = properties;
     }

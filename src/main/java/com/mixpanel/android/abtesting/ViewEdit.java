@@ -19,29 +19,46 @@ import java.util.Map;
 
     public static class PathElement {
         public PathElement(String vClass, int ix) {
-            viewClass = vClass;
+            viewClassName = vClass;
             index = ix;
         }
 
         public String toString() {
-            return "{\"viewClass\": " + viewClass + ", \"index\": " + index + "}";
+            return "{\"viewClassName\": " + viewClassName + ", \"index\": " + index + "}";
         }
 
-        public final String viewClass;
+        public final String viewClassName;
         public final int index;
     }
 
     public static class PropertySetEdit extends ViewEdit {
-        public PropertySetEdit(int viewId, List<PathElement> path, Caller caller) {
+        public PropertySetEdit(int viewId, List<PathElement> path, Caller mutator, Caller accessor) {
             super(viewId, path);
-            mCaller = caller;
+            mMutator = mutator;
+            mAccessor = accessor;
         }
 
         public void applyEdit(View target) {
-            mCaller.applyMethod(target);
+            // TODO the following strategy is pretty gross for Bitmaps. We may need to special case their editors
+            if (null != mAccessor) {
+                final Object[] setArgs = mMutator.getArgs();
+                if (1 == setArgs.length) {
+                    final Object desiredValue = setArgs[0];
+                    final Object currentValue = mAccessor.applyMethod(target);
+
+                    if (desiredValue == currentValue) {
+                        return;
+                    } else if (null != desiredValue && desiredValue.equals(currentValue)) {
+                        return;
+                    }
+                }
+            }
+
+            mMutator.applyMethod(target);
         }
 
-        private final Caller mCaller;
+        private final Caller mMutator;
+        private final Caller mAccessor;
     }
 
     public static class AddListenerEdit extends ViewEdit {
@@ -137,37 +154,48 @@ import java.util.Map;
 
     private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
         if (path.isEmpty()) {
+            Log.d(LOGTAG, "Empty path doesn't match anything!");
             return null; // The empty path matches nothing in this model
         }
 
         final PathElement targetView = path.get(0);
-        final String targetViewClass = targetView.viewClass;
+        final String targetViewClass = targetView.viewClassName;
+        final String currentViewName = curView.getClass().getCanonicalName();
+        if (! targetViewClass.equals(currentViewName)) {
+            Log.d(LOGTAG, "Looking for " + targetViewClass + " found non-matching class " + currentViewName);
+            return null;
+        }
+
         final int targetIndex = targetView.index;
+        if (targetIndex != curIndex) {
+            Log.d(LOGTAG, "Not my index");
+            return null;
+        }
 
-        if (targetViewClass.equals(curView.getClass().getCanonicalName()) && targetIndex == curIndex) {
-            final List<PathElement> childPath = path.subList(1, path.size());
-            if (childPath.size() == 0) {
-                return curView;
+        final List<PathElement> childPath = path.subList(1, path.size());
+        if (childPath.size() == 0) {
+            Log.d(LOGTAG, "That's the last element! We're good!");
+            return curView;
+        }
+
+        if (!(curView instanceof ViewGroup)) {
+            Log.d(LOGTAG, "Found the view, but it isn't a group so it can't have children? Probably a bad path...");
+            return null;
+        }
+
+        final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
+        ViewGroup viewGroup = (ViewGroup) curView;
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            final View child = viewGroup.getChildAt(i);
+            int index = 0;
+            if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
+                index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
             }
+            viewIndex.put(child.getClass().getCanonicalName(), index);
 
-            if (!(curView instanceof ViewGroup)) {
-                return null;
-            }
-
-            final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
-            ViewGroup viewGroup = (ViewGroup) curView;
-            for (int i = 0; i < viewGroup.getChildCount(); i++) {
-                final View child = viewGroup.getChildAt(i);
-                int index = 0;
-                if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
-                    index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
-                }
-                viewIndex.put(child.getClass().getCanonicalName(), index);
-
-                View target = findTargetOnPath(viewGroup.getChildAt(i), childPath, index);
-                if (target != null) {
-                    return target;
-                }
+            View target = findTargetOnPath(viewGroup.getChildAt(i), childPath, index);
+            if (target != null) {
+                return target;
             }
         }
 

@@ -23,26 +23,26 @@ public class ViewSnapshotTest extends AndroidTestCase {
     public void setUp() {
         mRootView = new TestView(this.getContext());
 
-        final List<ViewSnapshot.PropertyDescription> props = new ArrayList<ViewSnapshot.PropertyDescription>();
+        final List<PropertyDescription> props = new ArrayList<PropertyDescription>();
 
         final ViewEdit.Caller textGetter = new ViewEdit.Caller("getText", new Object[0], CharSequence.class);
         final ViewEdit.Caller textSetter = new ViewEdit.Caller("setText", new Object[] { CharSequence.class }, Void.TYPE);
-        final ViewSnapshot.PropertyDescription text = new ViewSnapshot.PropertyDescription("text", TextView.class, textGetter, textSetter);
+        final PropertyDescription text = new PropertyDescription("text", TextView.class, textGetter, textSetter);
         props.add(text);
 
         final ViewEdit.Caller customPropGetter = new ViewEdit.Caller("getCustomProperty", new Object[0], CharSequence.class);
         final ViewEdit.Caller customPropSetter = new ViewEdit.Caller("setCustomProperty", new Object[] { CharSequence.class }, Void.TYPE);
-        final ViewSnapshot.PropertyDescription custom = new ViewSnapshot.PropertyDescription("custom", TestView.CustomPropButton.class, customPropGetter, customPropSetter);
+        final PropertyDescription custom = new PropertyDescription("custom", TestView.CustomPropButton.class, customPropGetter, customPropSetter);
         props.add(custom);
 
         final ViewEdit.Caller crazyGetter = new ViewEdit.Caller("CRAZY GETTER", new Object[0], Void.TYPE);
         final ViewEdit.Caller crazySetter = new ViewEdit.Caller("CRAZY SETTER", new Object[] { CharSequence.class}, Void.TYPE);
-        final ViewSnapshot.PropertyDescription crazy = new ViewSnapshot.PropertyDescription("crazy", View.class, crazyGetter, crazySetter);
+        final PropertyDescription crazy = new PropertyDescription("crazy", View.class, crazyGetter, crazySetter);
         props.add(crazy);
 
         final ViewEdit.Caller badTypesGetter = new ViewEdit.Caller("getText", new Object[0], Integer.class);
         final ViewEdit.Caller badTypesSetter = new ViewEdit.Caller("setText", new Object[] { Integer.class}, Void.TYPE);
-        final ViewSnapshot.PropertyDescription badTypes = new ViewSnapshot.PropertyDescription("badTypes", TextView.class, badTypesGetter, badTypesSetter);
+        final PropertyDescription badTypes = new PropertyDescription("badTypes", TextView.class, badTypesGetter, badTypesSetter);
         props.add(badTypes);
 
         mSnapshot = new ViewSnapshot(props);

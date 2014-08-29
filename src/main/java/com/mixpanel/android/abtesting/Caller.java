@@ -18,6 +18,10 @@ import java.lang.reflect.Method;
         }
     }
 
+    public Object[] getArgs() {
+        return mMethodArgs;
+    }
+
     public Object applyMethod(View target) {
         final Class klass = target.getClass();
 

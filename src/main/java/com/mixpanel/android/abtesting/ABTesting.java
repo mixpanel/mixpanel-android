@@ -132,7 +132,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     final View rootView = activity.getWindow().getDecorView().getRootView();
                     final EditBinding binding = new EditBinding(rootView, inst);
                     binding.performEdit();
-                } catch (EditProtocol.BadInstructionsException e) {
+                } catch (BadInstructionsException e) {
                     Log.e(LOGTAG, "Bad change request cannot be applied", e);
                 }
             }
@@ -407,7 +407,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
                 return;
-            } catch (BadConfigException e) {
+            } catch (BadInstructionsException e) {
                 Log.e(LOGTAG, "Editor sent malformed message with snapshot request", e);
                 sendError(e.getMessage());
                 return;
@@ -504,21 +504,45 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
     }
 
-    private static class BadConfigException extends Exception {
-        public BadConfigException(String message, Throwable cause) {
-            super(message, cause);
+    public class BadInstructionsException extends Exception {
+        public BadInstructionsException(String message) {
+            super(message);
+        }
+
+        public BadInstructionsException(String message, Exception e) {
+            super(message, e);
         }
     }
 
     private class EditProtocol {
 
-        public class BadInstructionsException extends Exception {
-            public BadInstructionsException(String message) {
-                super(message);
-            }
+        public PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)
+            throws BadInstructionsException {
+            try {
+                final String propName = propertyDesc.getString("name");
 
-            public BadInstructionsException(String message, Exception e) {
-                super(message, e);
+                Caller accessor = null;
+                if (propertyDesc.has("get")) {
+                    final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
+                    final String accessorName = accessorConfig.getString("selector");
+                    final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
+                    final Class accessorResultType = Class.forName(accessorResultTypeName);
+                    accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
+                }
+
+                final String mutatorName;
+                if (propertyDesc.has("set")) {
+                    final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
+                    mutatorName = mutatorConfig.getString("selector");
+                } else {
+                    mutatorName = null;
+                }
+
+                return new PropertyDescription(propName, targetClass, accessor, mutatorName);
+            } catch (JSONException e) {
+                throw new BadInstructionsException("Can't read property JSON", e);
+            } catch (ClassNotFoundException e) {
+                throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
             }
         }
 
@@ -540,22 +564,33 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     throw new BadInstructionsException("Path selector was empty and no view id was provided.");
                 }
 
-                if (source.has("method")) {
-                    final String methodName = source.getString("method");
+                if (source.has("property")) {
+                    final ViewEdit.PathElement pathEnd = path.get(path.size() - 1);
+                    final String targetClassName = pathEnd.viewClassName;
+                    final Class targetClass;
+                    try {
+                        targetClass = Class.forName(targetClassName);
+                    } catch (ClassNotFoundException e) {
+                        throw new BadInstructionsException("Can't find class for edit path: " + targetClassName, e);
+                    }
+
+                    final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+
                     final JSONArray argsAndTypes = source.getJSONArray("args");
                     final Object[] methodArgs = new Object[argsAndTypes.length()];
-                    final Class[] methodTypes = new Class[argsAndTypes.length()];
-
                     for (int i = 0; i < argsAndTypes.length(); i++) {
                         final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
                         final Object jsonArg = argPlusType.get(0);
                         final String argType = argPlusType.getString(1);
                         methodArgs[i] = convertArgument(jsonArg, argType);
-                        methodTypes[i] = methodArgs[i].getClass();
                     }
 
-                    final Caller caller = new Caller(methodName, methodArgs, Void.TYPE);
-                    return new ViewEdit.PropertySetEdit(viewId, path, caller);
+                    final Caller mutator = prop.makeMutator(methodArgs);
+                    if (null == mutator) {
+                        throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
+                    }
+
+                    return new ViewEdit.PropertySetEdit(viewId, path, mutator, prop.accessor);
                 }
 
                 if (source.has("event_name")) {
@@ -570,8 +605,8 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
 
         private ViewSnapshot readSnapshotConfig(JSONObject source)
-            throws BadConfigException {
-            final List<ViewSnapshot.PropertyDescription> properties = new ArrayList<ViewSnapshot.PropertyDescription>();
+            throws BadInstructionsException {
+            final List<PropertyDescription> properties = new ArrayList<PropertyDescription>();
 
             try {
                 final JSONArray classes = source.getJSONArray("classes");
@@ -583,40 +618,16 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     final JSONArray propertyDescs = classDesc.getJSONArray("properties");
                     for (int i = 0; i < propertyDescs.length(); i++) {
                         final JSONObject propertyDesc = propertyDescs.getJSONObject(i);
-                        final String propName = propertyDesc.getString("name");
-
-                        Caller accessor = null;
-                        if (propertyDesc.has("get")) {
-                            final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
-                            final String accessorName = accessorConfig.getString("selector");
-                            final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
-                            final Class accessorResultType = Class.forName(accessorResultTypeName);
-                            accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
-                        }
-
-                        Caller mutator = null;
-                        if (propertyDesc.has("set")) {
-                            final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
-                            final JSONArray mutatorParamConfig = mutatorConfig.getJSONArray("parameters");
-                            final Class[] mutatorParamTypes = new Class[mutatorParamConfig.length()];
-                            for (int paramIx = 0; paramIx < mutatorParamConfig.length(); paramIx++) {
-                                final String paramTypeName = mutatorParamConfig.getJSONObject(paramIx).getString("type");
-                                mutatorParamTypes[paramIx] = Class.forName(paramTypeName);
-                            }
-                            final String mutatorName = mutatorConfig.getString("selector");
-                            mutator = new Caller(mutatorName, mutatorParamTypes, Void.TYPE);
-                        }
-
-                        final ViewSnapshot.PropertyDescription desc = new ViewSnapshot.PropertyDescription(propName, targetClass, accessor, mutator);
+                        final PropertyDescription desc = readPropertyDescription(targetClass, propertyDesc);
                         properties.add(desc);
                     }
                 }
 
                 return new ViewSnapshot(properties);
             } catch (JSONException e) {
-                throw new BadConfigException("Can't read snapshot configuration", e);
+                throw new BadInstructionsException("Can't read snapshot configuration", e);
             } catch (ClassNotFoundException e) {
-                throw new BadConfigException("Can't resolve types for snapshot configuration", e);
+                throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
             }
         }
 
