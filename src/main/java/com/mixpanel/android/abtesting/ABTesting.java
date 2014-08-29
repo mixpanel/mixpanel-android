@@ -258,8 +258,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         public void onActivityDestroyed(Activity activity) {
         }
 
-
-
         private final FlipListener mFlipListener = new FlipListener();
     }
 
@@ -312,10 +310,15 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         private void initializeChanges() {
             final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
             mPreferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+
+            // TODO This should be list valued
             final String changes = mPreferences.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != changes) {
                 try {
-                    loadChange(mPersistentChanges, new JSONObject(changes));
+                    synchronized(mPersistentChanges) {
+                        mPersistentChanges.clear();
+                        loadChange(mPersistentChanges, new JSONObject(changes));
+                    }
                     runABTestReceivedListeners();
                 } catch (JSONException e) {
                     Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
@@ -461,7 +464,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             final JSONObject change = newChange.getJSONObject("change");
 
             synchronized (changes) {
-                changes.clear();
                 final List<JSONObject> changeList;
                 if (changes.containsKey(targetActivity)) {
                     changeList = changes.get(targetActivity);
