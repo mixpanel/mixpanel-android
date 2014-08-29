@@ -8,6 +8,8 @@ import com.mixpanel.java_websocket.client.WebSocketClient;
 import com.mixpanel.java_websocket.drafts.Draft_17;
 import com.mixpanel.java_websocket.framing.Framedata;
 import com.mixpanel.java_websocket.handshake.ServerHandshake;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -25,6 +27,7 @@ import java.nio.ByteBuffer;
     public interface EditorService {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
+        public void persistEdits(JSONObject message);
         public void sendDeviceInfo();
     }
 
@@ -64,6 +67,8 @@ import java.nio.ByteBuffer;
                     mService.sendSnapshot(messageJson);
                 } else if (type.equals("change_request")) {
                     mService.performEdit(messageJson);
+                } else if (type.equals("store_changes")) {
+                    mService.persistEdits(messageJson);
                 }
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Bad JSON received:" + message, e);

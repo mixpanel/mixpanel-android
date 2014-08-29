@@ -49,6 +49,10 @@ import java.util.Set;
 @TargetApi(14)
 public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
 
+    public interface OnMixpanelABTestReceivedListener {
+        public abstract void onMixpanelABTestReceived();
+    }
+
     public ABTesting(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
         mEditorChanges = new HashMap<String, List<JSONObject>>();
@@ -95,10 +99,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 });
             }
         }
-    }
-
-    public interface OnMixpanelABTestReceivedListener {
-        public abstract void onMixpanelABTestReceived();
     }
 
     // TODO Must be called on UI Thread
@@ -289,35 +289,29 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     this.sendStateForEditing((JSONObject) msg.obj);
                     break;
-                case MESSAGE_HANDLE_CHANGES_RECEIVED:
-                    try {
-                        final JSONObject change = (JSONObject) msg.obj;
-                        loadChange(mEditorChanges, change);
-                        mUiThreadHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                applyAllChanges();
-                            }
-                        });
-                        // handleChangesReceived((JSONObject) msg.obj, false, true);
-                    } catch (JSONException e) {
-                        Log.e(LOGTAG, "Bad change request received", e);
-                    }
+                case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
+                    this.handleEditorChangesReceived((JSONObject) msg.obj);
+                    break;
+                case MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED:
+                    this.handlePersistentChangesReceived((JSONObject) msg.obj);
                     break;
             }
         }
 
         private void initializeChanges() {
             final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
-            mPreferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+            final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
 
-            // TODO This should be list valued
-            final String changes = mPreferences.getString(SHARED_PREF_CHANGES_KEY, null);
-            if (null != changes) {
+            final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
+            if (null != storedChanges) {
                 try {
+                    final JSONArray changes = new JSONArray(storedChanges);
                     synchronized(mPersistentChanges) {
                         mPersistentChanges.clear();
-                        loadChange(mPersistentChanges, new JSONObject(changes));
+                        for (int i = 0; i < changes.length(); i++) {
+                            final JSONObject change = changes.getJSONObject(i);
+                            loadChange(mPersistentChanges, change);
+                        }
                     }
                     runABTestReceivedListeners();
                 } catch (JSONException e) {
@@ -325,7 +319,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     return;
                 }
             }
-
         }
 
         private void connectToEditor() {
@@ -459,6 +452,43 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             }
         }
 
+        private void handleEditorChangesReceived(JSONObject change) {
+            try {
+                loadChange(mEditorChanges, change);
+                mUiThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        applyAllChanges();
+                    }
+                });
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Bad change request received", e);
+            }
+        }
+
+        private void handlePersistentChangesReceived(JSONObject message) {
+            final JSONArray changes;
+            try {
+                changes = message.getJSONArray("changes");
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Can't read persistent changes from JSONMessage " + message.toString(), e);
+                return;
+            }
+
+            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken; // TODO method
+            final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+            final SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
+            editor.apply();
+            initializeChanges();
+            mUiThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    applyAllChanges();
+                }
+            });
+        }
+
         private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange) throws JSONException {
             final String targetActivity = newChange.getString("target");
             final JSONObject change = newChange.getJSONObject("change");
@@ -476,7 +506,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         }
 
         private EditorConnection mEditorConnection;
-        private SharedPreferences mPreferences;
         private final Context mContext;
         private final String mToken;
     }
@@ -492,7 +521,14 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
         @Override
         public void performEdit(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_CHANGES_RECEIVED);
+            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void persistEdits(JSONObject message) {
+            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
@@ -727,8 +763,9 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
-    private static final int MESSAGE_HANDLE_CHANGES_RECEIVED = 3;
+    private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
+    private static final int MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED = 5;
 
     private static final int FLIP_STATE_UP = -1;
     private static final int FLIP_STATE_NONE = 0;
