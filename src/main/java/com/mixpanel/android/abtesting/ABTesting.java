@@ -627,11 +627,16 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                     }
 
                     return new ViewEdit.PropertySetEdit(viewId, path, mutator, prop.accessor);
-                }
-
-                if (source.has("event_name")) {
+                } else if (source.has("event_name")) {
                     final String eventName = source.getString("event_name");
-                    return new ViewEdit.AddListenerEdit(viewId, path, eventName, mMixpanel);
+                    final String eventType = source.getString("event_type");
+                    if ("click".equals(eventType)) {
+                        return new ViewEdit.AddListenerEdit(viewId, path, eventName, mMixpanel);
+                    } else if ("detected".equals(eventType)) {
+                        return new ViewEdit.ViewDetectorEdit(viewId, path, eventName, mMixpanel);
+                    } else {
+                        throw new BadInstructionsException("Mixpanel can't track event type \"" + eventType + "\"");
+                    }
                 }
 
                 throw new BadInstructionsException("Instructions contained neither a method to call nor an event to track");
@@ -717,10 +722,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
             // ELSE View is alive
 
             mEdit.edit(viewRoot);
-        }
-
-        public boolean viewIsAlive() {
-            return mViewRoot.get() != null;
         }
 
         private final WeakReference<View> mViewRoot;

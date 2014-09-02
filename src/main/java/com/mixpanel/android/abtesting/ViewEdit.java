@@ -123,6 +123,36 @@ import java.util.Map;
         private final MixpanelAPI mMixpanel;
     }
 
+    // TODO this is stateful, not clear whether that's the right thing...
+    // (Consider moving state to the EditBinding)
+    public static class ViewDetectorEdit extends ViewEdit {
+        public ViewDetectorEdit(int viewId, List<PathElement> path, String eventName, MixpanelAPI mixpanelAPI) {
+            super(viewId, path);
+
+            mSeen = false;
+            mMixpanelAPI = mixpanelAPI;
+            mEventName = eventName;
+        }
+
+        public void edit(View rootView) {
+            final View target = findTarget(rootView);
+            if (target != null && !mSeen) {
+                mMixpanelAPI.track(mEventName, null);
+            }
+
+            mSeen = (target != null);
+        }
+
+        @Override
+        protected void applyEdit(View targetView) { // TODO CODE SMELL.
+            throw new UnsupportedOperationException("A View Detector should never attempt to apply an edit.");
+        }
+
+        private boolean mSeen;
+        private final MixpanelAPI mMixpanelAPI;
+        private final String mEventName;
+    }
+
     public ViewEdit(int viewId, List<PathElement> path) {
         mViewId = viewId;
         mPath = path;
@@ -140,7 +170,7 @@ import java.util.Map;
 
     protected abstract void applyEdit(View targetView);
 
-    private View findTarget(View rootView) {
+    protected View findTarget(View rootView) {
         if (mViewId != -1) {
             // TODO BUGGY IN TWO WAYS
             // - Will do screwy stuff when we have duplicate ids
