@@ -1,6 +1,7 @@
-This notice is relevant to the software found in java_websocket.jar,
+This notice is relevant to the software found in package com.mixpanel.android.java_websocket
 
-obtained from https://github.com/TooTallNate/Java-WebSocket
+This package is software originally obtained from https://github.com/TooTallNate/Java-WebSocket
+and used under the following license.
 
 Copyright (c) 2010-2012 Nathan Rajlich
 
@@ -26,7 +27,7 @@ Copyright (c) 2010-2012 Nathan Rajlich
  OTHER DEALINGS IN THE SOFTWARE.
 
 
-The software contained in java_websocket.jar is slightly altered, in
+The software contained in this package has been slightly altered, in
 particular the package has been changed from "org.java_websocket" to
-"com.mixpanel.java_websocket" in order to prevent collisions with
+"com.mixpanel.android.java_websocket" in order to prevent collisions with
 other uses of the java-websocket library.
