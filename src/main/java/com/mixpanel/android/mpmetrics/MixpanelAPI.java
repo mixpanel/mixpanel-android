@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
@@ -16,7 +15,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.abtesting.ABTesting;
+import com.mixpanel.android.abtesting.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
 
@@ -470,7 +469,7 @@ public class MixpanelAPI {
     }
 
     // TODO this API is wrong
-    public ABTesting getABTesting() {
+    public ViewCrawler getABTesting() {
         return mABTesting;
     }
 
@@ -974,12 +973,12 @@ public class MixpanelAPI {
         return new DecideUpdates(token, peopleId, listener);
     }
 
-    /* package */ ABTesting constructABTesting(final Context context, final String token) {
+    /* package */ ViewCrawler constructABTesting(final Context context, final String token) {
         if (android.os.Build.VERSION.SDK_INT < 14) {
             Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
             return null;
         } else {
-            return new ABTesting(mContext, mToken, this);
+            return new ViewCrawler(mContext, mToken, this);
         }
     }
 
@@ -1561,7 +1560,7 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
-    private final ABTesting mABTesting;
+    private final ViewCrawler mABTesting;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 

@@ -18,7 +18,6 @@ import android.os.Message;
 import android.os.Process;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
@@ -43,13 +42,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The ABTesting class should at the parent level be very lightweight and simply proxy requests to
- * the ABHandler which runs on a HandlerThread
+ * This class is for internal use by the Mixpanel API, and should
+ * not be called directly by your code.
  */
 @TargetApi(14)
-public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
+public class ViewCrawler {
 
-    public ABTesting(Context context, String token, MixpanelAPI mixpanel) {
+    public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
         mEditorChanges = new HashMap<String, List<JSONObject>>();
         mProtocol = new EditProtocol();
@@ -57,7 +56,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
 
-        final HandlerThread thread = new HandlerThread(ABTesting.class.getCanonicalName());
+        final HandlerThread thread = new HandlerThread(ViewCrawler.class.getCanonicalName());
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
@@ -483,28 +482,28 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
         @Override
         public void sendSnapshot(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_SEND_STATE_FOR_EDITING);
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_STATE_FOR_EDITING);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void performEdit(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void persistEdits(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED);
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void sendDeviceInfo() {
-            Message msg = mMessageThreadHandler.obtainMessage(ABTesting.MESSAGE_SEND_DEVICE_INFO);
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_DEVICE_INFO);
             mMessageThreadHandler.sendMessage(msg);
         }
     }
