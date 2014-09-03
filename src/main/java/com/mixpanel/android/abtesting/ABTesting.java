@@ -49,10 +49,6 @@ import java.util.Set;
 @TargetApi(14)
 public class ABTesting { // TODO Rename, this is no longer about ABTesting if we're doing dynamic tracking
 
-    public interface OnMixpanelABTestReceivedListener {
-        public abstract void onMixpanelABTestReceived();
-    }
-
     public ABTesting(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
         mEditorChanges = new HashMap<String, List<JSONObject>>();
@@ -73,32 +69,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
 
     public Tweaks getTweaks() {
         return mTweaks;
-    }
-
-    // TODO this is (or will be) part of the public API of the lib.
-    @SuppressWarnings("unused")
-    public void registerOnMixpanelABTestReceivedListener(Activity activity, OnMixpanelABTestReceivedListener listener) {
-        synchronized (mABTestReceivedListeners) {
-            mABTestReceivedListeners.add(new Pair<Activity, OnMixpanelABTestReceivedListener>(activity, listener));
-        }
-        synchronized (mPersistentChanges) {
-            if (!mPersistentChanges.isEmpty()) {
-                runABTestReceivedListeners();
-            }
-        }
-    }
-
-    private void runABTestReceivedListeners() {
-        synchronized (mABTestReceivedListeners) {
-            for (final Pair<Activity, OnMixpanelABTestReceivedListener> p : mABTestReceivedListeners) {
-                p.first.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        p.second.onMixpanelABTestReceived();
-                    }
-                });
-            }
-        }
     }
 
     // TODO Must be called on UI Thread
@@ -313,7 +283,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                             loadChange(mPersistentChanges, change);
                         }
                     }
-                    runABTestReceivedListeners();
                 } catch (JSONException e) {
                     Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
                     return;
@@ -737,10 +706,6 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
         public final String activityName;
         public final View rootView;
     }
-
-    // mABTestReceivedListeners is accessed on multiple threads and must be synchronized
-    private final ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>> mABTestReceivedListeners =
-            new ArrayList<Pair<Activity, OnMixpanelABTestReceivedListener>>();
 
     // Map from canonical activity class name to description of changes
     // Accessed from Multiple Threads, must be synchronized
