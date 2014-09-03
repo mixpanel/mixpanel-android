@@ -30,6 +30,20 @@ http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html.
 Changelog
 ---------
 
+#### v4.4
+
+ * Easier use of Proguard with the library
+ 
+ To use the Mixpanel library with Proguarded builds, add the following to your proguard.cfg file
+ 
+ ```
+ -keep class com.mixpanel.android.abtesting.** { *; }
+ -keep class com.mixpanel.android.mpmetrics.** { *; }
+ -keep class com.mixpanel.android.surveys.** { *; }
+ -keep class com.mixpanel.android.util.** { *; }
+ -keep class com.mixpanel.android.java_websocket.** { *; }
+ ```
+
 #### v4.2.2
 
  * Removed lint warnings from build
