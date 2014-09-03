@@ -1,4 +1,4 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
 /**
 * Created by joe on 8/29/14.

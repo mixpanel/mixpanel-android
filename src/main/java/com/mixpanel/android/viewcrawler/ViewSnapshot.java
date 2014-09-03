@@ -1,4 +1,4 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
 
 import android.graphics.Bitmap;

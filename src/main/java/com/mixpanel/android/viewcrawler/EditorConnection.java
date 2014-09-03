@@ -1,7 +1,5 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 
 import com.mixpanel.android.java_websocket.client.WebSocketClient;
@@ -9,7 +7,6 @@ import com.mixpanel.android.java_websocket.drafts.Draft_17;
 import com.mixpanel.android.java_websocket.framing.Framedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 

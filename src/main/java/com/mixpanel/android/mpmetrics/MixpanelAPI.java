@@ -15,7 +15,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.abtesting.ViewCrawler;
+import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
 

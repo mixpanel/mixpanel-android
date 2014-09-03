@@ -1,9 +1,8 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
 import android.test.AndroidTestCase;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 
 public class TweaksTest extends AndroidTestCase {

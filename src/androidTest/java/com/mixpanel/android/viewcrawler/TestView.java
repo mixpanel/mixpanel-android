@@ -1,4 +1,4 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
 import android.content.Context;
 import android.view.View;
@@ -10,7 +10,6 @@ import android.widget.TextView;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 

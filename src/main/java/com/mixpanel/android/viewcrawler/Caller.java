@@ -1,4 +1,4 @@
-package com.mixpanel.android.abtesting;
+package com.mixpanel.android.viewcrawler;
 
 import android.util.Log;
 import android.view.View;
