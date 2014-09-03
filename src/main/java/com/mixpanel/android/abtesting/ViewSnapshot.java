@@ -3,6 +3,7 @@ package com.mixpanel.android.abtesting;
 
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.util.AndroidRuntimeException;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.util.Log;
@@ -49,7 +50,6 @@ import java.util.List;
         writer.flush();
     }
 
-
     // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
     // due to memory or rendering issues.
     private void writeScreenshot(View rootView, OutputStream out) throws IOException {
@@ -57,14 +57,26 @@ import java.util.List;
         // but they use all kinds of secret internal stuff like clearing and setting
         // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
         // can do without privileged access
+
         final boolean originalCacheState = rootView.isDrawingCacheEnabled();
-        rootView.setDrawingCacheEnabled(true);
-        rootView.buildDrawingCache(true);
+        Bitmap bitmap;
+        try {
+            rootView.setDrawingCacheEnabled(true);
+            rootView.buildDrawingCache(true);
+            bitmap = rootView.getDrawingCache();
+        } catch (AndroidRuntimeException e) {
+            // This can happen if buildDrawingCache invalidates the view, or basically anything in
+            // View.draw tries to change the state of the view- we'll get a threading error in this case.
+            // We can eliminate the errors by running this on the UI thread, but that requires
+            // us to do a lot of tricky things and pass around a large and possibly invalid bitmap,
+            // or do a lot of IO and compression on the UI thread.
+            Log.i(LOGTAG, "Can't write a bitmap of this view. Skipping for now", e);
+            bitmap = null;
+        }
 
         // We could get a null or zero px bitmap if the rootView hasn't been measured
         // appropriately, or we grab it before layout.
         // This is ok, and we should handle it gracefully.
-        final Bitmap bitmap = rootView.getDrawingCache();
         if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
             out.write('"');
             final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);

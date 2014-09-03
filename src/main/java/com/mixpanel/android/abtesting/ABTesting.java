@@ -392,7 +392,7 @@ public class ABTesting { // TODO Rename, this is no longer about ABTesting if we
                 this.connectToEditor();
             }
 
-            ViewSnapshot snapshot;
+            final ViewSnapshot snapshot;
             try {
                 final JSONObject payload = message.getJSONObject("payload");
                 snapshot = mProtocol.readSnapshotConfig(payload);
