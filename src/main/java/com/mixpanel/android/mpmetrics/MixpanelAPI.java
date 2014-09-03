@@ -15,6 +15,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
@@ -129,7 +130,7 @@ public class MixpanelAPI {
             mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
         }
 
-        mABTesting = constructABTesting(context, token);
+        mViewCrawler = constructViewCrawler(context, token);
 
         registerMixpanelActivityLifecycleCallbacks();
 
@@ -468,11 +469,6 @@ public class MixpanelAPI {
         return mPeople;
     }
 
-    // TODO this API is wrong
-    public ViewCrawler getABTesting() {
-        return mABTesting;
-    }
-
     /**
      * Core interface for using Mixpanel People Analytics features.
      * You can get an instance by calling {@link MixpanelAPI#getPeople()}
@@ -535,6 +531,11 @@ public class MixpanelAPI {
          * @see MixpanelAPI#identify(String)
          */
         public void identify(String distinctId);
+
+        /**
+         * @return Tweaks available for this user.
+         */
+        public Tweaks getTweaks();
 
         /**
          * Sets a single property with the given name and value for this user.
@@ -973,9 +974,9 @@ public class MixpanelAPI {
         return new DecideUpdates(token, peopleId, listener);
     }
 
-    /* package */ ViewCrawler constructABTesting(final Context context, final String token) {
+    /* package */ ViewCrawler constructViewCrawler(final Context context, final String token) {
         if (android.os.Build.VERSION.SDK_INT < 14) {
-            Log.i(LOGTAG, "Not initializing ABTesting due to unsupported Build.VERSION");
+            Log.i(LOGTAG, "Not initializing ViewCrawler due to unsupported Build.VERSION");
             return null;
         } else {
             return new ViewCrawler(mContext, mToken, this);
@@ -1010,6 +1011,14 @@ public class MixpanelAPI {
             }
             pushWaitingPeopleRecord();
          }
+
+        @Override
+        public Tweaks getTweaks() {
+            if (null == mViewCrawler) {
+                return null;
+            }
+            return mViewCrawler.getTweaks();
+        }
 
         @Override
         public void set(JSONObject properties) {
@@ -1560,7 +1569,7 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
-    private final ViewCrawler mABTesting;
+    private final ViewCrawler mViewCrawler;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 

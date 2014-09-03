@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.mixpanel.android.viewcrawler.Tweaks;
+
 import junit.framework.Assert;
 
 import org.json.JSONArray;
@@ -42,6 +44,11 @@ class MockMixpanel extends MixpanelAPI {
         @Override
         public void identify(final String distinctId) {
             Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public Tweaks getTweaks() {
+            return null;
         }
 
         @Override
