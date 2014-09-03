@@ -40,6 +40,7 @@ public class Tweaks {
         mUiHandler = new Handler(Looper.getMainLooper());
     }
 
+    // TODO we shouldn't be throwing ClassCastExceptions out of these methods.
     public String getString(String tweakName, String defaultValue) {
         return (String) get(tweakName, defaultValue);
     }
