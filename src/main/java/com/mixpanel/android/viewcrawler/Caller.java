@@ -10,6 +10,11 @@ import java.lang.reflect.Method;
 
     public Caller(String methodName, Object[] methodArgs, Class resultType) {
         mMethodName = methodName;
+
+        // TODO if this is a bitmap, we might be hogging a lot of memory here.
+        // We likely need a caching/loading to disk layer for bitmap-valued edits
+        // I'm going to kick this down the road for now, since we're focused
+        // on tracking rather than edits (joe@mixpanel.com)
         mMethodArgs = methodArgs;
         mMethodResultType = resultType;
 
