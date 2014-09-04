@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @TargetApi(14)
-/* package */ abstract class ViewEdit {
+/* package */ abstract class ViewVisitor {
 
     public static class PathElement {
         public PathElement(String vClass, int ix) {
@@ -31,13 +31,14 @@ import java.util.Map;
         public final int index;
     }
 
-    public static class PropertySetEdit extends ViewEdit {
-        public PropertySetEdit(int viewId, List<PathElement> path, Caller mutator, Caller accessor) {
-            super(viewId, path);
+    public static class PropertySetVisitor extends ViewEditor {
+        public PropertySetVisitor(List<PathElement> path, Caller mutator, Caller accessor) {
+            super(path);
             mMutator = mutator;
             mAccessor = accessor;
         }
 
+        @Override
         public void applyEdit(View target) {
             // TODO the following strategy is pretty gross for Bitmaps. We may need to special case their editors
             if (null != mAccessor) {
@@ -61,15 +62,16 @@ import java.util.Map;
         private final Caller mAccessor;
     }
 
-    public static class AddListenerEdit extends ViewEdit {
-        public AddListenerEdit(int viewId, List<PathElement> path, String eventName, MixpanelAPI mixpanel) {
-            super(viewId, path);
+    public static class AddListenerVisitor extends ViewEditor {
+        public AddListenerVisitor(List<PathElement> path, String eventName, MixpanelAPI mixpanel) {
+            super(path);
             mEventName = eventName;
             mMixpanel = mixpanel;
         }
 
         // TODO needs test for duplicate tracking prevention...
         // TODO what about tracking two different events on the same target?
+        @Override
         public void applyEdit(View target) {
             final View.AccessibilityDelegate realDelegate = getOldDelegate(target);
             if (realDelegate instanceof TrackingAccessibilityDelegate) {
@@ -87,9 +89,9 @@ import java.util.Map;
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {
-                Log.d(LOGTAG, "View has no getAccessibilityDelegate method - clobbering existing delegate");
+                Log.d(LOGTAG, "View has no getAccessibilityDelegate method - we may be overwriting an existing delegate");
             } catch (IllegalAccessException e) {
-                Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - clobbering existing delegate");
+                Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - overwriting any existing delegate");
             } catch (InvocationTargetException e) {
                 Log.e(LOGTAG, "getAccessibilityDelegate threw an apparently impossible exception", e);
             }
@@ -122,18 +124,18 @@ import java.util.Map;
         private final MixpanelAPI mMixpanel;
     }
 
-    // TODO this is stateful, not clear whether that's the right thing...
-    // (Consider moving state to the EditBinding)
-    public static class ViewDetectorEdit extends ViewEdit {
-        public ViewDetectorEdit(int viewId, List<PathElement> path, String eventName, MixpanelAPI mixpanelAPI) {
-            super(viewId, path);
+    // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
+    // Views appearing and disappearing.
+    public static class ViewDetectorVisitor extends ViewVisitor {
+        public ViewDetectorVisitor(List<PathElement> path, String eventName, MixpanelAPI mixpanelAPI) {
+            super(path);
 
             mSeen = false;
             mMixpanelAPI = mixpanelAPI;
             mEventName = eventName;
         }
 
-        public void edit(View rootView) {
+        public void visit(View rootView) {
             final View target = findTarget(rootView);
             if (target != null && !mSeen) {
                 mMixpanelAPI.track(mEventName, null);
@@ -142,46 +144,23 @@ import java.util.Map;
             mSeen = (target != null);
         }
 
-        @Override
-        protected void applyEdit(View targetView) { // TODO CODE SMELL.
-            throw new UnsupportedOperationException("A View Detector should never attempt to apply an edit.");
-        }
-
         private boolean mSeen;
         private final MixpanelAPI mMixpanelAPI;
         private final String mEventName;
     }
 
-    public ViewEdit(int viewId, List<PathElement> path) {
-        mViewId = viewId;
+    public ViewVisitor(List<PathElement> path) {
         mPath = path;
     }
 
-    /** Call ONLY on the UI thread **/
-    public void edit(View rootView) {
-        final View target = findTarget(rootView);
-        if (target != null) {
-            applyEdit(target);
-        } else {
-            Log.i(LOGTAG, "Could not find target with id " + mViewId + " or path " + mPath.toString());
-        }
-    }
-
-    protected abstract void applyEdit(View targetView);
+    public abstract void visit(View rootView);
 
     protected View findTarget(View rootView) {
-        if (mViewId != -1) {
-            // Will do sorta screwy stuff in the face of duplicate ids (which are EPIDEMIC due to how XML works)
-            return rootView.findViewById(mViewId);
-        }
-        // ELSE
-
         return findTargetOnPath(rootView, mPath, 0);
     }
 
     private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
         if (path.isEmpty()) {
-            Log.d(LOGTAG, "Empty path doesn't match anything!");
             return null; // The empty path matches nothing in this model
         }
 
@@ -189,24 +168,20 @@ import java.util.Map;
         final String targetViewClass = targetView.viewClassName;
         final String currentViewName = curView.getClass().getCanonicalName();
         if (! targetViewClass.equals(currentViewName)) {
-            Log.d(LOGTAG, "Looking for " + targetViewClass + " found non-matching class " + currentViewName);
             return null;
         }
 
         final int targetIndex = targetView.index;
         if (targetIndex != curIndex) {
-            Log.d(LOGTAG, "Not my index");
             return null;
         }
 
         final List<PathElement> childPath = path.subList(1, path.size());
         if (childPath.size() == 0) {
-            Log.d(LOGTAG, "That's the last element! We're good!");
             return curView;
         }
 
         if (!(curView instanceof ViewGroup)) {
-            Log.d(LOGTAG, "Found the view, but it isn't a group so it can't have children? Probably a bad path...");
             return null;
         }
 
@@ -229,8 +204,22 @@ import java.util.Map;
         return null;
     }
 
+    private static abstract class ViewEditor extends ViewVisitor {
+        public ViewEditor(List<PathElement> path) {
+            super(path);
+        }
 
-    private int mViewId = -1;
+        @Override
+        public void visit(View rootView) {
+            final View target = findTarget(rootView);
+            if (target != null) {
+                applyEdit(target);
+            }
+        }
+
+        protected abstract void applyEdit(View targetView);
+    }
+
     private final List<PathElement> mPath;
 
     private static final String LOGTAG = "Mixpanel.Introspector.ViewEdit";

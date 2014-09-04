@@ -98,7 +98,7 @@ public class ViewCrawler {
         if (null != changes) {
             for (JSONObject j : changes) {
                 try {
-                    final ViewEdit inst = mProtocol.readEdit(j);
+                    final ViewVisitor inst = mProtocol.readEdit(j);
                     final View rootView = activity.getWindow().getDecorView().getRootView();
                     final EditBinding binding = new EditBinding(rootView, inst);
                     binding.performEdit();
@@ -493,32 +493,31 @@ public class ViewCrawler {
             }
         }
 
-        public ViewEdit readEdit(JSONObject source)
+        public ViewVisitor readEdit(JSONObject source)
                 throws BadInstructionsException {
             try {
-                final int viewId = source.getInt("view_id");
                 final JSONArray pathDesc = source.getJSONArray("path");
-                final List<ViewEdit.PathElement> path = new ArrayList<ViewEdit.PathElement>();
+                final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
                 for(int i = 0; i < pathDesc.length(); i++) {
                     final JSONObject targetView = pathDesc.getJSONObject(i);
                     final String targetViewClass = targetView.getString("view_class");
                     final int targetIndex = targetView.getInt("index");
-                    path.add(new ViewEdit.PathElement(targetViewClass, targetIndex));
+                    path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex));
                 }
 
-                if (viewId == -1 && path.size() == 0) {
-                    throw new BadInstructionsException("Path selector was empty and no view id was provided.");
+                if (path.size() == 0) {
+                    throw new BadInstructionsException("Path selector was empty.");
                 }
 
                 if (source.has("property")) {
-                    final ViewEdit.PathElement pathEnd = path.get(path.size() - 1);
+                    final ViewVisitor.PathElement pathEnd = path.get(path.size() - 1);
                     final String targetClassName = pathEnd.viewClassName;
                     final Class targetClass;
                     try {
                         targetClass = Class.forName(targetClassName);
                     } catch (ClassNotFoundException e) {
-                        throw new BadInstructionsException("Can't find class for edit path: " + targetClassName, e);
+                        throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
                     }
 
                     final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
@@ -537,14 +536,14 @@ public class ViewCrawler {
                         throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
                     }
 
-                    return new ViewEdit.PropertySetEdit(viewId, path, mutator, prop.accessor);
+                    return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
                 } else if (source.has("event_name")) {
                     final String eventName = source.getString("event_name");
                     final String eventType = source.getString("event_type");
                     if ("click".equals(eventType)) {
-                        return new ViewEdit.AddListenerEdit(viewId, path, eventName, mMixpanel);
+                        return new ViewVisitor.AddListenerVisitor(path, eventName, mMixpanel);
                     } else if ("detected".equals(eventType)) {
-                        return new ViewEdit.ViewDetectorEdit(viewId, path, eventName, mMixpanel);
+                        return new ViewVisitor.ViewDetectorVisitor(path, eventName, mMixpanel);
                     } else {
                         throw new BadInstructionsException("Mixpanel can't track event type \"" + eventType + "\"");
                     }
@@ -609,7 +608,7 @@ public class ViewCrawler {
 
     /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
     private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener {
-        public EditBinding(View viewRoot, ViewEdit edit) {
+        public EditBinding(View viewRoot, ViewVisitor edit) {
             mEdit = edit;
             mViewRoot = new WeakReference<View>(viewRoot);
             ViewTreeObserver observer = viewRoot.getViewTreeObserver();
@@ -632,11 +631,11 @@ public class ViewCrawler {
             }
             // ELSE View is alive
 
-            mEdit.edit(viewRoot);
+            mEdit.visit(viewRoot);
         }
 
         private final WeakReference<View> mViewRoot;
-        private final ViewEdit mEdit;
+        private final ViewVisitor mEdit;
     }
 
     private static class RootViewInfo {
