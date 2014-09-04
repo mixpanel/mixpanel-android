@@ -276,7 +276,6 @@ public class ViewCrawler {
             try {
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
-                writer.write("\"available_font_families\": [],"); // TODO temp value during development
                 writer.write("\"device_name\": \"Android Device\",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
