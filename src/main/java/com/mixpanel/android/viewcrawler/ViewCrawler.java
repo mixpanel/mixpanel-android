@@ -7,8 +7,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +30,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -40,6 +39,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * This class is for internal use by the Mixpanel API, and should
@@ -229,7 +230,11 @@ public class ViewCrawler {
 
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
-                mEditorConnection = new EditorConnection(new URI(url), new EditorService());
+                final SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                final Socket sslSocket = socketFactory.createSocket();
+                mEditorConnection = new EditorConnection(new URI(url), new EditorService(), sslSocket);
+            } catch (IOException e) {
+                Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             } catch (URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
             } catch (InterruptedException e) {

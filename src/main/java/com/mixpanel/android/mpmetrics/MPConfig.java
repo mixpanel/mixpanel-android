@@ -94,7 +94,7 @@ public class MPConfig {
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
         if (null == editorUrl) {
-            editorUrl = "ws://switchboard.mixpanel.com/connect/"; // TODO should be wss://
+            editorUrl = "wss://switchboard.mixpanel.com/connect/";
         }
         mEditorUrl = editorUrl;
 

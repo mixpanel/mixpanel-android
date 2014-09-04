@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 import java.io.BufferedOutputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
 
@@ -28,9 +29,9 @@ import java.nio.ByteBuffer;
         public void sendDeviceInfo();
     }
 
-    public EditorConnection(URI uri, EditorService service) throws InterruptedException {
+    public EditorConnection(URI uri, EditorService service, Socket sslSocket) throws InterruptedException {
         mService = service;
-        mClient = new EditorClient(uri, CONNECT_TIMEOUT);
+        mClient = new EditorClient(uri, CONNECT_TIMEOUT, sslSocket);
         mClient.connectBlocking();
     }
 
@@ -43,8 +44,9 @@ import java.nio.ByteBuffer;
     }
 
     private class EditorClient extends WebSocketClient {
-        public EditorClient(URI uri, int connectTimeout) throws InterruptedException {
-            super(uri, new Draft_17(), null, connectTimeout);
+        public EditorClient(URI uri, int connectTimeout, Socket sslSocket) throws InterruptedException {
+            super(uri,  new Draft_17(), null, connectTimeout);
+            setSocket(sslSocket);
         }
 
         @Override
