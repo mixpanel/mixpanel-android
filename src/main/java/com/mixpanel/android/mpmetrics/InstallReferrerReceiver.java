@@ -118,5 +118,5 @@ public class InstallReferrerReceiver extends BroadcastReceiver {
     private final Pattern UTM_CONTENT_PATTERN = Pattern.compile("(^|&)utm_content=([^&#=]*)([#&]|$)");
     private final Pattern UTM_TERM_PATTERN = Pattern.compile("(^|&)utm_term=([^&#=]*)([#&]|$)");
 
-    private static final String LOGTAG = "Mixpanel InstallReferrer";
+    private static final String LOGTAG = "Mixpanel.InstallReferrerReceiver  ";
 }

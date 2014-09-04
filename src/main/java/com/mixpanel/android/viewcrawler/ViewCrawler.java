@@ -136,7 +136,6 @@ public class ViewCrawler {
 
         @Override
         public void onActivityResumed(Activity activity) {
-            Log.e(LOGTAG, "onActivityResumed was called with " + activity);
             final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
             final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
@@ -226,7 +225,9 @@ public class ViewCrawler {
         }
 
         private void connectToEditor() {
-            Log.v(LOGTAG, "connectToEditor called");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "connectToEditor called");
+            }
 
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
@@ -268,8 +269,6 @@ public class ViewCrawler {
         }
 
         private void sendDeviceInfo() {
-            Log.v(LOGTAG, "sendDeviceInfo");
-
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
 
@@ -293,8 +292,6 @@ public class ViewCrawler {
         }
 
         private void sendStateForEditing(JSONObject message) {
-            Log.v(LOGTAG, "sendStateForEditing");
-
             if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 this.connectToEditor();
             }
@@ -675,5 +672,5 @@ public class ViewCrawler {
     private static final int MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED = 5;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "ABTesting";
+    private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
 }

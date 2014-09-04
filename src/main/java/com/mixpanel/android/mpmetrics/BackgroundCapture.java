@@ -75,5 +75,5 @@ import com.mixpanel.android.util.StackBlurManager;
     private static final int GRAY_72PERCENT_OPAQUE = Color.argb(186, 28, 28, 28);
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI BackgroundCapture";
+    private static final String LOGTAG = "MixpanelAPI.BackgroundCapture";
 }

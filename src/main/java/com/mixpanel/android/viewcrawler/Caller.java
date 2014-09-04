@@ -58,8 +58,8 @@ import java.lang.reflect.Method;
             try {
                 return method.invoke(target, mMethodArgs);
             } catch (IllegalAccessException e) {
-                Log.e(LOGTAG, "Can't invoke method " + method.getName(), e);
-                // Don't return, keep trying
+                // OK- we may have hit a private variant of an otherwise public method.
+                // Keep looking for the "real" method we want.
             } catch (InvocationTargetException e) {
                 Log.e(LOGTAG, "Method " + method.getName() + " threw an exception", e);
                 return null;

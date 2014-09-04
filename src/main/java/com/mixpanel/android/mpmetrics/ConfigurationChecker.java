@@ -46,7 +46,7 @@ import android.util.Log;
 
         if (Build.VERSION.SDK_INT < 8) {
             // Not a warning, may be expected behavior
-            Log.i(LOGTAG, "Push not supported in SDK " + Build.VERSION.SDK_INT);
+            Log.i(LOGTAG, "Mixpanel push notifications not supported in SDK " + Build.VERSION.SDK_INT);
             return false;
         }
 
@@ -94,7 +94,7 @@ import android.util.Log;
         }
 
         // check receivers
-        PackageInfo receiversInfo;
+        final PackageInfo receiversInfo;
         try {
             receiversInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_RECEIVERS);
         } catch (final NameNotFoundException e) {

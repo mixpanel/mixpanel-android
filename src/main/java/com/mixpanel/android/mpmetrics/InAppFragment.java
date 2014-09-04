@@ -230,6 +230,6 @@ public class InAppFragment extends Fragment {
 
     private boolean mKill;
 
-    private static final String LOGTAG = "InAppFragment";
+    private static final String LOGTAG = "MixpanelAPI.InAppFragment";
     private static final int MINI_REMOVE_TIME = 6000;
 }

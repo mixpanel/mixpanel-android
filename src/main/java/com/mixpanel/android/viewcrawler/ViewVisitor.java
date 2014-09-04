@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
 import java.lang.reflect.InvocationTargetException;
@@ -99,11 +100,15 @@ import java.util.Map;
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {
-                Log.d(LOGTAG, "View has no getAccessibilityDelegate method - we may be overwriting an existing delegate");
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "View has no getAccessibilityDelegate method - we may be overwriting an existing delegate");
+                }
             } catch (IllegalAccessException e) {
-                Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - overwriting any existing delegate");
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - overwriting any existing delegate");
+                }
             } catch (InvocationTargetException e) {
-                Log.e(LOGTAG, "getAccessibilityDelegate threw an apparently impossible exception", e);
+                Log.w(LOGTAG, "getAccessibilityDelegate threw an exception when called.", e);
             }
 
             return ret;
@@ -232,5 +237,5 @@ import java.util.Map;
 
     private final List<PathElement> mPath;
 
-    private static final String LOGTAG = "Mixpanel.Introspector.ViewEdit";
+    private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }

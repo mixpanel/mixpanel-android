@@ -178,6 +178,12 @@ import java.util.Map;
         }
     }
 
+    private void logAboutMessageToMixpanel(String message, Throwable e) {
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")", e);
+        }
+    }
+
     // Worker will manage the (at most single) IO thread associated with
     // this AnalyticsMessages instance.
     // XXX: Worker class is unnecessary, should be just a subclass of HandlerThread
@@ -360,9 +366,7 @@ import java.util.Map;
                             response = poster.performRequest(url, params);
                             deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                             if (null == response) {
-                                if (MPConfig.DEBUG) {
-                                    Log.d(LOGTAG, "Response was null, unexpected failure posting to " + url + ".");
-                                }
+                                logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
                             } else {
                                 String parsedResponse;
                                 try {
@@ -382,8 +386,7 @@ import java.util.Map;
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
                         } catch (final IOException e) {
-                            if (MPConfig.DEBUG)
-                                Log.d(LOGTAG, "Cannot post message to " + url + ".", e);
+                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
                         }
                     }
@@ -515,7 +518,7 @@ import java.util.Map;
     private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
     private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
 
-    private static final String LOGTAG = "MixpanelAPI";
+    private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 

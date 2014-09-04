@@ -261,7 +261,7 @@ public class MixpanelAPI {
             original = getDistinctId();
         }
         if (alias.equals(original)) {
-            Log.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ", returning.");
+            Log.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ". Alias message will not be sent.");
             return;
         }
 
@@ -882,14 +882,14 @@ public class MixpanelAPI {
     }
 
     /**
-     * Manage verbose logging about messages sent to Mixpanel.
+     * This method is a no-op, kept for compatibility purposes.
      *
-     * <p>Under ordinary circumstances, the Mixpanel library will only send messages
-     * to the log when errors occur. However, after logPosts is called, Mixpanel will
-     * send messages describing it's communication with the Mixpanel servers to
-     * the system log.
+     * To enable verbose logging about communication with Mixpanel, add
+     * {@code
+     * <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging" />
+     * }
      *
-     * <p>Mixpanel will log its verbose messages tag "MixpanelAPI" with priority I("Information")
+     * To the {@code <application>} tag of your AndroidManifest.xml file.
      */
     @Deprecated
     public void logPosts() {
@@ -897,7 +897,7 @@ public class MixpanelAPI {
                 LOGTAG,
                 "MixpanelAPI.logPosts() is deprecated.\n" +
                         "    To get verbose debug level logging, add\n" +
-                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" />\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" value=\"true\" />\n" +
                         "    to the <application> section of your AndroidManifest.xml."
         );
     }
@@ -921,7 +921,7 @@ public class MixpanelAPI {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Context is NOT instanceof Application, AutoShowMixpanelUpdates will be disabled.");
+                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys or in-app notifications.");
             }
         }
     }
@@ -1136,7 +1136,6 @@ public class MixpanelAPI {
         @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             if (null == callbacks) {
-                Log.i(LOGTAG, "Skipping survey check because callback is null.");
                 return;
             }
 
@@ -1287,7 +1286,9 @@ public class MixpanelAPI {
             else { // Configuration is good for push notifications
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
+                    if (MPConfig.DEBUG) {
+                        Log.d(LOGTAG, "Registering a new push id");
+                    }
 
                     try {
                         final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
@@ -1301,7 +1302,9 @@ public class MixpanelAPI {
                     MixpanelAPI.allInstances(new InstanceProcessor() {
                         @Override
                         public void process(MixpanelAPI api) {
-                            if (MPConfig.DEBUG) Log.d(LOGTAG, "Using existing pushId " + pushId);
+                            if (MPConfig.DEBUG) {
+                                Log.d(LOGTAG, "Using existing pushId " + pushId);
+                            }
                             api.getPeople().setPushRegistrationId(pushId);
                         }
                     });
@@ -1446,7 +1449,7 @@ public class MixpanelAPI {
                                 new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
                         if (intentId <= 0) {
-                            Log.d(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
+                            Log.e(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
                             return;
                         }
 
@@ -1561,7 +1564,7 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI";
+    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     private final Context mContext;

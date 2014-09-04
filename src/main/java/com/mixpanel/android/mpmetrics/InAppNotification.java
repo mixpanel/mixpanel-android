@@ -200,6 +200,6 @@ public class InAppNotification implements Parcelable {
     private final String mCallToAction;
     private final String mCallToActionUrl;
 
-    private static final String LOGTAG = "MixpanelAPI InAppNotification";
+    private static final String LOGTAG = "MixpanelAPI.InAppNotification";
     private static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("(\\.[^./]+$)");
 }

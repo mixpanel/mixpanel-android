@@ -308,7 +308,7 @@ public class UpdateDisplayState implements Parcelable {
         final long deltaTime = currentTime - sUpdateDisplayLockMillis;
 
         if (sNextIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
-            Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing.");
+            Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing. Update state will be cleared.");
             sUpdateDisplayState = null;
         }
 
@@ -326,7 +326,9 @@ public class UpdateDisplayState implements Parcelable {
             sNextIntentId++;
             ret = sNextIntentId;
         } else {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
+            }
         }
 
         return ret;
@@ -434,7 +436,7 @@ public class UpdateDisplayState implements Parcelable {
     private static int sNextIntentId = 0;
     private static int sShowingIntentId = -1;
 
-    private static final String LOGTAG = "MixpanelAPI UpdateDisplayState";
+    private static final String LOGTAG = "MixpanelAPI.UpdateDisplayState";
     private static final long MAX_LOCK_TIME_MILLIS = 12 * 60 * 60 * 1000; // Twelve hour timeout on survey activities
 
     private static final String DISTINCT_ID_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.DISTINCT_ID_BUNDLE_KEY";

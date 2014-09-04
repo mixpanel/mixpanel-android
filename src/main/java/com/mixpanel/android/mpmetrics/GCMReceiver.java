@@ -86,8 +86,6 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
 */
 public class GCMReceiver extends BroadcastReceiver {
-    String LOGTAG = "MPGCMReceiver";
-
     @Override
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
@@ -188,4 +186,6 @@ public class GCMReceiver extends BroadcastReceiver {
             return builder.build();
         }
     }
+
+    private static final String LOGTAG = "MixpanelAPI.GCMReceiver";
 }

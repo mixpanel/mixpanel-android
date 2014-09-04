@@ -28,10 +28,14 @@ import java.util.List;
                     (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             final NetworkInfo netInfo = cm.getActiveNetworkInfo();
             isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+            }
         } catch (final SecurityException e) {
             isOnline = true;
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Don't have permission to check connectivity, assuming online");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
+            }
         }
         return isOnline;
     }
@@ -49,8 +53,9 @@ import java.util.List;
             } catch (final MalformedURLException e) {
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final IOException e) {
-                if (MPConfig.DEBUG)
+                if (MPConfig.DEBUG) {
                     Log.d(LOGTAG, "Cannot get " + url + ".", e);
+                }
             } catch (final OutOfMemoryError e) {
                 Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
                 break;
@@ -61,7 +66,9 @@ import java.util.List;
     }
 
     public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException {
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Attempting request to " + endpointUrl);
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, "Attempting request to " + endpointUrl);
+        }
         byte[] response = null;
 
         // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
@@ -100,7 +107,9 @@ import java.util.List;
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                if (MPConfig.DEBUG) Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
+                }
                 retries = retries + 1;
             } finally {
                 if (null != bout)
@@ -113,10 +122,16 @@ import java.util.List;
                     connection.disconnect();
             }
         }
+        if (MPConfig.DEBUG) {
+            if (retries >= 3) {
+                Log.d(LOGTAG, "Could not connect to Mixpanel service after three retries.");
+            }
+
+        }
         return response;
     }
 
-    // Does not close input streamq
+    // Does not close input stream
     private byte[] slurp(final InputStream inputStream)
         throws IOException {
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -132,5 +147,5 @@ import java.util.List;
         return buffer.toByteArray();
     }
 
-    private static final String LOGTAG = "MixpanelAPI";
+    private static final String LOGTAG = "MixpanelAPI.ServerMessage";
 }

@@ -6,6 +6,7 @@ import com.mixpanel.android.java_websocket.client.WebSocketClient;
 import com.mixpanel.android.java_websocket.drafts.Draft_17;
 import com.mixpanel.android.java_websocket.framing.Framedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,12 +52,16 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onOpen(ServerHandshake handshakedata) {
-            Log.i(LOGTAG, "Websocket connected");
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Websocket connected");
+            }
         }
 
         @Override
         public void onMessage(String message) {
-            Log.d(LOGTAG, "message: " + message);
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Received message from editor:\n" + message);
+            }
             try {
                 final JSONObject messageJson = new JSONObject(message);
                 String type = messageJson.getString("type");
@@ -76,7 +81,9 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
-            Log.i(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
+            }
         }
 
         @Override
@@ -124,5 +131,5 @@ import java.nio.ByteBuffer;
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
-    private static final String LOGTAG = "MixpanelAPI.ABTesting.EditorConnection";
+    private static final String LOGTAG = "MixpanelAPI.EditorConnection";
 }

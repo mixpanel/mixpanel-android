@@ -22,7 +22,7 @@ import android.view.WindowManager;
  * and handles permission-dependent queries for default system information.
  */
 /* package */ class SystemInformation {
-    public static final String LOGTAG = "MixpanelAPI";
+    public static final String LOGTAG = "MixpanelAPI.SystemInformation";
 
     public SystemInformation(Context context) {
         mContext = context;

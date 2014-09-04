@@ -138,5 +138,5 @@ import java.util.concurrent.atomic.AtomicBoolean;
     private final AtomicBoolean mIsDestroyed;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI DecideUpdates";
+    private static final String LOGTAG = "MixpanelAPI.DecideUpdates";
 }

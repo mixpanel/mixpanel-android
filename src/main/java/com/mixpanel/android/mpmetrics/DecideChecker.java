@@ -58,7 +58,9 @@ import java.util.List;
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
+        if (MPConfig.DEBUG) {
+            Log.d(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
+        }
 
         Result parsed = new Result();
         if (null != responseString) {
@@ -215,5 +217,5 @@ import java.util.List;
     private final Context mContext;
     private final List<DecideUpdates> mChecks;
 
-    private static final String LOGTAG = "MixpanelAPI DecideChecker";
+    private static final String LOGTAG = "MixpanelAPI.DecideChecker";
 }

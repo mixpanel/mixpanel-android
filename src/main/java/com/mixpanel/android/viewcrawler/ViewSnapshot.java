@@ -10,6 +10,8 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mixpanel.android.mpmetrics.MPConfig;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -70,7 +72,9 @@ import java.util.List;
             // We can eliminate the errors by running this on the UI thread, but that requires
             // us to do a lot of tricky things and pass around a large and possibly invalid bitmap,
             // or do a lot of IO and compression on the UI thread.
-            Log.i(LOGTAG, "Can't write a bitmap of this view. Skipping for now", e);
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
+            }
             bitmap = null;
         }
 
@@ -171,5 +175,5 @@ import java.util.List;
     private final List<PropertyDescription> mProperties;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelABTest.ViewSnapshot";
+    private static final String LOGTAG = "MixpanelAPI.ViewSnapshot";
 }
