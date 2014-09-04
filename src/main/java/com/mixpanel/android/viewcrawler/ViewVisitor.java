@@ -1,6 +1,7 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
+import android.graphics.Bitmap;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,7 +41,6 @@ import java.util.Map;
 
         @Override
         public void applyEdit(View target) {
-            // TODO the following strategy is pretty gross for Bitmaps. We may need to special case their editors
             if (null != mAccessor) {
                 final Object[] setArgs = mMutator.getArgs();
                 if (1 == setArgs.length) {
@@ -49,8 +49,18 @@ import java.util.Map;
 
                     if (desiredValue == currentValue) {
                         return;
-                    } else if (null != desiredValue && desiredValue.equals(currentValue)) {
-                        return;
+                    }
+
+                    if (null != desiredValue) {
+                        if (desiredValue instanceof Bitmap && currentValue instanceof Bitmap) {
+                            final Bitmap desiredBitmap = (Bitmap) desiredValue;
+                            final Bitmap currentBitmap = (Bitmap) currentValue;
+                            if (desiredBitmap.sameAs(currentBitmap)) {
+                                return;
+                            }
+                        } else if (desiredValue.equals(currentValue)) {
+                            return;
+                        }
                     }
                 }
             }
