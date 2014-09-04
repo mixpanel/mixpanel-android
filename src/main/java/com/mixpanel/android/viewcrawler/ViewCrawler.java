@@ -71,7 +71,7 @@ public class ViewCrawler {
         return mTweaks;
     }
 
-    // TODO Must be called on UI Thread
+    // Must be called on UI Thread
     private void applyAllChanges() {
         synchronized (mLiveActivities) {
             for (Activity activity : mLiveActivities) {
@@ -93,7 +93,7 @@ public class ViewCrawler {
         }
     }
 
-    // TODO Must be called on UI Thread
+    // Must be called on UI Thread
     private void applyTheseChanges(Activity activity, List<JSONObject> changes) {
         if (null != changes) {
             for (JSONObject j : changes) {
