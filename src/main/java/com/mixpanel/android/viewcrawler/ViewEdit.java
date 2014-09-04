@@ -80,7 +80,6 @@ import java.util.Map;
             target.setAccessibilityDelegate(newDelegate);
         }
 
-        // TODO must API LEVEL check here (Method appears in API 19)
         private View.AccessibilityDelegate getOldDelegate(View v) {
             View.AccessibilityDelegate ret = null;
             try {
@@ -172,9 +171,7 @@ import java.util.Map;
 
     protected View findTarget(View rootView) {
         if (mViewId != -1) {
-            // TODO BUGGY IN TWO WAYS
-            // - Will do screwy stuff when we have duplicate ids
-            // - Will never match multiple views
+            // Will do sorta screwy stuff in the face of duplicate ids (which are EPIDEMIC due to how XML works)
             return rootView.findViewById(mViewId);
         }
         // ELSE

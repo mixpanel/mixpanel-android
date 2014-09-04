@@ -40,25 +40,44 @@ public class Tweaks {
         mUiHandler = new Handler(Looper.getMainLooper());
     }
 
-    // TODO we shouldn't be throwing ClassCastExceptions out of these methods.
     public String getString(String tweakName, String defaultValue) {
-        return (String) get(tweakName, defaultValue);
+        try {
+            return (String) get(tweakName, defaultValue);
+        } catch (ClassCastException e) {
+            return defaultValue;
+        }
     }
 
     public Integer getInteger(String tweakName, Integer defaultValue) {
-        return (Integer) get(tweakName, defaultValue);
+        try {
+            return (Integer) get(tweakName, defaultValue);
+        } catch (ClassCastException e) {
+            return defaultValue;
+        }
     }
 
     public Long getLong(String tweakName, Long defaultValue) {
-        return (Long) get(tweakName, defaultValue);
+        try {
+            return (Long) get(tweakName, defaultValue);
+        } catch (ClassCastException e) {
+            return defaultValue;
+        }
     }
 
     public Float getFloat(String tweakName, Float defaultValue) {
-        return (Float) get(tweakName, defaultValue);
+        try {
+            return (Float) get(tweakName, defaultValue);
+        } catch (ClassCastException e) {
+            return defaultValue;
+        }
     }
 
     public Double getDouble(String tweakName, Double defaultValue) {
-        return (Double) get(tweakName, defaultValue);
+        try {
+            return (Double) get(tweakName, defaultValue);
+        } catch (ClassCastException e) {
+            return defaultValue;
+        }
     }
 
     public synchronized Object get(String tweakName, Object defaultValue) {

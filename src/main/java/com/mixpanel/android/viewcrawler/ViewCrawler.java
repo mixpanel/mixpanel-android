@@ -60,7 +60,7 @@ public class ViewCrawler {
         final HandlerThread thread = new HandlerThread(ViewCrawler.class.getCanonicalName());
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
-        mMessageThreadHandler = new ABHandler(context, token, thread.getLooper());
+        mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper());
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         mUiThreadHandler = new Handler(Looper.getMainLooper());
@@ -169,9 +169,9 @@ public class ViewCrawler {
     /**
      * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
      */
-    private class ABHandler extends Handler {
+    private class ViewCrawlerHandler extends Handler {
 
-        public ABHandler(Context context, String token, Looper looper) {
+        public ViewCrawlerHandler(Context context, String token, Looper looper) {
             super(looper);
             mContext = context;
             mToken = token;
@@ -219,7 +219,7 @@ public class ViewCrawler {
                         }
                     }
                 } catch (JSONException e) {
-                    Log.i(LOGTAG, "JSON error when initializing saved ABTesting changes", e);
+                    Log.i(LOGTAG, "JSON error when initializing saved ViewCrawler changes", e);
                     return;
                 }
             }
@@ -660,7 +660,7 @@ public class ViewCrawler {
     private final EditProtocol mProtocol;
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
-    private final ABHandler mMessageThreadHandler;
+    private final ViewCrawlerHandler mMessageThreadHandler;
     private final MixpanelAPI mMixpanel;
 
     private static final Class[] NO_PARAMS = new Class[0];
