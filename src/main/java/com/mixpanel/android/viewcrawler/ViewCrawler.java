@@ -204,7 +204,7 @@ public class ViewCrawler {
         }
 
         private void initializeChanges() {
-            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
+            final String sharedPrefsName = prefChangesFileName();
             final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
 
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
@@ -382,7 +382,7 @@ public class ViewCrawler {
                 return;
             }
 
-            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken; // TODO method
+            final String sharedPrefsName = prefChangesFileName();
             final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
@@ -410,6 +410,10 @@ public class ViewCrawler {
                 }
                 changeList.add(change);
             }
+        }
+
+        private String prefChangesFileName() {
+            return SHARED_PREF_CHANGES_FILE + mToken;
         }
 
         private EditorConnection mEditorConnection;
