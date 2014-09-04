@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /* package */ class Caller {
+
     public Caller(String methodName, Object[] methodArgs, Class resultType) {
         mMethodName = methodName;
         mMethodArgs = methodArgs;
@@ -64,11 +65,13 @@ import java.lang.reflect.Method;
         return null;
     }
 
-    private static Class assignableArgType(Class type) { // TODO this will fail for args that extend Integer, Float etc.
+    private static Class assignableArgType(Class type) {
         // a.isAssignableFrom(b) only tests if b is a
-        // subclass of a. It does not handle the autoboxing case, i.e. when a is an int and
-        // b is an Integer, so we have to make the Object types primitive types. When the
-        // function is finally invoked, autoboxing will take care of the the cast.
+        // subclass of a. It does not handle the autoboxing case,
+        // i.e. when a is an int and b is an Integer, so we have
+        // to make the Object types primitive types. When the
+        // function is finally invoked, autoboxing will take
+        // care of the the cast.
         if (type == Integer.class) {
             type = int.class;
         } else if (type == Float.class) {
