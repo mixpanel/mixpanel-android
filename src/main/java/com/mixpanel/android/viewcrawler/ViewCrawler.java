@@ -217,7 +217,8 @@ public class ViewCrawler {
                         }
                     }
                 } catch (JSONException e) {
-                    Log.i(LOGTAG, "JSON error when initializing saved ViewCrawler changes", e);
+                    Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
+                    preferences.edit().remove(SHARED_PREF_CHANGES_KEY).apply();
                     return;
                 }
             }
