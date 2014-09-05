@@ -79,19 +79,19 @@ public class ViewCrawler {
 
                 synchronized (mPersistentChanges) {
                     final List<JSONObject> persistentChanges = mPersistentChanges.get(activityName);
-                    applyTheseChanges(activity, persistentChanges);
+                    applyChangesFromList(activity, persistentChanges);
                 }
 
                 synchronized (mEditorChanges) {
                     final List<JSONObject> editorChanges = mEditorChanges.get(activityName);
-                    applyTheseChanges(activity, editorChanges);
+                    applyChangesFromList(activity, editorChanges);
                 }
             }
         }
     }
 
     // Must be called on UI Thread
-    private void applyTheseChanges(Activity activity, List<JSONObject> changes) {
+    private void applyChangesFromList(Activity activity, List<JSONObject> changes) {
         if (null != changes) {
             for (JSONObject j : changes) {
                 try {
