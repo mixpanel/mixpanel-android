@@ -71,6 +71,15 @@ public class ViewCrawler {
         return mTweaks;
     }
 
+    private void applyAllChangesOnUiThread() {
+        mUiThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                applyAllChanges();
+            }
+        });
+    }
+
     // Must be called on UI Thread
     private void applyAllChanges() {
         synchronized (mLiveActivities) {
@@ -186,7 +195,7 @@ public class ViewCrawler {
                     sendStateForEditing((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
-                    handleEditorChangesReceived((JSONObject) msg.obj);
+                    handleEditorChangeReceived((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED:
                     handlePersistentChangesReceived((JSONObject) msg.obj);
@@ -323,20 +332,20 @@ public class ViewCrawler {
 
             try {
                 writer.write("{\"type\": \"snapshot_response\",");
-
-                boolean first = true;
-
                 writer.write("\"activities\": [");
                 writer.flush();
-                for (RootViewInfo info : rootViews) {
-                    if (!first) {
+
+                int viewCount = rootViews.size();
+                for (int i = 0; i < viewCount; i++) {
+                    if (i > 0) {
                         writer.write(",");
                         writer.flush();
                     }
-                    first = false;
+
+                    final RootViewInfo info = rootViews.get(i);
                     snapshot.snapshot(info.activityName, info.rootView, out);
                 }
-                writer.write("]");
+                writer.write("]"); // activities
                 writer.write("}");
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
@@ -349,15 +358,10 @@ public class ViewCrawler {
             }
         }
 
-        private void handleEditorChangesReceived(JSONObject change) {
+        private void handleEditorChangeReceived(JSONObject change) {
             try {
                 loadChange(mEditorChanges, change);
-                mUiThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        applyAllChanges();
-                    }
-                });
+                applyAllChangesOnUiThread();
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
             }
@@ -377,12 +381,7 @@ public class ViewCrawler {
             editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
             editor.apply();
             initializeChanges();
-            mUiThreadHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    applyAllChanges();
-                }
-            });
+            applyAllChangesOnUiThread();
         }
 
         private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange) throws JSONException {
