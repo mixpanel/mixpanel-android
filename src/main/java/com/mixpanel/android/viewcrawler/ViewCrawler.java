@@ -174,24 +174,22 @@ public class ViewCrawler {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MESSAGE_INITIALIZE_CHANGES:
-                    this.initializeChanges();
+                    initializeChanges();
                     break;
                 case MESSAGE_CONNECT_TO_EDITOR:
-                    if (mEditorConnection == null || !mEditorConnection.isValid()) {
-                        this.connectToEditor();
-                    }
+                    connectToEditor();
                     break;
                 case MESSAGE_SEND_DEVICE_INFO:
-                    this.sendDeviceInfo();
+                    sendDeviceInfo();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
-                    this.sendStateForEditing((JSONObject) msg.obj);
+                    sendStateForEditing((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
-                    this.handleEditorChangesReceived((JSONObject) msg.obj);
+                    handleEditorChangesReceived((JSONObject) msg.obj);
                     break;
                 case MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED:
-                    this.handlePersistentChangesReceived((JSONObject) msg.obj);
+                    handlePersistentChangesReceived((JSONObject) msg.obj);
                     break;
             }
         }
@@ -221,6 +219,13 @@ public class ViewCrawler {
         private void connectToEditor() {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "connectToEditor called");
+            }
+
+            if (mEditorConnection != null && mEditorConnection.isValid()) {
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "There is already a valid connection to an editor.");
+                }
+                return;
             }
 
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
