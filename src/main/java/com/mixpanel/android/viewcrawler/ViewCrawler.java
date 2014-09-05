@@ -77,16 +77,13 @@ public class ViewCrawler {
             for (Activity activity : mLiveActivities) {
                 final String activityName = activity.getClass().getCanonicalName();
 
-                final List<JSONObject> persistentChanges;
                 synchronized (mPersistentChanges) {
-                    persistentChanges = mPersistentChanges.get(activityName);
+                    final List<JSONObject> persistentChanges = mPersistentChanges.get(activityName);
                     applyTheseChanges(activity, persistentChanges);
                 }
 
-
-                final List<JSONObject> editorChanges;
                 synchronized (mEditorChanges) {
-                    editorChanges = mEditorChanges.get(activityName);
+                    final List<JSONObject> editorChanges = mEditorChanges.get(activityName);
                     applyTheseChanges(activity, editorChanges);
                 }
             }
