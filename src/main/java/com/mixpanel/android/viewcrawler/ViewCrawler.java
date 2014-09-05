@@ -162,9 +162,6 @@ public class ViewCrawler {
         private final FlipGesture mFlipGesture;
     }
 
-    /**
-     * This class is really the main class for ABTesting. It does all the work on a HandlerThread.
-     */
     private class ViewCrawlerHandler extends Handler {
 
         public ViewCrawlerHandler(Context context, String token, Looper looper) {
