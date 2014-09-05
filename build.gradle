@@ -40,7 +40,7 @@ android.libraryVariants.all { variant ->
         source = variant.javaCompile.source
         ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
         classpath = files(variant.javaCompile.classpath.files) + files(ext.androidJar)
-        exclude '**/R.*', '**/BuildConfig.java'
+        exclude '**/R.*', '**/BuildConfig.java', '**/java_websocket/**', '**/util/**', '**/CardCarouselLayout.java', '**/AlwaysSubmittableEditText.java', '**/FadeOnPressButton.java', '**/FadingImageView.java', '**/InAppFragment.java', '**/MiniCircleImageView.java', '**/SurveyChoiceView.java', '**/UpdateDisplayState.java', '**/ViewCrawler.java'
         options {
             encoding = 'UTF-8'
             docEncoding = 'UTF-8'
