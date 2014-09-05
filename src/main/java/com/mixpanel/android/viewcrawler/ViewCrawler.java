@@ -195,8 +195,7 @@ public class ViewCrawler {
         }
 
         private void initializeChanges() {
-            final String sharedPrefsName = prefChangesFileName();
-            final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+            final SharedPreferences preferences = getSharedPreferences();
 
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != storedChanges) {
@@ -378,8 +377,7 @@ public class ViewCrawler {
                 return;
             }
 
-            final String sharedPrefsName = prefChangesFileName();
-            final SharedPreferences preferences = mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
+            final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
             editor.apply();
@@ -408,8 +406,9 @@ public class ViewCrawler {
             }
         }
 
-        private String prefChangesFileName() {
-            return SHARED_PREF_CHANGES_FILE + mToken;
+        private SharedPreferences getSharedPreferences() {
+            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
+            return mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
         }
 
         private EditorConnection mEditorConnection;
