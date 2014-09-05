@@ -80,13 +80,17 @@ import java.util.Map;
             mMixpanel = mixpanel;
         }
 
-        // TODO needs test for duplicate tracking prevention...
-        // TODO what about tracking two different events on the same target?
         @Override
         public void applyEdit(View target) {
-            final View.AccessibilityDelegate realDelegate = getOldDelegate(target);
+            View.AccessibilityDelegate realDelegate = getOldDelegate(target);
             if (realDelegate instanceof TrackingAccessibilityDelegate) {
-                return;
+                final TrackingAccessibilityDelegate oldTrackingDelegate = (TrackingAccessibilityDelegate) realDelegate;
+                final String oldEventName = oldTrackingDelegate.getEventName();
+                if (null != mEventName && mEventName.equals(oldEventName)) {
+                    return; // Don't reset the same event
+                } else {
+                    realDelegate = null; // Don't allow multiple event handlers on the same view
+                }
             }
 
             View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(mEventName, realDelegate);
@@ -118,6 +122,10 @@ import java.util.Map;
             public TrackingAccessibilityDelegate(String eventName, View.AccessibilityDelegate realDelegate) {
                 mEventName = eventName;
                 mRealDelegate = realDelegate;
+            }
+
+            public String getEventName() {
+                return mEventName;
             }
 
             @Override
