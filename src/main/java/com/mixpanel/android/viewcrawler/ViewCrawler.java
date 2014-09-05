@@ -196,7 +196,6 @@ public class ViewCrawler {
 
         private void initializeChanges() {
             final SharedPreferences preferences = getSharedPreferences();
-
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
             if (null != storedChanges) {
                 try {
@@ -232,12 +231,12 @@ public class ViewCrawler {
                 final SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
                 final Socket sslSocket = socketFactory.createSocket();
                 mEditorConnection = new EditorConnection(new URI(url), new EditorService(), sslSocket);
-            } catch (IOException e) {
-                Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             } catch (URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
-            } catch (InterruptedException e) {
+            } catch (EditorConnection.EditorConnectionException e) {
                 Log.e(LOGTAG, "Error connecting to URI " + url, e);
+            } catch (IOException e) {
+                Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             }
         }
 
@@ -290,10 +289,6 @@ public class ViewCrawler {
         }
 
         private void sendStateForEditing(JSONObject message) {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
-                this.connectToEditor();
-            }
-
             final ViewSnapshot snapshot;
             try {
                 final JSONObject payload = message.getJSONObject("payload");

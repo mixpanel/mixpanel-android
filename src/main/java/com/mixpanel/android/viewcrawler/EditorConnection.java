@@ -4,6 +4,8 @@ import android.util.Log;
 
 import com.mixpanel.android.java_websocket.client.WebSocketClient;
 import com.mixpanel.android.java_websocket.drafts.Draft_17;
+import com.mixpanel.android.java_websocket.exceptions.NotSendableException;
+import com.mixpanel.android.java_websocket.exceptions.WebsocketNotConnectedException;
 import com.mixpanel.android.java_websocket.framing.Framedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -12,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URI;
@@ -23,6 +26,12 @@ import java.nio.ByteBuffer;
  */
 /* package */ class EditorConnection {
 
+    public class EditorConnectionException extends IOException {
+        public EditorConnectionException(Throwable cause) {
+            super(cause.getMessage()); // IOException(cause) is only available in API level 9!
+        }
+    }
+
     public interface EditorService {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
@@ -30,10 +39,15 @@ import java.nio.ByteBuffer;
         public void sendDeviceInfo();
     }
 
-    public EditorConnection(URI uri, EditorService service, Socket sslSocket) throws InterruptedException {
+    public EditorConnection(URI uri, EditorService service, Socket sslSocket)
+            throws EditorConnectionException {
         mService = service;
-        mClient = new EditorClient(uri, CONNECT_TIMEOUT, sslSocket);
-        mClient.connectBlocking();
+        try {
+            mClient = new EditorClient(uri, CONNECT_TIMEOUT, sslSocket);
+            mClient.connectBlocking();
+        } catch (InterruptedException e) {
+            throw new EditorConnectionException(e);
+        }
     }
 
     public boolean isValid() {
@@ -101,7 +115,8 @@ import java.nio.ByteBuffer;
      */
     private class WebSocketOutputStream extends OutputStream {
         @Override
-        public void write(int b) {
+        public void write(int b)
+            throws EditorConnectionException {
             // This should never be called.
             byte[] oneByte = new byte[1];
             oneByte[0] = (byte) b;
@@ -109,19 +124,34 @@ import java.nio.ByteBuffer;
         }
 
         @Override
-        public void write(byte[] b) {
+        public void write(byte[] b)
+            throws EditorConnectionException {
             write(b, 0, b.length);
         }
 
         @Override
-        public void write(byte[] b, int off, int len) {
+        public void write(byte[] b, int off, int len)
+            throws EditorConnectionException {
             final ByteBuffer message = ByteBuffer.wrap(b, off, len);
-            mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
+            try {
+                mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
+            } catch (WebsocketNotConnectedException e) {
+                throw new EditorConnectionException(e);
+            } catch (NotSendableException e) {
+                throw new EditorConnectionException(e);
+            }
         }
 
         @Override
-        public void close() {
-            mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, EMPTY_BYTE_BUFFER, true);
+        public void close()
+            throws EditorConnectionException {
+            try {
+                mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, EMPTY_BYTE_BUFFER, true);
+            } catch (WebsocketNotConnectedException e) {
+                throw new EditorConnectionException(e);
+            } catch (NotSendableException e) {
+                throw new EditorConnectionException(e);
+            }
         }
     }
 
