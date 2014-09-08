@@ -2,24 +2,23 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
-import android.graphics.Path;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
-import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 @TargetApi(14)
 /* package */ abstract class ViewVisitor {
+
+    public interface OnVisitedListener {
+        public void OnVisited(String eventName);
+    }
 
     public static class PathElement {
         public PathElement(String vClass, int ix) {
@@ -91,12 +90,8 @@ import java.util.Objects;
         private final Caller mAccessor;
     }
 
-    public interface OnInteractionListener {
-        public void OnViewClicked(String eventName);
-    }
-
     public static class AddListenerVisitor extends ViewEditor {
-        public AddListenerVisitor(List<PathElement> path, String eventName, OnInteractionListener listener) {
+        public AddListenerVisitor(List<PathElement> path, String eventName, OnVisitedListener listener) {
             super(path);
             mEventName = eventName;
             mListener = listener;
@@ -153,7 +148,7 @@ import java.util.Objects;
             @Override
             public void sendAccessibilityEvent(View host, int eventType) {
                 if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-                    mListener.OnViewClicked(mEventName);
+                    mListener.OnVisited(mEventName);
                 }
 
                 if (null != mRealDelegate) {
@@ -166,31 +161,31 @@ import java.util.Objects;
         }
 
         private final String mEventName;
-        private final OnInteractionListener mListener;
+        private final OnVisitedListener mListener;
     }
 
     // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
     // Views appearing and disappearing.
     public static class ViewDetectorVisitor extends ViewVisitor {
-        public ViewDetectorVisitor(List<PathElement> path, String eventName, MixpanelAPI mixpanelAPI) {
+        public ViewDetectorVisitor(List<PathElement> path, String eventName, OnVisitedListener listener) {
             super(path);
 
             mSeen = false;
-            mMixpanelAPI = mixpanelAPI;
+            mListener = listener;
             mEventName = eventName;
         }
 
         public void visit(View rootView) {
             final View target = findTarget(rootView);
             if (target != null && !mSeen) {
-                mMixpanelAPI.track(mEventName, null);
+                mListener.OnVisited(mEventName);
             }
 
             mSeen = (target != null);
         }
 
         private boolean mSeen;
-        private final MixpanelAPI mMixpanelAPI;
+        private final OnVisitedListener mListener;
         private final String mEventName;
     }
 

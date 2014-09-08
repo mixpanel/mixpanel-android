@@ -29,7 +29,7 @@ public class ViewVisitorTest extends AndroidTestCase {
         mFailingRootPath2 = new ArrayList<ViewVisitor.PathElement>();
         mFailingRootPath2.add(new ViewVisitor.PathElement("java.lang.Object", 1));
 
-        mTrackListener = new CollectingInteractionListener();
+        mTrackListener = new CollectingVisitedListener();
 
         mRootView = new TestView(getContext());
     }
@@ -222,10 +222,10 @@ public class ViewVisitorTest extends AndroidTestCase {
         public List<View> collected;
     }
 
-    private static class CollectingInteractionListener implements ViewVisitor.OnInteractionListener {
+    private static class CollectingVisitedListener implements ViewVisitor.OnVisitedListener {
 
         @Override
-        public void OnViewClicked(String eventName) {
+        public void OnVisited(String eventName) {
             events.add(eventName);
         }
 
@@ -236,6 +236,6 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<ViewVisitor.PathElement> mWorkingRootPath;
     private List<ViewVisitor.PathElement> mFailingRootPath1;
     private List<ViewVisitor.PathElement> mFailingRootPath2;
-    private CollectingInteractionListener mTrackListener;
+    private CollectingVisitedListener mTrackListener;
     private TestView mRootView;
 }
