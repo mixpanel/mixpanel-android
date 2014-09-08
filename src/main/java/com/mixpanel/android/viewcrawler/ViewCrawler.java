@@ -454,7 +454,7 @@ public class ViewCrawler {
     private class EditProtocol {
 
         public PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)
-            throws BadInstructionsException {
+                throws BadInstructionsException {
             try {
                 final String propName = propertyDesc.getString("name");
 
@@ -489,7 +489,7 @@ public class ViewCrawler {
                 final JSONArray pathDesc = source.getJSONArray("path");
                 final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
-                for(int i = 0; i < pathDesc.length(); i++) {
+                for (int i = 0; i < pathDesc.length(); i++) {
                     final JSONObject targetView = pathDesc.getJSONObject(i);
                     final String targetViewClass = targetView.getString("view_class");
                     final int targetIndex = targetView.getInt("index");
@@ -531,7 +531,8 @@ public class ViewCrawler {
                     final String eventName = source.getString("event_name");
                     final String eventType = source.getString("event_type");
                     if ("click".equals(eventType)) {
-                        return new ViewVisitor.AddListenerVisitor(path, eventName, mMixpanel);
+                        final ViewVisitor.OnInteractionListener listener = new InteractionTracker();
+                        return new ViewVisitor.AddListenerVisitor(path, eventName, listener);
                     } else if ("detected".equals(eventType)) {
                         return new ViewVisitor.ViewDetectorVisitor(path, eventName, mMixpanel);
                     } else {
@@ -546,7 +547,7 @@ public class ViewCrawler {
         }
 
         private ViewSnapshot readSnapshotConfig(JSONObject source)
-            throws BadInstructionsException {
+                throws BadInstructionsException {
             final List<PropertyDescription> properties = new ArrayList<PropertyDescription>();
 
             try {
@@ -593,6 +594,13 @@ public class ViewCrawler {
             } catch (ClassCastException e) {
                 throw new BadInstructionsException("Couldn't interpret <" + jsonArgument + "> as " + type);
             }
+        }
+    } // EditProtocol
+
+    private class InteractionTracker implements ViewVisitor.OnInteractionListener {
+        @Override
+        public void OnViewClicked(String eventName) {
+            mMixpanel.track(eventName, null);
         }
     }
 

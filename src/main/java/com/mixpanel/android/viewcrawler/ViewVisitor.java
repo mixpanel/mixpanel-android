@@ -2,6 +2,7 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
+import android.graphics.Path;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @TargetApi(14)
 /* package */ abstract class ViewVisitor {
@@ -31,6 +33,22 @@ import java.util.Map;
 
         public final String viewClassName;
         public final int index;
+    }
+
+    public static abstract class ViewEditor extends ViewVisitor {
+        public ViewEditor(List<PathElement> path) {
+            super(path);
+        }
+
+        @Override
+        public void visit(View rootView) {
+            final View target = findTarget(rootView);
+            if (target != null) {
+                applyEdit(target);
+            }
+        }
+
+        protected abstract void applyEdit(View targetView);
     }
 
     public static class PropertySetVisitor extends ViewEditor {
@@ -73,11 +91,15 @@ import java.util.Map;
         private final Caller mAccessor;
     }
 
+    public interface OnInteractionListener {
+        public void OnViewClicked(String eventName);
+    }
+
     public static class AddListenerVisitor extends ViewEditor {
-        public AddListenerVisitor(List<PathElement> path, String eventName, MixpanelAPI mixpanel) {
+        public AddListenerVisitor(List<PathElement> path, String eventName, OnInteractionListener listener) {
             super(path);
             mEventName = eventName;
-            mMixpanel = mixpanel;
+            mListener = listener;
         }
 
         @Override
@@ -131,7 +153,7 @@ import java.util.Map;
             @Override
             public void sendAccessibilityEvent(View host, int eventType) {
                 if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-                    mMixpanel.track(mEventName, null);
+                    mListener.OnViewClicked(mEventName);
                 }
 
                 if (null != mRealDelegate) {
@@ -144,7 +166,7 @@ import java.util.Map;
         }
 
         private final String mEventName;
-        private final MixpanelAPI mMixpanel;
+        private final OnInteractionListener mListener;
     }
 
     // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
@@ -179,68 +201,69 @@ import java.util.Map;
     public abstract void visit(View rootView);
 
     protected View findTarget(View rootView) {
-        return findTargetOnPath(rootView, mPath, 0);
-    }
-
-    private View findTargetOnPath(View curView, List<PathElement> path, int curIndex) {
-        if (path.isEmpty()) {
-            return null; // The empty path matches nothing in this model
-        }
-
-        final PathElement targetView = path.get(0);
-        final String targetViewClass = targetView.viewClassName;
-        final String currentViewName = curView.getClass().getCanonicalName();
-        if (! targetViewClass.equals(currentViewName)) {
+        if (mPath.isEmpty()) {
             return null;
         }
 
-        final int targetIndex = targetView.index;
-        if (targetIndex != curIndex) {
-            return null;
-        }
+        final PathElement rootPathElement = mPath.get(0);
+        final List<PathElement> childPath = mPath.subList(1, mPath.size());
 
-        final List<PathElement> childPath = path.subList(1, path.size());
-        if (childPath.size() == 0) {
-            return curView;
-        }
+        if (rootPathElement.index == 0 &&
+            matchesClassName(rootPathElement.viewClassName, rootView)) {
 
-        if (!(curView instanceof ViewGroup)) {
-            return null;
-        }
-
-        final Map<String, Integer> viewIndex = new HashMap<String, Integer>();
-        ViewGroup viewGroup = (ViewGroup) curView;
-        for (int i = 0; i < viewGroup.getChildCount(); i++) {
-            final View child = viewGroup.getChildAt(i);
-            int index = 0;
-            if (viewIndex.containsKey(child.getClass().getCanonicalName())) {
-                index = viewIndex.get(child.getClass().getCanonicalName()) + 1;
+            if (childPath.isEmpty()) {
+                return rootView;
             }
-            viewIndex.put(child.getClass().getCanonicalName(), index);
 
-            View target = findTargetOnPath(viewGroup.getChildAt(i), childPath, index);
-            if (target != null) {
-                return target;
+            if (rootView instanceof ViewGroup) {
+                final ViewGroup rootParent = (ViewGroup) rootView;
+                return findTargetInChildren(rootParent, childPath);
             }
         }
 
         return null;
     }
 
-    private static abstract class ViewEditor extends ViewVisitor {
-        public ViewEditor(List<PathElement> path) {
-            super(path);
-        }
+    private View findTargetInChildren(ViewGroup parent, List<PathElement> path) {
+        final PathElement matchElement = path.get(0);
+        final List<PathElement> nextPath = path.subList(1, path.size());
+        final String matchClass = matchElement.viewClassName;
+        final int matchIndex = matchElement.index;
 
-        @Override
-        public void visit(View rootView) {
-            final View target = findTarget(rootView);
-            if (target != null) {
-                applyEdit(target);
+        final int childCount = parent.getChildCount();
+        int matchCount = 0;
+        for (int i = 0; i < childCount; i++) {
+            final View child = parent.getChildAt(i);
+            if (matchesClassName(matchClass, child)) {
+                if (matchCount == matchIndex) {
+                    if (nextPath.isEmpty()) {
+                        return child;
+                    } else if (child instanceof ViewGroup) {
+                        final ViewGroup childGroup = (ViewGroup) child;
+                        return findTargetInChildren(childGroup, nextPath);
+                    }
+                } else {
+                    matchCount++;
+                }
             }
         }
 
-        protected abstract void applyEdit(View targetView);
+        return null;
+    }
+
+    private boolean matchesClassName(String className, Object o) {
+        Class klass = o.getClass();
+        while (true) {
+            if (klass.getCanonicalName().equals(className)) {
+                return true;
+            }
+
+            if (klass == Object.class) {
+                return false;
+            } else {
+                klass = klass.getSuperclass();
+            }
+        }
     }
 
     private final List<PathElement> mPath;

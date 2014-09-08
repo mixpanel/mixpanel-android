@@ -1,6 +1,7 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.content.Context;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -105,12 +106,38 @@ public class TestView extends FrameLayout {
         public void setCustomProperty(CharSequence s) {
             ; // OK
         }
+
+        // This is a HACK- it's actually an override of a secret/public method of View.
+        // It's added here so that we can test accessibilityDelegate tracking without
+        // doing a lot of puzzling and unreliable functional tests.
+        public boolean includeForAccessibility() {
+            return true;
+        }
     }
 
     public static class AdHocButton2 extends Button {
         public AdHocButton2(Context context) {
             super(context);
         }
+
+        public void setCountingProperty(Object o) {
+            countingPropertyValue = o;
+            countingPropertyCount++;
+        }
+
+        public Object getCountingProperty() {
+            return countingPropertyValue;
+        }
+
+        // This is a HACK- it's actually an override of a secret/public method of View.
+        // It's added here so that we can test accessibilityDelegate tracking without
+        // doing a lot of puzzling and unreliable functional tests.
+        public boolean includeForAccessibility() {
+            return true;
+        }
+
+        public Object countingPropertyValue = null;
+        public int countingPropertyCount = 0;
     }
 
     public static class AdHocButton3 extends Button implements CustomPropButton {
@@ -124,6 +151,13 @@ public class TestView extends FrameLayout {
 
         public void setCustomProperty(CharSequence s) {
             throw new RuntimeException("BANG!");
+        }
+
+        // This is a HACK- it's actually an override of a secret/public method of View.
+        // It's added here so that we can test accessibilityDelegate tracking without
+        // doing a lot of puzzling and unreliable functional tests.
+        public boolean includeForAccessibility() {
+            return true;
         }
     }
 
