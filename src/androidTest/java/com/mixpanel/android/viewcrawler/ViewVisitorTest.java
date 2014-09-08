@@ -1,19 +1,14 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.app.Activity;
-import android.app.Instrumentation;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.test.ActivityUnitTestCase;
 import android.test.AndroidTestCase;
 import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class ViewVisitorTest extends AndroidTestCase {
     public void setUp() throws Exception {
