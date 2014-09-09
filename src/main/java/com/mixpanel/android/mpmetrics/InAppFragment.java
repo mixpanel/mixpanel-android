@@ -146,8 +146,7 @@ public class InAppFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mKill = false;
+        mCleanedUp = false;
     }
 
     @Override
@@ -163,7 +162,7 @@ public class InAppFragment extends Fragment {
         titleView.setText(inApp.getTitle());
         notifImage.setImageBitmap(inApp.getImage());
 
-        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME); // RACE CONDITION.
 
         return mInAppView;
     }
@@ -172,7 +171,7 @@ public class InAppFragment extends Fragment {
     public void onStart() {
         super.onStart();
 
-        if (mKill) {
+        if (mCleanedUp) {
             mParent.getFragmentManager().beginTransaction().remove(this).commit();
         }
     }
@@ -188,22 +187,29 @@ public class InAppFragment extends Fragment {
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+        cleanUp();
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
+        cleanUp();
+    }
 
-        mHandler.removeCallbacks(mRemover);
-        mHandler.removeCallbacks(mDisplayMini);
+    private void cleanUp() {
+        if (!mCleanedUp) {
+            mHandler.removeCallbacks(mRemover);
+            mHandler.removeCallbacks(mDisplayMini);
+            UpdateDisplayState.releaseDisplayState(mDisplayStateId);
+        }
 
-        // This Fragment when registered on the Activity is part of its state, and so gets
-        // restored / recreated when the Activity goes away and comes back. We prefer to just not
-        // keep the notification around in the case of mini, so we have to remember to kill it.
-        // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
-        mKill = true;
-        UpdateDisplayState.releaseDisplayState(mDisplayStateId);
+        mCleanedUp = true;
     }
 
     private void remove() {
-        if (mParent != null) {
+        if (mParent != null && !mCleanedUp) {
             final FragmentManager fragmentManager = mParent.getFragmentManager();
 
             // setCustomAnimations works on a per transaction level, so the animations set
@@ -228,7 +234,7 @@ public class InAppFragment extends Fragment {
     private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 
-    private boolean mKill;
+    private boolean mCleanedUp;
 
     private static final String LOGTAG = "InAppFragment";
     private static final int MINI_REMOVE_TIME = 6000;
