@@ -52,6 +52,11 @@ import java.util.List;
         writer.flush();
     }
 
+    // For testing only
+    /* package */ List<PropertyDescription> getProperties() {
+        return mProperties;
+    }
+
     // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
     // due to memory or rendering issues.
     private void writeScreenshot(View rootView, OutputStream out) throws IOException {
