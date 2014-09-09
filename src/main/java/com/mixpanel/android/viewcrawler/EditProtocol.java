@@ -22,36 +22,6 @@ import java.util.List;
         }
     }
 
-    public PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)
-            throws BadInstructionsException {
-        try {
-            final String propName = propertyDesc.getString("name");
-
-            Caller accessor = null;
-            if (propertyDesc.has("get")) {
-                final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
-                final String accessorName = accessorConfig.getString("selector");
-                final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
-                final Class accessorResultType = Class.forName(accessorResultTypeName);
-                accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
-            }
-
-            final String mutatorName;
-            if (propertyDesc.has("set")) {
-                final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
-                mutatorName = mutatorConfig.getString("selector");
-            } else {
-                mutatorName = null;
-            }
-
-            return new PropertyDescription(propName, targetClass, accessor, mutatorName);
-        } catch (JSONException e) {
-            throw new BadInstructionsException("Can't read property JSON", e);
-        } catch (ClassNotFoundException e) {
-            throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
-        }
-    }
-
     public ViewVisitor readEdit(JSONObject source, ViewVisitor.OnVisitedListener listener)
             throws BadInstructionsException {
         try {
@@ -138,6 +108,36 @@ import java.util.List;
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (ClassNotFoundException e) {
             throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
+        }
+    }
+
+    private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)
+            throws BadInstructionsException {
+        try {
+            final String propName = propertyDesc.getString("name");
+
+            Caller accessor = null;
+            if (propertyDesc.has("get")) {
+                final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
+                final String accessorName = accessorConfig.getString("selector");
+                final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
+                final Class accessorResultType = Class.forName(accessorResultTypeName);
+                accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
+            }
+
+            final String mutatorName;
+            if (propertyDesc.has("set")) {
+                final JSONObject mutatorConfig = propertyDesc.getJSONObject("set");
+                mutatorName = mutatorConfig.getString("selector");
+            } else {
+                mutatorName = null;
+            }
+
+            return new PropertyDescription(propName, targetClass, accessor, mutatorName);
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Can't read property JSON", e);
+        } catch (ClassNotFoundException e) {
+            throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
         }
     }
 
