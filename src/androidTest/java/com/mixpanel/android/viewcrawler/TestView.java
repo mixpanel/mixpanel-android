@@ -52,32 +52,32 @@ public class TestView extends FrameLayout {
         mAllViews.add(text2);
         mThirdLayer.add(text2);
 
-        ViewGroup buttons = new LinearLayout(getContext());
-        linear.addView(buttons);
-        mAllViews.add(buttons);
-        mThirdLayer.add(buttons);
+        mButtonGroup = new LinearLayout(getContext());
+        linear.addView(mButtonGroup);
+        mAllViews.add(mButtonGroup);
+        mThirdLayer.add(mButtonGroup);
 
         mAdHocButton1 = new AdHocButton1(getContext());
         mAdHocButton1.setTag(SIMPLE_TAG);
         mAdHocButton1.setText("{Hi!}");
-        buttons.addView(mAdHocButton1);
+        mButtonGroup.addView(mAdHocButton1);
         mAllViews.add(mAdHocButton1);
         mFourthLayer.add(mAdHocButton1);
 
         mAdHocButton2 = new AdHocButton2(getContext());
         mAdHocButton2.setText("Hello \" There");
-        buttons.addView(mAdHocButton2);
+        mButtonGroup.addView(mAdHocButton2);
         mAllViews.add(mAdHocButton2);
         mFourthLayer.add(mAdHocButton2);
 
         mAdHocButton3 = new AdHocButton3(getContext());
         mAdHocButton2.setText("Howdy: ]");
         mAdHocButton3.setId(BUTTON_ID);
-        buttons.addView(mAdHocButton3);
+        mButtonGroup.addView(mAdHocButton3);
         mAllViews.add(mAdHocButton3);
         mFourthLayer.add(mAdHocButton3);
 
-        mButtonParentView = buttons;
+        mButtonParentView = mButtonGroup;
 
         mViewsByHashcode = new HashMap<Integer, View>();
         for (View v:mAllViews) {
@@ -163,6 +163,7 @@ public class TestView extends FrameLayout {
 
     public final Set<View> mAllViews;
     public final View mButtonParentView;
+    public final ViewGroup mButtonGroup;
     public final AdHocButton1 mAdHocButton1;
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;

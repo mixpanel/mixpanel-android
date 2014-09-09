@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 import android.test.AndroidTestCase;
 import android.util.Property;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -62,7 +63,13 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testAppearsEvent() throws EditProtocol.BadInstructionsException {
         final ViewVisitor appearsListener = mProtocol.readEdit(mAppearsEvent, mListener);
-        fail("WRITE THIS TEST");
+        appearsListener.visit(mRootView);
+        assertTrue(mListener.visitsRecorded.isEmpty());
+
+        mRootView.mButtonGroup.addView(new Button(getContext()));
+        appearsListener.visit(mRootView);
+        assertEquals(mListener.visitsRecorded.size(), 1);
+        assertEquals(mListener.visitsRecorded.get(0), "Engines On!");
     }
 
     private static class TestVisitedListener implements ViewVisitor.OnVisitedListener {
@@ -85,5 +92,5 @@ public class EditProtocolTest extends AndroidTestCase {
     private final String SNAPSHOT_CONFIG = "{\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}},{\"name\":\"backgroundColor\",\"get\":{\"selector\":\"getBackgroundColor\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Integer\"}},\"set\":{\"selector\":\"setBackgroundColor\",\"parameters\":[{\"type\":\"java.lang.Integer\"}]},\"editor\":\"hexstring\"}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}";
     private final String PROPERTY_EDIT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]]}";
     private final String CLICK_EVENT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}";
-    private final String APPEARS_EVENT = "{\"type\":\"change_request\",\"target\":\"org.wordpress.android.ui.posts.PostsActivity\",\"change\":{\"path\":[{\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\",\"index\":0},{\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\",\"index\":0},{\"view_class\":\"com.android.internal.widget.ActionBarContainer\",\"index\":0},{\"view_class\":\"com.android.internal.widget.ActionBarView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.TextView\",\"index\":0}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}}";
+    private final String APPEARS_EVENT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":3}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}";
 }
