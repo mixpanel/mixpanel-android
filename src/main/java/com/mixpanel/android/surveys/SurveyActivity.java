@@ -75,9 +75,10 @@ public class SurveyActivity extends Activity {
 
         if (isShowingInApp()) {
             onCreateInAppNotification(savedInstanceState);
-        }
-        if (isShowingSurvey()) {
+        } else if (isShowingSurvey()) {
             onCreateSurvey(savedInstanceState);
+        } else {
+            finish();
         }
     }
 
@@ -251,8 +252,8 @@ public class SurveyActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-
-        if (mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE) {
+        final UpdateDisplayState.DisplayState displayState = mUpdateDisplayState.getDisplayState();
+        if (null != displayState && displayState.getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE) {
             onStartSurvey();
         }
     }
@@ -395,11 +396,13 @@ public class SurveyActivity extends Activity {
     }
 
     private boolean isShowingSurvey() {
-        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE;
+        final UpdateDisplayState.DisplayState displayState = mUpdateDisplayState.getDisplayState();
+        return displayState != null && displayState.getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE;
     }
 
     private boolean isShowingInApp() {
-        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.InAppNotificationState.TYPE;
+        final UpdateDisplayState.DisplayState displayState = mUpdateDisplayState.getDisplayState();
+        return displayState != null && displayState.getType() == UpdateDisplayState.DisplayState.InAppNotificationState.TYPE;
     }
 
     private void trackSurveyAttempted() {
