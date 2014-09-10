@@ -75,9 +75,10 @@ public class SurveyActivity extends Activity {
 
         if (isShowingInApp()) {
             onCreateInAppNotification(savedInstanceState);
-        }
-        if (isShowingSurvey()) {
+        } else if (isShowingSurvey()) {
             onCreateSurvey(savedInstanceState);
+        } else {
+            finish();
         }
     }
 
