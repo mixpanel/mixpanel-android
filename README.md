@@ -20,6 +20,11 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.3.1
+
+ * This is a bugfix release only, to alter the handling of Surveys and In-App notifications when
+   activities are removed or move to the background.
+
 #### v4.3.0
  * Added support for App Links tracking
 
