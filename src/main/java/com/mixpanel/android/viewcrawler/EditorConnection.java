@@ -51,7 +51,7 @@ import java.nio.ByteBuffer;
     }
 
     public boolean isValid() {
-        return !mClient.isClosed() &&  !mClient.isClosing() && !mClient.isFlushAndClose();
+        return !mClient.isClosed() && !mClient.isClosing() && !mClient.isFlushAndClose();
     }
 
     public BufferedOutputStream getBufferedOutputStream() {
