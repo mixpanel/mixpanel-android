@@ -85,5 +85,5 @@ import android.hardware.SensorEventListener;
     private static final int TRIGGER_STATE_UP_BEGIN = 1;
     private static final int TRIGGER_STATE_DOWN_MIDDLE = 2;
 
-    private static final float ACCELEROMETER_SMOOTHING = 0.3f;
+    private static final float ACCELEROMETER_SMOOTHING = 0.5f;
 }
