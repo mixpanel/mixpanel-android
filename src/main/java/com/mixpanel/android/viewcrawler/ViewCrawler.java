@@ -273,7 +273,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                 try {
                     writer.close();
                 } catch (IOException e) {
-                    Log.e(LOGTAG, "    Could not close output writer to editor", e);
+                    Log.e(LOGTAG, "Could not close output writer to editor", e);
                 }
             }
         }
