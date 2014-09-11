@@ -243,7 +243,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             try {
                 final SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
                 final Socket sslSocket = socketFactory.createSocket();
-                mEditorConnection = new EditorConnection(new URI(url), new EditorService(), sslSocket);
+                mEditorConnection = new EditorConnection(new URI(url), new Editor(), sslSocket);
             } catch (URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
             } catch (EditorConnection.EditorConnectionException e) {
@@ -414,7 +414,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         private final String mToken;
     }
 
-    private class EditorService implements EditorConnection.EditorService {
+    private class Editor implements EditorConnection.Editor {
 
         @Override
         public void sendSnapshot(JSONObject message) {

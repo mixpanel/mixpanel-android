@@ -32,14 +32,14 @@ import java.nio.ByteBuffer;
         }
     }
 
-    public interface EditorService {
+    public interface Editor {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
         public void persistEdits(JSONObject message);
         public void sendDeviceInfo();
     }
 
-    public EditorConnection(URI uri, EditorService service, Socket sslSocket)
+    public EditorConnection(URI uri, Editor service, Socket sslSocket)
             throws EditorConnectionException {
         mService = service;
         try {
@@ -155,7 +155,7 @@ import java.nio.ByteBuffer;
         }
     }
 
-    private final EditorService mService;
+    private final Editor mService;
     private final EditorClient mClient;
 
     private static final int CONNECT_TIMEOUT = 5000;
