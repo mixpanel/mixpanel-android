@@ -60,7 +60,7 @@ import java.nio.ByteBuffer;
 
     private class EditorClient extends WebSocketClient {
         public EditorClient(URI uri, int connectTimeout, Socket sslSocket) throws InterruptedException {
-            super(uri,  new Draft_17(), null, connectTimeout);
+            super(uri, new Draft_17(), null, connectTimeout);
             setSocket(sslSocket);
         }
 
