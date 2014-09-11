@@ -89,7 +89,8 @@ import java.util.List;
         final List<PropertyDescription> properties = new ArrayList<PropertyDescription>();
 
         try {
-            final JSONArray classes = source.getJSONArray("classes");
+            final JSONObject config = source.getJSONObject("config");
+            final JSONArray classes = config.getJSONArray("classes");
             for (int classIx = 0; classIx < classes.length(); classIx++) {
                 final JSONObject classDesc = classes.getJSONObject(classIx);
                 final String targetClassName = classDesc.getString("name");
