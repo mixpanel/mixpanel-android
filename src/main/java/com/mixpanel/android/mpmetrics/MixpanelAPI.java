@@ -976,7 +976,7 @@ public class MixpanelAPI {
 
     /* package */ ViewCrawler constructViewCrawler(final Context context, final String token) {
         if (android.os.Build.VERSION.SDK_INT < 14) {
-            Log.i(LOGTAG, "Not initializing ViewCrawler due to unsupported Build.VERSION");
+            Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return null;
         } else {
             return new ViewCrawler(mContext, mToken, this);
