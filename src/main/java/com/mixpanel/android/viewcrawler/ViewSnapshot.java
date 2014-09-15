@@ -28,25 +28,31 @@ import java.util.List;
         mProperties = properties;
     }
 
-    public void snapshot(String className, View rootView, OutputStream out) throws IOException {
+    public void snapshot(String activityName, float scale, View rootView, OutputStream out) throws IOException {
         final Writer writer = new OutputStreamWriter(out);
         writer.write("{");
 
-        writer.write("\"class\":");
-        writer.write("\"" + className + "\"");
+        writer.write("\"activity\":");
+        writer.write("\"" + activityName + "\"");
+        writer.write(",");
+        writer.write("\"scale\":");
+        writer.write(String.format("%s", scale));
         writer.write(",");
 
         writer.write("\"screenshot\": ");
         writer.flush();
-        writeScreenshot(rootView, out);
+        writeScreenshot(rootView, scale, out);
         writer.write(",");
-        writer.write("\"rootView\": ");
+        writer.write("\"serialized_objects\": ");
+
+        writer.write("{");
+        writer.write("\"rootObject\": ");
         writer.write(Integer.toString(rootView.hashCode()));
         writer.write(",");
-
-        writer.write("\"views\": [");
+        writer.write("\"objects\": [");
         snapshotView(writer, rootView, true);
         writer.write("]");
+        writer.write("}"); // serialized_objects
 
         writer.write("}");
         writer.flush();
@@ -59,18 +65,22 @@ import java.util.List;
 
     // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
     // due to memory or rendering issues.
-    private void writeScreenshot(View rootView, OutputStream out) throws IOException {
+    private void writeScreenshot(View rootView, float scale, OutputStream out) throws IOException {
         // This screenshot method is not how the Android folks do it in View.createSnapshot,
         // but they use all kinds of secret internal stuff like clearing and setting
         // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
         // can do without privileged access
 
         final boolean originalCacheState = rootView.isDrawingCacheEnabled();
+
         Bitmap bitmap;
         try {
             rootView.setDrawingCacheEnabled(true);
             rootView.buildDrawingCache(true);
-            bitmap = rootView.getDrawingCache();
+            final Bitmap rawBitmap = rootView.getDrawingCache();
+            final int scaledWidth = (int) (rawBitmap.getWidth() * scale);
+            final int scaledHeight = (int) (rawBitmap.getHeight() * scale);
+            bitmap = Bitmap.createScaledBitmap(rawBitmap, scaledWidth, scaledHeight, false);
         } catch (AndroidRuntimeException e) {
             // This can happen if buildDrawingCache invalidates the view, or basically anything in
             // View.draw tries to change the state of the view- we'll get a threading error in this case.
@@ -82,6 +92,7 @@ import java.util.List;
             }
             bitmap = null;
         }
+
 
         // We could get a null or zero px bitmap if the rootView hasn't been measured
         // appropriately, or we grab it before layout.

@@ -13,6 +13,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -180,6 +181,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             super(looper);
             mContext = context;
             mToken = token;
+            mDisplayMetrics = new DisplayMetrics();
         }
 
         @Override
@@ -285,7 +287,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             try {
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
-                writer.write("\"device_name\": \"Android Device\",");
+                writer.write("\"device_type\": \"android\",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
                 writer.write("}"); // payload
@@ -329,13 +331,17 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     // We know (since we're synched w/ the UI thread on activity changes)
                     // that the activities in mLiveActivities are valid here.
                     final View rootView = a.getWindow().getDecorView().getRootView();
-                    final RootViewInfo info = new RootViewInfo(activityName, rootView);
+                    a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
+                    final float scale = 1f / mDisplayMetrics.density;
+                    Log.d(LOGTAG, "Scaling by " + scale);
+                    final RootViewInfo info = new RootViewInfo(activityName, scale, rootView);
                     rootViews.add(info);
                 }
             }
 
             try {
                 writer.write("{\"type\": \"snapshot_response\",");
+                writer.write("\"payload\": {");
                 writer.write("\"activities\": [");
                 writer.flush();
 
@@ -347,9 +353,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     }
 
                     final RootViewInfo info = rootViews.get(i);
-                    snapshot.snapshot(info.activityName, info.rootView, out);
+                    snapshot.snapshot(info.activityName, info.scale, info.rootView, out);
                 }
                 writer.write("]"); // activities
+                writer.write("}"); // payload
                 writer.write("}");
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
@@ -412,6 +419,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         private EditorConnection mEditorConnection;
         private final Context mContext;
         private final String mToken;
+        private final DisplayMetrics mDisplayMetrics;
     }
 
     private class Editor implements EditorConnection.Editor {
@@ -477,13 +485,15 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     }
 
     private static class RootViewInfo {
-        public RootViewInfo(String activityName, View rootView) {
+        public RootViewInfo(String activityName, float scale, View rootView) {
             this.activityName = activityName;
             this.rootView = rootView;
+            this.scale = scale;
         }
 
         public final String activityName;
         public final View rootView;
+        public final float scale;
     }
 
     // Map from canonical activity class name to description of changes
