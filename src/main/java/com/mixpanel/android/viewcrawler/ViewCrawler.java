@@ -182,6 +182,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             mContext = context;
             mToken = token;
             mDisplayMetrics = new DisplayMetrics();
+            mSnapshot = null;
         }
 
         @Override
@@ -304,10 +305,11 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         }
 
         private void sendStateForEditing(JSONObject message) {
-            final ViewSnapshot snapshot;
             try {
                 final JSONObject payload = message.getJSONObject("payload");
-                snapshot = mProtocol.readSnapshotConfig(payload);
+                if (payload.has("config")) {
+                    mSnapshot = mProtocol.readSnapshotConfig(payload);
+                }
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
@@ -318,6 +320,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                 return;
             }
             // ELSE config is valid:
+            if (null == mSnapshot) {
+                sendError("No snapshot configuration was sent.");
+                Log.w(LOGTAG, "Mixpanel editor is misconfigured, sent a snapshot request without configuration.");
+            }
 
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
@@ -333,7 +339,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     final View rootView = a.getWindow().getDecorView().getRootView();
                     a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
                     final float scale = 1f / mDisplayMetrics.density;
-                    Log.d(LOGTAG, "Scaling by " + scale);
                     final RootViewInfo info = new RootViewInfo(activityName, scale, rootView);
                     rootViews.add(info);
                 }
@@ -353,7 +358,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     }
 
                     final RootViewInfo info = rootViews.get(i);
-                    snapshot.snapshot(info.activityName, info.scale, info.rootView, out);
+                    mSnapshot.snapshot(info.activityName, info.scale, info.rootView, out);
                 }
                 writer.write("]"); // activities
                 writer.write("}"); // payload
@@ -417,6 +422,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         }
 
         private EditorConnection mEditorConnection;
+        private ViewSnapshot mSnapshot;
         private final Context mContext;
         private final String mToken;
         private final DisplayMetrics mDisplayMetrics;

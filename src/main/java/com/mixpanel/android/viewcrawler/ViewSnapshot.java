@@ -80,7 +80,7 @@ import java.util.List;
             final Bitmap rawBitmap = rootView.getDrawingCache();
             final int scaledWidth = (int) (rawBitmap.getWidth() * scale);
             final int scaledHeight = (int) (rawBitmap.getHeight() * scale);
-            bitmap = Bitmap.createScaledBitmap(rawBitmap, scaledWidth, scaledHeight, false);
+            bitmap = Bitmap.createScaledBitmap(rawBitmap, scaledWidth, scaledHeight, true);
         } catch (AndroidRuntimeException e) {
             // This can happen if buildDrawingCache invalidates the view, or basically anything in
             // View.draw tries to change the state of the view- we'll get a threading error in this case.
