@@ -100,7 +100,7 @@ import java.util.List;
         if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
             out.write('"');
             final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, imageOut);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 40, imageOut);
             imageOut.flush();
             out.write('\"');
         } else {
@@ -154,7 +154,7 @@ import java.util.List;
                     children.put(child.hashCode());
                 }
             }
-            dump.put("children", children);
+            dump.put("subviews", children);
         } catch (JSONException impossible) {
             throw new RuntimeException("Apparently Impossible JSONException", impossible);
         }
