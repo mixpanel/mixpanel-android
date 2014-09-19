@@ -66,13 +66,15 @@ public class ViewSnapshotTest extends AndroidTestCase {
         mRootView.layout(0, 0, 768, 1280);
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", mRootView, out);
+        mSnapshot.snapshot("TEST CLASS", 1.0f, mRootView, out);
 
         final JSONObject json = new JSONObject(new String(out.toByteArray()));
-        assertEquals("TEST CLASS", json.getString("class"));
-        assertEquals(mRootView.hashCode(), json.getInt("rootView"));
+        assertEquals("TEST CLASS", json.getString("activity"));
 
-        final JSONArray viewsJson = json.getJSONArray("views");
+        final JSONObject serializedObjects = json.getJSONObject("serialized_objects");
+        assertEquals(mRootView.hashCode(), serializedObjects.getInt("rootObject"));
+
+        final JSONArray viewsJson = serializedObjects.getJSONArray("objects");
         assertEquals(mRootView.mAllViews.size(), viewsJson.length());
 
         final Map<Integer, View> viewsByHashcode = new HashMap<Integer, View>(mRootView.mViewsByHashcode);
@@ -88,7 +90,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
             assertEquals(found.getHeight(), viewDesc.getInt("height"));
             assertEquals(found.getWidth(), viewDesc.getInt("width"));
 
-            final JSONArray children = viewDesc.getJSONArray("children");
+            final JSONArray children = viewDesc.getJSONArray("subviews");
             if (found instanceof ViewGroup) {
                 final ViewGroup group = (ViewGroup) found;
                 final int childCount = group.getChildCount();
@@ -129,7 +131,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
     public void testNoLayoutSnapshot() throws IOException, JSONException {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", mRootView, out);
+        mSnapshot.snapshot("TEST CLASS", 1.0f, mRootView, out);
 
         final JSONObject json = new JSONObject(new String(out.toByteArray()));
         assertTrue(json.isNull("screenshot"));

@@ -22,63 +22,66 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEdit(JSONObject source, ViewVisitor.OnVisitedListener listener)
-            throws BadInstructionsException {
+    public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener)
+        throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
-            final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
-
-            for (int i = 0; i < pathDesc.length(); i++) {
-                final JSONObject targetView = pathDesc.getJSONObject(i);
-                final String targetViewClass = targetView.getString("view_class");
-                final int targetIndex = targetView.getInt("index");
-                path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex));
-            }
+            final List<ViewVisitor.PathElement> path = readPath(pathDesc);
 
             if (path.size() == 0) {
                 throw new BadInstructionsException("Path selector was empty.");
             }
 
-            if (source.has("property")) {
-                final ViewVisitor.PathElement pathEnd = path.get(path.size() - 1);
-                final String targetClassName = pathEnd.viewClassName;
-                final Class targetClass;
-                try {
-                    targetClass = Class.forName(targetClassName);
-                } catch (ClassNotFoundException e) {
-                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
-                }
+            final String eventName = source.getString("event_name");
+            final String eventType = source.getString("event_type");
+            if ("click".equals(eventType)) {
+                return new ViewVisitor.AddListenerVisitor(path, eventName, listener);
+            } else if ("detected".equals(eventType)) {
+                return new ViewVisitor.ViewDetectorVisitor(path, eventName, listener);
+            } else {
+                throw new BadInstructionsException("Mixpanel can't track event type \"" + eventType + "\"");
+            }
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
+        }
+    }
 
-                final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+    public ViewVisitor readEdit(JSONObject source)
+            throws BadInstructionsException {
+        try {
+            final JSONArray pathDesc = source.getJSONArray("path");
+            final List<ViewVisitor.PathElement> path = readPath(pathDesc);
 
-                final JSONArray argsAndTypes = source.getJSONArray("args");
-                final Object[] methodArgs = new Object[argsAndTypes.length()];
-                for (int i = 0; i < argsAndTypes.length(); i++) {
-                    final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                    final Object jsonArg = argPlusType.get(0);
-                    final String argType = argPlusType.getString(1);
-                    methodArgs[i] = convertArgument(jsonArg, argType);
-                }
-
-                final Caller mutator = prop.makeMutator(methodArgs);
-                if (null == mutator) {
-                    throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
-                }
-
-                return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
-            } else if (source.has("event_name")) {
-                final String eventName = source.getString("event_name");
-                final String eventType = source.getString("event_type");
-                if ("click".equals(eventType)) {
-                    return new ViewVisitor.AddListenerVisitor(path, eventName, listener);
-                } else if ("detected".equals(eventType)) {
-                    return new ViewVisitor.ViewDetectorVisitor(path, eventName, listener);
-                } else {
-                    throw new BadInstructionsException("Mixpanel can't track event type \"" + eventType + "\"");
-                }
+            if (path.size() == 0) {
+                throw new BadInstructionsException("Path selector was empty.");
             }
 
-            throw new BadInstructionsException("Instructions contained neither a method to call nor an event to track");
+            final ViewVisitor.PathElement pathEnd = path.get(path.size() - 1);
+            final String targetClassName = pathEnd.viewClassName;
+            final Class targetClass;
+            try {
+                targetClass = Class.forName(targetClassName);
+            } catch (ClassNotFoundException e) {
+                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+            }
+
+            final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+
+            final JSONArray argsAndTypes = source.getJSONArray("args");
+            final Object[] methodArgs = new Object[argsAndTypes.length()];
+            for (int i = 0; i < argsAndTypes.length(); i++) {
+                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                final Object jsonArg = argPlusType.get(0);
+                final String argType = argPlusType.getString(1);
+                methodArgs[i] = convertArgument(jsonArg, argType);
+            }
+
+            final Caller mutator = prop.makeMutator(methodArgs);
+            if (null == mutator) {
+                throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
+            }
+
+            return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
@@ -110,6 +113,20 @@ import java.util.List;
         } catch (ClassNotFoundException e) {
             throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
         }
+    }
+
+    private List<ViewVisitor.PathElement> readPath(JSONArray pathDesc)
+        throws JSONException {
+        final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
+
+        for (int i = 0; i < pathDesc.length(); i++) {
+            final JSONObject targetView = pathDesc.getJSONObject(i);
+            final String targetViewClass = targetView.getString("view_class");
+            final int targetIndex = targetView.getInt("index");
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex));
+        }
+
+        return path;
     }
 
     private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)

@@ -48,13 +48,13 @@ public class EditProtocolTest extends AndroidTestCase {
     }
 
     public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
-        final ViewVisitor visitor = mProtocol.readEdit(mPropertyEdit, mListener);
+        final ViewVisitor visitor = mProtocol.readEdit(mPropertyEdit);
         visitor.visit(mRootView);
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
     }
 
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
-        final ViewVisitor eventListener = mProtocol.readEdit(mClickEvent, mListener);
+        final ViewVisitor eventListener = mProtocol.readEventBinding(mClickEvent, mListener);
         eventListener.visit(mRootView);
         mRootView.mAdHocButton2.performClick();
         assertEquals(mListener.visitsRecorded.size(), 1);
@@ -62,7 +62,7 @@ public class EditProtocolTest extends AndroidTestCase {
     }
 
     public void testAppearsEvent() throws EditProtocol.BadInstructionsException {
-        final ViewVisitor appearsListener = mProtocol.readEdit(mAppearsEvent, mListener);
+        final ViewVisitor appearsListener = mProtocol.readEventBinding(mAppearsEvent, mListener);
         appearsListener.visit(mRootView);
         assertTrue(mListener.visitsRecorded.isEmpty());
 

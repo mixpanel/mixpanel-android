@@ -51,6 +51,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
         mEditorChanges = new HashMap<String, List<JSONObject>>();
+        mEventBindings = new HashMap<String, List<JSONObject>>();
         mProtocol = new EditProtocol();
 
         final Application app = (Application) context.getApplicationContext();
@@ -89,31 +90,55 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         synchronized (mLiveActivities) {
             for (Activity activity : mLiveActivities) {
                 final String activityName = activity.getClass().getCanonicalName();
+                final View rootView = activity.getWindow().getDecorView().getRootView();
 
                 synchronized (mPersistentChanges) {
                     final List<JSONObject> persistentChanges = mPersistentChanges.get(activityName);
-                    applyChangesFromList(activity, persistentChanges);
+                    applyChangesFromList(rootView, persistentChanges);
                 }
 
                 synchronized (mEditorChanges) {
                     final List<JSONObject> editorChanges = mEditorChanges.get(activityName);
-                    applyChangesFromList(activity, editorChanges);
+                    applyChangesFromList(rootView, editorChanges);
+                }
+
+                synchronized (mEventBindings) {
+                    final List<JSONObject> eventBindings = mEventBindings.get(activityName);
+                    applyBindingsFromList(rootView, eventBindings);
                 }
             }
         }
     }
 
     // Must be called on UI Thread
-    private void applyChangesFromList(Activity activity, List<JSONObject> changes) {
+    private void applyChangesFromList(View rootView, List<JSONObject> changes) {
         if (null != changes) {
-            for (JSONObject j : changes) {
+            int size = changes.size();
+            for (int i = 0; i < size; i++) {
+                JSONObject desc = changes.get(i);
                 try {
-                    final ViewVisitor inst = mProtocol.readEdit(j, this);
-                    final View rootView = activity.getWindow().getDecorView().getRootView();
-                    final EditBinding binding = new EditBinding(rootView, inst);
+                    final ViewVisitor visitor = mProtocol.readEdit(desc);
+                    final EditBinding binding = new EditBinding(rootView, visitor);
                     binding.performEdit();
                 } catch (EditProtocol.BadInstructionsException e) {
                     Log.e(LOGTAG, "Bad change request cannot be applied", e);
+                }
+            }
+        }
+    }
+
+    // Must be called on the UI Thread
+    private void applyBindingsFromList(View rootView, List<JSONObject> events) {
+        if (null != events) {
+            int size = events.size();
+            for (int i = 0; i < size; i++) {
+                JSONObject desc = events.get(i);
+                try {
+                    final ViewVisitor visitor = mProtocol.readEventBinding(desc, this);
+                    final EditBinding binding = new EditBinding(rootView, visitor);
+                    binding.performEdit();
+                } catch (EditProtocol.BadInstructionsException e) {
+                    Log.e(LOGTAG, "Bad binding cannot be applied", e);
                 }
             }
         }
@@ -206,15 +231,20 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                 case MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED:
                     handlePersistentChangesReceived((JSONObject) msg.obj);
                     break;
+                case MESSAGE_EVENT_BINDINGS_RECEIVED:
+                    handleEventBindingsReceived((JSONObject) msg.obj);
+                    break;
             }
         }
 
         private void initializeChanges() {
             final SharedPreferences preferences = getSharedPreferences();
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
-            if (null != storedChanges) {
-                try {
+            final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
+            try {
+                if (null != storedChanges) {
                     final JSONArray changes = new JSONArray(storedChanges);
+
                     synchronized(mPersistentChanges) {
                         mPersistentChanges.clear();
                         for (int i = 0; i < changes.length(); i++) {
@@ -222,11 +252,25 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                             loadChange(mPersistentChanges, change);
                         }
                     }
-                } catch (JSONException e) {
-                    Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
-                    preferences.edit().remove(SHARED_PREF_CHANGES_KEY).apply();
-                    return;
                 }
+
+                if (null != storedBindings) {
+                    final JSONArray bindings = new JSONArray(storedBindings);
+
+                    synchronized(mEventBindings) {
+                        mEventBindings.clear();
+                        for (int i = 0; i < bindings.length(); i++) {
+                            final JSONObject event = bindings.getJSONObject(i);
+                            loadEventBinding(event);
+                        }
+                    }
+                }
+            } catch (JSONException e) {
+                Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
+                final SharedPreferences.Editor editor = preferences.edit();
+                editor.remove(SHARED_PREF_CHANGES_KEY);
+                editor.remove(SHARED_PREF_BINDINGS_KEY);
+                editor.apply();
             }
         }
 
@@ -288,7 +332,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             try {
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
-                writer.write("\"device_type\": \"android\",");
+                writer.write("\"device_type\": \"Android\",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
                 writer.write("}"); // payload
@@ -400,7 +444,26 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             applyAllChangesOnUiThread();
         }
 
-        private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange) throws JSONException {
+        private void handleEventBindingsReceived(JSONObject message) {
+            final JSONArray events;
+            try {
+                final JSONObject payload = message.getJSONObject("payload");
+                events = payload.getJSONArray("events");
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Bad event bindings received", e);
+                return;
+            }
+
+            final SharedPreferences preferences = getSharedPreferences();
+            final SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(SHARED_PREF_BINDINGS_KEY, events.toString());
+            editor.apply();
+            initializeChanges();
+            applyAllChangesOnUiThread();
+        }
+
+        private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange)
+                throws JSONException {
             final String targetActivity = newChange.getString("target");
             final JSONObject change = newChange.getJSONObject("change");
 
@@ -416,8 +479,23 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             }
         }
 
+        private void loadEventBinding(JSONObject newBinding)
+                throws JSONException {
+            final String targetActivity = newBinding.getString("target_activity");
+            synchronized (mEventBindings) {
+                final List<JSONObject> bindingList;
+                if (mEventBindings.containsKey(targetActivity)) {
+                    bindingList = mEventBindings.get(targetActivity);
+                } else {
+                    bindingList = new ArrayList<JSONObject>();
+                    mEventBindings.put(targetActivity, bindingList);
+                }
+                bindingList.add(newBinding);
+            }
+        }
+
         private SharedPreferences getSharedPreferences() {
-            final String sharedPrefsName = SHARED_PREF_CHANGES_FILE + mToken;
+            final String sharedPrefsName = SHARED_PREF_EDITS_FILE + mToken;
             return mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
         }
 
@@ -447,6 +525,13 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         @Override
         public void persistEdits(JSONObject message) {
             Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void bindEvents(JSONObject message) {
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
@@ -506,6 +591,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     // Accessed from Multiple Threads, must be synchronized
     private final Map<String, List<JSONObject>> mPersistentChanges;
     private final Map<String, List<JSONObject>> mEditorChanges;
+    private final Map<String, List<JSONObject>> mEventBindings;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
@@ -517,8 +603,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     private final MixpanelAPI mMixpanel;
 
 
-    private static final String SHARED_PREF_CHANGES_FILE = "mixpanel.abtesting.changes";
-    private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.abtesting.changes";
+    private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
+    private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
+    private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
@@ -526,6 +613,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
     private static final int MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED = 5;
+    private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
