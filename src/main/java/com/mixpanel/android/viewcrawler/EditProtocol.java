@@ -2,6 +2,7 @@ package com.mixpanel.android.viewcrawler;
 
 import android.graphics.BitmapFactory;
 import android.util.Base64;
+import android.view.View;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -115,7 +116,8 @@ import java.util.List;
         }
     }
 
-    private List<ViewVisitor.PathElement> readPath(JSONArray pathDesc)
+    // Package access FOR TESTING ONLY
+    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc)
         throws JSONException {
         final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 

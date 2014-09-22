@@ -1,7 +1,6 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.content.Context;
-import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -37,20 +36,22 @@ public class TestView extends FrameLayout {
 
         mSecondLayer.add(linear);
 
-        View text1 = new TextView(getContext());
+        final TextView text1 = new TextView(getContext());
         text1.setId(TEXT_VIEW_ID);
         text1.setTag(CRAZY_TAG);
 
         linear.addView(text1);
         mAllViews.add(text1);
         mThirdLayer.add(text1);
+        mTextView1 = text1;
 
-        View text2 = new TextView(getContext());
+        final TextView text2 = new TextView(getContext());
         text2.setTag(SIMPLE_TAG);
 
         linear.addView(text2);
         mAllViews.add(text2);
         mThirdLayer.add(text2);
+        mTextView2 = text2;
 
         mButtonGroup = new LinearLayout(getContext());
         linear.addView(mButtonGroup);
@@ -164,6 +165,8 @@ public class TestView extends FrameLayout {
     public final Set<View> mAllViews;
     public final View mButtonParentView;
     public final ViewGroup mButtonGroup;
+    public final TextView mTextView1;
+    public final TextView mTextView2;
     public final AdHocButton1 mAdHocButton1;
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;

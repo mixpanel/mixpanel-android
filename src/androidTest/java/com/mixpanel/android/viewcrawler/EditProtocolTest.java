@@ -7,6 +7,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -22,6 +23,11 @@ public class EditProtocolTest extends AndroidTestCase {
         mPropertyEdit = new JSONObject(PROPERTY_EDIT);
         mClickEvent = new JSONObject(CLICK_EVENT);
         mAppearsEvent = new JSONObject(APPEARS_EVENT);
+        mJustClassPath = new JSONArray(JUST_CLASS_PATH);
+        mJustIdPath = new JSONArray(JUST_ID_PATH);
+        mJustIndexPath = new JSONArray(JUST_INDEX_PATH);
+        mJustTagPath = new JSONArray(JUST_TAG_PATH);
+
         mListener = new TestVisitedListener();
         mRootView = new TestView(getContext());
     }
@@ -45,6 +51,69 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(prop2.targetClass, View.class);
         assertEquals(prop3.targetClass, TextView.class);
         assertEquals(prop4.targetClass, ImageView.class);
+    }
+
+    public void testReadPaths() throws JSONException {
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustClassPath);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals("android.widget.Button", last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(-1, last.viewId);
+            assertEquals(null, last.tag);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdPath);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(2000, last.viewId);
+            assertEquals(null, last.tag);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIndexPath);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(2, last.index);
+            assertEquals(-1, last.viewId);
+            assertEquals(null, last.tag);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustTagPath);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(-1, last.viewId);
+            assertEquals("this_is_a_simple_tag", last.tag);
+        }
+        mProtocol.readPath(mJustTagPath);
     }
 
     public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
@@ -86,6 +155,10 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONObject mPropertyEdit;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
+    private JSONArray mJustClassPath;
+    private JSONArray mJustIdPath;
+    private JSONArray mJustIndexPath;
+    private JSONArray mJustTagPath;
     private TestVisitedListener mListener;
     private TestView mRootView;
 
@@ -93,4 +166,9 @@ public class EditProtocolTest extends AndroidTestCase {
     private final String PROPERTY_EDIT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]]}";
     private final String CLICK_EVENT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}";
     private final String APPEARS_EVENT = "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":3}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}";
+
+    private final String JUST_CLASS_PATH = "[{},{},{},{\"view_class\":\"android.widget.Button\"}]";
+    private final String JUST_INDEX_PATH = "[{},{},{},{\"index\": 2}]";
+    private final String JUST_TAG_PATH = "[{},{},{},{\"tag\": \"this_is_a_simple_tag\"}]";
+    private final String JUST_ID_PATH = "[{},{},{},{\"id\": 2000}]";
 }

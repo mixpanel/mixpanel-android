@@ -8,7 +8,9 @@ import android.test.AndroidTestCase;
 import android.view.View;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ViewVisitorTest extends AndroidTestCase {
     public void setUp() throws Exception {
@@ -37,6 +39,30 @@ public class ViewVisitorTest extends AndroidTestCase {
 
         mFailingRootPath4 = new ArrayList<ViewVisitor.PathElement>();
         mFailingRootPath4.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, "NO SUCH TAG"));
+
+        mRootWildcardPath = new ArrayList<ViewVisitor.PathElement>();
+        mRootWildcardPath.add(new ViewVisitor.PathElement(null, -1, -1, null));
+
+        mRootGoodTagIdPath = new ArrayList<ViewVisitor.PathElement>();
+        mRootGoodTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, TestView.CRAZY_TAG));
+
+        mRootBadTagIdPath = new ArrayList<ViewVisitor.PathElement>();
+        mRootBadTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, "NO DICE"));
+
+        mThirdLayerViewId = new ArrayList<ViewVisitor.PathElement>();
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, null));
+
+        mThirdLayerViewTag = new ArrayList<ViewVisitor.PathElement>();
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, TestView.CRAZY_TAG));
+
+        mThirdLayerWildcard = new ArrayList<ViewVisitor.PathElement>();
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, null));
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, null));
 
         mTrackListener = new CollectingVisitedListener();
 
@@ -67,15 +93,56 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
 
         {
+            final CollectorEditor rootPathEditor = new CollectorEditor(mRootGoodTagIdPath);
+            rootPathEditor.visit(mRootView);
+            assertEquals(rootPathEditor.collected.size(), 1);
+            assertEquals(rootPathEditor.collected.get(0), mRootView);
+        }
+
+        {
             final CollectorEditor rootPathFails1 = new CollectorEditor(mFailingRootPath1);
             rootPathFails1.visit(mRootView);
             assertEquals(rootPathFails1.collected.size(), 0);
         }
 
         {
-            final CollectorEditor rootPathFails2 = new CollectorEditor(mFailingRootPath2);
-            rootPathFails2.visit(mRootView);
-            assertEquals(rootPathFails2.collected.size(), 0);
+            final CollectorEditor rootPathFails3 = new CollectorEditor(mFailingRootPath3);
+            rootPathFails3.visit(mRootView);
+            assertEquals(rootPathFails3.collected.size(), 0);
+        }
+
+        {
+            final CollectorEditor rootPathFails4 = new CollectorEditor(mFailingRootPath4);
+            rootPathFails4.visit(mRootView);
+            assertEquals(rootPathFails4.collected.size(), 0);
+        }
+
+        {
+            final CollectorEditor rootPathFails5 = new CollectorEditor(mRootBadTagIdPath);
+            rootPathFails5.visit(mRootView);
+            assertEquals(rootPathFails5.collected.size(), 0);
+        }
+
+        {
+            final CollectorEditor collector = new CollectorEditor(mThirdLayerViewId);
+            collector.visit(mRootView);
+            assertEquals(collector.collected.size(), 1);
+            assertEquals(collector.collected.get(0), mRootView.mTextView1);
+        }
+
+        {
+            final CollectorEditor collector = new CollectorEditor(mThirdLayerViewTag);
+            collector.visit(mRootView);
+            assertEquals(collector.collected.size(), 1);
+            assertEquals(collector.collected.get(0), mRootView.mTextView1);
+        }
+
+        {
+            final CollectorEditor collector = new CollectorEditor(mThirdLayerWildcard);
+            collector.visit(mRootView);
+            assertEquals(collector.collected.size(), mRootView.mThirdLayer.size());
+            final Set<View> allFound = new HashSet(collector.collected);
+            assertEquals(mRootView.mThirdLayer, allFound);
         }
     }
 
@@ -255,6 +322,13 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<ViewVisitor.PathElement> mFailingRootPath2;
     private List<ViewVisitor.PathElement> mFailingRootPath3;
     private List<ViewVisitor.PathElement> mFailingRootPath4;
+
+    private List<ViewVisitor.PathElement> mRootWildcardPath;
+    private List<ViewVisitor.PathElement> mRootGoodTagIdPath;
+    private List<ViewVisitor.PathElement> mRootBadTagIdPath;
+    private List<ViewVisitor.PathElement> mThirdLayerViewId;
+    private List<ViewVisitor.PathElement> mThirdLayerViewTag;
+    private List<ViewVisitor.PathElement> mThirdLayerWildcard;
     private CollectingVisitedListener mTrackListener;
     private TestView mRootView;
 }
