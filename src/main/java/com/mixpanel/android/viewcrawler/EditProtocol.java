@@ -121,9 +121,35 @@ import java.util.List;
 
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
-            final String targetViewClass = targetView.getString("view_class");
-            final int targetIndex = targetView.getInt("index");
-            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex));
+            final String targetViewClass;
+            if (targetView.has("view_class")) {
+                targetViewClass = targetView.getString("view_class");
+            } else {
+                targetViewClass = null;
+            }
+
+            final int targetIndex;
+            if (targetView.has("index")) {
+                targetIndex = targetView.getInt("index");
+            } else {
+                targetIndex = -1;
+            }
+
+            final int targetId;
+            if (targetView.has("id")) {
+                targetId = targetView.getInt("id");
+            } else {
+                targetId = -1;
+            }
+
+            final String targetTag;
+            if (targetView.has("tag")) {
+                targetTag = targetView.getString("tag");
+            } else {
+                targetTag = null;
+            }
+
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, targetTag));
         }
 
         return path;

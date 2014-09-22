@@ -21,9 +21,11 @@ import java.util.List;
     }
 
     public static class PathElement {
-        public PathElement(String vClass, int ix) {
+        public PathElement(String vClass, int ix, int vId, String vTag) {
             viewClassName = vClass;
             index = ix;
+            viewId = vId;
+            tag = vTag;
         }
 
         public String toString() {
@@ -32,25 +34,11 @@ import java.util.List;
 
         public final String viewClassName;
         public final int index;
+        public final int viewId;
+        public final String tag;
     }
 
-    public static abstract class ViewEditor extends ViewVisitor {
-        public ViewEditor(List<PathElement> path) {
-            super(path);
-        }
-
-        @Override
-        public void visit(View rootView) {
-            final View target = findTarget(rootView);
-            if (target != null) {
-                applyEdit(target);
-            }
-        }
-
-        protected abstract void applyEdit(View targetView);
-    }
-
-    public static class PropertySetVisitor extends ViewEditor {
+    public static class PropertySetVisitor extends ViewVisitor {
         public PropertySetVisitor(List<PathElement> path, Caller mutator, Caller accessor) {
             super(path);
             mMutator = mutator;
@@ -58,12 +46,12 @@ import java.util.List;
         }
 
         @Override
-        public void applyEdit(View target) {
+        public void accumulate(View found) {
             if (null != mAccessor) {
                 final Object[] setArgs = mMutator.getArgs();
                 if (1 == setArgs.length) {
                     final Object desiredValue = setArgs[0];
-                    final Object currentValue = mAccessor.applyMethod(target);
+                    final Object currentValue = mAccessor.applyMethod(found);
 
                     if (desiredValue == currentValue) {
                         return;
@@ -83,14 +71,14 @@ import java.util.List;
                 }
             }
 
-            mMutator.applyMethod(target);
+            mMutator.applyMethod(found);
         }
 
         private final Caller mMutator;
         private final Caller mAccessor;
     }
 
-    public static class AddListenerVisitor extends ViewEditor {
+    public static class AddListenerVisitor extends ViewVisitor {
         public AddListenerVisitor(List<PathElement> path, String eventName, OnVisitedListener listener) {
             super(path);
             mEventName = eventName;
@@ -98,8 +86,8 @@ import java.util.List;
         }
 
         @Override
-        public void applyEdit(View target) {
-            View.AccessibilityDelegate realDelegate = getOldDelegate(target);
+        public void accumulate(View found) {
+            View.AccessibilityDelegate realDelegate = getOldDelegate(found);
             if (realDelegate instanceof TrackingAccessibilityDelegate) {
                 final TrackingAccessibilityDelegate oldTrackingDelegate = (TrackingAccessibilityDelegate) realDelegate;
                 final String oldEventName = oldTrackingDelegate.getEventName();
@@ -111,7 +99,7 @@ import java.util.List;
             }
 
             View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(mEventName, realDelegate);
-            target.setAccessibilityDelegate(newDelegate);
+            found.setAccessibilityDelegate(newDelegate);
         }
 
         private View.AccessibilityDelegate getOldDelegate(View v) {
@@ -175,13 +163,12 @@ import java.util.List;
             mEventName = eventName;
         }
 
-        public void visit(View rootView) {
-            final View target = findTarget(rootView);
-            if (target != null && !mSeen) {
+        protected void accumulate(View found) {
+            if (found != null && !mSeen) { // TODO THIS BREAKS ON MULTIPLE VISITS! PROBABLY?
                 mListener.OnVisited(mEventName);
             }
 
-            mSeen = (target != null);
+            mSeen = (found != null);
         }
 
         private boolean mSeen;
@@ -193,72 +180,90 @@ import java.util.List;
         mPath = path;
     }
 
-    public abstract void visit(View rootView);
-
-    protected View findTarget(View rootView) {
+    public void visit(View rootView) {
         if (mPath.isEmpty()) {
-            return null;
+            return;
         }
 
         final PathElement rootPathElement = mPath.get(0);
         final List<PathElement> childPath = mPath.subList(1, mPath.size());
 
-        if (rootPathElement.index == 0 &&
-            matchesClassName(rootPathElement.viewClassName, rootView)) {
+        if (rootPathElement.index <= 0 &&
+                matches(rootPathElement, rootView)) {
 
             if (childPath.isEmpty()) {
-                return rootView;
-            }
-
-            if (rootView instanceof ViewGroup) {
+                accumulate(rootView);
+            } else if (rootView instanceof ViewGroup) {
                 final ViewGroup rootParent = (ViewGroup) rootView;
-                return findTargetInChildren(rootParent, childPath);
+                findTargetsInChildren(rootParent, childPath);
             }
         }
-
-        return null;
     }
 
-    private View findTargetInChildren(ViewGroup parent, List<PathElement> path) {
+    protected abstract void accumulate(View found);
+
+    private void findTargetsInChildren(ViewGroup parent, List<PathElement> path) {
         final PathElement matchElement = path.get(0);
         final List<PathElement> nextPath = path.subList(1, path.size());
-        final String matchClass = matchElement.viewClassName;
         final int matchIndex = matchElement.index;
 
         final int childCount = parent.getChildCount();
         int matchCount = 0;
         for (int i = 0; i < childCount; i++) {
             final View child = parent.getChildAt(i);
-            if (matchesClassName(matchClass, child)) {
-                if (matchCount == matchIndex) {
+            if (matches(matchElement, child)) {
+                if (matchCount == matchIndex || -1 == matchIndex) {
                     if (nextPath.isEmpty()) {
-                        return child;
+                        accumulate(child);
                     } else if (child instanceof ViewGroup) {
                         final ViewGroup childGroup = (ViewGroup) child;
-                        return findTargetInChildren(childGroup, nextPath);
+                        findTargetsInChildren(childGroup, nextPath);
                     }
-                } else {
-                    matchCount++;
+                }
+
+                matchCount++;
+                if (matchIndex >= 0 && matchCount > matchIndex) {
+                    return;
                 }
             }
         }
-
-        return null;
     }
 
-    private boolean matchesClassName(String className, Object o) {
-        Class klass = o.getClass();
-        while (true) {
-            if (klass.getCanonicalName().equals(className)) {
-                return true;
-            }
+    private boolean matches(PathElement matchElement, View subject) {
+        final String matchClassName = matchElement.viewClassName;
 
-            if (klass == Object.class) {
-                return false;
-            } else {
+        if (null != matchClassName) {
+            Class klass = subject.getClass();
+            while (true) {
+                if (klass.getCanonicalName().equals(matchClassName)) {
+                    break;
+                }
+
+                if (klass == Object.class) {
+                    return false;
+                }
+
                 klass = klass.getSuperclass();
             }
         }
+
+        final int matchId = matchElement.viewId;
+        if (-1 != matchId) {
+            final int subjectId = subject.getId();
+            if (subjectId != matchId) {
+                return false;
+            }
+        }
+
+        final String matchTag = matchElement.tag;
+        if (null != matchTag) {
+            final Object subjectTag = subject.getTag();
+            if (! matchTag.equals(subjectTag.toString())) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private final List<PathElement> mPath;

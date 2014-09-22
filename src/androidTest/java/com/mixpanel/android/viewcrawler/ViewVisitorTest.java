@@ -15,19 +15,28 @@ public class ViewVisitorTest extends AndroidTestCase {
         super.setUp();
 
         mButton2Path = new ArrayList<ViewVisitor.PathElement>();
-        mButton2Path.add(new ViewVisitor.PathElement("com.mixpanel.android.viewcrawler.TestView", 0));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.Button", 1));
+        mButton2Path.add(new ViewVisitor.PathElement("com.mixpanel.android.viewcrawler.TestView", 0, -1, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.Button", 1, -1, null));
 
-        mWorkingRootPath = new ArrayList<ViewVisitor.PathElement>();
-        mWorkingRootPath.add(new ViewVisitor.PathElement("java.lang.Object", 0));
+        mWorkingRootPath1 = new ArrayList<ViewVisitor.PathElement>();
+        mWorkingRootPath1.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, null));
+
+        mWorkingRootPath2 = new ArrayList<ViewVisitor.PathElement>();
+        mWorkingRootPath2.add(new ViewVisitor.PathElement(null, -1, -1, null));
 
         mFailingRootPath1 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath1.add(new ViewVisitor.PathElement("android.widget.Button", 0));
+        mFailingRootPath1.add(new ViewVisitor.PathElement("android.widget.Button", 0, -1, null));
 
         mFailingRootPath2 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath2.add(new ViewVisitor.PathElement("java.lang.Object", 1));
+        mFailingRootPath2.add(new ViewVisitor.PathElement("java.lang.Object", 1, -1, null));
+
+        mFailingRootPath3 = new ArrayList<ViewVisitor.PathElement>();
+        mFailingRootPath3.add(new ViewVisitor.PathElement("java.lang.Object", 0, 1234, null));
+
+        mFailingRootPath4 = new ArrayList<ViewVisitor.PathElement>();
+        mFailingRootPath4.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, "NO SUCH TAG"));
 
         mTrackListener = new CollectingVisitedListener();
 
@@ -44,7 +53,14 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
 
         {
-            final CollectorEditor rootPathEditor = new CollectorEditor(mWorkingRootPath);
+            final CollectorEditor rootPathEditor = new CollectorEditor(mWorkingRootPath1);
+            rootPathEditor.visit(mRootView);
+            assertEquals(rootPathEditor.collected.size(), 1);
+            assertEquals(rootPathEditor.collected.get(0), mRootView);
+        }
+
+        {
+            final CollectorEditor rootPathEditor = new CollectorEditor(mWorkingRootPath2);
             rootPathEditor.visit(mRootView);
             assertEquals(rootPathEditor.collected.size(), 1);
             assertEquals(rootPathEditor.collected.get(0), mRootView);
@@ -208,14 +224,14 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
     }
 
-    private static class CollectorEditor extends ViewVisitor.ViewEditor {
+    private static class CollectorEditor extends ViewVisitor {
         public CollectorEditor(List<PathElement> path) {
             super(path);
             collected = new ArrayList<View>();
         }
 
         @Override
-        protected void applyEdit(View targetView) {
+        protected void accumulate(View targetView) {
             collected.add(targetView);
         }
 
@@ -233,9 +249,12 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     private List<ViewVisitor.PathElement> mButton2Path;
-    private List<ViewVisitor.PathElement> mWorkingRootPath;
+    private List<ViewVisitor.PathElement> mWorkingRootPath1;
+    private List<ViewVisitor.PathElement> mWorkingRootPath2;
     private List<ViewVisitor.PathElement> mFailingRootPath1;
     private List<ViewVisitor.PathElement> mFailingRootPath2;
+    private List<ViewVisitor.PathElement> mFailingRootPath3;
+    private List<ViewVisitor.PathElement> mFailingRootPath4;
     private CollectingVisitedListener mTrackListener;
     private TestView mRootView;
 }
