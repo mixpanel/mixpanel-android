@@ -55,6 +55,14 @@ import java.nio.ByteBuffer;
         return !mClient.isClosed() && !mClient.isClosing() && !mClient.isFlushAndClose();
     }
 
+    public void disconnect() {
+        try {
+            mClient.closeBlocking();
+        } catch (InterruptedException e) {
+            Log.e(LOGTAG, "Websocket connection was interrupted trying to close.");
+        }
+    }
+
     public BufferedOutputStream getBufferedOutputStream() {
         return new BufferedOutputStream(new WebSocketOutputStream());
     }

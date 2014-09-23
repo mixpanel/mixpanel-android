@@ -186,6 +186,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         public void onActivityStopped(Activity activity) {
             synchronized (mLiveActivities) {
                 mLiveActivities.remove(activity);
+                if (mLiveActivities.isEmpty()) {
+                    final Message message = mMessageThreadHandler.obtainMessage(MESSAGE_DISCONNECT_FROM_EDITOR);
+                    mMessageThreadHandler.sendMessage(message);
+                }
             }
         }
 
@@ -218,6 +222,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     break;
                 case MESSAGE_CONNECT_TO_EDITOR:
                     connectToEditor();
+                    break;
+                case MESSAGE_DISCONNECT_FROM_EDITOR:
+                    disconnectFromEditor();
                     break;
                 case MESSAGE_SEND_DEVICE_INFO:
                     sendDeviceInfo();
@@ -276,7 +283,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
 
         private void connectToEditor() {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "connectToEditor called");
+                Log.d(LOGTAG, "connecting to editor");
             }
 
             if (mEditorConnection != null && mEditorConnection.isValid()) {
@@ -298,6 +305,20 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             } catch (IOException e) {
                 Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             }
+        }
+
+        private void disconnectFromEditor() {
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "disconnecting from editor");
+            }
+
+            if (mEditorConnection == null || ! mEditorConnection.isValid()) {
+                if (MPConfig.DEBUG) {
+                    Log.d(LOGTAG, "Editor is already disconnected.");
+                }
+            }
+
+            mEditorConnection.disconnect();
         }
 
         private void sendError(String errorMessage) {
@@ -614,6 +635,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
     private static final int MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED = 5;
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
+    private static final int MESSAGE_DISCONNECT_FROM_EDITOR = 7;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
