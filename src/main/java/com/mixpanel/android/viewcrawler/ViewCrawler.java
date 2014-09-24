@@ -235,9 +235,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                 case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
                     handleEditorChangeReceived((JSONObject) msg.obj);
                     break;
-                case MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED:
-                    handlePersistentChangesReceived((JSONObject) msg.obj);
-                    break;
                 case MESSAGE_EVENT_BINDINGS_RECEIVED:
                     handleEventBindingsReceived((JSONObject) msg.obj);
                     break;
@@ -448,23 +445,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
             }
         }
 
-        private void handlePersistentChangesReceived(JSONObject message) {
-            final JSONArray changes;
-            try {
-                changes = message.getJSONArray("changes");
-            } catch (JSONException e) {
-                Log.e(LOGTAG, "Can't read persistent changes from JSONMessage " + message.toString(), e);
-                return;
-            }
-
-            final SharedPreferences preferences = getSharedPreferences();
-            final SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(SHARED_PREF_CHANGES_KEY, changes.toString());
-            editor.apply();
-            initializeChanges();
-            applyAllChangesOnUiThread();
-        }
-
         private void handleEventBindingsReceived(JSONObject message) {
             final JSONArray events;
             try {
@@ -544,13 +524,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         }
 
         @Override
-        public void persistEdits(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED);
-            msg.obj = message;
-            mMessageThreadHandler.sendMessage(msg);
-        }
-
-        @Override
         public void bindEvents(JSONObject message) {
             Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
             msg.obj = message;
@@ -610,6 +583,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
 
     // Map from canonical activity class name to description of changes
     // Accessed from Multiple Threads, must be synchronized
+
+    // When A/B Test changes are made available from decide, they'll live in mPersistentChanges
     private final Map<String, List<JSONObject>> mPersistentChanges;
     private final Map<String, List<JSONObject>> mEditorChanges;
     private final Map<String, List<JSONObject>> mEventBindings;
@@ -633,7 +608,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
     private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
-    private static final int MESSAGE_HANDLE_PERSISTENT_CHANGES_RECEIVED = 5;
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
     private static final int MESSAGE_DISCONNECT_FROM_EDITOR = 7;
 
