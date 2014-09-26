@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -186,10 +187,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         public void onActivityStopped(Activity activity) {
             synchronized (mLiveActivities) {
                 mLiveActivities.remove(activity);
-                if (mLiveActivities.isEmpty()) {
-                    final Message message = mMessageThreadHandler.obtainMessage(MESSAGE_DISCONNECT_FROM_EDITOR);
-                    mMessageThreadHandler.sendMessage(message);
-                }
             }
         }
 
@@ -351,6 +348,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
                 writer.write("\"device_type\": \"Android\",");
+                writer.write("\"device_name\": \"" + Build.BRAND + "/" + Build.MODEL + "\",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
                 writer.write("}"); // payload
