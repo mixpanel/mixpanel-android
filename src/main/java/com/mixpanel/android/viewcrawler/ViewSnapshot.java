@@ -2,10 +2,14 @@ package com.mixpanel.android.viewcrawler;
 
 
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Build;
 import android.util.AndroidRuntimeException;
 import android.util.Base64;
 import android.util.Base64OutputStream;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,28 +24,27 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 /* package */ class ViewSnapshot {
 
     public ViewSnapshot(List<PropertyDescription> properties) {
         mProperties = properties;
+        mScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     }
 
-    public void snapshot(String activityName, float scale, View rootView, OutputStream out) throws IOException {
+    public void snapshot(String activityName, View rootView, OutputStream out) throws IOException {
         final Writer writer = new OutputStreamWriter(out);
         writer.write("{");
 
         writer.write("\"activity\":");
         writer.write("\"" + activityName + "\"");
         writer.write(",");
-        writer.write("\"scale\":");
-        writer.write(String.format("%s", scale));
-        writer.write(",");
 
-        writer.write("\"screenshot\": ");
         writer.flush();
-        writeScreenshot(rootView, scale, out);
+        writeScreenshot(rootView, out);
         writer.write(",");
         writer.write("\"serialized_objects\": ");
 
@@ -65,25 +68,38 @@ import java.util.List;
 
     // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written
     // due to memory or rendering issues.
-    private void writeScreenshot(View rootView, float scale, OutputStream out) throws IOException {
+    private void writeScreenshot(View rootView, OutputStream out) throws IOException {
         // This screenshot method is not how the Android folks do it in View.createSnapshot,
         // but they use all kinds of secret internal stuff like clearing and setting
         // View.PFLAG_DIRTY_MASK and calling draw() - the below seems like the best we
         // can do without privileged access
 
-        final boolean originalCacheState = rootView.isDrawingCacheEnabled();
+        Bitmap rawBitmap = null;
 
-        Bitmap bitmap;
         try {
-            rootView.setDrawingCacheEnabled(true);
-            rootView.buildDrawingCache(true);
-            final Bitmap rawBitmap = rootView.getDrawingCache();
+            final Method createSnapshot = View.class.getDeclaredMethod("createSnapshot", Bitmap.Config.class, Integer.TYPE, Boolean.TYPE);
+            createSnapshot.setAccessible(true);
+            rawBitmap = (Bitmap) createSnapshot.invoke(rootView, Bitmap.Config.RGB_565, Color.WHITE, false);
+        } catch (NoSuchMethodException e) {
+            Log.d(LOGTAG, "Can't call createSnapshot, using drawCache", e);
+        } catch (IllegalArgumentException e) {
+            Log.d(LOGTAG, "Can't call createSnapshot with arguments", e);
+        } catch (InvocationTargetException e) {
+            Log.e(LOGTAG, "Exception when calling createSnapshot", e);
+        } catch (IllegalAccessException e) {
+            Log.e(LOGTAG, "Can't access createSnapshot, using drawCache", e);
+        } catch (ClassCastException e) {
+            Log.e(LOGTAG, "createSnapshot didn't return a bitmap?", e);
+        }
+
+        Boolean originalCacheState = null;
+        try {
             if (null == rawBitmap) {
-                bitmap = null;
-            } else {
-                final int scaledWidth = (int) (rawBitmap.getWidth() * scale);
-                final int scaledHeight = (int) (rawBitmap.getHeight() * scale);
-                bitmap = Bitmap.createScaledBitmap(rawBitmap, scaledWidth, scaledHeight, true);
+                Log.d(LOGTAG, "View.createSnapshot not available. Rendering from drawCache");
+                originalCacheState = rootView.isDrawingCacheEnabled();
+                rootView.setDrawingCacheEnabled(true);
+                rootView.buildDrawingCache(true);
+                rawBitmap = rootView.getDrawingCache();
             }
         } catch (AndroidRuntimeException e) {
             // This can happen if buildDrawingCache invalidates the view, or basically anything in
@@ -94,9 +110,38 @@ import java.util.List;
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
             }
-            bitmap = null;
         }
 
+        if (null != originalCacheState && !originalCacheState) {
+            rootView.setDrawingCacheEnabled(false);
+        }
+
+        Bitmap bitmap = null;
+        if (null != rawBitmap) {
+            final float scale = (float) mClientDensity / rawBitmap.getDensity();
+            final int destWidth = (int) ((rawBitmap.getWidth() * scale) + 0.5);
+            final int destHeight = (int) ((rawBitmap.getHeight() * scale) + 0.5);
+
+            final Writer writer = new OutputStreamWriter(out);
+            writer.write("\"scale\":");
+            writer.write(String.format("%s", scale));
+            writer.write(",");
+            writer.write("\"screenshot\":");
+            writer.flush();
+
+
+            try {
+                bitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
+
+                if (null != bitmap) {
+                    bitmap.setDensity(mClientDensity);
+                    final Canvas scaledCanvas = new Canvas(bitmap);
+                    scaledCanvas.drawBitmap(rawBitmap, 0, 0, mScalePaint);
+                }
+            } catch (OutOfMemoryError e) {
+                bitmap = null;
+            }
+        }
 
         // We could get a null or zero px bitmap if the rootView hasn't been measured
         // appropriately, or we grab it before layout.
@@ -104,15 +149,11 @@ import java.util.List;
         if (null != bitmap && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
             out.write('"');
             final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 40, imageOut);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, imageOut);
             imageOut.flush();
             out.write('\"');
         } else {
             out.write("null".getBytes());
-        }
-
-        if (!originalCacheState) {
-            rootView.setDrawingCacheEnabled(false);
         }
     }
 
@@ -193,6 +234,8 @@ import java.util.List;
     }
 
     private final List<PropertyDescription> mProperties;
+    private final Paint mScalePaint;
+    private final int mClientDensity = DisplayMetrics.DENSITY_DEFAULT;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewSnapshot";

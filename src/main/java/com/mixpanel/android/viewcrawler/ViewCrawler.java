@@ -418,7 +418,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
                     }
 
                     final RootViewInfo info = rootViews.get(i);
-                    mSnapshot.snapshot(info.activityName, info.scale, info.rootView, out);
+                    mSnapshot.snapshot(info.activityName, info.rootView, out);
                 }
                 writer.write("]"); // activities
                 writer.write("}"); // payload
@@ -571,12 +571,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener {
         public RootViewInfo(String activityName, float scale, View rootView) {
             this.activityName = activityName;
             this.rootView = rootView;
-            this.scale = scale;
         }
 
         public final String activityName;
         public final View rootView;
-        public final float scale;
     }
 
     // Map from canonical activity class name to description of changes
