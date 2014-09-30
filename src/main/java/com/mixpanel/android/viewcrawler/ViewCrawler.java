@@ -323,7 +323,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 Log.d(LOGTAG, "disconnecting from editor");
             }
 
-            if (mEditorConnection == null || ! mEditorConnection.isValid()) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 if (MPConfig.DEBUG) {
                     Log.d(LOGTAG, "Editor is already disconnected.");
                 }
