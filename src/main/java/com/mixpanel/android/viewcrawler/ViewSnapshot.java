@@ -112,10 +112,6 @@ import java.util.List;
             }
         }
 
-        if (null != originalCacheState && !originalCacheState) {
-            rootView.setDrawingCacheEnabled(false);
-        }
-
         float scale = 1.0f;
         Bitmap bitmap = null;
         if (null != rawBitmap) {
@@ -143,6 +139,10 @@ import java.util.List;
                     bitmap = null;
                 }
             }
+        }
+
+        if (null != originalCacheState && !originalCacheState) {
+            rootView.setDrawingCacheEnabled(false);
         }
 
         final Writer writer = new OutputStreamWriter(out);
@@ -205,7 +205,9 @@ import java.util.List;
                 final int childCount = group.getChildCount();
                 for (int i = 0; i < childCount; i++) {
                     final View child = group.getChildAt(i);
-                    children.put(child.hashCode());
+                    if (null != child) { // This apparently can actually happen when views are getting disposed.
+                        children.put(child.hashCode());
+                    }
                 }
             }
             dump.put("subviews", children);
@@ -224,7 +226,9 @@ import java.util.List;
             final int childCount = group.getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
-                snapshotView(writer, child, false);
+                if (null != child) { // This apparently can actually happen when views are getting disposed.
+                    snapshotView(writer, child, false);
+                }
             }
         }
     }
