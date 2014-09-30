@@ -23,8 +23,7 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener)
-        throws BadInstructionsException {
+    public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener) throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<ViewVisitor.PathElement> path = readPath(pathDesc);
@@ -47,8 +46,7 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEdit(JSONObject source)
-            throws BadInstructionsException {
+    public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<ViewVisitor.PathElement> path = readPath(pathDesc);
@@ -88,8 +86,7 @@ import java.util.List;
         }
     }
 
-    public ViewSnapshot readSnapshotConfig(JSONObject source)
-            throws BadInstructionsException {
+    public ViewSnapshot readSnapshotConfig(JSONObject source) throws BadInstructionsException {
         final List<PropertyDescription> properties = new ArrayList<PropertyDescription>();
 
         try {
@@ -117,8 +114,7 @@ import java.util.List;
     }
 
     // Package access FOR TESTING ONLY
-    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc)
-        throws JSONException {
+    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc) throws JSONException {
         final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
         for (int i = 0; i < pathDesc.length(); i++) {
@@ -157,8 +153,7 @@ import java.util.List;
         return path;
     }
 
-    private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc)
-            throws BadInstructionsException {
+    private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc) throws BadInstructionsException {
         try {
             final String propName = propertyDesc.getString("name");
 
@@ -187,8 +182,7 @@ import java.util.List;
         }
     }
 
-    private Object convertArgument(Object jsonArgument, String type)
-            throws BadInstructionsException {
+    private Object convertArgument(Object jsonArgument, String type) throws BadInstructionsException {
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
         try {
             if ("java.lang.CharSequence".equals(type)) { // Because we're assignable
