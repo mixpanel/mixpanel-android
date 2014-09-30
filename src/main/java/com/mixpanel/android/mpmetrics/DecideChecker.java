@@ -28,7 +28,7 @@ import java.util.List;
         public Result() {
             surveys = new ArrayList<Survey>();
             notifications = new ArrayList<InAppNotification>();
-            eventBindings = null;
+            eventBindings = EMPTY_JSON_ARRAY;
         }
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
@@ -38,27 +38,38 @@ import java.util.List;
     public DecideChecker(final Context context, final MPConfig config) {
         mContext = context;
         mConfig = config;
-        mChecks = new LinkedList<DecideUpdates>();
+        mChecks = new LinkedList<DecideMessages>();
     }
 
-    public void addDecideCheck(final DecideUpdates check) {
+    public void addDecideCheck(final DecideMessages check) {
         mChecks.add(check);
     }
 
     public void runDecideChecks(final ServerMessage poster) {
-        final Iterator<DecideUpdates> itr = mChecks.iterator();
+        final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
-            final DecideUpdates updates = itr.next();
+            final DecideMessages updates = itr.next();
             if (updates.isDestroyed()) {
                 itr.remove();
             } else {
-                final Result result = runDecideCheck(updates.getToken(), updates.getDistinctId(), poster);
-                updates.reportResults(result.surveys, result.notifications, result.eventBindings);
+                try {
+                    final Result result = runDecideCheck(updates.getToken(), updates.getDistinctId(), poster);
+                    updates.reportResults(result.surveys, result.notifications, result.eventBindings);
+                } catch (UnintelligibleMessageException e) {
+                    Log.e(LOGTAG, e.getMessage(), e);
+                }
             }
         }
     }
 
-    private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster) {
+    /* package */ static class UnintelligibleMessageException extends Exception {
+        public UnintelligibleMessageException(String message, JSONException cause) {
+            super(message, cause);
+        }
+    }
+
+    private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
+        throws UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.d(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -85,15 +96,16 @@ import java.util.List;
         return parsed;
     }// runDecideCheck
 
-    /* package */ static Result parseDecideResponse(String responseString) {
+    /* package */ static Result parseDecideResponse(String responseString)
+        throws UnintelligibleMessageException {
         JSONObject response;
         final Result ret = new Result();
 
         try {
             response = new JSONObject(responseString);
         } catch (final JSONException e) {
-            Log.e(LOGTAG, "Mixpanel endpoint returned unparsable result:\n" + responseString, e);
-            return ret;
+            final String message = "Mixpanel endpoint returned unparsable result:\n" + responseString;
+            throw new UnintelligibleMessageException(message, e);
         }
 
         JSONArray surveys = null;
@@ -225,7 +237,9 @@ import java.util.List;
 
     private final MPConfig mConfig;
     private final Context mContext;
-    private final List<DecideUpdates> mChecks;
+    private final List<DecideMessages> mChecks;
+
+    private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
 
     private static final String LOGTAG = "MixpanelAPI.DecideChecker";
 }

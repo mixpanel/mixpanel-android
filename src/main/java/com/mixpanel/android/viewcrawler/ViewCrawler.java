@@ -47,7 +47,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(14)
-public class ViewCrawler implements ViewVisitor.OnVisitedListener, EventBinder {
+public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
@@ -69,6 +69,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, EventBinder {
         mMixpanel = mixpanel;
     }
 
+    @Override
     public Tweaks getTweaks() {
         return mTweaks;
     }

@@ -6,7 +6,11 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.viewcrawler.Tweaks;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
+
 import org.apache.http.NameValuePair;
+import org.json.JSONArray;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
@@ -105,8 +109,13 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideUpdates constructDecideUpdates(String token, String distinctId, DecideUpdates.OnNewResultsListener listener) {
-                return new MockUpdates(token, distinctId, listener);
+            UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
+                return new MockUpdates();
+            }
+
+            @Override
+            DecideMessages constructDecideUpdates(String token, String distinctId, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
+                return new MockMessages(token, distinctId, listener, binder);
             }
         };
 
@@ -120,7 +129,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
             mExpectations.response = "{" +
                     "\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]" +
+                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]," +
+                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
                     "}";
             mExpectations.resultsFound = false;
         }
@@ -143,7 +153,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
             mExpectations.response = "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]" +
+                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
+                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
                     "}";
             mExpectations.resultsFound = false;
         }
@@ -165,7 +176,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
             mExpectations.response = "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]" +
+                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
+                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
                     "}";
             mExpectations.resultsFound = false;
         }
@@ -179,7 +191,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2";
             mExpectations.response = "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]" +
+                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
+                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
                     "}";
             mExpectations.resultsFound = false;
         }
@@ -212,7 +225,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+IDENTIFIED+ON+CONSTRUCTION&distinct_id=Present+Before+Construction";
             mExpectations.response = "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]" +
+                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
+                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
                     "}";
             mExpectations.resultsFound = false;
         }
@@ -224,8 +238,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideUpdates constructDecideUpdates(String token, String distinctId, DecideUpdates.OnNewResultsListener listener) {
-                return new MockUpdates(token, distinctId, listener);
+            DecideMessages constructDecideUpdates(String token, String distinctId, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
+                return new MockMessages(token, distinctId, listener, binder);
             }
         };
 
@@ -267,18 +281,30 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
     }
 
-    private class MockUpdates extends DecideUpdates {
-        public MockUpdates(final String token, final String distinctId, final OnNewResultsListener listener) {
-            super(token, distinctId, listener);
+    private class MockMessages extends DecideMessages {
+        public MockMessages(final String token, final String distinctId, final OnNewResultsListener listener, final UpdatesFromMixpanel binder) {
+            super(token, distinctId, listener, binder);
         }
 
         @Override
-        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications) {
-            super.reportResults(newSurveys, newNotifications);
+        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings) {
+            super.reportResults(newSurveys, newNotifications, newBindings);
             synchronized (mExpectations) {
                 mExpectations.resultsFound = true;
                 mExpectations.notify();
             }
+        }
+    }
+
+    private class MockUpdates implements UpdatesFromMixpanel {
+        @Override
+        public void setEventBindings(JSONArray bindings) {
+            ; // TODO we need to test that (possibly empty, never null) bindings come through
+        }
+
+        @Override
+        public Tweaks getTweaks() {
+            return null;
         }
     }
 

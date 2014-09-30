@@ -15,7 +15,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.viewcrawler.EventBinder;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
@@ -119,23 +119,23 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
-        mViewCrawler = constructViewCrawler(context, token);
+        mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
 
         mUpdatesListener = new UpdatesListener();
-        mDecideUpdates = null;
+        mDecideMessages = null;
 
         // TODO this immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         if (null != peopleId) {
-            mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener, mViewCrawler);
+            mDecideMessages = constructDecideUpdates(token, peopleId, mUpdatesListener, mUpdatesFromMixpanel);
         }
 
         registerMixpanelActivityLifecycleCallbacks();
 
-        if (null != mDecideUpdates) {
-            mMessages.installDecideCheck(mDecideUpdates);
+        if (null != mDecideMessages) {
+            mMessages.installDecideCheck(mDecideMessages);
         }
     }
 
@@ -970,11 +970,11 @@ public class MixpanelAPI {
         return new PersistentIdentity(referrerPreferences, storedPreferences);
     }
 
-    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener, EventBinder eventBinder) {
-        return new DecideUpdates(token, peopleId, listener, eventBinder);
+    /* package */ DecideMessages constructDecideUpdates(final String token, final String peopleId, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+        return new DecideMessages(token, peopleId, listener, updatesFromMixpanel);
     }
 
-    /* package */ ViewCrawler constructViewCrawler(final Context context, final String token) {
+    /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (android.os.Build.VERSION.SDK_INT < 14) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return null;
@@ -991,7 +991,7 @@ public class MixpanelAPI {
     }
 
     /* package */ boolean canUpdate() {
-        return mDecideUpdates != null;
+        return mDecideMessages != null;
     }
 
     ///////////////////////
@@ -1000,24 +1000,24 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             mPersistentIdentity.setPeopleDistinctId(distinctId);
-            if (null != mDecideUpdates && !mDecideUpdates.getDistinctId().equals(distinctId)) {
-                mDecideUpdates.destroy();
-                mDecideUpdates = null;
+            if (null != mDecideMessages && !mDecideMessages.getDistinctId().equals(distinctId)) {
+                mDecideMessages.destroy();
+                mDecideMessages = null;
             }
 
-            if (null == mDecideUpdates && null != distinctId) {
-                mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener, mViewCrawler);
-                mMessages.installDecideCheck(mDecideUpdates);
+            if (null == mDecideMessages && null != distinctId) {
+                mDecideMessages = constructDecideUpdates(mToken, distinctId, mUpdatesListener, mUpdatesFromMixpanel);
+                mMessages.installDecideCheck(mDecideMessages);
             }
             pushWaitingPeopleRecord();
          }
 
         @Override
         public Tweaks getTweaks() {
-            if (null == mViewCrawler) {
+            if (null == mUpdatesFromMixpanel) {
                 return null;
             }
-            return mViewCrawler.getTweaks();
+            return mUpdatesFromMixpanel.getTweaks();
         }
 
         @Override
@@ -1157,7 +1157,7 @@ public class MixpanelAPI {
             if (! canUpdate()) {
                 return null;
             }
-            return mDecideUpdates.getNotification(mConfig.getTestMode());
+            return mDecideMessages.getNotification(mConfig.getTestMode());
         }
 
         @Override
@@ -1165,7 +1165,7 @@ public class MixpanelAPI {
             if (! canUpdate()) {
                 return null;
             }
-            return mDecideUpdates.getSurvey(mConfig.getTestMode());
+            return mDecideMessages.getSurvey(mConfig.getTestMode());
         }
 
         @Override
@@ -1185,11 +1185,11 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
-            if (null == mDecideUpdates) {
+            if (null == mDecideMessages) {
                 return;
             }
 
-            Survey s = mDecideUpdates.getSurvey(id, mConfig.getTestMode());
+            Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
                 showGivenOrAvailableSurvey(s, parent);
             }
@@ -1206,11 +1206,11 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationById(int id, final Activity parent) {
-            if (null == mDecideUpdates) {
+            if (null == mDecideMessages) {
                 return;
             }
 
-            InAppNotification notif = mDecideUpdates.getNotification(id, mConfig.getTestMode());
+            InAppNotification notif = mDecideMessages.getNotification(id, mConfig.getTestMode());
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
             }
@@ -1502,16 +1502,16 @@ public class MixpanelAPI {
         }
     }// PeopleImpl
 
-    private class UpdatesListener implements DecideUpdates.OnNewResultsListener, Runnable {
+    private class UpdatesListener implements DecideMessages.OnNewResultsListener, Runnable {
         @Override
         public void onNewResults(final String distinctId) {
             mExecutor.execute(this);
         }
 
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            if (null != mDecideUpdates) {
-                if (mDecideUpdates.hasUpdatesAvailable()) {
-                    onNewResults(mDecideUpdates.getDistinctId());
+            if (null != mDecideMessages) {
+                if (mDecideMessages.hasUpdatesAvailable()) {
+                    onNewResults(mDecideMessages.getDistinctId());
                 }
             }
 
@@ -1572,11 +1572,11 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
-    private final ViewCrawler mViewCrawler;
+    private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
 
-    private DecideUpdates mDecideUpdates; // Possibly null
+    private DecideMessages mDecideMessages; // Possibly null
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

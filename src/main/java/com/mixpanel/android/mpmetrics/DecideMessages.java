@@ -1,6 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import com.mixpanel.android.viewcrawler.EventBinder;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
 
@@ -11,18 +11,18 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
-/* package */ class DecideUpdates {
+/* package */ class DecideMessages {
 
     public interface OnNewResultsListener {
         public void onNewResults(String distinctId);
     }
 
-    public DecideUpdates(String token, String distinctId, OnNewResultsListener listener, EventBinder eventBinder) {
+    public DecideMessages(String token, String distinctId, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
         mToken = token;
         mDistinctId = distinctId;
 
         mListener = listener;
-        mEventBinder = eventBinder;
+        mUpdatesFromMixpanel = updatesFromMixpanel;
         mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
@@ -49,8 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     // Do not consult destroyed status inside of this method.
     public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings) {
         boolean newContent = false;
-
-        mEventBinder.setEventBindings(eventBindings);
+        mUpdatesFromMixpanel.setEventBindings(eventBindings);
 
         for (final Survey s: newSurveys) {
             final int id = s.getId();
@@ -142,7 +141,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     private final List<Survey> mUnseenSurveys;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;
-    private final EventBinder mEventBinder;
+    private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private final AtomicBoolean mIsDestroyed;
 
     @SuppressWarnings("unused")

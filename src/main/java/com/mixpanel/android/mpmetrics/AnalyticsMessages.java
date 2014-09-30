@@ -110,7 +110,7 @@ import java.util.Map;
         mWorker.runMessage(m);
     }
 
-    public void installDecideCheck(final DecideUpdates check) {
+    public void installDecideCheck(final DecideMessages check) {
         final Message m = Message.obtain();
         m.what = INSTALL_DECIDE_CHECK;
         m.obj = check;
@@ -277,7 +277,7 @@ import java.util.Map;
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
                         logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
-                        final DecideUpdates check = (DecideUpdates) msg.obj;
+                        final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
                         mDecideChecker.runDecideChecks(getPoster());
                     }

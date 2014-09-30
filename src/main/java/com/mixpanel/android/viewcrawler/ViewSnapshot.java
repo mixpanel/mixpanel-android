@@ -116,32 +116,41 @@ import java.util.List;
             rootView.setDrawingCacheEnabled(false);
         }
 
+        float scale = 1.0f;
         Bitmap bitmap = null;
         if (null != rawBitmap) {
-            final float scale = (float) mClientDensity / rawBitmap.getDensity();
+            final int rawDensity = rawBitmap.getDensity();
+
+            if (rawDensity != Bitmap.DENSITY_NONE) {
+                scale = ((float) mClientDensity) / rawDensity;
+            }
+
+            final int rawWidth = rawBitmap.getWidth();
+            final int rawHeight = rawBitmap.getHeight();
             final int destWidth = (int) ((rawBitmap.getWidth() * scale) + 0.5);
             final int destHeight = (int) ((rawBitmap.getHeight() * scale) + 0.5);
 
-            final Writer writer = new OutputStreamWriter(out);
-            writer.write("\"scale\":");
-            writer.write(String.format("%s", scale));
-            writer.write(",");
-            writer.write("\"screenshot\":");
-            writer.flush();
+            if (rawWidth > 0 && rawHeight > 0 && destWidth > 0 && destHeight > 0) {
+                try {
+                    bitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
 
-
-            try {
-                bitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
-
-                if (null != bitmap) {
-                    bitmap.setDensity(mClientDensity);
-                    final Canvas scaledCanvas = new Canvas(bitmap);
-                    scaledCanvas.drawBitmap(rawBitmap, 0, 0, mScalePaint);
+                    if (null != bitmap) {
+                        bitmap.setDensity(mClientDensity);
+                        final Canvas scaledCanvas = new Canvas(bitmap);
+                        scaledCanvas.drawBitmap(rawBitmap, 0, 0, mScalePaint);
+                    }
+                } catch (OutOfMemoryError e) {
+                    bitmap = null;
                 }
-            } catch (OutOfMemoryError e) {
-                bitmap = null;
             }
         }
+
+        final Writer writer = new OutputStreamWriter(out);
+        writer.write("\"scale\":");
+        writer.write(String.format("%s", scale));
+        writer.write(",");
+        writer.write("\"screenshot\":");
+        writer.flush();
 
         // We could get a null or zero px bitmap if the rootView hasn't been measured
         // appropriately, or we grab it before layout.

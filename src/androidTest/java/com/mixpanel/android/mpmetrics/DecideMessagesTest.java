@@ -2,6 +2,10 @@ package com.mixpanel.android.mpmetrics;
 
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.viewcrawler.Tweaks;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -10,20 +14,33 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class DecideUpdatesTest extends AndroidTestCase {
+public class DecideMessagesTest extends AndroidTestCase {
 
     @Override
     public void setUp() throws JSONException, BadDecideObjectException {
 
         mListenerCalls = new LinkedBlockingQueue<String>();
-        mMockListener = new DecideUpdates.OnNewResultsListener() {
+        mMockListener = new DecideMessages.OnNewResultsListener() {
             @Override
             public void onNewResults(final String distinctId) {
                 mListenerCalls.add("CALLED");
             }
         };
 
-        mDecideUpdates = new DecideUpdates("TEST TOKEN", "TEST DISTINCT ID", mMockListener);
+        mMockUpdates = new UpdatesFromMixpanel() {
+
+            @Override
+            public void setEventBindings(JSONArray bindings) {
+                ; // TODO should observe bindings here
+            }
+
+            @Override
+            public Tweaks getTweaks() {
+                return null;
+            }
+        };
+
+        mDecideMessages = new DecideMessages("TEST TOKEN", "TEST DISTINCT ID", mMockListener, mMockUpdates);
         mSomeSurveys = new ArrayList<Survey>();
         mSomeNotifications = new ArrayList<InAppNotification>();
 
@@ -46,36 +63,38 @@ public class DecideUpdatesTest extends AndroidTestCase {
 
         mSomeNotifications.add(new InAppNotification(notifsDesc1));
         mSomeNotifications.add(new InAppNotification(notifsDesc2));
+
+        mSomeBindings = new JSONArray(); // TODO need to test with actual bindings?
     }
 
     public void testDestruction() {
-        assertFalse(mDecideUpdates.isDestroyed());
-        mDecideUpdates.destroy();
-        assertTrue(mDecideUpdates.isDestroyed());
+        assertFalse(mDecideMessages.isDestroyed());
+        mDecideMessages.destroy();
+        assertTrue(mDecideMessages.isDestroyed());
     }
 
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
-        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
 
         final List<Survey> fakeSurveys = new ArrayList<Survey>(mSomeSurveys.size());
         for (final Survey real: mSomeSurveys) {
             fakeSurveys.add(new Survey(new JSONObject(real.toJSON())));
-            assertEquals(mDecideUpdates.getSurvey(false), real);
+            assertEquals(mDecideMessages.getSurvey(false), real);
         }
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
             fakeNotifications.add(new InAppNotification(new JSONObject(real.toJSON())));
-            assertEquals(mDecideUpdates.getNotification(false), real);
+            assertEquals(mDecideMessages.getNotification(false), real);
         }
 
-        assertNull(mDecideUpdates.getSurvey(false));
-        assertNull(mDecideUpdates.getNotification(false));
+        assertNull(mDecideMessages.getSurvey(false));
+        assertNull(mDecideMessages.getNotification(false));
 
-        mDecideUpdates.reportResults(fakeSurveys, fakeNotifications);
+        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings);
 
-        assertNull(mDecideUpdates.getSurvey(false));
-        assertNull(mDecideUpdates.getNotification(false));
+        assertNull(mDecideMessages.getSurvey(false));
+        assertNull(mDecideMessages.getNotification(false));
 
         JSONObject surveyNewIdDesc = new JSONObject(
                 "{\"collections\":[{\"id\":1,\"selector\":\"true\"}],\"id\":1001,\"questions\":[{\"prompt\":\"a\",\"extra_data\":{\"$choices\":[\"1\",\"2\"]},\"type\":\"multiple_choice\",\"id\":1}]}"
@@ -89,51 +108,51 @@ public class DecideUpdatesTest extends AndroidTestCase {
         final InAppNotification unseenNotification = new InAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideUpdates.reportResults(fakeSurveys, fakeNotifications);
+        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings);
 
-        assertEquals(mDecideUpdates.getSurvey(false), unseenSurvey);
-        assertEquals(mDecideUpdates.getNotification(false), unseenNotification);
+        assertEquals(mDecideMessages.getSurvey(false), unseenSurvey);
+        assertEquals(mDecideMessages.getNotification(false), unseenNotification);
 
-        assertNull(mDecideUpdates.getSurvey(false));
-        assertNull(mDecideUpdates.getNotification(false));
+        assertNull(mDecideMessages.getSurvey(false));
+        assertNull(mDecideMessages.getNotification(false));
     }
 
     public void testPops() {
-        final Survey nullBeforeSurvey = mDecideUpdates.getSurvey(false);
+        final Survey nullBeforeSurvey = mDecideMessages.getSurvey(false);
         assertNull(nullBeforeSurvey);
 
-        final InAppNotification nullBeforeNotification = mDecideUpdates.getNotification(false);
+        final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
 
-        final Survey s1 = mDecideUpdates.getSurvey(false);
+        final Survey s1 = mDecideMessages.getSurvey(false);
         assertEquals(mSomeSurveys.get(0), s1);
 
-        final Survey s2 = mDecideUpdates.getSurvey(false);
+        final Survey s2 = mDecideMessages.getSurvey(false);
         assertEquals(mSomeSurveys.get(1), s2);
 
-        final Survey shouldBeNullSurvey = mDecideUpdates.getSurvey(false);
+        final Survey shouldBeNullSurvey = mDecideMessages.getSurvey(false);
         assertNull(shouldBeNullSurvey);
 
-        final InAppNotification n1 = mDecideUpdates.getNotification(false);
+        final InAppNotification n1 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
 
-        final InAppNotification n2 = mDecideUpdates.getNotification(false);
+        final InAppNotification n2 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(1), n2);
 
-        final InAppNotification shouldBeNullNotification = mDecideUpdates.getNotification(false);
+        final InAppNotification shouldBeNullNotification = mDecideMessages.getNotification(false);
         assertNull(shouldBeNullNotification);
     }
 
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideUpdates.reportResults(mSomeSurveys, mSomeNotifications);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -144,14 +163,16 @@ public class DecideUpdatesTest extends AndroidTestCase {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideUpdates.reportResults(mSomeSurveys, newNotifications);
+        mDecideMessages.reportResults(mSomeSurveys, newNotifications, mSomeBindings);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }
 
     private BlockingQueue<String> mListenerCalls;
-    private DecideUpdates.OnNewResultsListener mMockListener;
-    private DecideUpdates mDecideUpdates;
+    private DecideMessages.OnNewResultsListener mMockListener;
+    private UpdatesFromMixpanel mMockUpdates;
+    private DecideMessages mDecideMessages;
+    private JSONArray mSomeBindings;
     private List<Survey> mSomeSurveys;
     private List<InAppNotification> mSomeNotifications;
 }

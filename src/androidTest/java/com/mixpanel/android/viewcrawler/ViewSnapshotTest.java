@@ -66,7 +66,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
         mRootView.layout(0, 0, 768, 1280);
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", 1.0f, mRootView, out);
+        mSnapshot.snapshot("TEST CLASS", mRootView, out);
 
         final JSONObject json = new JSONObject(new String(out.toByteArray()));
         assertEquals("TEST CLASS", json.getString("activity"));
@@ -131,7 +131,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
     public void testNoLayoutSnapshot() throws IOException, JSONException {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", 1.0f, mRootView, out);
+        mSnapshot.snapshot("TEST CLASS", mRootView, out);
 
         final JSONObject json = new JSONObject(new String(out.toByteArray()));
         assertTrue(json.isNull("screenshot"));
