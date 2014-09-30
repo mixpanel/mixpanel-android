@@ -143,11 +143,11 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     }
 
     // Must be called on the UI Thread
-    private void applyBindingsFromList(View rootView, List<JSONObject> events) {
-        if (null != events) {
-            int size = events.size();
+    private void applyBindingsFromList(View rootView, List<JSONObject> eventBindings) {
+        if (null != eventBindings) {
+            int size = eventBindings.size();
             for (int i = 0; i < size; i++) {
-                JSONObject desc = events.get(i);
+                JSONObject desc = eventBindings.get(i);
                 try {
                     final ViewVisitor visitor = mProtocol.readEventBinding(desc, this);
                     final EditBinding binding = new EditBinding(rootView, visitor);
@@ -460,32 +460,32 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
-        private void handleEventBindingsReceived(JSONArray events) {
+        private void handleEventBindingsReceived(JSONArray eventBindings) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(SHARED_PREF_BINDINGS_KEY, events.toString());
+            editor.putString(SHARED_PREF_BINDINGS_KEY, eventBindings.toString());
             editor.apply();
             initializeChanges();
             applyAllChangesOnUiThread();
         }
 
         private void handleEditorBindingsReceived(JSONObject message) {
-            final JSONArray events;
+            final JSONArray eventBindings;
             try {
                 final JSONObject payload = message.getJSONObject("payload");
-                events = payload.getJSONArray("events");
+                eventBindings = payload.getJSONArray("events");
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Bad event bindings received", e);
                 return;
             }
 
-            int eventCount = events.length();
+            int eventCount = eventBindings.length();
             for (int i = 0; i < eventCount; i++) {
                 try {
-                    final JSONObject event = events.getJSONObject(i);
+                    final JSONObject event = eventBindings.getJSONObject(i);
                     loadEventBinding(event, mEditorEventBindings);
                 } catch (JSONException e) {
-                    Log.e(LOGTAG, "Bad event binding received from editor in " + events.toString(), e);
+                    Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                 }
             }
         }
