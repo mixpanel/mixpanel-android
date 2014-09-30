@@ -28,9 +28,11 @@ import java.util.List;
         public Result() {
             surveys = new ArrayList<Survey>();
             notifications = new ArrayList<InAppNotification>();
+            eventBindings = null;
         }
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
+        public JSONArray eventBindings;
     }
 
     public DecideChecker(final Context context, final MPConfig config) {
@@ -51,7 +53,7 @@ import java.util.List;
                 itr.remove();
             } else {
                 final Result result = runDecideCheck(updates.getToken(), updates.getDistinctId(), poster);
-                updates.reportResults(result.surveys, result.notifications);
+                updates.reportResults(result.surveys, result.notifications, result.eventBindings);
             }
         }
     }
@@ -128,7 +130,7 @@ import java.util.List;
 
         if (null != notifications) {
             final int notificationsToRead = Math.min(notifications.length(), MPConfig.MAX_NOTIFICATION_CACHE_COUNT);
-            for (int i = 0; null != notifications && i < notificationsToRead; i++) {
+            for (int i = 0; i < notificationsToRead; i++) {
                 try {
                     final JSONObject notificationJson = notifications.getJSONObject(i);
                     final InAppNotification notification = new InAppNotification(notificationJson);
@@ -140,6 +142,14 @@ import java.util.List;
                 } catch (final OutOfMemoryError e) {
                     Log.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
                 }
+            }
+        }
+
+        if (response.has("event_bindings")) {
+            try {
+                ret.eventBindings = response.getJSONArray("event_bindings");
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
             }
         }
 

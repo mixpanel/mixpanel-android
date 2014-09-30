@@ -15,6 +15,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.viewcrawler.EventBinder;
 import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
@@ -118,6 +119,7 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
+        mViewCrawler = constructViewCrawler(context, token);
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
 
         mUpdatesListener = new UpdatesListener();
@@ -127,10 +129,8 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         if (null != peopleId) {
-            mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener);
+            mDecideUpdates = constructDecideUpdates(token, peopleId, mUpdatesListener, mViewCrawler);
         }
-
-        mViewCrawler = constructViewCrawler(context, token);
 
         registerMixpanelActivityLifecycleCallbacks();
 
@@ -970,8 +970,8 @@ public class MixpanelAPI {
         return new PersistentIdentity(referrerPreferences, storedPreferences);
     }
 
-    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener) {
-        return new DecideUpdates(token, peopleId, listener);
+    /* package */ DecideUpdates constructDecideUpdates(final String token, final String peopleId, final DecideUpdates.OnNewResultsListener listener, EventBinder eventBinder) {
+        return new DecideUpdates(token, peopleId, listener, eventBinder);
     }
 
     /* package */ ViewCrawler constructViewCrawler(final Context context, final String token) {
@@ -1006,7 +1006,7 @@ public class MixpanelAPI {
             }
 
             if (null == mDecideUpdates && null != distinctId) {
-                mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener);
+                mDecideUpdates = constructDecideUpdates(mToken, distinctId, mUpdatesListener, mViewCrawler);
                 mMessages.installDecideCheck(mDecideUpdates);
             }
             pushWaitingPeopleRecord();

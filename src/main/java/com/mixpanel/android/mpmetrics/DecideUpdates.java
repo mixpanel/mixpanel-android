@@ -1,5 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
+import com.mixpanel.android.viewcrawler.EventBinder;
+
+import org.json.JSONArray;
+
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,11 +17,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
         public void onNewResults(String distinctId);
     }
 
-    public DecideUpdates(String token, String distinctId, OnNewResultsListener listener) {
+    public DecideUpdates(String token, String distinctId, OnNewResultsListener listener, EventBinder eventBinder) {
         mToken = token;
         mDistinctId = distinctId;
 
         mListener = listener;
+        mEventBinder = eventBinder;
         mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
@@ -42,8 +47,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
     }
 
     // Do not consult destroyed status inside of this method.
-    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications) {
+    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings) {
         boolean newContent = false;
+
+        mEventBinder.setEventBindings(eventBindings);
 
         for (final Survey s: newSurveys) {
             final int id = s.getId();
@@ -135,6 +142,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     private final List<Survey> mUnseenSurveys;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;
+    private final EventBinder mEventBinder;
     private final AtomicBoolean mIsDestroyed;
 
     @SuppressWarnings("unused")
