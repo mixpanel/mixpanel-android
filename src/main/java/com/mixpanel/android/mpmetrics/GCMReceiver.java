@@ -122,7 +122,7 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     private void handleNotificationIntent(Context context, Intent intent) {
-        final String message = intent.getExtras().getString("mp_message");
+        final String message = intent.getStringExtra("mp_message");
 
         if (message == null) return;
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
