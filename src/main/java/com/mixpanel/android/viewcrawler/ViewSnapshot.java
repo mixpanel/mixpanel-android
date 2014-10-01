@@ -205,7 +205,8 @@ import java.util.List;
                 final int childCount = group.getChildCount();
                 for (int i = 0; i < childCount; i++) {
                     final View child = group.getChildAt(i);
-                    if (null != child) { // This apparently can actually happen when views are getting disposed.
+                    // child can be null when views are getting disposed.
+                    if (null != child && View.VISIBLE == child.getVisibility()) {
                         children.put(child.hashCode());
                     }
                 }
@@ -226,7 +227,8 @@ import java.util.List;
             final int childCount = group.getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
-                if (null != child) { // This apparently can actually happen when views are getting disposed.
+                // child can be null when views are getting disposed.
+                if (null != child && View.VISIBLE == child.getVisibility()) {
                     snapshotView(writer, child, false);
                 }
             }
