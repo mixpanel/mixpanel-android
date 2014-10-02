@@ -12,8 +12,23 @@ You can find getting started guides for using Mixpanel at:
 
 See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application.
 
+Want to Contribute?
+-------------------
+The Mixpanel library for Android is an open source project, and we'd love to see your contributions!
+We'd also love for you to come and work with us! Check out http://boards.greenhouse.io/mixpanel/jobs/25078#.U_4BBEhORKU for details.
+
 Changelog
 ---------
+
+#### v4.3.1
+
+ * This is a bugfix release only, to alter the handling of Surveys and In-App notifications when
+   activities are removed or move to the background.
+
+#### v4.3.0
+ * Added support for App Links tracking
+
+ * Added a way to get super properties
 
 #### v4.2.2
 
