@@ -102,25 +102,45 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 final String activityName = activity.getClass().getCanonicalName();
                 final View rootView = activity.getWindow().getDecorView().getRootView();
 
+                final List<JSONObject> persistentChanges;
+                final List<JSONObject> wildcardPersistentChanges;
                 synchronized (mPersistentChanges) {
-                    final List<JSONObject> persistentChanges = mPersistentChanges.get(activityName);
-                    applyChangesFromList(rootView, persistentChanges);
+                    persistentChanges = mPersistentChanges.get(activityName);
+                    wildcardPersistentChanges = mPersistentChanges.get(null);
                 }
 
+                applyChangesFromList(rootView, persistentChanges);
+                applyChangesFromList(rootView, wildcardPersistentChanges);
+
+                final List<JSONObject> editorChanges;
+                final List<JSONObject> wildcardEditorChanges;
                 synchronized (mEditorChanges) {
-                    final List<JSONObject> editorChanges = mEditorChanges.get(activityName);
-                    applyChangesFromList(rootView, editorChanges);
+                    editorChanges = mEditorChanges.get(activityName);
+                    wildcardEditorChanges = mEditorChanges.get(null);
                 }
 
+                applyChangesFromList(rootView, editorChanges);
+                applyChangesFromList(rootView, wildcardEditorChanges);
+
+                final List<JSONObject> eventBindings;
+                final List<JSONObject> wildcardEventBindings;
                 synchronized (mPersistentEventBindings) {
-                    final List<JSONObject> eventBindings = mPersistentEventBindings.get(activityName);
-                    applyBindingsFromList(rootView, eventBindings);
+                    eventBindings = mPersistentEventBindings.get(activityName);
+                    wildcardEventBindings = mPersistentEventBindings.get(null);
                 }
 
+                applyBindingsFromList(rootView, eventBindings);
+                applyBindingsFromList(rootView, wildcardEventBindings);
+
+                final List<JSONObject> editorBindings;
+                final List<JSONObject> wildcardEditorBindings;
                 synchronized (mEditorEventBindings) {
-                    final List<JSONObject> editorBindings = mEditorEventBindings.get(activityName);
-                    applyBindingsFromList(rootView, editorBindings);
+                    editorBindings = mEditorEventBindings.get(activityName);
+                    wildcardEditorBindings = mEditorEventBindings.get(null);
                 }
+
+                applyBindingsFromList(rootView, editorBindings);
+                applyBindingsFromList(rootView, wildcardEditorBindings);
             }
         }
     }
@@ -492,9 +512,15 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange)
                 throws JSONException {
-            final String targetActivity = newChange.getString("target");
-            final JSONObject change = newChange.getJSONObject("change");
+            final String targetActivity;
 
+            if (newChange.has("target")) {
+                targetActivity = newChange.getString("target");
+            } else {
+                targetActivity = null;
+            }
+
+            final JSONObject change = newChange.getJSONObject("change");
             synchronized (changes) {
                 final List<JSONObject> changeList;
                 if (changes.containsKey(targetActivity)) {
@@ -509,7 +535,14 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         private void loadEventBinding(JSONObject newBinding, Map<String, List<JSONObject>> bindings)
                 throws JSONException {
-            final String targetActivity = newBinding.getString("target_activity");
+            final String targetActivity;
+
+            if (newBinding.has("target_activity")) {
+                targetActivity = newBinding.getString("target_activity");
+            } else {
+                targetActivity = null;
+            }
+
             synchronized (bindings) {
                 final List<JSONObject> bindingList;
                 if (bindings.containsKey(targetActivity)) {
@@ -623,7 +656,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private final Handler mUiThreadHandler;
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final MixpanelAPI mMixpanel;
-
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
