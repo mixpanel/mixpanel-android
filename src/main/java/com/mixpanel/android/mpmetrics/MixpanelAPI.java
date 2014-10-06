@@ -125,10 +125,11 @@ public class MixpanelAPI {
         mUpdatesListener = new UpdatesListener();
         mDecideMessages = null;
 
-        // TODO this immediately forces the lazy load of the preferences, and defeats the
+        // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
-        if (null != peopleId) {
+        if (null != peopleId && null != mUpdatesFromMixpanel) {
+            // TODO we should attempt to construct this whether or not we have a peopleId
             mDecideMessages = constructDecideUpdates(token, peopleId, mUpdatesListener, mUpdatesFromMixpanel);
         }
 
@@ -991,7 +992,7 @@ public class MixpanelAPI {
     }
 
     /* package */ boolean canUpdate() {
-        return mDecideMessages != null;
+        return null != mDecideMessages;
     }
 
     ///////////////////////
@@ -1005,7 +1006,7 @@ public class MixpanelAPI {
                 mDecideMessages = null;
             }
 
-            if (null == mDecideMessages && null != distinctId) {
+            if (null == mDecideMessages && null != distinctId && null != mUpdatesFromMixpanel) {
                 mDecideMessages = constructDecideUpdates(mToken, distinctId, mUpdatesListener, mUpdatesFromMixpanel);
                 mMessages.installDecideCheck(mDecideMessages);
             }
@@ -1154,7 +1155,7 @@ public class MixpanelAPI {
 
         @Override
         public InAppNotification getNotificationIfAvailable() {
-            if (! canUpdate()) {
+            if (null == mDecideMessages) {
                 return null;
             }
             return mDecideMessages.getNotification(mConfig.getTestMode());
@@ -1162,7 +1163,7 @@ public class MixpanelAPI {
 
         @Override
         public Survey getSurveyIfAvailable() {
-            if (! canUpdate()) {
+            if (null == mDecideMessages) {
                 return null;
             }
             return mDecideMessages.getSurvey(mConfig.getTestMode());
