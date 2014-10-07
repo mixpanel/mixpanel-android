@@ -11,13 +11,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 public class EditProtocolTest extends AndroidTestCase {
     @Override
     public void setUp() throws JSONException {
-        mProtocol = new EditProtocol();
+        mProtocol = new EditProtocol(getContext());
         mSnapshotConfig = new JSONObject(
             "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}},{\"name\":\"backgroundColor\",\"get\":{\"selector\":\"getBackgroundColor\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Integer\"}},\"set\":{\"selector\":\"setBackgroundColor\",\"parameters\":[{\"type\":\"java.lang.Integer\"}]},\"editor\":\"hexstring\"}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
         );
@@ -34,6 +36,11 @@ public class EditProtocolTest extends AndroidTestCase {
         mJustIdPath = new JSONArray("[{},{},{},{\"id\": 2000}]");
         mJustIndexPath = new JSONArray("[{},{},{},{\"index\": 2}]");
         mJustTagPath = new JSONArray("[{},{},{},{\"tag\": \"this_is_a_simple_tag\"}]");
+        mJustIdNamePath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\"}]");
+        mIdNameAndIdPath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
+
+        mIdMap = new HashMap<String, Integer>();
+        mIdMap.put("NAME PRESENT", 1001);
 
         mListener = new TestVisitedListener();
         mRootView = new TestView(getContext());
@@ -62,7 +69,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testReadPaths() throws JSONException {
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustClassPath);
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustClassPath, mIdMap);
             final ViewVisitor.PathElement first = p.get(0);
             final ViewVisitor.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -77,7 +84,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdPath);
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdPath, mIdMap);
             final ViewVisitor.PathElement first = p.get(0);
             final ViewVisitor.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -92,7 +99,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIndexPath);
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIndexPath, mIdMap);
             final ViewVisitor.PathElement first = p.get(0);
             final ViewVisitor.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -107,7 +114,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustTagPath);
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustTagPath, mIdMap);
             final ViewVisitor.PathElement first = p.get(0);
             final ViewVisitor.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -120,7 +127,48 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, last.viewId);
             assertEquals("this_is_a_simple_tag", last.tag);
         }
-        mProtocol.readPath(mJustTagPath);
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdNamePath, mIdMap);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(1001, last.viewId);
+            assertEquals(null, last.tag);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdNamePath, new HashMap<String, Integer>());
+            assertTrue(p.isEmpty());
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, mIdMap);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(1001, last.viewId);
+            assertEquals(null, last.tag);
+        }
+
+        {
+            final Map<String, Integer> nonMatchingIdMap = new HashMap<String, Integer>();
+            nonMatchingIdMap.put("NAME PRESENT", 1985);
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, nonMatchingIdMap);
+            assertTrue(p.isEmpty());
+        }
     }
 
     public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
@@ -166,7 +214,10 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mJustIdPath;
     private JSONArray mJustIndexPath;
     private JSONArray mJustTagPath;
+    private JSONArray mJustIdNamePath;
+    private JSONArray mIdNameAndIdPath;
     private TestVisitedListener mListener;
     private TestView mRootView;
+    private Map<String, Integer> mIdMap;
 
 }

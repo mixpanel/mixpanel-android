@@ -16,6 +16,7 @@ import android.os.Message;
 import android.os.Process;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
@@ -56,8 +57,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mEditorChanges = new HashMap<String, List<JSONObject>>();
         mPersistentEventBindings = new HashMap<String, List<JSONObject>>();
         mEditorEventBindings = new HashMap<String, List<JSONObject>>();
-        mProtocol = new EditProtocol();
-        mIdMap = buildIdMap(context);
+        mProtocol = new EditProtocol(context);
+
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -89,36 +90,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mMixpanel.track(eventName, null);
     }
 
-    private Map<String, Integer> buildIdMap(Context context) {
-        final Map<String, Integer> ret = new HashMap<String, Integer>();
-        final String packageName = context.getPackageName();
-        final String rIdClassName = packageName + ".R$id";
-        try {
-            final Class rIdClass = Class.forName(rIdClassName);
-            final Field[] fields = rIdClass.getFields();
-            for (int i = 0; i < fields.length; i++) {
-                final Field field = fields[i];
-                final int modifiers = field.getModifiers();
-                if (Modifier.isStatic(modifiers)) {
-                    final Class fieldType = field.getType();
-                    if (fieldType == int.class) {
-                        final String name = field.getName();
-                        final int value = field.getInt(null);
-                        ret.put(name, value);
-                    }
-                }
-            }// for fields
 
-        } catch (ClassNotFoundException e) {
-            if (MPConfig.DEBUG) {
-                Log.e(LOGTAG, "Can't find class " + rIdClassName, e);
-            }
-        } catch (IllegalAccessException e) {
-            Log.e(LOGTAG, "Found but can't access a static, integer field of R");
-        }
-
-        return ret;
-    }
 
     private void applyAllChangesOnUiThread() {
         mUiThreadHandler.post(new Runnable() {
@@ -680,7 +652,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private final Map<String, List<JSONObject>> mEditorChanges;
     private final Map<String, List<JSONObject>> mPersistentEventBindings;
     private final Map<String, List<JSONObject>> mEditorEventBindings;
-    private final Map<String, Integer> mIdMap;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
