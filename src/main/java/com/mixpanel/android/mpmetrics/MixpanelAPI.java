@@ -121,8 +121,7 @@ public class MixpanelAPI {
         mConfig = getConfig();
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
-
-        mUpdatesListener = new UpdatesListener();
+        mUpdatesListener = constructUpdatesListener();
         mDecideMessages = null;
 
         // TODO this immediately forces the lazy load of the preferences, and defeats the
@@ -974,8 +973,17 @@ public class MixpanelAPI {
         return new DecideMessages(token, peopleId, listener, updatesFromMixpanel);
     }
 
+    /* package */ UpdatesListener constructUpdatesListener() {
+        if (Build.VERSION.SDK_INT < 14) {
+            Log.i(LOGTAG, "Surveys and Notifications are not supported on this Android OS Version");
+            return new UnsupportedUpdatesListener();
+        } else {
+            return new SupportedUpdatesListener();
+        }
+    }
+
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
-        if (android.os.Build.VERSION.SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < 14) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return new UnsupportedUpdatesFromMixpanel();
         } else {
@@ -1499,7 +1507,29 @@ public class MixpanelAPI {
         }
     }// PeopleImpl
 
-    private class UpdatesListener implements DecideMessages.OnNewResultsListener, Runnable {
+    private interface UpdatesListener extends DecideMessages.OnNewResultsListener {
+        public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
+        public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
+    }
+
+    private class UnsupportedUpdatesListener implements UpdatesListener {
+        @Override
+        public void onNewResults(String distinctId) {
+            // Do nothing, these features aren't supported in older versions of the library
+        }
+
+        @Override
+        public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            // Do nothing, not supported
+        }
+
+        @Override
+        public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            // Do nothing, not supported
+        }
+    }
+
+    private class SupportedUpdatesListener implements UpdatesListener, Runnable {
         @Override
         public void onNewResults(final String distinctId) {
             mExecutor.execute(this);
