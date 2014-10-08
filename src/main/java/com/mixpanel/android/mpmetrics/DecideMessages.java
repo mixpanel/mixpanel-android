@@ -38,7 +38,7 @@ import java.util.Set;
         mDistinctId = distinctId;
     }
 
-    public synchronized String getDistinctIdMAYBENULL() {
+    public synchronized String getDistinctId() {
         return mDistinctId;
     }
 

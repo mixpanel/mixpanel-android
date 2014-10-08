@@ -49,7 +49,7 @@ import java.util.List;
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
-            final String distinctId = updates.getDistinctIdMAYBENULL();
+            final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
                 updates.reportResults(result.surveys, result.notifications, result.eventBindings);
