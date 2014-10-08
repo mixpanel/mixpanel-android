@@ -1538,7 +1538,7 @@ public class MixpanelAPI {
 
         @Override
         public void setEventBindings(JSONArray bindings) {
-            ; // No op
+            // No op
         }
 
         @Override
