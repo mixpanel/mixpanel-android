@@ -16,6 +16,7 @@ import org.json.JSONObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,10 +133,7 @@ import java.util.Map;
     /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> mIdNameToId) throws JSONException {
         final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
-        // Paths with id names that don't exist are nonsense paths, as
-        // are paths with both and id name and a numeric id that don't match.
-        boolean isValidPath = true;
-        for (int i = 0; i < pathDesc.length() && isValidPath; i++) {
+        for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
 
             final String targetViewClass;
@@ -178,11 +176,11 @@ import java.util.Map;
                 if (mIdNameToId.containsKey(targetIdName)) {
                     targetIdByName = mIdNameToId.get(targetIdName);
                 } else {
-                    targetIdByName = -1;
-                    isValidPath = false; // A non-matching name will never match a real view
+                    // A non-matching name will never match a real view
                     Log.e(LOGTAG,
                             "Path element contains an id name not known to the system. No views will be matched.\n" +
                             "Make sure that you're not stripping your packages R class out with proguard.");
+                    return NEVER_MATCH_PATH;
                 }
             } else {
                 targetIdByName = -1;
@@ -190,9 +188,9 @@ import java.util.Map;
 
             final int useTargetId;
             if (-1 != targetIdByName && -1 != targetExplicitId && targetIdByName != targetExplicitId) {
-                useTargetId = -1;
-                isValidPath = false; // Two different ids will never match a real view
+                // Two different ids will never match a real view
                 Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
+                return NEVER_MATCH_PATH;
             } else if (-1 != targetIdByName) {
                 useTargetId = targetIdByName;
             } else if (-1 != targetExplicitId) {
@@ -201,11 +199,7 @@ import java.util.Map;
                 useTargetId = -1;
             }
 
-            if (isValidPath) {
-                path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, useTargetId, targetTag));
-            } else {
-                path.clear(); // Empty path matches nothing, quickly.
-            }
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, useTargetId, targetTag));
         }
 
         return path;
@@ -298,6 +292,7 @@ import java.util.Map;
     private final SparseArray<String> mIdToIdName;
 
     private static final Class[] NO_PARAMS = new Class[0];
+    private static final List<ViewVisitor.PathElement> NEVER_MATCH_PATH = Collections.EMPTY_LIST;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditProtocol";
