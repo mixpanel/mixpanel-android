@@ -395,11 +395,21 @@ public class SurveyActivity extends Activity {
     }
 
     private boolean isShowingSurvey() {
-        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.SurveyState.TYPE;
+        if (null == mUpdateDisplayState) {
+            return false;
+        }
+        return UpdateDisplayState.DisplayState.SurveyState.TYPE.equals(
+            mUpdateDisplayState.getDisplayState().getType()
+        );
     }
 
     private boolean isShowingInApp() {
-        return mUpdateDisplayState.getDisplayState().getType() == UpdateDisplayState.DisplayState.InAppNotificationState.TYPE;
+        if (null == mUpdateDisplayState) {
+            return false;
+        }
+        return UpdateDisplayState.DisplayState.InAppNotificationState.TYPE.equals(
+            mUpdateDisplayState.getDisplayState().getType()
+        );
     }
 
     private void trackSurveyAttempted() {
