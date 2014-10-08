@@ -136,40 +136,11 @@ import java.util.Map;
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
 
-            final String targetViewClass;
-            if (targetView.has("view_class")) {
-                targetViewClass = targetView.getString("view_class");
-            } else {
-                targetViewClass = null;
-            }
-
-            final int targetIndex;
-            if (targetView.has("index")) {
-                targetIndex = targetView.getInt("index");
-            } else {
-                targetIndex = -1;
-            }
-
-            final String targetTag;
-            if (targetView.has("tag")) {
-                targetTag = targetView.getString("tag");
-            } else {
-                targetTag = null;
-            }
-
-            final int targetExplicitId;
-            if (targetView.has("id")) {
-                targetExplicitId = targetView.getInt("id");
-            } else {
-                targetExplicitId = -1;
-            }
-
-            final String targetIdName;
-            if (targetView.has("mp_id_name")) {
-                targetIdName = targetView.getString("mp_id_name");
-            } else {
-                targetIdName = null;
-            }
+            final String targetViewClass = targetView.optString("view_class", null);
+            final int targetIndex = targetView.optInt("index", -1);
+            final String targetTag = targetView.optString("tag", null);
+            final int targetExplicitId = targetView.optInt("id", -1);
+            final String targetIdName = targetView.optString("mp_id_name", null);
 
             final int targetId;
             try {

@@ -511,14 +511,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange)
                 throws JSONException {
-            final String targetActivity;
-
-            if (newChange.has("target")) {
-                targetActivity = newChange.getString("target");
-            } else {
-                targetActivity = null;
-            }
-
+            final String targetActivity = newChange.optString("target", null);
             final JSONObject change = newChange.getJSONObject("change");
             synchronized (changes) {
                 final List<JSONObject> changeList;
