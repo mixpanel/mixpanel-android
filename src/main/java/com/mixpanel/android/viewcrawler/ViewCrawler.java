@@ -527,13 +527,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         private void loadEventBinding(JSONObject newBinding, Map<String, List<JSONObject>> bindings)
                 throws JSONException {
-            final String targetActivity;
-
-            if (newBinding.has("target_activity")) {
-                targetActivity = newBinding.getString("target_activity");
-            } else {
-                targetActivity = null;
-            }
+            final String targetActivity = newBinding.optString("target_activity", null);
 
             synchronized (bindings) {
                 final List<JSONObject> bindingList;
