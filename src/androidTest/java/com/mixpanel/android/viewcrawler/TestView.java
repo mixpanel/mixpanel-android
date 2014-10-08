@@ -36,22 +36,20 @@ public class TestView extends FrameLayout {
 
         mSecondLayer.add(linear);
 
-        final TextView text1 = new TextView(getContext());
-        text1.setId(TEXT_VIEW_ID);
-        text1.setTag(CRAZY_TAG);
+        mTextView1 = new TextView(getContext());
+        mTextView1.setId(TEXT_VIEW_ID);
+        mTextView1.setTag(CRAZY_TAG);
 
-        linear.addView(text1);
-        mAllViews.add(text1);
-        mThirdLayer.add(text1);
-        mTextView1 = text1;
+        linear.addView(mTextView1);
+        mAllViews.add(mTextView1);
+        mThirdLayer.add(mTextView1);
 
-        final TextView text2 = new TextView(getContext());
-        text2.setTag(SIMPLE_TAG);
+        mTextView2 = new TextView(getContext());
+        mTextView2.setTag(SIMPLE_TAG);
 
-        linear.addView(text2);
-        mAllViews.add(text2);
-        mThirdLayer.add(text2);
-        mTextView2 = text2;
+        linear.addView(mTextView2);
+        mAllViews.add(mTextView2);
+        mThirdLayer.add(mTextView2);
 
         mButtonGroup = new LinearLayout(getContext());
         linear.addView(mButtonGroup);

@@ -11,6 +11,7 @@ import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -27,12 +28,14 @@ import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 /* package */ class ViewSnapshot {
 
-    public ViewSnapshot(List<PropertyDescription> properties) {
+    public ViewSnapshot(List<PropertyDescription> properties, SparseArray<String> idsToNames) {
         mProperties = properties;
         mScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        mIdsToNames = idsToNames;
     }
 
     public void snapshot(String activityName, View rootView, OutputStream out) throws IOException {
@@ -169,9 +172,18 @@ import java.util.List;
     private void snapshotView(Writer writer, View view, boolean first)
             throws IOException {
         final JSONObject dump = new JSONObject();
+        final int viewId = view.getId();
+        final String viewIdName;
+        if (-1 == viewId) {
+            viewIdName = null;
+        } else {
+            viewIdName = mIdsToNames.get(viewId);
+        }
+
         try {
             dump.put("hashCode", view.hashCode());
-            dump.put("id", view.getId());
+            dump.put("id", viewId);
+            dump.put("mp_id_name", viewIdName);
             dump.put("tag", view.getTag());
 
             dump.put("top", view.getTop());
@@ -199,13 +211,14 @@ import java.util.List;
 
             addProperties(view, dump);
 
-            JSONArray children = new JSONArray();
+            final JSONArray children = new JSONArray();
             if (view instanceof ViewGroup) {
                 final ViewGroup group = (ViewGroup) view;
                 final int childCount = group.getChildCount();
                 for (int i = 0; i < childCount; i++) {
                     final View child = group.getChildAt(i);
-                    if (null != child) { // This apparently can actually happen when views are getting disposed.
+                    // child can be null when views are getting disposed.
+                    if (null != child && View.VISIBLE == child.getVisibility()) {
                         children.put(child.hashCode());
                     }
                 }
@@ -226,7 +239,8 @@ import java.util.List;
             final int childCount = group.getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
-                if (null != child) { // This apparently can actually happen when views are getting disposed.
+                // child can be null when views are getting disposed.
+                if (null != child && View.VISIBLE == child.getVisibility()) {
                     snapshotView(writer, child, false);
                 }
             }
@@ -247,6 +261,7 @@ import java.util.List;
     }
 
     private final List<PropertyDescription> mProperties;
+    private final SparseArray<String> mIdsToNames;
     private final Paint mScalePaint;
     private final int mClientDensity = DisplayMetrics.DENSITY_DEFAULT;
 

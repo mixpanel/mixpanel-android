@@ -2,6 +2,7 @@ package com.mixpanel.android.viewcrawler;
 
 
 import android.test.AndroidTestCase;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -56,7 +57,13 @@ public class ViewSnapshotTest extends AndroidTestCase {
         );
         props.add(badTypes);
 
-        mSnapshot = new ViewSnapshot(props);
+        final SparseArray<String> idNamesById = new SparseArray<String>();
+        idNamesById.put(TestView.ROOT_ID, "ROOT_ID");
+        idNamesById.put(TestView.TEXT_VIEW_ID, "TEXT_VIEW_ID");
+        idNamesById.put(1234567, "CRAZYSAUCE ID");
+        // NO BUTTON_ID in the table
+
+        mSnapshot = new ViewSnapshot(props, idNamesById);
     }
 
     public void testViewSnapshot() throws IOException, JSONException {
@@ -78,7 +85,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
         assertEquals(mRootView.mAllViews.size(), viewsJson.length());
 
         final Map<Integer, View> viewsByHashcode = new HashMap<Integer, View>(mRootView.mViewsByHashcode);
-        final Map<Integer, JSONObject> descsByHashcode = new HashMap<Integer, JSONObject>();
+        final SparseArray<JSONObject> descsByHashcode = new SparseArray<JSONObject>();
         for (int viewIx = 0; viewIx < viewsJson.length(); viewIx++) {
             final JSONObject viewDesc = viewsJson.getJSONObject(viewIx);
             final int descHashcode = viewDesc.getInt("hashCode");
@@ -113,6 +120,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
         final JSONObject adhoc2Desc = descsByHashcode.get(mRootView.mAdHocButton2.hashCode());
         final JSONObject adhoc3Desc = descsByHashcode.get(mRootView.mAdHocButton3.hashCode());
 
+
         assertEquals(mRootView.mAdHocButton1.getText(), adhoc1Desc.getString("text"));
         assertEquals(mRootView.mAdHocButton2.getText(), adhoc2Desc.getString("text"));
         assertEquals(mRootView.mAdHocButton3.getText(), adhoc3Desc.getString("text"));
@@ -127,14 +135,25 @@ public class ViewSnapshotTest extends AndroidTestCase {
         assertFalse(adhoc2Desc.has("badTypes"));
         assertFalse(adhoc3Desc.has("crazy"));
         assertFalse(adhoc3Desc.has("badTypes"));
+
+        final JSONObject rootDesc = descsByHashcode.get(mRootView.hashCode());
+        final JSONObject textViewDesc = descsByHashcode.get(mRootView.mTextView1.hashCode());
+
+        assertEquals(rootDesc.getString("mp_id_name"), "ROOT_ID");
+        assertEquals(textViewDesc.getString("mp_id_name"), "TEXT_VIEW_ID");
+        assertFalse(adhoc3Desc.has("mp_id_name"));
+        assertEquals(adhoc3Desc.getInt("id"), TestView.BUTTON_ID);
     }
 
     public void testNoLayoutSnapshot() throws IOException, JSONException {
+        final TestView neverAttached = new TestView(getContext());
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", mRootView, out);
+        mSnapshot.snapshot("TEST CLASS", neverAttached, out);
 
         final JSONObject json = new JSONObject(new String(out.toByteArray()));
-        assertTrue(json.isNull("screenshot"));
+
+        // Key thing here is not to throw exceptions in the crazy case.
+        assertTrue(json.has("screenshot"));
     }
 
     private ViewSnapshot mSnapshot;

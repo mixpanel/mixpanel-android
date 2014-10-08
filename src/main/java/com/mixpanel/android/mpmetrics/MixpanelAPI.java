@@ -124,7 +124,7 @@ public class MixpanelAPI {
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
 
-        // TODO this immediately forces the lazy load of the preferences, and defeats the
+        // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         mDecideMessages.setDistinctId(peopleId);

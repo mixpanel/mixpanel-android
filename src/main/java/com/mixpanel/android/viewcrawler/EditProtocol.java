@@ -1,15 +1,25 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
+import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
+
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /* package */ class EditProtocol {
 
@@ -23,10 +33,16 @@ import java.util.List;
         }
     }
 
+    public EditProtocol(Context context) {
+        mIdNameToId = new HashMap<String, Integer>();
+        mIdToIdName = new SparseArray<String>();
+        buildIdMap(context);
+    }
+
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener) throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
-            final List<ViewVisitor.PathElement> path = readPath(pathDesc);
+            final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
                 throw new BadInstructionsException("Path selector was empty.");
@@ -49,7 +65,7 @@ import java.util.List;
     public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
-            final List<ViewVisitor.PathElement> path = readPath(pathDesc);
+            final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
                 throw new BadInstructionsException("Path selector was empty.");
@@ -105,7 +121,7 @@ import java.util.List;
                 }
             }
 
-            return new ViewSnapshot(properties);
+            return new ViewSnapshot(properties, mIdToIdName);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (ClassNotFoundException e) {
@@ -114,43 +130,93 @@ import java.util.List;
     }
 
     // Package access FOR TESTING ONLY
-    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc) throws JSONException {
+    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> idNameToId) throws JSONException {
         final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
-            final String targetViewClass;
-            if (targetView.has("view_class")) {
-                targetViewClass = targetView.getString("view_class");
-            } else {
-                targetViewClass = null;
-            }
 
-            final int targetIndex;
-            if (targetView.has("index")) {
-                targetIndex = targetView.getInt("index");
-            } else {
-                targetIndex = -1;
-            }
+            final String targetViewClass = targetView.optString("view_class", null);
+            final int targetIndex = targetView.optInt("index", -1);
+            final String targetTag = targetView.optString("tag", null);
+            final int targetExplicitId = targetView.optInt("id", -1);
+            final String targetIdName = targetView.optString("mp_id_name", null);
 
             final int targetId;
-            if (targetView.has("id")) {
-                targetId = targetView.getInt("id");
-            } else {
-                targetId = -1;
-            }
-
-            final String targetTag;
-            if (targetView.has("tag")) {
-                targetTag = targetView.getString("tag");
-            } else {
-                targetTag = null;
+            try {
+                targetId = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            } catch (ImpossibleToMatchException e) {
+                return NEVER_MATCH_PATH;
             }
 
             path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, targetTag));
         }
 
         return path;
+    }
+
+    private static class ImpossibleToMatchException extends Exception {}
+
+    private int reconcileIdsInPath(int explicitId, String idName, Map<String, Integer> idNameToId)
+        throws ImpossibleToMatchException {
+        final int idFromName;
+        if (null != idName) {
+            if (idNameToId.containsKey(idName)) {
+                idFromName = idNameToId.get(idName);
+            } else {
+                // A non-matching name will never match a real view
+                Log.e(LOGTAG,
+                        "Path element contains an id name not known to the system. No views will be matched.\n" +
+                                "Make sure that you're not stripping your packages R class out with proguard."
+                );
+                throw new ImpossibleToMatchException();
+            }
+        } else {
+            idFromName = -1;
+        }
+
+        if (-1 != idFromName && -1 != explicitId && idFromName != explicitId) {
+            Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
+            throw new ImpossibleToMatchException();
+        }
+
+        if (-1 != idFromName) {
+            return idFromName;
+        }
+
+        return explicitId;
+    }
+
+    private void buildIdMap(Context context) {
+        mIdNameToId.clear();
+        mIdToIdName.clear();
+
+        final String packageName = context.getPackageName();
+        final String rIdClassName = packageName + ".R$id";
+        try {
+            final Class rIdClass = Class.forName(rIdClassName);
+            final Field[] fields = rIdClass.getFields();
+            for (int i = 0; i < fields.length; i++) {
+                final Field field = fields[i];
+                final int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers)) {
+                    final Class fieldType = field.getType();
+                    if (fieldType == int.class) {
+                        final String name = field.getName();
+                        final int value = field.getInt(null);
+                        mIdNameToId.put(name, value);
+                        mIdToIdName.put(value, name);
+                    }
+                }
+            }// for fields
+
+        } catch (ClassNotFoundException e) {
+            if (MPConfig.DEBUG) {
+                Log.e(LOGTAG, "Can't find class " + rIdClassName, e);
+            }
+        } catch (IllegalAccessException e) {
+            Log.e(LOGTAG, "Found but can't access a static, integer field of R");
+        }
     }
 
     private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc) throws BadInstructionsException {
@@ -204,5 +270,12 @@ import java.util.List;
         }
     }
 
+    private final Map<String, Integer> mIdNameToId;
+    private final SparseArray<String> mIdToIdName;
+
     private static final Class[] NO_PARAMS = new Class[0];
+    private static final List<ViewVisitor.PathElement> NEVER_MATCH_PATH = Collections.EMPTY_LIST;
+
+    @SuppressWarnings("unused")
+    private static final String LOGTAG = "MixpanelAPI.EditProtocol";
 } // EditProtocol

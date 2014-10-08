@@ -202,7 +202,13 @@ import java.util.List;
 
     protected abstract void accumulate(View found);
 
+    /* Should never be called with an empty path */
     private void findTargetsInChildren(ViewGroup parent, List<PathElement> path) {
+        if (path.isEmpty()) {
+            Log.e(LOGTAG, "Children will never match an empty path");
+            return;
+        }
+
         final PathElement matchElement = path.get(0);
         final List<PathElement> nextPath = path.subList(1, path.size());
         final int matchIndex = matchElement.index;
