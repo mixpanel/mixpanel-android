@@ -59,7 +59,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mEditorEventBindings = new HashMap<String, List<JSONObject>>();
         mProtocol = new EditProtocol(context);
 
-
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
 
