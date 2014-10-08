@@ -130,7 +130,7 @@ import java.util.Map;
     }
 
     // Package access FOR TESTING ONLY
-    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> mIdNameToId) throws JSONException {
+    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> idNameToId) throws JSONException {
         final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
 
         for (int i = 0; i < pathDesc.length(); i++) {
@@ -150,18 +150,18 @@ import java.util.Map;
                 targetIndex = -1;
             }
 
-            final int targetExplicitId;
-            if (targetView.has("id")) {
-                targetExplicitId = targetView.getInt("id");
-            } else {
-                targetExplicitId = -1;
-            }
-
             final String targetTag;
             if (targetView.has("tag")) {
                 targetTag = targetView.getString("tag");
             } else {
                 targetTag = null;
+            }
+
+            final int targetExplicitId;
+            if (targetView.has("id")) {
+                targetExplicitId = targetView.getInt("id");
+            } else {
+                targetExplicitId = -1;
             }
 
             final String targetIdName;
@@ -171,38 +171,49 @@ import java.util.Map;
                 targetIdName = null;
             }
 
-            final int targetIdByName;
-            if (null != targetIdName) {
-                if (mIdNameToId.containsKey(targetIdName)) {
-                    targetIdByName = mIdNameToId.get(targetIdName);
-                } else {
-                    // A non-matching name will never match a real view
-                    Log.e(LOGTAG,
-                            "Path element contains an id name not known to the system. No views will be matched.\n" +
-                            "Make sure that you're not stripping your packages R class out with proguard.");
-                    return NEVER_MATCH_PATH;
-                }
-            } else {
-                targetIdByName = -1;
-            }
-
-            final int useTargetId;
-            if (-1 != targetIdByName && -1 != targetExplicitId && targetIdByName != targetExplicitId) {
-                // Two different ids will never match a real view
-                Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
+            final int targetId;
+            try {
+                targetId = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            } catch (ImpossibleToMatchException e) {
                 return NEVER_MATCH_PATH;
-            } else if (-1 != targetIdByName) {
-                useTargetId = targetIdByName;
-            } else if (-1 != targetExplicitId) {
-                useTargetId = targetExplicitId;
-            } else {
-                useTargetId = -1;
             }
 
-            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, useTargetId, targetTag));
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, targetTag));
         }
 
         return path;
+    }
+
+    private static class ImpossibleToMatchException extends Exception {}
+
+    private int reconcileIdsInPath(int explicitId, String idName, Map<String, Integer> idNameToId)
+        throws ImpossibleToMatchException {
+        final int idFromName;
+        if (null != idName) {
+            if (idNameToId.containsKey(idName)) {
+                idFromName = idNameToId.get(idName);
+            } else {
+                // A non-matching name will never match a real view
+                Log.e(LOGTAG,
+                        "Path element contains an id name not known to the system. No views will be matched.\n" +
+                                "Make sure that you're not stripping your packages R class out with proguard."
+                );
+                throw new ImpossibleToMatchException();
+            }
+        } else {
+            idFromName = -1;
+        }
+
+        if (-1 != idFromName && -1 != explicitId && idFromName != explicitId) {
+            Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
+            throw new ImpossibleToMatchException();
+        }
+
+        if (-1 != idFromName) {
+            return idFromName;
+        }
+
+        return explicitId;
     }
 
     private void buildIdMap(Context context) {
