@@ -1430,6 +1430,9 @@ public class MixpanelAPI {
                         switch (inAppType) {
                             case MINI: {
                                 final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
+                                if (null == claimed) {
+                                    return; // Can't claim the display state
+                                }
                                 InAppFragment inapp = new InAppFragment();
                                 inapp.setDisplayState(intentId, (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState());
                                 inapp.setRetainInstance(true);
