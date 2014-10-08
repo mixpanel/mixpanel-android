@@ -211,7 +211,7 @@ import java.util.Map;
 
             addProperties(view, dump);
 
-            JSONArray children = new JSONArray();
+            final JSONArray children = new JSONArray();
             if (view instanceof ViewGroup) {
                 final ViewGroup group = (ViewGroup) view;
                 final int childCount = group.getChildCount();
