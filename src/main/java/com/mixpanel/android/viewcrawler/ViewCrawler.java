@@ -89,8 +89,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mMixpanel.track(eventName, null);
     }
 
-
-
     private void applyAllChangesOnUiThread() {
         mUiThreadHandler.post(new Runnable() {
             @Override
