@@ -122,20 +122,15 @@ public class MixpanelAPI {
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
         mUpdatesListener = constructUpdatesListener();
-        mDecideMessages = null;
+        mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
 
         // TODO this immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
-        if (null != peopleId) {
-            mDecideMessages = constructDecideUpdates(token, peopleId, mUpdatesListener, mUpdatesFromMixpanel);
-        }
+        mDecideMessages.setDistinctId(peopleId);
+        mMessages.installDecideCheck(mDecideMessages);
 
         registerMixpanelActivityLifecycleCallbacks();
-
-        if (null != mDecideMessages) {
-            mMessages.installDecideCheck(mDecideMessages);
-        }
     }
 
     /**
@@ -969,8 +964,8 @@ public class MixpanelAPI {
         return new PersistentIdentity(referrerPreferences, storedPreferences);
     }
 
-    /* package */ DecideMessages constructDecideUpdates(final String token, final String peopleId, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-        return new DecideMessages(token, peopleId, listener, updatesFromMixpanel);
+    /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+        return new DecideMessages(token, listener, updatesFromMixpanel);
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {
@@ -998,25 +993,13 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
     }
 
-    /* package */ boolean canUpdate() {
-        return mDecideMessages != null;
-    }
-
     ///////////////////////
 
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
             mPersistentIdentity.setPeopleDistinctId(distinctId);
-            if (null != mDecideMessages && !mDecideMessages.getDistinctId().equals(distinctId)) {
-                mDecideMessages.destroy();
-                mDecideMessages = null;
-            }
-
-            if (null == mDecideMessages && null != distinctId) {
-                mDecideMessages = constructDecideUpdates(mToken, distinctId, mUpdatesListener, mUpdatesFromMixpanel);
-                mMessages.installDecideCheck(mDecideMessages);
-            }
+            mDecideMessages.setDistinctId(distinctId);
             pushWaitingPeopleRecord();
          }
 
@@ -1159,17 +1142,11 @@ public class MixpanelAPI {
 
         @Override
         public InAppNotification getNotificationIfAvailable() {
-            if (! canUpdate()) {
-                return null;
-            }
             return mDecideMessages.getNotification(mConfig.getTestMode());
         }
 
         @Override
         public Survey getSurveyIfAvailable() {
-            if (! canUpdate()) {
-                return null;
-            }
             return mDecideMessages.getSurvey(mConfig.getTestMode());
         }
 
@@ -1190,10 +1167,6 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
-            if (null == mDecideMessages) {
-                return;
-            }
-
             Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
                 showGivenOrAvailableSurvey(s, parent);
@@ -1211,10 +1184,6 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationById(int id, final Activity parent) {
-            if (null == mDecideMessages) {
-                return;
-            }
-
             InAppNotification notif = mDecideMessages.getNotification(id, mConfig.getTestMode());
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
@@ -1514,7 +1483,7 @@ public class MixpanelAPI {
 
     private class UnsupportedUpdatesListener implements UpdatesListener {
         @Override
-        public void onNewResults(String distinctId) {
+        public void onNewResults() {
             // Do nothing, these features aren't supported in older versions of the library
         }
 
@@ -1531,24 +1500,25 @@ public class MixpanelAPI {
 
     private class SupportedUpdatesListener implements UpdatesListener, Runnable {
         @Override
-        public void onNewResults(final String distinctId) {
+        public void onNewResults() {
             mExecutor.execute(this);
         }
 
+        @Override
         public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            if (null != mDecideMessages) {
-                if (mDecideMessages.hasUpdatesAvailable()) {
-                    onNewResults(mDecideMessages.getDistinctId());
-                }
+            if (mDecideMessages.hasUpdatesAvailable()) {
+                onNewResults();
             }
 
             mListeners.add(listener);
         }
 
+        @Override
         public synchronized void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
             mListeners.remove(listener);
         }
 
+        @Override
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
@@ -1620,8 +1590,7 @@ public class MixpanelAPI {
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
-
-    private DecideMessages mDecideMessages; // Possibly null
+    private final DecideMessages mDecideMessages;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

@@ -8,42 +8,38 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 /* package */ class DecideMessages {
 
     public interface OnNewResultsListener {
-        public void onNewResults(String distinctId);
+        public void onNewResults();
     }
 
-    public DecideMessages(String token, String distinctId, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+    public DecideMessages(String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
         mToken = token;
-        mDistinctId = distinctId;
-
         mListener = listener;
         mUpdatesFromMixpanel = updatesFromMixpanel;
+
+        mDistinctId = null;
         mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
         mNotificationIds = new HashSet<Integer>();
-        mIsDestroyed = new AtomicBoolean(false);
     }
 
     public String getToken() {
         return mToken;
     }
 
-    public String getDistinctId() {
+    public synchronized void setDistinctId(String distinctId) {
+        mUnseenSurveys.clear();
+        mUnseenNotifications.clear();
+        mDistinctId = distinctId;
+    }
+
+    public synchronized String getDistinctIdMAYBENULL() {
         return mDistinctId;
-    }
-
-    public void destroy() {
-        mIsDestroyed.set(true);
-    }
-
-    public boolean isDestroyed() {
-        return mIsDestroyed.get();
     }
 
     // Do not consult destroyed status inside of this method.
@@ -70,7 +66,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
         }
 
         if (newContent && hasUpdatesAvailable() && null != mListener) {
-            mListener.onNewResults(getDistinctId());
+            mListener.onNewResults();
         }
     }
 
@@ -128,15 +124,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
         return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty());
     }
 
+    // Mutable, must be synchronized
+    private String mDistinctId;
+
     private final String mToken;
-    private final String mDistinctId;
     private final Set<Integer> mSurveyIds;
     private final Set<Integer> mNotificationIds;
     private final List<Survey> mUnseenSurveys;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
-    private final AtomicBoolean mIsDestroyed;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdates";

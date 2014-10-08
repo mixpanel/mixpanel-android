@@ -49,15 +49,12 @@ import java.util.List;
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
-            if (updates.isDestroyed()) {
-                itr.remove();
-            } else {
-                try {
-                    final Result result = runDecideCheck(updates.getToken(), updates.getDistinctId(), poster);
-                    updates.reportResults(result.surveys, result.notifications, result.eventBindings);
-                } catch (UnintelligibleMessageException e) {
-                    Log.e(LOGTAG, e.getMessage(), e);
-                }
+            final String distinctId = updates.getDistinctIdMAYBENULL();
+            try {
+                final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
+                updates.reportResults(result.surveys, result.notifications, result.eventBindings);
+            } catch (UnintelligibleMessageException e) {
+                Log.e(LOGTAG, e.getMessage(), e);
             }
         }
     }
@@ -169,20 +166,28 @@ import java.util.List;
     }
 
     private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster) {
-        String escapedToken;
-        String escapedId;
+        final String escapedToken;
+        final String escapedId;
         try {
             escapedToken = URLEncoder.encode(unescapedToken, "utf-8");
-            escapedId = URLEncoder.encode(unescapedDistinctId, "utf-8");
+            if (null != unescapedDistinctId) {
+                escapedId = URLEncoder.encode(unescapedDistinctId, "utf-8");
+            } else {
+                escapedId = null;
+            }
         } catch(final UnsupportedEncodingException e) {
             throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
         }
-        final String checkQuery = new StringBuilder()
+
+        final StringBuilder queryBuilder = new StringBuilder()
                 .append("?version=1&lib=android&token=")
-                .append(escapedToken)
-                .append("&distinct_id=")
-                .append(escapedId)
-                .toString();
+                .append(escapedToken);
+
+        if (null != escapedId) {
+            queryBuilder.append("&distinct_id=").append(escapedId);
+        }
+
+        final String checkQuery = queryBuilder.toString();
         final String[] urls = { mConfig.getDecideEndpoint() + checkQuery, mConfig.getDecideFallbackEndpoint() + checkQuery };
 
         if (MPConfig.DEBUG) {
