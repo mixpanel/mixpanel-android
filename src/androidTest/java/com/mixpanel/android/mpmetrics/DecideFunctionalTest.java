@@ -186,7 +186,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         assertNull(api.getPeople().getSurveyIfAvailable());
         assertNull(api.getPeople().getNotificationIfAvailable());
 
-        // We should rewrite our memory, including seen objects, when we call identify
+        // Seen never changes, even if we re-identify
         synchronized (mExpectations) {
             mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2";
             mExpectations.response = "{" +
@@ -197,15 +197,9 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectations.resultsFound = false;
         }
         api.getPeople().identify("DECIDE CHECKS ID 2");
+        api.flush();
 
         mExpectations.checkExpectations();
-
-        {
-            final Survey shouldExistSurvey = api.getPeople().getSurveyIfAvailable();
-            assertEquals(shouldExistSurvey.getId(), 8888);
-            final InAppNotification shouldExistNotification = api.getPeople().getNotificationIfAvailable();
-            assertEquals(shouldExistNotification.getId(), 3333);
-        }
 
         assertNull(api.getPeople().getSurveyIfAvailable());
         assertNull(api.getPeople().getNotificationIfAvailable());

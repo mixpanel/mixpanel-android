@@ -191,8 +191,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        fail("Need to test that distinct id is updated appropriately");
-
         mixpanel.getPeople().identify("TEST IDENTITY");
 
         mixpanel.getPeople().set("SET NAME", "SET VALUE");
@@ -307,8 +305,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
-        final SynchronizedReference<Boolean> okToDecide = new SynchronizedReference<Boolean>();
-        okToDecide.set(false);
+        final SynchronizedReference<Boolean> isIdentifiedRef = new SynchronizedReference<Boolean>();
+        isIdentifiedRef.set(false);
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
@@ -329,12 +327,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
-                final boolean decideIsOk = okToDecide.get();
+                final boolean isIdentified = isIdentifiedRef.get();
                 if (null == nameValuePairs) {
-                    if (decideIsOk) {
+                    if (isIdentified) {
                         assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
                     } else {
-                        fail("User is unidentified, we shouldn't be checking decide. (URL WAS " + endpointUrl + ")");
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing", endpointUrl);
                     }
                     return TestUtils.bytes("{}");
                 }
@@ -457,7 +455,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject nextWaveEvent = nextWave.getJSONObject(0);
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
-            okToDecide.set(true);
+            isIdentifiedRef.set(true);
             metrics.getPeople().identify("new person");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
@@ -493,7 +491,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) throws IOException {
                 if (null == nameValuePairs) {
-                    assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                    assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing", endpointUrl);
                     return TestUtils.bytes("{}");
                 }
 
