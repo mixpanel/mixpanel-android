@@ -114,8 +114,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideMessages constructDecideUpdates(String token, String distinctId, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
-                return new MockMessages(token, distinctId, listener, binder);
+            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
+                return new MockMessages(token, listener, binder);
             }
         };
 
@@ -238,8 +238,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
 
             @Override
-            DecideMessages constructDecideUpdates(String token, String distinctId, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
-                return new MockMessages(token, distinctId, listener, binder);
+            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
+                return new MockMessages(token, listener, binder);
             }
         };
 
@@ -282,8 +282,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
     }
 
     private class MockMessages extends DecideMessages {
-        public MockMessages(final String token, final String distinctId, final OnNewResultsListener listener, final UpdatesFromMixpanel binder) {
-            super(token, distinctId, listener, binder);
+        public MockMessages(final String token, final OnNewResultsListener listener, final UpdatesFromMixpanel binder) {
+            super(token, listener, binder);
         }
 
         @Override

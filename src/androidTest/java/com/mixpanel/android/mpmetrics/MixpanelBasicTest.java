@@ -191,7 +191,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        assertFalse(mixpanel.canUpdate());
+        fail("Need to test that distinct id is updated appropriately");
 
         mixpanel.getPeople().identify("TEST IDENTITY");
 
@@ -303,27 +303,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         String setPeopleId = metrics.getPeople().getDistinctId();
         assertEquals("People Id", setPeopleId);
-    }
-
-    public void testDecideUpdatesWithIdentityChanges() {
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identity Changes Token");
-
-        assertFalse(metrics.canUpdate());
-
-        metrics.getPeople().identify(null);
-        assertFalse(metrics.canUpdate());
-
-        metrics.getPeople().identify("NOT NULL");
-        assertTrue(metrics.canUpdate());
-
-        metrics.getPeople().identify("Also Not Null");
-        assertTrue(metrics.canUpdate());
-
-        metrics.getPeople().identify(null);
-        assertFalse(metrics.canUpdate());
-
-        metrics.getPeople().identify("Not Null Again");
-        assertTrue(metrics.canUpdate());
     }
 
     public void testMessageQueuing() {

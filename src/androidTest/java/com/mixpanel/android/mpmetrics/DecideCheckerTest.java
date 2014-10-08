@@ -19,9 +19,12 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideChecker = new DecideChecker(getContext(), MPConfig.getInstance(getContext()));
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
-        mDecideMessages1 = new DecideMessages("TOKEN 1", "DISTINCT ID 1", null, mEventBinder);
-        mDecideMessages2 = new DecideMessages("TOKEN 2", "DISTINCT ID 2", null, mEventBinder);
-        mDecideMessages3 = new DecideMessages("TOKEN 3", "DISTINCT ID 3", null, mEventBinder);
+        mDecideMessages1 = new DecideMessages("TOKEN 1", null, mEventBinder);
+        mDecideMessages1.setDistinctId("DISTINCT ID 1");
+        mDecideMessages2 = new DecideMessages("TOKEN 2", null, mEventBinder);
+        mDecideMessages2.setDistinctId("DISTINCT ID 2");
+        mDecideMessages3 = new DecideMessages("TOKEN 3", null, mEventBinder);
+        mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
     public void testReadEmptyLists() {

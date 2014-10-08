@@ -22,7 +22,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         mListenerCalls = new LinkedBlockingQueue<String>();
         mMockListener = new DecideMessages.OnNewResultsListener() {
             @Override
-            public void onNewResults(final String distinctId) {
+            public void onNewResults() {
                 mListenerCalls.add("CALLED");
             }
         };
@@ -40,7 +40,7 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
         };
 
-        mDecideMessages = new DecideMessages("TEST TOKEN", "TEST DISTINCT ID", mMockListener, mMockUpdates);
+        mDecideMessages = new DecideMessages("TEST TOKEN", mMockListener, mMockUpdates);
         mSomeSurveys = new ArrayList<Survey>();
         mSomeNotifications = new ArrayList<InAppNotification>();
 
@@ -65,12 +65,6 @@ public class DecideMessagesTest extends AndroidTestCase {
         mSomeNotifications.add(new InAppNotification(notifsDesc2));
 
         mSomeBindings = new JSONArray(); // TODO need to test with actual bindings?
-    }
-
-    public void testDestruction() {
-        assertFalse(mDecideMessages.isDestroyed());
-        mDecideMessages.destroy();
-        assertTrue(mDecideMessages.isDestroyed());
     }
 
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
