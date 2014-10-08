@@ -977,7 +977,7 @@ public class MixpanelAPI {
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (android.os.Build.VERSION.SDK_INT < 14) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return null;
+            return new UnsupportedUpdatesFromMixpanel();
         } else {
             return new ViewCrawler(mContext, mToken, this);
         }
@@ -1014,9 +1014,6 @@ public class MixpanelAPI {
 
         @Override
         public Tweaks getTweaks() {
-            if (null == mUpdatesFromMixpanel) {
-                return null;
-            }
             return mUpdatesFromMixpanel.getTweaks();
         }
 
@@ -1532,6 +1529,24 @@ public class MixpanelAPI {
 
         private final Set<OnMixpanelUpdatesReceivedListener> mListeners = new HashSet<OnMixpanelUpdatesReceivedListener>();
         private final Executor mExecutor = Executors.newSingleThreadExecutor();
+    }
+
+    private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
+        public UnsupportedUpdatesFromMixpanel() {
+            mEmptyTweaks = new Tweaks();
+        }
+
+        @Override
+        public void setEventBindings(JSONArray bindings) {
+            ; // No op
+        }
+
+        @Override
+        public Tweaks getTweaks() {
+            return mEmptyTweaks;
+        }
+
+        private final Tweaks mEmptyTweaks;
     }
 
     ////////////////////////////////////////////////////
