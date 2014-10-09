@@ -527,11 +527,6 @@ public class MixpanelAPI {
         public void identify(String distinctId);
 
         /**
-         * @return Tweaks available for this user.
-         */
-        public Tweaks getTweaks();
-
-        /**
          * Sets a single property with the given name and value for this user.
          * The given name and value will be assigned to the user in Mixpanel People Analytics,
          * possibly overwriting an existing property with the same name.
@@ -1002,11 +997,6 @@ public class MixpanelAPI {
             mDecideMessages.setDistinctId(distinctId);
             pushWaitingPeopleRecord();
          }
-
-        @Override
-        public Tweaks getTweaks() {
-            return mUpdatesFromMixpanel.getTweaks();
-        }
 
         @Override
         public void set(JSONObject properties) {
