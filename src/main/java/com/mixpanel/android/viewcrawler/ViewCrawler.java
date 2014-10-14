@@ -33,6 +33,7 @@ import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 
 /**
@@ -64,6 +66,20 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         thread.start();
         mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper());
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+
+        // We build our own, private SSL context here to prevent things from going
+        // crazy if client libs are using older versions of OkHTTP, or otherwise doing crazy junk
+        // with the default SSL context: https://github.com/square/okhttp/issues/184
+        SSLSocketFactory foundSSLFactory;
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, null, null);
+            foundSSLFactory = sslContext.getSocketFactory();
+        } catch (GeneralSecurityException e) {
+            Log.e(LOGTAG, "System has no SSL support. Built-in events editor will not be available", e);
+            foundSSLFactory = null;
+        }
+        mSSLSocketFactory = foundSSLFactory;
 
         mUiThreadHandler = new Handler(Looper.getMainLooper());
         mMixpanel = mixpanel;
@@ -241,7 +257,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             super(looper);
             mContext = context;
             mToken = token;
-            mDisplayMetrics = new DisplayMetrics();
             mSnapshot = null;
         }
 
@@ -319,15 +334,18 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
             if (mEditorConnection != null && mEditorConnection.isValid()) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "There is already a valid connection to an editor.");
+                    Log.d(LOGTAG, "There is already a valid connection to an events editor.");
                 }
                 return;
             }
 
+            if (null == mSSLSocketFactory) {
+                Log.i(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
+            }
+
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
-                final SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-                final Socket sslSocket = socketFactory.createSocket();
+                final Socket sslSocket = mSSLSocketFactory.createSocket();
                 mEditorConnection = new EditorConnection(new URI(url), new Editor(), sslSocket);
             } catch (URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
@@ -425,37 +443,12 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
 
-            final List<RootViewInfo> rootViews = new ArrayList<RootViewInfo>();
-
-            synchronized (mLiveActivities) {
-                for (Activity a : mLiveActivities) {
-                    final String activityName = a.getClass().getCanonicalName();
-
-                    // We know (since we're synched w/ the UI thread on activity changes)
-                    // that the activities in mLiveActivities are valid here.
-                    final View rootView = a.getWindow().getDecorView().getRootView();
-                    a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
-                    final RootViewInfo info = new RootViewInfo(activityName, rootView);
-                    rootViews.add(info);
-                }
-            }
-
             try {
                 writer.write("{\"type\": \"snapshot_response\",");
                 writer.write("\"payload\": {");
                 writer.write("\"activities\": [");
                 writer.flush();
-
-                int viewCount = rootViews.size();
-                for (int i = 0; i < viewCount; i++) {
-                    if (i > 0) {
-                        writer.write(",");
-                        writer.flush();
-                    }
-
-                    final RootViewInfo info = rootViews.get(i);
-                    mSnapshot.snapshot(info.activityName, info.rootView, out);
-                }
+                mSnapshot.snapshots(mLiveActivities, out);
                 writer.write("]"); // activities
                 writer.write("}"); // payload
                 writer.write("}");
@@ -550,7 +543,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         private ViewSnapshot mSnapshot;
         private final Context mContext;
         private final String mToken;
-        private final DisplayMetrics mDisplayMetrics;
     }
 
     private class Editor implements EditorConnection.Editor {
@@ -615,16 +607,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         private final ViewVisitor mEdit;
     }
 
-    private static class RootViewInfo {
-        public RootViewInfo(String activityName, View rootView) {
-            this.activityName = activityName;
-            this.rootView = rootView;
-        }
-
-        public final String activityName;
-        public final View rootView;
-    }
-
     // Map from canonical activity class name to description of changes
     // Accessed from Multiple Threads, must be synchronized
 
@@ -637,6 +619,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
 
+    private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;
     private final Tweaks mTweaks = new Tweaks();
     private final Handler mUiThreadHandler;
