@@ -37,12 +37,22 @@ Changelog
  To use the Mixpanel library with Proguarded builds, add the following to your proguard.cfg file
  
  ```
- -keep class com.mixpanel.android.abtesting.** { *; }
- -keep class com.mixpanel.android.mpmetrics.** { *; }
- -keep class com.mixpanel.android.surveys.** { *; }
- -keep class com.mixpanel.android.util.** { *; }
- -keep class com.mixpanel.android.java_websocket.** { *; }
- ```
+-keep class com.mixpanel.android.abtesting.** { *; }
+-keep class com.mixpanel.android.mpmetrics.** { *; }
+-keep class com.mixpanel.android.surveys.** { *; }
+-keep class com.mixpanel.android.util.** { *; }
+-keep class com.mixpanel.android.java_websocket.** { *; }
+
+-keepattributes InnerClasses
+
+-keep class **.R
+-keep class **.R$* {
+    <fields>;
+}
+```
+
+Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds
+of your application.
 
 #### v4.2.2
 
