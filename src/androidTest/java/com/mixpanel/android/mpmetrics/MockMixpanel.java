@@ -47,11 +47,6 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public Tweaks getTweaks() {
-            return null;
-        }
-
-        @Override
         public void set(final String propertyName, final Object value) {
             Assert.fail("Unexpected call");
         }
