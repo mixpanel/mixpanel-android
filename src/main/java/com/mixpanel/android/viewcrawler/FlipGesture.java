@@ -47,17 +47,12 @@ import com.mixpanel.android.mpmetrics.MPConfig;
                     Log.d(LOGTAG, "Flip gesture abandoned");
                 }
                 mTriggerState = TRIGGER_STATE_NONE;
-            } else if (mFlipState == FLIP_STATE_UP && mTriggerState == TRIGGER_STATE_NONE) {
+            } else if (mFlipState == FLIP_STATE_DOWN && mTriggerState == TRIGGER_STATE_NONE) {
                 if (MPConfig.DEBUG) {
                     Log.d(LOGTAG, "Flip gesture begun");
                 }
-                mTriggerState = TRIGGER_STATE_UP_BEGIN;
-            } else if (mFlipState == FLIP_STATE_DOWN && mTriggerState == TRIGGER_STATE_UP_BEGIN) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Flip gesture continued");
-                }
-                mTriggerState = TRIGGER_STATE_DOWN_MIDDLE;
-            } else if (mFlipState == FLIP_STATE_UP && mTriggerState == TRIGGER_STATE_DOWN_MIDDLE) {
+                mTriggerState = TRIGGER_STATE_BEGIN;
+            } else if (mFlipState == FLIP_STATE_UP && mTriggerState == TRIGGER_STATE_BEGIN) {
                 if (MPConfig.DEBUG) {
                     Log.d(LOGTAG, "Flip gesture completed");
                 }
@@ -97,8 +92,7 @@ import com.mixpanel.android.mpmetrics.MPConfig;
     private static final int FLIP_STATE_DOWN = 1;
 
     private static final int TRIGGER_STATE_NONE = 0;
-    private static final int TRIGGER_STATE_UP_BEGIN = 1;
-    private static final int TRIGGER_STATE_DOWN_MIDDLE = 2;
+    private static final int TRIGGER_STATE_BEGIN = 1;
 
     private static final float ACCELEROMETER_SMOOTHING = 0.5f;
 
