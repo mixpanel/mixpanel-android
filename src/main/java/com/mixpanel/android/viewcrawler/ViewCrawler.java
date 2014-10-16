@@ -75,7 +75,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             sslContext.init(null, null, null);
             foundSSLFactory = sslContext.getSocketFactory();
         } catch (GeneralSecurityException e) {
-            Log.e(LOGTAG, "System has no SSL support. Built-in events editor will not be available", e);
+            Log.d(LOGTAG, "System has no SSL support. Built-in events editor will not be available", e);
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
@@ -339,7 +339,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
 
             if (null == mSSLSocketFactory) {
-                Log.i(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
+                Log.d(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
                 return;
             }
 
