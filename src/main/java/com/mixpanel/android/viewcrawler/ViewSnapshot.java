@@ -51,61 +51,56 @@ import java.util.concurrent.TimeoutException;
         final FutureTask<List<RootViewInfo>> infoFuture = new FutureTask<List<RootViewInfo>>(finder);
         mMainThreadHandler.post(infoFuture);
 
-        List<RootViewInfo> infoList;
         try {
-            infoList = infoFuture.get(1, TimeUnit.SECONDS);
+            final List<RootViewInfo> infoList = infoFuture.get(1, TimeUnit.SECONDS);
+
+            final Writer writer = new OutputStreamWriter(out);
+            int infoCount = infoList.size();
+            for (int i = 0; i < infoCount; i++) {
+                if (i > 0) {
+                    writer.write(",");
+                    writer.flush();
+                }
+
+                final RootViewInfo info = infoList.get(i);
+                writer.write("{");
+
+                writer.write("\"activity\":");
+                writer.write("\"" + info.activityName + "\"");
+                writer.write(",");
+                writer.write("\"scale\":");
+                writer.write(String.format("%s", info.scale));
+                writer.write(",");
+
+                writer.flush();
+                writeScreenshot(info.screenshot, out);
+                writer.write(",");
+                writer.write("\"serialized_objects\": ");
+
+                writer.write("{");
+                writer.write("\"rootObject\": ");
+                writer.write(Integer.toString(info.rootView.hashCode()));
+                writer.write(",");
+                writer.write("\"objects\": [");
+                snapshotView(writer, info.rootView, true);
+                writer.write("]");
+                writer.write("}"); // serialized_objects
+
+                writer.write("}");
+                writer.flush();
+            }
         } catch (InterruptedException e) {
-            infoList = null;
+            if (MPConfig.DEBUG) {
+                Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
+            }
         } catch (TimeoutException e) {
             if (MPConfig.DEBUG) {
                 Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
             }
-            infoList = null;
         } catch (ExecutionException e) {
             if (MPConfig.DEBUG) {
                 Log.e(LOGTAG, "Exception thrown during screenshot attempt", e);
             }
-            infoList = null;
-        }
-
-        if (null == infoList) {
-            return; // For whatever reason, we can't snapshot right now
-        }
-
-        final Writer writer = new OutputStreamWriter(out);
-        int infoCount = infoList.size();
-        for (int i = 0; i < infoCount; i++) {
-            if (i > 0) {
-                writer.write(",");
-                writer.flush();
-            }
-
-            final RootViewInfo info = infoList.get(i);
-            writer.write("{");
-
-            writer.write("\"activity\":");
-            writer.write("\"" + info.activityName + "\"");
-            writer.write(",");
-            writer.write("\"scale\":");
-            writer.write(String.format("%s", info.scale));
-            writer.write(",");
-
-            writer.flush();
-            writeScreenshot(info.screenshot, out);
-            writer.write(",");
-            writer.write("\"serialized_objects\": ");
-
-            writer.write("{");
-            writer.write("\"rootObject\": ");
-            writer.write(Integer.toString(info.rootView.hashCode()));
-            writer.write(",");
-            writer.write("\"objects\": [");
-            snapshotView(writer, info.rootView, true);
-            writer.write("]");
-            writer.write("}"); // serialized_objects
-
-            writer.write("}");
-            writer.flush();
         }
     }
 
