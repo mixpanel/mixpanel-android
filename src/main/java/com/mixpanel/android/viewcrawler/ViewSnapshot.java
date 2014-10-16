@@ -58,7 +58,7 @@ import java.util.concurrent.TimeoutException;
             infoList = null;
         } catch (TimeoutException e) {
             if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Screenshot took *way* too long to be scheduled and executed", e);
+                Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
             }
             infoList = null;
         } catch (ExecutionException e) {
