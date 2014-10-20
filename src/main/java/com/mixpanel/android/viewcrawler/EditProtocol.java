@@ -167,7 +167,8 @@ import java.util.Map;
                 // A non-matching name will never match a real view
                 Log.e(LOGTAG,
                         "Path element contains an id name not known to the system. No views will be matched.\n" +
-                                "Make sure that you're not stripping your packages R class out with proguard."
+                                "Make sure that you're not stripping your packages R class out with proguard.\n" +
+                                "id name was \"" + idName + "\""
                 );
                 throw new ImpossibleToMatchException();
             }
@@ -210,6 +211,31 @@ import java.util.Map;
             }
         } catch (IllegalAccessException e) {
             Log.e(LOGTAG, "Can't read built-in id names from platform library", e);
+        }
+
+        try {
+            final Class internalPlatformIdClass = Class.forName("com.android.internal.R$id");
+            final Field[] fields = internalPlatformIdClass.getFields();
+            for (int i = 0; i < fields.length; i++) {
+                final Field field = fields[i];
+                final int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers)) {
+                    final Class fieldType = field.getType();
+                    if (fieldType == int.class) {
+                        final String name = field.getName();
+                        final int value = field.getInt(null);
+                        final String namespacedName = "android:internal:" + name;
+                        mIdNameToId.put(namespacedName, value);
+                        mIdToIdName.put(value, namespacedName);
+                    }
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            if (MPConfig.DEBUG) {
+                throw new RuntimeException("Android internal class not available or accessible", e);
+            }
+        } catch (IllegalAccessException e) {
+            Log.e(LOGTAG, "Can't read platform id class names from library", e);
         }
 
         final String packageName = context.getPackageName();
