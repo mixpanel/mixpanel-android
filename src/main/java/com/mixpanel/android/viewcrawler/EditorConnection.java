@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
     public EditorConnection(URI uri, Editor service, Socket sslSocket)
             throws EditorConnectionException {
         mService = service;
+        mURI = uri;
         try {
             mClient = new EditorClient(uri, CONNECT_TIMEOUT, sslSocket);
             mClient.connectBlocking();
@@ -104,7 +105,7 @@ import java.nio.ByteBuffer;
         @Override
         public void onClose(int code, String reason, boolean remote) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason);
+                Log.d(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
             }
         }
 
@@ -165,6 +166,7 @@ import java.nio.ByteBuffer;
 
     private final Editor mService;
     private final EditorClient mClient;
+    private final URI mURI;
 
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);

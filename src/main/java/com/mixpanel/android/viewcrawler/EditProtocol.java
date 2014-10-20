@@ -191,6 +191,27 @@ import java.util.Map;
         mIdNameToId.clear();
         mIdToIdName.clear();
 
+        try {
+            final Class platformIdClass = android.R.id.class;
+            final Field[] fields = platformIdClass.getFields();
+            for (int i = 0; i < fields.length; i++) {
+                final Field field = fields[i];
+                final int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers)) {
+                    final Class fieldType = field.getType();
+                    if (fieldType == int.class) {
+                        final String name = field.getName();
+                        final int value = field.getInt(null);
+                        final String namespacedName = "android:" + name;
+                        mIdNameToId.put(namespacedName, value);
+                        mIdToIdName.put(value, namespacedName);
+                    }
+                }
+            }
+        } catch (IllegalAccessException e) {
+            Log.e(LOGTAG, "Can't read built-in id names from platform library", e);
+        }
+
         final String packageName = context.getPackageName();
         final String rIdClassName = packageName + ".R$id";
         try {
@@ -209,13 +230,12 @@ import java.util.Map;
                     }
                 }
             }// for fields
-
         } catch (ClassNotFoundException e) {
             if (MPConfig.DEBUG) {
                 Log.e(LOGTAG, "Can't find class " + rIdClassName, e);
             }
         } catch (IllegalAccessException e) {
-            Log.e(LOGTAG, "Found but can't access a static, integer field of R");
+            Log.e(LOGTAG, "Can't read id names for local resources");
         }
     }
 
