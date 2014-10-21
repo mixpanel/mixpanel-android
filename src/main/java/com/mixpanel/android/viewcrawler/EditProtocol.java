@@ -1,6 +1,8 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
@@ -189,6 +191,8 @@ import java.util.Map;
     }
 
     private void buildIdMap(Context context) {
+        MPConfig config = MPConfig.getInstance(context.getApplicationContext());
+
         mIdNameToId.clear();
         mIdToIdName.clear();
 
@@ -238,8 +242,21 @@ import java.util.Map;
             Log.e(LOGTAG, "Can't read platform id class names from library", e);
         }
 
-        final String packageName = context.getPackageName();
-        final String rIdClassName = packageName + ".R$id";
+        // context.getPackageName() actually returns the "application id", which
+        // usually (but not always) the same as package of the generated R class.
+        //
+        //  See: http://tools.android.com/tech-docs/new-build-system/applicationid-vs-packagename
+        //
+        // As far as I can tell, the original package name is lost in the build
+        // process in these cases, and must be specified by the developer using
+        // MPConfig meta-data.
+        String resourcePackage = config.getResourcePackageName();
+        if (null == resourcePackage) {
+            resourcePackage = context.getPackageName();
+        }
+
+        final String rIdClassName = resourcePackage + ".R$id";
+
         try {
             final Class rIdClass = Class.forName(rIdClassName);
             final Field[] fields = rIdClass.getFields();
@@ -257,9 +274,20 @@ import java.util.Map;
                 }
             }// for fields
         } catch (ClassNotFoundException e) {
-            if (MPConfig.DEBUG) {
-                Log.e(LOGTAG, "Can't find class " + rIdClassName, e);
-            }
+            Log.w(LOGTAG, "Can't load names for Android view ids from class " + rIdClassName + ", ids by name will not be available in the events editor.");
+            Log.i(LOGTAG,
+                    "You may be missing a Resources class for your package due to your proguard configuration, " +
+                    "or you may be using an applicationId in your build that isn't the same as the package declared in your AndroidManifest.xml file.\n" +
+                    "If you're using proguard, you can fix this issue by adding the following to your proguard configuration:\n\n" +
+                    "-keep class **.R$* {\n" +
+                    "    <fields>;\n" +
+                    "}\n\n" +
+                    "If you're not using proguard, or if your proguard configuration already contains the directive above, " +
+                    "you can add the following to your AndroidManifest.xml file to explicity point the Mixpanel library to " +
+                    "the appropriate library for your resources class:\n\n" +
+                    "<meta-data android:name=\"com.mixpanel.android.MPConfig.ResourcePackageName\" android:value=\"YOUR_PACKAGE_NAME\" />\n\n" +
+                    "where YOUR_PACKAGE_NAME is the same string you use for the \"package\" attribute in your <manifest> tag."
+            );
         } catch (IllegalAccessException e) {
             Log.e(LOGTAG, "Can't read id names for local resources");
         }

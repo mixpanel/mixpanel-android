@@ -48,6 +48,7 @@ public class MPConfig {
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
+        mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
 
          // Disable if EITHER of these is present and false, otherwise enable
         boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -182,6 +183,11 @@ public class MPConfig {
         return mEditorUrl;
     }
 
+    // Pre-configured package name for resources, if they differ from the application package name
+    public String getResourcePackageName() {
+        return mResourcePackageName;
+    }
+
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
@@ -212,6 +218,7 @@ public class MPConfig {
     private final String mDecideFallbackEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
+    private final String mResourcePackageName;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();

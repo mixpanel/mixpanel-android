@@ -30,7 +30,20 @@ http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html.
 Changelog
 ---------
 
-#### v4.4
+#### v4.5
+
+ * New configuration directive
+
+ The 4.5 version of the library allows for meta-data of the form
+
+ ```
+ <meta-data android:name="com.mixpanel.android.MPConfig.ResourcePackageName"
+      android:value="YOUR_PACKAGE_NAME" />
+ ```
+
+ This tag will only be useful in specific circumstances, for users with certain kinds of exotic custom builds.
+ Most users of the library will not require it.
+ (You'll get messages in your logs if the library thinks that you need it)
 
  * Easier use of Proguard with the library
  
