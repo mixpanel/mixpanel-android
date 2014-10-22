@@ -9,6 +9,9 @@ import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -29,7 +32,22 @@ import java.util.List;
         }
 
         public String toString() {
-            return "{\"viewClassName\": " + viewClassName + ", \"index\": " + index + "}";
+            try {
+                final JSONObject ret = new JSONObject();
+                ret.put("viewClassName", viewClassName);
+                if (index > -1) {
+                    ret.put("index", index);
+                }
+                if (viewId > -1) {
+                    ret.put("viewId", viewId);
+                }
+                if (null != tag) {
+                    ret.put("tag", tag);
+                }
+                return ret.toString();
+            } catch (JSONException e) {
+                throw new RuntimeException("Can't serialize PathElement to String", e);
+            }
         }
 
         public final String viewClassName;
