@@ -8,6 +8,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
@@ -53,7 +54,19 @@ import java.util.Map;
             final String eventName = source.getString("event_name");
             final String eventType = source.getString("event_type");
             if ("click".equals(eventType)) {
-                return new ViewVisitor.AddListenerVisitor(path, eventName, listener);
+                return new ViewVisitor.AddListenerVisitor(
+                    path,
+                    AccessibilityEvent.TYPE_VIEW_CLICKED,
+                    eventName,
+                    listener
+                );
+            } else if ("selected".equals(eventType)) {
+                return new ViewVisitor.AddListenerVisitor(
+                    path,
+                    AccessibilityEvent.TYPE_VIEW_SELECTED,
+                    eventName,
+                    listener
+                );
             } else if ("detected".equals(eventType)) {
                 return new ViewVisitor.ViewDetectorVisitor(path, eventName, listener);
             } else {

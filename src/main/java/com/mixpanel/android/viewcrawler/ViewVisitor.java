@@ -97,10 +97,11 @@ import java.util.List;
     }
 
     public static class AddListenerVisitor extends ViewVisitor {
-        public AddListenerVisitor(List<PathElement> path, String eventName, OnVisitedListener listener) {
+        public AddListenerVisitor(List<PathElement> path, int accessibilityEventType, String eventName, OnVisitedListener listener) {
             super(path);
             mEventName = eventName;
             mListener = listener;
+            mEventType = accessibilityEventType;
         }
 
         @Override
@@ -153,7 +154,7 @@ import java.util.List;
 
             @Override
             public void sendAccessibilityEvent(View host, int eventType) {
-                if (eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+                if (eventType == mEventType) {
                     mListener.OnVisited(mEventName);
                 }
 
@@ -168,6 +169,7 @@ import java.util.List;
 
         private final String mEventName;
         private final OnVisitedListener mListener;
+        private final int mEventType;
     }
 
     // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
