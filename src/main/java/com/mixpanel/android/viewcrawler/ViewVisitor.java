@@ -20,7 +20,7 @@ import java.util.List;
 /* package */ abstract class ViewVisitor {
 
     public interface OnVisitedListener {
-        public void OnVisited(String eventName);
+        public void OnVisited(View host, String eventName);
     }
 
     public static class PathElement {
@@ -155,7 +155,7 @@ import java.util.List;
             @Override
             public void sendAccessibilityEvent(View host, int eventType) {
                 if (eventType == mEventType) {
-                    mListener.OnVisited(mEventName);
+                    mListener.OnVisited(host, mEventName);
                 }
 
                 if (null != mRealDelegate) {
@@ -185,7 +185,7 @@ import java.util.List;
 
         protected void accumulate(View found) {
             if (found != null && !mSeen) { // TODO THIS BREAKS ON MULTIPLE VISITS! PROBABLY?
-                mListener.OnVisited(mEventName);
+                mListener.OnVisited(found, mEventName);
             }
 
             mSeen = (found != null);

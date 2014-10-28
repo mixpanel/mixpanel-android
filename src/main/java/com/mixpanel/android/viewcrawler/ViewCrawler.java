@@ -16,7 +16,9 @@ import android.os.Message;
 import android.os.Process;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -97,8 +99,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     }
 
     @Override
-    public void OnVisited(String eventName) {
-        mMixpanel.track(eventName, null);
+    public void OnVisited(View v, String eventName) {
+        final JSONObject properties = eventPropertiesFromView(v);
+        mMixpanel.track(eventName, properties);
     }
 
     private void applyAllChangesOnUiThread() {
@@ -108,6 +111,55 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 applyAllChanges();
             }
         });
+    }
+
+    private JSONObject eventPropertiesFromView(View v) {
+        try {
+            final JSONObject ret = new JSONObject();
+            final String text = textPropertyFromView(v);
+            ret.put("mp_text", text);
+
+            return ret;
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
+            return null;
+        }
+    }
+
+    private String textPropertyFromView(View v) {
+        String ret = null;
+
+        if (v instanceof TextView) {
+            final TextView textV = (TextView) v;
+            final CharSequence retSequence = textV.getText();
+            if (null != retSequence) {
+                ret = retSequence.toString();
+            }
+        } else if (v instanceof ViewGroup) {
+            final StringBuilder builder = new StringBuilder();
+            final ViewGroup vGroup = (ViewGroup) v;
+            final int childCount = vGroup.getChildCount();
+            boolean textSeen = false;
+            for (int i = 0; i < childCount && builder.length() < MAX_PROPERTY_LENGTH; i++) {
+                final View child = vGroup.getChildAt(i);
+                final String childText = textPropertyFromView(child);
+                if (null != childText && childText.length() > 0) {
+                    if (textSeen) {
+                        builder.append(", ");
+                    }
+                    builder.append(childText);
+                    textSeen = true;
+                }
+            }
+
+            if (builder.length() > MAX_PROPERTY_LENGTH) {
+                ret = builder.substring(0, MAX_PROPERTY_LENGTH);
+            } else if (textSeen) {
+                ret = builder.toString();
+            }
+        }
+
+        return ret;
     }
 
     // Must be called on UI Thread
@@ -629,6 +681,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
+
+    private static final int MAX_PROPERTY_LENGTH = 128;
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
