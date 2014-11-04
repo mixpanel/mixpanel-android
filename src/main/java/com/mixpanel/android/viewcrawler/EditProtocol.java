@@ -67,6 +67,13 @@ import java.util.Map;
                     eventName,
                     listener
                 );
+            } else if ("text_changed".equals(eventType)) {
+                return new ViewVisitor.AddListenerVisitor(
+                    path,
+                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+                    eventName,
+                    listener
+                );
             } else if ("detected".equals(eventType)) {
                 return new ViewVisitor.ViewDetectorVisitor(path, eventName, listener);
             } else {
