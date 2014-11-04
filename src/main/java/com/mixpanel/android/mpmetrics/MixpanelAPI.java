@@ -16,6 +16,7 @@ import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
+import com.mixpanel.android.viewcrawler.TrackingDebug;
 import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
@@ -120,6 +121,7 @@ public class MixpanelAPI {
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
+        mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
@@ -350,6 +352,10 @@ public class MixpanelAPI {
             final AnalyticsMessages.EventDescription eventDescription =
                     new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
             mMessages.eventsMessage(eventDescription);
+
+            if (null != mTrackingDebug) {
+                mTrackingDebug.reportTrack(eventName);
+            }
         } catch (final JSONException e) {
             Log.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -981,6 +987,14 @@ public class MixpanelAPI {
         }
     }
 
+    /* package */ TrackingDebug constructTrackingDebug() {
+        if (mUpdatesFromMixpanel instanceof ViewCrawler) {
+            return (TrackingDebug) mUpdatesFromMixpanel;
+        }
+
+        return null;
+    }
+
     /* package */ void clearPreferences() {
         // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
@@ -1583,6 +1597,7 @@ public class MixpanelAPI {
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
+    private final TrackingDebug mTrackingDebug;
     private final DecideMessages mDecideMessages;
 
     // Maps each token to a singleton MixpanelAPI instance

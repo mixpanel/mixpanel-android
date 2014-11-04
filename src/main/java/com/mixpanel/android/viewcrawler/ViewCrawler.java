@@ -14,6 +14,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.util.JsonWriter;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,7 +51,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(14)
-public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel {
+public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new HashMap<String, List<JSONObject>>();
@@ -102,6 +103,16 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     public void OnVisited(View v, String eventName) {
         final JSONObject properties = eventPropertiesFromView(v);
         mMixpanel.track(eventName, properties);
+    }
+
+
+    @Override
+    public void reportTrack(String eventName) {
+        final Message m = mMessageThreadHandler.obtainMessage();
+        m.what = MESSAGE_SEND_EVENT_TRACKED;
+        m.obj = eventName;
+
+        mMessageThreadHandler.sendMessage(m);
     }
 
     private void applyAllChangesOnUiThread() {
@@ -329,6 +340,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 case MESSAGE_SEND_STATE_FOR_EDITING:
                     sendStateForEditing((JSONObject) msg.obj);
                     break;
+                case MESSAGE_SEND_EVENT_TRACKED:
+                    sendReportTrackToEditor((String) msg.obj);
+                    break;
                 case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
                     handleEditorChangeReceived((JSONObject) msg.obj);
                     break;
@@ -515,6 +529,37 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        private void sendReportTrackToEditor(String eventName) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+                return;
+            }
+
+            final OutputStream out = mEditorConnection.getBufferedOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
+            final JsonWriter j = new JsonWriter(writer);
+
+            try {
+                j.beginObject();
+                j.name("type").value("track_message");
+                j.name("payload");
+                {
+                    j.beginObject();
+                    j.name("event_name").value(eventName);
+                    j.endObject();
+                }
+                j.endObject();
+                j.flush();
+            } catch (IOException e) {
+                Log.e(LOGTAG, "Can't write track_message to server", e);
+            } finally {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "Can't close writer.", e);
+                }
+            }
+        }
+
         private void handleEditorChangeReceived(JSONObject change) {
             try {
                 loadChange(mEditorChanges, change);
@@ -692,6 +737,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
     private static final int MESSAGE_DISCONNECT_FROM_EDITOR = 7;
     private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
+    private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
