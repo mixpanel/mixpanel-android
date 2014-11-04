@@ -105,7 +105,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mMixpanel.track(eventName, properties);
     }
 
-
     @Override
     public void reportTrack(String eventName) {
         final Message m = mMessageThreadHandler.obtainMessage();
