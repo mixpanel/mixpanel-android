@@ -151,6 +151,8 @@ import java.util.concurrent.TimeoutException;
             dump.put("left", view.getLeft());
             dump.put("width", view.getWidth());
             dump.put("height", view.getHeight());
+            dump.put("scrollX", view.getScrollX());
+            dump.put("scrollY", view.getScrollY());
 
             float translationX = 0;
             float translationY = 0;
