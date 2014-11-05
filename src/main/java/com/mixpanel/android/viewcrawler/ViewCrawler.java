@@ -16,9 +16,9 @@ import android.os.Message;
 import android.os.Process;
 import android.util.JsonWriter;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -31,7 +31,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -54,11 +53,12 @@ import javax.net.ssl.SSLSocketFactory;
 public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
-        mPersistentChanges = new HashMap<String, List<JSONObject>>();
-        mEditorChanges = new HashMap<String, List<JSONObject>>();
-        mPersistentEventBindings = new HashMap<String, List<JSONObject>>();
-        mEditorEventBindings = new HashMap<String, List<JSONObject>>();
+        mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
+        mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
+        mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
+        mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
         mProtocol = new EditProtocol(context);
+        mEditState = new EditState();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -83,7 +83,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         }
         mSSLSocketFactory = foundSSLFactory;
 
-        mUiThreadHandler = new Handler(Looper.getMainLooper());
         mMixpanel = mixpanel;
     }
 
@@ -114,14 +113,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mMessageThreadHandler.sendMessage(m);
     }
 
-    private void applyAllChangesOnUiThread() {
-        mUiThreadHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                applyAllChanges();
-            }
-        });
-    }
 
     private JSONObject eventPropertiesFromView(View v) {
         try {
@@ -172,89 +163,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         return ret;
     }
 
-    // Must be called on UI Thread
-    private void applyAllChanges() {
-        synchronized (mLiveActivities) {
-            for (Activity activity : mLiveActivities) {
-                final String activityName = activity.getClass().getCanonicalName();
-                final View rootView = activity.getWindow().getDecorView().getRootView();
-
-                final List<JSONObject> persistentChanges;
-                final List<JSONObject> wildcardPersistentChanges;
-                synchronized (mPersistentChanges) {
-                    persistentChanges = mPersistentChanges.get(activityName);
-                    wildcardPersistentChanges = mPersistentChanges.get(null);
-                }
-
-                applyChangesFromList(rootView, persistentChanges);
-                applyChangesFromList(rootView, wildcardPersistentChanges);
-
-                final List<JSONObject> editorChanges;
-                final List<JSONObject> wildcardEditorChanges;
-                synchronized (mEditorChanges) {
-                    editorChanges = mEditorChanges.get(activityName);
-                    wildcardEditorChanges = mEditorChanges.get(null);
-                }
-
-                applyChangesFromList(rootView, editorChanges);
-                applyChangesFromList(rootView, wildcardEditorChanges);
-
-                final List<JSONObject> eventBindings;
-                final List<JSONObject> wildcardEventBindings;
-                synchronized (mPersistentEventBindings) {
-                    eventBindings = mPersistentEventBindings.get(activityName);
-                    wildcardEventBindings = mPersistentEventBindings.get(null);
-                }
-
-                applyBindingsFromList(rootView, eventBindings);
-                applyBindingsFromList(rootView, wildcardEventBindings);
-
-                final List<JSONObject> editorBindings;
-                final List<JSONObject> wildcardEditorBindings;
-                synchronized (mEditorEventBindings) {
-                    editorBindings = mEditorEventBindings.get(activityName);
-                    wildcardEditorBindings = mEditorEventBindings.get(null);
-                }
-
-                applyBindingsFromList(rootView, editorBindings);
-                applyBindingsFromList(rootView, wildcardEditorBindings);
-            }
-        }
-    }
-
-    // Must be called on UI Thread
-    private void applyChangesFromList(View rootView, List<JSONObject> changes) {
-        if (null != changes) {
-            int size = changes.size();
-            for (int i = 0; i < size; i++) {
-                JSONObject desc = changes.get(i);
-                try {
-                    final ViewVisitor visitor = mProtocol.readEdit(desc);
-                    final EditBinding binding = new EditBinding(rootView, visitor);
-                    binding.performEdit();
-                } catch (EditProtocol.BadInstructionsException e) {
-                    Log.e(LOGTAG, "Bad change request cannot be applied", e);
-                }
-            }
-        }
-    }
-
-    // Must be called on the UI Thread
-    private void applyBindingsFromList(View rootView, List<JSONObject> eventBindings) {
-        if (null != eventBindings) {
-            int size = eventBindings.size();
-            for (int i = 0; i < size; i++) {
-                JSONObject desc = eventBindings.get(i);
-                try {
-                    final ViewVisitor visitor = mProtocol.readEventBinding(desc, this);
-                    final EditBinding binding = new EditBinding(rootView, visitor);
-                    binding.performEdit();
-                } catch (EditProtocol.BadInstructionsException e) {
-                    Log.e(LOGTAG, "Bad binding cannot be applied", e);
-                }
-            }
-        }
-    }
 
     private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks, FlipGesture.OnFlipGestureListener {
 
@@ -278,7 +186,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 mLiveActivities.add(activity);
             }
 
-            applyAllChanges();
+            mEditState.applyAllChangesOnUiThread(mLiveActivities);
         }
 
         @Override
@@ -366,7 +274,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                         mPersistentChanges.clear();
                         for (int i = 0; i < changes.length(); i++) {
                             final JSONObject change = changes.getJSONObject(i);
-                            loadChange(mPersistentChanges, change);
+                            final String targetActivity = change.optString("target", null);
+                            final JSONObject change1 = change.getJSONObject("change");
+                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change1));
                         }
                     }
                 }
@@ -378,7 +288,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                         mPersistentEventBindings.clear();
                         for (int i = 0; i < bindings.length(); i++) {
                             final JSONObject event = bindings.getJSONObject(i);
-                            loadEventBinding(event, mPersistentEventBindings);
+                            final String targetActivity = event.optString("target_activity", null);
+                            mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
                         }
                     }
                 }
@@ -389,6 +300,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
                 editor.apply();
             }
+
+            updateEditState();
         }
 
         private void connectToEditor() {
@@ -561,8 +474,12 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         private void handleEditorChangeReceived(JSONObject change) {
             try {
-                loadChange(mEditorChanges, change);
-                applyAllChangesOnUiThread();
+                final String targetActivity = change.optString("target", null);
+                final JSONObject change1 = change.getJSONObject("change");
+                synchronized (mEditorChanges) {
+                    mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change1));
+                }
+                updateEditState();
             } catch (JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
             }
@@ -574,7 +491,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             editor.putString(SHARED_PREF_BINDINGS_KEY, eventBindings.toString());
             editor.apply();
             initializeChanges();
-            applyAllChangesOnUiThread();
         }
 
         private void handleEditorBindingsReceived(JSONObject message) {
@@ -588,46 +504,92 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
 
             int eventCount = eventBindings.length();
-            for (int i = 0; i < eventCount; i++) {
-                try {
-                    final JSONObject event = eventBindings.getJSONObject(i);
-                    loadEventBinding(event, mEditorEventBindings);
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
+            synchronized (mEditorEventBindings) {
+                for (int i = 0; i < eventCount; i++) {
+                    try {
+                        final JSONObject event = eventBindings.getJSONObject(i);
+                        final String targetActivity = event.optString("target_activity", null);
+                        mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
+                    } catch (JSONException e) {
+                        Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
+                    }
                 }
             }
+
+            updateEditState();
         }
 
-        private void loadChange(Map <String, List<JSONObject>> changes, JSONObject newChange)
-                throws JSONException {
-            final String targetActivity = newChange.optString("target", null);
-            final JSONObject change = newChange.getJSONObject("change");
-            synchronized (changes) {
-                final List<JSONObject> changeList;
-                if (changes.containsKey(targetActivity)) {
-                    changeList = changes.get(targetActivity);
-                } else {
-                    changeList = new ArrayList<JSONObject>();
-                    changes.put(targetActivity, changeList);
-                }
-                changeList.add(change);
-            }
-        }
+        private void updateEditState() {
+            final List<Pair<String, ViewVisitor>> newEdits = new ArrayList<Pair<String, ViewVisitor>>();
 
-        private void loadEventBinding(JSONObject newBinding, Map<String, List<JSONObject>> bindings)
-                throws JSONException {
-            final String targetActivity = newBinding.optString("target_activity", null);
-
-            synchronized (bindings) {
-                final List<JSONObject> bindingList;
-                if (bindings.containsKey(targetActivity)) {
-                    bindingList = bindings.get(targetActivity);
-                } else {
-                    bindingList = new ArrayList<JSONObject>();
-                    bindings.put(targetActivity, bindingList);
+            synchronized (mPersistentChanges) {
+                final int size = mPersistentChanges.size();
+                for (int i = 0; i < size; i++) {
+                    final Pair<String, JSONObject> changeInfo = mPersistentChanges.get(i);
+                    try {
+                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
+                        newEdits.add(new Pair(changeInfo.first, visitor));
+                    } catch (final EditProtocol.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad persistent change request cannot be applied.", e);
+                    }
                 }
-                bindingList.add(newBinding);
             }
+
+            synchronized (mEditorChanges) {
+                final int size = mEditorChanges.size();
+                for (int i = 0; i < size; i++) {
+                    final Pair<String, JSONObject> changeInfo = mEditorChanges.get(i);
+                    try {
+                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad editor change request cannot be applied.", e);
+                    }
+                }
+            }
+
+            synchronized (mPersistentEventBindings) {
+                final int size = mPersistentEventBindings.size();
+                for (int i = 0; i < size; i++) {
+                    final Pair<String, JSONObject> changeInfo = mPersistentEventBindings.get(i);
+                    try {
+                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
+                    }
+                }
+            }
+
+            synchronized (mEditorEventBindings) {
+                final int size = mEditorEventBindings.size();
+                for (int i = 0; i < size; i++) {
+                    final Pair<String, JSONObject> changeInfo = mEditorEventBindings.get(i);
+                    try {
+                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.BadInstructionsException e) {
+                        Log.e(LOGTAG, "Bad editor event binding cannot be applied.", e);
+                    }
+                }
+            }
+
+            final Map<String, List<ViewVisitor>> editMap = new HashMap<String, List<ViewVisitor>>();
+            final int totalEdits = newEdits.size();
+            for (int i = 0; i < totalEdits; i++) {
+                final Pair<String, ViewVisitor> next = newEdits.get(i);
+                final List<ViewVisitor> mapElement;
+                if (editMap.containsKey(next.first)) {
+                    mapElement = editMap.get(next.first);
+                } else {
+                    mapElement = new ArrayList<ViewVisitor>();
+                    editMap.put(next.first, mapElement);
+                }
+                mapElement.add(next.second);
+            }
+
+            mEditState.setEdits(editMap);
+            mEditState.applyAllChangesOnUiThread(mLiveActivities);
         }
 
         private SharedPreferences getSharedPreferences() {
@@ -671,54 +633,19 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         }
     }
 
-    /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
-    private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener {
-        public EditBinding(View viewRoot, ViewVisitor edit) {
-            mEdit = edit;
-            mViewRoot = new WeakReference<View>(viewRoot);
-            ViewTreeObserver observer = viewRoot.getViewTreeObserver();
-            performEdit();
-
-            if (observer.isAlive()) {
-                observer.addOnGlobalLayoutListener(this);
-            }
-        }
-
-        @Override
-        public void onGlobalLayout() {
-            performEdit();
-        }
-
-        public void performEdit() {
-            View viewRoot = mViewRoot.get();
-            if (null == viewRoot) {
-                return;
-            }
-            // ELSE View is alive
-
-            mEdit.visit(viewRoot);
-        }
-
-        private final WeakReference<View> mViewRoot;
-        private final ViewVisitor mEdit;
-    }
-
-    // Map from canonical activity class name to description of changes
-    // Accessed from Multiple Threads, must be synchronized
-
-    // When A/B Test changes are made available from decide, they'll live in mPersistentChanges
-    private final Map<String, List<JSONObject>> mPersistentChanges;
-    private final Map<String, List<JSONObject>> mEditorChanges;
-    private final Map<String, List<JSONObject>> mPersistentEventBindings;
-    private final Map<String, List<JSONObject>> mEditorEventBindings;
+    // Lists of edits. All accesses must be synchronized
+    private final List<Pair<String,JSONObject>> mPersistentChanges;
+    private final List<Pair<String,JSONObject>> mEditorChanges;
+    private final List<Pair<String,JSONObject>> mPersistentEventBindings;
+    private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
     // mLiveActivites is accessed across multiple threads, and must be synchronized.
     private final Set<Activity> mLiveActivities = new HashSet<Activity>();
 
     private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;
+    private final EditState mEditState;
     private final Tweaks mTweaks = new Tweaks();
-    private final Handler mUiThreadHandler;
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final MixpanelAPI mMixpanel;
 

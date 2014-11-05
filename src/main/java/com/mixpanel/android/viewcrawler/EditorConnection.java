@@ -83,7 +83,7 @@ import java.nio.ByteBuffer;
         @Override
         public void onMessage(String message) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Received message from editor:\n" + message);
+                Log.v(LOGTAG, "Received message from editor:\n" + message);
             }
             try {
                 final JSONObject messageJson = new JSONObject(message);
