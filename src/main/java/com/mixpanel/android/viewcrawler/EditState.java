@@ -38,7 +38,7 @@ import java.util.Set;
     // Must be thread-safe
     public void setEdits(Map<String, List<ViewVisitor>> newEdits) {
         synchronized (mCurrentEdits) {
-            for (EditBinding stale: mCurrentEdits) {
+            for (EditBinding stale:mCurrentEdits) {
                 stale.kill();
             }
             mCurrentEdits.clear();
@@ -53,7 +53,7 @@ import java.util.Set;
     // Must be called on UI Thread
     private void applyIntendedEdits(final Set<Activity> liveActivities) {
         synchronized (liveActivities) {
-            for (Activity activity : liveActivities) {
+            for (Activity activity:liveActivities) {
                 final String activityName = activity.getClass().getCanonicalName();
                 final View rootView = activity.getWindow().getDecorView().getRootView();
 
