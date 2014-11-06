@@ -222,6 +222,8 @@ import java.util.concurrent.TimeoutException;
                     // Don't produce anything in this case
                 } else if (value instanceof Number) {
                     j.name(desc.name).value((Number) value);
+                } else if (value instanceof Boolean) {
+                    j.name(desc.name).value((Boolean) value);
                 } else {
                     j.name(desc.name).value(value.toString());
                 }
