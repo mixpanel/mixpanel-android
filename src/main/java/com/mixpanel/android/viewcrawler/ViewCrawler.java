@@ -274,10 +274,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     synchronized(mPersistentChanges) {
                         mPersistentChanges.clear();
                         for (int i = 0; i < changes.length(); i++) {
-                            final JSONObject change = changes.getJSONObject(i);
-                            final String targetActivity = change.optString("target", null);
-                            final JSONObject change1 = change.getJSONObject("change");
-                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change1));
+                            final JSONObject changeMessage = changes.getJSONObject(i);
+                            final String targetActivity = changeMessage.optString("target", null);
+                            final JSONObject change = changeMessage.getJSONObject("change");
+                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
                         }
                     }
                 }
