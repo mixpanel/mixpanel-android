@@ -13,28 +13,53 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/* package */ class EditState {
+/**
+ * Handles applying and managing the life cycle of edits in an application. Clients
+ * can replace all of the edits in an app with {@link EditState#setEdits(java.util.Map)}.
+ *
+ * Some client is responsible for informing the EditState about the presence or absence
+ * of Activites, by calling {@link EditState#add(android.app.Activity)} and {@link EditState#remove(android.app.Activity)}
+ */
+/* package */ class EditState extends UIThreadSet<Activity> {
 
     public EditState() {
         mUiThreadHandler = new Handler(Looper.getMainLooper());
         mIntendedEdits = new HashMap<String, List<ViewVisitor>>();
         mCurrentEdits = new HashSet<EditBinding>();
+        mLiveActivities = new HashSet<Activity>();
     }
 
-    // Must be thread-safe
-    public void applyAllChangesOnUiThread(final Set<Activity> liveActivities) {
-        if (Thread.currentThread() == mUiThreadHandler.getLooper().getThread()) {
-            applyIntendedEdits(liveActivities);
-        } else {
-            mUiThreadHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    applyIntendedEdits(liveActivities);
-                }
-            });
-        }
+    /**
+     * Should be called whenever a new Activity appears in the application.
+     */
+    @Override
+    public void add(Activity newOne) {
+        super.add(newOne);
+        applyEditsOnUiThread();
     }
 
+    /**
+     * Should be called whenever an activity leaves the application, or is otherwise no longer relevant to our edits.
+     */
+    @Override
+    public void remove(Activity oldOne) {
+        super.remove(oldOne);
+    }
+
+    /**
+     * Sets the entire set of edits to be applied to the application.
+     *
+     * Edits are represented by ViewVisitors, batched in a map by the String name of the activity
+     * they should be applied to. Edits to apply to all views should be in a list associated with
+     * the key {@code null} (Not the string "null", the actual null value!)
+     *
+     * The given edits will completely replace any existing edits.
+     *
+     * setEdits can be called from any thread, although the changes will occur (eventually) on the
+     * UI thread of the application, and may not appear immediately.
+     *
+     * @param newEdits A Map from
+     */
     // Must be thread-safe
     public void setEdits(Map<String, List<ViewVisitor>> newEdits) {
         synchronized (mCurrentEdits) {
@@ -48,29 +73,42 @@ import java.util.Set;
             mIntendedEdits.clear();
             mIntendedEdits.putAll(newEdits);
         }
+
+        applyEditsOnUiThread();
+    }
+
+    private void applyEditsOnUiThread() {
+        if (Thread.currentThread() == mUiThreadHandler.getLooper().getThread()) {
+            applyIntendedEdits();
+        } else {
+            mUiThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    applyIntendedEdits();
+                }
+            });
+        }
     }
 
     // Must be called on UI Thread
-    private void applyIntendedEdits(final Set<Activity> liveActivities) {
-        synchronized (liveActivities) {
-            for (Activity activity:liveActivities) {
-                final String activityName = activity.getClass().getCanonicalName();
-                final View rootView = activity.getWindow().getDecorView().getRootView();
+    private void applyIntendedEdits() {
+        for (Activity activity:mLiveActivities) {
+            final String activityName = activity.getClass().getCanonicalName();
+            final View rootView = activity.getWindow().getDecorView().getRootView();
 
-                final List<ViewVisitor> specificChanges;
-                final List<ViewVisitor> wildcardChanges;
-                synchronized (mIntendedEdits) {
-                    specificChanges = mIntendedEdits.get(activityName);
-                    wildcardChanges = mIntendedEdits.get(null);
-                }
+            final List<ViewVisitor> specificChanges;
+            final List<ViewVisitor> wildcardChanges;
+            synchronized (mIntendedEdits) {
+                specificChanges = mIntendedEdits.get(activityName);
+                wildcardChanges = mIntendedEdits.get(null);
+            }
 
-                if (null != specificChanges) {
-                    applyChangesFromList(rootView, specificChanges);
-                }
+            if (null != specificChanges) {
+                applyChangesFromList(rootView, specificChanges);
+            }
 
-                if (null != wildcardChanges) {
-                    applyChangesFromList(rootView, wildcardChanges);
-                }
+            if (null != wildcardChanges) {
+                applyChangesFromList(rootView, wildcardChanges);
             }
         }
     }
@@ -145,6 +183,7 @@ import java.util.Set;
     private final Handler mUiThreadHandler;
     private final Map<String, List<ViewVisitor>> mIntendedEdits;
     private final Set<EditBinding> mCurrentEdits;
+    private final Set<Activity> mLiveActivities;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditState";

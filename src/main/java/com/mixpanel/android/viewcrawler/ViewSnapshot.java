@@ -21,15 +21,11 @@ import android.view.ViewGroup;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -50,7 +46,12 @@ import java.util.concurrent.TimeoutException;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
     }
 
-    public void snapshots(final Set<Activity> liveActivities, OutputStream out) throws IOException {
+    /**
+     * Take a snapshot of each activity in liveActivities. The given UIThreadSet will be accessed
+     * on the main UI thread, and should contain a set with elements for every activity to be
+     * snapshotted. Given stream out will be written on the calling thread.
+     */
+    public void snapshots(UIThreadSet<Activity> liveActivities, OutputStream out) throws IOException {
         final RootViewFinder finder = new RootViewFinder(liveActivities);
         final FutureTask<List<RootViewInfo>> infoFuture = new FutureTask<List<RootViewInfo>>(finder);
         mMainThreadHandler.post(infoFuture);
@@ -66,9 +67,7 @@ import java.util.concurrent.TimeoutException;
                 final RootViewInfo info = infoList.get(i);
                 writer.write("{");
                 writer.write("\"activity\":");
-                writer.write('"');
-                writer.write(info.activityName); // Stringify?
-                writer.write('"');
+                writer.write(JSONObject.quote(info.activityName));
                 writer.write(",");
                 writer.write("\"scale\":");
                 writer.write(String.format("%s", info.scale));
@@ -232,8 +231,8 @@ import java.util.concurrent.TimeoutException;
     }
 
     private static class RootViewFinder implements Callable<List<RootViewInfo>> {
-        public RootViewFinder(Set<Activity> liveActivitySet) {
-            mLiveActivitySet = liveActivitySet;
+        public RootViewFinder(final UIThreadSet<Activity> liveActivities) {
+            mLiveActivities = liveActivities;
             mDisplayMetrics = new DisplayMetrics();
             mRootViews = new ArrayList<RootViewInfo>();
             mScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
@@ -243,18 +242,14 @@ import java.util.concurrent.TimeoutException;
         public List<RootViewInfo> call() throws Exception {
             mRootViews.clear();
 
-            // liveActivitySet is synchronized with (and updated in) another thread
-            synchronized (mLiveActivitySet) {
-                for (Activity a : mLiveActivitySet) {
-                    final String activityName = a.getClass().getCanonicalName();
+            final Set<Activity> liveActivities = mLiveActivities.getAll();
 
-                    // We know (since we're synched w/ the UI thread on activity changes)
-                    // that the activities in mLiveActivities are valid here.
-                    final View rootView = a.getWindow().getDecorView().getRootView();
-                    a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
-                    final RootViewInfo info = new RootViewInfo(activityName, rootView);
-                    mRootViews.add(info);
-                }
+            for (Activity a : liveActivities) {
+                final String activityName = a.getClass().getCanonicalName();
+                final View rootView = a.getWindow().getDecorView().getRootView();
+                a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
+                final RootViewInfo info = new RootViewInfo(activityName, rootView);
+                mRootViews.add(info);
             }
 
             int viewCount = mRootViews.size();
@@ -337,7 +332,7 @@ import java.util.concurrent.TimeoutException;
             info.screenshot = bitmap;
         }
 
-        private final Set<Activity> mLiveActivitySet;
+        private final UIThreadSet<Activity> mLiveActivities;
         private final List<RootViewInfo> mRootViews;
         private final DisplayMetrics mDisplayMetrics;
         private final Paint mScalePaint;

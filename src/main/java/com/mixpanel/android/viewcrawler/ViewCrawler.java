@@ -28,7 +28,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -38,10 +37,8 @@ import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -183,11 +180,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         @Override
         public void onActivityStarted(Activity activity) {
-            synchronized (mLiveActivities) {
-                mLiveActivities.add(activity);
-            }
-
-            mEditState.applyAllChangesOnUiThread(mLiveActivities);
+            mEditState.add(activity);
         }
 
         @Override
@@ -205,9 +198,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         @Override
         public void onActivityStopped(Activity activity) {
-            synchronized (mLiveActivities) {
-                mLiveActivities.remove(activity);
-            }
+            mEditState.remove(activity);
         }
 
         @Override
@@ -382,7 +373,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
                 writer.write("\"device_type\": \"Android\",");
-                writer.write("\"device_name\": \"" + Build.BRAND + "/" + Build.MODEL + "\",");
+                writer.write("\"device_name\":");
+                writer.write(JSONObject.quote(Build.BRAND + "/" + Build.MODEL));
+                writer.write(",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
                 writer.write("}"); // payload
@@ -429,7 +422,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 {
                     writer.write("\"activities\":");
                     writer.flush();
-                    mSnapshot.snapshots(mLiveActivities, out);
+                    mSnapshot.snapshots(mEditState, out);
                 }
                 writer.write("}"); // } payload
                 writer.write("}"); // } whole message
@@ -592,7 +585,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
 
             mEditState.setEdits(editMap);
-            mEditState.applyAllChangesOnUiThread(mLiveActivities);
         }
 
         private SharedPreferences getSharedPreferences() {
@@ -642,8 +634,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private final List<Pair<String,JSONObject>> mPersistentEventBindings;
     private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
-    // mLiveActivites is accessed across multiple threads, and must be synchronized.
-    private final Set<Activity> mLiveActivities = new HashSet<Activity>();
 
     private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;
