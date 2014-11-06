@@ -32,7 +32,7 @@ public class FadeOnPressButton extends Button {
     protected void drawableStateChanged() {
         final int[] state = getDrawableState();
         boolean isPressed = false;
-        for (final int i:state) {
+        for (final int i : state) {
             if (i == attr.state_pressed) {
                 if (!mIsFaded) setAlphaBySDK(0.5f);
                 isPressed = true;

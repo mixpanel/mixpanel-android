@@ -265,7 +265,7 @@ public class UpdateDisplayState implements Parcelable {
         @Override
         public void writeToParcel(Parcel dest, int flags) {
             final Bundle out = new Bundle();
-            for (final Map.Entry<Integer, String> entry:mMap.entrySet()) {
+            for (final Map.Entry<Integer, String> entry : mMap.entrySet()) {
                 final String keyString = Integer.toString(entry.getKey());
                 out.putString(keyString, entry.getValue());
             }
@@ -279,7 +279,7 @@ public class UpdateDisplayState implements Parcelable {
                         final Bundle read = new Bundle(AnswerMap.class.getClassLoader());
                         final AnswerMap ret = new AnswerMap();
                         read.readFromParcel(in);
-                        for (final String kString:read.keySet()) {
+                        for (final String kString : read.keySet()) {
                             final Integer kInt = Integer.valueOf(kString);
                             ret.put(kInt, read.getString(kString));
                         }

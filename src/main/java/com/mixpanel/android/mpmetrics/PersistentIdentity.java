@@ -59,7 +59,7 @@ import android.util.Log;
             final SharedPreferences referralInfo = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE);
             final SharedPreferences.Editor editor = referralInfo.edit();
             editor.clear();
-            for (final Map.Entry<String, String> entry:properties.entrySet()) {
+            for (final Map.Entry<String, String> entry : properties.entrySet()) {
                 editor.putString(entry.getKey(), entry.getValue());
             }
             writeEdits(editor);
@@ -293,7 +293,7 @@ import android.util.Log;
             referrerPrefs.registerOnSharedPreferenceChangeListener(mReferrerChangeListener);
 
             final Map<String, ?> prefsMap = referrerPrefs.getAll();
-            for (final Map.Entry<String, ?> entry:prefsMap.entrySet()) {
+            for (final Map.Entry<String, ?> entry : prefsMap.entrySet()) {
                 final String prefsName = entry.getKey();
                 final Object prefsVal = entry.getValue();
                 mReferrerPropertiesCache.put(prefsName, prefsVal.toString());

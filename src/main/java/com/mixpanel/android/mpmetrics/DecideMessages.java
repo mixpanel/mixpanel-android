@@ -47,7 +47,7 @@ import java.util.Set;
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
 
-        for (final Survey s: newSurveys) {
+        for (final Survey s : newSurveys) {
             final int id = s.getId();
             if (! mSurveyIds.contains(id)) {
                 mSurveyIds.add(id);
@@ -56,7 +56,7 @@ import java.util.Set;
             }
         }
 
-        for (final InAppNotification n: newNotifications) {
+        for (final InAppNotification n : newNotifications) {
             final int id = n.getId();
             if (! mNotificationIds.contains(id)) {
                 mNotificationIds.add(id);

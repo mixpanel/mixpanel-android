@@ -318,7 +318,7 @@ public class SurveyActivity extends Activity {
                 people.append("$responses", survey.getCollectionId());
 
                 final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
-                for (final Survey.Question question:questionList) {
+                for (final Survey.Question question : questionList) {
                     final String answerString = answers.get(question.getId());
                     if (null != answerString) {
                         try {

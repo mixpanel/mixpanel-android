@@ -322,7 +322,7 @@ public class MixpanelAPI {
             final JSONObject messageProps = new JSONObject();
 
             final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry:referrerProperties.entrySet()) {
+            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
                 final String key = entry.getKey();
                 final String value = entry.getValue();
                 messageProps.put(key, value);
@@ -929,8 +929,8 @@ public class MixpanelAPI {
 
     /* package */ static void allInstances(InstanceProcessor processor) {
         synchronized (sInstanceMap) {
-            for (final Map<Context, MixpanelAPI> contextInstances:sInstanceMap.values()) {
-                for (final MixpanelAPI instance:contextInstances.values()) {
+            for (final Map<Context, MixpanelAPI> contextInstances : sInstanceMap.values()) {
+                for (final MixpanelAPI instance : contextInstances.values()) {
                     processor.process(instance);
                 }
             }
@@ -1529,7 +1529,7 @@ public class MixpanelAPI {
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            for (OnMixpanelUpdatesReceivedListener listener: mListeners) {
+            for (OnMixpanelUpdatesReceivedListener listener : mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
         }

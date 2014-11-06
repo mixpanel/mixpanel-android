@@ -164,7 +164,7 @@ public class CardCarouselLayout extends ViewGroup {
         setMeasuredDimension(resolveSize(maxWidth, widthMeasureSpec),
                     resolveSize(maxHeight, heightMeasureSpec));
 
-        for (final View child:mMatchParentChildren) {
+        for (final View child : mMatchParentChildren) {
             final LayoutParams lp = child.getLayoutParams();
             int childWidthMeasureSpec;
             int childHeightMeasureSpec;
