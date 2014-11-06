@@ -98,7 +98,13 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
     @Override
     public void OnVisited(View v, String eventName) {
-        final JSONObject properties = eventPropertiesFromView(v);
+        final JSONObject properties = new JSONObject();
+        try {
+            final String text = textPropertyFromView(v);
+            properties.put("mp_text", text);
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
+        }
         mMixpanel.track(eventName, properties);
     }
 
@@ -111,21 +117,11 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mMessageThreadHandler.sendMessage(m);
     }
 
-
-    private JSONObject eventPropertiesFromView(View v) {
-        try {
-            final JSONObject ret = new JSONObject();
-            final String text = textPropertyFromView(v);
-            ret.put("mp_text", text);
-
-            return ret;
-        } catch (JSONException e) {
-            Log.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
-            return null;
-        }
-    }
-
-    private String textPropertyFromView(View v) {
+    /**
+     * Recursively scans a view and it's children, looking for user-visible text to
+     * provide as an event property.
+     */
+    private static String textPropertyFromView(View v) {
         String ret = null;
 
         if (v instanceof TextView) {
@@ -160,7 +156,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         return ret;
     }
-
 
     private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks, FlipGesture.OnFlipGestureListener {
 
@@ -230,14 +225,11 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 case MESSAGE_CONNECT_TO_EDITOR:
                     connectToEditor();
                     break;
-                case MESSAGE_DISCONNECT_FROM_EDITOR:
-                    disconnectFromEditor();
-                    break;
                 case MESSAGE_SEND_DEVICE_INFO:
                     sendDeviceInfo();
                     break;
                 case MESSAGE_SEND_STATE_FOR_EDITING:
-                    sendStateForEditing((JSONObject) msg.obj);
+                    sendSnapshot((JSONObject) msg.obj);
                     break;
                 case MESSAGE_SEND_EVENT_TRACKED:
                     sendReportTrackToEditor((String) msg.obj);
@@ -254,6 +246,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        /**
+         * Load stored changes from persistent storage and apply them to the application.
+         */
         private void initializeChanges() {
             final SharedPreferences preferences = getSharedPreferences();
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
@@ -296,6 +291,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             updateEditState();
         }
 
+        /**
+         * Try to connect to the remote interactive editor, if a connection does not already exist.
+         */
         private void connectToEditor() {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "connecting to editor");
@@ -326,20 +324,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
-        private void disconnectFromEditor() {
-            if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "disconnecting from editor");
-            }
-
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Editor is already disconnected.");
-                }
-            }
-
-            mEditorConnection.disconnect();
-        }
-
+        /**
+         * Send a string error message to the connected web UI.
+         */
         private void sendError(String errorMessage) {
             final JSONObject errorObject = new JSONObject();
             try {
@@ -365,6 +352,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        /**
+         * Report on device info to the connected web UI.
+         */
         private void sendDeviceInfo() {
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
@@ -391,7 +381,10 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
-        private void sendStateForEditing(JSONObject message) {
+        /**
+         * Send a snapshot response, with crawled views and screenshot image, to the connected web UI.
+         */
+        private void sendSnapshot(JSONObject message) {
             try {
                 final JSONObject payload = message.getJSONObject("payload");
                 if (payload.has("config")) {
@@ -437,6 +430,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        /**
+         * Report that a track has occurred to the connected web UI.
+         */
         private void sendReportTrackToEditor(String eventName) {
             if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
@@ -468,6 +464,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        /**
+         * Accept and apply a change from the connected UI.
+         */
         private void handleEditorChangeReceived(JSONObject changeMessage) {
             try {
                 final String targetActivity = changeMessage.optString("target", null);
@@ -481,6 +480,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
+        /**
+         * Accept and apply a persistent event binding from a non-interactive source.
+         */
         private void handleEventBindingsReceived(JSONArray eventBindings) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
@@ -489,6 +491,9 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             initializeChanges();
         }
 
+        /**
+         * Accept and apply a temporary event binding from the connected UI.
+         */
         private void handleEditorBindingsReceived(JSONObject message) {
             final JSONArray eventBindings;
             try {
@@ -515,6 +520,15 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             updateEditState();
         }
 
+        /**
+         * Reads our JSON-stored edits from memory and submits them to our EditState. Overwrites
+         * any existing edits at the time that it is run.
+         *
+         * updateEditState should be called any time we load new edits from disk or
+         * receive new edits from the interactive UI editor. Changes and event bindings
+         * from our persistent storage and temporary changes received from interactive editing
+         * will all be submitted to our EditState
+         */
         private void updateEditState() {
             final List<Pair<String, ViewVisitor>> newEdits = new ArrayList<Pair<String, ViewVisitor>>();
 
@@ -654,7 +668,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
     private static final int MESSAGE_SEND_DEVICE_INFO = 4;
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
-    private static final int MESSAGE_DISCONNECT_FROM_EDITOR = 7;
     private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
     private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
 
