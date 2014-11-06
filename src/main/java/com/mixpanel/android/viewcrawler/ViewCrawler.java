@@ -475,12 +475,12 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             }
         }
 
-        private void handleEditorChangeReceived(JSONObject change) {
+        private void handleEditorChangeReceived(JSONObject changeMessage) {
             try {
-                final String targetActivity = change.optString("target", null);
-                final JSONObject change1 = change.getJSONObject("change");
+                final String targetActivity = changeMessage.optString("target", null);
+                final JSONObject change = changeMessage.getJSONObject("change");
                 synchronized (mEditorChanges) {
-                    mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change1));
+                    mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change));
                 }
                 updateEditState();
             } catch (JSONException e) {
