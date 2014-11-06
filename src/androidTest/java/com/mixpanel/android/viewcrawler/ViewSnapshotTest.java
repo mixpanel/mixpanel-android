@@ -2,6 +2,7 @@ package com.mixpanel.android.viewcrawler;
 
 
 import android.test.AndroidTestCase;
+import android.util.JsonWriter;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,8 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,15 +76,12 @@ public class ViewSnapshotTest extends AndroidTestCase {
         mRootView.layout(0, 0, 768, 1280);
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", mRootView, out);
+        final OutputStreamWriter writer = new OutputStreamWriter(out);
+        final JsonWriter j = new JsonWriter(writer);
+        mSnapshot.snapshotViewHierarchy(j, mRootView);
+        j.flush();
 
-        final JSONObject json = new JSONObject(new String(out.toByteArray()));
-        assertEquals("TEST CLASS", json.getString("activity"));
-
-        final JSONObject serializedObjects = json.getJSONObject("serialized_objects");
-        assertEquals(mRootView.hashCode(), serializedObjects.getInt("rootObject"));
-
-        final JSONArray viewsJson = serializedObjects.getJSONArray("objects");
+        final JSONArray viewsJson = new JSONArray(new String(out.toByteArray()));
         assertEquals(mRootView.mAllViews.size(), viewsJson.length());
 
         final Map<Integer, View> viewsByHashcode = new HashMap<Integer, View>(mRootView.mViewsByHashcode);
@@ -141,19 +141,8 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
         assertEquals(rootDesc.getString("mp_id_name"), "ROOT_ID");
         assertEquals(textViewDesc.getString("mp_id_name"), "TEXT_VIEW_ID");
-        assertFalse(adhoc3Desc.has("mp_id_name"));
+        assertEquals(adhoc3Desc.get("mp_id_name"), JSONObject.NULL);
         assertEquals(adhoc3Desc.getInt("id"), TestView.BUTTON_ID);
-    }
-
-    public void testNoLayoutSnapshot() throws IOException, JSONException {
-        final TestView neverAttached = new TestView(getContext());
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        mSnapshot.snapshot("TEST CLASS", neverAttached, out);
-
-        final JSONObject json = new JSONObject(new String(out.toByteArray()));
-
-        // Key thing here is not to throw exceptions in the crazy case.
-        assertTrue(json.has("screenshot"));
     }
 
     private ViewSnapshot mSnapshot;

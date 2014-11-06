@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.test.AndroidTestCase;
 import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -147,7 +148,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testClickTracking() {
-        final ViewVisitor.AddListenerVisitor visitor = new ViewVisitor.AddListenerVisitor(mButton2Path, "Visitor1", mTrackListener);
+        final ViewVisitor.AddListenerVisitor visitor = new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor.visit(mRootView);
         assertTrue(mTrackListener.events.isEmpty());
 
@@ -165,7 +166,7 @@ public class ViewVisitorTest extends AndroidTestCase {
 
     public void testMultipleEventsOnClick() {
         final ViewVisitor.AddListenerVisitor visitor1 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, "Visitor1", mTrackListener);
+                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor1.visit(mRootView);
         assertTrue(mTrackListener.events.isEmpty());
 
@@ -175,7 +176,7 @@ public class ViewVisitorTest extends AndroidTestCase {
         mTrackListener.events.clear();
 
         final ViewVisitor.AddListenerVisitor visitor2 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, "Visitor2", mTrackListener);
+                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor2", mTrackListener);
         visitor2.visit(mRootView);
 
         mRootView.mAdHocButton2.performClick();
@@ -185,7 +186,7 @@ public class ViewVisitorTest extends AndroidTestCase {
 
     public void testResetSameEventOnClick() {
         final ViewVisitor.AddListenerVisitor visitor1 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, "Visitor1", mTrackListener);
+                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor1.visit(mRootView);
         visitor1.visit(mRootView);
 
@@ -308,7 +309,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     private static class CollectingVisitedListener implements ViewVisitor.OnVisitedListener {
 
         @Override
-        public void OnVisited(String eventName) {
+        public void OnVisited(View v, String eventName) {
             events.add(eventName);
         }
 

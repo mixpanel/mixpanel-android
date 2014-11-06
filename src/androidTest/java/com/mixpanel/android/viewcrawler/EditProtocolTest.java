@@ -198,7 +198,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
     private static class TestVisitedListener implements ViewVisitor.OnVisitedListener {
         @Override
-        public void OnVisited(String eventName) {
+        public void OnVisited(View v, String eventName) {
             visitsRecorded.add(eventName);
         }
 

@@ -1,6 +1,7 @@
 package com.mixpanel.android.viewcrawler;
 
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -12,6 +13,7 @@ import android.os.Looper;
 import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.util.DisplayMetrics;
+import android.util.JsonWriter;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
@@ -23,6 +25,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -38,6 +41,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@TargetApi(14)
 /* package */ class ViewSnapshot {
 
     public ViewSnapshot(List<PropertyDescription> properties, SparseArray<String> idsToNames) {
@@ -51,44 +55,41 @@ import java.util.concurrent.TimeoutException;
         final FutureTask<List<RootViewInfo>> infoFuture = new FutureTask<List<RootViewInfo>>(finder);
         mMainThreadHandler.post(infoFuture);
 
+        final OutputStreamWriter writer = new OutputStreamWriter(out);
+        final JsonWriter j = new JsonWriter(writer);
+
         try {
             final List<RootViewInfo> infoList = infoFuture.get(1, TimeUnit.SECONDS);
-
-            final Writer writer = new OutputStreamWriter(out);
             int infoCount = infoList.size();
+            writer.write("[");
             for (int i = 0; i < infoCount; i++) {
-                if (i > 0) {
-                    writer.write(",");
-                    writer.flush();
-                }
-
                 final RootViewInfo info = infoList.get(i);
                 writer.write("{");
-
                 writer.write("\"activity\":");
-                writer.write("\"" + info.activityName + "\"");
+                writer.write('"');
+                writer.write(info.activityName); // Stringify?
+                writer.write('"');
                 writer.write(",");
                 writer.write("\"scale\":");
                 writer.write(String.format("%s", info.scale));
                 writer.write(",");
-
+                writer.write("\"serialized_objects\":");
+                {
+                    j.beginObject();
+                    j.name("rootObject").value(info.rootView.hashCode());
+                    j.name("objects");
+                    snapshotViewHierarchy(j, info.rootView);
+                    j.endObject();
+                    j.flush();
+                }
+                writer.write(",");
+                writer.write("\"screenshot\":");
                 writer.flush();
                 writeScreenshot(info.screenshot, out);
-                writer.write(",");
-                writer.write("\"serialized_objects\": ");
-
-                writer.write("{");
-                writer.write("\"rootObject\": ");
-                writer.write(Integer.toString(info.rootView.hashCode()));
-                writer.write(",");
-                writer.write("\"objects\": [");
-                snapshotView(writer, info.rootView, true);
-                writer.write("]");
-                writer.write("}"); // serialized_objects
-
                 writer.write("}");
-                writer.flush();
             }
+            writer.write("]");
+            writer.flush();
         } catch (InterruptedException e) {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
@@ -109,30 +110,15 @@ import java.util.concurrent.TimeoutException;
         return mProperties;
     }
 
-    // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written.
-    private void writeScreenshot(Bitmap screenshot, OutputStream out) throws IOException {
-        final Writer writer = new OutputStreamWriter(out);
-
-        writer.write("\"screenshot\":");
-        writer.flush();
-
-        // We could get a null or zero px bitmap if the rootView hasn't been measured
-        // appropriately, or we grab it before layout.
-        // This is ok, and we should handle it gracefully.
-        if (null != screenshot && screenshot.getWidth() > 0 && screenshot.getHeight() > 0) {
-            out.write('"');
-            final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
-            screenshot.compress(Bitmap.CompressFormat.PNG, 100, imageOut);
-            imageOut.flush();
-            out.write('\"');
-        } else {
-            out.write("null".getBytes());
-        }
+    /* package */ void snapshotViewHierarchy(JsonWriter j, View rootView)
+        throws IOException {
+        j.beginArray();
+        snapshotView(j, rootView);
+        j.endArray();
     }
 
-    private void snapshotView(Writer writer, View view, boolean first)
+    private void snapshotView(JsonWriter j, View view)
             throws IOException {
-        final JSONObject dump = new JSONObject();
         final int viewId = view.getId();
         final String viewIdName;
         if (-1 == viewId) {
@@ -141,61 +127,62 @@ import java.util.concurrent.TimeoutException;
             viewIdName = mIdsToNames.get(viewId);
         }
 
-        try {
-            dump.put("hashCode", view.hashCode());
-            dump.put("id", viewId);
-            dump.put("mp_id_name", viewIdName);
-            dump.put("tag", view.getTag());
+        j.beginObject();
+        j.name("hashCode").value(view.hashCode());
+        j.name("id").value(viewId);
+        j.name("mp_id_name").value(viewIdName);
 
-            dump.put("top", view.getTop());
-            dump.put("left", view.getLeft());
-            dump.put("width", view.getWidth());
-            dump.put("height", view.getHeight());
-            dump.put("scrollX", view.getScrollX());
-            dump.put("scrollY", view.getScrollY());
+        final Object tag = view.getTag();
 
-            float translationX = 0;
-            float translationY = 0;
-            if (Build.VERSION.SDK_INT >= 11) {
-                translationX = view.getTranslationX();
-                translationY = view.getTranslationY();
-            }
+        if (null == tag) {
+            j.name("tag").nullValue();
+        } else {
+            j.name("tag").value(tag.toString());
+        }
 
-            dump.put("translationX", translationX);
-            dump.put("translationY", translationY);
+        j.name("top").value(view.getTop());
+        j.name("left").value(view.getLeft());
+        j.name("width").value(view.getWidth());
+        j.name("height").value(view.getHeight());
+        j.name("scrollX").value(view.getScrollX());
+        j.name("scrollY").value(view.getScrollY());
 
-            final JSONArray classes = new JSONArray();
-            Class klass = view.getClass();
-            do {
-                classes.put(klass.getCanonicalName());
-                klass = klass.getSuperclass();
-            } while (klass != Object.class);
-            dump.put("classes", classes);
+        float translationX = 0;
+        float translationY = 0;
+        if (Build.VERSION.SDK_INT >= 11) {
+            translationX = view.getTranslationX();
+            translationY = view.getTranslationY();
+        }
 
-            addProperties(view, dump);
+        j.name("translationX").value(translationX);
+        j.name("translationY").value(translationY);
 
-            final JSONArray children = new JSONArray();
-            if (view instanceof ViewGroup) {
-                final ViewGroup group = (ViewGroup) view;
-                final int childCount = group.getChildCount();
-                for (int i = 0; i < childCount; i++) {
-                    final View child = group.getChildAt(i);
-                    // child can be null when views are getting disposed.
-                    if (null != child && View.VISIBLE == child.getVisibility()) {
-                        children.put(child.hashCode());
-                    }
+        j.name("classes");
+        j.beginArray();
+        Class klass = view.getClass();
+        do {
+            j.value(klass.getCanonicalName());
+            klass = klass.getSuperclass();
+        } while (klass != Object.class);
+        j.endArray();
+
+        addProperties(j, view);
+
+        j.name("subviews");
+        j.beginArray();
+        if (view instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) view;
+            final int childCount = group.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                final View child = group.getChildAt(i);
+                // child can be null when views are getting disposed.
+                if (null != child && View.VISIBLE == child.getVisibility()) {
+                    j.value(child.hashCode());
                 }
             }
-            dump.put("subviews", children);
-        } catch (JSONException impossible) {
-            throw new RuntimeException("Apparently Impossible JSONException", impossible);
         }
-
-        if (!first) {
-            writer.write(", ");
-        }
-
-        writer.write(dump.toString());
+        j.endArray();
+        j.endObject();
 
         if (view instanceof ViewGroup) {
             final ViewGroup group = (ViewGroup) view;
@@ -204,20 +191,39 @@ import java.util.concurrent.TimeoutException;
                 final View child = group.getChildAt(i);
                 // child can be null when views are getting disposed.
                 if (null != child && View.VISIBLE == child.getVisibility()) {
-                    snapshotView(writer, child, false);
+                    snapshotView(j, child);
                 }
             }
         }
     }
 
-    private void addProperties(View v, JSONObject out) {
+    // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written.
+    private void writeScreenshot(Bitmap screenshot, OutputStream out) throws IOException {
+        // We could get a null or zero px bitmap if the rootView hasn't been measured
+        // appropriately, or we grab it before layout.
+        // This is ok, and we should handle it gracefully.
+        if (null != screenshot && screenshot.getWidth() > 0 && screenshot.getHeight() > 0) {
+            out.write('"');
+            final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
+            screenshot.compress(Bitmap.CompressFormat.PNG, 100, imageOut);
+            imageOut.flush();
+            out.write('"');
+        } else {
+            out.write("null".getBytes());
+        }
+    }
+
+    private void addProperties(JsonWriter j, View v)
+        throws IOException {
         for (PropertyDescription desc: mProperties) {
             if (desc.targetClass.isAssignableFrom(v.getClass()) && null != desc.accessor) {
-                try {
-                    Object value = desc.accessor.applyMethod(v);
-                    out.put(desc.name, value);
-                } catch (JSONException e) {
-                    Log.e(LOGTAG, "Can't marshall value of property " + desc.name + " into JSON.", e);
+                Object value = desc.accessor.applyMethod(v);
+                if (null == value) {
+                    // Don't produce anything in this case
+                } else if (value instanceof Number) {
+                    j.name(desc.name).value((Number) value);
+                } else {
+                    j.name(desc.name).value(value.toString());
                 }
             }
         }

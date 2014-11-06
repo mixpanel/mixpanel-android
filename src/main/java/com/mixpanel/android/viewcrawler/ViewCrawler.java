@@ -28,6 +28,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -422,14 +423,16 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             final OutputStreamWriter writer = new OutputStreamWriter(out);
 
             try {
-                writer.write("{\"type\": \"snapshot_response\",");
+                writer.write("{");
+                writer.write("\"type\": \"snapshot_response\",");
                 writer.write("\"payload\": {");
-                writer.write("\"activities\": [");
-                writer.flush();
-                mSnapshot.snapshots(mLiveActivities, out);
-                writer.write("]"); // activities
-                writer.write("}"); // payload
-                writer.write("}");
+                {
+                    writer.write("\"activities\":");
+                    writer.flush();
+                    mSnapshot.snapshots(mLiveActivities, out);
+                }
+                writer.write("}"); // } payload
+                writer.write("}"); // } whole message
             } catch (IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             } finally {
