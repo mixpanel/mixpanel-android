@@ -648,7 +648,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private final List<Pair<String,JSONObject>> mPersistentEventBindings;
     private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
-
     private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;
     private final EditState mEditState;
