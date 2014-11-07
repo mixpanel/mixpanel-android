@@ -539,6 +539,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
                         newEdits.add(new Pair(changeInfo.first, visitor));
+                    } catch (final EditProtocol.InapplicableInstructionsException e) {
+                        Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad persistent change request cannot be applied.", e);
                     }
@@ -552,6 +554,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.InapplicableInstructionsException e) {
+                        Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad editor change request cannot be applied.", e);
                     }
@@ -565,6 +569,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.InapplicableInstructionsException e) {
+                        Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
                     }
@@ -578,6 +584,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.InapplicableInstructionsException e) {
+                        Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad editor event binding cannot be applied.", e);
                     }

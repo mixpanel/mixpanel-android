@@ -1,13 +1,10 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -36,6 +33,12 @@ import java.util.Map;
         }
     }
 
+    public static class InapplicableInstructionsException extends BadInstructionsException {
+        public InapplicableInstructionsException(String message) {
+            super(message);
+        }
+    }
+
     public EditProtocol(Context context) {
         mIdNameToId = new HashMap<String, Integer>();
         mIdToIdName = new SparseArray<String>();
@@ -44,15 +47,16 @@ import java.util.Map;
 
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener) throws BadInstructionsException {
         try {
+            final String eventName = source.getString("event_name");
+            final String eventType = source.getString("event_type");
+
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
-                throw new BadInstructionsException("Path selector was empty.");
+                throw new InapplicableInstructionsException("event '" + eventName + "' will not be bound to any element in the UI.");
             }
 
-            final String eventName = source.getString("event_name");
-            final String eventType = source.getString("event_type");
             if ("click".equals(eventType)) {
                 return new ViewVisitor.AddListenerVisitor(
                     path,
@@ -90,7 +94,7 @@ import java.util.Map;
             final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
-                throw new BadInstructionsException("Path selector was empty.");
+                throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
             final ViewVisitor.PathElement pathEnd = path.get(path.size() - 1);
