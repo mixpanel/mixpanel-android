@@ -57,7 +57,6 @@ import java.util.concurrent.TimeoutException;
         mMainThreadHandler.post(infoFuture);
 
         final OutputStreamWriter writer = new OutputStreamWriter(out);
-        final JsonWriter j = new JsonWriter(writer);
 
         try {
             final List<RootViewInfo> infoList = infoFuture.get(1, TimeUnit.SECONDS);
@@ -74,6 +73,7 @@ import java.util.concurrent.TimeoutException;
                 writer.write(",");
                 writer.write("\"serialized_objects\":");
                 {
+                    final JsonWriter j = new JsonWriter(writer);
                     j.beginObject();
                     j.name("rootObject").value(info.rootView.hashCode());
                     j.name("objects");
