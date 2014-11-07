@@ -506,6 +506,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
             int eventCount = eventBindings.length();
             synchronized (mEditorEventBindings) {
+                mEditorEventBindings.clear();
                 for (int i = 0; i < eventCount; i++) {
                     try {
                         final JSONObject event = eventBindings.getJSONObject(i);
