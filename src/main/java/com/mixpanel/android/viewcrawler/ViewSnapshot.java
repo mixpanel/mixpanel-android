@@ -63,6 +63,9 @@ import java.util.concurrent.TimeoutException;
             int infoCount = infoList.size();
             writer.write("[");
             for (int i = 0; i < infoCount; i++) {
+                if (i > 0) {
+                    writer.write(",");
+                }
                 final RootViewInfo info = infoList.get(i);
                 writer.write("{");
                 writer.write("\"activity\":");
