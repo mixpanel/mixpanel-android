@@ -23,6 +23,7 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.util.JSONUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -261,7 +262,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                         mPersistentChanges.clear();
                         for (int i = 0; i < changes.length(); i++) {
                             final JSONObject changeMessage = changes.getJSONObject(i);
-                            final String targetActivity = changeMessage.optString("target", null);
+                            final String targetActivity = JSONUtils.optionalStringKey(changeMessage, "target");
                             final JSONObject change = changeMessage.getJSONObject("change");
                             mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
                         }
@@ -275,7 +276,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                         mPersistentEventBindings.clear();
                         for (int i = 0; i < bindings.length(); i++) {
                             final JSONObject event = bindings.getJSONObject(i);
-                            final String targetActivity = event.optString("target_activity", null);
+                            final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
                             mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
                         }
                     }
@@ -469,7 +470,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
          */
         private void handleEditorChangeReceived(JSONObject changeMessage) {
             try {
-                final String targetActivity = changeMessage.optString("target", null);
+                final String targetActivity = JSONUtils.optionalStringKey(changeMessage, "target");
                 final JSONObject change = changeMessage.getJSONObject("change");
                 synchronized (mEditorChanges) {
                     mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change));
@@ -510,7 +511,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 for (int i = 0; i < eventCount; i++) {
                     try {
                         final JSONObject event = eventBindings.getJSONObject(i);
-                        final String targetActivity = event.optString("target_activity", null);
+                        final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
                         mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
                     } catch (JSONException e) {
                         Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
