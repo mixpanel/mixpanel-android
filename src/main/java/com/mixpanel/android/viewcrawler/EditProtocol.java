@@ -4,10 +4,12 @@ import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.util.JSONUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /* package */ class EditProtocol {
 
@@ -162,20 +165,29 @@ import java.util.Map;
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
 
-            final String targetViewClass = targetView.optString("view_class", null);
+            final String targetViewClass = JSONUtils.optionalStringKey(targetView, "view_class");
             final int targetIndex = targetView.optInt("index", -1);
-            final String targetTag = targetView.optString("tag", null);
+            final String targetTag = JSONUtils.optionalStringKey(targetView, "tag");
             final int targetExplicitId = targetView.optInt("id", -1);
-            final String targetIdName = targetView.optString("mp_id_name", null);
+            final String targetIdName = JSONUtils.optionalStringKey(targetView, "mp_id_name");
+            final String findIdName = JSONUtils.optionalStringKey(targetView, "**/mp_id_name");
+            final int findExplicitId = targetView.optInt("**/id", -1);
 
             final int targetId;
+            final int findId;
             try {
                 targetId = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+                findId = reconcileIdsInPath(findExplicitId, findIdName, idNameToId);
+
+                if (targetId != -1 && findId != -1 && targetId != findId) {
+                    Log.e(LOGTAG, "Path contains both an id and an **/id, and they don't match- the path won't match anything");
+                    return NEVER_MATCH_PATH;
+                }
             } catch (ImpossibleToMatchException e) {
                 return NEVER_MATCH_PATH;
             }
 
-            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, targetTag));
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, findId, targetTag));
         }
 
         return path;
@@ -190,8 +202,7 @@ import java.util.Map;
             if (idNameToId.containsKey(idName)) {
                 idFromName = idNameToId.get(idName);
             } else {
-                // A non-matching name will never match a real view
-                Log.e(LOGTAG,
+                Log.w(LOGTAG,
                         "Path element contains an id name not known to the system. No views will be matched.\n" +
                                 "Make sure that you're not stripping your packages R class out with proguard.\n" +
                                 "id name was \"" + idName + "\""
@@ -241,31 +252,6 @@ import java.util.Map;
             Log.e(LOGTAG, "Can't read built-in id names from platform library", e);
         }
 
-        try {
-            final Class internalPlatformIdClass = Class.forName("com.android.internal.R$id");
-            final Field[] fields = internalPlatformIdClass.getFields();
-            for (int i = 0; i < fields.length; i++) {
-                final Field field = fields[i];
-                final int modifiers = field.getModifiers();
-                if (Modifier.isStatic(modifiers)) {
-                    final Class fieldType = field.getType();
-                    if (fieldType == int.class) {
-                        final String name = field.getName();
-                        final int value = field.getInt(null);
-                        final String namespacedName = "android:internal:" + name;
-                        mIdNameToId.put(namespacedName, value);
-                        mIdToIdName.put(value, namespacedName);
-                    }
-                }
-            }
-        } catch (ClassNotFoundException e) {
-            if (MPConfig.DEBUG) {
-                throw new RuntimeException("Android internal class not available or accessible", e);
-            }
-        } catch (IllegalAccessException e) {
-            Log.e(LOGTAG, "Can't read platform id class names from library", e);
-        }
-
         // context.getPackageName() actually returns the "application id", which
         // usually (but not always) the same as package of the generated R class.
         //
@@ -307,7 +293,7 @@ import java.util.Map;
                     "    <fields>;\n" +
                     "}\n\n" +
                     "If you're not using proguard, or if your proguard configuration already contains the directive above, " +
-                    "you can add the following to your AndroidManifest.xml file to explicity point the Mixpanel library to " +
+                    "you can add the following to your AndroidManifest.xml file to explicitly point the Mixpanel library to " +
                     "the appropriate library for your resources class:\n\n" +
                     "<meta-data android:name=\"com.mixpanel.android.MPConfig.ResourcePackageName\" android:value=\"YOUR_PACKAGE_NAME\" />\n\n" +
                     "where YOUR_PACKAGE_NAME is the same string you use for the \"package\" attribute in your <manifest> tag."

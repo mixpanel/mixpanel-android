@@ -24,22 +24,28 @@ import java.util.List;
     }
 
     public static class PathElement {
-        public PathElement(String vClass, int ix, int vId, String vTag) {
+        public PathElement(String vClass, int ix, int vId, int fId, String vTag) {
             viewClassName = vClass;
             index = ix;
             viewId = vId;
+            findId = fId;
             tag = vTag;
         }
 
         public String toString() {
             try {
                 final JSONObject ret = new JSONObject();
-                ret.put("viewClassName", viewClassName);
+                if (null != viewClassName) {
+                    ret.put("viewClassName", viewClassName);
+                }
                 if (index > -1) {
                     ret.put("index", index);
                 }
                 if (viewId > -1) {
                     ret.put("viewId", viewId);
+                }
+                if (findId > -1) {
+                    ret.put("findId", findId);
                 }
                 if (null != tag) {
                     ret.put("tag", tag);
@@ -53,6 +59,7 @@ import java.util.List;
         public final String viewClassName;
         public final int index;
         public final int viewId;
+        public final int findId;
         public final String tag;
     }
 
@@ -92,6 +99,10 @@ import java.util.List;
             mMutator.applyMethod(found);
         }
 
+        protected String name() {
+            return "Property Mutator";
+        }
+
         private final Caller mMutator;
         private final Caller mAccessor;
     }
@@ -121,6 +132,10 @@ import java.util.List;
             found.setAccessibilityDelegate(newDelegate);
         }
 
+        protected String name() {
+            return mEventName + " event when (" + mEventType + ")";
+        }
+
         private View.AccessibilityDelegate getOldDelegate(View v) {
             View.AccessibilityDelegate ret = null;
             try {
@@ -128,13 +143,9 @@ import java.util.List;
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "View has no getAccessibilityDelegate method - we may be overwriting an existing delegate");
-                }
+                // In this case, we just overwrite the original.
             } catch (IllegalAccessException e) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "View does not have a public getAccessibilityDelegate method - overwriting any existing delegate");
-                }
+                // In this case, we just overwrite the original.
             } catch (InvocationTargetException e) {
                 Log.w(LOGTAG, "getAccessibilityDelegate threw an exception when called.", e);
             }
@@ -191,6 +202,10 @@ import java.util.List;
             mSeen = (found != null);
         }
 
+        protected String name() {
+            return mEventName + " when Detected";
+        }
+
         private boolean mSeen;
         private final OnVisitedListener mListener;
         private final String mEventName;
@@ -201,14 +216,30 @@ import java.util.List;
     }
 
     public void visit(View rootView) {
-        if (mPath.isEmpty()) {
+        findTargetsInRoot(rootView, mPath);
+    }
+
+    protected abstract void accumulate(View found);
+    protected abstract String name();
+
+    private void findTargetsInRoot(View givenRootView, List<PathElement> path) {
+        if (path.isEmpty()) {
             return;
         }
 
-        final PathElement rootPathElement = mPath.get(0);
-        final List<PathElement> childPath = mPath.subList(1, mPath.size());
+        final PathElement rootPathElement = path.get(0);
+        final List<PathElement> childPath = path.subList(1, path.size());
 
-        if (rootPathElement.index <= 0 &&
+        final View rootView;
+        if (rootPathElement.findId > -1) {
+            // Could return givenRootView, which is ok
+            rootView = givenRootView.findViewById(rootPathElement.findId);
+        } else {
+            rootView = givenRootView;
+        }
+
+        if (null != rootView &&
+                rootPathElement.index <= 0 &&
                 matches(rootPathElement, rootView)) {
 
             if (childPath.isEmpty()) {
@@ -220,10 +251,11 @@ import java.util.List;
         }
     }
 
-    protected abstract void accumulate(View found);
-
     /* Should never be called with an empty path */
     private void findTargetsInChildren(ViewGroup parent, List<PathElement> path) {
+        // When this is run, parent has already been matched to a path prefix, and
+        // path is a nonempty path into parent's children.
+
         if (path.isEmpty()) {
             Log.e(LOGTAG, "Children will never match an empty path");
             return;
@@ -231,13 +263,21 @@ import java.util.List;
 
         final PathElement matchElement = path.get(0);
         final List<PathElement> nextPath = path.subList(1, path.size());
+        final int findId = matchElement.findId;
         final int matchIndex = matchElement.index;
 
         final int childCount = parent.getChildCount();
         int matchCount = 0;
         for (int i = 0; i < childCount; i++) {
-            final View child = parent.getChildAt(i);
-            if (matches(matchElement, child)) {
+            final View givenChild = parent.getChildAt(i);
+            final View child;
+            if (findId > -1) {
+                child = givenChild.findViewById(findId);
+            } else {
+                child = givenChild;
+            }
+
+            if (null != child && matches(matchElement, child)) {
                 if (matchCount == matchIndex || -1 == matchIndex) {
                     if (nextPath.isEmpty()) {
                         accumulate(child);
@@ -284,7 +324,7 @@ import java.util.List;
         final String matchTag = matchElement.tag;
         if (null != matchTag) {
             final Object subjectTag = subject.getTag();
-            if (! matchTag.equals(subjectTag.toString())) {
+            if (null == subjectTag || ! matchTag.equals(subjectTag.toString())) {\
                 return false;
             }
         }

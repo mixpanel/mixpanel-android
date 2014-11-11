@@ -3,8 +3,11 @@ package com.mixpanel.android.viewcrawler;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
+
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -26,7 +29,6 @@ import java.util.Set;
         mUiThreadHandler = new Handler(Looper.getMainLooper());
         mIntendedEdits = new HashMap<String, List<ViewVisitor>>();
         mCurrentEdits = new HashSet<EditBinding>();
-        mLiveActivities = new HashSet<Activity>();
     }
 
     /**
@@ -92,7 +94,7 @@ import java.util.Set;
 
     // Must be called on UI Thread
     private void applyIntendedEdits() {
-        for (Activity activity : mLiveActivities) {
+        for (Activity activity : getAll()) {
             final String activityName = activity.getClass().getCanonicalName();
             final View rootView = activity.getWindow().getDecorView().getRootView();
 
@@ -183,7 +185,6 @@ import java.util.Set;
     private final Handler mUiThreadHandler;
     private final Map<String, List<ViewVisitor>> mIntendedEdits;
     private final Set<EditBinding> mCurrentEdits;
-    private final Set<Activity> mLiveActivities;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditState";

@@ -52,6 +52,7 @@ public class TestView extends FrameLayout {
         mThirdLayer.add(mTextView2);
 
         mButtonGroup = new LinearLayout(getContext());
+        mButtonGroup.setId(BUTTON_GROUP_ID);
         linear.addView(mButtonGroup);
         mAllViews.add(mButtonGroup);
         mThirdLayer.add(mButtonGroup);
@@ -177,6 +178,7 @@ public class TestView extends FrameLayout {
     public static final int BUTTON_ID = 2000;
     public static final int TEXT_VIEW_ID = 3000;
     public static final int LINEAR_ID = 4000;
+    public static final int BUTTON_GROUP_ID = 5000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String DOUBLE_QUOTED_CRAZY_TAG = "\"this is a long and \\\"CRAZY\\\" \\\\\\\"Tag\"";
