@@ -30,6 +30,10 @@ android {
     }
 }
 
+dependencies {
+    compile "com.google.android.gms:play-services:3.1.+"
+}
+
 android.libraryVariants.all { variant ->
     task("generate${variant.name}Javadoc", type: Javadoc) {
         description "Generates Javadoc for $variant.name."

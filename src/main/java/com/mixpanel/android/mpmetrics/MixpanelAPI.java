@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
@@ -1255,14 +1254,18 @@ public class MixpanelAPI {
 
         @Override
         public void setPushRegistrationId(String registrationId) {
-            if (getDistinctId() == null) {
-                return;
-            }
-            mPersistentIdentity.storePushId(registrationId);
-            try {
-                union("$android_devices", new JSONArray("[" + registrationId + "]"));
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "set push registration id error", e);
+            // Must be thread safe, will be called from a lot of different threads.
+            synchronized (mPersistentIdentity) {
+                if (mPersistentIdentity.getPeopleDistinctId() == null) {
+                    return;
+                }
+
+                mPersistentIdentity.storePushId(registrationId);
+                try {
+                    union("$android_devices", new JSONArray("[" + registrationId + "]"));
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "set push registration id error", e);
+                }
             }
         }
 
@@ -1275,21 +1278,16 @@ public class MixpanelAPI {
         @Override
         public void initPushHandling(String senderID) {
             if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
-                Log.i(LOGTAG, "Can't start push notification service. Push notifications will not work.");
+                Log.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
             else { // Configuration is good for push notifications
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
-                    if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
-
-                    try {
-                        final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-                        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
-                        registrationIntent.putExtra("sender", senderID);
-                        mContext.startService(registrationIntent);
-                    } catch (final SecurityException e) {
-                        Log.w(LOGTAG, e);
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        registerForPushIdAPI21AndUp(senderID);
+                    } else {
+                        registerForPushIdAPI19AndOlder(senderID);
                     }
                 } else {
                     MixpanelAPI.allInstances(new InstanceProcessor() {
@@ -1346,10 +1344,28 @@ public class MixpanelAPI {
                 dataObj.put("$time", System.currentTimeMillis());
 
                 if (null != distinctId) {
-                    dataObj.put("$distinct_id", getDistinctId());
+                    dataObj.put("$distinct_id", distinctId);
                 }
 
                 return dataObj;
+        }
+
+        @TargetApi(21)
+        private void registerForPushIdAPI21AndUp(String senderID) {
+            mMessages.registerForGCM(senderID);
+        }
+
+        @TargetApi(19)
+        private void registerForPushIdAPI19AndOlder(String senderID) {
+            try {
+                if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering a new push id");
+                final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+                registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
+                registrationIntent.putExtra("sender", senderID);
+                mContext.startService(registrationIntent);
+            } catch (final SecurityException e) {
+                Log.w(LOGTAG, e);
+            }
         }
 
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
