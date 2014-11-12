@@ -324,7 +324,7 @@ import java.util.List;
         final String matchTag = matchElement.tag;
         if (null != matchTag) {
             final Object subjectTag = subject.getTag();
-            if (null == subjectTag || ! matchTag.equals(subjectTag.toString())) {\
+            if (null == subjectTag || ! matchTag.equals(subjectTag.toString())) {
                 return false;
             }
         }
