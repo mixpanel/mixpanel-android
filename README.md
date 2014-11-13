@@ -20,6 +20,18 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.4.1
+
+ * Improved support for Push notifications in Android Lollipop/API
+   21. Users sending push notifications to Lollipop devices should
+   include some version of Google Play Services in their build. In
+   include Google Play Services, add the following to your
+   build.gradle file:
+
+   ```
+   compile "com.google.android.gms:play-services:3.1+" // Any version above 3.1 will work
+   ```
+
 #### v4.3.1
 
  * This is a bugfix release only, to alter the handling of Surveys and In-App notifications when
