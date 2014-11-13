@@ -160,13 +160,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertFalse(explodingMessages.isDead());
 
             mixpanel.track("event1", null);
-            JSONObject found = messages.poll(1, TimeUnit.SECONDS);
+            JSONObject found = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertNotNull(found);
             Thread.sleep(1000);
             assertTrue(explodingMessages.isDead());
 
             mixpanel.track("event2", null);
-            JSONObject shouldntFind = messages.poll(1, TimeUnit.SECONDS);
+            JSONObject shouldntFind = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertNull(shouldntFind);
             assertTrue(explodingMessages.isDead());
         } catch (InterruptedException e) {
@@ -413,42 +413,42 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         try {
             for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
-                String messageTable = messages.poll(1, TimeUnit.SECONDS);
+                String messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
                 assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
-                expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+                expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
                 JSONObject message = new JSONObject(expectedJSONMessage);
                 assertEquals("frequent event", message.getString("event"));
             }
 
-            String messageTable = messages.poll(1, TimeUnit.SECONDS);
+            String messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject message = new JSONObject(expectedJSONMessage);
             assertEquals("final event", message.getString("event"));
 
-            String messageFlush = messages.poll(1, TimeUnit.SECONDS);
+            String messageFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH EVENTS_ENDPOINT", messageFlush);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
             assertEquals(mockConfig.getBulkUploadLimit(), bigFlush.length());
 
             metrics.track("next wave", null);
             metrics.flush();
 
-            String nextWaveTable = messages.poll(1, TimeUnit.SECONDS);
+            String nextWaveTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), nextWaveTable);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject nextWaveMessage = new JSONObject(expectedJSONMessage);
             assertEquals("next wave", nextWaveMessage.getString("event"));
 
-            String manualFlush = messages.poll(1, TimeUnit.SECONDS);
+            String manualFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH EVENTS_ENDPOINT", manualFlush);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray nextWave = new JSONArray(expectedJSONMessage);
             assertEquals(1, nextWave.length());
 
@@ -460,19 +460,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
 
-            String peopleTable = messages.poll(1, TimeUnit.SECONDS);
+            String peopleTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("TABLE " + MPDbAdapter.Table.PEOPLE.getName(), peopleTable);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject peopleMessage = new JSONObject(expectedJSONMessage);
 
             assertEquals("new person", peopleMessage.getString("$distinct_id"));
             assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
 
-            String peopleFlush = messages.poll(1, TimeUnit.SECONDS);
+            String peopleFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH PEOPLE_ENDPOINT", peopleFlush);
 
-            expectedJSONMessage = messages.poll(1, TimeUnit.SECONDS);
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray peopleSent = new JSONArray(expectedJSONMessage);
             assertEquals(1, peopleSent.length());
 
@@ -571,8 +571,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             metrics.track("Should Succeed", null);
             metrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, cleanupCalls.size());
 
             // Fallback test--first URL throws IOException
@@ -582,8 +582,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             metrics.track("Should Succeed", null);
             metrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, cleanupCalls.size());
 
             // Two IOExceptions -- assume temporary network failure, no cleanup should happen until
@@ -595,13 +595,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
             metrics.track("Should Succeed", null);
             metrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(0, cleanupCalls.size());
             metrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(2, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, cleanupCalls.size());
 
             // MalformedURLException -- should dump the events since this will probably never succeed
@@ -610,8 +610,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             metrics.track("Should Fail", null);
             metrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Fail", performRequestCalls.poll(2, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(2, TimeUnit.SECONDS));
+            assertEquals("Should Fail", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, cleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
@@ -809,7 +809,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
         TestThread testThread = new TestThread(messages);
         testThread.start();
-        JSONObject found = messages.poll(1, TimeUnit.SECONDS);
+        JSONObject found = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
         assertNotNull(found);
         assertEquals(found.getString("event"), "test in thread");
         assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
@@ -989,4 +989,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     private Future<SharedPreferences> mMockPreferences;
+
+    private static final int POLL_WAIT_SECONDS = 5;
 }
