@@ -229,62 +229,44 @@ import java.util.List;
 
         final PathElement rootPathElement = path.get(0);
         final List<PathElement> childPath = path.subList(1, path.size());
-
-        final View rootView;
-        if (rootPathElement.findId > -1) {
-            // Could return givenRootView, which is ok
-            rootView = givenRootView.findViewById(rootPathElement.findId);
-        } else {
-            rootView = givenRootView;
-        }
+        final View rootView = findFrom(rootPathElement, givenRootView);
 
         if (null != rootView &&
                 rootPathElement.index <= 0 &&
                 matches(rootPathElement, rootView)) {
-
-            if (childPath.isEmpty()) {
-                accumulate(rootView);
-            } else if (rootView instanceof ViewGroup) {
-                final ViewGroup rootParent = (ViewGroup) rootView;
-                findTargetsInChildren(rootParent, childPath);
-            }
+            findTargetsInMatchedView(rootView, childPath);
         }
     }
 
-    /* Should never be called with an empty path */
-    private void findTargetsInChildren(ViewGroup parent, List<PathElement> path) {
-        // When this is run, parent has already been matched to a path prefix, and
-        // path is a nonempty path into parent's children.
+    private void findTargetsInMatchedView(View alreadyMatched, List<PathElement> remainingPath) {
+        // When this is run, alreadyMatched has already been matched to a path prefix.
+        // path is a possibly empty "remaining path" suffix left over after the match
 
-        if (path.isEmpty()) {
-            Log.e(LOGTAG, "Children will never match an empty path");
+        if (remainingPath.isEmpty()) {
+            // Nothing left to match- we're found!
+            accumulate(alreadyMatched);
             return;
         }
 
-        final PathElement matchElement = path.get(0);
-        final List<PathElement> nextPath = path.subList(1, path.size());
-        final int findId = matchElement.findId;
+        if (!(alreadyMatched instanceof ViewGroup)) {
+            // Matching a non-empty path suffix is impossible, because we have no children
+            return;
+        }
+
+        final ViewGroup parent = (ViewGroup) alreadyMatched;
+        final PathElement matchElement = remainingPath.get(0);
+        final List<PathElement> nextPath = remainingPath.subList(1, remainingPath.size());
         final int matchIndex = matchElement.index;
 
         final int childCount = parent.getChildCount();
         int matchCount = 0;
         for (int i = 0; i < childCount; i++) {
             final View givenChild = parent.getChildAt(i);
-            final View child;
-            if (findId > -1) {
-                child = givenChild.findViewById(findId);
-            } else {
-                child = givenChild;
-            }
+            final View child = findFrom(matchElement, givenChild);
 
             if (null != child && matches(matchElement, child)) {
                 if (matchCount == matchIndex || -1 == matchIndex) {
-                    if (nextPath.isEmpty()) {
-                        accumulate(child);
-                    } else if (child instanceof ViewGroup) {
-                        final ViewGroup childGroup = (ViewGroup) child;
-                        findTargetsInChildren(childGroup, nextPath);
-                    }
+                    findTargetsInMatchedView(child, nextPath);
                 }
 
                 matchCount++;
@@ -292,6 +274,15 @@ import java.util.List;
                     return;
                 }
             }
+        }
+    }
+
+    private View findFrom(PathElement findElement, View subject) {
+        if (findElement.findId > -1) {
+            // This could still return subject, which is ok.
+            return subject.findViewById(findElement.findId);
+        } else {
+            return subject;
         }
     }
 
