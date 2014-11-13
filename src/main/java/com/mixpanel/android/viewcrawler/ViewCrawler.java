@@ -170,7 +170,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 mMessageThreadHandler.sendMessage(message);
             }
 
-            mMessageThreadHandler.postDelayed(this, 1000 * 60);
+            mMessageThreadHandler.postDelayed(this, EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS);
         }
 
         public void start() {
@@ -751,6 +751,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
     private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
     private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
+
+    private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 60;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
