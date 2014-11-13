@@ -1281,7 +1281,7 @@ public class MixpanelAPI {
                 Log.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
-            else { // Configuration is good for push notifications
+            else { // Configuration is good for at least some push notifications
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
                     if (Build.VERSION.SDK_INT >= 21) {

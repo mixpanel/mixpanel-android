@@ -124,24 +124,26 @@ import android.util.Log;
             return false;
         }
 
-        try {
-            Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
-        } catch(ClassNotFoundException e) {
-            Log.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
-            Log.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
-            return false;
-        }
-
         if (!checkReceiver(context, allowedReceivers, "com.google.android.c2dm.intent.RECEIVE")) {
             return false;
         }
 
-        if (!checkReceiver(context, allowedReceivers, "com.google.android.c2dm.intent.REGISTRATION")) {
-            Log.i(LOGTAG, "(You can still receive push notifications on Lollipop/API 21 or greater with this configuration)");
-            return false;
+        boolean canRegisterWithPlayServices = false;
+        try {
+            Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
+            canRegisterWithPlayServices = true;
+        } catch(ClassNotFoundException e) {
+            Log.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
+            Log.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
         }
 
-        return true;
+        boolean canRegisterWithRegistrationIntent = true;
+        if (!checkReceiver(context, allowedReceivers, "com.google.android.c2dm.intent.REGISTRATION")) {
+            Log.i(LOGTAG, "(You can still receive push notifications on Lollipop/API 21 or greater with this configuration)");
+            canRegisterWithRegistrationIntent = false;
+        }
+
+        return canRegisterWithPlayServices || canRegisterWithRegistrationIntent;
     }
 
     public static boolean checkSurveyActivityAvailable(Context context) {
