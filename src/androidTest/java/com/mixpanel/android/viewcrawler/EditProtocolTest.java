@@ -38,9 +38,16 @@ public class EditProtocolTest extends AndroidTestCase {
         mJustTagPath = new JSONArray("[{},{},{},{\"tag\": \"this_is_a_simple_tag\"}]");
         mJustIdNamePath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\"}]");
         mIdNameAndIdPath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
+        mJustFindIdPath = new JSONArray("[{},{},{},{\"**/id\": 1001}]");
+        mJustFindNamePath = new JSONArray("[{},{},{},{\"**/mp_id_name\": \"NAME PRESENT\"}]");
+        mUselessFindIdPath = new JSONArray("[{},{},{},{\"**/mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
+
+        mIdAndNameDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NO SUCH NAME\", \"id\": 90210}]");
+        mIdAndFindDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"**/mp_id_name\": \"ALSO PRESENT\"}]");
 
         mIdMap = new HashMap<String, Integer>();
         mIdMap.put("NAME PRESENT", 1001);
+        mIdMap.put("ALSO PRESENT", 1002);
 
         mListener = new TestVisitedListener();
         mRootView = new TestView(getContext());
@@ -169,6 +176,59 @@ public class EditProtocolTest extends AndroidTestCase {
             final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, nonMatchingIdMap);
             assertTrue(p.isEmpty());
         }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustFindIdPath, mIdMap);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(1001, last.findId);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustFindNamePath, mIdMap);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(1001, last.findId);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mUselessFindIdPath, mIdMap);
+            final ViewVisitor.PathElement first = p.get(0);
+            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            assertEquals(null, first.viewClassName);
+            assertEquals(-1, first.index);
+            assertEquals(-1, first.viewId);
+            assertEquals(null, first.tag);
+
+            assertEquals(null, last.viewClassName);
+            assertEquals(-1, last.index);
+            assertEquals(1001, last.viewId);
+            assertEquals(1001, last.findId);
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mIdMap);
+            assertTrue(p.isEmpty());
+        }
+
+        {
+            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdAndFindDontMatch, mIdMap);
+            assertTrue(p.isEmpty());
+        }
     }
 
     public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
@@ -216,6 +276,11 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mJustTagPath;
     private JSONArray mJustIdNamePath;
     private JSONArray mIdNameAndIdPath;
+    private JSONArray mJustFindIdPath;
+    private JSONArray mJustFindNamePath;
+    private JSONArray mUselessFindIdPath;
+    private JSONArray mIdAndNameDontMatch;
+    private JSONArray mIdAndFindDontMatch;
     private TestVisitedListener mListener;
     private TestView mRootView;
     private Map<String, Integer> mIdMap;

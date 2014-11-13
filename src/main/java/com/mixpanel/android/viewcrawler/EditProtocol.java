@@ -175,15 +175,23 @@ import java.util.Set;
 
             final int targetId;
             final int findId;
-            try {
-                targetId = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
-                findId = reconcileIdsInPath(findExplicitId, findIdName, idNameToId);
 
-                if (targetId != -1 && findId != -1 && targetId != findId) {
-                    Log.e(LOGTAG, "Path contains both an id and an **/id, and they don't match- the path won't match anything");
-                    return NEVER_MATCH_PATH;
-                }
-            } catch (ImpossibleToMatchException e) {
+            final Integer targetIdOrNull = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            if (null == targetIdOrNull) {
+                return NEVER_MATCH_PATH;
+            } else {
+                targetId = targetIdOrNull.intValue();
+            }
+
+            final Integer findIdOrNull = reconcileIdsInPath(findExplicitId, findIdName, idNameToId);
+            if (null == findIdOrNull) {
+                return NEVER_MATCH_PATH;
+            } else {
+                findId = findIdOrNull.intValue();
+            }
+
+            if (targetId != -1 && findId != -1 && targetId != findId) {
+                Log.e(LOGTAG, "Path contains both an id and an **/id, and they don't match- the path won't match anything");
                 return NEVER_MATCH_PATH;
             }
 
@@ -193,10 +201,8 @@ import java.util.Set;
         return path;
     }
 
-    private static class ImpossibleToMatchException extends Exception {}
-
-    private int reconcileIdsInPath(int explicitId, String idName, Map<String, Integer> idNameToId)
-        throws ImpossibleToMatchException {
+    // May return null (and log a warning) if arguments cannot be reconciled
+    private Integer reconcileIdsInPath(int explicitId, String idName, Map<String, Integer> idNameToId) {
         final int idFromName;
         if (null != idName) {
             if (idNameToId.containsKey(idName)) {
@@ -207,7 +213,7 @@ import java.util.Set;
                                 "Make sure that you're not stripping your packages R class out with proguard.\n" +
                                 "id name was \"" + idName + "\""
                 );
-                throw new ImpossibleToMatchException();
+                return null;
             }
         } else {
             idFromName = -1;
@@ -215,7 +221,7 @@ import java.util.Set;
 
         if (-1 != idFromName && -1 != explicitId && idFromName != explicitId) {
             Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
-            throw new ImpossibleToMatchException();
+            return null;
         }
 
         if (-1 != idFromName) {
