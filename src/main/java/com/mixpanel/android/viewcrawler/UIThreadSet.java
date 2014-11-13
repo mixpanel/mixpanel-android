@@ -28,11 +28,19 @@ import java.util.Set;
         }
         mSet.remove(item);
     }
+
     public Set<T> getAll() {
         if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
             throw new RuntimeException("Can't remove an activity when not on the UI thread");
         }
         return Collections.unmodifiableSet(mSet);
+    }
+
+    public boolean isEmpty() {
+        if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
+            throw new RuntimeException("Can't remove an activity when not on the UI thread");
+        }
+        return mSet.isEmpty();
     }
 
     private Set<T> mSet;

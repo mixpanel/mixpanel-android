@@ -158,10 +158,39 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         return ret;
     }
 
+    private class EmulatorConnector implements Runnable {
+        public EmulatorConnector() {
+            mStopped = true;
+        }
+
+        @Override
+        public void run() {
+            if (! mStopped) {
+                final Message message = mMessageThreadHandler.obtainMessage(MESSAGE_CONNECT_TO_EDITOR);
+                mMessageThreadHandler.sendMessage(message);
+            }
+
+            mMessageThreadHandler.postDelayed(this, 1000 * 60);
+        }
+
+        public void start() {
+            mStopped = false;
+            mMessageThreadHandler.post(this);
+        }
+
+        public void stop() {
+            mStopped = true;
+            mMessageThreadHandler.removeCallbacks(this);
+        }
+
+        private volatile boolean mStopped;
+    }
+
     private class LifecycleCallbacks implements Application.ActivityLifecycleCallbacks, FlipGesture.OnFlipGestureListener {
 
         public LifecycleCallbacks() {
             mFlipGesture = new FlipGesture(this);
+            mEmulatorConnector = new EmulatorConnector();
         }
 
         @Override
@@ -176,25 +205,24 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
 
         @Override
         public void onActivityStarted(Activity activity) {
-            mEditState.add(activity);
         }
 
         @Override
         public void onActivityResumed(Activity activity) {
-            final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
-            final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            installConnectionSensor(activity);
+            mEditState.add(activity);
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
-            final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
-            sensorManager.unregisterListener(mFlipGesture);
+            mEditState.remove(activity);
+            if (mEditState.isEmpty()) {
+                uninstallConnectionSensor(activity);
+            }
         }
 
         @Override
         public void onActivityStopped(Activity activity) {
-            mEditState.remove(activity);
         }
 
         @Override
@@ -205,7 +233,51 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         public void onActivityDestroyed(Activity activity) {
         }
 
+        private void installConnectionSensor(final Activity activity) {
+            if (isInEmulator()) {
+                mEmulatorConnector.start();
+            } else {
+                final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
+                final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            }
+        }
+
+        private void uninstallConnectionSensor(final Activity activity) {
+            if (isInEmulator()) {
+                mEmulatorConnector.stop();
+            } else {
+                final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
+                sensorManager.unregisterListener(mFlipGesture);
+            }
+        }
+
+        private boolean isInEmulator() {
+            if (!Build.HARDWARE.equals("goldfish")) {
+                return false;
+            }
+
+            if (!Build.BRAND.startsWith("generic")) {
+                return false;
+            }
+
+            if (!Build.DEVICE.startsWith("generic")) {
+                return false;
+            }
+
+            if (!Build.PRODUCT.contains("sdk")) {
+                return false;
+            }
+
+            if (!Build.MODEL.toLowerCase().contains("sdk")) {
+                return false;
+            }
+
+            return true;
+        }
+
         private final FlipGesture mFlipGesture;
+        private final EmulatorConnector mEmulatorConnector;
     }
 
     private class ViewCrawlerHandler extends Handler {
@@ -297,12 +369,12 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
          */
         private void connectToEditor() {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "connecting to editor");
+                Log.v(LOGTAG, "connecting to editor");
             }
 
             if (mEditorConnection != null && mEditorConnection.isValid()) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "There is already a valid connection to an events editor.");
+                    Log.v(LOGTAG, "There is already a valid connection to an events editor.");
                 }
                 return;
             }
