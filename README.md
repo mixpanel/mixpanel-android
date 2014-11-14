@@ -32,6 +32,9 @@ Changelog
 
 #### v4.5
 
+ * Introducing dynamic event binding! Developers and stakeholders can now bind Mixpanel events to
+ clicks using the UI in the Mixpanel web application.
+
  * New configuration directive
 
  The 4.5 version of the library allows for meta-data of the form
@@ -64,8 +67,11 @@ Changelog
 }
 ```
 
-Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds
-of your application.
+  Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds
+  of your application.
+
+* The minimum Android OS version necessary for surveys, in app notifications, and dynamic event binding
+  has been increased to JellyBean/API 16.
 
 #### v4.2.2
 

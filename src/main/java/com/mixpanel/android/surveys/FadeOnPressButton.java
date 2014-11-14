@@ -2,13 +2,14 @@ package com.mixpanel.android.surveys;
 
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.os.Build;
 import android.util.AttributeSet;
 import android.widget.Button;
 
 import android.R.attr;
 
-@TargetApi(14)
+import com.mixpanel.android.mpmetrics.MPConfig;
+
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /**
  * Part of the Mixpanel Surveys user interface.
  *

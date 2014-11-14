@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
@@ -16,7 +15,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ abstract class ViewVisitor {
 
     public interface OnVisitedListener {
@@ -195,7 +194,7 @@ import java.util.List;
         }
 
         protected void accumulate(View found) {
-            if (found != null && !mSeen) { // TODO THIS BREAKS ON MULTIPLE VISITS! PROBABLY?
+            if (found != null && !mSeen) {
                 mListener.OnVisited(found, mEventName);
             }
 

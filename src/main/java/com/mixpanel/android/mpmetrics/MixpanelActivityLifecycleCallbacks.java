@@ -5,7 +5,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
 
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance) {

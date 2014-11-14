@@ -17,6 +17,12 @@ public class MPConfig {
 
     public static boolean DEBUG = false;
 
+    /**
+     * Minimum API level for support of rich UI features, like Surveys, In-App notifications, and dynamic event binding.
+     * Devices running OS versions below this level will still support tracking and push notification features.
+     */
+    public static final int UI_FEATURES_MIN_API = 16;
+
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 

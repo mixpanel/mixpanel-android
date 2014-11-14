@@ -33,7 +33,7 @@ import com.mixpanel.android.R;
  *
  * Users of the library should not reference this class directly.
  */
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 @SuppressLint("ClickableViewAccessibility")
 public class InAppFragment extends Fragment {
 

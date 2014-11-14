@@ -37,7 +37,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ class ViewSnapshot {
 
     public ViewSnapshot(List<PropertyDescription> properties, SparseArray<String> idsToNames) {

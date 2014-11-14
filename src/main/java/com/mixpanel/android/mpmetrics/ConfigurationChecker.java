@@ -128,7 +128,7 @@ import android.util.Log;
     }
 
     public static boolean checkSurveyActivityAvailable(Context context) {
-        if (Build.VERSION.SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             // No need to log, SurveyActivity doesn't work on this platform.
             return false;
         }

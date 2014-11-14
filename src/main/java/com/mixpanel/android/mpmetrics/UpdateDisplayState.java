@@ -21,7 +21,7 @@ import android.util.Log;
  *
  * The interface to this class may change or disappear from release to release.
  */
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 public class UpdateDisplayState implements Parcelable {
 
     /**

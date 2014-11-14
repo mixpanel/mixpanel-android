@@ -751,7 +751,7 @@ public class MixpanelAPI {
          * only one of them will be displayed.
          *
          * <p>This method is a no-op in environments with
-         * Android API before Ice Cream Sandwich/API level 14.
+         * Android API before JellyBean/API level 16.
          *
          * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
          * taken of parent to be used as a blurred background.
@@ -773,7 +773,7 @@ public class MixpanelAPI {
          * only one of them will be displayed.
          *
          * <p>This method is a no-op in environments with
-         * Android API before Ice Cream Sandwich/API level 14.
+         * Android API before JellyBean/API level 16.
          *
          * @param parent the Activity that the mini notification will be displayed in, or the Activity
          * that will be used to launch SurveyActivity for the takeover notification.
@@ -902,16 +902,17 @@ public class MixpanelAPI {
      * Once registered, we can automatically check for and show surveys and in app notifications
      * when any Activity is opened.
      *
-     * This is only available if the android version is >= 14. You can disable this by setting
+     * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
      * com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      *
      * This function is automatically called when the library is initialized unless you explicitly
      * set com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      */
     /* package */
-    @TargetApi(14)
+    @TargetApi(MPConfig.UI_FEATURES_MIN_API)
     void registerMixpanelActivityLifecycleCallbacks() {
-        if (android.os.Build.VERSION.SDK_INT >= 14 && mConfig.getAutoShowMixpanelUpdates()) {
+        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API &&
+                mConfig.getAutoShowMixpanelUpdates()) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
@@ -970,7 +971,7 @@ public class MixpanelAPI {
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {
-        if (Build.VERSION.SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Surveys and Notifications are not supported on this Android OS Version");
             return new UnsupportedUpdatesListener();
         } else {
@@ -979,7 +980,7 @@ public class MixpanelAPI {
     }
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
-        if (Build.VERSION.SDK_INT < 14) {
+        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return new UnsupportedUpdatesFromMixpanel();
         } else {
@@ -1162,7 +1163,7 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyIfAvailable(final Activity parent) {
-            if (Build.VERSION.SDK_INT < 14) {
+            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 return;
             }
 
@@ -1179,7 +1180,7 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationIfAvailable(final Activity parent) {
-            if (Build.VERSION.SDK_INT < 14) {
+            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 return;
             }
 
@@ -1340,8 +1341,8 @@ public class MixpanelAPI {
         }
 
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
-            // Showing surveys is not supported before Ice Cream Sandwich
-            if (Build.VERSION.SDK_INT < 14) {
+            // Showing surveys is not supported before Jelly Bean
+            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 return;
             }
 
@@ -1394,13 +1395,13 @@ public class MixpanelAPI {
         }
 
         private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
-            if (Build.VERSION.SDK_INT < 14) {
+            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 return;
             }
 
             parent.runOnUiThread(new Runnable() {
                 @Override
-                @TargetApi(14)
+                @TargetApi(MPConfig.UI_FEATURES_MIN_API)
                 public void run() {
                     final ReentrantLock lock = UpdateDisplayState.getLockObject();
                     lock.lock();

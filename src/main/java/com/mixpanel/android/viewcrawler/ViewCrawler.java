@@ -48,7 +48,7 @@ import javax.net.ssl.SSLSocketFactory;
  * This class is for internal use by the Mixpanel API, and should
  * not be called directly by your code.
  */
-@TargetApi(14)
+@TargetApi(MPConfig.UI_FEATURES_MIN_API)
 public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
