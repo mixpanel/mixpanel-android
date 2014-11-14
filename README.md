@@ -33,7 +33,7 @@ Changelog
 #### v4.5
 
  * Introducing dynamic event binding! Developers and stakeholders can now bind Mixpanel events to
- clicks using the UI in the Mixpanel web application.
+ user interactions using the UI in the Mixpanel web application.
 
  * New configuration directive
 
