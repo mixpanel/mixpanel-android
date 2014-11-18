@@ -49,7 +49,7 @@ public class EditProtocolTest extends AndroidTestCase {
         mIdMap.put("NAME PRESENT", 1001);
         mIdMap.put("ALSO PRESENT", 1002);
 
-        mListener = new TestVisitedListener();
+        mListener = new TestEventListener();
         mRootView = new TestView(getContext());
     }
 
@@ -256,9 +256,9 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mListener.visitsRecorded.get(0), "Engines On!");
     }
 
-    private static class TestVisitedListener implements ViewVisitor.OnVisitedListener {
+    private static class TestEventListener implements ViewVisitor.OnEventListener {
         @Override
-        public void OnVisited(View v, String eventName) {
+        public void OnEvent(View v, String eventName, boolean debounce) {
             visitsRecorded.add(eventName);
         }
 
@@ -281,7 +281,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mUselessFindIdPath;
     private JSONArray mIdAndNameDontMatch;
     private JSONArray mIdAndFindDontMatch;
-    private TestVisitedListener mListener;
+    private TestEventListener mListener;
     private TestView mRootView;
     private Map<String, Integer> mIdMap;
 

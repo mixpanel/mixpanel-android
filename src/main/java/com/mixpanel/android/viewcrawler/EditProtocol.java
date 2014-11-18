@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 import android.util.SparseArray;
 import android.view.accessibility.AccessibilityEvent;
 
@@ -22,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /* package */ class EditProtocol {
 
@@ -48,7 +46,7 @@ import java.util.Set;
         buildIdMap(context);
     }
 
-    public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnVisitedListener listener) throws BadInstructionsException {
+    public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnEventListener listener) throws BadInstructionsException {
         try {
             final String eventName = source.getString("event_name");
             final String eventType = source.getString("event_type");
@@ -61,26 +59,21 @@ import java.util.Set;
             }
 
             if ("click".equals(eventType)) {
-                return new ViewVisitor.AddListenerVisitor(
+                return new ViewVisitor.AddAccessibilityEventVisitor(
                     path,
                     AccessibilityEvent.TYPE_VIEW_CLICKED,
                     eventName,
                     listener
                 );
             } else if ("selected".equals(eventType)) {
-                return new ViewVisitor.AddListenerVisitor(
+                return new ViewVisitor.AddAccessibilityEventVisitor(
                     path,
                     AccessibilityEvent.TYPE_VIEW_SELECTED,
                     eventName,
                     listener
                 );
             } else if ("text_changed".equals(eventType)) {
-                return new ViewVisitor.AddListenerVisitor(
-                    path,
-                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
-                    eventName,
-                    listener
-                );
+                return new ViewVisitor.AddTextChangeListener(path, eventName, listener);
             } else if ("detected".equals(eventType)) {
                 return new ViewVisitor.ViewDetectorVisitor(path, eventName, listener);
             } else {

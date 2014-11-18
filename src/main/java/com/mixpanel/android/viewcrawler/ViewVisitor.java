@@ -2,9 +2,12 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
@@ -13,13 +16,16 @@ import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ abstract class ViewVisitor {
 
-    public interface OnVisitedListener {
-        public void OnVisited(View host, String eventName);
+    public interface OnEventListener {
+        public void OnEvent(View host, String eventName, boolean debounce);
     }
 
     public static class PathElement {
@@ -70,6 +76,11 @@ import java.util.List;
         }
 
         @Override
+        public void cleanup() {
+            // Do nothing, we don't have any references and we haven't installed any listeners.
+        }
+
+        @Override
         public void accumulate(View found) {
             if (null != mAccessor) {
                 final Object[] setArgs = mMutator.getArgs();
@@ -106,33 +117,47 @@ import java.util.List;
         private final Caller mAccessor;
     }
 
-    public static class AddListenerVisitor extends ViewVisitor {
-        public AddListenerVisitor(List<PathElement> path, int accessibilityEventType, String eventName, OnVisitedListener listener) {
-            super(path);
-            mEventName = eventName;
-            mListener = listener;
+    public static class AddAccessibilityEventVisitor extends EventTriggeringVisitor {
+        public AddAccessibilityEventVisitor(List<PathElement> path, int accessibilityEventType, String eventName, OnEventListener listener) {
+            super(path, eventName, listener, false);
             mEventType = accessibilityEventType;
+            mWatching = new WeakHashMap<View, TrackingAccessibilityDelegate>();
         }
 
         @Override
-        public void accumulate(View found) {
-            View.AccessibilityDelegate realDelegate = getOldDelegate(found);
-            if (realDelegate instanceof TrackingAccessibilityDelegate) {
-                final TrackingAccessibilityDelegate oldTrackingDelegate = (TrackingAccessibilityDelegate) realDelegate;
-                final String oldEventName = oldTrackingDelegate.getEventName();
-                if (null != mEventName && mEventName.equals(oldEventName)) {
-                    return; // Don't reset the same event
+        public void cleanup() {
+            for (final Map.Entry<View, TrackingAccessibilityDelegate> entry:mWatching.entrySet()) {
+                final View v = entry.getKey();
+                final TrackingAccessibilityDelegate watcherDelegate = entry.getValue();
+                final View.AccessibilityDelegate realDelegate = watcherDelegate.getRealDelegate();
+                final View.AccessibilityDelegate currentDelegate = getOldDelegate(v);
+                if (currentDelegate == watcherDelegate) {
+                    // Just remove ourselves from the call chain
+                    v.setAccessibilityDelegate(realDelegate);
+                } else if (currentDelegate instanceof TrackingAccessibilityDelegate){
+                    final TrackingAccessibilityDelegate currentChain = (TrackingAccessibilityDelegate) currentDelegate;
+                    currentChain.removeFromDelegateChain(watcherDelegate);
                 } else {
-                    realDelegate = null; // Don't allow multiple event handlers on the same view
+                    // In this case, we've been replaced by another delegate or removed by existing code.
+                    // Best not to meddle with the existing delegate.
                 }
             }
-
-            View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(mEventName, realDelegate);
-            found.setAccessibilityDelegate(newDelegate);
         }
 
+        @Override
+        protected void accumulate(View found) {
+            if (mWatching.containsKey(found)) {
+                ; // Do nothing, we're already installed
+            } else {
+                View.AccessibilityDelegate realDelegate = getOldDelegate(found);
+                View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(realDelegate);
+                found.setAccessibilityDelegate(newDelegate);
+            }
+        }
+
+        @Override
         protected String name() {
-            return mEventName + " event when (" + mEventType + ")";
+            return getEventName() + " event when (" + mEventType + ")";
         }
 
         private View.AccessibilityDelegate getOldDelegate(View v) {
@@ -153,19 +178,29 @@ import java.util.List;
         }
 
         private class TrackingAccessibilityDelegate extends View.AccessibilityDelegate {
-            public TrackingAccessibilityDelegate(String eventName, View.AccessibilityDelegate realDelegate) {
-                mEventName = eventName;
+            public TrackingAccessibilityDelegate(View.AccessibilityDelegate realDelegate) {
                 mRealDelegate = realDelegate;
             }
 
-            public String getEventName() {
-                return mEventName;
+            public View.AccessibilityDelegate getRealDelegate() {
+                return mRealDelegate;
+            }
+
+            public void removeFromDelegateChain(final TrackingAccessibilityDelegate other) {
+                if (mRealDelegate == other) {
+                    mRealDelegate = other.getRealDelegate();
+                } else if (mRealDelegate instanceof TrackingAccessibilityDelegate) {
+                    final TrackingAccessibilityDelegate child = (TrackingAccessibilityDelegate) mRealDelegate;
+                    child.removeFromDelegateChain(other);
+                } else {
+                    // We can't see any further down the chain, just return.
+                }
             }
 
             @Override
             public void sendAccessibilityEvent(View host, int eventType) {
                 if (eventType == mEventType) {
-                    mListener.OnVisited(host, mEventName);
+                    fireEvent(host);
                 }
 
                 if (null != mRealDelegate) {
@@ -173,41 +208,122 @@ import java.util.List;
                 }
             }
 
-            private final String mEventName;
-            private final View.AccessibilityDelegate mRealDelegate;
+            private View.AccessibilityDelegate mRealDelegate;
         }
 
-        private final String mEventName;
-        private final OnVisitedListener mListener;
         private final int mEventType;
+        private final WeakHashMap<View, TrackingAccessibilityDelegate> mWatching;
+    }
+
+    public static class AddTextChangeListener extends EventTriggeringVisitor {
+        public AddTextChangeListener(List<PathElement> path, String eventName, OnEventListener listener) {
+            super(path, eventName, listener, true);
+            mWatching = new HashMap<TextView, TextWatcher>();
+        }
+
+        @Override
+        public void cleanup() {
+            for (final Map.Entry<TextView, TextWatcher> entry:mWatching.entrySet()) {
+                final TextView v = entry.getKey();
+                final TextWatcher watcher = entry.getValue();
+                v.removeTextChangedListener(watcher);
+            }
+
+            mWatching.clear();
+        }
+
+        @Override
+        protected void accumulate(View found) {
+            if (mWatching.containsKey(found)) {
+                ; // Do nothing
+            } else if (found instanceof TextView) {
+                final TextView foundTextView = (TextView) found;
+                final TextWatcher watcher = new TrackingTextWatcher(foundTextView);
+                foundTextView.addTextChangedListener(watcher);
+                mWatching.put(foundTextView, watcher);
+            }
+        }
+
+        @Override
+        protected String name() {
+            return getEventName() + " on Text Change";
+        }
+
+        private class TrackingTextWatcher implements TextWatcher {
+            public TrackingTextWatcher(View boundTo) {
+                mBoundTo = boundTo;
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                ; // Nothing
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                ; // Nothing
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                fireEvent(mBoundTo);
+            }
+
+            private final View mBoundTo;
+        }
+
+        private final Map<TextView, TextWatcher> mWatching;
     }
 
     // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
     // Views appearing and disappearing.
-    public static class ViewDetectorVisitor extends ViewVisitor {
-        public ViewDetectorVisitor(List<PathElement> path, String eventName, OnVisitedListener listener) {
-            super(path);
-
+    public static class ViewDetectorVisitor extends EventTriggeringVisitor {
+        public ViewDetectorVisitor(List<PathElement> path, String eventName, OnEventListener listener) {
+            super(path, eventName, listener, false);
             mSeen = false;
-            mListener = listener;
-            mEventName = eventName;
         }
 
+        @Override
+        public void cleanup() {
+            ; // Do nothing, we don't have anything to leak :)
+        }
+
+        @Override
         protected void accumulate(View found) {
             if (found != null && !mSeen) {
-                mListener.OnVisited(found, mEventName);
+                fireEvent(found);
             }
 
             mSeen = (found != null);
         }
 
+        @Override
         protected String name() {
-            return mEventName + " when Detected";
+            return getEventName() + " when Detected";
         }
 
         private boolean mSeen;
-        private final OnVisitedListener mListener;
+    }
+
+    private static abstract class EventTriggeringVisitor extends ViewVisitor {
+        public EventTriggeringVisitor(List<PathElement> path, String eventName, OnEventListener listener, boolean debounce) {
+            super(path);
+            mListener = listener;
+            mEventName = eventName;
+            mDebounce = debounce;
+        }
+
+        protected void fireEvent(View found) {
+            mListener.OnEvent(found, mEventName, mDebounce);
+        }
+
+        protected String getEventName() {
+            return mEventName;
+        }
+
+        private final OnEventListener mListener;
         private final String mEventName;
+        private final boolean mDebounce;
     }
 
     public ViewVisitor(List<PathElement> path) {
@@ -220,6 +336,7 @@ import java.util.List;
 
     protected abstract void accumulate(View found);
     protected abstract String name();
+    public abstract void cleanup();
 
     private void findTargetsInRoot(View givenRootView, List<PathElement> path) {
         if (path.isEmpty()) {

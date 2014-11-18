@@ -49,7 +49,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMixpanel, TrackingDebug {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
@@ -58,6 +58,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
         mProtocol = new EditProtocol(context);
         mEditState = new EditState();
+        mTweaks = new Tweaks();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -67,6 +68,8 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
         thread.start();
         mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper());
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
+
+        mTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
 
         // We build our own, private SSL context here to prevent things from going
         // crazy if client libs are using older versions of OkHTTP, or otherwise doing crazy junk
@@ -81,8 +84,6 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
-
-        mMixpanel = mixpanel;
     }
 
     @Override
@@ -98,64 +99,12 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     }
 
     @Override
-    public void OnVisited(View v, String eventName) {
-        final JSONObject properties = new JSONObject();
-        try {
-            final String text = textPropertyFromView(v);
-            properties.put("mp_text", text);
-        } catch (JSONException e) {
-            Log.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
-        }
-        mMixpanel.track(eventName, properties);
-    }
-
-    @Override
     public void reportTrack(String eventName) {
         final Message m = mMessageThreadHandler.obtainMessage();
         m.what = MESSAGE_SEND_EVENT_TRACKED;
         m.obj = eventName;
 
         mMessageThreadHandler.sendMessage(m);
-    }
-
-    /**
-     * Recursively scans a view and it's children, looking for user-visible text to
-     * provide as an event property.
-     */
-    private static String textPropertyFromView(View v) {
-        String ret = null;
-
-        if (v instanceof TextView) {
-            final TextView textV = (TextView) v;
-            final CharSequence retSequence = textV.getText();
-            if (null != retSequence) {
-                ret = retSequence.toString();
-            }
-        } else if (v instanceof ViewGroup) {
-            final StringBuilder builder = new StringBuilder();
-            final ViewGroup vGroup = (ViewGroup) v;
-            final int childCount = vGroup.getChildCount();
-            boolean textSeen = false;
-            for (int i = 0; i < childCount && builder.length() < MAX_PROPERTY_LENGTH; i++) {
-                final View child = vGroup.getChildAt(i);
-                final String childText = textPropertyFromView(child);
-                if (null != childText && childText.length() > 0) {
-                    if (textSeen) {
-                        builder.append(", ");
-                    }
-                    builder.append(childText);
-                    textSeen = true;
-                }
-            }
-
-            if (builder.length() > MAX_PROPERTY_LENGTH) {
-                ret = builder.substring(0, MAX_PROPERTY_LENGTH);
-            } else if (textSeen) {
-                ret = builder.toString();
-            }
-        }
-
-        return ret;
     }
 
     private class EmulatorConnector implements Runnable {
@@ -612,7 +561,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                     final Pair<String, JSONObject> changeInfo = mPersistentChanges.get(i);
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
-                        newEdits.add(new Pair(changeInfo.first, visitor));
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -641,7 +590,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mPersistentEventBindings.get(i);
                     try {
-                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
+                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mTracker);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
@@ -656,7 +605,7 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mEditorEventBindings.get(i);
                     try {
-                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, ViewCrawler.this);
+                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mTracker);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
@@ -730,18 +679,16 @@ public class ViewCrawler implements ViewVisitor.OnVisitedListener, UpdatesFromMi
     private final List<Pair<String,JSONObject>> mPersistentEventBindings;
     private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
+    private final DynamicEventTracker mTracker;
     private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;
     private final EditState mEditState;
-    private final Tweaks mTweaks = new Tweaks();
+    private final Tweaks mTweaks;
     private final ViewCrawlerHandler mMessageThreadHandler;
-    private final MixpanelAPI mMixpanel;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
-
-    private static final int MAX_PROPERTY_LENGTH = 128;
 
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;

@@ -134,6 +134,7 @@ import java.util.Set;
             mViewRoot = new WeakReference<View>(viewRoot);
             mHandler = uiThreadHandler;
             mAlive = true;
+            mDying = false;
 
             final ViewTreeObserver observer = viewRoot.getViewTreeObserver();
             if (observer.isAlive()) {
@@ -154,8 +155,8 @@ import java.util.Set;
             }
 
             final View viewRoot = mViewRoot.get();
-            if (null == viewRoot) {
-                kill();
+            if (null == viewRoot || mDying) {
+                cleanUp();
                 return;
             }
             // ELSE View is alive and we are alive
@@ -166,17 +167,26 @@ import java.util.Set;
         }
 
         public void kill() {
-            mAlive = false;
-            final View viewRoot = mViewRoot.get();
-            if (null != viewRoot) {
-                final ViewTreeObserver observer = viewRoot.getViewTreeObserver();
-                if (observer.isAlive()) {
-                    observer.removeGlobalOnLayoutListener(this);
-                }
-            }
+            mDying = true;
+            mHandler.post(this);
         }
 
-        private volatile boolean mAlive;
+        private void cleanUp() {
+            if (mAlive) {
+                final View viewRoot = mViewRoot.get();
+                if (null != viewRoot) {
+                    final ViewTreeObserver observer = viewRoot.getViewTreeObserver();
+                    if (observer.isAlive()) {
+                        observer.removeGlobalOnLayoutListener(this);
+                    }
+                }
+                mEdit.cleanup();
+            }
+            mAlive = false;
+        }
+
+        private volatile boolean mDying;
+        private boolean mAlive;
         private final WeakReference<View> mViewRoot;
         private final ViewVisitor mEdit;
         private final Handler mHandler;

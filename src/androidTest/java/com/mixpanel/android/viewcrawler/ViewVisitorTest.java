@@ -85,7 +85,7 @@ public class ViewVisitorTest extends AndroidTestCase {
         mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null));
         mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, -1, TestView.BUTTON_GROUP_ID, null));
 
-        mTrackListener = new CollectingVisitedListener();
+        mTrackListener = new CollectingEventListener();
 
         mRootView = new TestView(getContext());
     }
@@ -208,7 +208,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testClickTracking() {
-        final ViewVisitor.AddListenerVisitor visitor = new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
+        final ViewVisitor.AddAccessibilityEventVisitor visitor = new ViewVisitor.AddAccessibilityEventVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor.visit(mRootView);
         assertTrue(mTrackListener.events.isEmpty());
 
@@ -225,8 +225,8 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testMultipleEventsOnClick() {
-        final ViewVisitor.AddListenerVisitor visitor1 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
+        final ViewVisitor.AddAccessibilityEventVisitor visitor1 =
+                new ViewVisitor.AddAccessibilityEventVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor1.visit(mRootView);
         assertTrue(mTrackListener.events.isEmpty());
 
@@ -235,8 +235,8 @@ public class ViewVisitorTest extends AndroidTestCase {
         assertEquals(mTrackListener.events.get(0), "Visitor1");
         mTrackListener.events.clear();
 
-        final ViewVisitor.AddListenerVisitor visitor2 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor2", mTrackListener);
+        final ViewVisitor.AddAccessibilityEventVisitor visitor2 =
+                new ViewVisitor.AddAccessibilityEventVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor2", mTrackListener);
         visitor2.visit(mRootView);
 
         mRootView.mAdHocButton2.performClick();
@@ -245,8 +245,8 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testResetSameEventOnClick() {
-        final ViewVisitor.AddListenerVisitor visitor1 =
-                new ViewVisitor.AddListenerVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
+        final ViewVisitor.AddAccessibilityEventVisitor visitor1 =
+                new ViewVisitor.AddAccessibilityEventVisitor(mButton2Path, AccessibilityEvent.TYPE_VIEW_CLICKED, "Visitor1", mTrackListener);
         visitor1.visit(mRootView);
         visitor1.visit(mRootView);
 
@@ -359,6 +359,9 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
 
         @Override
+        public void cleanup() {}
+
+        @Override
         protected void accumulate(View targetView) {
             collected.add(targetView);
         }
@@ -371,10 +374,10 @@ public class ViewVisitorTest extends AndroidTestCase {
         public List<View> collected;
     }
 
-    private static class CollectingVisitedListener implements ViewVisitor.OnVisitedListener {
+    private static class CollectingEventListener implements ViewVisitor.OnEventListener {
 
         @Override
-        public void OnVisited(View v, String eventName) {
+        public void OnEvent(View v, String eventName, boolean debounce) {
             events.add(eventName);
         }
 
@@ -401,6 +404,6 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<ViewVisitor.PathElement> mThirdLayerViewId;
     private List<ViewVisitor.PathElement> mThirdLayerViewTag;
     private List<ViewVisitor.PathElement> mThirdLayerWildcard;
-    private CollectingVisitedListener mTrackListener;
+    private CollectingEventListener mTrackListener;
     private TestView mRootView;
 }
