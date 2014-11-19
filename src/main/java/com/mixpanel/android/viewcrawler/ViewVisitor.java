@@ -264,11 +264,13 @@ import java.util.WeakHashMap;
 
         @Override
         protected void accumulate(View found) {
-            if (mWatching.containsKey(found)) {
-                ; // Do nothing
-            } else if (found instanceof TextView) {
+            if (found instanceof TextView) {
                 final TextView foundTextView = (TextView) found;
                 final TextWatcher watcher = new TrackingTextWatcher(foundTextView);
+                final TextWatcher oldWatcher = mWatching.get(foundTextView);
+                if (null != oldWatcher) {
+                    foundTextView.removeTextChangedListener(oldWatcher);
+                }
                 foundTextView.addTextChangedListener(watcher);
                 mWatching.put(foundTextView, watcher);
             }
