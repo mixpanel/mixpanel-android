@@ -24,6 +24,11 @@ import java.util.WeakHashMap;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ abstract class ViewVisitor {
 
+    /**
+     * OnEvent will be fired when whatever the ViewVisitor installed fires
+     * (For example, if the ViewVisitor installs watches for clicks, then OnEvent will be called
+     * on click)
+     */
     public interface OnEventListener {
         public void OnEvent(View host, String eventName, boolean debounce);
     }
@@ -68,6 +73,11 @@ import java.util.WeakHashMap;
         public final String tag;
     }
 
+    /**
+     * Attempts to apply mutator to every matching view. Use this to update properties
+     * in the view hierarchy. If accessor is non-null, it will be used to attempt to
+     * prevent calls to the mutator if the property already has the intended value.
+     */
     public static class PropertySetVisitor extends ViewVisitor {
         public PropertySetVisitor(List<PathElement> path, Caller mutator, Caller accessor) {
             super(path);
@@ -117,6 +127,9 @@ import java.util.WeakHashMap;
         private final Caller mAccessor;
     }
 
+    /**
+     * Adds an accessibility event, which will fire OnEvent, to every matching view.
+     */
     public static class AddAccessibilityEventVisitor extends EventTriggeringVisitor {
         public AddAccessibilityEventVisitor(List<PathElement> path, int accessibilityEventType, String eventName, OnEventListener listener) {
             super(path, eventName, listener, false);
@@ -215,6 +228,9 @@ import java.util.WeakHashMap;
         private final WeakHashMap<View, TrackingAccessibilityDelegate> mWatching;
     }
 
+    /**
+     * Installs a TextWatcher in each matching view. Does nothing if matching views are not TextViews.
+     */
     public static class AddTextChangeListener extends EventTriggeringVisitor {
         public AddTextChangeListener(List<PathElement> path, String eventName, OnEventListener listener) {
             super(path, eventName, listener, true);
@@ -275,8 +291,10 @@ import java.util.WeakHashMap;
         private final Map<TextView, TextWatcher> mWatching;
     }
 
-    // ViewDetectors are STATEFUL. They only work if you use the same detector to detect
-    // Views appearing and disappearing.
+    /**
+     * Monitors the view tree for the appearance of matching views where there were not
+     * matching views before. Fires only once per traversal.
+     */
     public static class ViewDetectorVisitor extends EventTriggeringVisitor {
         public ViewDetectorVisitor(List<PathElement> path, String eventName, OnEventListener listener) {
             super(path, eventName, listener, false);
@@ -326,17 +344,25 @@ import java.util.WeakHashMap;
         private final boolean mDebounce;
     }
 
-    public ViewVisitor(List<PathElement> path) {
-        mPath = path;
-    }
-
+    /**
+     * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
+     */
     public void visit(View rootView) {
         findTargetsInRoot(rootView, mPath);
     }
 
+    /**
+     * Removes listeners and frees resources associated with the visitor. Once cleanup is called,
+     * the ViewVisitor should not be used again.
+     */
+    public abstract void cleanup();
+
+    protected ViewVisitor(List<PathElement> path) {
+        mPath = path;
+    }
+
     protected abstract void accumulate(View found);
     protected abstract String name();
-    public abstract void cleanup();
 
     private void findTargetsInRoot(View givenRootView, List<PathElement> path) {
         if (path.isEmpty()) {
