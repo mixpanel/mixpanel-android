@@ -12,7 +12,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
-import android.util.ArrayMap;
 import android.util.Log;
 
 import com.mixpanel.android.R;
