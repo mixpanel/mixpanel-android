@@ -487,7 +487,6 @@ public class MixpanelAPI {
         return mPeople;
     }
 
-
     /**
      * Returns an unmodifiable map that contains the device description properties
      * that will be sent to Mixpanel. These are not all of the default properties,
