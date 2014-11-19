@@ -59,6 +59,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         mProtocol = new EditProtocol(context);
         mEditState = new EditState();
         mTweaks = new Tweaks();
+        mDeviceInfo = mixpanel.getDeviceInfo();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -390,6 +391,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 writer.write(",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
+                for (Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
+                    writer.write(",");
+                    writer.write(JSONObject.quote(entry.getKey()));
+                    writer.write(":");
+                    writer.write(JSONObject.quote(entry.getValue()));
+                }
                 writer.write("}"); // payload
                 writer.write("}");
             } catch (IOException e) {
@@ -684,6 +691,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private final EditProtocol mProtocol;
     private final EditState mEditState;
     private final Tweaks mTweaks;
+    private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";

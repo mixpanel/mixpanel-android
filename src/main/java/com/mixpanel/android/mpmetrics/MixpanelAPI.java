@@ -12,6 +12,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.util.ArrayMap;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -28,6 +29,7 @@ import org.json.JSONObject;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -120,6 +122,23 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
+
+        final Map<String, String> deviceInfo = new HashMap<String, String>();
+        deviceInfo.put("$android_lib_version", MPConfig.VERSION);
+        deviceInfo.put("$android_os", "Android");
+        deviceInfo.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
+        deviceInfo.put("$android_manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
+        deviceInfo.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
+        deviceInfo.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
+        try {
+            PackageManager manager = mContext.getPackageManager();
+            PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
+            deviceInfo.put("$android_app_version", info.versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(LOGTAG, "Exception getting app version name", e);
+        }
+        mDeviceInfo = Collections.unmodifiableMap(deviceInfo);
+
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
@@ -467,6 +486,17 @@ public class MixpanelAPI {
      */
     public People getPeople() {
         return mPeople;
+    }
+
+
+    /**
+     * Returns an unmodifiable map that contains the device description properties
+     * that will be sent to Mixpanel. These are not all of the default properties,
+     * but are a subset that are dependant on the user's device or installed version
+     * of the host application, and are guaranteed not to change while the app is running.
+     */
+    public Map<String, String> getDeviceInfo() {
+        return mDeviceInfo;
     }
 
     /**
@@ -1016,21 +1046,7 @@ public class MixpanelAPI {
         @Override
         public void set(JSONObject properties) {
             try {
-                final JSONObject sendProperties = new JSONObject();
-                sendProperties.put("$android_lib_version", MPConfig.VERSION);
-                sendProperties.put("$android_os", "Android");
-                sendProperties.put("$android_os_version", Build.VERSION.RELEASE == null ? "UNKNOWN" : Build.VERSION.RELEASE);
-                try {
-                    PackageManager manager = mContext.getPackageManager();
-                    PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
-                    sendProperties.put("$android_app_version", info.versionName);
-                } catch (PackageManager.NameNotFoundException e) {
-                    Log.e(LOGTAG, "Exception getting app version name", e);
-                }
-                sendProperties.put("$android_manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
-                sendProperties.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
-                sendProperties.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
-
+                final JSONObject sendProperties = new JSONObject(mDeviceInfo);
                 for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
                     final String key = (String) iter.next();
                     sendProperties.put(key, properties.get(key));
@@ -1600,6 +1616,7 @@ public class MixpanelAPI {
     private final UpdatesListener mUpdatesListener;
     private final TrackingDebug mTrackingDebug;
     private final DecideMessages mDecideMessages;
+    private final Map<String, String> mDeviceInfo;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
