@@ -141,31 +141,35 @@ import java.util.WeakHashMap;
         public void cleanup() {
             for (final Map.Entry<View, TrackingAccessibilityDelegate> entry:mWatching.entrySet()) {
                 final View v = entry.getKey();
-                final TrackingAccessibilityDelegate watcherDelegate = entry.getValue();
-                final View.AccessibilityDelegate realDelegate = watcherDelegate.getRealDelegate();
-                final View.AccessibilityDelegate currentDelegate = getOldDelegate(v);
-                if (currentDelegate == watcherDelegate) {
-                    // Just remove ourselves from the call chain
-                    v.setAccessibilityDelegate(realDelegate);
-                } else if (currentDelegate instanceof TrackingAccessibilityDelegate){
-                    final TrackingAccessibilityDelegate currentChain = (TrackingAccessibilityDelegate) currentDelegate;
-                    currentChain.removeFromDelegateChain(watcherDelegate);
+                final TrackingAccessibilityDelegate toCleanup = entry.getValue();
+                final View.AccessibilityDelegate currentViewDelegate = getOldDelegate(v);
+                if (currentViewDelegate == toCleanup) {
+                    v.setAccessibilityDelegate(toCleanup.getRealDelegate());
+                } else if (currentViewDelegate instanceof TrackingAccessibilityDelegate) {
+                    final TrackingAccessibilityDelegate newChain = (TrackingAccessibilityDelegate) currentViewDelegate;
+                    newChain.removeFromDelegateChain(toCleanup);
                 } else {
-                    // In this case, we've been replaced by another delegate or removed by existing code.
-                    // Best not to meddle with the existing delegate.
+                    // Assume we've been replaced, zeroed out, or for some other reason we're already gone.
+                    // (This isn't too weird, for example, it's expected when views get recycled)
                 }
             }
+            mWatching.clear();
         }
 
         @Override
         protected void accumulate(View found) {
-            if (mWatching.containsKey(found)) {
-                ; // Do nothing, we're already installed
-            } else {
-                View.AccessibilityDelegate realDelegate = getOldDelegate(found);
-                View.AccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(realDelegate);
-                found.setAccessibilityDelegate(newDelegate);
+            final View.AccessibilityDelegate realDelegate = getOldDelegate(found);
+            if (realDelegate instanceof TrackingAccessibilityDelegate) {
+                final TrackingAccessibilityDelegate currentTracker = (TrackingAccessibilityDelegate) realDelegate;
+                if (currentTracker.willFireEvent(getEventName())) {
+                    return; // Don't double track
+                }
             }
+
+            // We aren't already in the tracking call chain of the view
+            final TrackingAccessibilityDelegate newDelegate = new TrackingAccessibilityDelegate(realDelegate);
+            found.setAccessibilityDelegate(newDelegate);
+            mWatching.put(found, newDelegate);
         }
 
         @Override
@@ -197,6 +201,16 @@ import java.util.WeakHashMap;
 
             public View.AccessibilityDelegate getRealDelegate() {
                 return mRealDelegate;
+            }
+
+            public boolean willFireEvent(final String eventName) {
+                if (getEventName() == eventName) {
+                    return true;
+                } else if (mRealDelegate instanceof TrackingAccessibilityDelegate) {
+                    return ((TrackingAccessibilityDelegate) mRealDelegate).willFireEvent(eventName);
+                } else {
+                    return false;
+                }
             }
 
             public void removeFromDelegateChain(final TrackingAccessibilityDelegate other) {
