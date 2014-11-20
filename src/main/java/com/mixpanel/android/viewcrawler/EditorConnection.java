@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
         public void performEdit(JSONObject message);
         public void bindEvents(JSONObject message);
         public void sendDeviceInfo();
+        public void cleanup();
     }
 
     public EditorConnection(URI uri, Editor service, Socket sslSocket)
@@ -99,6 +100,7 @@ import java.nio.ByteBuffer;
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
             }
+            mService.cleanup();
         }
 
         @Override

@@ -266,6 +266,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 case MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED:
                     handleEditorBindingsReceived((JSONObject) msg.obj);
                     break;
+                case MESSAGE_HANDLE_EDITOR_CLOSED:
+                    handleEditorClosed();
+                    break;
             }
         }
 
@@ -551,6 +554,21 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         /**
+         * Clear state associated with the editor now that the editor is gone.
+         */
+        private void handleEditorClosed() {
+            synchronized (mEditorChanges) {
+                mEditorChanges.clear();
+            }
+
+            synchronized (mEditorEventBindings) {
+                mEditorEventBindings.clear();
+            }
+
+            updateEditState();
+        }
+
+        /**
          * Reads our JSON-stored edits from memory and submits them to our EditState. Overwrites
          * any existing edits at the time that it is run.
          *
@@ -678,6 +696,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_DEVICE_INFO);
             mMessageThreadHandler.sendMessage(msg);
         }
+
+        @Override
+        public void cleanup() {
+            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CLOSED);
+            mMessageThreadHandler.sendMessage(msg);
+        }
     }
 
     // Lists of edits. All accesses must be synchronized
@@ -706,6 +730,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
     private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
     private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
+    private static final int MESSAGE_HANDLE_EDITOR_CLOSED = 10;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 60;
 

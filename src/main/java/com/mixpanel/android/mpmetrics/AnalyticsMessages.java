@@ -272,8 +272,8 @@ import java.util.Map;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        mDecideChecker.runDecideChecks(getPoster());
                         sendAllData(mDbAdapter);
+                        mDecideChecker.runDecideChecks(getPoster());
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
                         logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
@@ -298,6 +298,7 @@ import java.util.Map;
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
+                        mDecideChecker.runDecideChecks(getPoster());
                     } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
