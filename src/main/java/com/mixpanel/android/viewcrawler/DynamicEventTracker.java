@@ -40,7 +40,7 @@ import java.util.Map;
         final JSONObject properties = new JSONObject();
         try {
             final String text = textPropertyFromView(v);
-            properties.put("mp_text", text);
+            properties.put("$text", text);
 
             // We may call track much later, but we'll be tracking something
             // that happened right at moment.
