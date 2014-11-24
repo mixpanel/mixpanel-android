@@ -1280,7 +1280,7 @@ public class MixpanelAPI {
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
                     if (MPConfig.DEBUG) {
-                        Log.d(LOGTAG, "Registering a new push id");
+                        Log.v(LOGTAG, "Registering a new push id");
                     }
 
                     try {
@@ -1296,7 +1296,7 @@ public class MixpanelAPI {
                         @Override
                         public void process(MixpanelAPI api) {
                             if (MPConfig.DEBUG) {
-                                Log.d(LOGTAG, "Using existing pushId " + pushId);
+                                Log.v(LOGTAG, "Using existing pushId " + pushId);
                             }
                             api.getPeople().setPushRegistrationId(pushId);
                         }

@@ -69,7 +69,7 @@ import java.nio.ByteBuffer;
         @Override
         public void onOpen(ServerHandshake handshakedata) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Websocket connected");
+                Log.v(LOGTAG, "Websocket connected");
             }
         }
 
@@ -98,7 +98,7 @@ import java.nio.ByteBuffer;
         @Override
         public void onClose(int code, String reason, boolean remote) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
+                Log.v(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
             }
             mService.cleanup();
         }

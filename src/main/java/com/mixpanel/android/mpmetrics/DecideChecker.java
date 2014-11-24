@@ -69,7 +69,7 @@ import java.util.List;
         throws UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
+            Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
         }
 
         Result parsed = new Result();
@@ -191,8 +191,8 @@ import java.util.List;
         final String[] urls = { mConfig.getDecideEndpoint() + checkQuery, mConfig.getDecideFallbackEndpoint() + checkQuery };
 
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, "Querying decide server at " + urls[0]);
-            Log.d(LOGTAG, "    (with fallback " + urls[1] + ")");
+            Log.v(LOGTAG, "Querying decide server at " + urls[0]);
+            Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
         }
 
         byte[] response = poster.getUrls(mContext, urls);

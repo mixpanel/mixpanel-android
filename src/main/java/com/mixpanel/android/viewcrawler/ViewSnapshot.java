@@ -273,7 +273,9 @@ import java.util.concurrent.TimeoutException;
                 createSnapshot.setAccessible(true);
                 rawBitmap = (Bitmap) createSnapshot.invoke(rootView, Bitmap.Config.RGB_565, Color.WHITE, false);
             } catch (NoSuchMethodException e) {
-                Log.d(LOGTAG, "Can't call createSnapshot, using drawCache", e);
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Can't call createSnapshot, will use drawCache", e);
+                }
             } catch (IllegalArgumentException e) {
                 Log.d(LOGTAG, "Can't call createSnapshot with arguments", e);
             } catch (InvocationTargetException e) {
@@ -287,7 +289,6 @@ import java.util.concurrent.TimeoutException;
             Boolean originalCacheState = null;
             try {
                 if (null == rawBitmap) {
-                    Log.d(LOGTAG, "View.createSnapshot not available. Rendering from drawCache");
                     originalCacheState = rootView.isDrawingCacheEnabled();
                     rootView.setDrawingCacheEnabled(true);
                     rootView.buildDrawingCache(true);
@@ -295,7 +296,7 @@ import java.util.concurrent.TimeoutException;
                 }
             } catch (RuntimeException e) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
+                    Log.v(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
                 }
             }
 

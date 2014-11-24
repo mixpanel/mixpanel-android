@@ -79,7 +79,7 @@ import android.util.Log;
         @Override
         public void onCreate(SQLiteDatabase db) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Creating a new Mixpanel events DB");
+                Log.v(LOGTAG, "Creating a new Mixpanel events DB");
             }
 
             db.execSQL(CREATE_EVENTS_TABLE);
@@ -91,7 +91,7 @@ import android.util.Log;
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
+                Log.v(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
             }
 
             db.execSQL("DROP TABLE IF EXISTS " + Table.EVENTS.getName());

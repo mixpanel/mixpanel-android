@@ -327,7 +327,7 @@ public class UpdateDisplayState implements Parcelable {
             ret = sNextIntentId;
         } else {
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
+                Log.v(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
             }
         }
 

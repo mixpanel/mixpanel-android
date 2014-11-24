@@ -44,17 +44,17 @@ import com.mixpanel.android.mpmetrics.MPConfig;
         if (flipDurationNanos > MINIMUM_FLIP_DURATION_NANOS) {
             if (mFlipState == FLIP_STATE_NONE && mTriggerState != TRIGGER_STATE_NONE) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Flip gesture abandoned");
+                    Log.v(LOGTAG, "Flip gesture abandoned");
                 }
                 mTriggerState = TRIGGER_STATE_NONE;
             } else if (mFlipState == FLIP_STATE_DOWN && mTriggerState == TRIGGER_STATE_NONE) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Flip gesture begun");
+                    Log.v(LOGTAG, "Flip gesture begun");
                 }
                 mTriggerState = TRIGGER_STATE_BEGIN;
             } else if (mFlipState == FLIP_STATE_UP && mTriggerState == TRIGGER_STATE_BEGIN) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Flip gesture completed");
+                    Log.v(LOGTAG, "Flip gesture completed");
                 }
                 mTriggerState = TRIGGER_STATE_NONE;
                 mListener.onFlipGesture();

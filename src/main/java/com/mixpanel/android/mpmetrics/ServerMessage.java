@@ -29,12 +29,12 @@ import java.util.List;
             final NetworkInfo netInfo = cm.getActiveNetworkInfo();
             isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+                Log.v(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
             }
         } catch (final SecurityException e) {
             isOnline = true;
             if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
+                Log.v(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
             }
         }
         return isOnline;
@@ -54,7 +54,7 @@ import java.util.List;
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final IOException e) {
                 if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Cannot get " + url + ".", e);
+                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
                 }
             } catch (final OutOfMemoryError e) {
                 Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
@@ -67,7 +67,7 @@ import java.util.List;
 
     public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException {
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, "Attempting request to " + endpointUrl);
+            Log.v(LOGTAG, "Attempting request to " + endpointUrl);
         }
         byte[] response = null;
 
@@ -124,9 +124,8 @@ import java.util.List;
         }
         if (MPConfig.DEBUG) {
             if (retries >= 3) {
-                Log.d(LOGTAG, "Could not connect to Mixpanel service after three retries.");
+                Log.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
             }
-
         }
         return response;
     }

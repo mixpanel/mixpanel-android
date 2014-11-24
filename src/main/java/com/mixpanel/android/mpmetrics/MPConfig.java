@@ -106,7 +106,7 @@ public class MPConfig {
         mEditorUrl = editorUrl;
 
         if (DEBUG) {
-            Log.d(LOGTAG,
+            Log.v(LOGTAG,
                 "Mixpanel configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
