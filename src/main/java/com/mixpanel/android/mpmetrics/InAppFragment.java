@@ -27,7 +27,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.surveys.SurveyActivity;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
@@ -38,7 +37,7 @@ import com.mixpanel.android.surveys.SurveyActivity;
 @SuppressLint("ClickableViewAccessibility")
 public class InAppFragment extends Fragment {
 
-    public void setDisplayState(final MixpanelAPI mixpanel, final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
+    public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
         // Fragments require a default constructor that is called when Activities recreate them.
         // This means that when the Activity recreates this Fragment (due to rotation, or
@@ -46,7 +45,6 @@ public class InAppFragment extends Fragment {
         // initialized. Lifecycle methods should be aware of this case, and decline to show.
         mDisplayStateId = stateId;
         mDisplayState = displayState;
-        mMixpanel = mixpanel;
     }
 
     @Override
@@ -132,7 +130,6 @@ public class InAppFragment extends Fragment {
                     }
 
                     try {
-                        mMixpanel.track("$campaign_open", inApp.getCampaignProperties());
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         mParent.startActivity(viewIntent);
                     } catch (ActivityNotFoundException e) {

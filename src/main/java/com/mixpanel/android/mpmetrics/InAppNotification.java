@@ -79,8 +79,7 @@ public class InAppNotification implements Parcelable {
         return mDescription.toString();
     }
 
-    /* public */
-    public JSONObject getCampaignProperties() {
+    /* package */ JSONObject getCampaignProperties() {
         final JSONObject ret = new JSONObject();
         try {
             ret.put("campaign_id", getId());
