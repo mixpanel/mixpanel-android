@@ -161,6 +161,7 @@ public class SurveyActivity extends Activity {
                     }
 
                     try {
+                        mMixpanel.track("$campaign_open", inApp.getCampaignProperties());
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         SurveyActivity.this.startActivity(viewIntent);
                     } catch (ActivityNotFoundException e) {
