@@ -25,7 +25,11 @@ public class ActivityImageUtils {
                 scaleHeight = original.getHeight() / scaleHeight;
             }
             if (scaleWidth > 0 && scaleHeight > 0) {
-                scaled = Bitmap.createScaledBitmap(original, scaleWidth, scaleHeight, false);
+                try {
+                    scaled = Bitmap.createScaledBitmap(original, scaleWidth, scaleHeight, false);
+                } catch (OutOfMemoryError error) {
+                    // if we are out of memory then just return null
+                }
             }
         }
         if (!originalCacheState) {
