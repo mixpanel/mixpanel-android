@@ -41,6 +41,7 @@ import java.util.Map;
         try {
             final String text = textPropertyFromView(v);
             properties.put("$text", text);
+            properties.put("$is_binding", true);
 
             // We may call track much later, but we'll be tracking something
             // that happened right at moment.

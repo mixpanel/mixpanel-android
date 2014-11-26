@@ -1,6 +1,5 @@
 package com.mixpanel.android.viewcrawler;
 
-
 /* package */ class PropertyDescription {
     public PropertyDescription(String name, Class targetClass, Caller accessor, String mutatorName) {
         this.name = name;
@@ -16,6 +15,11 @@ package com.mixpanel.android.viewcrawler;
         }
 
         return new Caller(mMutatorName, methodArgs, Void.TYPE);
+    }
+
+    @Override
+    public String toString() {
+        return "[PropertyDescription " + name + "," + targetClass + ", " + accessor + "/" + mMutatorName + "]";
     }
 
     public final String name;

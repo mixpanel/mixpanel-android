@@ -23,13 +23,17 @@ import java.lang.reflect.Method;
         }
     }
 
+    @Override
+    public String toString() {
+        return "[Caller " + mMethodName + "(" + mMethodArgs + ")" + "]";
+    }
+
     public Object[] getArgs() {
         return mMethodArgs;
     }
 
     public Object applyMethod(View target) {
         final Class klass = target.getClass();
-
         for (Method method : klass.getMethods()) {
             final String foundName = method.getName();
             final Class[] params = method.getParameterTypes();
