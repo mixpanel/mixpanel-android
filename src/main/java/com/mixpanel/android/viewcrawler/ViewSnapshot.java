@@ -134,8 +134,14 @@ import java.util.concurrent.TimeoutException;
         j.name("id").value(viewId);
         j.name("mp_id_name").value(viewIdName);
 
-        final Object tag = view.getTag();
+        final CharSequence description = view.getContentDescription();
+        if (null == description) {
+            j.name("contentDescription").nullValue();
+        } else {
+            j.name("contentDescription").value(description.toString());
+        }
 
+        final Object tag = view.getTag();
         if (null == tag) {
             j.name("tag").nullValue();
         } else {

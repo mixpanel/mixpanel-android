@@ -97,6 +97,13 @@ public class ViewSnapshotTest extends AndroidTestCase {
             assertEquals(found.getHeight(), viewDesc.getInt("height"));
             assertEquals(found.getWidth(), viewDesc.getInt("width"));
 
+            final CharSequence foundContentDescription = found.getContentDescription();
+            if (null == foundContentDescription) {
+                assertTrue(viewDesc.isNull("contentDescription"));
+            } else {
+                assertEquals(foundContentDescription.toString(), viewDesc.getString("contentDescription"));
+            }
+
             final JSONArray children = viewDesc.getJSONArray("subviews");
             if (found instanceof ViewGroup) {
                 final ViewGroup group = (ViewGroup) found;

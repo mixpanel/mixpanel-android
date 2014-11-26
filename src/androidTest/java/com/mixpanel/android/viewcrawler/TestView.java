@@ -27,6 +27,7 @@ public class TestView extends FrameLayout {
 
         setId(ROOT_ID);
         setTag(CRAZY_TAG);
+        setContentDescription(ROOT_DESCRIPTION);
 
         ViewGroup linear = new LinearLayout(getContext());
         linear.setId(LINEAR_ID);
@@ -45,7 +46,9 @@ public class TestView extends FrameLayout {
         mThirdLayer.add(mTextView1);
 
         mTextView2 = new TextView(getContext());
+        mTextView2.setId(TEXT2_VIEW_ID);
         mTextView2.setTag(SIMPLE_TAG);
+        mTextView2.setContentDescription(TEXT_2_CONTENT_DESCRIPTION);
 
         linear.addView(mTextView2);
         mAllViews.add(mTextView2);
@@ -60,6 +63,7 @@ public class TestView extends FrameLayout {
         mAdHocButton1 = new AdHocButton1(getContext());
         mAdHocButton1.setTag(SIMPLE_TAG);
         mAdHocButton1.setText("{Hi!}");
+        mAdHocButton1.setContentDescription(BUTTON_1_CONTENT_DESCRIPTION);
         mButtonGroup.addView(mAdHocButton1);
         mAllViews.add(mAdHocButton1);
         mFourthLayer.add(mAdHocButton1);
@@ -74,6 +78,7 @@ public class TestView extends FrameLayout {
         mAdHocButton2.setText("Howdy: ]");
         mAdHocButton3.setId(BUTTON_ID);
         mButtonGroup.addView(mAdHocButton3);
+        mAdHocButton1.setContentDescription(BUTTON_3_CONTENT_DESCRIPTION);
         mAllViews.add(mAdHocButton3);
         mFourthLayer.add(mAdHocButton3);
 
@@ -177,10 +182,13 @@ public class TestView extends FrameLayout {
     public static final int ROOT_ID = 1000;
     public static final int BUTTON_ID = 2000;
     public static final int TEXT_VIEW_ID = 3000;
+    public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
-    public static final String DOUBLE_QUOTED_CRAZY_TAG = "\"this is a long and \\\"CRAZY\\\" \\\\\\\"Tag\"";
-    public static final String SINGLE_QUOTED_CRAZY_TAG = "'this is a long and \\\"CRAZY\\\" \\\\\\\"Tag'";
+    public static final String ROOT_DESCRIPTION = "This is the root view";
+    public static final String TEXT_2_CONTENT_DESCRIPTION = "The Second Test Text View";
+    public static final String BUTTON_1_CONTENT_DESCRIPTION = "Ad Hoc Button Number 1";
+    public static final String BUTTON_3_CONTENT_DESCRIPTION = "Ad Hoc Button Number 3";
 }

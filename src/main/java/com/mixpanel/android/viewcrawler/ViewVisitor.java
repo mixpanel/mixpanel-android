@@ -34,11 +34,12 @@ import java.util.WeakHashMap;
     }
 
     public static class PathElement {
-        public PathElement(String vClass, int ix, int vId, int fId, String vTag) {
+        public PathElement(String vClass, int ix, int vId, int fId, String cDesc, String vTag) {
             viewClassName = vClass;
             index = ix;
             viewId = vId;
             findId = fId;
+            contentDescription = cDesc;
             tag = vTag;
         }
 
@@ -57,6 +58,9 @@ import java.util.WeakHashMap;
                 if (findId > -1) {
                     ret.put("findId", findId);
                 }
+                if (null != contentDescription) {
+                    ret.put("contentDescription", contentDescription);
+                }
                 if (null != tag) {
                     ret.put("tag", tag);
                 }
@@ -70,6 +74,7 @@ import java.util.WeakHashMap;
         public final int index;
         public final int viewId;
         public final int findId;
+        public final String contentDescription;
         public final String tag;
     }
 
@@ -466,6 +471,14 @@ import java.util.WeakHashMap;
         if (-1 != matchId) {
             final int subjectId = subject.getId();
             if (subjectId != matchId) {
+                return false;
+            }
+        }
+
+        final String matchContentDescription = matchElement.contentDescription;
+        if (null != matchContentDescription) {
+            final CharSequence description = subject.getContentDescription();
+            if (null == description || ! matchContentDescription.equals(description)) {
                 return false;
             }
         }
