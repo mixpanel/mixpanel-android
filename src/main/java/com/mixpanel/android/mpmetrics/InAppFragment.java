@@ -227,6 +227,7 @@ public class InAppFragment extends Fragment {
             // when this fragment was created do not apply
             FragmentTransaction transaction = fragmentManager.beginTransaction();
             transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down).remove(this).commit();
+            UpdateDisplayState.releaseDisplayState(mDisplayStateId);
             mCleanedUp = true;
         }
     }
