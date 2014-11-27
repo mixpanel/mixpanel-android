@@ -79,7 +79,8 @@ import android.util.Log;
             return false;
         }
 
-        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN // GET_ACCOUNTS is necessary only if if the device is running a version lower than Android 4.0.4
+        	&& PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
             Log.w(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
             Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
