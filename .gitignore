@@ -8,3 +8,5 @@ docs
 *.iml
 .idea
 build/
+.gradle/
+gradle/

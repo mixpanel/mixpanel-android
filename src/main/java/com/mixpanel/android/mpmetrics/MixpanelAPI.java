@@ -796,6 +796,33 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
+         * Shows the given in app notification to the user. If no notification instance is provided
+         * the result of {@link People#getNotificationIfAvailable()} will be shown. If the notification
+         * is a mini notification, this method will attach and remove a Fragment to parent.
+         * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
+         *
+         * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
+         * display the Takeover notification.
+         *
+         * <p>It is safe to call this method any time you want to potentially display an in app notification.
+         * This method will be a no-op if there is already a survey or in app notification being displayed.
+         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
+         * only one of them will be displayed.
+         *
+         * <p>This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14.
+         *
+         * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} to show, or null
+         *              to show the same notification that would have been returned from
+         *              {@link People#getNotificationIfAvailable()}
+         *
+         * @param parent the Activity that the mini notification will be displayed in, or the Activity
+         * that will be used to launch SurveyActivity for the takeover notification.
+         */
+        public void showGivenOrAvailableNotification(InAppNotification notif, Activity parent);
+
+        /**
          * Returns a Survey object if one is available and being held by the library, or null if
          * no survey is currently available. Callers who want to display surveys with their own UI
          * should call this method to get the Survey data. A given survey will be returned only once
@@ -1422,7 +1449,8 @@ public class MixpanelAPI {
             BackgroundCapture.captureBackground(parent, listener);
         }
 
-        private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
+        @Override
+        public void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
             if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
