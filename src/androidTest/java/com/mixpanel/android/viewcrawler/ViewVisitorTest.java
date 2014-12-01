@@ -259,8 +259,22 @@ public class ViewVisitorTest extends AndroidTestCase {
         visitor2.visit(mRootView);
 
         mRootView.mAdHocButton2.performClick();
+        assertEquals(mTrackListener.events.size(), 2);
+        assertTrue(mTrackListener.events.contains("Visitor1"));
+        assertTrue(mTrackListener.events.contains("Visitor2"));
+
+        visitor1.cleanup();
+        mTrackListener.events.clear();
+
+        mRootView.mAdHocButton2.performClick();
         assertEquals(mTrackListener.events.size(), 1);
-        assertEquals(mTrackListener.events.get(0), "Visitor2");
+        assertTrue(mTrackListener.events.contains("Visitor2"));
+
+        visitor2.cleanup();
+        mTrackListener.events.clear();
+
+        mRootView.mAdHocButton2.performClick();
+        assertEquals(mTrackListener.events.size(), 0);
     }
 
     public void testResetSameEventOnClick() {

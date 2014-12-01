@@ -31,7 +31,7 @@ android {
 }
 
 dependencies {
-    compile files('libs/java_websocket.jar')
+    compile "com.google.android.gms:play-services:3.1.+"
 }
 
 android.libraryVariants.all { variant ->

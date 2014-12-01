@@ -5,13 +5,16 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -26,6 +29,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -199,8 +204,12 @@ public class MixpanelAPI {
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance) {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
+                registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
+
+            checkIntentForInboundAppLink(context);
+
             return instance;
         }
     }
@@ -392,6 +401,16 @@ public class MixpanelAPI {
      */
     public void flush() {
         mMessages.postToServer();
+    }
+
+    /**
+     * Returns a json object of the user's current super properties
+     *
+     *<p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+     * and persist beyond the lifetime of your application.
+     */
+      public JSONObject getSuperProperties() {
+        return mPersistentIdentity.getSuperProperties();
     }
 
     /**
@@ -1253,14 +1272,18 @@ public class MixpanelAPI {
 
         @Override
         public void setPushRegistrationId(String registrationId) {
-            if (getDistinctId() == null) {
-                return;
-            }
-            mPersistentIdentity.storePushId(registrationId);
-            try {
-                union("$android_devices", new JSONArray("[" + registrationId + "]"));
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "set push registration id error", e);
+            // Must be thread safe, will be called from a lot of different threads.
+            synchronized (mPersistentIdentity) {
+                if (mPersistentIdentity.getPeopleDistinctId() == null) {
+                    return;
+                }
+
+                mPersistentIdentity.storePushId(registrationId);
+                try {
+                    union("$android_devices", new JSONArray("[" + registrationId + "]"));
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "set push registration id error", e);
+                }
             }
         }
 
@@ -1273,23 +1296,16 @@ public class MixpanelAPI {
         @Override
         public void initPushHandling(String senderID) {
             if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
-                Log.i(LOGTAG, "Can't start push notification service. Push notifications will not work.");
+                Log.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
                 Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
-            else { // Configuration is good for push notifications
+            else { // Configuration is good for at least some push notifications
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
-                    if (MPConfig.DEBUG) {
-                        Log.v(LOGTAG, "Registering a new push id");
-                    }
-
-                    try {
-                        final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-                        registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0)); // boilerplate
-                        registrationIntent.putExtra("sender", senderID);
-                        mContext.startService(registrationIntent);
-                    } catch (final SecurityException e) {
-                        Log.w(LOGTAG, e);
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        registerForPushIdAPI21AndUp(senderID);
+                    } else {
+                        registerForPushIdAPI19AndOlder(senderID);
                     }
                 } else {
                     MixpanelAPI.allInstances(new InstanceProcessor() {
@@ -1348,10 +1364,28 @@ public class MixpanelAPI {
                 dataObj.put("$time", System.currentTimeMillis());
 
                 if (null != distinctId) {
-                    dataObj.put("$distinct_id", getDistinctId());
+                    dataObj.put("$distinct_id", distinctId);
                 }
 
                 return dataObj;
+        }
+
+        @TargetApi(21)
+        private void registerForPushIdAPI21AndUp(String senderID) {
+            mMessages.registerForGCM(senderID);
+        }
+
+        @TargetApi(19)
+        private void registerForPushIdAPI19AndOlder(String senderID) {
+            try {
+                if (MPConfig.DEBUG) Log.v(LOGTAG, "Registering a new push id");
+                final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
+                registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
+                registrationIntent.putExtra("sender", senderID);
+                mContext.startService(registrationIntent);
+            } catch (final SecurityException e) {
+                Log.w(LOGTAG, e);
+            }
         }
 
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
@@ -1601,7 +1635,67 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
+    private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {
+        // Register a BroadcastReceiver to receive com.parse.bolts.measurement_event and track a call to mixpanel
+        try {
+            Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
+            Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
+            Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
+            Object localBroadcastManager = methodGetInstance.invoke(null, context);
+            methodRegisterReceiver.invoke(localBroadcastManager, new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    JSONObject properties = new JSONObject();
+                    Bundle args = intent.getBundleExtra("event_args");
+                    if (args != null) {
+                        for (String key : args.keySet()) {
+                            try {
+                                properties.put(key, args.get(key));
+                            } catch (JSONException e) {
+                                Log.e(APP_LINKS_LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
+                            }
+                        }
+                    }
+                    mixpanel.track("$" + intent.getStringExtra("event_name"), properties);
+                }
+            }, new IntentFilter("com.parse.bolts.measurement_event"));
+        } catch (InvocationTargetException e) {
+            Log.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
+        } catch (ClassNotFoundException e) {
+            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+        } catch (NoSuchMethodException e) {
+            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Log.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
+        }
+    }
+
+    private static void checkIntentForInboundAppLink(Context context) {
+        // call the Bolts getTargetUrlFromInboundIntent method simply for a side effect
+        // if the intent is the result of an App Link, it'll trigger al_nav_in
+        // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
+        if (context instanceof Activity) {
+            try {
+                Class<?> clazz = Class.forName("bolts.AppLinks");
+                Intent intent = ((Activity) context).getIntent();
+                Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
+                getTargetUrlFromInboundIntent.invoke(null, context, intent);
+            } catch (InvocationTargetException e) {
+                Log.d(APP_LINKS_LOGTAG, "Failed to invoke bolts.AppLinks.getTargetUrlFromInboundIntent() -- Unable to detect inbound App Links", e);
+            } catch (ClassNotFoundException e) {
+                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+            } catch (NoSuchMethodException e) {
+                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+            } catch (IllegalAccessException e) {
+                Log.d(APP_LINKS_LOGTAG, "Unable to detect inbound App Links: " + e.getMessage());
+            }
+        } else {
+            Log.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
+        }
+    }
+
+    private static final String LOGTAG = "MixpanelAPI";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     private final Context mContext;

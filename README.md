@@ -12,7 +12,6 @@ You can find getting started guides for using Mixpanel at:
 
 See https://github.com/mixpanel/sample-android-mixpanel-integration for a full featured sample application.
 
-
 License
 -------
 
@@ -26,6 +25,11 @@ LICENSE file in the com.mixpanel.android.java_websocket package for details.
 The StackBlurManager class uses an algorithm by Mario Klingemann <mario@quansimondo.com>
 You can learn more about the algorithm at
 http://www.quasimondo.com/StackBlurForCanvas/StackBlurDemo.html.
+
+Want to Contribute?
+-------------------
+The Mixpanel library for Android is an open source project, and we'd love to see your contributions!
+We'd also love for you to come and work with us! Check out http://boards.greenhouse.io/mixpanel/jobs/25078#.U_4BBEhORKU for details.
 
 Changelog
 ---------
@@ -72,6 +76,28 @@ Changelog
 
 * The minimum Android OS version necessary for surveys, in app notifications, and dynamic event binding
   has been increased to JellyBean/API 16.
+
+#### v4.4.1
+
+ * Improved support for Push notifications in Android Lollipop/API
+   21. Users sending push notifications to Lollipop devices should
+   include some version of Google Play Services in their build. In
+   include Google Play Services, add the following to your
+   build.gradle file:
+
+   ```
+   compile "com.google.android.gms:play-services:3.1+" // Any version above 3.1 will work
+   ```
+
+#### v4.3.1
+
+ * This is a bugfix release only, to alter the handling of Surveys and In-App notifications when
+   activities are removed or move to the background.
+
+#### v4.3.0
+ * Added support for App Links tracking
+
+ * Added a way to get super properties
 
 #### v4.2.2
 

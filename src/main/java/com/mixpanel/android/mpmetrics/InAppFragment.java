@@ -42,7 +42,7 @@ public class InAppFragment extends Fragment {
         // Fragments require a default constructor that is called when Activities recreate them.
         // This means that when the Activity recreates this Fragment (due to rotation, or
         // the Activity going away and coming back), mDisplayStateId and mDisplayState are not
-        // initialized, but this is okay since we remove the Fragment in onStart.
+        // initialized. Lifecycle methods should be aware of this case, and decline to show.
         mDisplayStateId = stateId;
         mDisplayState = displayState;
     }
@@ -146,24 +146,27 @@ public class InAppFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mKill = false;
+        mCleanedUp = false;
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        mInAppView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
-        final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
-        final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+        if (null == mDisplayState) {
+            cleanUp();
+        } else {
+            mInAppView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
+            final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+            final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-        InAppNotification inApp = mDisplayState.getInAppNotification();
+            InAppNotification inApp = mDisplayState.getInAppNotification();
 
-        titleView.setText(inApp.getTitle());
-        notifImage.setImageBitmap(inApp.getImage());
+            titleView.setText(inApp.getTitle());
+            notifImage.setImageBitmap(inApp.getImage());
 
-        mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+            mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+        }
 
         return mInAppView;
     }
@@ -172,7 +175,7 @@ public class InAppFragment extends Fragment {
     public void onStart() {
         super.onStart();
 
-        if (mKill) {
+        if (mCleanedUp) {
             mParent.getFragmentManager().beginTransaction().remove(this).commit();
         }
     }
@@ -188,28 +191,43 @@ public class InAppFragment extends Fragment {
     }
 
     @Override
-    public void onStop() {
-        super.onStop();
+    public void onSaveInstanceState(Bundle outState) {
+        cleanUp();
+        super.onSaveInstanceState(outState);
+    }
 
-        mHandler.removeCallbacks(mRemover);
-        mHandler.removeCallbacks(mDisplayMini);
+    @Override
+    public void onPause() {
+        super.onPause();
+        cleanUp();
+    }
 
-        // This Fragment when registered on the Activity is part of its state, and so gets
-        // restored / recreated when the Activity goes away and comes back. We prefer to just not
-        // keep the notification around in the case of mini, so we have to remember to kill it.
-        // If the Activity object fully dies, then it is not remembered, so onSaveInstanceState is not necessary.
-        mKill = true;
-        UpdateDisplayState.releaseDisplayState(mDisplayStateId);
+    private void cleanUp() {
+        if (!mCleanedUp) {
+            mHandler.removeCallbacks(mRemover);
+            mHandler.removeCallbacks(mDisplayMini);
+            UpdateDisplayState.releaseDisplayState(mDisplayStateId);
+
+            final FragmentManager fragmentManager = mParent.getFragmentManager();
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+            transaction.remove(this).commit();
+        }
+
+        mCleanedUp = true;
     }
 
     private void remove() {
-        if (mParent != null) {
+        if (mParent != null && !mCleanedUp) {
+            mHandler.removeCallbacks(mRemover);
+            mHandler.removeCallbacks(mDisplayMini);
+
             final FragmentManager fragmentManager = mParent.getFragmentManager();
 
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
             FragmentTransaction transaction = fragmentManager.beginTransaction();
             transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down).remove(this).commit();
+            mCleanedUp = true;
         }
     }
 
@@ -228,7 +246,7 @@ public class InAppFragment extends Fragment {
     private Runnable mRemover, mDisplayMini;
     private View mInAppView;
 
-    private boolean mKill;
+    private boolean mCleanedUp;
 
     private static final String LOGTAG = "MixpanelAPI.InAppFragment";
     private static final int MINI_REMOVE_TIME = 6000;
