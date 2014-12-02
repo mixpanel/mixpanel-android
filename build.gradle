@@ -30,9 +30,13 @@ android {
     }
 }
 
+// Note- *all* dependencies are marked as optional in our final
+// pom! If you need a transitive dependency in the library, you'll
+// have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
     compile "com.google.android.gms:play-services:3.1.+"
 }
+
 
 android.libraryVariants.all { variant ->
     task("generate${variant.name}Javadoc", type: Javadoc) {
@@ -107,6 +111,10 @@ uploadArchives {
             }
         }
 
+        pom.whenConfigured { pom ->
+            pom.dependencies*.optional = true
+        }
+
         if (isReleaseVersion()) {
             /**
              * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
@@ -125,7 +133,9 @@ uploadArchives {
                 MavenDeployment deployment -> signing.signPom(deployment)
             }
             repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: sonatypeUsername, password: sonatypePassword)
+                if (project.hasProperty("sonatypeOssUsername")) {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
             }
         } else {
             repository(url:'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath)

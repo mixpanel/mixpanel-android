@@ -53,9 +53,9 @@ Changelog
  (You'll get messages in your logs if the library thinks that you need it)
 
  * Easier use of Proguard with the library
- 
+
  To use the Mixpanel library with Proguarded builds, add the following to your proguard.cfg file
- 
+
  ```
 -keep class com.mixpanel.android.abtesting.** { *; }
 -keep class com.mixpanel.android.mpmetrics.** { *; }
