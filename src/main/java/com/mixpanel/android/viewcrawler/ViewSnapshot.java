@@ -144,7 +144,7 @@ import java.util.concurrent.TimeoutException;
         final Object tag = view.getTag();
         if (null == tag) {
             j.name("tag").nullValue();
-        } else {
+        } else if (tag instanceof CharSequence) {
             j.name("tag").value(tag.toString());
         }
 
