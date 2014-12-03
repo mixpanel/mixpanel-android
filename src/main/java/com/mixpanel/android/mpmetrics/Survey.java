@@ -46,6 +46,7 @@ public class Survey implements Parcelable {
             final JSONArray collectionsJArray = description.getJSONArray("collections");
             final JSONObject collection0 = collectionsJArray.getJSONObject(0);
             mCollectionId = collection0.getInt("id");
+            mSurveyTitle = description.getString("name");
 
             final JSONArray questionsJArray = description.getJSONArray("questions");
             if (questionsJArray.length() == 0) {
@@ -76,6 +77,10 @@ public class Survey implements Parcelable {
 
     public List<Question> getQuestions() {
         return mQuestions;
+    }
+
+    public boolean isRepeatable() {
+        return mSurveyTitle.equals("$ignore");
     }
 
     @Override
@@ -160,6 +165,7 @@ public class Survey implements Parcelable {
         private final List<String> mChoices;
     }
 
+    private final String mSurveyTitle;
     private final JSONObject mDescription;
     private final int mId;
     private final int mCollectionId;

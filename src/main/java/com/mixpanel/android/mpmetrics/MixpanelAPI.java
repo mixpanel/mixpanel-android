@@ -774,6 +774,28 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
+         * If a survey is currently available, this method will launch an activity that shows a
+         * survey to the user and then send the responses to Mixpanel.
+         *
+         * <p>The survey activity will use the root of the given view to take a screenshot
+         * for its background.
+         *
+         * <p>It is safe to call this method any time you want to potentially display an in app notification.
+         * This method will be a no-op if there is already a survey or in app notification being displayed.
+         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
+         * only one of them will be displayed.
+         *
+         * <p>This method is a no-op in environments with
+         * Android API before Ice Cream Sandwich/API level 14.
+         *
+         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
+         * taken of parent to be used as a blurred background.
+         * @param showConfirmation should confirm that user wants to take a survey first
+         */
+        public void showSurveyIfAvailable(Activity parent, final boolean showConfirmation);
+
+        /**
          * Shows an in app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
@@ -830,6 +852,17 @@ public class MixpanelAPI {
          * taken of parent to be used as a blurred background.
          */
         public void showSurveyById(int id, final Activity parent);
+
+        /**
+         * Shows a survey identified by id. The behavior of this is otherwise identical to
+         * {@link People#showSurveyIfAvailable(Activity)}.
+         *
+         * @param id the id of the Survey you wish to show.
+         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
+         * taken of parent to be used as a blurred background.
+         * @param showConfirmation should confirm that user wants to take a survey first
+         */
+        public void showSurveyById(int id, final Activity parent, final boolean showConfirmation);
 
         /**
          * Shows an in app notification identified by id. The behavior of this is otherwise identical to
@@ -1170,22 +1203,30 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyIfAvailable(final Activity parent) {
+            showSurveyIfAvailable(parent, true);
+        }
+
+        public void showSurveyIfAvailable(final Activity parent, final boolean showConfirmation) {
             if (Build.VERSION.SDK_INT < 14) {
                 return;
             }
 
-            showGivenOrAvailableSurvey(null, parent);
+            showGivenOrAvailableSurvey(null, parent, showConfirmation);
         }
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
+            showSurveyById(id, parent, true);
+        }
+
+        public void showSurveyById(int id, final Activity parent, final boolean showConfirmation) {
             if (null == mDecideUpdates) {
                 return;
             }
 
             Survey s = mDecideUpdates.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
-                showGivenOrAvailableSurvey(s, parent);
+                showGivenOrAvailableSurvey(s, parent, showConfirmation);
             }
         }
 
@@ -1369,6 +1410,11 @@ public class MixpanelAPI {
         }
 
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
+            showGivenOrAvailableSurvey(surveyOrNull, parent, true);
+        }
+
+
+        private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent, final boolean showConfirmation) {
             // Showing surveys is not supported before Ice Cream Sandwich
             if (Build.VERSION.SDK_INT < 14) {
                 return;
@@ -1412,6 +1458,7 @@ public class MixpanelAPI {
                         surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                         surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                        surveyIntent.putExtra(SurveyActivity.SURVEY_SHOW_CONFIRMATION_FLAG, showConfirmation);
                         parent.startActivity(surveyIntent);
                     }
                 };
