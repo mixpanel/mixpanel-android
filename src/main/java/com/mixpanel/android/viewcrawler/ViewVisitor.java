@@ -34,11 +34,12 @@ import java.util.WeakHashMap;
     }
 
     public static class PathElement {
-        public PathElement(String vClass, int ix, int vId, int fId, String cDesc, String vTag) {
+        public PathElement(String vClass, int ix, int vId, int fId, String cDesc, String vTag, String fClass) {
             viewClassName = vClass;
             index = ix;
             viewId = vId;
             findId = fId;
+            findClassName = fClass;
             contentDescription = cDesc;
             tag = vTag;
         }
@@ -47,22 +48,25 @@ import java.util.WeakHashMap;
             try {
                 final JSONObject ret = new JSONObject();
                 if (null != viewClassName) {
-                    ret.put("viewClassName", viewClassName);
+                    ret.put("view_class", viewClassName);
                 }
                 if (index > -1) {
                     ret.put("index", index);
                 }
                 if (viewId > -1) {
-                    ret.put("viewId", viewId);
+                    ret.put("id", viewId);
                 }
                 if (findId > -1) {
-                    ret.put("findId", findId);
+                    ret.put("**/id", findId);
                 }
                 if (null != contentDescription) {
                     ret.put("contentDescription", contentDescription);
                 }
                 if (null != tag) {
                     ret.put("tag", tag);
+                }
+                if (null != findClassName) {
+                    ret.put("**/view_class", findClassName);
                 }
                 return ret.toString();
             } catch (JSONException e) {
@@ -76,6 +80,7 @@ import java.util.WeakHashMap;
         public final int findId;
         public final String contentDescription;
         public final String tag;
+        public final String findClassName;
     }
 
     /**
@@ -441,29 +446,31 @@ import java.util.WeakHashMap;
     }
 
     private View findFrom(PathElement findElement, View subject) {
-        if (findElement.findId > -1) {
-            // This could still return subject, which is ok.
-            return subject.findViewById(findElement.findId);
-        } else {
-            return subject;
+        if (-1 == findElement.findId || findElement.findId == subject.getId()) {
+            if (null == findElement.findClassName || hasClassName(subject, findElement.findClassName)) {
+                return subject;
+            }
         }
+
+        if (subject instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) subject;
+            final int childCount = group.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                final View child = group.getChildAt(i);
+                final View result = findFrom(findElement, child);
+                if (null != result) {
+                    return result;
+                }
+            }
+        }
+
+        return null;
     }
 
     private boolean matches(PathElement matchElement, View subject) {
-        final String matchClassName = matchElement.viewClassName;
-
-        if (null != matchClassName) {
-            Class klass = subject.getClass();
-            while (true) {
-                if (klass.getCanonicalName().equals(matchClassName)) {
-                    break;
-                }
-
-                if (klass == Object.class) {
-                    return false;
-                }
-
-                klass = klass.getSuperclass();
+        if (null != matchElement.viewClassName) {
+            if (!hasClassName(subject, matchElement.viewClassName)) {
+                return false;
             }
         }
 
@@ -492,6 +499,21 @@ import java.util.WeakHashMap;
         }
 
         return true;
+    }
+
+    private static boolean hasClassName(Object o, String className) {
+        Class klass = o.getClass();
+        while (true) {
+            if (klass.getCanonicalName().equals(className)) {
+                return true;
+            }
+
+            if (klass == Object.class) {
+                return false;
+            }
+
+            klass = klass.getSuperclass();
+        }
     }
 
     private final List<PathElement> mPath;

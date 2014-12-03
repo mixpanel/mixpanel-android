@@ -161,11 +161,12 @@ import java.util.Map;
             final String targetViewClass = JSONUtils.optionalStringKey(targetView, "view_class");
             final int targetIndex = targetView.optInt("index", -1);
             final String targetDescription = JSONUtils.optionalStringKey(targetView, "contentDescription");
-            final String targetTag = JSONUtils.optionalStringKey(targetView, "tag");
             final int targetExplicitId = targetView.optInt("id", -1);
             final String targetIdName = JSONUtils.optionalStringKey(targetView, "mp_id_name");
-            final String findIdName = JSONUtils.optionalStringKey(targetView, "**/mp_id_name");
+            final String targetTag = JSONUtils.optionalStringKey(targetView, "tag");
             final int findExplicitId = targetView.optInt("**/id", -1);
+            final String findIdName = JSONUtils.optionalStringKey(targetView, "**/mp_id_name");
+            final String findViewClass = JSONUtils.optionalStringKey(targetView, "**/view_class");
 
             final int targetId;
             final int findId;
@@ -189,7 +190,7 @@ import java.util.Map;
                 return NEVER_MATCH_PATH;
             }
 
-            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, findId, targetDescription, targetTag));
+            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, findId, targetDescription, targetTag, findViewClass));
         }
 
         return path;

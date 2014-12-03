@@ -17,83 +17,86 @@ public class ViewVisitorTest extends AndroidTestCase {
     public void setUp() throws Exception {
         super.setUp();
 
+        mRootView = new TestView(getContext());
+
         mButton2Path = new ArrayList<ViewVisitor.PathElement>();
-        mButton2Path.add(new ViewVisitor.PathElement("com.mixpanel.android.viewcrawler.TestView", 0, -1, -1, null, null));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, -1, null, null));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, -1, null, null));
-        mButton2Path.add(new ViewVisitor.PathElement("android.widget.Button", 1, -1, -1, null, null));
+        mButton2Path.add(new ViewVisitor.PathElement("com.mixpanel.android.viewcrawler.TestView", 0, -1, -1, null, null, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, -1, null, null, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.LinearLayout", 0, -1, -1, null, null, null));
+        mButton2Path.add(new ViewVisitor.PathElement("android.widget.Button", 1, -1, -1, null, null, null));
 
         mWorkingRootPath1 = new ArrayList<ViewVisitor.PathElement>();
-        mWorkingRootPath1.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, -1, null, null));
+        mWorkingRootPath1.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, -1, null, null, null));
 
         mWorkingRootPath2 = new ArrayList<ViewVisitor.PathElement>();
-        mWorkingRootPath2.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
+        mWorkingRootPath2.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
 
         mFailingRootPath1 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath1.add(new ViewVisitor.PathElement("android.widget.Button", 0, -1, -1, null, null));
+        mFailingRootPath1.add(new ViewVisitor.PathElement("android.widget.Button", 0, -1, -1, null, null, null));
 
         mFailingRootPath2 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath2.add(new ViewVisitor.PathElement("java.lang.Object", 1, -1, -1, null, null));
+        mFailingRootPath2.add(new ViewVisitor.PathElement("java.lang.Object", 1, -1, -1, null, null, null));
 
         mFailingRootPath3 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath3.add(new ViewVisitor.PathElement("java.lang.Object", 0, 1234, -1, null, null));
+        mFailingRootPath3.add(new ViewVisitor.PathElement("java.lang.Object", 0, 1234, -1, null, null, null));
 
         mFailingRootPath4 = new ArrayList<ViewVisitor.PathElement>();
-        mFailingRootPath4.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, -1, null, "NO SUCH TAG"));
+        mFailingRootPath4.add(new ViewVisitor.PathElement("java.lang.Object", 0, -1, -1, null, "NO SUCH TAG", null));
 
         mRootWildcardPath = new ArrayList<ViewVisitor.PathElement>();
-        mRootWildcardPath.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
+        mRootWildcardPath.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
 
         mRootGoodTagIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mRootGoodTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, TestView.CRAZY_TAG));
+        mRootGoodTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, TestView.CRAZY_TAG, null));
 
         mRootBadTagIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mRootBadTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, "NO DICE"));
+        mRootBadTagIdPath.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, "NO DICE", null));
 
         mFindText2DescriptionPath = new ArrayList<ViewVisitor.PathElement>();
-        mFindText2DescriptionPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT2_VIEW_ID, TestView.TEXT_2_CONTENT_DESCRIPTION, null));
+        mFindText2DescriptionPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT2_VIEW_ID, TestView.TEXT_2_CONTENT_DESCRIPTION, null, null));
 
         mFailText2DescriptionPath = new ArrayList<ViewVisitor.PathElement>();
-        mFailText2DescriptionPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT2_VIEW_ID, "DOESNT MATCH", null));
+        mFailText2DescriptionPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT2_VIEW_ID, "DOESNT MATCH", null, null));
 
         mThirdLayerViewId = new ArrayList<ViewVisitor.PathElement>();
-        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, -1, null, null));
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerViewId.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, -1, null, null, null));
 
         mThirdLayerViewTag = new ArrayList<ViewVisitor.PathElement>();
-        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, -1, null, TestView.CRAZY_TAG));
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerViewTag.add(new ViewVisitor.PathElement(null, -1, TestView.TEXT_VIEW_ID, -1, null, TestView.CRAZY_TAG, null));
 
         mThirdLayerWildcard = new ArrayList<ViewVisitor.PathElement>();
-        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
-        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null));
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
+        mThirdLayerWildcard.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, null));
 
         mFindRootIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mFindRootIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.ROOT_ID, null, null));
+        mFindRootIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.ROOT_ID, null, null, null));
 
         mFindNonsenseIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mFindNonsenseIdPath.add(new ViewVisitor.PathElement(null, -1, -1, 8080808, null, null));
+        mFindNonsenseIdPath.add(new ViewVisitor.PathElement(null, -1, -1, 8080808, null, null, null));
 
         mFindTextViewIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mFindTextViewIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT_VIEW_ID, null, null));
+        mFindTextViewIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT_VIEW_ID, null, null, null));
 
         mFailTextViewIdPath = new ArrayList<ViewVisitor.PathElement>();
-        mFailTextViewIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT_VIEW_ID, null, "NO SUCH TAG"));
+        mFailTextViewIdPath.add(new ViewVisitor.PathElement(null, -1, -1, TestView.TEXT_VIEW_ID, null, "NO SUCH TAG", null));
 
         mFirstInButtonGroup = new ArrayList<ViewVisitor.PathElement>();
-        mFirstInButtonGroup.add(new ViewVisitor.PathElement(null, -1, -1, TestView.BUTTON_GROUP_ID, null, null));
-        mFirstInButtonGroup.add(new ViewVisitor.PathElement(null,  0, -1, -1, null, null));
+        mFirstInButtonGroup.add(new ViewVisitor.PathElement(null, -1, -1, TestView.BUTTON_GROUP_ID, null, null, null));
+        mFirstInButtonGroup.add(new ViewVisitor.PathElement(null,  0, -1, -1, null, null, null));
 
         mFindButtonGroupInRoot = new ArrayList<ViewVisitor.PathElement>();
-        mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, null));
-        mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, -1, TestView.BUTTON_GROUP_ID, null, null));
+        mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, TestView.ROOT_ID, -1, null, null, null));
+        mFindButtonGroupInRoot.add(new ViewVisitor.PathElement(null, -1, -1, TestView.BUTTON_GROUP_ID, null, null, null));
+
+        mFindButton2 = new ArrayList<ViewVisitor.PathElement>();
+        mFindButton2.add(new ViewVisitor.PathElement(null, -1, -1, -1, null, null, mRootView.mAdHocButton2.getClass().getCanonicalName()));
 
         mTrackListener = new CollectingEventListener();
-
-        mRootView = new TestView(getContext());
     }
 
     public void testPath() {
@@ -223,6 +226,13 @@ public class ViewVisitorTest extends AndroidTestCase {
             collector.visit(mRootView);
             assertEquals(collector.collected.size(), 1);
             assertEquals(collector.collected.get(0), mRootView.mButtonGroup);
+        }
+
+        {
+            final CollectorEditor collector = new CollectorEditor(mFindButton2);
+            collector.visit(mRootView);
+            assertEquals(collector.collected.size(), 1);
+            assertEquals(collector.collected.get(0), mRootView.mAdHocButton2);
         }
     }
 
@@ -432,6 +442,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<ViewVisitor.PathElement> mFailTextViewIdPath;
     private List<ViewVisitor.PathElement> mFirstInButtonGroup;
     private List<ViewVisitor.PathElement> mFindButtonGroupInRoot;
+    private List<ViewVisitor.PathElement> mFindButton2;
 
     private List<ViewVisitor.PathElement> mRootWildcardPath;
     private List<ViewVisitor.PathElement> mRootGoodTagIdPath;
