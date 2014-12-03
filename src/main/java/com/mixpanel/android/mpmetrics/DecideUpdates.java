@@ -73,6 +73,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
             return null;
         }
         Survey s = mUnseenSurveys.remove(0);
+
+        // repeatable surveys don't show up unless specifically requested
+        if (s.isRepeatable()) {
+            Survey removedSurvey = s;
+            int newSurveyIndex = -1;
+
+            for (int i = 0; i < mUnseenSurveys.size(); i++) {
+                if (!mUnseenSurveys.get(i).isRepeatable()) {
+                    newSurveyIndex = i;
+                    break;
+                }
+            }
+
+            if (newSurveyIndex != -1) {
+                s = mUnseenSurveys.remove(newSurveyIndex);
+            } else {
+                s = null;
+            }
+
+            mUnseenSurveys.add(mUnseenSurveys.size(), removedSurvey);
+        }
+
         if (replace) {
             mUnseenSurveys.add(mUnseenSurveys.size(), s);
         }
@@ -87,7 +109,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
         for (int i = 0; i < mUnseenSurveys.size(); i++) {
             if (mUnseenSurveys.get(i).getId() == id) {
                 survey = mUnseenSurveys.get(i);
-                if (!replace) {
+                if (!replace && !survey.isRepeatable()) {
                     mUnseenSurveys.remove(i);
                 }
                 break;

@@ -65,6 +65,7 @@ public class SurveyActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
+        mShowConfirmation = getIntent().getBooleanExtra(SURVEY_SHOW_CONFIRMATION_FLAG, true);
         mUpdateDisplayState = UpdateDisplayState.claimDisplayState(mIntentId);
         if (null == mUpdateDisplayState) {
             Log.e(LOGTAG, "SurveyActivity intent received, but nothing was found to show.");
@@ -262,30 +263,15 @@ public class SurveyActivity extends Activity {
         if (mSurveyBegun) {
             return;
         }
-        if (!MPConfig.getInstance(this).getTestMode()) {
+        if (!MPConfig.getInstance(this).getTestMode() && !getSurveyState().getSurvey().isRepeatable()) {
             trackSurveyAttempted();
         }
 
-        final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-        alertBuilder.setTitle("We'd love your feedback!");
-        alertBuilder.setMessage("Mind taking a quick survey?");
-        alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
-                mSurveyBegun = true;
-                showQuestion(mCurrentQuestion);
-            }
-        });
-        alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                SurveyActivity.this.finish();
-            }
-        });
-        alertBuilder.setCancelable(false);
-        mDialog = alertBuilder.create();
-        mDialog.show();
+        if (mShowConfirmation) {
+            showSurveyConfirmation();
+        } else {
+            showSurvey();
+        }
     }
 
     @Override
@@ -384,6 +370,39 @@ public class SurveyActivity extends Activity {
 
     public void completeSurvey(View v) {
         completeSurvey();
+    }
+
+    private void showSurveyConfirmation() {
+        final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+        alertBuilder.setTitle(getString(R.string.com_mixpanel_android_survey_confirmation_title));
+        alertBuilder.setMessage(
+            getString(R.string.com_mixpanel_android_survey_confirmation_message));
+        alertBuilder.setPositiveButton(
+            getString(R.string.com_mixpanel_android_survey_confirmation_confirm),
+            new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    showSurvey();
+                }
+            });
+        alertBuilder.setNegativeButton(
+            getString(R.string.com_mixpanel_android_survey_confirmation_deny),
+            new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    SurveyActivity.this.finish();
+                }
+            });
+        alertBuilder.setCancelable(false);
+        mDialog = alertBuilder.create();
+        mDialog.show();
+    }
+
+    private void showSurvey() {
+        SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id)
+            .setVisibility(View.VISIBLE);
+        mSurveyBegun = true;
+        showQuestion(mCurrentQuestion);
     }
 
     private UpdateDisplayState.DisplayState.SurveyState getSurveyState() {
@@ -514,6 +533,7 @@ public class SurveyActivity extends Activity {
     private boolean mSurveyBegun = false;
     private int mCurrentQuestion = 0;
     private int mIntentId = -1;
+    private boolean mShowConfirmation = true;
 
     private static final String SURVEY_BEGUN_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.SURVEY_BEGIN_BUNDLE_KEY";
     private static final String CURRENT_QUESTION_BUNDLE_KEY = "com.mixpanel.android.surveys.SurveyActivity.CURRENT_QUESTION_BUNDLE_KEY";
@@ -524,6 +544,7 @@ public class SurveyActivity extends Activity {
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI SurveyActivity";
 
+    public static final String SURVEY_SHOW_CONFIRMATION_FLAG =  "com.mixpanel.android.surveys.SurveyActivity.SURVEY_SHOW_CONFIRMATION_FLAG";
     public static final String INTENT_ID_KEY = "com.mixpanel.android.surveys.SurveyActivity.INTENT_ID_KEY";
 }
 
