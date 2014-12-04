@@ -52,7 +52,7 @@ import java.util.Map;
             final String eventType = source.getString("event_type");
 
             final JSONArray pathDesc = source.getJSONArray("path");
-            final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
+            final List<Pathfinder.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
                 throw new InapplicableInstructionsException("event '" + eventName + "' will not be bound to any element in the UI.");
@@ -87,13 +87,13 @@ import java.util.Map;
     public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
-            final List<ViewVisitor.PathElement> path = readPath(pathDesc, mIdNameToId);
+            final List<Pathfinder.PathElement> path = readPath(pathDesc, mIdNameToId);
 
             if (path.size() == 0) {
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final ViewVisitor.PathElement pathEnd = path.get(path.size() - 1);
+            final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
             final String targetClassName = pathEnd.viewClassName;
             final Class targetClass;
             try {
@@ -152,8 +152,8 @@ import java.util.Map;
     }
 
     // Package access FOR TESTING ONLY
-    /* package */ List<ViewVisitor.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> idNameToId) throws JSONException {
-        final List<ViewVisitor.PathElement> path = new ArrayList<ViewVisitor.PathElement>();
+    /* package */ List<Pathfinder.PathElement> readPath(JSONArray pathDesc, Map<String, Integer> idNameToId) throws JSONException {
+        final List<Pathfinder.PathElement> path = new ArrayList<Pathfinder.PathElement>();
 
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
@@ -168,9 +168,9 @@ import java.util.Map;
 
             final int prefix;
             if ("**".equals(prefixCode)) {
-                prefix = ViewVisitor.PathElement.SHORTEST_PREFIX;
+                prefix = Pathfinder.PathElement.SHORTEST_PREFIX;
             } else {
-                prefix = ViewVisitor.PathElement.ZERO_LENGTH_PREFIX;
+                prefix = Pathfinder.PathElement.ZERO_LENGTH_PREFIX;
             }
 
             final int targetId;
@@ -182,7 +182,7 @@ import java.util.Map;
                 targetId = targetIdOrNull.intValue();
             }
 
-            path.add(new ViewVisitor.PathElement(prefix, targetViewClass, targetIndex, targetId, targetDescription, targetTag));
+            path.add(new Pathfinder.PathElement(prefix, targetViewClass, targetIndex, targetId, targetDescription, targetTag));
         }
 
         return path;
@@ -351,7 +351,7 @@ import java.util.Map;
     private final SparseArray<String> mIdToIdName;
 
     private static final Class[] NO_PARAMS = new Class[0];
-    private static final List<ViewVisitor.PathElement> NEVER_MATCH_PATH = Collections.EMPTY_LIST;
+    private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.EMPTY_LIST;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditProtocol";

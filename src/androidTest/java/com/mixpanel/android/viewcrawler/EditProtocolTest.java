@@ -75,15 +75,15 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testReadPaths() throws JSONException {
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustClassPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustClassPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals("android.widget.Button", last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(-1, last.viewId);
@@ -91,15 +91,15 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(2000, last.viewId);
@@ -107,15 +107,15 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIndexPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIndexPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(2, last.index);
             assertEquals(-1, last.viewId);
@@ -123,15 +123,15 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustTagPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustTagPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(-1, last.viewId);
@@ -139,15 +139,15 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdNamePath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
@@ -155,20 +155,20 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustIdNamePath, new HashMap<String, Integer>());
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, new HashMap<String, Integer>());
             assertTrue(p.isEmpty());
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
@@ -178,57 +178,57 @@ public class EditProtocolTest extends AndroidTestCase {
         {
             final Map<String, Integer> nonMatchingIdMap = new HashMap<String, Integer>();
             nonMatchingIdMap.put("NAME PRESENT", 1985);
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, nonMatchingIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, nonMatchingIdMap);
             assertTrue(p.isEmpty());
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustFindIdPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindIdPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mJustFindNamePath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindNamePath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mUselessFindIdPath, mIdMap);
-            final ViewVisitor.PathElement first = p.get(0);
-            final ViewVisitor.PathElement last = p.get(p.size() - 1);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mUselessFindIdPath, mIdMap);
+            final Pathfinder.PathElement first = p.get(0);
+            final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
             assertEquals(-1, first.index);
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
-            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
+            assertEquals(Pathfinder.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
         }
 
         {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mIdMap);
             assertTrue(p.isEmpty());
         }
     }
