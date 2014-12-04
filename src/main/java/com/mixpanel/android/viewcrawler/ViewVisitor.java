@@ -34,12 +34,11 @@ import java.util.WeakHashMap;
     }
 
     public static class PathElement {
-        public PathElement(String vClass, int ix, int vId, int fId, String cDesc, String vTag, String fClass) {
+        public PathElement(int usePrefix, String vClass, int ix, int vId, String cDesc, String vTag) {
+            prefix = usePrefix;
             viewClassName = vClass;
             index = ix;
             viewId = vId;
-            findId = fId;
-            findClassName = fClass;
             contentDescription = cDesc;
             tag = vTag;
         }
@@ -47,6 +46,9 @@ import java.util.WeakHashMap;
         public String toString() {
             try {
                 final JSONObject ret = new JSONObject();
+                if (prefix == SHORTEST_PREFIX) {
+                    ret.put("prefix", "**");
+                }
                 if (null != viewClassName) {
                     ret.put("view_class", viewClassName);
                 }
@@ -56,17 +58,11 @@ import java.util.WeakHashMap;
                 if (viewId > -1) {
                     ret.put("id", viewId);
                 }
-                if (findId > -1) {
-                    ret.put("**/id", findId);
-                }
                 if (null != contentDescription) {
                     ret.put("contentDescription", contentDescription);
                 }
                 if (null != tag) {
                     ret.put("tag", tag);
-                }
-                if (null != findClassName) {
-                    ret.put("**/view_class", findClassName);
                 }
                 return ret.toString();
             } catch (JSONException e) {
@@ -74,13 +70,15 @@ import java.util.WeakHashMap;
             }
         }
 
+        public final int prefix;
         public final String viewClassName;
         public final int index;
         public final int viewId;
-        public final int findId;
         public final String contentDescription;
         public final String tag;
-        public final String findClassName;
+
+        public static final int ZERO_LENGTH_PREFIX = 0;
+        public static final int SHORTEST_PREFIX = 1;
     }
 
     /**
@@ -385,6 +383,7 @@ import java.util.WeakHashMap;
 
     protected ViewVisitor(List<PathElement> path) {
         mPath = path;
+        mIndexStack = new IntStack();
     }
 
     protected abstract void accumulate(View found);
@@ -395,13 +394,18 @@ import java.util.WeakHashMap;
             return;
         }
 
+        if (mIndexStack.full()) {
+            return; // No memory to perform the find.
+        }
+
         final PathElement rootPathElement = path.get(0);
         final List<PathElement> childPath = path.subList(1, path.size());
-        final View rootView = findFrom(rootPathElement, givenRootView);
 
-        if (null != rootView &&
-                rootPathElement.index <= 0 &&
-                matches(rootPathElement, rootView)) {
+        int indexKey = mIndexStack.alloc();
+        final View rootView = findFirstMatch(rootPathElement, givenRootView, indexKey);
+        mIndexStack.free();
+
+        if (null != rootView) {
             findTargetsInMatchedView(rootView, childPath);
         }
     }
@@ -421,43 +425,47 @@ import java.util.WeakHashMap;
             return;
         }
 
+        if (mIndexStack.full()) {
+            // Can't match anyhow, stack is too deep
+            return;
+        }
+
         final ViewGroup parent = (ViewGroup) alreadyMatched;
         final PathElement matchElement = remainingPath.get(0);
         final List<PathElement> nextPath = remainingPath.subList(1, remainingPath.size());
-        final int matchIndex = matchElement.index;
 
         final int childCount = parent.getChildCount();
-        int matchCount = 0;
+        int indexKey = mIndexStack.alloc();
         for (int i = 0; i < childCount; i++) {
             final View givenChild = parent.getChildAt(i);
-            final View child = findFrom(matchElement, givenChild);
-
-            if (null != child && matches(matchElement, child)) {
-                if (matchCount == matchIndex || -1 == matchIndex) {
-                    findTargetsInMatchedView(child, nextPath);
-                }
-
-                matchCount++;
-                if (matchIndex >= 0 && matchCount > matchIndex) {
-                    return;
-                }
+            final View child = findFirstMatch(matchElement, givenChild, indexKey);
+            if (null != child) {
+                findTargetsInMatchedView(child, nextPath);
+            }
+            if (matchElement.index >=0 && mIndexStack.read(indexKey) > matchElement.index) {
+                return;
             }
         }
+        mIndexStack.free();
     }
 
-    private View findFrom(PathElement findElement, View subject) {
-        if (-1 == findElement.findId || findElement.findId == subject.getId()) {
-            if (null == findElement.findClassName || hasClassName(subject, findElement.findClassName)) {
+    // Finds the first matching view of the path element in the given subject's view hierarchy.
+    // If the path is indexed, it needs a start index, and will consume some indexes
+    private View findFirstMatch(PathElement findElement, View subject, int indexKey) { // TODO RENAME
+        int currentIndex = mIndexStack.read(indexKey);
+        if (matches(findElement, subject)) {
+            mIndexStack.increment(indexKey);
+            if (findElement.index == -1 || findElement.index == currentIndex) {
                 return subject;
             }
         }
 
-        if (subject instanceof ViewGroup) {
+        if (findElement.prefix == PathElement.SHORTEST_PREFIX && subject instanceof ViewGroup) {
             final ViewGroup group = (ViewGroup) subject;
             final int childCount = group.getChildCount();
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
-                final View result = findFrom(findElement, child);
+                final View result = findFirstMatch(findElement, child, indexKey);
                 if (null != result) {
                     return result;
                 }
@@ -517,6 +525,58 @@ import java.util.WeakHashMap;
     }
 
     private final List<PathElement> mPath;
+    private final IntStack mIndexStack;
+
+    /**
+     * Bargain-bin pool of integers, for use in avoiding allocations during path crawl
+     */
+    private static class IntStack {
+        public IntStack() {
+            mStack = new int[MAX_INDEX_STACK_SIZE];
+            mStackSize = 0;
+        }
+
+        public boolean full() {
+            return mStack.length == mStackSize;
+        }
+
+        /**
+         * Pushes a new value, and returns the index you can use to increment and read that value later.
+         */
+        public int alloc() {
+            int index = mStackSize;
+            mStackSize++;
+            mStack[index] = 0;
+            return index;
+        }
+
+        /**
+         * Gets the value associated with index. index should be the result of a previous call to alloc()
+         */
+        public int read(int index) {
+            return mStack[index];
+        }
+
+        public void increment(int index) {
+            mStack[index]++;
+        }
+
+        /**
+         * Should be matched to each call to alloc. Once free has been called, the key associated with the
+         * matching alloc should be considered invalid.
+         */
+        public void free() {
+            mStackSize--;
+            if (mStackSize < 0) {
+                throw new ArrayIndexOutOfBoundsException(mStackSize);
+            }
+        }
+
+        private final int[] mStack;
+        private int mStackSize;
+
+        private static final int MAX_INDEX_STACK_SIZE = 256;
+    }
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }

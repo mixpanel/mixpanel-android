@@ -158,18 +158,22 @@ import java.util.Map;
         for (int i = 0; i < pathDesc.length(); i++) {
             final JSONObject targetView = pathDesc.getJSONObject(i);
 
+            final String prefixCode = JSONUtils.optionalStringKey(targetView, "prefix");
             final String targetViewClass = JSONUtils.optionalStringKey(targetView, "view_class");
             final int targetIndex = targetView.optInt("index", -1);
             final String targetDescription = JSONUtils.optionalStringKey(targetView, "contentDescription");
             final int targetExplicitId = targetView.optInt("id", -1);
             final String targetIdName = JSONUtils.optionalStringKey(targetView, "mp_id_name");
             final String targetTag = JSONUtils.optionalStringKey(targetView, "tag");
-            final int findExplicitId = targetView.optInt("**/id", -1);
-            final String findIdName = JSONUtils.optionalStringKey(targetView, "**/mp_id_name");
-            final String findViewClass = JSONUtils.optionalStringKey(targetView, "**/view_class");
+
+            final int prefix;
+            if ("**".equals(prefixCode)) {
+                prefix = ViewVisitor.PathElement.SHORTEST_PREFIX;
+            } else {
+                prefix = ViewVisitor.PathElement.ZERO_LENGTH_PREFIX;
+            }
 
             final int targetId;
-            final int findId;
 
             final Integer targetIdOrNull = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
             if (null == targetIdOrNull) {
@@ -178,19 +182,7 @@ import java.util.Map;
                 targetId = targetIdOrNull.intValue();
             }
 
-            final Integer findIdOrNull = reconcileIdsInPath(findExplicitId, findIdName, idNameToId);
-            if (null == findIdOrNull) {
-                return NEVER_MATCH_PATH;
-            } else {
-                findId = findIdOrNull.intValue();
-            }
-
-            if (targetId != -1 && findId != -1 && targetId != findId) {
-                Log.e(LOGTAG, "Path contains both an id and an **/id, and they don't match- the path won't match anything");
-                return NEVER_MATCH_PATH;
-            }
-
-            path.add(new ViewVisitor.PathElement(targetViewClass, targetIndex, targetId, findId, targetDescription, targetTag, findViewClass));
+            path.add(new ViewVisitor.PathElement(prefix, targetViewClass, targetIndex, targetId, targetDescription, targetTag));
         }
 
         return path;

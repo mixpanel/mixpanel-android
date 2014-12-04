@@ -38,12 +38,11 @@ public class EditProtocolTest extends AndroidTestCase {
         mJustTagPath = new JSONArray("[{},{},{},{\"tag\": \"this_is_a_simple_tag\"}]");
         mJustIdNamePath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\"}]");
         mIdNameAndIdPath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
-        mJustFindIdPath = new JSONArray("[{},{},{},{\"**/id\": 1001}]");
-        mJustFindNamePath = new JSONArray("[{},{},{},{\"**/mp_id_name\": \"NAME PRESENT\"}]");
-        mUselessFindIdPath = new JSONArray("[{},{},{},{\"**/mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
+        mJustFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"id\": 1001}]");
+        mJustFindNamePath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"mp_id_name\": \"NAME PRESENT\"}]");
+        mUselessFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
 
         mIdAndNameDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NO SUCH NAME\", \"id\": 90210}]");
-        mIdAndFindDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"**/mp_id_name\": \"ALSO PRESENT\"}]");
 
         mIdMap = new HashMap<String, Integer>();
         mIdMap.put("NAME PRESENT", 1001);
@@ -84,6 +83,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals("android.widget.Button", last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(-1, last.viewId);
@@ -99,6 +99,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(2000, last.viewId);
@@ -114,6 +115,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(2, last.index);
             assertEquals(-1, last.viewId);
@@ -129,6 +131,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(-1, last.viewId);
@@ -144,6 +147,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
@@ -164,6 +168,7 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.ZERO_LENGTH_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
@@ -186,9 +191,10 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
-            assertEquals(1001, last.findId);
+            assertEquals(1001, last.viewId);
         }
 
         {
@@ -200,9 +206,10 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
-            assertEquals(1001, last.findId);
+            assertEquals(1001, last.viewId);
         }
 
         {
@@ -214,19 +221,14 @@ public class EditProtocolTest extends AndroidTestCase {
             assertEquals(-1, first.viewId);
             assertEquals(null, first.tag);
 
+            assertEquals(ViewVisitor.PathElement.SHORTEST_PREFIX, last.prefix);
             assertEquals(null, last.viewClassName);
             assertEquals(-1, last.index);
             assertEquals(1001, last.viewId);
-            assertEquals(1001, last.findId);
         }
 
         {
             final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mIdMap);
-            assertTrue(p.isEmpty());
-        }
-
-        {
-            final List<ViewVisitor.PathElement> p = mProtocol.readPath(mIdAndFindDontMatch, mIdMap);
             assertTrue(p.isEmpty());
         }
     }
@@ -280,7 +282,6 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mJustFindNamePath;
     private JSONArray mUselessFindIdPath;
     private JSONArray mIdAndNameDontMatch;
-    private JSONArray mIdAndFindDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
     private Map<String, Integer> mIdMap;
