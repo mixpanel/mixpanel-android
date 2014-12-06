@@ -12,6 +12,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
@@ -122,13 +123,15 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     private void handleNotificationIntent(Context context, Intent intent) {
-        final String message = intent.getExtras().getString("mp_message");
+        final Bundle bundle = intent.getExtras();
+        final String message = bundle.getString("mp_message");
 
         if (message == null) return;
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
 
         final PackageManager manager = context.getPackageManager();
         final Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
+        appIntent.putExtras(bundle);
         CharSequence notificationTitle = "";
         int notificationIcon = android.R.drawable.sym_def_app_icon;
         try {
@@ -146,10 +149,12 @@ public class GCMReceiver extends BroadcastReceiver {
             PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        if (Build.VERSION.SDK_INT < 11) {
-            showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
-        } else {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            showNotificationSDK16OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             showNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+        } else {
+            showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
         }
     }
 
@@ -163,8 +168,9 @@ public class GCMReceiver extends BroadcastReceiver {
         nm.notify(0, n);
     }
 
+    @SuppressWarnings("deprecation")
     @TargetApi(11)
-	private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationIcon).
@@ -174,18 +180,25 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentText(message).
                 setContentIntent(intent);
 
-        final Notification n = runBuilder(builder);
+        final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         nm.notify(0, n);
     }
 
-    @SuppressWarnings("deprecation")
     @SuppressLint("NewApi")
-    private Notification runBuilder(final Notification.Builder builder) {
-        if (Build.VERSION.SDK_INT < 16) {
-            return builder.getNotification();
-        } else {
-            return builder.build();
-        }
+    @TargetApi(16)
+    private void showNotificationSDK16OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+        final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        final Notification.Builder builder = new Notification.Builder(context).
+                setSmallIcon(notificationIcon).
+                setTicker(message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(title).
+                setContentText(message).
+                setContentIntent(intent).
+                setStyle(new Notification.BigTextStyle().bigText(message));
+        final Notification n = builder.build();
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        nm.notify(0, n);
     }
 }
