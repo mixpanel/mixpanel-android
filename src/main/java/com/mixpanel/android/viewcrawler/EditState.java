@@ -21,7 +21,7 @@ import java.util.Set;
  * can replace all of the edits in an app with {@link EditState#setEdits(java.util.Map)}.
  *
  * Some client is responsible for informing the EditState about the presence or absence
- * of Activites, by calling {@link EditState#add(android.app.Activity)} and {@link EditState#remove(android.app.Activity)}
+ * of Activities, by calling {@link EditState#add(android.app.Activity)} and {@link EditState#remove(android.app.Activity)}
  */
 /* package */ class EditState extends UIThreadSet<Activity> {
 
@@ -171,13 +171,14 @@ import java.util.Set;
             mHandler.post(this);
         }
 
+        @SuppressWarnings("deprecation")
         private void cleanUp() {
             if (mAlive) {
                 final View viewRoot = mViewRoot.get();
                 if (null != viewRoot) {
                     final ViewTreeObserver observer = viewRoot.getViewTreeObserver();
                     if (observer.isAlive()) {
-                        observer.removeGlobalOnLayoutListener(this);
+                        observer.removeGlobalOnLayoutListener(this); // Deprecated Name
                     }
                 }
                 mEdit.cleanup();
