@@ -1,5 +1,6 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -77,6 +78,7 @@ import java.util.List;
         }
 
         if (mIndexStack.full()) {
+            Log.w(LOGTAG, "There appears to be a concurrency issue in the pathfinding code. Path will not be matched.");
             return; // No memory to perform the find.
         }
 
@@ -109,6 +111,7 @@ import java.util.List;
         }
 
         if (mIndexStack.full()) {
+            Log.v(LOGTAG, "Path is too deep, will not match");
             // Can't match anyhow, stack is too deep
             return;
         }
@@ -126,7 +129,7 @@ import java.util.List;
                 findTargetsInMatchedView(child, nextPath, accumulator);
             }
             if (matchElement.index >= 0 && mIndexStack.read(indexKey) > matchElement.index) {
-                return;
+                break;
             }
         }
         mIndexStack.free();
@@ -260,4 +263,7 @@ import java.util.List;
     }
 
     private final IntStack mIndexStack;
+
+    @SuppressWarnings("unused")
+    private static final String LOGTAG = "MixpanelAPI.PathFinder";
 }

@@ -154,6 +154,7 @@ import java.util.concurrent.TimeoutException;
         j.name("height").value(view.getHeight());
         j.name("scrollX").value(view.getScrollX());
         j.name("scrollY").value(view.getScrollY());
+        j.name("visibility").value(view.getVisibility());
 
         float translationX = 0;
         float translationY = 0;
@@ -184,7 +185,7 @@ import java.util.concurrent.TimeoutException;
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
                 // child can be null when views are getting disposed.
-                if (null != child && View.VISIBLE == child.getVisibility()) {
+                if (null != child) {
                     j.value(child.hashCode());
                 }
             }
@@ -198,7 +199,7 @@ import java.util.concurrent.TimeoutException;
             for (int i = 0; i < childCount; i++) {
                 final View child = group.getChildAt(i);
                 // child can be null when views are getting disposed.
-                if (null != child && View.VISIBLE == child.getVisibility()) {
+                if (null != child) {
                     snapshotView(j, child);
                 }
             }
