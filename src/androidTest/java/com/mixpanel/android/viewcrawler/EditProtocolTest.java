@@ -38,9 +38,9 @@ public class EditProtocolTest extends AndroidTestCase {
         mJustTagPath = new JSONArray("[{},{},{},{\"tag\": \"this_is_a_simple_tag\"}]");
         mJustIdNamePath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\"}]");
         mIdNameAndIdPath = new JSONArray("[{},{},{},{\"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
-        mJustFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"id\": 1001}]");
-        mJustFindNamePath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"mp_id_name\": \"NAME PRESENT\"}]");
-        mUselessFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"**\", \"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
+        mJustFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"id\": 1001}]");
+        mJustFindNamePath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"mp_id_name\": \"NAME PRESENT\"}]");
+        mUselessFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
 
         mIdAndNameDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NO SUCH NAME\", \"id\": 90210}]");
 
