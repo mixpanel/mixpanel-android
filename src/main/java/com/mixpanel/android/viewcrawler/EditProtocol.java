@@ -167,10 +167,13 @@ import java.util.Map;
             final String targetTag = JSONUtils.optionalStringKey(targetView, "tag");
 
             final int prefix;
-            if ("**".equals(prefixCode)) {
+            if ("shortest".equals(prefixCode)) {
                 prefix = Pathfinder.PathElement.SHORTEST_PREFIX;
-            } else {
+            } else if (null == prefixCode) {
                 prefix = Pathfinder.PathElement.ZERO_LENGTH_PREFIX;
+            } else {
+                Log.w(LOGTAG, "Unrecognized prefix type \"" + prefixCode + "\". No views will be matched");
+                return NEVER_MATCH_PATH;
             }
 
             final int targetId;

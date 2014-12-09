@@ -16,6 +16,41 @@ import java.util.List;
  */
 /* package */ class Pathfinder {
 
+    /**
+     * a path element E matches a view V if each non "prefix" or "index"
+     * attribute of E is equal to (or characteristic of) V.
+     *
+     * So
+     *
+     *     E.viewClassName == 'com.mixpanel.Awesome' => V instanceof com.mixpanelAwesome
+     *     E.id == 123 => V.getId() == 123
+     *
+     * The index attribute, counting from root to leaf, and first child to last child, selects a particular
+     * matching view amongst all possible matches. Indexing starts at zero, like an array
+     * index. So E.index == 2 means "Select the third possible match for this element"
+     *
+     * The prefix attribute refers to the position of the matched views in the hierarchy,
+     * relative to the current position of the path being searched. The "current position" of
+     * a path element is determined by the path that preceeded that element:
+     *
+     * - The current position of the empty path is the root view
+     *
+     * - The current position of a non-empty path is the children of any element that matched the last
+     *   element of that path.
+     *
+     * Prefix values can be:
+     *
+     *     ZERO_LENGTH_PREFIX- the next match must occur at the current position (so at the root
+     *     view if this is the first element of a path, or at the matching children of the views
+     *     already matched by the preceeding portion of the path.) If a path element with ZERO_LENGTH_PREFIX
+     *     has no index, then *all* matching elements of the path will be matched, otherwise indeces
+     *     will count from first child to last child.
+     *
+     *     SHORTEST_PREFIX- the next match must occur at some descendant of the current position.
+     *     SHORTEST_PREFIX elements are indexed depth-first, first child to last child. For performance
+     *     reasons, at most one element will ever be matched to a SHORTEST_PREFIX element, so
+     *     elements with no index will be treated as having index == 0
+     */
     public static class PathElement {
         public PathElement(int usePrefix, String vClass, int ix, int vId, String cDesc, String vTag) {
             prefix = usePrefix;
@@ -30,7 +65,7 @@ import java.util.List;
             try {
                 final JSONObject ret = new JSONObject();
                 if (prefix == SHORTEST_PREFIX) {
-                    ret.put("prefix", "**");
+                    ret.put("prefix", "shortest");
                 }
                 if (null != viewClassName) {
                     ret.put("view_class", viewClassName);
