@@ -129,7 +129,6 @@ import java.util.List;
         }
     }
 
-
     private void findTargetsInMatchedView(View alreadyMatched, List<PathElement> remainingPath, Accumulator accumulator) {
         // When this is run, alreadyMatched has already been matched to a path prefix.
         // path is a possibly empty "remaining path" suffix left over after the match
@@ -195,7 +194,6 @@ import java.util.List;
 
         return null;
     }
-
 
     private boolean matches(PathElement matchElement, View subject) {
         if (null != matchElement.viewClassName) {
