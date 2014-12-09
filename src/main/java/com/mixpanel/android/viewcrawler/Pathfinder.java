@@ -196,32 +196,24 @@ import java.util.List;
     }
 
     private boolean matches(PathElement matchElement, View subject) {
-        if (null != matchElement.viewClassName) {
-            if (!hasClassName(subject, matchElement.viewClassName)) {
-                return false;
-            }
+        if (null != matchElement.viewClassName &&
+                !hasClassName(subject, matchElement.viewClassName)) {
+            return false;
         }
 
-        final int matchId = matchElement.viewId;
-        if (-1 != matchId) {
-            final int subjectId = subject.getId();
-            if (subjectId != matchId) {
-                return false;
-            }
+        if (-1 != matchElement.viewId && subject.getId() != matchElement.viewId) {
+            return false;
         }
 
-        final String matchContentDescription = matchElement.contentDescription;
-        if (null != matchContentDescription) {
-            final CharSequence description = subject.getContentDescription();
-            if (null == description || ! matchContentDescription.equals(description)) {
-                return false;
-            }
+        if (null != matchElement.contentDescription &&
+                !matchElement.contentDescription.equals(subject.getContentDescription())) {
+            return false;
         }
 
         final String matchTag = matchElement.tag;
-        if (null != matchTag) {
+        if (null != matchElement.tag) {
             final Object subjectTag = subject.getTag();
-            if (null == subjectTag || ! matchTag.equals(subjectTag.toString())) {
+            if (null == subjectTag || !matchTag.equals(subject.getTag().toString())) {
                 return false;
             }
         }
