@@ -138,6 +138,7 @@ public class MixpanelAPI {
             PackageManager manager = mContext.getPackageManager();
             PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
             deviceInfo.put("$android_app_version", info.versionName);
+            deviceInfo.put("$android_app_version_code", Integer.toString(info.versionCode));
         } catch (PackageManager.NameNotFoundException e) {
             Log.e(LOGTAG, "Exception getting app version name", e);
         }
