@@ -160,6 +160,11 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void showGivenNotification(InAppNotification notif, final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
         public void checkForSurvey(final SurveyCallbacks callbacks) {
             Assert.fail("Unexpected call");
         }
@@ -171,6 +176,11 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void trackNotificationSeen(final InAppNotification notif) {
             Assert.fail("Unexpected call");
         }
 
