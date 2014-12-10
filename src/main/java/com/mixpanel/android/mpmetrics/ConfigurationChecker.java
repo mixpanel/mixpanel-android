@@ -79,19 +79,24 @@ import android.util.Log;
             return false;
         }
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN // GET_ACCOUNTS is necessary only if if the device is running a version lower than Android 4.0.4
-        	&& PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
-            Log.w(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
-            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
-                    "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
-            return false;
-        }
-
         if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.WAKE_LOCK", packageName)) {
             Log.w(LOGTAG, "Package does not have permission android.permission.WAKE_LOCK");
             Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.WAKE_LOCK\" />");
             return false;
+        }
+
+        // This permission is only required on older devices
+        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
+            Log.i(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
+            Log.i(LOGTAG, "Android versions below 4.1 require GET_ACCOUNTS to receive Mixpanel push notifications.\n" +
+                    "Devices with later OS versions will still be able to receive messages, but if you'd like to support " +
+                    "older devices, you'll need to add the following to your AndroidManifest.xml file:\n" +
+                    "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
+
+            if (Build.VERSION.SDK_INT < 16) {
+                return false;
+            }
         }
 
         // check receivers
