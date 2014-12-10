@@ -734,7 +734,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
     private static final int MESSAGE_HANDLE_EDITOR_CLOSED = 10;
 
-    private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 60;
+    private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewCrawler";
