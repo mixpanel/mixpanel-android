@@ -849,9 +849,25 @@ public class MixpanelAPI {
          * <p>This function will return quickly, and will not cause any communication with
          * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
+         * Note: you must call call {@link People#trackNotificationSeen(InAppNotification)} or you will
+         * receive the same {@link com.mixpanel.android.mpmetrics.InAppNotification} again the
+         * next time notifications are refreshed from Mixpanel's servers (on identify, or when
+         * your app is destroyed and re-created)
+         *
          * @return an InAppNotification object if one is available, null otherwise.
          */
         public InAppNotification getNotificationIfAvailable();
+
+        /**
+         * Tells MixPanel that you have handled an {@link com.mixpanel.android.mpmetrics.InAppNotification}
+         * in the case where you are manually dealing with your notifications ({@link People:getNotificationIfAvailable()}).
+         *
+         * Note: if you do not acknowledge the notification you will receive it again each time
+         * you call {@link People#identify(String)} and then call {@link People:getNotificationIfAvailable()}
+         *
+         * @param notif the notification to track (no-op on null)
+         */
+        void trackNotificationSeen(InAppNotification notif);
 
         /**
          * Shows a survey identified by id. The behavior of this is otherwise identical to
@@ -1184,6 +1200,23 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void trackNotificationSeen(InAppNotification notif) {
+            if(notif == null) return;
+            track("$campaign_delivery", notif.getCampaignProperties());
+
+            final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
+            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
+            final JSONObject notifProperties = notif.getCampaignProperties();
+            try {
+                notifProperties.put("$time", dateFormat.format(new Date()));
+            } catch (JSONException e) {
+                Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+            }
+            people.append("$campaigns", notif.getId());
+            people.append("$notifications", notifProperties);
+        }
+
+        @Override
         public Survey getSurveyIfAvailable() {
             return mDecideMessages.getSurvey(mConfig.getTestMode());
         }
@@ -1356,18 +1389,18 @@ public class MixpanelAPI {
 
         public JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
-                final JSONObject dataObj = new JSONObject();
-                final String distinctId = getDistinctId();
+            final JSONObject dataObj = new JSONObject();
+            final String distinctId = getDistinctId();
 
-                dataObj.put(actionType, properties);
-                dataObj.put("$token", mToken);
-                dataObj.put("$time", System.currentTimeMillis());
+            dataObj.put(actionType, properties);
+            dataObj.put("$token", mToken);
+            dataObj.put("$time", System.currentTimeMillis());
 
-                if (null != distinctId) {
-                    dataObj.put("$distinct_id", distinctId);
-                }
+            if (null != distinctId) {
+                dataObj.put("$distinct_id", getDistinctId());
+            }
 
-                return dataObj;
+            return dataObj;
         }
 
         @TargetApi(21)
@@ -1514,20 +1547,6 @@ public class MixpanelAPI {
                     }
                 } // run()
 
-                private void trackNotificationSeen(InAppNotification notif) {
-                    track("$campaign_delivery", notif.getCampaignProperties());
-
-                    final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-                    final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
-                    final JSONObject notifProperties = notif.getCampaignProperties();
-                    try {
-                        notifProperties.put("$time", dateFormat.format(new Date()));
-                    } catch (JSONException e) {
-                        Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
-                    }
-                    people.append("$campaigns", notif.getId());
-                    people.append("$notifications", notifProperties);
-                }
             });
         }
     }// PeopleImpl
