@@ -828,6 +828,17 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
+         * Shows the given in app notification to the user. Display will occur just as if the
+         * notification was shown via showNotificationIfAvailable.
+         *
+         * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} to show
+         *
+         * @param parent the Activity that the mini notification will be displayed in, or the Activity
+         * that will be used to launch SurveyActivity for the takeover notification.
+         */
+        public void showGivenNotification(InAppNotification notif, Activity parent);
+
+        /**
          * Returns a Survey object if one is available and being held by the library, or null if
          * no survey is currently available. Callers who want to display surveys with their own UI
          * should call this method to get the Survey data. A given survey will be returned only once
@@ -1256,6 +1267,11 @@ public class MixpanelAPI {
         @Override
         public void showNotificationById(int id, final Activity parent) {
             InAppNotification notif = mDecideMessages.getNotification(id, mConfig.getTestMode());
+            showGivenNotification(notif, parent);
+        }
+
+        @Override
+        public void showGivenNotification(final InAppNotification notif, final Activity parent) {
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
             }
