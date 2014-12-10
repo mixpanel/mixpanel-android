@@ -39,7 +39,7 @@ Changelog
  * Introducing dynamic event binding! Developers and stakeholders can now bind Mixpanel events to
  user interactions using the UI in the Mixpanel web application.
 
- * New configuration directive
+ * New configuration directives
 
  The 4.5 version of the library allows for meta-data of the form
 
@@ -51,6 +51,30 @@ Changelog
  This tag will only be useful in specific circumstances, for users with certain kinds of exotic custom builds.
  Most users of the library will not require it.
  (You'll get messages in your logs if the library thinks that you need it)
+
+```
+ <meta-data android:name="com.mixpanel.android.MPConfig.DisableGestureBindingUI"
+      android:value="true" />
+```
+
+When included in your Manifest with value="true", this tag disables the use of the connection
+gesture to the mobile event binding UI in the Mixpanel web application. Events created and bound in the UI
+will still be sent by the application, this directive just disables use the connection gesture
+to pair with a Mixpanel to create and edit event bindings. If the application is run in an
+emulator, it will still check for pairing with the editor.
+
+```
+ <meta-data android:name="com.mixpanel.android.MPConfig.DisableEmulatorBindingUI"
+      android:value="true" />
+```
+
+When included in your Manifest with value="true", this tag disables pairing with the mobile
+event binding UI in the Mixpanel web application. Events created and bound in the UI will
+still be sent by the application, this directive just disables the emulator binding behavior. Use of
+the connection gesture on a physical device will still work for pairing with the editor.
+
+
+(either in the Android Emulator, or by using the connection gesture on physical devices) depend
 
  * Easier use of Proguard with the library
 

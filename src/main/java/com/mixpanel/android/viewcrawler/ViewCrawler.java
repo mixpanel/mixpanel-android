@@ -17,9 +17,6 @@ import android.os.Process;
 import android.util.JsonWriter;
 import android.util.Log;
 import android.util.Pair;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -52,6 +49,7 @@ import javax.net.ssl.SSLSocketFactory;
 public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
+        mConfig = MPConfig.getInstance(context);
         mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
         mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
         mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
@@ -184,9 +182,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         private void installConnectionSensor(final Activity activity) {
-            if (isInEmulator()) {
+            if (isInEmulator() && !mConfig.getDisableEmulatorBindingUI()) {
                 mEmulatorConnector.start();
-            } else {
+            } else if (!mConfig.getDisableGestureBindingUI()) {
                 final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
                 final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
                 sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
@@ -194,9 +192,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         private void uninstallConnectionSensor(final Activity activity) {
-            if (isInEmulator()) {
+            if (isInEmulator() && !mConfig.getDisableEmulatorBindingUI()) {
                 mEmulatorConnector.stop();
-            } else {
+            } else if (!mConfig.getDisableGestureBindingUI()) {
                 final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
                 sensorManager.unregisterListener(mFlipGesture);
             }
@@ -712,6 +710,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private final List<Pair<String,JSONObject>> mPersistentEventBindings;
     private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
+    private final MPConfig mConfig;
     private final DynamicEventTracker mTracker;
     private final SSLSocketFactory mSSLSocketFactory;
     private final EditProtocol mProtocol;

@@ -55,6 +55,8 @@ public class MPConfig {
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
+        mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
+        mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
 
          // Disable if EITHER of these is present and false, otherwise enable
         boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -113,6 +115,8 @@ public class MPConfig {
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
+                "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
+                "    DisableEmulatorUIBinding " + getDisableEmulatorBindingUI() + "\n" +
                 "    EnableDebugLogging " + DEBUG + "\n" +
                 "    TestMode " + getTestMode() + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
@@ -143,6 +147,14 @@ public class MPConfig {
 
     public boolean getDisableFallback() {
         return mDisableFallback;
+    }
+
+    public boolean getDisableGestureBindingUI() {
+        return mDisableGestureBindingUI;
+    }
+
+    public boolean getDisableEmulatorBindingUI() {
+        return mDisableEmulatorBindingUI;
     }
 
     public boolean getTestMode() {
@@ -216,6 +228,8 @@ public class MPConfig {
     private final int mDataExpiration;
     private final boolean mDisableFallback;
     private final boolean mTestMode;
+    private final boolean mDisableGestureBindingUI;
+    private final boolean mDisableEmulatorBindingUI;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;
