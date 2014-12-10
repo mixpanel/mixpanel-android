@@ -12,6 +12,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
@@ -144,26 +145,31 @@ public class GCMReceiver extends BroadcastReceiver {
             PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        if (Build.VERSION.SDK_INT < 11) {
-            showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
+        final NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        final Notification notification;
+        if (Build.VERSION.SDK_INT >= 16) {
+            notification = showNotificationSDK16OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+        } else if (Build.VERSION.SDK_INT >= 11) {
+            notification = showNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
         } else {
-            showNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+            notification = showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
         }
+
+        notificationManager.notify(0, notification);
     }
 
     @SuppressWarnings("deprecation")
     @TargetApi(8)
-    private void showNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
-        final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+    private Notification showNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         n.setLatestEventInfo(context, title, message, intent);
-        nm.notify(0, n);
+        return n;
     }
 
+    @SuppressWarnings("deprecation")
     @TargetApi(11)
-	private void showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
-        final NotificationManager nm = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+    private Notification showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationIcon).
                 setTicker(message).
@@ -172,20 +178,28 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentText(message).
                 setContentIntent(intent);
 
-        final Notification n = runBuilder(builder);
+        final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
-        nm.notify(0, n);
+        return n;
     }
 
-    @SuppressWarnings("deprecation")
     @SuppressLint("NewApi")
-    private Notification runBuilder(final Notification.Builder builder) {
-        if (Build.VERSION.SDK_INT < 16) {
-            return builder.getNotification();
-        } else {
-            return builder.build();
-        }
+    @TargetApi(16)
+    private Notification showNotificationSDK16OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+        final Notification.Builder builder = new Notification.Builder(context).
+                setSmallIcon(notificationIcon).
+                setTicker(message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(title).
+                setContentText(message).
+                setContentIntent(intent).
+                setStyle(new Notification.BigTextStyle().bigText(message));
+
+        final Notification n = builder.build();
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        return n;
     }
 
+    @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.GCMReceiver";
 }
