@@ -4,19 +4,16 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.mixpanel.android.viewcrawler.Tweaks;
-
 import junit.framework.Assert;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+
+@SuppressWarnings("deprecation")
 class MockMixpanel extends MixpanelAPI {
     public MockMixpanel(Context context, Future<SharedPreferences> prefsFuture, String testToken) {
         super(context, prefsFuture, testToken);
@@ -31,15 +28,6 @@ class MockMixpanel extends MixpanelAPI {
     }
 
     public static class MockPeople implements People {
-        @Override
-        public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void showSurvey(final Survey s, final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
 
         @Override
         public void identify(final String distinctId) {
@@ -165,9 +153,10 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public void checkForSurvey(final SurveyCallbacks callbacks) {
+        public void trackNotification(String eventName, InAppNotification notif) {
             Assert.fail("Unexpected call");
         }
+
 
         @Override
         public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
@@ -188,6 +177,21 @@ class MockMixpanel extends MixpanelAPI {
         public People withIdentity(final String distinctId) {
             Assert.fail("Unexpected call");
             return null;
+        }
+
+        @Override
+        public void checkForSurvey(final SurveyCallbacks callbacks) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void checkForSurvey(final SurveyCallbacks callbacks, final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void showSurvey(final Survey s, final Activity parent) {
+            Assert.fail("Unexpected call");
         }
     };
 

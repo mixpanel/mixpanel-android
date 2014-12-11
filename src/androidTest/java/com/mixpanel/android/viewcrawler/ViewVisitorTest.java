@@ -185,7 +185,7 @@ public class ViewVisitorTest extends AndroidTestCase {
             final CollectorEditor collector = new CollectorEditor(mThirdLayerWildcard);
             collector.visit(mRootView);
             assertEquals(collector.collected.size(), mRootView.mThirdLayer.size());
-            final Set<View> allFound = new HashSet(collector.collected);
+            final Set<View> allFound = new HashSet<View>(collector.collected);
             assertEquals(mRootView.mThirdLayer, allFound);
         }
 

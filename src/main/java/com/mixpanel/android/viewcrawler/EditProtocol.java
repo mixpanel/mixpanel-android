@@ -354,7 +354,7 @@ import java.util.Map;
     private final SparseArray<String> mIdToIdName;
 
     private static final Class[] NO_PARAMS = new Class[0];
-    private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.EMPTY_LIST;
+    private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditProtocol";

@@ -42,16 +42,16 @@ import java.lang.reflect.Method;
                 continue;
             }
 
-            final Class assignType = assignableArgType(mMethodResultType);
-            final Class resultType = assignableArgType(method.getReturnType());
+            final Class<?> assignType = assignableArgType(mMethodResultType);
+            final Class<?> resultType = assignableArgType(method.getReturnType());
             if (! assignType.isAssignableFrom(resultType)) {
                 continue;
             }
 
             boolean assignable = true;
             for (int i = 0; i < params.length && assignable; i++) {
-                final Class argumentType = assignableArgType(mMethodTypes[i]);
-                final Class paramType = assignableArgType(params[i]);
+                final Class<?> argumentType = assignableArgType(mMethodTypes[i]);
+                final Class<?> paramType = assignableArgType(params[i]);
                 assignable = paramType.isAssignableFrom(argumentType);
             }
 

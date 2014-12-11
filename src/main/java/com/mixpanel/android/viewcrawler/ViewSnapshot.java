@@ -224,8 +224,9 @@ import java.util.concurrent.TimeoutException;
 
     private void addProperties(JsonWriter j, View v)
         throws IOException {
+        final Class<?> viewClass = v.getClass();
         for (PropertyDescription desc : mProperties) {
-            if (desc.targetClass.isAssignableFrom(v.getClass()) && null != desc.accessor) {
+            if (desc.targetClass.isAssignableFrom(viewClass) && null != desc.accessor) {
                 Object value = desc.accessor.applyMethod(v);
                 if (null == value) {
                     // Don't produce anything in this case

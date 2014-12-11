@@ -136,7 +136,7 @@ import java.util.WeakHashMap;
         private View.AccessibilityDelegate getOldDelegate(View v) {
             View.AccessibilityDelegate ret = null;
             try {
-                Class klass = v.getClass();
+                Class<?> klass = v.getClass();
                 Method m = klass.getMethod("getAccessibilityDelegate");
                 ret = (View.AccessibilityDelegate) m.invoke(v);
             } catch (NoSuchMethodException e) {

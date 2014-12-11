@@ -61,7 +61,7 @@ import com.mixpanel.android.util.StackBlurManager;
         }
 
         @Override
-        protected void onPostExecute(Void _) {
+        protected void onPostExecute(Void _ignored) {
             mListener.onBackgroundCaptured(mSourceImage, mCalculatedHighlightColor);
         }
 

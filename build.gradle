@@ -37,7 +37,6 @@ dependencies {
     compile "com.google.android.gms:play-services:3.1.+"
 }
 
-
 android.libraryVariants.all { variant ->
     task("generate${variant.name}Javadoc", type: Javadoc) {
         description "Generates Javadoc for $variant.name."
@@ -55,6 +54,14 @@ android.libraryVariants.all { variant ->
 
 android.buildTypes.all { buildType ->
     buildType.buildConfigField "String", "MIXPANEL_VERSION", "\"${project.properties.version}\""
+}
+
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
+    }
 }
 
 def isReleaseVersion() {
