@@ -1438,10 +1438,16 @@ public class MixpanelAPI {
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
             // Showing surveys is not supported before Jelly Bean
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Will not show survey, os version is too low.");
+                }
                 return;
             }
 
             if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Will not show survey, application isn't configured appropriately.");
+                }
                 return;
             }
 
@@ -1491,6 +1497,9 @@ public class MixpanelAPI {
 
         private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Will not show notifications, os version is too low.");
+                }
                 return;
             }
 
@@ -1502,6 +1511,9 @@ public class MixpanelAPI {
                     lock.lock();
                     try {
                         if (UpdateDisplayState.hasCurrentProposal()) {
+                            if (MPConfig.DEBUG) {
+                                Log.v(LOGTAG, "DisplayState is locked, will not show notifications.");
+                            }
                             return; // Already being used.
                         }
 
@@ -1510,11 +1522,17 @@ public class MixpanelAPI {
                             toShow = getNotificationIfAvailable();
                         }
                         if (null == toShow) {
+                            if (MPConfig.DEBUG) {
+                                Log.v(LOGTAG, "No notification available, will not show.");
+                            }
                             return; // Nothing to show
                         }
 
                         final InAppNotification.Type inAppType = toShow.getType();
                         if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+                            if (MPConfig.DEBUG) {
+                                Log.v(LOGTAG, "Application is not configured to show takeover notifications, none will be shown.");
+                            }
                             return; // Can't show due to config.
                         }
 
@@ -1531,6 +1549,9 @@ public class MixpanelAPI {
                             case MINI: {
                                 final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
                                 if (null == claimed) {
+                                    if (MPConfig.DEBUG) {
+                                        Log.v(LOGTAG, "Notification's display proposal was already consumed, no notification will be shown.");
+                                    }
                                     return; // Can't claim the display state
                                 }
                                 InAppFragment inapp = new InAppFragment();
@@ -1540,6 +1561,10 @@ public class MixpanelAPI {
                                     (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState()
                                 );
                                 inapp.setRetainInstance(true);
+
+                                if (MPConfig.DEBUG) {
+                                    Log.v(LOGTAG, "Attempting to show mini notification.");
+                                }
                                 FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
@@ -1547,6 +1572,10 @@ public class MixpanelAPI {
                             }
                             break;
                             case TAKEOVER: {
+                                if (MPConfig.DEBUG) {
+                                    Log.v(LOGTAG, "Sending intent for takeover notification.");
+                                }
+
                                 final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
@@ -1731,7 +1760,7 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI";
+    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 

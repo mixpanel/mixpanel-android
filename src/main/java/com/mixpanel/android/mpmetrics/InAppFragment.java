@@ -141,7 +141,7 @@ public class InAppFragment extends Fragment {
                         mParent.startActivity(viewIntent);
                         mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (ActivityNotFoundException e) {
-                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                        Log.i(LOGTAG, "User doesn't have an activity for notification URI " + uri);
                     }
                 }
 
@@ -259,5 +259,5 @@ public class InAppFragment extends Fragment {
     private boolean mCleanedUp;
 
     private static final String LOGTAG = "MixpanelAPI.InAppFragment";
-    private static final int MINI_REMOVE_TIME = 6000;
+    private static final int MINI_REMOVE_TIME = 10000;
 }

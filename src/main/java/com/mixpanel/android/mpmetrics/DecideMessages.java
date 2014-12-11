@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.util.Log;
+
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
@@ -65,6 +67,12 @@ import java.util.Set;
             }
         }
 
+        if (MPConfig.DEBUG) {
+            Log.v(LOGTAG, "New Decide content has become available. " +
+                    newSurveys.size() + " surveys and " +
+                    newNotifications.size() + " notifications have been added.");
+        }
+
         if (newContent && hasUpdatesAvailable() && null != mListener) {
             mListener.onNewResults();
         }
@@ -97,11 +105,18 @@ import java.util.Set;
 
     public synchronized InAppNotification getNotification(boolean replace) {
         if (mUnseenNotifications.isEmpty()) {
+            if (MPConfig.DEBUG) {
+                Log.v(LOGTAG, "No unseen notifications exist, none will be returned.");
+            }
             return null;
         }
         InAppNotification n = mUnseenNotifications.remove(0);
         if (replace) {
             mUnseenNotifications.add(mUnseenNotifications.size(), n);
+        } else {
+            if (MPConfig.DEBUG) {
+                Log.v(LOGTAG, "Recording notification " + n + " as seen.");
+            }
         }
         return n;
     }
