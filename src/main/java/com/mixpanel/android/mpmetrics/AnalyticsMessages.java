@@ -162,13 +162,13 @@ import java.util.Map;
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
+            Log.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
         }
     }
 
     private void logAboutMessageToMixpanel(String message, Throwable e) {
         if (MPConfig.DEBUG) {
-            Log.d(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")", e);
+            Log.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")", e);
         }
     }
 
@@ -338,7 +338,7 @@ import java.util.Map;
                     @Override
                     public void process(MixpanelAPI api) {
                         if (MPConfig.DEBUG) {
-                            Log.d(LOGTAG, "Using existing pushId " + registrationId);
+                            Log.v(LOGTAG, "Using existing pushId " + registrationId);
                         }
                         api.getPeople().setPushRegistrationId(registrationId);
                     }
