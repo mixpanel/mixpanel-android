@@ -90,28 +90,6 @@ import java.util.Map;
         mWorker.runMessage(m);
     }
 
-    /**
-     * Remove this when we eliminate the associated deprecated public ifc
-     */
-    public void setFlushInterval(final long milliseconds) {
-        final Message m = Message.obtain();
-        m.what = SET_FLUSH_INTERVAL;
-        m.obj = milliseconds;
-
-        mWorker.runMessage(m);
-    }
-
-    /**
-     * Remove this when we eliminate the associated deprecated public ifc
-     */
-    public void setDisableFallback(boolean disableIfTrue) {
-        final Message m = Message.obtain();
-        m.what = SET_DISABLE_FALLBACK;
-        m.obj = disableIfTrue;
-
-        mWorker.runMessage(m);
-    }
-
     public void installDecideCheck(final DecideMessages check) {
         final Message m = Message.obtain();
         m.what = INSTALL_DECIDE_CHECK;
@@ -249,18 +227,7 @@ import java.util.Map;
                 try {
                     int queueDepth = -1;
 
-                    if (msg.what == SET_FLUSH_INTERVAL) {
-                        final Long newIntervalObj = (Long) msg.obj;
-                        logAboutMessageToMixpanel("Changing flush interval to " + newIntervalObj);
-                        mFlushInterval = newIntervalObj.longValue();
-                        removeMessages(FLUSH_QUEUE);
-                    }
-                    else if (msg.what == SET_DISABLE_FALLBACK) {
-                        final Boolean disableState = (Boolean) msg.obj;
-                        logAboutMessageToMixpanel("Setting fallback to " + disableState);
-                        mDisableFallback = disableState.booleanValue();
-                    }
-                    else if (msg.what == ENQUEUE_PEOPLE) {
+                    if (msg.what == ENQUEUE_PEOPLE) {
                         final JSONObject message = (JSONObject) msg.obj;
 
                         logAboutMessageToMixpanel("Queuing people record for sending later");
@@ -547,9 +514,9 @@ import java.util.Map;
             }
 
             private MPDbAdapter mDbAdapter;
-            private long mFlushInterval; // XXX remove when associated deprecated APIs are removed
-            private boolean mDisableFallback; // XXX remove when associated deprecated APIs are removed
             private final DecideChecker mDecideChecker;
+            private final long mFlushInterval;
+            private final boolean mDisableFallback;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -591,9 +558,6 @@ import java.util.Map;
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
     private static int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
-
-    private static int SET_FLUSH_INTERVAL = 4; // XXX REMOVE when associated deprecated APIs are removed
-    private static int SET_DISABLE_FALLBACK = 10; // XXX REMOVE when associated deprecated APIs are removed
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
 

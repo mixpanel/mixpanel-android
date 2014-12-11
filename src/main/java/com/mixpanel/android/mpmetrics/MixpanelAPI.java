@@ -216,57 +216,35 @@ public class MixpanelAPI {
     }
 
     /**
-     * Sets the target frequency of messages to Mixpanel servers.
-     * If no calls to {@link #flush()} are made, the Mixpanel
-     * library attempts to send tracking information in batches at a rate
-     * that provides a reasonable compromise between battery life and liveness of data.
-     * Callers can override this value, for the whole application, by calling
-     * <tt>setFlushInterval</tt>.
+     * This call is a no-op, and will be removed in future versions.
      *
-     * If milliseconds is negative, Mixpanel will never flush the data automatically,
-     * and require callers to call {@link #flush()} to send data. This can have
-     * implications for storage and is not appropriate for most situations.
-     *
-     * @param context the execution context associated with this application, probably
-     *      the main application activity.
-     * @param milliseconds the target number of milliseconds between automatic flushes.
-     *      this value is advisory, actual flushes may be more or less frequent
      * @deprecated in 4.0.0, use com.mixpanel.android.MPConfig.FlushInterval application metadata instead
      */
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
         Log.i(
             LOGTAG,
-            "MixpanelAPI.setFlushInterval is deprecated.\n" +
+            "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
             "    To set a custom Mixpanel flush interval for your application, add\n" +
             "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
             "    to the <application> section of your AndroidManifest.xml."
         );
-        final AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
-        msgs.setFlushInterval(milliseconds);
     }
 
     /**
-     * By default, if the MixpanelAPI cannot contact the API server over HTTPS,
-     * it will attempt to contact the server via regular HTTP. To disable this
-     * behavior, call enableFallbackServer(context, false)
+     * This call is a no-op, and will be removed in future versions of the library.
      *
-     * @param context the execution context associated with this context.
-     * @param enableIfTrue if true, the library will fall back to using http
-     *      when https is unavailable.
      * @deprecated in 4.0.0, use com.mixpanel.android.MPConfig.EventsFallbackEndpoint, com.mixpanel.android.MPConfig.PeopleFallbackEndpoint, or com.mixpanel.android.MPConfig.DecideFallbackEndpoint instead
      */
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
         Log.i(
             LOGTAG,
-            "MixpanelAPI.enableFallbackServer is deprecated.\n" +
+            "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
             "    To enable fallback in your application, add\n" +
             "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
             "    to the <application> section of your AndroidManifest.xml."
         );
-        final AnalyticsMessages msgs = AnalyticsMessages.getInstance(context);
-        msgs.setDisableFallback(! enableIfTrue);
     }
 
     /**

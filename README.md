@@ -73,7 +73,6 @@ event binding UI in the Mixpanel web application. Events created and bound in th
 still be sent by the application, this directive just disables the emulator binding behavior. Use of
 the connection gesture on a physical device will still work for pairing with the editor.
 
-
 (either in the Android Emulator, or by using the connection gesture on physical devices) depend
 
  * Easier use of Proguard with the library
@@ -93,6 +92,13 @@ the connection gesture on a physical device will still work for pairing with the
 -keep class **.R$* {
     <fields>;
 }
+
+* The deprecated method setFlushInterval is now a no-op
+
+This method was deprecated in version 4.0, and now is a no-op. To change the flush
+interval for your application, use the com.mixpanel.android.MPConfig.FlushInterval
+meta-data tag in your manifest.
+
 ```
 
   Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds
