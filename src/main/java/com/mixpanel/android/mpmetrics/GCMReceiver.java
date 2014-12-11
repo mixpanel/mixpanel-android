@@ -12,7 +12,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
-import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
@@ -148,11 +147,11 @@ public class GCMReceiver extends BroadcastReceiver {
         final NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         final Notification notification;
         if (Build.VERSION.SDK_INT >= 16) {
-            notification = showNotificationSDK16OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+            notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
         } else if (Build.VERSION.SDK_INT >= 11) {
-            notification = showNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
+            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
         } else {
-            notification = showNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
+            notification = makeNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
         }
 
         notificationManager.notify(0, notification);
@@ -160,7 +159,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressWarnings("deprecation")
     @TargetApi(8)
-    private Notification showNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         n.setLatestEventInfo(context, title, message, intent);
@@ -169,7 +168,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressWarnings("deprecation")
     @TargetApi(11)
-    private Notification showNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    private Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationIcon).
                 setTicker(message).
@@ -185,7 +184,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressLint("NewApi")
     @TargetApi(16)
-    private Notification showNotificationSDK16OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    private Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationIcon).
                 setTicker(message).
