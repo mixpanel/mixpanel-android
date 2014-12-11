@@ -157,6 +157,8 @@ public class MixpanelAPI {
         mMessages.installDecideCheck(mDecideMessages);
 
         registerMixpanelActivityLifecycleCallbacks();
+
+        track("$app_open", null);
     }
 
     /**
