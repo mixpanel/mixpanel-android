@@ -163,6 +163,7 @@ public class SurveyActivity extends Activity {
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         SurveyActivity.this.startActivity(viewIntent);
+                        mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (ActivityNotFoundException e) {
                         Log.i(LOGTAG, "User doesn't have an activity for notification URI");
                     }

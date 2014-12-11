@@ -37,12 +37,13 @@ import com.mixpanel.android.R;
 @SuppressLint("ClickableViewAccessibility")
 public class InAppFragment extends Fragment {
 
-    public void setDisplayState(final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
+    public void setDisplayState(final MixpanelAPI mixpanel, final int stateId, final UpdateDisplayState.DisplayState.InAppNotificationState displayState) {
         // It would be better to pass in displayState to the only constructor, but
         // Fragments require a default constructor that is called when Activities recreate them.
         // This means that when the Activity recreates this Fragment (due to rotation, or
         // the Activity going away and coming back), mDisplayStateId and mDisplayState are not
         // initialized. Lifecycle methods should be aware of this case, and decline to show.
+        mMixpanel = mixpanel;
         mDisplayStateId = stateId;
         mDisplayState = displayState;
     }
@@ -51,9 +52,15 @@ public class InAppFragment extends Fragment {
     public void onAttach(Activity activity) {
         super.onAttach(activity);
 
+        mParent = activity;
+        if (null == mDisplayState) {
+            cleanUp();
+            return;
+        }
+
         // We have to manually clear these Runnables in onStop in case they exist, since they
         // do illegal operations when onSaveInstanceState has been called already.
-        mParent = activity;
+
         mHandler = new Handler();
         mRemover = new Runnable() {
             public void run() {
@@ -132,6 +139,7 @@ public class InAppFragment extends Fragment {
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         mParent.startActivity(viewIntent);
+                        mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (ActivityNotFoundException e) {
                         Log.i(LOGTAG, "User doesn't have an activity for notification URI");
                     }
@@ -239,6 +247,7 @@ public class InAppFragment extends Fragment {
         }
     }
 
+    private MixpanelAPI mMixpanel;
     private Activity mParent;
     private GestureDetector mDetector;
     private Handler mHandler;

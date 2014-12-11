@@ -808,7 +808,8 @@ public class MixpanelAPI {
 
         /**
          * Shows the given in app notification to the user. Display will occur just as if the
-         * notification was shown via showNotificationIfAvailable.
+         * notification was shown via showNotificationIfAvailable. In most cases, it is
+         * easier and more efficient to use showNotificationIfAvailable.
          *
          * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} to show
          *
@@ -816,6 +817,17 @@ public class MixpanelAPI {
          * that will be used to launch SurveyActivity for the takeover notification.
          */
         public void showGivenNotification(InAppNotification notif, Activity parent);
+
+        /**
+         * Sends an event to Mixpanel that includes the automatic properties associated
+         * with the given notification. In most cases this is not required, unless you're
+         * not showing notifications using the library-provided in views and activities.
+         *
+         * @param eventName the name to use when the event is tracked.
+         *
+         * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} associated with the event you'd like to track.
+         */
+        public void trackNotification(String eventName, InAppNotification notif);
 
         /**
          * Returns a Survey object if one is available and being held by the library, or null if
@@ -1194,8 +1206,8 @@ public class MixpanelAPI {
         @Override
         public void trackNotificationSeen(InAppNotification notif) {
             if(notif == null) return;
-            track("$campaign_delivery", notif.getCampaignProperties());
 
+            trackNotification("$campaign_delivery", notif);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
             final JSONObject notifProperties = notif.getCampaignProperties();
@@ -1256,6 +1268,11 @@ public class MixpanelAPI {
             if (notif != null) {
                 showGivenOrAvailableNotification(notif, parent);
             }
+        }
+
+        @Override
+        public void trackNotification(final String eventName, final InAppNotification notif) {
+            track(eventName, notif.getCampaignProperties());
         }
 
         @Override
@@ -1517,7 +1534,11 @@ public class MixpanelAPI {
                                     return; // Can't claim the display state
                                 }
                                 InAppFragment inapp = new InAppFragment();
-                                inapp.setDisplayState(intentId, (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState());
+                                inapp.setDisplayState(
+                                    MixpanelAPI.this,
+                                    intentId,
+                                    (UpdateDisplayState.DisplayState.InAppNotificationState) claimed.getDisplayState()
+                                );
                                 inapp.setRetainInstance(true);
                                 FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
