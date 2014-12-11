@@ -911,19 +911,19 @@ public class MixpanelAPI {
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
         /**
-         * @deprecated Use showSurveyIfAvailable() instead.
+         * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
          */
         @Deprecated
         public void showSurvey(Survey s, Activity parent);
 
         /**
-         * @deprecated Use getSurveyIfAvailable() instead.
+         * @deprecated in 4.1.0, Use getSurveyIfAvailable() instead.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks);
 
         /**
-         * @deprecated Use getSurveyIfAvailable() instead.
+         * @deprecated in 4.1.0, Use getSurveyIfAvailable() instead.
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
@@ -938,6 +938,8 @@ public class MixpanelAPI {
      * }
      *
      * To the {@code <application>} tag of your AndroidManifest.xml file.
+     *
+     * @deprecated in 4.1.0, use Manifest meta-data instead
      */
     @Deprecated
     public void logPosts() {
