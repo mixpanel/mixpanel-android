@@ -1404,7 +1404,7 @@ public class MixpanelAPI {
             mUpdatesListener.removeOnMixpanelUpdatesReceivedListener(listener);
         }
 
-        public JSONObject stdPeopleMessage(String actionType, Object properties)
+        private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
             final String distinctId = getDistinctId();

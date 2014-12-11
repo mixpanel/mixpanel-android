@@ -65,21 +65,21 @@ import android.util.Log;
         }
         // check regular permissions
 
-        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("com.google.android.c2dm.permission.RECEIVE", packageName)) {
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("com.google.android.c2dm.permission.RECEIVE", packageName)) {
             Log.w(LOGTAG, "Package does not have permission com.google.android.c2dm.permission.RECEIVE");
             Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"com.google.android.c2dm.permission.RECEIVE\" />");
             return false;
         }
 
-        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
             Log.w(LOGTAG, "Package does not have permission android.permission.INTERNET");
             Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.INTERNET\" />");
             return false;
         }
 
-        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.WAKE_LOCK", packageName)) {
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.WAKE_LOCK", packageName)) {
             Log.w(LOGTAG, "Package does not have permission android.permission.WAKE_LOCK");
             Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.WAKE_LOCK\" />");
@@ -87,7 +87,7 @@ import android.util.Log;
         }
 
         // This permission is only required on older devices
-        if(PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
             Log.i(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
             Log.i(LOGTAG, "Android versions below 4.1 require GET_ACCOUNTS to receive Mixpanel push notifications.\n" +
                     "Devices with later OS versions will still be able to receive messages, but if you'd like to support " +
