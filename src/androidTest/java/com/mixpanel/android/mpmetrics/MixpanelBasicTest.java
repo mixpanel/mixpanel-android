@@ -710,6 +710,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
+            /* package */ boolean sendAppOpen() {
+                return false;
+            }
+
+            @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
             }
