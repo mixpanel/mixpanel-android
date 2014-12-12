@@ -28,12 +28,6 @@ public class DecideFunctionalTest extends AndroidTestCase {
         editor.clear();
         editor.commit();
 
-        final ByteArrayOutputStream imageStream = new ByteArrayOutputStream();
-        final Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        final Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
-        testBitmap.compress(Bitmap.CompressFormat.JPEG, 50, imageStream);
-        final byte[] imageBytes = imageStream.toByteArray();
-
         mMockPreferences = new Future<SharedPreferences>() {
             @Override
             public boolean cancel(final boolean mayInterruptIfRunning) {
@@ -65,16 +59,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mMockPoster = new ServerMessage() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
-                synchronized (mExpectations) {
-                    if (endpointUrl.equals(mExpectations.expectUrl)) {
-                        return TestUtils.bytes(mExpectations.response);
-                    } else if (Pattern.matches("^http://mixpanel.com/Balok.{0,3}\\.jpg$", endpointUrl)){
-                        return imageBytes;
-                    } else {
-                        fail("Unexpected URL " + endpointUrl + " in MixpanelAPI");
-                    }
-                    return null;
-                }
+                return mExpectations.setExpectationsRequest(endpointUrl, nameValuePairs);
             }
         };
 
@@ -98,10 +83,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
     public void testDecideChecks() {
         // Should not make any requests on construction if the user has not been identified
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "ALWAYS WRONG";
-            mExpectations.response = "ALWAYS WRONG";
-        }
+        mExpectations.expect("ALWAYS WRONG", "ALWAYS WRONG");
+
         MixpanelAPI api = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testSurveyChecks") {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
@@ -125,15 +108,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
         assertNull(shouldBeNull);
 
         // Should make a request on identify
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
-            mExpectations.response = "{" +
-                    "\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}]," +
-                    "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]," +
-                    "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
-                    "}";
-            mExpectations.resultsFound = false;
-        }
+        mExpectations.expect(
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+             "{" +
+                  "\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}]," +
+                  "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]," +
+                  "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
+             "}"
+        );
         api.getPeople().identify("DECIDE CHECKS ID 1");
         mExpectations.checkExpectations();
 
@@ -149,15 +131,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
         assertNull(api.getPeople().getNotificationIfAvailable());
 
         // We should run a new check on every flush (right before the flush)
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
-            mExpectations.response = "{" +
+        mExpectations.expect(
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+            "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
                     "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
-                    "}";
-            mExpectations.resultsFound = false;
-        }
+            "}"
+         );
         api.flush();
         mExpectations.checkExpectations();
 
@@ -172,30 +153,28 @@ public class DecideFunctionalTest extends AndroidTestCase {
         assertNull(api.getPeople().getNotificationIfAvailable());
 
         // We should check, but IGNORE repeated objects when we see them come through
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1";
-            mExpectations.response = "{" +
+        mExpectations.expect(
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+            "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
                     "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
-                    "}";
-            mExpectations.resultsFound = false;
-        }
+            "}"
+        );
         api.flush();
         mExpectations.checkExpectations();
         assertNull(api.getPeople().getSurveyIfAvailable());
         assertNull(api.getPeople().getNotificationIfAvailable());
 
         // Seen never changes, even if we re-identify
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2";
-            mExpectations.response = "{" +
+        mExpectations.expect(
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2",
+            "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
                     "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
-                    "}";
-            mExpectations.resultsFound = false;
-        }
+            "}"
+        );
         api.getPeople().identify("DECIDE CHECKS ID 2");
         api.flush();
 
@@ -215,17 +194,16 @@ public class DecideFunctionalTest extends AndroidTestCase {
         editor.commit();
 
         // We should run a check on construction if we are constructed with a people distinct id
-        synchronized (mExpectations) {
-            mExpectations.expectUrl = "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+IDENTIFIED+ON+CONSTRUCTION&distinct_id=Present+Before+Construction";
-            mExpectations.response = "{" +
+        mExpectations.expect(
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+IDENTIFIED+ON+CONSTRUCTION&distinct_id=Present+Before+Construction",
+            "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
                     "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
-                    "}";
-            mExpectations.resultsFound = false;
-        }
+            "}"
+        );
 
-        MixpanelAPI api = new MixpanelAPI(getContext(), mMockPreferences, useToken) {
+        MixpanelAPI api = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, useToken) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mMockMessages;
@@ -246,9 +224,22 @@ public class DecideFunctionalTest extends AndroidTestCase {
     }
 
     private static class Expectations {
-        public String expectUrl = null;
-        public String response = null;
-        public boolean resultsFound = false;
+        public Expectations() {
+            final ByteArrayOutputStream imageStream = new ByteArrayOutputStream();
+            final Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+            final Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
+            testBitmap.compress(Bitmap.CompressFormat.JPEG, 50, imageStream);
+            imageBytes = imageStream.toByteArray();
+        }
+
+        public synchronized void expect(String url, String response) {
+            mExpectUrl = url;
+            mResponse = response;
+            badUrl = null;
+            badNameValuePairs = null;
+            mResultsFound = false;
+            resultsBad = false;
+        }
 
         public void checkExpectations() {
             final long startWaiting = System.currentTimeMillis();
@@ -256,7 +247,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
             while (true) {
                 try {
                     synchronized (this) {
-                        if (this.resultsFound) break;
+                        if (mResultsFound) {
+                            if (resultsBad) {
+                                fail("Unexpected URL " + badUrl + " in MixpanelAPI (expected " + mExpectUrl + ")\n" +
+                                        "Got params " + badNameValuePairs);
+                            }
+
+                            break;
+                        }
                         this.wait(timeout);
                     }
                 } catch (InterruptedException e) {
@@ -270,9 +268,35 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
         }
 
-        public synchronized String toString() {
-            return "Expectations(" + expectUrl + ", " + response + ", " + resultsFound + ")";
+        public synchronized byte[] setExpectationsRequest(final String endpointUrl, List<NameValuePair> nameValuePairs) {
+            if (endpointUrl.equals(mExpectUrl)) {
+                return TestUtils.bytes(mResponse);
+            } else if (Pattern.matches("^http://mixpanel.com/Balok.{0,3}\\.jpg$", endpointUrl)) {
+                return imageBytes;
+            } else {
+                badUrl = endpointUrl;
+                badNameValuePairs = nameValuePairs;
+                resultsBad = true;
+                return "{}".getBytes();
+            }
         }
+
+        public synchronized void resolve() {
+            mResultsFound = true;
+            this.notify();
+        }
+
+        public synchronized String toString() {
+            return "Expectations(" + mExpectUrl + ", " + mResponse + ", " + mResultsFound + ")";
+        }
+
+        private String mExpectUrl = null;
+        private String mResponse = null;
+        private String badUrl = null;
+        private List<NameValuePair> badNameValuePairs = null;
+        private boolean mResultsFound = false;
+        private boolean resultsBad = false;
+        private byte[] imageBytes;
     }
 
     private class MockMessages extends DecideMessages {
@@ -283,10 +307,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         @Override
         public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings) {
             super.reportResults(newSurveys, newNotifications, newBindings);
-            synchronized (mExpectations) {
-                mExpectations.resultsFound = true;
-                mExpectations.notify();
-            }
+            mExpectations.resolve();
         }
     }
 

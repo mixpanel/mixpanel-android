@@ -28,5 +28,10 @@ public class TestUtils {
 
             return super.getPersistentIdentity(context, referrerPreferences, token);
         }
+
+        @Override
+        /* package */ boolean sendAppOpen() {
+            return false;
+        }
     }
 }

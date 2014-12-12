@@ -158,7 +158,9 @@ public class MixpanelAPI {
 
         registerMixpanelActivityLifecycleCallbacks();
 
-        track("$app_open", null);
+        if (sendAppOpen()) {
+            track("$app_open", null);
+        }
     }
 
     /**
@@ -977,9 +979,8 @@ public class MixpanelAPI {
      * This function is automatically called when the library is initialized unless you explicitly
      * set com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      */
-    /* package */
     @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-    void registerMixpanelActivityLifecycleCallbacks() {
+    /* package */ void registerMixpanelActivityLifecycleCallbacks() {
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API &&
                 mConfig.getAutoShowMixpanelUpdates()) {
             if (mContext.getApplicationContext() instanceof Application) {
@@ -1070,6 +1071,10 @@ public class MixpanelAPI {
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
+    }
+
+    /* package */ boolean sendAppOpen() {
+        return !mConfig.getDisableAppOpenEvent();
     }
 
     ///////////////////////

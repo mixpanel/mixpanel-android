@@ -57,6 +57,7 @@ public class MPConfig {
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
         mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
+        mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", false);
 
          // Disable if EITHER of these is present and false, otherwise enable
         boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -115,6 +116,7 @@ public class MPConfig {
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
+                "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
                 "    DisableEmulatorUIBinding " + getDisableEmulatorBindingUI() + "\n" +
                 "    EnableDebugLogging " + DEBUG + "\n" +
@@ -155,6 +157,10 @@ public class MPConfig {
 
     public boolean getDisableEmulatorBindingUI() {
         return mDisableEmulatorBindingUI;
+    }
+
+    public boolean getDisableAppOpenEvent() {
+        return mDisableAppOpenEvent;
     }
 
     public boolean getTestMode() {
@@ -230,6 +236,7 @@ public class MPConfig {
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;
     private final boolean mDisableEmulatorBindingUI;
+    private final boolean mDisableAppOpenEvent;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;

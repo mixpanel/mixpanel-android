@@ -377,6 +377,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
             public String getDecideEndpoint() {
                 return "DECIDE_ENDPOINT";
             }
+
+            @Override
+            public boolean getDisableAppOpenEvent() { return true; }
         };
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
@@ -825,6 +828,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", true);
+        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
 
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EVENTS FALLBACK ENDPOINT");
@@ -861,6 +865,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(true, testConfig.getDisableFallback());
         assertEquals(true, testConfig.getDisableEmulatorBindingUI());
         assertEquals(true, testConfig.getDisableGestureBindingUI());
+        assertEquals(true, testConfig.getDisableAppOpenEvent());
         assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
         assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
