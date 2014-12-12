@@ -18,7 +18,7 @@ android {
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
         // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
-        minSdkVersion 8
+        minSdkVersion 9
         targetSdkVersion 21
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
@@ -34,7 +34,7 @@ android {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    compile "com.google.android.gms:play-services:3.1.+"
+    compile "com.google.android.gms:play-services:[3.1,)"
 }
 
 android.libraryVariants.all { variant ->
@@ -81,7 +81,6 @@ if (isReleaseVersion()) {
     }
 }
 
-
 uploadArchives {
     configuration = configurations.archives
 
@@ -122,7 +121,7 @@ uploadArchives {
             pom.dependencies*.optional = true
         }
 
-        if (isReleaseVersion()) {
+        if (isReleaseVersion() && project.hasProperty("sonatypeUsername")) {
             /**
              * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
              * with the following properties. You'll need the mixpanel.key file and then import it using GnuPG
@@ -140,9 +139,7 @@ uploadArchives {
                 MavenDeployment deployment -> signing.signPom(deployment)
             }
             repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                if (project.hasProperty("sonatypeOssUsername")) {
-                    authentication(userName: sonatypeUsername, password: sonatypePassword)
-                }
+                authentication(userName: sonatypeUsername, password: sonatypePassword)
             }
         } else {
             repository(url:'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath)

@@ -105,7 +105,8 @@ meta-data tag in your manifest.
   of your application.
 
 * The minimum Android OS version necessary for surveys, in app notifications, and dynamic event binding
-  has been increased to JellyBean/API 16.
+  has been increased to JellyBean/API 16. The minimum OS version to use basic tracking features
+  has been increased to Gingerbread/API 9.
 
 #### v4.4.1
 
