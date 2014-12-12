@@ -466,9 +466,8 @@ public class MixpanelAPI {
     /**
      * Erase all currently registered superProperties.
      *
-     * <p>Future tracking calls to Mixpanel (even those already queued up but not
-     * yet sent to Mixpanel servers) will not be associated with the superProperties registered
-     * before this call was made.
+     * <p>Future tracking calls to Mixpanel will not contain the specific
+     * superProperties registered before the clearSuperProperties method was called.
      *
      * <p>To remove a single superProperty, use {@link #unregisterSuperProperty(String)}
      *
