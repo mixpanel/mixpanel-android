@@ -203,7 +203,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
             "}"
         );
 
-        MixpanelAPI api = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, useToken) {
+        MixpanelAPI api = new MixpanelAPI(getContext(), mMockPreferences, useToken) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mMockMessages;
@@ -212,6 +212,11 @@ public class DecideFunctionalTest extends AndroidTestCase {
             @Override
             DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
                 return new MockMessages(token, listener, binder);
+            }
+
+            @Override
+            boolean sendAppOpen() {
+                return false;
             }
         };
 
