@@ -1002,6 +1002,18 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metrics.alias("new id", "old id");
     }
 
+    public void testClearDistinctId() {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Logout Test Token");
+
+        metrics.identify("USER_ID");
+        String setId = metrics.getDistinctId();
+        assertEquals("USER_ID", setId);
+
+        metrics.clearDistincId();
+        setId = metrics.getDistinctId();
+        assertNotSame("USER_ID", setId);
+    }
+
     private Future<SharedPreferences> mMockPreferences;
 
     private static final int POLL_WAIT_SECONDS = 5;
