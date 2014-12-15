@@ -417,6 +417,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
          * Send a snapshot response, with crawled views and screenshot image, to the connected web UI.
          */
         private void sendSnapshot(JSONObject message) {
+            final long startSnapshot = System.currentTimeMillis();
             try {
                 final JSONObject payload = message.getJSONObject("payload");
                 if (payload.has("config")) {
@@ -449,6 +450,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     writer.flush();
                     mSnapshot.snapshots(mEditState, out);
                 }
+
+                final long snapshotTime = System.currentTimeMillis() - startSnapshot;
+                writer.write(",\"snapshot_time_millis\": ");
+                writer.write(Long.toString(snapshotTime));
+
                 writer.write("}"); // } payload
                 writer.write("}"); // } whole message
             } catch (IOException e) {
@@ -564,6 +570,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             synchronized (mEditorEventBindings) {
                 mEditorEventBindings.clear();
             }
+
+            // Free (or make available) snapshot memory
+            mSnapshot = null;
 
             updateEditState();
         }

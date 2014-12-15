@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -44,6 +45,7 @@ import java.util.concurrent.TimeoutException;
         mProperties = properties;
         mIdsToNames = idsToNames;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
+        mRootViewFinder = new RootViewFinder();
     }
 
     /**
@@ -52,8 +54,8 @@ import java.util.concurrent.TimeoutException;
      * snapshotted. Given stream out will be written on the calling thread.
      */
     public void snapshots(UIThreadSet<Activity> liveActivities, OutputStream out) throws IOException {
-        final RootViewFinder finder = new RootViewFinder(liveActivities);
-        final FutureTask<List<RootViewInfo>> infoFuture = new FutureTask<List<RootViewInfo>>(finder);
+        mRootViewFinder.findInActivities(liveActivities);
+        final FutureTask<List<RootViewInfo>> infoFuture = new FutureTask<List<RootViewInfo>>(mRootViewFinder);
         mMainThreadHandler.post(infoFuture);
 
         final OutputStreamWriter writer = new OutputStreamWriter(out);
@@ -87,7 +89,7 @@ import java.util.concurrent.TimeoutException;
                 writer.write(",");
                 writer.write("\"screenshot\":");
                 writer.flush();
-                writeScreenshot(info.screenshot, out);
+                info.screenshot.writeBitmapJSON(Bitmap.CompressFormat.PNG, 100, out);
                 writer.write("}");
             }
             writer.write("]");
@@ -206,22 +208,6 @@ import java.util.concurrent.TimeoutException;
         }
     }
 
-    // Writes a QUOTED, Base64 string to the given Writer, or the string "null" if no bitmap could be written.
-    private void writeScreenshot(Bitmap screenshot, OutputStream out) throws IOException {
-        // We could get a null or zero px bitmap if the rootView hasn't been measured
-        // appropriately, or we grab it before layout.
-        // This is ok, and we should handle it gracefully.
-        if (null != screenshot && screenshot.getWidth() > 0 && screenshot.getHeight() > 0) {
-            out.write('"');
-            final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
-            screenshot.compress(Bitmap.CompressFormat.PNG, 100, imageOut);
-            imageOut.flush();
-            out.write('"');
-        } else {
-            out.write("null".getBytes());
-        }
-    }
-
     private void addProperties(JsonWriter j, View v)
         throws IOException {
         final Class<?> viewClass = v.getClass();
@@ -242,15 +228,20 @@ import java.util.concurrent.TimeoutException;
     }
 
     private static class RootViewFinder implements Callable<List<RootViewInfo>> {
-        public RootViewFinder(final UIThreadSet<Activity> liveActivities) {
-            mLiveActivities = liveActivities;
+        public RootViewFinder() {
             mDisplayMetrics = new DisplayMetrics();
             mRootViews = new ArrayList<RootViewInfo>();
-            mScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            mCachedBitmap = new CachedBitmap();
+        }
+
+        public void findInActivities(UIThreadSet<Activity> liveActivities) {
+            mLiveActivities = liveActivities;
         }
 
         @Override
         public List<RootViewInfo> call() throws Exception {
+            Debug.startMethodTracing("ViewSnapshot_call"); // TODO
+
             mRootViews.clear();
 
             final Set<Activity> liveActivities = mLiveActivities.getAll();
@@ -269,6 +260,7 @@ import java.util.concurrent.TimeoutException;
                 takeScreenshot(info);
             }
 
+            Debug.stopMethodTracing(); // TODO
             return mRootViews;
         }
 
@@ -309,7 +301,6 @@ import java.util.concurrent.TimeoutException;
             }
 
             float scale = 1.0f;
-            Bitmap bitmap = null;
             if (null != rawBitmap) {
                 final int rawDensity = rawBitmap.getDensity();
 
@@ -323,17 +314,7 @@ import java.util.concurrent.TimeoutException;
                 final int destHeight = (int) ((rawBitmap.getHeight() * scale) + 0.5);
 
                 if (rawWidth > 0 && rawHeight > 0 && destWidth > 0 && destHeight > 0) {
-                    try {
-                        bitmap = Bitmap.createBitmap(destWidth, destHeight, Bitmap.Config.RGB_565);
-
-                        if (null != bitmap) {
-                            bitmap.setDensity(mClientDensity);
-                            final Canvas scaledCanvas = new Canvas(bitmap);
-                            scaledCanvas.drawBitmap(rawBitmap, 0, 0, mScalePaint);
-                        }
-                    } catch (OutOfMemoryError e) {
-                        bitmap = null;
-                    }
+                    mCachedBitmap.recreate(destWidth, destHeight, mClientDensity, rawBitmap);
                 }
             }
 
@@ -341,15 +322,59 @@ import java.util.concurrent.TimeoutException;
                 rootView.setDrawingCacheEnabled(false);
             }
             info.scale = scale;
-            info.screenshot = bitmap;
+            info.screenshot = mCachedBitmap;
         }
 
-        private final UIThreadSet<Activity> mLiveActivities;
+        private Bitmap mResultBitmap;
+        private UIThreadSet<Activity> mLiveActivities;
         private final List<RootViewInfo> mRootViews;
         private final DisplayMetrics mDisplayMetrics;
-        private final Paint mScalePaint;
+        private final CachedBitmap mCachedBitmap;
 
         private final int mClientDensity = DisplayMetrics.DENSITY_DEFAULT;
+    }
+
+    private static class CachedBitmap {
+        public CachedBitmap() {
+            mPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            mCached = null;
+        }
+
+        public synchronized void recreate(int width, int height, int destDensity, Bitmap source) {
+            if (null == mCached || mCached.getWidth() != width || mCached.getHeight() != height) {
+                try {
+                    mCached = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+                } catch (OutOfMemoryError e) {
+                    mCached = null;
+                }
+
+                if (null != mCached) {
+                    mCached.setDensity(destDensity);
+                }
+            }
+
+            if (null != mCached) {
+                final Canvas scaledCanvas = new Canvas(mCached);
+                scaledCanvas.drawBitmap(source, 0, 0, mPaint);
+            }
+        }
+
+        // Writes a QUOTED base64 string (or the string null) to the output stream
+        public synchronized void writeBitmapJSON(Bitmap.CompressFormat format, int quality, OutputStream out)
+            throws IOException {
+            if (null == mCached || mCached.getWidth() == 0 || mCached.getHeight() == 0) {
+                out.write("null".getBytes());
+            } else {
+                out.write('"');
+                final Base64OutputStream imageOut = new Base64OutputStream(out, Base64.NO_WRAP);
+                mCached.compress(Bitmap.CompressFormat.PNG, 100, imageOut);
+                imageOut.flush();
+                out.write('"');
+            }
+        }
+
+        private Bitmap mCached;
+        private final Paint mPaint;
     }
 
     private static class RootViewInfo {
@@ -362,10 +387,11 @@ import java.util.concurrent.TimeoutException;
 
         public final String activityName;
         public final View rootView;
-        public Bitmap screenshot;
+        public CachedBitmap screenshot;
         public float scale;
     }
 
+    private final RootViewFinder mRootViewFinder;
     private final List<PropertyDescription> mProperties;
     private final SparseArray<String> mIdsToNames;
     private final Handler mMainThreadHandler;
