@@ -7,8 +7,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /* package */ class Caller {
-
-    public Caller(String methodName, Object[] methodArgs, Class resultType) {
+    public Caller(Class targetClass, String methodName, Object[] methodArgs, Class resultType)
+        throws NoSuchMethodException {
         mMethodName = methodName;
 
         // TODO if this is a bitmap, we might be hogging a lot of memory here.
@@ -21,6 +21,13 @@ import java.lang.reflect.Method;
         for (int i = 0; i < mMethodArgs.length; i++) {
             mMethodTypes[i] = mMethodArgs[i].getClass();
         }
+
+        mTargetMethod = pickMethod(targetClass);
+        mTargetClass = mTargetMethod.getDeclaringClass();
+        if (null == mTargetClass) {
+            throw new NoSuchMethodException("Method " + targetClass.getName() + "." + mMethodName + " doesn't exit");
+        }
+
     }
 
     @Override
@@ -33,39 +40,15 @@ import java.lang.reflect.Method;
     }
 
     public Object applyMethod(View target) {
-        final Class klass = target.getClass();
-        for (Method method : klass.getMethods()) {
-            final String foundName = method.getName();
-            final Class[] params = method.getParameterTypes();
-
-            if (!foundName.equals(mMethodName) || params.length != mMethodArgs.length) {
-                continue;
-            }
-
-            final Class<?> assignType = assignableArgType(mMethodResultType);
-            final Class<?> resultType = assignableArgType(method.getReturnType());
-            if (! assignType.isAssignableFrom(resultType)) {
-                continue;
-            }
-
-            boolean assignable = true;
-            for (int i = 0; i < params.length && assignable; i++) {
-                final Class<?> argumentType = assignableArgType(mMethodTypes[i]);
-                final Class<?> paramType = assignableArgType(params[i]);
-                assignable = paramType.isAssignableFrom(argumentType);
-            }
-
-            if (! assignable) {
-                continue;
-            }
-
+        final Class<?> klass = target.getClass();
+        if (null != mTargetMethod && mTargetClass.isAssignableFrom(klass)) {
             try {
-                return method.invoke(target, mMethodArgs);
+                return mTargetMethod.invoke(target, mMethodArgs);
             } catch (IllegalAccessException e) {
                 // OK- we may have hit a private variant of an otherwise public method.
                 // Keep looking for the "real" method we want.
             } catch (InvocationTargetException e) {
-                Log.e(LOGTAG, "Method " + method.getName() + " threw an exception", e);
+                Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " threw an exception", e);
                 return null;
             }
         }
@@ -93,10 +76,44 @@ import java.lang.reflect.Method;
         return type;
     }
 
+    private Method pickMethod(Class klass) {
+        for (Method method : klass.getMethods()) {
+            final String foundName = method.getName();
+            final Class[] params = method.getParameterTypes();
+
+            if (!foundName.equals(mMethodName) || params.length != mMethodArgs.length) {
+                continue;
+            }
+
+            final Class<?> assignType = assignableArgType(mMethodResultType);
+            final Class<?> resultType = assignableArgType(method.getReturnType());
+            if (! assignType.isAssignableFrom(resultType)) {
+                continue;
+            }
+
+            boolean assignable = true;
+            for (int i = 0; i < params.length && assignable; i++) {
+                final Class<?> argumentType = assignableArgType(mMethodTypes[i]);
+                final Class<?> paramType = assignableArgType(params[i]);
+                assignable = paramType.isAssignableFrom(argumentType);
+            }
+
+            if (! assignable) {
+                continue;
+            }
+
+            return method;
+        }
+
+        return null;
+    }
+
     private final String mMethodName;
     private final Object[] mMethodArgs;
     private final Class[] mMethodTypes;
-    private final Class mMethodResultType;
+    private final Class<?> mMethodResultType;
+    private final Class<?> mTargetClass;
+    private final Method mTargetMethod;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelABTest.Caller";

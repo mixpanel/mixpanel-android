@@ -9,12 +9,13 @@ package com.mixpanel.android.viewcrawler;
         mMutatorName = mutatorName;
     }
 
-    public Caller makeMutator(Object[] methodArgs) {
+    public Caller makeMutator(Object[] methodArgs)
+        throws NoSuchMethodException {
         if (null == mMutatorName) {
             return null;
         }
 
-        return new Caller(mMutatorName, methodArgs, Void.TYPE);
+        return new Caller(this.targetClass, mMutatorName, methodArgs, Void.TYPE);
     }
 
     @Override

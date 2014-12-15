@@ -8,7 +8,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -16,6 +15,7 @@ import android.util.Base64OutputStream;
 import android.util.DisplayMetrics;
 import android.util.JsonWriter;
 import android.util.Log;
+import android.util.LruCache;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,6 +46,7 @@ import java.util.concurrent.TimeoutException;
         mIdsToNames = idsToNames;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
         mRootViewFinder = new RootViewFinder();
+        mClassnameCache = new ClassNameCache(255);
     }
 
     /**
@@ -172,9 +173,9 @@ import java.util.concurrent.TimeoutException;
         j.beginArray();
         Class klass = view.getClass();
         do {
-            j.value(klass.getCanonicalName());
+            j.value(mClassnameCache.get(klass));
             klass = klass.getSuperclass();
-        } while (klass != Object.class);
+        } while (klass != Object.class && klass != null);
         j.endArray();
 
         addProperties(j, view);
@@ -227,6 +228,16 @@ import java.util.concurrent.TimeoutException;
         }
     }
 
+    private static class ClassNameCache extends LruCache<Class, String> {
+        public ClassNameCache(int maxSize) {
+            super(maxSize);
+        }
+
+        protected String create(Class klass) {
+            return klass.getCanonicalName();
+        }
+    }
+
     private static class RootViewFinder implements Callable<List<RootViewInfo>> {
         public RootViewFinder() {
             mDisplayMetrics = new DisplayMetrics();
@@ -240,8 +251,6 @@ import java.util.concurrent.TimeoutException;
 
         @Override
         public List<RootViewInfo> call() throws Exception {
-            Debug.startMethodTracing("ViewSnapshot_call"); // TODO
-
             mRootViews.clear();
 
             final Set<Activity> liveActivities = mLiveActivities.getAll();
@@ -260,7 +269,6 @@ import java.util.concurrent.TimeoutException;
                 takeScreenshot(info);
             }
 
-            Debug.stopMethodTracing(); // TODO
             return mRootViews;
         }
 
@@ -394,7 +402,10 @@ import java.util.concurrent.TimeoutException;
     private final RootViewFinder mRootViewFinder;
     private final List<PropertyDescription> mProperties;
     private final SparseArray<String> mIdsToNames;
+    private final ClassNameCache mClassnameCache;
     private final Handler mMainThreadHandler;
+
+    private static final int MAX_CLASS_NAME_CACHE_SIZE = 255;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ViewSnapshot";

@@ -119,6 +119,8 @@ import java.util.Map;
             }
 
             return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+        } catch (NoSuchMethodException e) {
+            throw new BadInstructionsException("Can't create property mutator", e);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
@@ -309,7 +311,7 @@ import java.util.Map;
                 final String accessorName = accessorConfig.getString("selector");
                 final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                 final Class accessorResultType = Class.forName(accessorResultTypeName);
-                accessor = new Caller(accessorName, NO_PARAMS, accessorResultType);
+                accessor = new Caller(targetClass, accessorName, NO_PARAMS, accessorResultType);
             }
 
             final String mutatorName;
@@ -321,6 +323,8 @@ import java.util.Map;
             }
 
             return new PropertyDescription(propName, targetClass, accessor, mutatorName);
+        } catch (NoSuchMethodException e) {
+            throw new BadInstructionsException("Can't create property reader", e);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't read property JSON", e);
         } catch (ClassNotFoundException e) {
