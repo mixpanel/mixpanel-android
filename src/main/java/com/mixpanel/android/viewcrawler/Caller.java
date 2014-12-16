@@ -41,15 +41,13 @@ import java.lang.reflect.Method;
 
     public Object applyMethod(View target) {
         final Class<?> klass = target.getClass();
-        if (null != mTargetMethod && mTargetClass.isAssignableFrom(klass)) {
+        if (mTargetClass.isAssignableFrom(klass)) {
             try {
                 return mTargetMethod.invoke(target, mMethodArgs);
             } catch (IllegalAccessException e) {
-                // OK- we may have hit a private variant of an otherwise public method.
-                // Keep looking for the "real" method we want.
+                Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " appears not to be public", e);
             } catch (InvocationTargetException e) {
                 Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " threw an exception", e);
-                return null;
             }
         }
 
