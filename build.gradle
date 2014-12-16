@@ -54,8 +54,11 @@ android.libraryVariants.all { variant ->
             '**/FadingImageView.java',
             '**/InAppFragment.java',
             '**/MiniCircleImageView.java',
+            '**/SurveyActivity.java',
             '**/SurveyChoiceView.java',
+            '**/SurveyCallbacks.java',
             '**/TrackingDebug.java',
+            '**/Tweaks.java', // Someday this will be exposed to the public
             '**/UpdateDisplayState.java',
             '**/UpdatesFromMixpanel.java',
             '**/ViewCrawler.java'

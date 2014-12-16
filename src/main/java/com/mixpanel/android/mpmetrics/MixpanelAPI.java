@@ -1186,21 +1186,22 @@ public class MixpanelAPI {
         @Override
         @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks) {
-            if (null == callbacks) {
-                return;
-            }
-
-            final Survey found = getSurveyIfAvailable();
-            callbacks.foundSurvey(found);
+            Log.i(
+                    LOGTAG,
+                    "MixpanelAPI.checkForSurvey is deprecated. Calling is now a no-op.\n" +
+                     "    to query surveys, call MixpanelAPI.getPeople().getSurveyIfAvailable()"
+            );
         }
 
         @Override
         @Deprecated
         public void checkForSurvey(final SurveyCallbacks callbacks,
                 final Activity parentActivity) {
-            // Originally this call pre-computed UI chrome while it was waiting for the check to run.
-            // Since modern checks run asynchronously, it's useless nowdays.
-            checkForSurvey(callbacks);
+            Log.i(
+                    LOGTAG,
+                    "MixpanelAPI.checkForSurvey is deprecated. Calling is now a no-op.\n" +
+                            "    to query surveys, call MixpanelAPI.getPeople().getSurveyIfAvailable()"
+            );
         }
 
         @Override

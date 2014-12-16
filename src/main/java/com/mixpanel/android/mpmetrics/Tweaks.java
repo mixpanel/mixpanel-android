@@ -30,7 +30,7 @@ import java.util.Map;
  */
 public class Tweaks {
 
-    public interface TweakChangeCallback {
+    /* package */ interface TweakChangeCallback { // TO BE MADE PUBLIC WHEN THESE FEATURES ARE EXPOSED
         public void onChange(Object value);
     }
 
