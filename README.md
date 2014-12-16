@@ -93,11 +93,11 @@ the connection gesture on a physical device will still work for pairing with the
     <fields>;
 }
 
-* The deprecated method setFlushInterval is now a no-op
+* The deprecated methods setFlushInterval and checkForSurvey are now no-ops
 
 This method was deprecated in version 4.0, and now is a no-op. To change the flush
 interval for your application, use the com.mixpanel.android.MPConfig.FlushInterval
-meta-data tag in your manifest.
+meta-data tag in your manifest. To get available surveys, call getSurveyIfAvailable()
 
 ```
 
