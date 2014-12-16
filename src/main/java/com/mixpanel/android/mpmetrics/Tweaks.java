@@ -1,4 +1,4 @@
-package com.mixpanel.android.viewcrawler;
+package com.mixpanel.android.mpmetrics;
 
 import android.os.Handler;
 import android.os.Looper;

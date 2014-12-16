@@ -20,6 +20,7 @@ import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
 
 import org.json.JSONArray;

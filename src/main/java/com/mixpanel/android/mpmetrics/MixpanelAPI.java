@@ -20,7 +20,6 @@ import android.util.Log;
 import com.mixpanel.android.R;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 import com.mixpanel.android.viewcrawler.TrackingDebug;
-import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;

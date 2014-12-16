@@ -2,7 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import android.test.AndroidTestCase;
 
-import com.mixpanel.android.viewcrawler.Tweaks;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;

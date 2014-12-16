@@ -2,6 +2,8 @@ package com.mixpanel.android.viewcrawler;
 
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.mpmetrics.Tweaks;
+
 import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 
