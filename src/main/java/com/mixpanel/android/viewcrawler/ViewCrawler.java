@@ -433,11 +433,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 sendError(e.getMessage());
                 return;
             }
-            // ELSE config is valid:
+
             if (null == mSnapshot) {
-                sendError("No snapshot configuration was sent.");
-                Log.w(LOGTAG, "Mixpanel editor is misconfigured, sent a snapshot request without configuration.");
+                sendError("No snapshot configuration (or a malformed snapshot configuration) was sent.");
+                Log.w(LOGTAG, "Mixpanel editor is misconfigured, sent a snapshot request without a valid configuration.");
+                return;
             }
+            // ELSE config is valid:
 
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);

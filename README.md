@@ -116,9 +116,9 @@ meta-data tag in your manifest. To get available surveys, call getSurveyIfAvaila
    include Google Play Services, add the following to your
    build.gradle file:
 
-   ```
+```
    compile "com.google.android.gms:play-services:3.1+" // Any version above 3.1 will work
-   ```
+```
 
 #### v4.3.1
 

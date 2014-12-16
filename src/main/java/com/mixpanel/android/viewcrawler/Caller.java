@@ -23,11 +23,11 @@ import java.lang.reflect.Method;
         }
 
         mTargetMethod = pickMethod(targetClass);
-        mTargetClass = mTargetMethod.getDeclaringClass();
-        if (null == mTargetClass) {
+        if (null == mTargetMethod) {
             throw new NoSuchMethodException("Method " + targetClass.getName() + "." + mMethodName + " doesn't exit");
         }
 
+        mTargetClass = mTargetMethod.getDeclaringClass();
     }
 
     @Override
