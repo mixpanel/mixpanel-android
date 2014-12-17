@@ -41,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -440,6 +441,10 @@ public class MixpanelAPI {
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
      }
+
+    public void clearDistincId() {
+        identify(UUID.randomUUID().toString());
+    }
 
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
