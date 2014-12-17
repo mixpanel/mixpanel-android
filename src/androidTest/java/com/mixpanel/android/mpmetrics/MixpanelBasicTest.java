@@ -85,7 +85,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         String generatedId1 = mixpanel.getDistinctId();
         assertTrue(generatedId1 != null);
 
-        mixpanel.clearPreferences();
+        mixpanel.reset();
         String generatedId2 = mixpanel.getDistinctId();
         assertTrue(generatedId2 != null);
         assertTrue(generatedId1 != generatedId2);
@@ -156,7 +156,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
         try {
-            mixpanel.clearPreferences();
+            mixpanel.reset();
             assertFalse(explodingMessages.isDead());
 
             mixpanel.track("event1", null);
@@ -674,7 +674,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testPersistence() {
         MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
-        metricsOne.clearPreferences();
+        metricsOne.reset();
 
         JSONObject props;
         try {
@@ -807,7 +807,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                         return analyticsMessages;
                     }
                 };
-                mixpanel.clearPreferences();
+                mixpanel.reset();
                 mixpanel.track("test in thread", new JSONObject());
             }
         }

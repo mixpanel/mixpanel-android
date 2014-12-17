@@ -516,6 +516,17 @@ public class MixpanelAPI {
     }
 
     /**
+     * Clears all distinct_ids, superProperties, and push registrations from persistent storage.
+     * Will not clear referrer information.
+     */
+    public void reset() {
+        // Will clear distinct_ids, superProperties,
+        // and waiting People Analytics properties. Will have no effect
+        // on messages already queued to send with AnalyticsMessages.
+        mPersistentIdentity.clearPreferences();
+    }
+
+    /**
      * Returns an unmodifiable map that contains the device description properties
      * that will be sent to Mixpanel. These are not all of the default properties,
      * but are a subset that are dependant on the user's device or installed version
@@ -1090,13 +1101,6 @@ public class MixpanelAPI {
         }
 
         return null;
-    }
-
-    /* package */ void clearPreferences() {
-        // Will clear distinct_ids, superProperties,
-        // and waiting People Analytics properties. Will have no effect
-        // on messages already queued to send with AnalyticsMessages.
-        mPersistentIdentity.clearPreferences();
     }
 
     /* package */ boolean sendAppOpen() {
