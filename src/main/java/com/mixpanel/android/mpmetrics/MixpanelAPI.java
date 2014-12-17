@@ -122,6 +122,7 @@ public class MixpanelAPI {
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
         mContext = context;
         mToken = token;
+        mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
         mMessages = getAnalyticsMessages();
         mConfig = getConfig();
@@ -311,6 +312,20 @@ public class MixpanelAPI {
     }
 
     /**
+     * Begin timing of an event. Calling timeEvent("Thing") will not send an event, but
+     * when you eventually call track("Thing"), your tracked event will be sent with a "$duration"
+     * property, representing the number of seconds between your calls.
+     *
+     * @param eventName the name of the event to track with timing.
+     */
+    public void timeEvent(final String eventName) {
+        final long writeTime = System.currentTimeMillis();
+        synchronized (mEventTimings) {
+            mEventTimings.put(eventName, writeTime);
+        }
+    }
+
+    /**
      * Track an event.
      *
      * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
@@ -327,6 +342,12 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
+        final Long eventBegin;
+        synchronized (mEventTimings) {
+            eventBegin = mEventTimings.get(eventName);
+            mEventTimings.remove(eventName);
+        }
+
         try {
             final JSONObject messageProps = new JSONObject();
 
@@ -346,9 +367,16 @@ public class MixpanelAPI {
 
             // Don't allow super properties or referral properties to override these fields,
             // but DO allow the caller to override them in their given properties.
-            final long time = System.currentTimeMillis() / 1000;
-            messageProps.put("time", time);
+            final double timeSecondsDouble = ((double) System.currentTimeMillis()) / 1000.0;
+            final long timeSeconds = (long) timeSecondsDouble;
+            messageProps.put("time", timeSeconds);
             messageProps.put("distinct_id", getDistinctId());
+
+            if (null != eventBegin) {
+                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+                messageProps.put("$duration", secondsElapsed);
+            }
 
             if (null != properties) {
                 final Iterator<?> propIter = properties.keys();
@@ -1781,6 +1809,7 @@ public class MixpanelAPI {
     private final TrackingDebug mTrackingDebug;
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
+    private final Map<String, Long> mEventTimings;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

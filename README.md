@@ -39,6 +39,8 @@ Changelog
  * Introducing dynamic event binding! Developers and stakeholders can now bind Mixpanel events to
  user interactions using the UI in the Mixpanel web application.
 
+ * added timeEvent, for automatically adding duration to events with a begin and end.
+
  * New configuration directives
 
  The 4.5 version of the library allows for meta-data of the form
