@@ -75,8 +75,6 @@ event binding UI in the Mixpanel web application. Events created and bound in th
 still be sent by the application, this directive just disables the emulator binding behavior. Use of
 the connection gesture on a physical device will still work for pairing with the editor.
 
-(either in the Android Emulator, or by using the connection gesture on physical devices) depend
-
  * Easier use of Proguard with the library
 
  To use the Mixpanel library with Proguarded builds, add the following to your proguard.cfg file
@@ -94,17 +92,15 @@ the connection gesture on a physical device will still work for pairing with the
 -keep class **.R$* {
     <fields>;
 }
+```
+
+Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds of your application.
 
 * The deprecated methods setFlushInterval and checkForSurvey are now no-ops
 
 This method was deprecated in version 4.0, and now is a no-op. To change the flush
 interval for your application, use the com.mixpanel.android.MPConfig.FlushInterval
 meta-data tag in your manifest. To get available surveys, call getSurveyIfAvailable()
-
-```
-
-  Mixpanel uses the R class of your package to facilitate easier dynamic tracking across builds
-  of your application.
 
 * The minimum Android OS version necessary for surveys, in app notifications, and dynamic event binding
   has been increased to JellyBean/API 16. The minimum OS version to use basic tracking features
