@@ -317,12 +317,17 @@ import java.util.Map;
                     // Consider adding a transitive dependency on the latest
                     // Google Play Services version and requiring Java 1.7
                     // in the next major library release.
-
-                    final int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
-                    if (resultCode != ConnectionResult.SUCCESS) {
-                        Log.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
+                    try {
+                        final int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
+                        if (resultCode != ConnectionResult.SUCCESS) {
+                            Log.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
+                            return;
+                        }
+                    } catch (RuntimeException e) {
+                        Log.i(LOGTAG, "Can't register for push notifications, Google Play services are not configured.");
                         return;
                     }
+
 
                     final GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(mContext);
                     registrationId = gcm.register(senderID);
@@ -439,24 +444,31 @@ import java.util.Map;
                 ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
 
                 try {
-                    final int servicesAvailable = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
-                    switch (servicesAvailable) {
-                        case ConnectionResult.SUCCESS:
-                            ret.put("$google_play_services", "available");
-                            break;
-                        case ConnectionResult.SERVICE_MISSING:
-                            ret.put("$google_play_services", "missing");
-                            break;
-                        case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
-                            ret.put("$google_play_services", "out of date");
-                            break;
-                        case ConnectionResult.SERVICE_DISABLED:
-                            ret.put("$google_play_services", "disabled");
-                            break;
-                        case ConnectionResult.SERVICE_INVALID:
-                            ret.put("$google_play_services", "invalid");
-                            break;
+                    try {
+                        final int servicesAvailable = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
+                        switch (servicesAvailable) {
+                            case ConnectionResult.SUCCESS:
+                                ret.put("$google_play_services", "available");
+                                break;
+                            case ConnectionResult.SERVICE_MISSING:
+                                ret.put("$google_play_services", "missing");
+                                break;
+                            case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
+                                ret.put("$google_play_services", "out of date");
+                                break;
+                            case ConnectionResult.SERVICE_DISABLED:
+                                ret.put("$google_play_services", "disabled");
+                                break;
+                            case ConnectionResult.SERVICE_INVALID:
+                                ret.put("$google_play_services", "invalid");
+                                break;
+                        }
+                    } catch (RuntimeException e) {
+                        // Turns out even checking for the service will cause explosions
+                        // unless we've set up meta-data
+                        ret.put("$google_play_services", "not configured");
                     }
+
                 } catch (NoClassDefFoundError e) {
                     ret.put("$google_play_services", "not included");
                 }

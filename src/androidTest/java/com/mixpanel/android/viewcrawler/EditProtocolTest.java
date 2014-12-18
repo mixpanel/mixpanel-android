@@ -21,7 +21,7 @@ public class EditProtocolTest extends AndroidTestCase {
     public void setUp() throws JSONException {
         mProtocol = new EditProtocol(getContext());
         mSnapshotConfig = new JSONObject(
-            "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}},{\"name\":\"backgroundColor\",\"get\":{\"selector\":\"getBackgroundColor\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Integer\"}},\"set\":{\"selector\":\"setBackgroundColor\",\"parameters\":[{\"type\":\"java.lang.Integer\"}]},\"editor\":\"hexstring\"}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
+            "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
         );
         mPropertyEdit = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]]}"
@@ -56,21 +56,18 @@ public class EditProtocolTest extends AndroidTestCase {
         final ViewSnapshot snapshot = mProtocol.readSnapshotConfig(mSnapshotConfig);
         final List<PropertyDescription> properties = snapshot.getProperties();
 
-        assertEquals(properties.size(), 4);
+        assertEquals(properties.size(), 3);
         final PropertyDescription prop1 = properties.get(0);
         final PropertyDescription prop2 = properties.get(1);
         final PropertyDescription prop3 = properties.get(2);
-        final PropertyDescription prop4 = properties.get(3);
 
         assertEquals(prop1.name, "importantForAccessibility");
-        assertEquals(prop2.name, "backgroundColor");
-        assertEquals(prop3.name, "text");
-        assertEquals(prop4.name, "image");
+        assertEquals(prop2.name, "text");
+        assertEquals(prop3.name, "image");
 
         assertEquals(prop1.targetClass, View.class);
-        assertEquals(prop2.targetClass, View.class);
-        assertEquals(prop3.targetClass, TextView.class);
-        assertEquals(prop4.targetClass, ImageView.class);
+        assertEquals(prop2.targetClass, TextView.class);
+        assertEquals(prop3.targetClass, ImageView.class);
     }
 
     public void testReadPaths() throws JSONException {

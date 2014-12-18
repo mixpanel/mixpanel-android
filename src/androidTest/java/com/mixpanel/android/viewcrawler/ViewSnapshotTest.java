@@ -24,16 +24,16 @@ import java.util.Map;
 import java.util.Set;
 
 public class ViewSnapshotTest extends AndroidTestCase {
-    public void setUp() {
+    public void setUp() throws NoSuchMethodException {
         mRootView = new TestView(this.getContext());
 
         final List<PropertyDescription> props = new ArrayList<PropertyDescription>();
 
-        final Caller textGetter = new Caller("getText", new Object[0], CharSequence.class);
+        final Caller textGetter = new Caller(TextView.class, "getText", new Object[0], CharSequence.class);
         final PropertyDescription text = new PropertyDescription("text", TextView.class, textGetter, "setText");
         props.add(text);
 
-        final Caller customPropGetter = new Caller("getCustomProperty", new Object[0], CharSequence.class);
+        final Caller customPropGetter = new Caller(TestView.CustomPropButton.class, "getCustomProperty", new Object[0], CharSequence.class);
         final PropertyDescription custom = new PropertyDescription(
              "custom",
              TestView.CustomPropButton.class,
@@ -42,24 +42,6 @@ public class ViewSnapshotTest extends AndroidTestCase {
         );
         props.add(custom);
 
-        final Caller crazyGetter = new Caller("CRAZY GETTER", new Object[0], Void.TYPE);
-        final PropertyDescription crazy = new PropertyDescription(
-            "crazy",
-            View.class,
-            crazyGetter,
-            "CRAZY SETTER"
-        );
-        props.add(crazy);
-
-        final Caller badTypesGetter = new Caller("getText", new Object[0], Integer.class);
-        final PropertyDescription badTypes = new PropertyDescription(
-            "badTypes",
-            TextView.class,
-            badTypesGetter,
-            "setText"
-        );
-        props.add(badTypes);
-
         final SparseArray<String> idNamesById = new SparseArray<String>();
         idNamesById.put(TestView.ROOT_ID, "ROOT_ID");
         idNamesById.put(TestView.TEXT_VIEW_ID, "TEXT_VIEW_ID");
@@ -67,6 +49,22 @@ public class ViewSnapshotTest extends AndroidTestCase {
         // NO BUTTON_ID in the table
 
         mSnapshot = new ViewSnapshot(props, idNamesById);
+    }
+
+    public void testBadMethods() {
+        try {
+            final Caller crazyGetter = new Caller(View.class, "CRAZY GETTER", new Object[0], Void.TYPE);
+            fail("Exception was not thrown when constructing a bad caller");
+        } catch (NoSuchMethodException e) {
+            // OK!
+        }
+
+        try {
+            final Caller badTypesGetter = new Caller(TextView.class, "getText", new Object[0], Integer.class);
+            fail("Exception was not thrown when constructing a caller with bad types");
+        } catch (NoSuchMethodException e) {
+            // OK!
+        }
     }
 
     public void testViewSnapshot() throws IOException, JSONException {
