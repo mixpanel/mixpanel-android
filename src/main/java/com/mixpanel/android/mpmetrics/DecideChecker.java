@@ -53,14 +53,16 @@ import java.util.List;
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
                 updates.reportResults(result.surveys, result.notifications, result.eventBindings);
-            } catch (UnintelligibleMessageException e) {
+            } catch (final UnintelligibleMessageException e) {
                 Log.e(LOGTAG, e.getMessage(), e);
             }
         }
     }
 
     /* package */ static class UnintelligibleMessageException extends Exception {
-        public UnintelligibleMessageException(String message, JSONException cause) {
+		private static final long serialVersionUID = -6501269367559104957L;
+
+		public UnintelligibleMessageException(String message, JSONException cause) {
             super(message, cause);
         }
     }
@@ -195,13 +197,13 @@ import java.util.List;
             Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
         }
 
-        byte[] response = poster.getUrls(mContext, urls);
+        final byte[] response = poster.getUrls(mContext, urls);
         if (null == response) {
             return null;
         }
         try {
             return new String(response, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
+        } catch (final UnsupportedEncodingException e) {
             throw new RuntimeException("UTF not supported on this platform?", e);
         }
     }
@@ -210,15 +212,15 @@ import java.util.List;
         Bitmap ret = null;
         String[] urls = { notification.getImage2xUrl() };
 
-        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        Display display = wm.getDefaultDisplay();
-        int displayWidth = getDisplayWidth(display);
+        final WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        final Display display = wm.getDefaultDisplay();
+        final int displayWidth = getDisplayWidth(display);
 
         if (notification.getType() == InAppNotification.Type.TAKEOVER && displayWidth >= 720) {
             urls = new String[]{ notification.getImage4xUrl(), notification.getImage2xUrl() };
         }
 
-        byte[] response = poster.getUrls(context, urls);
+        final byte[] response = poster.getUrls(context, urls);
         if (null != response) {
             ret = BitmapFactory.decodeByteArray(response, 0, response.length);
         } else {

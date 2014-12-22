@@ -7,8 +7,6 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
-import com.mixpanel.android.mpmetrics.MPConfig;
-
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,7 +63,7 @@ import java.util.Set;
     // Must be thread-safe
     public void setEdits(Map<String, List<ViewVisitor>> newEdits) {
         synchronized (mCurrentEdits) {
-            for (EditBinding stale : mCurrentEdits) {
+            for (final EditBinding stale : mCurrentEdits) {
                 stale.kill();
             }
             mCurrentEdits.clear();
@@ -94,7 +92,7 @@ import java.util.Set;
 
     // Must be called on UI Thread
     private void applyIntendedEdits() {
-        for (Activity activity : getAll()) {
+        for (final Activity activity : getAll()) {
             final String activityName = activity.getClass().getCanonicalName();
             final View rootView = activity.getWindow().getDecorView().getRootView();
 
@@ -118,7 +116,7 @@ import java.util.Set;
     // Must be called on UI Thread
     private void applyChangesFromList(View rootView, List<ViewVisitor> changes) {
         synchronized (mCurrentEdits) {
-            int size = changes.size();
+            final int size = changes.size();
             for (int i = 0; i < size; i++) {
                 final ViewVisitor visitor = changes.get(i);
                 final EditBinding binding = new EditBinding(rootView, visitor, mUiThreadHandler);

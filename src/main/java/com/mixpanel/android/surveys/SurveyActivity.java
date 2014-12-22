@@ -97,17 +97,17 @@ public class SurveyActivity extends Activity {
         final InAppNotification inApp = notificationState.getInAppNotification();
 
         // Layout
-        Display display = getWindowManager().getDefaultDisplay();
-        Point size = new Point();
+        final Display display = getWindowManager().getDefaultDisplay();
+        final Point size = new Point();
         display.getSize(size);
 
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) closeButtonWrapper.getLayoutParams();
+            final RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) closeButtonWrapper.getLayoutParams();
             params.setMargins(0, 0, 0, (int) (size.y * 0.06f)); // make bottom margin 6% of screen height
             closeButtonWrapper.setLayoutParams(params);
         }
 
-        GradientDrawable gd = new GradientDrawable(
+        final GradientDrawable gd = new GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
             new int[]{ 0xE560607C, 0xE548485D, 0xE518181F, 0xE518181F }
         );
@@ -155,16 +155,16 @@ public class SurveyActivity extends Activity {
                     Uri uri;
                     try {
                         uri = Uri.parse(uriString);
-                    } catch (IllegalArgumentException e) {
+                    } catch (final IllegalArgumentException e) {
                         Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
                         return;
                     }
 
                     try {
-                        Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        final Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         SurveyActivity.this.startActivity(viewIntent);
                         mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
-                    } catch (ActivityNotFoundException e) {
+                    } catch (final ActivityNotFoundException e) {
                         Log.i(LOGTAG, "User doesn't have an activity for notification URI");
                     }
                 }
@@ -173,7 +173,8 @@ public class SurveyActivity extends Activity {
             }
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
+            @Override
+			public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
                 } else {
@@ -208,7 +209,7 @@ public class SurveyActivity extends Activity {
         subtextView.startAnimation(translate);
         ctaButton.startAnimation(translate);
 
-        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
+        final Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
         closeButtonWrapper.startAnimation(fadeIn);
     }
 
@@ -390,10 +391,6 @@ public class SurveyActivity extends Activity {
     private UpdateDisplayState.DisplayState.SurveyState getSurveyState() {
         // Throws if this is showing an InApp
         return (UpdateDisplayState.DisplayState.SurveyState) mUpdateDisplayState.getDisplayState();
-    }
-
-    private UpdateDisplayState.DisplayState.InAppNotificationState getInAppState() {
-        return (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
     }
 
     private boolean isShowingSurvey() {

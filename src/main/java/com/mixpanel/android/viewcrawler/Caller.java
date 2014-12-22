@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /* package */ class Caller {
-    public Caller(Class targetClass, String methodName, Object[] methodArgs, Class resultType)
+    public Caller(Class<?> targetClass, String methodName, Object[] methodArgs, Class<?> resultType)
         throws NoSuchMethodException {
         mMethodName = methodName;
 
@@ -44,9 +44,9 @@ import java.lang.reflect.Method;
         if (mTargetClass.isAssignableFrom(klass)) {
             try {
                 return mTargetMethod.invoke(target, mMethodArgs);
-            } catch (IllegalAccessException e) {
+            } catch (final IllegalAccessException e) {
                 Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " appears not to be public", e);
-            } catch (InvocationTargetException e) {
+            } catch (final InvocationTargetException e) {
                 Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " threw an exception", e);
             }
         }
@@ -54,7 +54,7 @@ import java.lang.reflect.Method;
         return null;
     }
 
-    private static Class assignableArgType(Class type) {
+    private static Class<?> assignableArgType(Class<?> type) {
         // a.isAssignableFrom(b) only tests if b is a
         // subclass of a. It does not handle the autoboxing case,
         // i.e. when a is an int and b is an Integer, so we have
@@ -74,10 +74,10 @@ import java.lang.reflect.Method;
         return type;
     }
 
-    private Method pickMethod(Class klass) {
-        for (Method method : klass.getMethods()) {
+    private Method pickMethod(Class<?> klass) {
+        for (final Method method : klass.getMethods()) {
             final String foundName = method.getName();
-            final Class[] params = method.getParameterTypes();
+            final Class<?>[] params = method.getParameterTypes();
 
             if (!foundName.equals(mMethodName) || params.length != mMethodArgs.length) {
                 continue;
@@ -108,7 +108,7 @@ import java.lang.reflect.Method;
 
     private final String mMethodName;
     private final Object[] mMethodArgs;
-    private final Class[] mMethodTypes;
+    private final Class<?>[] mMethodTypes;
     private final Class<?> mMethodResultType;
     private final Class<?> mTargetClass;
     private final Method mTargetMethod;

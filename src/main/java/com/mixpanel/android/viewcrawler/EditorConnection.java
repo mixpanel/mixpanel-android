@@ -27,7 +27,9 @@ import java.nio.ByteBuffer;
 /* package */ class EditorConnection {
 
     public class EditorConnectionException extends IOException {
-        public EditorConnectionException(Throwable cause) {
+		private static final long serialVersionUID = -1884953175346045636L;
+
+		public EditorConnectionException(Throwable cause) {
             super(cause.getMessage()); // IOException(cause) is only available in API level 9!
         }
     }
@@ -47,7 +49,7 @@ import java.nio.ByteBuffer;
         try {
             mClient = new EditorClient(uri, CONNECT_TIMEOUT, sslSocket);
             mClient.connectBlocking();
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             throw new EditorConnectionException(e);
         }
     }
@@ -80,7 +82,7 @@ import java.nio.ByteBuffer;
             }
             try {
                 final JSONObject messageJson = new JSONObject(message);
-                String type = messageJson.getString("type");
+                final String type = messageJson.getString("type");
                 if (type.equals("device_info_request")) {
                     mService.sendDeviceInfo();
                 } else if (type.equals("snapshot_request")) {
@@ -90,7 +92,7 @@ import java.nio.ByteBuffer;
                 } else if (type.equals("event_binding_request")) {
                     mService.bindEvents(messageJson);
                 }
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad JSON received:" + message, e);
             }
         }
@@ -121,7 +123,7 @@ import java.nio.ByteBuffer;
         public void write(int b)
             throws EditorConnectionException {
             // This should never be called.
-            byte[] oneByte = new byte[1];
+            final byte[] oneByte = new byte[1];
             oneByte[0] = (byte) b;
             write(oneByte, 0, 1);
         }
@@ -138,9 +140,9 @@ import java.nio.ByteBuffer;
             final ByteBuffer message = ByteBuffer.wrap(b, off, len);
             try {
                 mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, message, false);
-            } catch (WebsocketNotConnectedException e) {
+            } catch (final WebsocketNotConnectedException e) {
                 throw new EditorConnectionException(e);
-            } catch (NotSendableException e) {
+            } catch (final NotSendableException e) {
                 throw new EditorConnectionException(e);
             }
         }
@@ -150,9 +152,9 @@ import java.nio.ByteBuffer;
             throws EditorConnectionException {
             try {
                 mClient.sendFragmentedFrame(Framedata.Opcode.TEXT, EMPTY_BYTE_BUFFER, true);
-            } catch (WebsocketNotConnectedException e) {
+            } catch (final WebsocketNotConnectedException e) {
                 throw new EditorConnectionException(e);
-            } catch (NotSendableException e) {
+            } catch (final NotSendableException e) {
                 throw new EditorConnectionException(e);
             }
         }

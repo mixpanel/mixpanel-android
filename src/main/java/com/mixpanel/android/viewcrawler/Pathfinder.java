@@ -61,7 +61,8 @@ import java.util.List;
             tag = vTag;
         }
 
-        public String toString() {
+        @Override
+		public String toString() {
             try {
                 final JSONObject ret = new JSONObject();
                 if (prefix == SHORTEST_PREFIX) {
@@ -83,7 +84,7 @@ import java.util.List;
                     ret.put("tag", tag);
                 }
                 return ret.toString();
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 throw new RuntimeException("Can't serialize PathElement to String", e);
             }
         }
@@ -120,7 +121,7 @@ import java.util.List;
         final PathElement rootPathElement = path.get(0);
         final List<PathElement> childPath = path.subList(1, path.size());
 
-        int indexKey = mIndexStack.alloc();
+        final int indexKey = mIndexStack.alloc();
         final View rootView = findPrefixedMatch(rootPathElement, givenRootView, indexKey);
         mIndexStack.free();
 
@@ -155,7 +156,7 @@ import java.util.List;
         final List<PathElement> nextPath = remainingPath.subList(1, remainingPath.size());
 
         final int childCount = parent.getChildCount();
-        int indexKey = mIndexStack.alloc();
+        final int indexKey = mIndexStack.alloc();
         for (int i = 0; i < childCount; i++) {
             final View givenChild = parent.getChildAt(i);
             final View child = findPrefixedMatch(matchElement, givenChild, indexKey);
@@ -172,7 +173,7 @@ import java.util.List;
     // Finds the first matching view of the path element in the given subject's view hierarchy.
     // If the path is indexed, it needs a start index, and will consume some indexes
     private View findPrefixedMatch(PathElement findElement, View subject, int indexKey) {
-        int currentIndex = mIndexStack.read(indexKey);
+        final int currentIndex = mIndexStack.read(indexKey);
         if (matches(findElement, subject)) {
             mIndexStack.increment(indexKey);
             if (findElement.index == -1 || findElement.index == currentIndex) {
@@ -222,7 +223,7 @@ import java.util.List;
     }
 
     private static boolean hasClassName(Object o, String className) {
-        Class klass = o.getClass();
+        Class<?> klass = o.getClass();
         while (true) {
             if (klass.getCanonicalName().equals(className)) {
                 return true;
@@ -253,7 +254,7 @@ import java.util.List;
          * Pushes a new value, and returns the index you can use to increment and read that value later.
          */
         public int alloc() {
-            int index = mStackSize;
+            final int index = mStackSize;
             mStackSize++;
             mStack[index] = 0;
             return index;

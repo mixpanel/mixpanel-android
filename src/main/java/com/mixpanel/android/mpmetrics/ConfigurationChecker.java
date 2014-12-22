@@ -42,6 +42,20 @@ import android.util.Log;
 
     public static String LOGTAG = "MixpanelAPI.ConfigurationChecker";
 
+    public static boolean checkBasicConfiguration(Context context) {
+        final PackageManager packageManager = context.getPackageManager();
+        final String packageName = context.getPackageName();
+
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
+            Log.w(LOGTAG, "Package does not have permission android.permission.INTERNET - Mixpanel will not work at all!");
+            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+                    "<uses-permission android:name=\"android.permission.INTERNET\" />");
+            return false;
+        }
+
+        return true;
+    }
+
     public static boolean checkPushConfiguration(Context context) {
 
         if (Build.VERSION.SDK_INT < 8) {
@@ -138,7 +152,7 @@ import android.util.Log;
         try {
             Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
             canRegisterWithPlayServices = true;
-        } catch(ClassNotFoundException e) {
+        } catch(final ClassNotFoundException e) {
             Log.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
             Log.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
         }

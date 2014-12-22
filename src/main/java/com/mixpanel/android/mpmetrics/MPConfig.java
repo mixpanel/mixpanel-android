@@ -7,13 +7,16 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.mixpanel.android.BuildConfig;
 
 /**
  * Stores global configuration options for the Mixpanel library.
  */
 public class MPConfig {
-    public static final String VERSION = BuildConfig.MIXPANEL_VERSION;
+
+    // Unfortunately, as long as we support building from source in Eclipse,
+    // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
+    // be hard-coded both in our gradle files and here in code.
+    public static final String VERSION = "4.5.1-SNAPSHOT";
 
     public static boolean DEBUG = false;
 
@@ -60,8 +63,8 @@ public class MPConfig {
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", false);
 
          // Disable if EITHER of these is present and false, otherwise enable
-        boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
-        boolean mixpanelUpdatesAutoShow = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
+        final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
+        final boolean mixpanelUpdatesAutoShow = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
         mAutoShowMixpanelUpdates = surveysAutoCheck && mixpanelUpdatesAutoShow;
 
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);

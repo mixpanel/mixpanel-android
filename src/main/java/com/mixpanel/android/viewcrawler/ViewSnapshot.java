@@ -46,7 +46,7 @@ import java.util.concurrent.TimeoutException;
         mIdsToNames = idsToNames;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
         mRootViewFinder = new RootViewFinder();
-        mClassnameCache = new ClassNameCache(255);
+        mClassnameCache = new ClassNameCache(MAX_CLASS_NAME_CACHE_SIZE);
     }
 
     /**
@@ -63,7 +63,7 @@ import java.util.concurrent.TimeoutException;
 
         try {
             final List<RootViewInfo> infoList = infoFuture.get(1, TimeUnit.SECONDS);
-            int infoCount = infoList.size();
+            final int infoCount = infoList.size();
             writer.write("[");
             for (int i = 0; i < infoCount; i++) {
                 if (i > 0) {
@@ -95,15 +95,15 @@ import java.util.concurrent.TimeoutException;
             }
             writer.write("]");
             writer.flush();
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
             }
-        } catch (TimeoutException e) {
+        } catch (final TimeoutException e) {
             if (MPConfig.DEBUG) {
                 Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
             }
-        } catch (ExecutionException e) {
+        } catch (final ExecutionException e) {
             if (MPConfig.DEBUG) {
                 Log.e(LOGTAG, "Exception thrown during screenshot attempt", e);
             }
@@ -171,7 +171,7 @@ import java.util.concurrent.TimeoutException;
 
         j.name("classes");
         j.beginArray();
-        Class klass = view.getClass();
+        Class<?> klass = view.getClass();
         do {
             j.value(mClassnameCache.get(klass));
             klass = klass.getSuperclass();
@@ -212,9 +212,9 @@ import java.util.concurrent.TimeoutException;
     private void addProperties(JsonWriter j, View v)
         throws IOException {
         final Class<?> viewClass = v.getClass();
-        for (PropertyDescription desc : mProperties) {
+        for (final PropertyDescription desc : mProperties) {
             if (desc.targetClass.isAssignableFrom(viewClass) && null != desc.accessor) {
-                Object value = desc.accessor.applyMethod(v);
+                final Object value = desc.accessor.applyMethod(v);
                 if (null == value) {
                     // Don't produce anything in this case
                 } else if (value instanceof Number) {
@@ -228,12 +228,13 @@ import java.util.concurrent.TimeoutException;
         }
     }
 
-    private static class ClassNameCache extends LruCache<Class, String> {
+    private static class ClassNameCache extends LruCache<Class<?>, String> {
         public ClassNameCache(int maxSize) {
             super(maxSize);
         }
 
-        protected String create(Class klass) {
+        @Override
+		protected String create(Class<?> klass) {
             return klass.getCanonicalName();
         }
     }
@@ -255,7 +256,7 @@ import java.util.concurrent.TimeoutException;
 
             final Set<Activity> liveActivities = mLiveActivities.getAll();
 
-            for (Activity a : liveActivities) {
+            for (final Activity a : liveActivities) {
                 final String activityName = a.getClass().getCanonicalName();
                 final View rootView = a.getWindow().getDecorView().getRootView();
                 a.getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
@@ -263,7 +264,7 @@ import java.util.concurrent.TimeoutException;
                 mRootViews.add(info);
             }
 
-            int viewCount = mRootViews.size();
+            final int viewCount = mRootViews.size();
             for (int i = 0; i < viewCount; i++) {
                 final RootViewInfo info = mRootViews.get(i);
                 takeScreenshot(info);
@@ -280,17 +281,17 @@ import java.util.concurrent.TimeoutException;
                 final Method createSnapshot = View.class.getDeclaredMethod("createSnapshot", Bitmap.Config.class, Integer.TYPE, Boolean.TYPE);
                 createSnapshot.setAccessible(true);
                 rawBitmap = (Bitmap) createSnapshot.invoke(rootView, Bitmap.Config.RGB_565, Color.WHITE, false);
-            } catch (NoSuchMethodException e) {
+            } catch (final NoSuchMethodException e) {
                 if (MPConfig.DEBUG) {
                     Log.v(LOGTAG, "Can't call createSnapshot, will use drawCache", e);
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (final IllegalArgumentException e) {
                 Log.d(LOGTAG, "Can't call createSnapshot with arguments", e);
-            } catch (InvocationTargetException e) {
+            } catch (final InvocationTargetException e) {
                 Log.e(LOGTAG, "Exception when calling createSnapshot", e);
-            } catch (IllegalAccessException e) {
+            } catch (final IllegalAccessException e) {
                 Log.e(LOGTAG, "Can't access createSnapshot, using drawCache", e);
-            } catch (ClassCastException e) {
+            } catch (final ClassCastException e) {
                 Log.e(LOGTAG, "createSnapshot didn't return a bitmap?", e);
             }
 
@@ -302,7 +303,7 @@ import java.util.concurrent.TimeoutException;
                     rootView.buildDrawingCache(true);
                     rawBitmap = rootView.getDrawingCache();
                 }
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 if (MPConfig.DEBUG) {
                     Log.v(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
                 }
@@ -333,7 +334,6 @@ import java.util.concurrent.TimeoutException;
             info.screenshot = mCachedBitmap;
         }
 
-        private Bitmap mResultBitmap;
         private UIThreadSet<Activity> mLiveActivities;
         private final List<RootViewInfo> mRootViews;
         private final DisplayMetrics mDisplayMetrics;
@@ -352,7 +352,7 @@ import java.util.concurrent.TimeoutException;
             if (null == mCached || mCached.getWidth() != width || mCached.getHeight() != height) {
                 try {
                     mCached = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-                } catch (OutOfMemoryError e) {
+                } catch (final OutOfMemoryError e) {
                     mCached = null;
                 }
 

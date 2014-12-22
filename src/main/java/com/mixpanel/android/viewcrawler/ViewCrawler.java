@@ -76,10 +76,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         // with the default SSL context: https://github.com/square/okhttp/issues/184
         SSLSocketFactory foundSSLFactory;
         try {
-            SSLContext sslContext = SSLContext.getInstance("TLS");
+            final SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(null, null, null);
             foundSSLFactory = sslContext.getSocketFactory();
-        } catch (GeneralSecurityException e) {
+        } catch (final GeneralSecurityException e) {
             Log.i(LOGTAG, "System has no SSL support. Built-in events editor will not be available", e);
             foundSSLFactory = null;
         }
@@ -93,7 +93,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
     @Override
     public void setEventBindings(JSONArray bindings) {
-        Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
+        final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
         msg.obj = bindings;
         mMessageThreadHandler.sendMessage(msg);
     }
@@ -305,7 +305,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         }
                     }
                 }
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
@@ -342,11 +342,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             try {
                 final Socket sslSocket = mSSLSocketFactory.createSocket();
                 mEditorConnection = new EditorConnection(new URI(url), new Editor(), sslSocket);
-            } catch (URISyntaxException e) {
+            } catch (final URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
-            } catch (EditorConnection.EditorConnectionException e) {
+            } catch (final EditorConnection.EditorConnectionException e) {
                 Log.e(LOGTAG, "Error connecting to URI " + url, e);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             }
         }
@@ -358,7 +358,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final JSONObject errorObject = new JSONObject();
             try {
                 errorObject.put("error_message", errorMessage);
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Apparently impossible JSONException", e);
             }
 
@@ -368,12 +368,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 writer.write("\"payload\": ");
                 writer.write(errorObject.toString());
                 writer.write("}");
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write error message to editor", e);
             } finally {
                 try {
                     writer.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     Log.e(LOGTAG, "Could not close output writer to editor", e);
                 }
             }
@@ -395,7 +395,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 writer.write(",");
                 writer.write("\"tweaks\":");
                 writer.write(new JSONObject(mTweaks.getAll()).toString());
-                for (Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
+                for (final Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
                     writer.write(",");
                     writer.write(JSONObject.quote(entry.getKey()));
                     writer.write(":");
@@ -403,12 +403,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
                 writer.write("}"); // payload
                 writer.write("}");
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write device_info to server", e);
             } finally {
                 try {
                     writer.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     Log.e(LOGTAG, "Can't close websocket writer", e);
                 }
             }
@@ -424,11 +424,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 if (payload.has("config")) {
                     mSnapshot = mProtocol.readSnapshotConfig(payload);
                 }
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
                 return;
-            } catch (EditProtocol.BadInstructionsException e) {
+            } catch (final EditProtocol.BadInstructionsException e) {
                 Log.e(LOGTAG, "Editor sent malformed message with snapshot request", e);
                 sendError(e.getMessage());
                 return;
@@ -460,12 +460,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
                 writer.write("}"); // } payload
                 writer.write("}"); // } whole message
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write snapshot request to server", e);
             } finally {
                 try {
                     writer.close();
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     Log.e(LOGTAG, "Can't close writer.", e);
                 }
             }
@@ -494,12 +494,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
                 j.endObject();
                 j.flush();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write track_message to server", e);
             } finally {
                 try {
-                    writer.close();
-                } catch (IOException e) {
+                    j.close();
+                } catch (final IOException e) {
                     Log.e(LOGTAG, "Can't close writer.", e);
                 }
             }
@@ -516,7 +516,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change));
                 }
                 updateEditState();
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
             }
         }
@@ -540,12 +540,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             try {
                 final JSONObject payload = message.getJSONObject("payload");
                 eventBindings = payload.getJSONArray("events");
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad event bindings received", e);
                 return;
             }
 
-            int eventCount = eventBindings.length();
+            final int eventCount = eventBindings.length();
             synchronized (mEditorEventBindings) {
                 mEditorEventBindings.clear();
                 for (int i = 0; i < eventCount; i++) {
@@ -553,7 +553,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         final JSONObject event = eventBindings.getJSONObject(i);
                         final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
                         mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
-                    } catch (JSONException e) {
+                    } catch (final JSONException e) {
                         Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                     }
                 }
@@ -684,34 +684,34 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
         @Override
         public void sendSnapshot(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_STATE_FOR_EDITING);
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_STATE_FOR_EDITING);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void performEdit(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void bindEvents(JSONObject message) {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED);
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void sendDeviceInfo() {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_DEVICE_INFO);
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_DEVICE_INFO);
             mMessageThreadHandler.sendMessage(msg);
         }
 
         @Override
         public void cleanup() {
-            Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CLOSED);
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CLOSED);
             mMessageThreadHandler.sendMessage(msg);
         }
     }
