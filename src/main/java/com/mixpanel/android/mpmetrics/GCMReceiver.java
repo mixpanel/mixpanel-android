@@ -86,6 +86,10 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
 */
 public class GCMReceiver extends BroadcastReceiver {
+    public GCMReceiver() {
+
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
@@ -121,6 +125,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     private void handleNotificationIntent(Context context, Intent intent) {
         final String message = intent.getStringExtra("mp_message");
+        final int builtinIcon = intent.getIntExtra("mp_icn", -1);
 
         if (message == null) return;
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
