@@ -13,7 +13,11 @@ import com.mixpanel.android.BuildConfig;
  * Stores global configuration options for the Mixpanel library.
  */
 public class MPConfig {
-    public static final String VERSION = BuildConfig.MIXPANEL_VERSION;
+
+    // Unfortunately, as long as we support building from source in Eclipse,
+    // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
+    // be hard-coded both in our gradle files and here in code.
+    public static final String VERSION = "4.5.1-SNAPSHOT";
 
     public static boolean DEBUG = false;
 

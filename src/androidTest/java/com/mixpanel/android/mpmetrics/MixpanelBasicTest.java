@@ -75,8 +75,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         Thread.sleep(500);
     } // end of setUp() method definition
 
-    public void testTrivialRunning() {
-        assertTrue(getContext() != null);
+    public void testVersionsMatch() {
+        assertEquals(BuildConfig.MIXPANEL_VERSION, MPConfig.VERSION);
     }
 
     public void testGeneratedDistinctId() {
