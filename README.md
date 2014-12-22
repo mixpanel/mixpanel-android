@@ -36,8 +36,9 @@ Changelog
 
 #### v4.5.1
 
-This is a pom-only release, that allows users of gradle and maven to use the library
-without specifying packaging aar packaging.
+ * Update pom to allow users of gradle and maven to use the library without specifying packaging aar packaging.
+
+ * Fix issue that prevented building from source in Eclipse
 
 #### v4.5
 
