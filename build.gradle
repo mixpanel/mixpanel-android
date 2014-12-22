@@ -87,12 +87,6 @@ def isReleaseVersion() {
     return !version.endsWith("SNAPSHOT");
 }
 
-configurations {
-    archives {
-        extendsFrom configurations.default
-    }
-}
-
 if (isReleaseVersion()) {
     signing {
         required { gradle.taskGraph.hasTask("uploadArchives") }
@@ -137,7 +131,6 @@ uploadArchives {
         }
 
         pom.whenConfigured { pom ->
-            pom.packaging = 'aar'
             pom.dependencies*.optional = true
         }
 
