@@ -34,6 +34,11 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.5.1
+
+This is a pom-only release, that allows users of gradle and maven to use the library
+without specifying packaging aar packaging.
+
 #### v4.5
 
  * Introducing dynamic event binding! Developers and stakeholders can now bind Mixpanel events to
