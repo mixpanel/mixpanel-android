@@ -6,6 +6,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.mixpanel.android.mpmetrics.ResourceIds;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,7 +21,12 @@ import java.util.Map;
 public class EditProtocolTest extends AndroidTestCase {
     @Override
     public void setUp() throws JSONException {
-        mProtocol = new EditProtocol(getContext());
+        final Map<String, Integer> idMap = new HashMap<String, Integer>();
+        idMap.put("NAME PRESENT", 1001);
+        idMap.put("ALSO PRESENT", 1002);
+
+        mResourceIds = new TestResourceIds(idMap);
+        mProtocol = new EditProtocol(mResourceIds);
         mSnapshotConfig = new JSONObject(
             "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
         );
@@ -41,12 +48,7 @@ public class EditProtocolTest extends AndroidTestCase {
         mJustFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"id\": 1001}]");
         mJustFindNamePath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"mp_id_name\": \"NAME PRESENT\"}]");
         mUselessFindIdPath = new JSONArray("[{},{},{},{\"prefix\": \"shortest\", \"mp_id_name\": \"NAME PRESENT\", \"id\": 1001}]");
-
         mIdAndNameDontMatch = new JSONArray("[{},{},{},{\"mp_id_name\": \"NO SUCH NAME\", \"id\": 90210}]");
-
-        mIdMap = new HashMap<String, Integer>();
-        mIdMap.put("NAME PRESENT", 1001);
-        mIdMap.put("ALSO PRESENT", 1002);
 
         mListener = new TestEventListener();
         mRootView = new TestView(getContext());
@@ -72,7 +74,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testReadPaths() throws JSONException {
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustClassPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustClassPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -88,7 +90,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -104,7 +106,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIndexPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIndexPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -120,7 +122,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustTagPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustTagPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -136,7 +138,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -152,12 +154,13 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, new HashMap<String, Integer>());
+            final ResourceIds emptyIds = new TestResourceIds(new HashMap<String, Integer>());
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, emptyIds);
             assertTrue(p.isEmpty());
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -175,12 +178,13 @@ public class EditProtocolTest extends AndroidTestCase {
         {
             final Map<String, Integer> nonMatchingIdMap = new HashMap<String, Integer>();
             nonMatchingIdMap.put("NAME PRESENT", 1985);
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, nonMatchingIdMap);
+            final ResourceIds resourceIds = new TestResourceIds(nonMatchingIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, resourceIds);
             assertTrue(p.isEmpty());
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindIdPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindIdPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -195,7 +199,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindNamePath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustFindNamePath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -210,7 +214,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mUselessFindIdPath, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mUselessFindIdPath, mResourceIds);
             final Pathfinder.PathElement first = p.get(0);
             final Pathfinder.PathElement last = p.get(p.size() - 1);
             assertEquals(null, first.viewClassName);
@@ -225,7 +229,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mIdMap);
+            final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdAndNameDontMatch, mResourceIds);
             assertTrue(p.isEmpty());
         }
     }
@@ -264,7 +268,37 @@ public class EditProtocolTest extends AndroidTestCase {
         public List<String> visitsRecorded = new ArrayList<String>();
     }
 
+    private static class TestResourceIds implements ResourceIds {
+        public TestResourceIds(final Map<String, Integer> anIdMap) {
+            mIdMap = anIdMap;
+        }
+
+        @Override
+        public boolean knownIdName(String name) {
+            return mIdMap.containsKey(name);
+        }
+
+        @Override
+        public int idFromName(String name) {
+            return mIdMap.get(name);
+        }
+
+        @Override
+        public String nameForId(int id) {
+            for (Map.Entry<String, Integer> entry : mIdMap.entrySet()) {
+                if (entry.getValue() == id) {
+                    return entry.getKey();
+                }
+            }
+
+            return null;
+        }
+
+        private final Map<String, Integer> mIdMap;
+    }
+
     private EditProtocol mProtocol;
+    private ResourceIds mResourceIds;
     private JSONObject mSnapshotConfig;
     private JSONObject mPropertyEdit;
     private JSONObject mClickEvent;
@@ -281,6 +315,4 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mIdAndNameDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
-    private Map<String, Integer> mIdMap;
-
 }
