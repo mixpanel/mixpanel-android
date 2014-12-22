@@ -25,7 +25,9 @@ import java.util.Map;
 /* package */ class EditProtocol {
 
     public static class BadInstructionsException extends Exception {
-        public BadInstructionsException(String message) {
+		private static final long serialVersionUID = -4062004792184145311L;
+
+		public BadInstructionsException(String message) {
             super(message);
         }
 
@@ -35,7 +37,9 @@ import java.util.Map;
     }
 
     public static class InapplicableInstructionsException extends BadInstructionsException {
-        public InapplicableInstructionsException(String message) {
+		private static final long serialVersionUID = 3977056710817909104L;
+
+		public InapplicableInstructionsException(String message) {
             super(message);
         }
     }
@@ -79,7 +83,7 @@ import java.util.Map;
             } else {
                 throw new BadInstructionsException("Mixpanel can't track event type \"" + eventType + "\"");
             }
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
     }
@@ -95,10 +99,10 @@ import java.util.Map;
 
             final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
             final String targetClassName = pathEnd.viewClassName;
-            final Class targetClass;
+            final Class<?> targetClass;
             try {
                 targetClass = Class.forName(targetClassName);
-            } catch (ClassNotFoundException e) {
+            } catch (final ClassNotFoundException e) {
                 throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
             }
 
@@ -119,9 +123,9 @@ import java.util.Map;
             }
 
             return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
-        } catch (NoSuchMethodException e) {
+        } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property mutator", e);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
     }
@@ -135,7 +139,7 @@ import java.util.Map;
             for (int classIx = 0; classIx < classes.length(); classIx++) {
                 final JSONObject classDesc = classes.getJSONObject(classIx);
                 final String targetClassName = classDesc.getString("name");
-                final Class targetClass = Class.forName(targetClassName);
+                final Class<?> targetClass = Class.forName(targetClassName);
 
                 final JSONArray propertyDescs = classDesc.getJSONArray("properties");
                 for (int i = 0; i < propertyDescs.length(); i++) {
@@ -146,9 +150,9 @@ import java.util.Map;
             }
 
             return new ViewSnapshot(properties, mIdToIdName);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             throw new BadInstructionsException("Can't read snapshot configuration", e);
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
         }
     }
@@ -224,19 +228,19 @@ import java.util.Map;
     }
 
     private void buildIdMap(Context context) {
-        MPConfig config = MPConfig.getInstance(context.getApplicationContext());
+        final MPConfig config = MPConfig.getInstance(context.getApplicationContext());
 
         mIdNameToId.clear();
         mIdToIdName.clear();
 
         try {
-            final Class platformIdClass = android.R.id.class;
+            final Class<?> platformIdClass = android.R.id.class;
             final Field[] fields = platformIdClass.getFields();
             for (int i = 0; i < fields.length; i++) {
                 final Field field = fields[i];
                 final int modifiers = field.getModifiers();
                 if (Modifier.isStatic(modifiers)) {
-                    final Class fieldType = field.getType();
+                    final Class<?> fieldType = field.getType();
                     if (fieldType == int.class) {
                         final String name = field.getName();
                         final int value = field.getInt(null);
@@ -246,7 +250,7 @@ import java.util.Map;
                     }
                 }
             }
-        } catch (IllegalAccessException e) {
+        } catch (final IllegalAccessException e) {
             Log.e(LOGTAG, "Can't read built-in id names from platform library", e);
         }
 
@@ -266,13 +270,13 @@ import java.util.Map;
         final String rIdClassName = resourcePackage + ".R$id";
 
         try {
-            final Class rIdClass = Class.forName(rIdClassName);
+            final Class<?> rIdClass = Class.forName(rIdClassName);
             final Field[] fields = rIdClass.getFields();
             for (int i = 0; i < fields.length; i++) {
                 final Field field = fields[i];
                 final int modifiers = field.getModifiers();
                 if (Modifier.isStatic(modifiers)) {
-                    final Class fieldType = field.getType();
+                    final Class<?> fieldType = field.getType();
                     if (fieldType == int.class) {
                         final String name = field.getName();
                         final int value = field.getInt(null);
@@ -281,7 +285,7 @@ import java.util.Map;
                     }
                 }
             }// for fields
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             Log.w(LOGTAG, "Can't load names for Android view ids from class " + rIdClassName + ", ids by name will not be available in the events editor.");
             Log.i(LOGTAG,
                     "You may be missing a Resources class for your package due to your proguard configuration, " +
@@ -296,12 +300,12 @@ import java.util.Map;
                     "<meta-data android:name=\"com.mixpanel.android.MPConfig.ResourcePackageName\" android:value=\"YOUR_PACKAGE_NAME\" />\n\n" +
                     "where YOUR_PACKAGE_NAME is the same string you use for the \"package\" attribute in your <manifest> tag."
             );
-        } catch (IllegalAccessException e) {
+        } catch (final IllegalAccessException e) {
             Log.e(LOGTAG, "Can't read id names for local resources");
         }
     }
 
-    private PropertyDescription readPropertyDescription(Class targetClass, JSONObject propertyDesc) throws BadInstructionsException {
+    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc) throws BadInstructionsException {
         try {
             final String propName = propertyDesc.getString("name");
 
@@ -310,7 +314,7 @@ import java.util.Map;
                 final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
                 final String accessorName = accessorConfig.getString("selector");
                 final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
-                final Class accessorResultType = Class.forName(accessorResultTypeName);
+                final Class<?> accessorResultType = Class.forName(accessorResultTypeName);
                 accessor = new Caller(targetClass, accessorName, NO_PARAMS, accessorResultType);
             }
 
@@ -323,11 +327,11 @@ import java.util.Map;
             }
 
             return new PropertyDescription(propName, targetClass, accessor, mutatorName);
-        } catch (NoSuchMethodException e) {
+        } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property reader", e);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             throw new BadInstructionsException("Can't read property JSON", e);
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
         }
     }
@@ -336,20 +340,20 @@ import java.util.Map;
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
         try {
             if ("java.lang.CharSequence".equals(type)) { // Because we're assignable
-                return (String) jsonArgument;
+                return jsonArgument;
             } else if ("boolean".equals(type) || "java.lang.Boolean".equals(type)) {
-                return (Boolean) jsonArgument;
+                return jsonArgument;
             } else if ("int".equals(type) || "java.lang.Integer".equals(type)) {
                 return ((Number) jsonArgument).intValue();
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
             } else if ("android.graphics.Bitmap".equals(type)) {
-                byte[] bytes = Base64.decode((String) jsonArgument, 0);
+                final byte[] bytes = Base64.decode((String) jsonArgument, 0);
                 return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }
-        } catch (ClassCastException e) {
+        } catch (final ClassCastException e) {
             throw new BadInstructionsException("Couldn't interpret <" + jsonArgument + "> as " + type);
         }
     }
@@ -357,7 +361,7 @@ import java.util.Map;
     private final Map<String, Integer> mIdNameToId;
     private final SparseArray<String> mIdToIdName;
 
-    private static final Class[] NO_PARAMS = new Class[0];
+    private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();
 
     @SuppressWarnings("unused")

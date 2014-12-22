@@ -135,11 +135,11 @@ public class MixpanelAPI {
         deviceInfo.put("$android_brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
         deviceInfo.put("$android_model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
         try {
-            PackageManager manager = mContext.getPackageManager();
-            PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
+            final PackageManager manager = mContext.getPackageManager();
+            final PackageInfo info = manager.getPackageInfo(mContext.getPackageName(), 0);
             deviceInfo.put("$android_app_version", info.versionName);
             deviceInfo.put("$android_app_version_code", Integer.toString(info.versionCode));
-        } catch (PackageManager.NameNotFoundException e) {
+        } catch (final PackageManager.NameNotFoundException e) {
             Log.e(LOGTAG, "Exception getting app version name", e);
         }
         mDeviceInfo = Collections.unmodifiableMap(deviceInfo);
@@ -207,7 +207,7 @@ public class MixpanelAPI {
             }
 
             MixpanelAPI instance = instances.get(appContext);
-            if (null == instance) {
+            if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
@@ -272,11 +272,11 @@ public class MixpanelAPI {
         }
 
         try {
-            JSONObject j = new JSONObject();
+            final JSONObject j = new JSONObject();
             j.put("alias", alias);
             j.put("original", original);
             track("$create_alias", j);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             Log.e(LOGTAG, "Failed to alias", e);
         }
         flush();
@@ -367,7 +367,7 @@ public class MixpanelAPI {
 
             // Don't allow super properties or referral properties to override these fields,
             // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = ((double) System.currentTimeMillis()) / 1000.0;
+            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
             final long timeSeconds = (long) timeSecondsDouble;
             messageProps.put("time", timeSeconds);
             messageProps.put("distinct_id", getDistinctId());
@@ -1251,7 +1251,7 @@ public class MixpanelAPI {
             final JSONObject notifProperties = notif.getCampaignProperties();
             try {
                 notifProperties.put("$time", dateFormat.format(new Date()));
-            } catch (JSONException e) {
+            } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
             }
             people.append("$campaigns", notif.getId());
@@ -1280,7 +1280,7 @@ public class MixpanelAPI {
 
         @Override
         public void showSurveyById(int id, final Activity parent) {
-            Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
+            final Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
                 showGivenOrAvailableSurvey(s, parent);
             }
@@ -1297,7 +1297,7 @@ public class MixpanelAPI {
 
         @Override
         public void showNotificationById(int id, final Activity parent) {
-            InAppNotification notif = mDecideMessages.getNotification(id, mConfig.getTestMode());
+            final InAppNotification notif = mDecideMessages.getNotification(id, mConfig.getTestMode());
             showGivenNotification(notif, parent);
         }
 
@@ -1592,7 +1592,7 @@ public class MixpanelAPI {
                                     }
                                     return; // Can't claim the display state
                                 }
-                                InAppFragment inapp = new InAppFragment();
+                                final InAppFragment inapp = new InAppFragment();
                                 inapp.setDisplayState(
                                     MixpanelAPI.this,
                                     intentId,
@@ -1603,7 +1603,7 @@ public class MixpanelAPI {
                                 if (MPConfig.DEBUG) {
                                     Log.v(LOGTAG, "Attempting to show mini notification.");
                                 }
-                                FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
+                                final FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
                                 transaction.commit();
@@ -1682,7 +1682,7 @@ public class MixpanelAPI {
         public synchronized void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            for (OnMixpanelUpdatesReceivedListener listener : mListeners) {
+            for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
         }
@@ -1742,20 +1742,20 @@ public class MixpanelAPI {
     private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {
         // Register a BroadcastReceiver to receive com.parse.bolts.measurement_event and track a call to mixpanel
         try {
-            Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
-            Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
-            Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
-            Object localBroadcastManager = methodGetInstance.invoke(null, context);
+            final Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
+            final Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
+            final Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
+            final Object localBroadcastManager = methodGetInstance.invoke(null, context);
             methodRegisterReceiver.invoke(localBroadcastManager, new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    JSONObject properties = new JSONObject();
-                    Bundle args = intent.getBundleExtra("event_args");
+                    final JSONObject properties = new JSONObject();
+                    final Bundle args = intent.getBundleExtra("event_args");
                     if (args != null) {
-                        for (String key : args.keySet()) {
+                        for (final String key : args.keySet()) {
                             try {
                                 properties.put(key, args.get(key));
-                            } catch (JSONException e) {
+                            } catch (final JSONException e) {
                                 Log.e(APP_LINKS_LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
                             }
                         }
@@ -1763,13 +1763,13 @@ public class MixpanelAPI {
                     mixpanel.track("$" + intent.getStringExtra("event_name"), properties);
                 }
             }, new IntentFilter("com.parse.bolts.measurement_event"));
-        } catch (InvocationTargetException e) {
+        } catch (final InvocationTargetException e) {
             Log.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
-        } catch (NoSuchMethodException e) {
+        } catch (final NoSuchMethodException e) {
             Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
-        } catch (IllegalAccessException e) {
+        } catch (final IllegalAccessException e) {
             Log.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
         }
     }
@@ -1780,17 +1780,17 @@ public class MixpanelAPI {
         // https://github.com/BoltsFramework/Bolts-Android/blob/1.1.2/Bolts/src/bolts/AppLinks.java#L86
         if (context instanceof Activity) {
             try {
-                Class<?> clazz = Class.forName("bolts.AppLinks");
-                Intent intent = ((Activity) context).getIntent();
-                Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
+                final Class<?> clazz = Class.forName("bolts.AppLinks");
+                final Intent intent = ((Activity) context).getIntent();
+                final Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
                 getTargetUrlFromInboundIntent.invoke(null, context, intent);
-            } catch (InvocationTargetException e) {
+            } catch (final InvocationTargetException e) {
                 Log.d(APP_LINKS_LOGTAG, "Failed to invoke bolts.AppLinks.getTargetUrlFromInboundIntent() -- Unable to detect inbound App Links", e);
-            } catch (ClassNotFoundException e) {
+            } catch (final ClassNotFoundException e) {
                 Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
-            } catch (NoSuchMethodException e) {
+            } catch (final NoSuchMethodException e) {
                 Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
-            } catch (IllegalAccessException e) {
+            } catch (final IllegalAccessException e) {
                 Log.d(APP_LINKS_LOGTAG, "Unable to detect inbound App Links: " + e.getMessage());
             }
         } else {
