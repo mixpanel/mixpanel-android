@@ -137,6 +137,7 @@ uploadArchives {
         }
 
         pom.whenConfigured { pom ->
+            pom.packaging = 'aar'
             pom.dependencies*.optional = true
         }
 
