@@ -99,7 +99,7 @@ public abstract class ResourceReader implements ResourceIds {
         return mIdToIdName.get(id);
     }
 
-    private static void readClassIds(Class<?> platformIdClass, Map<String, Integer> namesToIds) {
+    private static void readClassIds(Class<?> platformIdClass, String namespace, Map<String, Integer> namesToIds) {
         try {
             final Field[] fields = platformIdClass.getFields();
             for (int i = 0; i < fields.length; i++) {
@@ -110,7 +110,13 @@ public abstract class ResourceReader implements ResourceIds {
                     if (fieldType == int.class) {
                         final String name = field.getName();
                         final int value = field.getInt(null);
-                        final String namespacedName = "android:" + name;
+                        final String namespacedName;
+                        if (null == namespace) {
+                            namespacedName = name;
+                        } else {
+                            namespacedName = namespace + ":" + name;
+                        }
+
                         namesToIds.put(namespacedName, value);
                     }
                 }
@@ -128,11 +134,11 @@ public abstract class ResourceReader implements ResourceIds {
         mIdToIdName.clear();
 
         final Class<?> sysIdClass = getSystemClass();
-        readClassIds(android.R.id.class, mIdNameToId);
+        readClassIds(sysIdClass, "android", mIdNameToId);
 
         try {
             final Class<?> rIdClass = getLocalClass(mContext);
-            readClassIds(rIdClass, mIdNameToId);
+            readClassIds(rIdClass, null, mIdNameToId);
         } catch (ClassNotFoundException e) {
             Log.w(LOGTAG, "Can't load names for Android view ids from your project's R class, ids by name will not be available in the events editor.");
             Log.i(LOGTAG,
@@ -158,8 +164,6 @@ public abstract class ResourceReader implements ResourceIds {
     private final Context mContext;
     private final Map<String, Integer> mIdNameToId;
     private final SparseArray<String> mIdToIdName;
-
-    private static final Map<Context, ResourceReader> sInstanceMap = new HashMap<Context, ResourceReader>();
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ResourceReader";
