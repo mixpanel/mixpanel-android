@@ -58,7 +58,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
         mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
 
-        final ResourceIds resourceIds = ResourceReader.getInstance(context);
+        final ResourceIds resourceIds = new ResourceReader.Ids(context);
         mProtocol = new EditProtocol(resourceIds);
         mEditState = new EditState();
         mTweaks = new Tweaks();

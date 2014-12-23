@@ -16,6 +16,9 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
 * BroadcastReciever for handling Google Cloud Messaging intents.
 *
@@ -133,9 +136,9 @@ public class GCMReceiver extends BroadcastReceiver {
         int notificationIcon = -1;
 
         if (null != iconName) {
-            final ResourceIds resourceIds = ResourceReader.getInstance(context);
-            if (resourceIds.knownIdName(iconName)) {
-                notificationIcon = resourceIds.idFromName(iconName);
+            final ResourceIds drawableIds = new ResourceReader.Drawables(context);
+            if (drawableIds.knownIdName(iconName)) {
+                notificationIcon = drawableIds.idFromName(iconName);
             }
         }
 
