@@ -167,6 +167,4 @@ public abstract class ResourceReader implements ResourceIds {
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.ResourceReader";
-
-
 }
