@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.mixpanel.android.mpmetrics.ResourceIds;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,7 +50,8 @@ public class ViewSnapshotTest extends AndroidTestCase {
         idNamesById.put(1234567, "CRAZYSAUCE ID");
         // NO BUTTON_ID in the table
 
-        mSnapshot = new ViewSnapshot(props, idNamesById);
+        final ResourceIds resourceIds = new TestResourceIds(idNamesById);
+        mSnapshot = new ViewSnapshot(props, resourceIds);
     }
 
     public void testBadMethods() {
@@ -148,6 +151,29 @@ public class ViewSnapshotTest extends AndroidTestCase {
         assertEquals(textViewDesc.getString("mp_id_name"), "TEXT_VIEW_ID");
         assertEquals(adhoc3Desc.get("mp_id_name"), JSONObject.NULL);
         assertEquals(adhoc3Desc.getInt("id"), TestView.BUTTON_ID);
+    }
+
+    private static class TestResourceIds implements ResourceIds {
+        public TestResourceIds(final SparseArray<String> aNameMap) {
+            mNameMap = aNameMap;
+        }
+
+        @Override
+        public boolean knownIdName(String name) {
+            return idFromName(name) != -1;
+        }
+
+        @Override
+        public int idFromName(String name) {
+            return mNameMap.indexOfValue(name);
+        }
+
+        @Override
+        public String nameForId(int id) {
+            return mNameMap.get(id);
+        }
+
+        private final SparseArray<String> mNameMap;
     }
 
     private ViewSnapshot mSnapshot;

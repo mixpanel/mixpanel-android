@@ -16,6 +16,9 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
 * BroadcastReciever for handling Google Cloud Messaging intents.
 *
@@ -86,6 +89,7 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
 */
 public class GCMReceiver extends BroadcastReceiver {
+
     @Override
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
@@ -121,20 +125,44 @@ public class GCMReceiver extends BroadcastReceiver {
 
     private void handleNotificationIntent(Context context, Intent intent) {
         final String message = intent.getStringExtra("mp_message");
+        final String iconName = intent.getStringExtra("mp_icon_name");
+        CharSequence notificationTitle = intent.getStringExtra("mp_title");
 
         if (message == null) return;
         if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
 
         final PackageManager manager = context.getPackageManager();
         final Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
-        CharSequence notificationTitle = "";
-        int notificationIcon = android.R.drawable.sym_def_app_icon;
+        int notificationIcon = -1;
+
+        if (null != iconName) {
+            final ResourceIds drawableIds = new ResourceReader.Drawables(context);
+            if (drawableIds.knownIdName(iconName)) {
+                notificationIcon = drawableIds.idFromName(iconName);
+            }
+        }
+
+        ApplicationInfo appInfo;
         try {
-            final ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
-            notificationTitle = manager.getApplicationLabel(appInfo);
-            notificationIcon = appInfo.icon;
+            appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
         } catch (final NameNotFoundException e) {
-            // In this case, use a blank title and default icon
+            appInfo = null;
+        }
+
+        if (null == notificationTitle && null != appInfo) {
+            notificationTitle = manager.getApplicationLabel(appInfo);
+        }
+
+        if (notificationIcon == -1 && null != appInfo) {
+            notificationIcon = appInfo.icon;
+        }
+
+        if (notificationIcon == -1) {
+            notificationIcon = android.R.drawable.sym_def_app_icon;
+        }
+
+        if (null == notificationTitle) {
+            notificationTitle = "A Message For You";
         }
 
         final PendingIntent contentIntent = PendingIntent.getActivity(
@@ -158,7 +186,7 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     @SuppressWarnings("deprecation")
-    @TargetApi(8)
+    @TargetApi(9)
     private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
         final Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
         n.flags |= Notification.FLAG_AUTO_CANCEL;

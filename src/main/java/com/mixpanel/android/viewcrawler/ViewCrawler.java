@@ -20,6 +20,8 @@ import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
 
@@ -55,7 +57,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
         mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
         mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
-        mProtocol = new EditProtocol(context);
+
+        final ResourceIds resourceIds = new ResourceReader.Ids(context);
+        mProtocol = new EditProtocol(resourceIds);
         mEditState = new EditState();
         mTweaks = new Tweaks();
         mDeviceInfo = mixpanel.getDeviceInfo();
