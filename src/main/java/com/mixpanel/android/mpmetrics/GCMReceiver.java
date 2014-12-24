@@ -142,18 +142,19 @@ public class GCMReceiver extends BroadcastReceiver {
             }
         }
 
+        ApplicationInfo appInfo;
         try {
-            final ApplicationInfo appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
-
-            if (null == notificationTitle) {
-                notificationTitle = manager.getApplicationLabel(appInfo);
-            }
-
-            if (notificationIcon == -1) {
-                notificationIcon = appInfo.icon;
-            }
+            appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
         } catch (final NameNotFoundException e) {
-            // In this case, use a default title and a default icon
+            appInfo = null;
+        }
+
+        if (null == notificationTitle && null != appInfo) {
+            notificationTitle = manager.getApplicationLabel(appInfo);
+        }
+
+        if (notificationIcon == -1 && null != appInfo) {
+            notificationIcon = appInfo.icon;
         }
 
         if (notificationIcon == -1) {
