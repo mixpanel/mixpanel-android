@@ -128,8 +128,8 @@ public class GCMReceiver extends BroadcastReceiver {
         final PackageManager manager = context.getPackageManager();
 
         final String message = inboundIntent.getStringExtra("mp_message");
-        final String iconName = inboundIntent.getStringExtra("mp_icon_name");
-        final String uriString = inboundIntent.getStringExtra("mp_uri");
+        final String iconName = inboundIntent.getStringExtra("mp_icnm");
+        final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
 
         if (message == null) {

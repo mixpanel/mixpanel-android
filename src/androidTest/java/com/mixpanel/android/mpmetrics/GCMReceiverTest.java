@@ -38,9 +38,9 @@ public class GCMReceiverTest extends AndroidTestCase {
     public void testCompleteNotification() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_icon_name", "ic_pretend_icon");
+        intent.putExtra("mp_icnm", "ic_pretend_icon");
         intent.putExtra("mp_title", "TITLE");
-        intent.putExtra("mp_uri", mGoodUri.toString());
+        intent.putExtra("mp_cta", mGoodUri.toString());
         final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
 
         assertEquals(created.icon, 12345);
@@ -63,7 +63,7 @@ public class GCMReceiverTest extends AndroidTestCase {
     public void testBadIconNotification() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_icon_name", "NO SUCH ICON");
+        intent.putExtra("mp_icnm", "NO SUCH ICON");
         final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
 
         assertEquals(created.icon, mDefaultIcon);
@@ -72,7 +72,7 @@ public class GCMReceiverTest extends AndroidTestCase {
     public void testBadUri() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_uri", (String) null);
+        intent.putExtra("mp_cta", (String) null);
         final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
         assertNull(created.intent.getData());
     }
