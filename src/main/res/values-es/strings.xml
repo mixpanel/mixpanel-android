@@ -11,5 +11,6 @@
     <string name="com_mixpanel_android_survey_alert_message">¿Podrías responder unas preguntas?"</string>
     <string name="com_mixpanel_android_survey_alert_ok">Claro</string>
     <string name="com_mixpanel_android_survey_alert_cancel">No, Gracias</string>
+    <string name="com_mixpanel_android_survey_remaining_questions">%1$s de %2$s</string>
     <color name="com_mixpanel_android_selected">#66ffffff</color>
 </resources>

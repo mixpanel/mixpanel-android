@@ -457,7 +457,7 @@ public class SurveyActivity extends Activity {
         }
 
         if (questions.size() > 1) {
-            mProgressTextView.setText("" + (idx + 1) + " of " + questions.size());
+            mProgressTextView.setText(getString(R.string.com_mixpanel_android_survey_remaining_questions, idx + 1, questions.size()));
         } else {
             mProgressTextView.setText("");
         }
