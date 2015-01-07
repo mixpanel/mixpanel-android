@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.mpmetrics.TestUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,13 +45,13 @@ public class ViewSnapshotTest extends AndroidTestCase {
         );
         props.add(custom);
 
-        final SparseArray<String> idNamesById = new SparseArray<String>();
-        idNamesById.put(TestView.ROOT_ID, "ROOT_ID");
-        idNamesById.put(TestView.TEXT_VIEW_ID, "TEXT_VIEW_ID");
-        idNamesById.put(1234567, "CRAZYSAUCE ID");
+        final Map<String, Integer> idNamesToIds = new HashMap<String, Integer>();
+        idNamesToIds.put("ROOT_ID", TestView.ROOT_ID);
+        idNamesToIds.put("TEXT_VIEW_ID", TestView.TEXT_VIEW_ID);
+        idNamesToIds.put("CRAZYSAUCE ID", 1234567);
         // NO BUTTON_ID in the table
 
-        final ResourceIds resourceIds = new TestResourceIds(idNamesById);
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(idNamesToIds);
         mSnapshot = new ViewSnapshot(props, resourceIds);
     }
 
@@ -151,29 +152,6 @@ public class ViewSnapshotTest extends AndroidTestCase {
         assertEquals(textViewDesc.getString("mp_id_name"), "TEXT_VIEW_ID");
         assertEquals(adhoc3Desc.get("mp_id_name"), JSONObject.NULL);
         assertEquals(adhoc3Desc.getInt("id"), TestView.BUTTON_ID);
-    }
-
-    private static class TestResourceIds implements ResourceIds {
-        public TestResourceIds(final SparseArray<String> aNameMap) {
-            mNameMap = aNameMap;
-        }
-
-        @Override
-        public boolean knownIdName(String name) {
-            return idFromName(name) != -1;
-        }
-
-        @Override
-        public int idFromName(String name) {
-            return mNameMap.indexOfValue(name);
-        }
-
-        @Override
-        public String nameForId(int id) {
-            return mNameMap.get(id);
-        }
-
-        private final SparseArray<String> mNameMap;
     }
 
     private ViewSnapshot mSnapshot;

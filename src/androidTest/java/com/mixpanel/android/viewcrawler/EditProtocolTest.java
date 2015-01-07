@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.mpmetrics.TestUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,7 +26,7 @@ public class EditProtocolTest extends AndroidTestCase {
         idMap.put("NAME PRESENT", 1001);
         idMap.put("ALSO PRESENT", 1002);
 
-        mResourceIds = new TestResourceIds(idMap);
+        mResourceIds = new TestUtils.TestResourceIds(idMap);
         mProtocol = new EditProtocol(mResourceIds);
         mSnapshotConfig = new JSONObject(
             "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
@@ -154,7 +155,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         {
-            final ResourceIds emptyIds = new TestResourceIds(new HashMap<String, Integer>());
+            final ResourceIds emptyIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
             final List<Pathfinder.PathElement> p = mProtocol.readPath(mJustIdNamePath, emptyIds);
             assertTrue(p.isEmpty());
         }
@@ -178,7 +179,7 @@ public class EditProtocolTest extends AndroidTestCase {
         {
             final Map<String, Integer> nonMatchingIdMap = new HashMap<String, Integer>();
             nonMatchingIdMap.put("NAME PRESENT", 1985);
-            final ResourceIds resourceIds = new TestResourceIds(nonMatchingIdMap);
+            final ResourceIds resourceIds = new TestUtils.TestResourceIds(nonMatchingIdMap);
             final List<Pathfinder.PathElement> p = mProtocol.readPath(mIdNameAndIdPath, resourceIds);
             assertTrue(p.isEmpty());
         }
@@ -266,35 +267,6 @@ public class EditProtocolTest extends AndroidTestCase {
         }
 
         public List<String> visitsRecorded = new ArrayList<String>();
-    }
-
-    private static class TestResourceIds implements ResourceIds {
-        public TestResourceIds(final Map<String, Integer> anIdMap) {
-            mIdMap = anIdMap;
-        }
-
-        @Override
-        public boolean knownIdName(String name) {
-            return mIdMap.containsKey(name);
-        }
-
-        @Override
-        public int idFromName(String name) {
-            return mIdMap.get(name);
-        }
-
-        @Override
-        public String nameForId(int id) {
-            for (Map.Entry<String, Integer> entry : mIdMap.entrySet()) {
-                if (entry.getValue() == id) {
-                    return entry.getKey();
-                }
-            }
-
-            return null;
-        }
-
-        private final Map<String, Integer> mIdMap;
     }
 
     private EditProtocol mProtocol;

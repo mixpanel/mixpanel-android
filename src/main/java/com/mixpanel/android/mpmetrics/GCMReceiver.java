@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
@@ -100,6 +101,118 @@ public class GCMReceiver extends BroadcastReceiver {
         }
     }
 
+    /*
+     * Package scope for testing only, do not call outside of GCMReceiver.
+     */
+
+    /* package */ static class NotificationData {
+        private NotificationData(int anIcon, CharSequence aTitle, String aMessage, Intent anIntent) {
+            icon = anIcon;
+            title = aTitle;
+            message = aMessage;
+            intent = anIntent;
+        }
+
+        public final int icon;
+        public final CharSequence title;
+        public final String message;
+        public final Intent intent;
+    }
+
+    /* package */ Intent getDefaultIntent(Context context) {
+        final PackageManager manager = context.getPackageManager();
+        return manager.getLaunchIntentForPackage(context.getPackageName());
+    }
+
+    /* package */ NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds) {
+        final PackageManager manager = context.getPackageManager();
+
+        final String message = inboundIntent.getStringExtra("mp_message");
+        final String iconName = inboundIntent.getStringExtra("mp_icon_name");
+        final String uriString = inboundIntent.getStringExtra("mp_uri");
+        CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
+
+        if (message == null) {
+            return null;
+        }
+
+        int notificationIcon = -1;
+        if (null != iconName) {
+            if (iconIds.knownIdName(iconName)) {
+                notificationIcon = iconIds.idFromName(iconName);
+            }
+        }
+
+        ApplicationInfo appInfo;
+        try {
+            appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
+        } catch (final NameNotFoundException e) {
+            appInfo = null;
+        }
+
+        if (notificationIcon == -1 && null != appInfo) {
+            notificationIcon = appInfo.icon;
+        }
+
+        if (notificationIcon == -1) {
+            notificationIcon = android.R.drawable.sym_def_app_icon;
+        }
+
+        if (null == notificationTitle && null != appInfo) {
+            notificationTitle = manager.getApplicationLabel(appInfo);
+        }
+
+        if (null == notificationTitle) {
+            notificationTitle = "A Message For You";
+        }
+
+        final Intent notificationIntent = buildNotificationIntent(context, uriString);
+
+        return new NotificationData(notificationIcon, notificationTitle, message, notificationIntent);
+    }
+
+    private Intent buildNotificationIntent(Context context, String uriString) {
+        Uri uri = null;
+        if (null != uriString) {
+            uri = Uri.parse(uriString);
+        }
+
+        final Intent ret;
+        if (null == uri) {
+            ret = getDefaultIntent(context);
+        } else {
+            ret = new Intent(Intent.ACTION_VIEW, uri);
+        }
+
+        return ret;
+    }
+
+    private Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
+        final NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds);
+        if (null == notificationData) {
+            return null;
+        }
+
+        if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + notificationData.message);
+        final PendingIntent contentIntent = PendingIntent.getActivity(
+                context,
+                0,
+                notificationData.intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        final Notification notification;
+        if (Build.VERSION.SDK_INT >= 16) {
+            notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationData);
+        } else if (Build.VERSION.SDK_INT >= 11) {
+            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationData);
+        } else {
+            notification = makeNotificationSDKLessThan11(context, contentIntent, notificationData);
+        }
+
+        return notification;
+    }
+
     private void handleRegistrationIntent(Intent intent) {
         final String registration = intent.getStringExtra("registration_id");
         if (intent.getStringExtra("error") != null) {
@@ -124,85 +237,40 @@ public class GCMReceiver extends BroadcastReceiver {
     }
 
     private void handleNotificationIntent(Context context, Intent intent) {
-        final String message = intent.getStringExtra("mp_message");
-        final String iconName = intent.getStringExtra("mp_icon_name");
-        CharSequence notificationTitle = intent.getStringExtra("mp_title");
-
-        if (message == null) return;
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + message);
-
-        final PackageManager manager = context.getPackageManager();
-        final Intent appIntent = manager.getLaunchIntentForPackage(context.getPackageName());
-        int notificationIcon = -1;
-
-        if (null != iconName) {
-            final ResourceIds drawableIds = new ResourceReader.Drawables(context);
-            if (drawableIds.knownIdName(iconName)) {
-                notificationIcon = drawableIds.idFromName(iconName);
-            }
+        final MPConfig config = MPConfig.getInstance(context);
+        String resourcePackage = config.getResourcePackageName();
+        if (null == resourcePackage) {
+            resourcePackage = context.getPackageName();
         }
 
-        ApplicationInfo appInfo;
-        try {
-            appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
-        } catch (final NameNotFoundException e) {
-            appInfo = null;
+        final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
+        final Context applicationContext = context.getApplicationContext();
+        final Notification notification = buildNotification(applicationContext, intent, drawableIds);
+
+        if (null != notification) {
+            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.notify(0, notification);
         }
-
-        if (null == notificationTitle && null != appInfo) {
-            notificationTitle = manager.getApplicationLabel(appInfo);
-        }
-
-        if (notificationIcon == -1 && null != appInfo) {
-            notificationIcon = appInfo.icon;
-        }
-
-        if (notificationIcon == -1) {
-            notificationIcon = android.R.drawable.sym_def_app_icon;
-        }
-
-        if (null == notificationTitle) {
-            notificationTitle = "A Message For You";
-        }
-
-        final PendingIntent contentIntent = PendingIntent.getActivity(
-            context.getApplicationContext(),
-            0,
-            appIntent, // add this pass null to intent
-            PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        final NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-        final Notification notification;
-        if (Build.VERSION.SDK_INT >= 16) {
-            notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
-        } else if (Build.VERSION.SDK_INT >= 11) {
-            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationIcon, notificationTitle, message);
-        } else {
-            notification = makeNotificationSDKLessThan11(context, contentIntent, notificationIcon, notificationTitle, message);
-        }
-
-        notificationManager.notify(0, notification);
     }
 
     @SuppressWarnings("deprecation")
     @TargetApi(9)
-    private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
-        final Notification n = new Notification(notificationIcon, message, System.currentTimeMillis());
+    private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, NotificationData notificationData) {
+        final Notification n = new Notification(notificationData.icon, notificationData.message, System.currentTimeMillis());
         n.flags |= Notification.FLAG_AUTO_CANCEL;
-        n.setLatestEventInfo(context, title, message, intent);
+        n.setLatestEventInfo(context, notificationData.title, notificationData.message, intent);
         return n;
     }
 
     @SuppressWarnings("deprecation")
     @TargetApi(11)
-    private Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    private Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
-                setSmallIcon(notificationIcon).
-                setTicker(message).
+                setSmallIcon(notificationData.icon).
+                setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(title).
-                setContentText(message).
+                setContentTitle(notificationData.title).
+                setContentText(notificationData.message).
                 setContentIntent(intent);
 
         final Notification n = builder.getNotification();
@@ -212,15 +280,15 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressLint("NewApi")
     @TargetApi(16)
-    private Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, int notificationIcon, CharSequence title, CharSequence message) {
+    private Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
-                setSmallIcon(notificationIcon).
-                setTicker(message).
+                setSmallIcon(notificationData.icon).
+                setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(title).
-                setContentText(message).
+                setContentTitle(notificationData.title).
+                setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
 
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;

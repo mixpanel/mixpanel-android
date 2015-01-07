@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 public class TestUtils {
@@ -33,5 +34,34 @@ public class TestUtils {
         /* package */ boolean sendAppOpen() {
             return false;
         }
+    }
+
+    public static class TestResourceIds implements ResourceIds {
+        public TestResourceIds(final Map<String, Integer> anIdMap) {
+            mIdMap = anIdMap;
+        }
+
+        @Override
+        public boolean knownIdName(String name) {
+            return mIdMap.containsKey(name);
+        }
+
+        @Override
+        public int idFromName(String name) {
+            return mIdMap.get(name);
+        }
+
+        @Override
+        public String nameForId(int id) {
+            for (Map.Entry<String, Integer> entry : mIdMap.entrySet()) {
+                if (entry.getValue() == id) {
+                    return entry.getKey();
+                }
+            }
+
+            return null;
+        }
+
+        private final Map<String, Integer> mIdMap;
     }
 }

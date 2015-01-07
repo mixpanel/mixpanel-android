@@ -13,8 +13,10 @@ import java.util.Map;
 public abstract class ResourceReader implements ResourceIds {
 
     public static class Ids extends ResourceReader {
-        public Ids(Context context) {
+        public Ids(String resourcePackageName, Context context) {
             super(context);
+            mResourcePackageName = resourcePackageName;
+            initialize();
         }
 
         @Override
@@ -23,31 +25,18 @@ public abstract class ResourceReader implements ResourceIds {
         }
 
         @Override
-        protected Class<?> getLocalClass(Context context)
-            throws ClassNotFoundException {
-            MPConfig config = MPConfig.getInstance(context.getApplicationContext());
-
-            // mContext.getPackageName() actually returns the "application id", which
-            // usually (but not always) the same as package of the generated R class.
-            //
-            //  See: http://tools.android.com/tech-docs/new-build-system/applicationid-vs-packagename
-            //
-            // As far as I can tell, the original package name is lost in the build
-            // process in these cases, and must be specified by the developer using
-            // MPConfig meta-data.
-            String resourcePackage = config.getResourcePackageName();
-            if (null == resourcePackage) {
-                resourcePackage = context.getPackageName();
-            }
-
-            final String rIdClassName = resourcePackage + ".R$id";
-            return Class.forName(rIdClassName);
+        protected String getLocalClassName(Context context) {
+            return mResourcePackageName + ".R$id";
         }
+
+        private final String mResourcePackageName;
     }
 
     public static class Drawables extends ResourceReader {
-        protected Drawables(Context context) {
+        protected Drawables(String resourcePackageName, Context context) {
             super(context);
+            mResourcePackageName = resourcePackageName;
+            initialize();
         }
 
         @Override
@@ -56,32 +45,17 @@ public abstract class ResourceReader implements ResourceIds {
         }
 
         @Override
-        protected Class<?> getLocalClass(Context context) throws ClassNotFoundException {
-            MPConfig config = MPConfig.getInstance(context.getApplicationContext());
-
-            // mContext.getPackageName() actually returns the "application id", which
-            // usually (but not always) the same as package of the generated R class.
-            //
-            //  See: http://tools.android.com/tech-docs/new-build-system/applicationid-vs-packagename
-            //
-            // As far as I can tell, the original package name is lost in the build
-            // process in these cases, and must be specified by the developer using
-            // MPConfig meta-data.
-            String resourcePackage = config.getResourcePackageName();
-            if (null == resourcePackage) {
-                resourcePackage = context.getPackageName();
-            }
-
-            final String rIdClassName = resourcePackage + ".R$drawable";
-            return Class.forName(rIdClassName);
+        protected String getLocalClassName(Context context) {
+            return mResourcePackageName + ".R$drawable";
         }
+
+        private final String mResourcePackageName;
     }
 
     protected ResourceReader(Context context) {
         mContext = context;
         mIdNameToId = new HashMap<String, Integer>();
         mIdToIdName = new SparseArray<String>();
-        buildIdMap();
     }
 
     @Override
@@ -127,20 +101,21 @@ public abstract class ResourceReader implements ResourceIds {
     }
 
     protected abstract Class<?> getSystemClass();
-    protected abstract Class<?> getLocalClass(Context context) throws ClassNotFoundException;
+    protected abstract String getLocalClassName(Context context);
 
-    private void buildIdMap() {
+    protected void initialize() {
         mIdNameToId.clear();
         mIdToIdName.clear();
 
         final Class<?> sysIdClass = getSystemClass();
         readClassIds(sysIdClass, "android", mIdNameToId);
 
+        final String localClassName = getLocalClassName(mContext);
         try {
-            final Class<?> rIdClass = getLocalClass(mContext);
+            final Class<?> rIdClass = Class.forName(localClassName);
             readClassIds(rIdClass, null, mIdNameToId);
         } catch (ClassNotFoundException e) {
-            Log.w(LOGTAG, "Can't load names for Android view ids from your project's R class, ids by name will not be available in the events editor.");
+            Log.w(LOGTAG, "Can't load names for Android view ids from '" + localClassName + "', ids by name will not be available in the events editor.");
             Log.i(LOGTAG,
                     "You may be missing a Resources class for your package due to your proguard configuration, " +
                             "or you may be using an applicationId in your build that isn't the same as the package declared in your AndroidManifest.xml file.\n" +
