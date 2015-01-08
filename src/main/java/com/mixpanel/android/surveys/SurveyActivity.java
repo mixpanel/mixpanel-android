@@ -265,7 +265,7 @@ public class SurveyActivity extends Activity {
         final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
         alertBuilder.setTitle(R.string.com_mixpanel_android_survey_alert_title);
         alertBuilder.setMessage(R.string.com_mixpanel_android_survey_alert_message);
-        alertBuilder.setPositiveButton(R.string.com_mixpanel_android_survey_alert_ok, new DialogInterface.OnClickListener() {
+        alertBuilder.setPositiveButton(R.string.com_mixpanel_android_survey_alert_positive_button, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
@@ -273,7 +273,7 @@ public class SurveyActivity extends Activity {
                 showQuestion(mCurrentQuestion);
             }
         });
-        alertBuilder.setNegativeButton(R.string.com_mixpanel_android_survey_alert_cancel, new DialogInterface.OnClickListener() {
+        alertBuilder.setNegativeButton(R.string.com_mixpanel_android_survey_alert_negative_button, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.finish();
