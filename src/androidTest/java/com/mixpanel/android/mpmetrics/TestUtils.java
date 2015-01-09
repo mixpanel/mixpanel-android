@@ -5,7 +5,10 @@ import android.content.SharedPreferences;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class TestUtils {
     public static byte[] bytes(String s) {
@@ -64,4 +67,39 @@ public class TestUtils {
 
         private final Map<String, Integer> mIdMap;
     }
+
+    public static class EmptyPreferences implements Future<SharedPreferences> {
+        public EmptyPreferences(Context context) {
+            mPrefs = context.getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
+            mPrefs.edit().clear().commit();
+        }
+
+        @Override
+        public boolean cancel(final boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isDone() {
+            return false;
+        }
+
+        @Override
+        public SharedPreferences get() throws InterruptedException, ExecutionException {
+            return mPrefs;
+        }
+
+        @Override
+        public SharedPreferences get(final long timeout, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
+        {
+            return mPrefs;
+        }
+
+        private SharedPreferences mPrefs;
+    };
 }
