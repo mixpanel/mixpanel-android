@@ -34,6 +34,12 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.5.2
+
+ * Low level features to allow for more advanced push notifications
+
+ * Bugfix, honor DisableFallback setting in checks for surveys and in-app notifications
+
 #### v4.5.1
 
  * Update pom to allow users of gradle and maven to use the library without specifying packaging aar packaging.
