@@ -163,7 +163,7 @@ public class GCMReceiver extends BroadcastReceiver {
         }
 
         if (null == notificationTitle) {
-            notificationTitle = "A Message For You";
+            notificationTitle = "A message for you";
         }
 
         final Intent notificationIntent = buildNotificationIntent(context, uriString);
