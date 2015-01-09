@@ -206,6 +206,26 @@ import android.util.Log;
         }
     }
 
+    public void clearEvents(Table table) {
+        final String tableName = table.getName();
+
+        try {
+            final SQLiteDatabase db = mDb.getWritableDatabase();
+            db.delete(tableName, null, null); // TODO does this work?
+        } catch (final SQLiteException e) {
+            Log.e(LOGTAG, "Could not clear out all Mixpanel records from " + tableName + ". Re-initializing database.", e);
+
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
+        } finally {
+            mDb.close();
+        }
+    }
+
+
     public void deleteDB() {
         mDb.deleteDatabase();
     }
