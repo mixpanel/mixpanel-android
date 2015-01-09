@@ -21,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.mpmetrics.ResourceIds;
 
 import org.json.JSONObject;
 
@@ -41,9 +42,9 @@ import java.util.concurrent.TimeoutException;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ class ViewSnapshot {
 
-    public ViewSnapshot(List<PropertyDescription> properties, SparseArray<String> idsToNames) {
+    public ViewSnapshot(List<PropertyDescription> properties, ResourceIds resourceIds) {
         mProperties = properties;
-        mIdsToNames = idsToNames;
+        mResourceIds = resourceIds;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
         mRootViewFinder = new RootViewFinder();
         mClassnameCache = new ClassNameCache(MAX_CLASS_NAME_CACHE_SIZE);
@@ -129,7 +130,7 @@ import java.util.concurrent.TimeoutException;
         if (-1 == viewId) {
             viewIdName = null;
         } else {
-            viewIdName = mIdsToNames.get(viewId);
+            viewIdName = mResourceIds.nameForId(viewId);
         }
 
         j.beginObject();
@@ -401,9 +402,9 @@ import java.util.concurrent.TimeoutException;
 
     private final RootViewFinder mRootViewFinder;
     private final List<PropertyDescription> mProperties;
-    private final SparseArray<String> mIdsToNames;
     private final ClassNameCache mClassnameCache;
     private final Handler mMainThreadHandler;
+    private final ResourceIds mResourceIds;
 
     private static final int MAX_CLASS_NAME_CACHE_SIZE = 255;
 

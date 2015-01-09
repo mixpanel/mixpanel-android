@@ -16,7 +16,7 @@ public class MPConfig {
     // Unfortunately, as long as we support building from source in Eclipse,
     // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
     // be hard-coded both in our gradle files and here in code.
-    public static final String VERSION = "4.5.1-SNAPSHOT";
+    public static final String VERSION = "4.5.2-SNAPSHOT";
 
     public static boolean DEBUG = false;
 
@@ -211,6 +211,15 @@ public class MPConfig {
     }
 
     // Pre-configured package name for resources, if they differ from the application package name
+    //
+    // mContext.getPackageName() actually returns the "application id", which
+    // usually (but not always) the same as package of the generated R class.
+    //
+    //  See: http://tools.android.com/tech-docs/new-build-system/applicationid-vs-packagename
+    //
+    // As far as I can tell, the original package name is lost in the build
+    // process in these cases, and must be specified by the developer using
+    // MPConfig meta-data.
     public String getResourcePackageName() {
         return mResourcePackageName;
     }

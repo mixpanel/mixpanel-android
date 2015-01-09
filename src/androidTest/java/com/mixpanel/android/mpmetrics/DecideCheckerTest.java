@@ -1,6 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.test.AndroidTestCase;
 
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
@@ -15,7 +16,8 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     @Override
     public void setUp() {
-        mDecideChecker = new DecideChecker(getContext(), MPConfig.getInstance(getContext()));
+        mConfig = new MockConfig(new Bundle());
+        mDecideChecker = new DecideChecker(getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
         mDecideMessages1 = new DecideMessages("TOKEN 1", null, mEventBinder);
@@ -188,6 +190,20 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.seen.clear();
     }
 
+    public void testDecideHonorsFallbackDisabled() {
+        mConfig.fallbackDisabled = false;
+        mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
+        mDecideChecker.addDecideCheck(mDecideMessages1);
+        mDecideChecker.runDecideChecks(mPoster);
+        assertEquals(mPoster.requestedUrls.length, 2);
+
+        mConfig.fallbackDisabled = true;
+        mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
+        mDecideChecker.addDecideCheck(mDecideMessages1);
+        mDecideChecker.runDecideChecks(mPoster);
+        assertEquals(mPoster.requestedUrls.length, 1);
+    }
+
     public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException {
         {
             final String nonsense = "I AM NONSENSE";
@@ -306,16 +322,18 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
     }
 
-    private class MockPoster extends ServerMessage {
+    private static class MockPoster extends ServerMessage {
         @Override
         public byte[] getUrls(Context context, String[] urls) {
+            requestedUrls = urls;
             return response;
         }
 
+        public String[] requestedUrls = null;
         public byte[] response = null;
     }
 
-    private class MockUpdatesFromMixpanel implements UpdatesFromMixpanel {
+    private static class MockUpdatesFromMixpanel implements UpdatesFromMixpanel {
 
         @Override
         public void setEventBindings(JSONArray bindings) {
@@ -330,8 +348,22 @@ public class DecideCheckerTest extends AndroidTestCase {
         public List<JSONArray> seen = new ArrayList<JSONArray>();
     }
 
+    private static class MockConfig extends MPConfig {
+        MockConfig(Bundle metaData) {
+            super(metaData);
+        }
+
+        @Override
+        public boolean getDisableFallback() {
+            return fallbackDisabled;
+        }
+
+        public boolean fallbackDisabled = false;
+    }
+
     private DecideChecker mDecideChecker;
     private MockPoster mPoster;
+    private MockConfig mConfig;
     private MockUpdatesFromMixpanel mEventBinder;
     private DecideMessages mDecideMessages1, mDecideMessages2, mDecideMessages3;
 }

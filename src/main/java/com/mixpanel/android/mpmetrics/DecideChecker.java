@@ -190,7 +190,13 @@ import java.util.List;
         }
 
         final String checkQuery = queryBuilder.toString();
-        final String[] urls = { mConfig.getDecideEndpoint() + checkQuery, mConfig.getDecideFallbackEndpoint() + checkQuery };
+        final String[] urls;
+        if (mConfig.getDisableFallback()) {
+            urls = new String[]{mConfig.getDecideEndpoint() + checkQuery};
+        } else {
+            urls = new String[]{mConfig.getDecideEndpoint() + checkQuery,
+                                mConfig.getDecideFallbackEndpoint() + checkQuery};
+        }
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Querying decide server at " + urls[0]);

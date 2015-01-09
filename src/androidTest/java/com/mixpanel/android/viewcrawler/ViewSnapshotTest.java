@@ -8,6 +8,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.mpmetrics.TestUtils;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,13 +45,14 @@ public class ViewSnapshotTest extends AndroidTestCase {
         );
         props.add(custom);
 
-        final SparseArray<String> idNamesById = new SparseArray<String>();
-        idNamesById.put(TestView.ROOT_ID, "ROOT_ID");
-        idNamesById.put(TestView.TEXT_VIEW_ID, "TEXT_VIEW_ID");
-        idNamesById.put(1234567, "CRAZYSAUCE ID");
+        final Map<String, Integer> idNamesToIds = new HashMap<String, Integer>();
+        idNamesToIds.put("ROOT_ID", TestView.ROOT_ID);
+        idNamesToIds.put("TEXT_VIEW_ID", TestView.TEXT_VIEW_ID);
+        idNamesToIds.put("CRAZYSAUCE ID", 1234567);
         // NO BUTTON_ID in the table
 
-        mSnapshot = new ViewSnapshot(props, idNamesById);
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(idNamesToIds);
+        mSnapshot = new ViewSnapshot(props, resourceIds);
     }
 
     public void testBadMethods() {
