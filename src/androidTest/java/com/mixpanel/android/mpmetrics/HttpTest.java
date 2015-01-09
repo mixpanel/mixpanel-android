@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
+import android.util.Pair;
 
 import com.mixpanel.android.util.Base64Coder;
 
@@ -24,62 +25,93 @@ import java.util.concurrent.TimeUnit;
 public class HttpTest extends AndroidTestCase {
 
     public void setUp() {
+        mDisableFallback = false;
         mMockPreferences = new TestUtils.EmptyPreferences(getContext());
-    }
-
-    public void testHTTPFailures() {
-        final List<Object> flushResults = new ArrayList<Object>();
-        final BlockingQueue<String> performRequestCalls = new LinkedBlockingQueue<String>();
+        mFlushResults = new ArrayList<Object>();
+        mPerformRequestCalls = new LinkedBlockingQueue<String>();
+        mDecideCalls = new LinkedBlockingQueue<String>();
+        mCleanupCalls = new ArrayList<String>();
+        mDecideResults = new ArrayList<Object>();
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) throws IOException {
-                if (null == nameValuePairs) {
-                    assertEquals("DECIDE ENDPOINT?version=1&lib=android&token=Test+Message+Queuing", endpointUrl);
-                    return TestUtils.bytes("{}");
-                }
-
-                Object obj = flushResults.remove(0);
                 try {
+                    if (null == nameValuePairs) {
+                        mDecideCalls.put(endpointUrl);
+
+                        if (mDecideResults.isEmpty()) {
+                            return TestUtils.bytes("{}");
+                        }
+
+                        final Object obj = mDecideResults.remove(0);
+                        if (obj instanceof IOException) {
+                            throw (IOException)obj;
+                        } else if (obj instanceof MalformedURLException) {
+                            throw (MalformedURLException)obj;
+                        }
+                        return (byte[])obj;
+                    }
+                    // ELSE
+
+
                     assertEquals(nameValuePairs.get(0).getName(), "data");
                     final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
-                    performRequestCalls.put(event.getString("event"));
+                    mPerformRequestCalls.put(event.getString("event"));
 
+                    if (mFlushResults.isEmpty()) {
+                        return TestUtils.bytes("1");
+                    }
+
+                    final Object obj = mFlushResults.remove(0);
                     if (obj instanceof IOException) {
                         throw (IOException)obj;
                     } else if (obj instanceof MalformedURLException) {
                         throw (MalformedURLException)obj;
                     }
+                    return (byte[])obj;
+
                 } catch (JSONException e) {
                     throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {
                     throw new RuntimeException("Could not write message to reporting queue for tests.", e);
                 }
-                return (byte[])obj;
             }
         };
 
         final MPConfig config = new MPConfig(new Bundle()) {
+            @Override
             public String getDecideEndpoint() {
                 return "DECIDE ENDPOINT";
             }
 
+            @Override
+            public String getDecideFallbackEndpoint() {
+                return "DECIDE FALLBACK";
+            }
+
+            @Override
             public String getEventsEndpoint() {
                 return "EVENTS ENDPOINT";
             }
 
+            @Override
+            public String getEventsFallbackEndpoint() {
+                return "EVENTS FALLBACK";
+            }
+
+            @Override
             public boolean getDisableFallback() {
-                return false;
+                return mDisableFallback;
             }
         };
 
-        final List<String> cleanupCalls = new ArrayList<String>();
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
             public void cleanupEvents(String last_id, Table table) {
-                cleanupCalls.add("called");
+                mCleanupCalls.add("called");
                 super.cleanupEvents(last_id, table);
             }
         };
@@ -101,67 +133,75 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        mMetrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
 
+    }
+
+    public void testHTTPFailures() {
         try {
             // Basic succeed on first, non-fallback url
-            cleanupCalls.clear();
-            flushResults.add(TestUtils.bytes("1\n"));
-            metrics.track("Should Succeed", null);
-            metrics.flush();
+            mCleanupCalls.clear();
+            mFlushResults.add(TestUtils.bytes("1\n"));
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(1, cleanupCalls.size());
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
 
             // Fallback test--first URL throws IOException
-            cleanupCalls.clear();
-            flushResults.add(new IOException());
-            flushResults.add(TestUtils.bytes("1\n"));
-            metrics.track("Should Succeed", null);
-            metrics.flush();
+            mCleanupCalls.clear();
+            mFlushResults.add(new IOException());
+            mFlushResults.add(TestUtils.bytes("1\n"));
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(1, cleanupCalls.size());
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
 
             // Two IOExceptions -- assume temporary network failure, no cleanup should happen until
             // second flush
-            cleanupCalls.clear();
-            flushResults.add(new IOException());
-            flushResults.add(new IOException());
-            flushResults.add(TestUtils.bytes("1\n"));
-            metrics.track("Should Succeed", null);
-            metrics.flush();
+            mCleanupCalls.clear();
+            mFlushResults.add(new IOException());
+            mFlushResults.add(new IOException());
+            mFlushResults.add(TestUtils.bytes("1\n"));
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(0, cleanupCalls.size());
-            metrics.flush();
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            mMetrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Succeed", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(1, cleanupCalls.size());
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
 
             // MalformedURLException -- should dump the events since this will probably never succeed
-            cleanupCalls.clear();
-            flushResults.add(new MalformedURLException());
-            metrics.track("Should Fail", null);
-            metrics.flush();
+            mCleanupCalls.clear();
+            mFlushResults.add(new MalformedURLException());
+            mMetrics.track("Should Fail", null);
+            mMetrics.flush();
             Thread.sleep(500);
-            assertEquals("Should Fail", performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(null, performRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
-            assertEquals(1, cleanupCalls.size());
+            assertEquals("Should Fail", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }
     }
 
     private Future<SharedPreferences> mMockPreferences;
+    private List<Object> mFlushResults, mDecideResults;
+    private BlockingQueue<String> mPerformRequestCalls, mDecideCalls;
+    private List<String> mCleanupCalls;
+    private MixpanelAPI mMetrics;
+    private volatile boolean mDisableFallback;
     private static final int POLL_WAIT_SECONDS = 5;
 }
