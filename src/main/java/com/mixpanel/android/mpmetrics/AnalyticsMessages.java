@@ -276,11 +276,17 @@ import java.util.Map;
                     ///////////////////////////
 
                     if (queueDepth >= mConfig.getBulkUploadLimit()) {
-                        logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
-                        updateFlushFrequency();
-                        sendAllData(mDbAdapter);
-                        mDecideChecker.runDecideChecks(getPoster());
-                    } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
+                        final long timeSinceLastFlush = System.currentTimeMillis() - mLastFlushTime;
+                        if (timeSinceLastFlush >= MIN_OVERFLOW_FLUSH_INTERVAL_MILLIS) {
+                            logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
+                            updateFlushFrequency();
+                            sendAllData(mDbAdapter);
+                            mDecideChecker.runDecideChecks(getPoster());
+                            queueDepth = 0;
+                        }
+                    }
+
+                    if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
                         // Callers outside of this thread can still send
@@ -291,6 +297,19 @@ import java.util.Map;
                         if (mFlushInterval >= 0) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
+                    }
+
+                    if (queueDepth >= ABSOLUTE_MAX_QUEUE_SIZE) {
+                        if (msg.what == ENQUEUE_PEOPLE) {
+                            mDbAdapter.clearEvents(MPDbAdapter.Table.PEOPLE);
+                        }
+
+                        if (msg.what == ENQUEUE_EVENTS) {
+                            mDbAdapter.clearEvents(MPDbAdapter.Table.EVENTS);
+                        }
+
+                        Log.e(LOGTAG, "The Mixpanel library is no longer efficiently processing messages.\n" +
+                                "To prevent filling up device storage, " + queueDepth + " messages have been dropped.\n");
                     }
                 } catch (final RuntimeException e) {
                     Log.e(LOGTAG, "Worker threw an unhandled exception", e);
@@ -525,35 +544,37 @@ import java.util.Map;
                 return eventObj;
             }
 
+
+            private void updateFlushFrequency() {
+                final long now = System.currentTimeMillis();
+                final long newFlushCount = mFlushCount + 1;
+
+                if (mLastFlushTime > 0) {
+                    final long flushInterval = now - mLastFlushTime;
+                    final long totalFlushTime = flushInterval + (mAveFlushFrequency * mFlushCount);
+                    mAveFlushFrequency = totalFlushTime / newFlushCount;
+
+                    final long seconds = mAveFlushFrequency / 1000;
+                    logAboutMessageToMixpanel("Average send frequency approximately " + seconds + " seconds.");
+                }
+
+                mLastFlushTime = now;
+                mFlushCount = newFlushCount;
+            }
+
+            private long mFlushCount = 0;
+            private long mAveFlushFrequency = 0;
+            private long mLastFlushTime = -1;
+
+            private SystemInformation mSystemInformation;
             private MPDbAdapter mDbAdapter;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
         }// AnalyticsMessageHandler
 
-        private void updateFlushFrequency() {
-            final long now = System.currentTimeMillis();
-            final long newFlushCount = mFlushCount + 1;
-
-            if (mLastFlushTime > 0) {
-                final long flushInterval = now - mLastFlushTime;
-                final long totalFlushTime = flushInterval + (mAveFlushFrequency * mFlushCount);
-                mAveFlushFrequency = totalFlushTime / newFlushCount;
-
-                final long seconds = mAveFlushFrequency / 1000;
-                logAboutMessageToMixpanel("Average send frequency approximately " + seconds + " seconds.");
-            }
-
-            mLastFlushTime = now;
-            mFlushCount = newFlushCount;
-        }
-
         private final Object mHandlerLock = new Object();
         private Handler mHandler;
-        private long mFlushCount = 0;
-        private long mAveFlushFrequency = 0;
-        private long mLastFlushTime = -1;
-        private SystemInformation mSystemInformation;
     }
 
     /////////////////////////////////////////////////////////
@@ -570,6 +591,12 @@ import java.util.Map;
     private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
     private static int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
+
+    // If we have a full queue, we still won't flush at intervals under MIN_OVERFLOW_FLUSH_INTERVAL_MILLIS
+    private static final int MIN_OVERFLOW_FLUSH_INTERVAL_MILLIS = 2000;
+
+    // If our queue ever hits this size, we'll start dropping old events.
+    private static final int ABSOLUTE_MAX_QUEUE_SIZE = 10000;
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
 
