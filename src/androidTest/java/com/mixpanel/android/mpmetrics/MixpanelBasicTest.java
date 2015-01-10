@@ -101,8 +101,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
 
-        // If something terrible happens in the worker thread, we
-        // should make sure
         final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
             @Override
             public int addJSON(JSONObject message, MPDbAdapter.Table table) {
@@ -110,6 +108,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 throw new RuntimeException("BANG!");
             }
         };
+
         final AnalyticsMessages explodingMessages = new AnalyticsMessages(getContext()) {
             // This will throw inside of our worker thread.
             @Override
