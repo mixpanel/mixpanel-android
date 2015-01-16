@@ -199,8 +199,10 @@ import java.util.List;
         }
 
         if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Querying decide server at " + urls[0]);
-            Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
+            Log.v(LOGTAG, "Querying decide server, urls:");
+            for (int i = 0; i < urls.length; i++) {
+                Log.v(LOGTAG, "    >> " + urls[i]);
+            }
         }
 
         final byte[] response = poster.getUrls(mContext, urls);
