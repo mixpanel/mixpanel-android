@@ -448,7 +448,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals(1, peopleSent.length());
 
         } catch (InterruptedException e) {
-            fail("Expected a log message about mixpanel communication but did not recieve it.");
+            fail("Expected a log message about mixpanel communication but did not receive it.");
         } catch (JSONException e) {
             fail("Expected a JSON object message and got something silly instead: " + expectedJSONMessage);
         }
