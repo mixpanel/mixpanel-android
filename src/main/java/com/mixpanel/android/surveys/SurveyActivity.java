@@ -172,7 +172,7 @@ public class SurveyActivity extends Activity {
             }
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
+			public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
                 } else {
@@ -267,9 +267,9 @@ public class SurveyActivity extends Activity {
         }
 
         final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-        alertBuilder.setTitle("We'd love your feedback!");
-        alertBuilder.setMessage("Mind taking a quick survey?");
-        alertBuilder.setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+        alertBuilder.setTitle(R.string.com_mixpanel_android_survey_prompt_dialog_title);
+        alertBuilder.setMessage(R.string.com_mixpanel_android_survey_prompt_dialog_message);
+        alertBuilder.setPositiveButton(R.string.com_mixpanel_android_sure, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
@@ -277,7 +277,7 @@ public class SurveyActivity extends Activity {
                 showQuestion(mCurrentQuestion);
             }
         });
-        alertBuilder.setNegativeButton("No, Thanks", new DialogInterface.OnClickListener() {
+        alertBuilder.setNegativeButton(R.string.com_mixpanel_android_no_thanks, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 SurveyActivity.this.finish();
@@ -319,7 +319,7 @@ public class SurveyActivity extends Activity {
                 people.append("$responses", survey.getCollectionId());
 
                 final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
-                for (final Survey.Question question:questionList) {
+                for (final Survey.Question question : questionList) {
                     final String answerString = answers.get(question.getId());
                     if (null != answerString) {
                         try {
