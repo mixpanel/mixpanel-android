@@ -358,15 +358,8 @@ import java.util.Map;
                 }
 
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
-                if (mDisableFallback) {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
-                 } else {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
-                }
+                sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ "http://172.31.24.222/track?ip=1" }); // 172.20.10.2
+                sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ "http://172.31.24.222/track?ip=1" }); // 10.0.0.31
             }
 
             private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
