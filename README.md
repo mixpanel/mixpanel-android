@@ -276,7 +276,7 @@ This is a major release, with significant changes to library behavior.
 
   ```
     dependencies {
-        compile "com.mixpanel.android:mixpanel-android:4.0.0@aar"
+        compile "com.mixpanel.android:alooma-mixpanel-android:4.0.0@aar"
     }
   ```
 

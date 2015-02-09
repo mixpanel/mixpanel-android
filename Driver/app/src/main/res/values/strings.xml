@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Driver</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="edit_message">Enter a message</string>
+    <string name="button_send">Send kpi</string>
+    <string name="alooma"></string>
+    <string name="button_alooma">Set alooma</string>
+    <string name="action_settings">Settings</string>
+
+</resources>

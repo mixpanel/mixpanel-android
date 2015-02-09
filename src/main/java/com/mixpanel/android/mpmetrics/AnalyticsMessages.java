@@ -67,6 +67,22 @@ import java.util.Map;
         }
     }
 
+    public void setTargetAlooma(String host) {
+        aloomaHost = host;
+    }
+
+    public String getTargetAlooma() {
+        return aloomaHost;
+    }
+
+    public void setAloomaAndMixpanel(boolean sendAloomaAndMixpanel) {
+        this.sendAloomaAndMixpanel = sendAloomaAndMixpanel;
+    }
+
+    public boolean getAloomaAndMixpanel() {
+        return sendAloomaAndMixpanel;
+    }
+
     public void eventsMessage(final EventDescription eventDescription) {
         final Message m = Message.obtain();
         m.what = ENQUEUE_EVENTS;
@@ -358,15 +374,31 @@ import java.util.Map;
                 }
 
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
+
+                if (aloomaHost != null) {
+                    String target = "http://" + aloomaHost + "/track?ip=1";
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ target });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ target });
+                    if (sendAloomaAndMixpanel) {
+                        sendToMixpanel(dbAdapter);
+                    }
+                }
+                else {
+                    sendToMixpanel(dbAdapter);
+                }
+            }
+
+            private void sendToMixpanel(MPDbAdapter dbAdapter) {
                 if (mDisableFallback) {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
-                 } else {
+                } else {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                            new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
+                            new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
                 }
+
             }
 
             private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
@@ -562,6 +594,8 @@ import java.util.Map;
     private final Worker mWorker;
     private final Context mContext;
     private final MPConfig mConfig;
+    private boolean sendAloomaAndMixpanel = false;
+    private String aloomaHost = null;
 
     // Messages for our thread
     private static int ENQUEUE_PEOPLE = 0; // submit events and people data
