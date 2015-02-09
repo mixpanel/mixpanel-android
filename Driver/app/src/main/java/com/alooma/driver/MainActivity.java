@@ -42,11 +42,20 @@ public class MainActivity extends ActionBarActivity {
         mMixpanel.track("Aloomix", properties);
     }
 
+    public void setAlooma(View view) {
+        EditText editText = (EditText) findViewById(R.id.alooma);
+        String val = editText.getText().toString();
+        mMixpanel.setTargetAlooma(val);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMixpanel = MixpanelAPI.getInstance(this, MIXPANEL_TOKEN);
+
+        EditText editText = (EditText) findViewById(R.id.alooma);
+        editText.setText(mMixpanel.getTargetAlooma());
     }
 
 
