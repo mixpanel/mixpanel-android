@@ -53,10 +53,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
-        mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
-        mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
-        mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
-        mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
 
         String resourcePackage = mConfig.getResourcePackageName();
         if (null == resourcePackage) {
@@ -245,6 +241,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mContext = context;
             mToken = token;
             mSnapshot = null;
+
+            mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
+            mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
+            mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
+            mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
         }
 
         @Override
@@ -291,27 +292,24 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 if (null != storedChanges) {
                     final JSONArray changes = new JSONArray(storedChanges);
 
-                    synchronized(mPersistentChanges) {
-                        mPersistentChanges.clear();
-                        for (int i = 0; i < changes.length(); i++) {
-                            final JSONObject changeMessage = changes.getJSONObject(i);
-                            final String targetActivity = JSONUtils.optionalStringKey(changeMessage, "target");
-                            final JSONObject change = changeMessage.getJSONObject("change");
-                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
-                        }
+                    mPersistentChanges.clear();
+                    for (int i = 0; i < changes.length(); i++) {
+                        final JSONObject changeMessage = changes.getJSONObject(i);
+                        final String targetActivity = JSONUtils.optionalStringKey(changeMessage, "target");
+                        final JSONObject change = changeMessage.getJSONObject("change");
+                        mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
                     }
                 }
 
                 if (null != storedBindings) {
                     final JSONArray bindings = new JSONArray(storedBindings);
 
-                    synchronized(mPersistentEventBindings) {
-                        mPersistentEventBindings.clear();
-                        for (int i = 0; i < bindings.length(); i++) {
-                            final JSONObject event = bindings.getJSONObject(i);
-                            final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                            mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
-                        }
+
+                    mPersistentEventBindings.clear();
+                    for (int i = 0; i < bindings.length(); i++) {
+                        final JSONObject event = bindings.getJSONObject(i);
+                        final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
+                        mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
                     }
                 }
             } catch (final JSONException e) {
@@ -523,7 +521,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 final JSONObject change = changeMessage.getJSONObject("change");
                 synchronized (mEditorChanges) {
                     mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change));
-                }
+                 }
+
                 updateEditState();
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
@@ -555,16 +554,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
 
             final int eventCount = eventBindings.length();
-            synchronized (mEditorEventBindings) {
-                mEditorEventBindings.clear();
-                for (int i = 0; i < eventCount; i++) {
-                    try {
-                        final JSONObject event = eventBindings.getJSONObject(i);
-                        final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                        mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
-                    } catch (final JSONException e) {
-                        Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
-                    }
+
+            mEditorEventBindings.clear();
+            for (int i = 0; i < eventCount; i++) {
+                try {
+                    final JSONObject event = eventBindings.getJSONObject(i);
+                    final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
+                    mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                 }
             }
 
@@ -575,13 +573,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
          * Clear state associated with the editor now that the editor is gone.
          */
         private void handleEditorClosed() {
-            synchronized (mEditorChanges) {
-                mEditorChanges.clear();
-            }
-
-            synchronized (mEditorEventBindings) {
-                mEditorEventBindings.clear();
-            }
+            mEditorChanges.clear();
+            mEditorEventBindings.clear();
 
             // Free (or make available) snapshot memory
             mSnapshot = null;
@@ -601,7 +594,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         private void updateEditState() {
             final List<Pair<String, ViewVisitor>> newEdits = new ArrayList<Pair<String, ViewVisitor>>();
 
-            synchronized (mPersistentChanges) {
+            {
                 final int size = mPersistentChanges.size();
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mPersistentChanges.get(i);
@@ -616,7 +609,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
             }
 
-            synchronized (mEditorChanges) {
+            {
                 final int size = mEditorChanges.size();
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mEditorChanges.get(i);
@@ -631,7 +624,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
             }
 
-            synchronized (mPersistentEventBindings) {
+            {
                 final int size = mPersistentEventBindings.size();
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mPersistentEventBindings.get(i);
@@ -646,7 +639,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
             }
 
-            synchronized (mEditorEventBindings) {
+            {
                 final int size = mEditorEventBindings.size();
                 for (int i = 0; i < size; i++) {
                     final Pair<String, JSONObject> changeInfo = mEditorEventBindings.get(i);
@@ -687,6 +680,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         private ViewSnapshot mSnapshot;
         private final Context mContext;
         private final String mToken;
+
+        private final List<Pair<String,JSONObject>> mEditorChanges;
+        private final List<Pair<String,JSONObject>> mEditorEventBindings;
+        private final List<Pair<String,JSONObject>> mPersistentChanges;
+        private final List<Pair<String,JSONObject>> mPersistentEventBindings;
     }
 
     private class Editor implements EditorConnection.Editor {
@@ -724,12 +722,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mMessageThreadHandler.sendMessage(msg);
         }
     }
-
-    // Lists of edits. All accesses must be synchronized
-    private final List<Pair<String,JSONObject>> mPersistentChanges;
-    private final List<Pair<String,JSONObject>> mEditorChanges;
-    private final List<Pair<String,JSONObject>> mPersistentEventBindings;
-    private final List<Pair<String,JSONObject>> mEditorEventBindings;
 
     private final MPConfig mConfig;
     private final DynamicEventTracker mTracker;
