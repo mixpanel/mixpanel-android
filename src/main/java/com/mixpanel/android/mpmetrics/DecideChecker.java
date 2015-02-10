@@ -60,9 +60,9 @@ import java.util.List;
     }
 
     /* package */ static class UnintelligibleMessageException extends Exception {
-		private static final long serialVersionUID = -6501269367559104957L;
+        private static final long serialVersionUID = -6501269367559104957L;
 
-		public UnintelligibleMessageException(String message, JSONException cause) {
+        public UnintelligibleMessageException(String message, JSONException cause) {
             super(message, cause);
         }
     }

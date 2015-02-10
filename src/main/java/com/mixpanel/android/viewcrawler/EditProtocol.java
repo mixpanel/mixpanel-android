@@ -19,9 +19,9 @@ import java.util.List;
 /* package */ class EditProtocol {
 
     public static class BadInstructionsException extends Exception {
-		private static final long serialVersionUID = -4062004792184145311L;
+        private static final long serialVersionUID = -4062004792184145311L;
 
-		public BadInstructionsException(String message) {
+        public BadInstructionsException(String message) {
             super(message);
         }
 
@@ -31,9 +31,9 @@ import java.util.List;
     }
 
     public static class InapplicableInstructionsException extends BadInstructionsException {
-		private static final long serialVersionUID = 3977056710817909104L;
+        private static final long serialVersionUID = 3977056710817909104L;
 
-		public InapplicableInstructionsException(String message) {
+        public InapplicableInstructionsException(String message) {
             super(message);
         }
     }

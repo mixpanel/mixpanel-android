@@ -235,7 +235,7 @@ import java.util.concurrent.TimeoutException;
         }
 
         @Override
-		protected String create(Class<?> klass) {
+        protected String create(Class<?> klass) {
             return klass.getCanonicalName();
         }
     }

@@ -27,9 +27,9 @@ import java.nio.ByteBuffer;
 /* package */ class EditorConnection {
 
     public class EditorConnectionException extends IOException {
-		private static final long serialVersionUID = -1884953175346045636L;
+        private static final long serialVersionUID = -1884953175346045636L;
 
-		public EditorConnectionException(Throwable cause) {
+        public EditorConnectionException(Throwable cause) {
             super(cause.getMessage()); // IOException(cause) is only available in API level 9!
         }
     }
