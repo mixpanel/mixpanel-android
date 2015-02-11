@@ -103,8 +103,6 @@ import java.util.List;
                 throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
             }
 
-            // TODO NOT CLEAR THAT THIS IS CORRECT. WE CAN GET A PATH WITH NO TERMINAL CLASS
-            // TODO ASSOCIATED WITH AN EDIT THAT ASSUMES THAT THE TARGET IS AN android.view.whatHaveYou
             final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
             final JSONArray argsAndTypes = source.getJSONArray("args");
             final Object[] methodArgs = new Object[argsAndTypes.length()];
