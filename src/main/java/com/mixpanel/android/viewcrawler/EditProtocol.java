@@ -92,15 +92,15 @@ import java.util.List;
 
             final JSONObject propertyDesc = source.getJSONObject("property");
             final String targetClassName = propertyDesc.getString("classname");
-            final Class<?> targetClass;
             if (null == targetClassName) {
-                targetClass = View.class;
-            } else {
-                try {
-                    targetClass = Class.forName(targetClassName);
-                } catch (final ClassNotFoundException e) {
-                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
-                }
+                throw new BadInstructionsException("Can't bind an edit property without a target class");
+            }
+
+            final Class<?> targetClass;
+            try {
+                targetClass = Class.forName(targetClassName);
+            } catch (final ClassNotFoundException e) {
+                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
             }
 
             // TODO NOT CLEAR THAT THIS IS CORRECT. WE CAN GET A PATH WITH NO TERMINAL CLASS
