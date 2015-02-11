@@ -29,10 +29,12 @@ import java.util.List;
             surveys = new ArrayList<Survey>();
             notifications = new ArrayList<InAppNotification>();
             eventBindings = EMPTY_JSON_ARRAY;
+            variants = EMPTY_JSON_ARRAY;
         }
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
+        public JSONArray variants;
     }
 
     public DecideChecker(final Context context, final MPConfig config) {
@@ -52,7 +54,7 @@ import java.util.List;
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
-                updates.reportResults(result.surveys, result.notifications, result.eventBindings);
+                updates.reportResults(result.surveys, result.notifications, result.eventBindings, result.variants);
             } catch (final UnintelligibleMessageException e) {
                 Log.e(LOGTAG, e.getMessage(), e);
             }
@@ -161,6 +163,14 @@ import java.util.List;
                 ret.eventBindings = response.getJSONArray("event_bindings");
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
+            }
+        }
+
+        if (response.has("variants")) {
+            try {
+                ret.variants = response.getJSONArray("variants");
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
             }
         }
 

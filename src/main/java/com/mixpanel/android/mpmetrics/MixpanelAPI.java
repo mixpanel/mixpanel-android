@@ -1702,6 +1702,11 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void setVariants(JSONArray variants) {
+            // No op
+        }
+
+        @Override
         public Tweaks getTweaks() {
             return mEmptyTweaks;
         }

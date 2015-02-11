@@ -14,6 +14,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.support.annotation.IntDef;
 import android.util.JsonWriter;
 import android.util.Log;
 import android.util.Pair;
@@ -100,6 +101,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     public void setEventBindings(JSONArray bindings) {
         final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
         msg.obj = bindings;
+        mMessageThreadHandler.sendMessage(msg);
+    }
+
+    @Override
+    public void setVariants(JSONArray variants) {
+        final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_VARIANTS_RECEIVED);
+        msg.obj = variants;
         mMessageThreadHandler.sendMessage(msg);
     }
 
@@ -250,7 +258,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
         @Override
         public void handleMessage(Message msg) {
-            switch (msg.what) {
+            final @MessageType int what = msg.what;
+            switch (what) {
                 case MESSAGE_INITIALIZE_CHANGES:
                     initializeChanges();
                     break;
@@ -265,6 +274,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     break;
                 case MESSAGE_SEND_EVENT_TRACKED:
                     sendReportTrackToEditor((String) msg.obj);
+                    break;
+                case MESSAGE_VARIANTS_RECEIVED:
+                    handleVariantsReceived((JSONArray) msg.obj);
                     break;
                 case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
                     handleEditorChangeReceived((JSONObject) msg.obj);
@@ -290,14 +302,27 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
             try {
                 if (null != storedChanges) {
-                    final JSONArray changes = new JSONArray(storedChanges);
+                    mPersistentChanges.clear(); // TODO undo/unapply these guys
 
-                    mPersistentChanges.clear();
-                    for (int i = 0; i < changes.length(); i++) {
-                        final JSONObject changeMessage = changes.getJSONObject(i);
-                        final String targetActivity = JSONUtils.optionalStringKey(changeMessage, "target");
-                        final JSONObject change = changeMessage.getJSONObject("change");
-                        mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
+                    final JSONArray variants = new JSONArray(storedChanges);
+                    for (int variantIx = 0; variantIx < variants.length(); variantIx++) {
+                        final JSONObject nextVariant = variants.getJSONObject(variantIx);
+                        final JSONArray actions = nextVariant.getJSONArray("actions");
+                        for (int i = 0; i < actions.length(); i++) {
+                            final JSONObject change = actions.getJSONObject(i);
+                            final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
+                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
+
+                            // TODO NEEDS TO BE WRITTEN TO SOME DEGREE OF GOOD FEELINGS, AND THEN TESTED AFTER MERGE
+                        }
+
+                        // TODO
+                        // TODO final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
+                        //
+
+                        // TODO
+                        // TODO final String experiment_id = nextVariant.getString("experiment_id")
+                        // TODO FIRE APPROPRIATE EVENTS? OR LATER?
                     }
                 }
 
@@ -532,6 +557,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         /**
+         * Accept and apply variant changes from a non-interactive source.
+         */
+        private void handleVariantsReceived(JSONArray variants) {
+            final SharedPreferences preferences = getSharedPreferences();
+            final SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
+            editor.apply();
+            initializeChanges();
+        }
+
+        /**
          * Accept and apply a persistent event binding from a non-interactive source.
          */
         private void handleEventBindingsReceived(JSONArray eventBindings) {
@@ -738,6 +774,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
 
+    @IntDef({
+            MESSAGE_INITIALIZE_CHANGES,
+            MESSAGE_CONNECT_TO_EDITOR,
+            MESSAGE_SEND_STATE_FOR_EDITING,
+            MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED,
+            MESSAGE_SEND_DEVICE_INFO,
+            MESSAGE_EVENT_BINDINGS_RECEIVED,
+            MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED,
+            MESSAGE_SEND_EVENT_TRACKED,
+            MESSAGE_HANDLE_EDITOR_CLOSED,
+            MESSAGE_VARIANTS_RECEIVED
+    })
+    public @interface MessageType {}
+
     private static final int MESSAGE_INITIALIZE_CHANGES = 0;
     private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
     private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
@@ -747,6 +797,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
     private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
     private static final int MESSAGE_HANDLE_EDITOR_CLOSED = 10;
+    private static final int MESSAGE_VARIANTS_RECEIVED = 11;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 

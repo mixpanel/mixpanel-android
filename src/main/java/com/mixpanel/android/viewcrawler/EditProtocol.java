@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
+import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -92,14 +93,19 @@ import java.util.List;
             final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
             final String targetClassName = pathEnd.viewClassName;
             final Class<?> targetClass;
-            try {
-                targetClass = Class.forName(targetClassName);
-            } catch (final ClassNotFoundException e) {
-                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+            if (null == targetClassName) {
+                targetClass = View.class;
+            } else {
+                try {
+                    targetClass = Class.forName(targetClassName);
+                } catch (final ClassNotFoundException e) {
+                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+                }
             }
 
+            // TODO NOT CLEAR THAT THIS IS CORRECT. WE CAN GET A PATH WITH NO TERMINAL CLASS
+            // TODO ASSOCIATED WITH AN EDIT THAT ASSUMES THAT THE TARGET IS AN android.view.whatHaveYou
             final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
-
             final JSONArray argsAndTypes = source.getJSONArray("args");
             final Object[] methodArgs = new Object[argsAndTypes.length()];
             for (int i = 0; i < argsAndTypes.length(); i++) {
@@ -219,7 +225,8 @@ import java.util.List;
         return explicitId;
     }
 
-    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc) throws BadInstructionsException {
+    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc)
+            throws BadInstructionsException {
         try {
             final String propName = propertyDesc.getString("name");
 

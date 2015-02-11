@@ -8,5 +8,6 @@ import org.json.JSONArray;
    implemented in client code. */
 public interface UpdatesFromMixpanel {
     public void setEventBindings(JSONArray bindings);
+    public void setVariants(JSONArray variants);
     public Tweaks getTweaks();
 }

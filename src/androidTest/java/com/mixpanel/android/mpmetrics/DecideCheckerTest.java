@@ -341,6 +341,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         @Override
+        public void setVariants(JSONArray variants) { seen.add(variants); }
+
+        @Override
         public Tweaks getTweaks() {
             return null;
         }
