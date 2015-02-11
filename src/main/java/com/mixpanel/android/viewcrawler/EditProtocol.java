@@ -89,8 +89,8 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
-            final String targetClassName = pathEnd.viewClassName;
+            final JSONObject propertyDesc = source.getJSONObject("property");
+            final String targetClassName = propertyDesc.getString("classname");
             final Class<?> targetClass;
             try {
                 targetClass = Class.forName(targetClassName);
