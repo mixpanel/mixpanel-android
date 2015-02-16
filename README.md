@@ -42,8 +42,6 @@ Changelog
        android:value="false" />
  ```
 
- Enabling $app_open events will enable Notification open tracking for push notifications.
-
 #### v4.5.2
 
  * Low level features to allow for more advanced push notifications
