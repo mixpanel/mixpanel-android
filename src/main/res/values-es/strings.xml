@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="com_mixpanel_android_next">Siguiente pregunta</string>
+    <string name="com_mixpanel_android_previous">Pregunta anterior</string>
+    <string name="com_mixpanel_android_logo">By Mixpanel</string>
+    <string name="com_mixpanel_android_exit">Salir</string>
+    <string name="com_mixpanel_android_close">Cerrar</string>
+    <string name="com_mixpanel_android_done">Hecho</string>
+    <string name="com_mixpanel_android_notification_image">Imagen no mostrada</string>
+    <string name="com_mixpanel_android_survey_alert_title">Nos gustaría escucharte!</string>
+    <string name="com_mixpanel_android_survey_alert_message">¿Podrías responder unas preguntas?"</string>
+    <string name="com_mixpanel_android_survey_alert_positive_button">Claro</string>
+    <string name="com_mixpanel_android_survey_alert_negative_button">No, Gracias</string>
+    <string name="com_mixpanel_android_survey_remaining_questions">%1$s de %2$s</string>
+    <color name="com_mixpanel_android_selected">#66ffffff</color>
+</resources>
