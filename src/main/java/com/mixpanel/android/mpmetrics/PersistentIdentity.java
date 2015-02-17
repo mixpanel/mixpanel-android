@@ -91,6 +91,32 @@ import android.util.Log;
         return mSuperPropertiesCache;
     }
 
+    public synchronized void updateSuperProperties(SuperPropertyUpdate updates) {
+        final JSONObject oldPropCache = getSuperProperties();
+        final JSONObject copy = new JSONObject();
+
+        try {
+            final Iterator<String> keys = oldPropCache.keys();
+            while (keys.hasNext()) {
+                final String k = keys.next();
+                final Object v = oldPropCache.get(k);
+                copy.put(k, v);
+            }
+        } catch (JSONException e) {
+            Log.wtf(LOGTAG, "Can't copy from one JSONObject to another", e);
+            return;
+        }
+
+        final JSONObject replacementCache = updates.update(copy);
+        if (null == replacementCache) {
+            Log.w(LOGTAG, "An update to Mixpanel's super properties returned null, and will have no effect.");
+            return;
+        }
+
+        mSuperPropertiesCache = replacementCache;
+        storeSuperProperties();
+    }
+
     public Map<String, String> getReferrerProperties() {
         synchronized (sReferrerPrefsLock) {
             if (sReferrerPrefsDirty || null == mReferrerPropertiesCache) {

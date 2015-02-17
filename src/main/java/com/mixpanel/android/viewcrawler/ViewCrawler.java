@@ -23,6 +23,7 @@ import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.ResourceReader;
+import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
 
@@ -39,8 +40,10 @@ import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -76,6 +79,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         mTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
+        mVariantTracker = new VariantTracker(mixpanel);
 
         // We build our own, private SSL context here to prevent things from going
         // crazy if client libs are using older versions of OkHTTP, or otherwise doing crazy junk
@@ -252,8 +256,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
             mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
-            mPersistentChanges = new ArrayList<Pair<String, JSONObject>>();
+            mPersistentChanges = new ArrayList<VariantChange>();
             mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
+            mSeenExperiments = new HashSet<Pair<Integer, Integer>>();
         }
 
         @Override
@@ -261,6 +266,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final @MessageType int what = msg.what;
             switch (what) {
                 case MESSAGE_INITIALIZE_CHANGES:
+                    loadKnownChanges();
                     initializeChanges();
                     break;
                 case MESSAGE_CONNECT_TO_EDITOR:
@@ -294,6 +300,36 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         /**
+         * Load the experiment ids and variants already in persistent storage into
+         * into our set of seen experiments, so we don't double track them.
+         */
+        private void loadKnownChanges() {
+            final SharedPreferences preferences = getSharedPreferences();
+            final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
+
+            if (null != storedChanges) {
+                try {
+                    final JSONArray variants = new JSONArray(storedChanges);
+                    final int variantsLength = variants.length();
+                    for (int i = 0; i < variantsLength; i++) {
+                        final JSONObject variant = variants.getJSONObject(i);
+                        final int variantId = variant.getInt("id");
+                        final int experimentId = variant.getInt("experiment");
+                        final Pair<Integer,Integer> sight = new Pair<Integer,Integer>(experimentId, variantId);
+                        mSeenExperiments.add(sight);
+                    }
+                } catch (JSONException e) {
+                    Log.e(LOGTAG, "Malformed variants found in persistent storage, clearing all variants", e);
+                    final SharedPreferences.Editor editor = preferences.edit();
+                    editor.remove(SHARED_PREF_CHANGES_KEY);
+                    editor.remove(SHARED_PREF_BINDINGS_KEY);
+                    editor.commit();
+                }
+            }
+
+        }
+
+        /**
          * Load stored changes from persistent storage and apply them to the application.
          */
         private void initializeChanges() {
@@ -305,24 +341,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     mPersistentChanges.clear(); // TODO undo/unapply these guys
 
                     final JSONArray variants = new JSONArray(storedChanges);
-                    for (int variantIx = 0; variantIx < variants.length(); variantIx++) {
+                    final int variantsLength = variants.length();
+                    for (int variantIx = 0; variantIx < variantsLength; variantIx++) {
                         final JSONObject nextVariant = variants.getJSONObject(variantIx);
+                        final int variantIdPart = nextVariant.getInt("id");
+                        final int experimentIdPart = nextVariant.getInt("experiment_id");
+                        final Pair<Integer, Integer> variantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
+
                         final JSONArray actions = nextVariant.getJSONArray("actions");
                         for (int i = 0; i < actions.length(); i++) {
                             final JSONObject change = actions.getJSONObject(i);
                             final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
-                            mPersistentChanges.add(new Pair<String, JSONObject>(targetActivity, change));
-
-                            // TODO NEEDS TO BE WRITTEN TO SOME DEGREE OF GOOD FEELINGS, AND THEN TESTED AFTER MERGE
+                            final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
+                            mPersistentChanges.add(variantChange);
                         }
 
-                        // TODO
                         // TODO final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
-                        //
-
-                        // TODO
-                        // TODO final String experiment_id = nextVariant.getString("experiment_id")
-                        // TODO FIRE APPROPRIATE EVENTS? OR LATER?
                     }
                 }
 
@@ -341,7 +375,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
-                editor.apply();
+                editor.commit();
             }
 
             updateEditState();
@@ -420,18 +454,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             try {
                 writer.write("{\"type\": \"device_info_response\",");
                 writer.write("\"payload\": {");
-                writer.write("\"device_type\": \"Android\",");
-                writer.write("\"device_name\":");
-                writer.write(JSONObject.quote(Build.BRAND + "/" + Build.MODEL));
-                writer.write(",");
-                writer.write("\"tweaks\":");
-                writer.write(new JSONObject(mTweaks.getAll()).toString());
-                for (final Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
+                    writer.write("\"device_type\": \"Android\",");
+                    writer.write("\"device_name\":");
+                    writer.write(JSONObject.quote(Build.BRAND + "/" + Build.MODEL));
                     writer.write(",");
-                    writer.write(JSONObject.quote(entry.getKey()));
-                    writer.write(":");
-                    writer.write(JSONObject.quote(entry.getValue()));
-                }
+                    writer.write("\"tweaks\": []"); // TODO send tweaks back home
+                    for (final Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
+                        writer.write(",");
+                        writer.write(JSONObject.quote(entry.getKey()));
+                        writer.write(":");
+                        writer.write(JSONObject.quote(entry.getValue()));
+                    }
                 writer.write("}"); // payload
                 writer.write("}");
             } catch (final IOException e) {
@@ -563,7 +596,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
-            editor.apply();
+            editor.commit();
+
+            // Mark inbound stuff as in
+
             initializeChanges();
         }
 
@@ -574,7 +610,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_BINDINGS_KEY, eventBindings.toString());
-            editor.apply();
+            editor.commit();
             initializeChanges();
         }
 
@@ -631,14 +667,18 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
          */
         private void updateEditState() {
             final List<Pair<String, ViewVisitor>> newEdits = new ArrayList<Pair<String, ViewVisitor>>();
+            final Set<Pair<Integer, Integer>> toTrack = new HashSet<Pair<Integer, Integer>>();
 
             {
                 final int size = mPersistentChanges.size();
                 for (int i = 0; i < size; i++) {
-                    final Pair<String, JSONObject> changeInfo = mPersistentChanges.get(i);
+                    final VariantChange changeInfo = mPersistentChanges.get(i);
                     try {
-                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.change);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.activityName, visitor));
+                        if (! mSeenExperiments.contains(changeInfo.variantId)) {
+                            toTrack.add(changeInfo.variantId);
+                        }
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -707,6 +747,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
 
             mEditState.setEdits(editMap);
+            mSeenExperiments.addAll(toTrack);
+            mVariantTracker.trackVariants(toTrack);
         }
 
         private SharedPreferences getSharedPreferences() {
@@ -721,8 +763,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
         private final List<Pair<String,JSONObject>> mEditorChanges;
         private final List<Pair<String,JSONObject>> mEditorEventBindings;
-        private final List<Pair<String,JSONObject>> mPersistentChanges;
+        private final List<VariantChange> mPersistentChanges;
         private final List<Pair<String,JSONObject>> mPersistentEventBindings;
+        private final Set<Pair<Integer, Integer>> mSeenExperiments;
     }
 
     private class Editor implements EditorConnection.Editor {
@@ -761,6 +804,58 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
     }
 
+    private static class VariantChange {
+        public VariantChange(String anActivityName, JSONObject someChange, Pair<Integer, Integer> aVariantId) {
+            activityName = anActivityName;
+            change = someChange;
+            variantId = aVariantId;
+        }
+
+        public final String activityName;
+        public final JSONObject change;
+        public final Pair<Integer, Integer> variantId;
+    }
+
+    private static class VariantTracker {
+        public VariantTracker(MixpanelAPI mixpanel) {
+            mMixpanel = mixpanel;
+        }
+
+        public void trackVariants(Set<Pair <Integer, Integer>> variants) {
+            final JSONObject variantObject = new JSONObject();
+
+            try {
+                for (Pair <Integer, Integer> variant:variants) {
+                    final int experimentId = variant.first;
+                    final int variantId = variant.second;
+
+                    final JSONObject trackProps = new JSONObject();
+                    trackProps.put("$experiment_id", experimentId);
+                    trackProps.put("$variant_id", variantId);
+                    mMixpanel.track("$experiment_started", trackProps);
+
+                    variantObject.put(Integer.toString(experimentId), variantId);
+                }
+            } catch (JSONException e) {
+                Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
+            }
+
+            mMixpanel.getPeople().merge("$experiments", variantObject); // TODO is this thread safe?
+            mMixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+                public JSONObject update(JSONObject in) {
+                    try {
+                        in.put("$experiments", variantObject);
+                    } catch (JSONException e) {
+                        Log.wtf(LOGTAG, "Can't write $experiments super property", e);
+                    }
+                    return in;
+                }
+            });
+        }
+
+        private final MixpanelAPI mMixpanel;
+    }
+
     private final MPConfig mConfig;
     private final DynamicEventTracker mTracker;
     private final SSLSocketFactory mSSLSocketFactory;
@@ -769,6 +864,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private final Tweaks mTweaks;
     private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;
+    private final VariantTracker mVariantTracker;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
