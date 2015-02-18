@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -249,14 +251,26 @@ import java.util.Map;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        sendAllData(mDbAdapter);
-                        mDecideChecker.runDecideChecks(getPoster());
+                        if (SystemClock.uptimeMillis() >= mRetryAfter) {
+                            try {
+                                sendAllData(mDbAdapter);
+                                mDecideChecker.runDecideChecks(getPoster());
+                            } catch (ServiceUnavailableException e) {
+                                mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
+                            }
+                        }
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
                         logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
-                        mDecideChecker.runDecideChecks(getPoster());
+                        if (SystemClock.uptimeMillis() >= mRetryAfter) {
+                            try {
+                                mDecideChecker.runDecideChecks(getPoster());
+                            } catch (ServiceUnavailableException e) {
+                                e.getRetryAfter();
+                            }
+                        }
                     }
                     else if (msg.what == REGISTER_FOR_GCM) {
                         final String senderId = (String) msg.obj;
@@ -275,11 +289,15 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if (queueDepth >= mConfig.getBulkUploadLimit()) {
+                    if (queueDepth >= mConfig.getBulkUploadLimit()) { // <<<<<<<<<<<<<<<< what should we do in this case
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
-                        sendAllData(mDbAdapter);
-                        mDecideChecker.runDecideChecks(getPoster());
+                        try {
+                            sendAllData(mDbAdapter);
+                            mDecideChecker.runDecideChecks(getPoster());
+                        } catch (ServiceUnavailableException e) {
+                            // should I drop all the messages?
+                        }
                     } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
@@ -350,7 +368,7 @@ import java.util.Map;
                 });
             }
 
-            private void sendAllData(MPDbAdapter dbAdapter) {
+            private void sendAllData(MPDbAdapter dbAdapter) throws ServiceUnavailableException {
                 final ServerMessage poster = getPoster();
                 if (! poster.isOnline(mContext)) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
@@ -358,18 +376,22 @@ import java.util.Map;
                 }
 
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
-                if (mDisableFallback) {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
-                 } else {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
+                try {
+                    if (mDisableFallback) {
+                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{mConfig.getEventsEndpoint()});
+                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{mConfig.getPeopleEndpoint()});
+                    } else {
+                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
+                                new String[]{mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint()});
+                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
+                                new String[]{mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint()});
+                    }
+                } catch (ServiceUnavailableException e) {
+                    throw e;
                 }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) throws ServiceUnavailableException {
                 final ServerMessage poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
@@ -389,7 +411,8 @@ import java.util.Map;
                     for (String url : urls) {
                         try {
                             response = poster.performRequest(url, params);
-                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
+                            deleteEvents = true;
+
                             if (null == response) {
                                 logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
                             } else {
@@ -399,7 +422,6 @@ import java.util.Map;
                                 } catch (UnsupportedEncodingException e) {
                                     throw new RuntimeException("UTF not supported on this platform?", e);
                                 }
-
                                 logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
                                 logAboutMessageToMixpanel("Response was " + parsedResponse);
                             }
@@ -410,9 +432,10 @@ import java.util.Map;
                         } catch (final MalformedURLException e) {
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
+                        } catch (final ServiceUnavailableException e) {
+                            throw e;
                         } catch (final IOException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                            deleteEvents = false;
                         }
                     }
 
@@ -572,6 +595,7 @@ import java.util.Map;
     private static int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
+    private static long mRetryAfter = -1;
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 
