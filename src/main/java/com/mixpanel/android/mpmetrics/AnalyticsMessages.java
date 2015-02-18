@@ -376,18 +376,14 @@ import java.util.Map;
                 }
 
                 logAboutMessageToMixpanel("Sending records to Mixpanel");
-                try {
-                    if (mDisableFallback) {
-                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{mConfig.getEventsEndpoint()});
-                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{mConfig.getPeopleEndpoint()});
-                    } else {
-                        sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                                new String[]{mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint()});
-                        sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                                new String[]{mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint()});
-                    }
-                } catch (ServiceUnavailableException e) {
-                    throw e;
+                if (mDisableFallback) {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
+                } else {
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
+                             new String[]{mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
+                             new String[]{mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
                 }
             }
 
@@ -421,6 +417,7 @@ import java.util.Map;
                                 } catch (UnsupportedEncodingException e) {
                                     throw new RuntimeException("UTF not supported on this platform?", e);
                                 }
+
                                 logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
                                 logAboutMessageToMixpanel("Response was " + parsedResponse);
                             }
@@ -431,8 +428,6 @@ import java.util.Map;
                         } catch (final MalformedURLException e) {
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
-                        } catch (final ServiceUnavailableException e) {
-                            throw e;
                         } catch (final IOException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;

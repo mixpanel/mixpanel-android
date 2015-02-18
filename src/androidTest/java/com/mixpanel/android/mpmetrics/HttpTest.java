@@ -192,6 +192,20 @@ public class HttpTest extends AndroidTestCase {
             assertEquals("Should Fail", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
+
+            mCleanupCalls.clear();
+            mFlushResults.add(new ServiceUnavailableException("", "5"));
+            mFlushResults.add(TestUtils.bytes("1\n"));
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }

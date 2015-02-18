@@ -59,8 +59,6 @@ import java.util.List;
             } catch (final OutOfMemoryError e) {
                 Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
                 break;
-            } catch (final ServiceUnavailableException e) {
-                throw e;
             }
         }
 

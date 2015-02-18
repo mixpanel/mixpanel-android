@@ -55,8 +55,6 @@ import java.util.List;
                 updates.reportResults(result.surveys, result.notifications, result.eventBindings);
             } catch (final UnintelligibleMessageException e) {
                 Log.e(LOGTAG, e.getMessage(), e);
-            } catch (ServiceUnavailableException e) {
-                throw e;
             }
         }
     }
@@ -71,35 +69,30 @@ import java.util.List;
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
         throws ServiceUnavailableException, UnintelligibleMessageException {
-        try {
-            final String responseString = getDecideResponseFromServer(token, distinctId, poster);
-
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
-            }
-
-            Result parsed = new Result();
-            if (null != responseString) {
-                parsed = parseDecideResponse(responseString);
-            }
-
-            final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
-            while (notificationIterator.hasNext()) {
-                final InAppNotification notification = notificationIterator.next();
-                final Bitmap image = getNotificationImage(notification, mContext, poster);
-                if (null == image) {
-                    Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
-                            ", will not show the notification.");
-                    notificationIterator.remove();
-                } else {
-                    notification.setImage(image);
-                }
-            }
-
-            return parsed;
-        } catch (ServiceUnavailableException e) {
-            throw e;
+        final String responseString = getDecideResponseFromServer(token, distinctId, poster);
+        if (MPConfig.DEBUG) {
+            Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
         }
+
+        Result parsed = new Result();
+        if (null != responseString) {
+            parsed = parseDecideResponse(responseString);
+        }
+
+        final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
+        while (notificationIterator.hasNext()) {
+            final InAppNotification notification = notificationIterator.next();
+            final Bitmap image = getNotificationImage(notification, mContext, poster);
+            if (null == image) {
+                Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                              ", will not show the notification.");
+                notificationIterator.remove();
+            } else {
+                notification.setImage(image);
+            }
+        }
+
+        return parsed;
     }// runDecideCheck
 
     /* package */ static Result parseDecideResponse(String responseString)
@@ -210,14 +203,13 @@ import java.util.List;
             Log.v(LOGTAG, "Querying decide server at " + urls[0]);
             Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
         }
+
+        final byte[] response = poster.getUrls(mContext, urls);
+        if (null == response) {
+            return null;
+        }
         try {
-            final byte[] response = poster.getUrls(mContext, urls);
-            if (null == response) {
-                return null;
-            }
             return new String(response, "UTF-8");
-        } catch (ServiceUnavailableException e) {
-            throw e;
         } catch (final UnsupportedEncodingException e) {
             throw new RuntimeException("UTF not supported on this platform?", e);
         }
@@ -235,15 +227,12 @@ import java.util.List;
         if (notification.getType() == InAppNotification.Type.TAKEOVER && displayWidth >= 720) {
             urls = new String[]{ notification.getImage4xUrl(), notification.getImage2xUrl() };
         }
-        try {
-            final byte[] response = poster.getUrls(context, urls);
-            if (null != response) {
-                ret = BitmapFactory.decodeByteArray(response, 0, response.length);
-            } else {
-                Log.i(LOGTAG, "Failed to download images from " + Arrays.toString(urls));
-            }
-        } catch (ServiceUnavailableException e) {
-            throw e;
+
+        final byte[] response = poster.getUrls(context, urls);
+        if (null != response) {
+            ret = BitmapFactory.decodeByteArray(response, 0, response.length);
+        } else {
+            Log.i(LOGTAG, "Failed to download images from " + Arrays.toString(urls));
         }
 
         return ret;
