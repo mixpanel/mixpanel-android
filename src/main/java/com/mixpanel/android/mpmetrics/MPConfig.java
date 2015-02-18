@@ -97,12 +97,14 @@ public class MPConfig {
 
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
         if (null == decideEndpoint) {
+            //decideEndpoint = "https://decide.mixpanel.com/decide";
             decideEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
         }
         mDecideEndpoint = decideEndpoint;
 
         String decideFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint");
         if (null == decideFallbackEndpoint) {
+            //decideFallbackEndpoint = "http://decide.mixpanel.com/decide";
             decideFallbackEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;

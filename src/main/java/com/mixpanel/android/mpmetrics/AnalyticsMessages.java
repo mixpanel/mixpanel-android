@@ -268,7 +268,7 @@ import java.util.Map;
                             try {
                                 mDecideChecker.runDecideChecks(getPoster());
                             } catch (ServiceUnavailableException e) {
-                                e.getRetryAfter();
+                                mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
                             }
                         }
                     }
@@ -411,8 +411,7 @@ import java.util.Map;
                     for (String url : urls) {
                         try {
                             response = poster.performRequest(url, params);
-                            deleteEvents = true;
-
+                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                             if (null == response) {
                                 logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
                             } else {
@@ -436,6 +435,7 @@ import java.util.Map;
                             throw e;
                         } catch (final IOException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
                         }
                     }
 
