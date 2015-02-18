@@ -587,12 +587,12 @@ import java.util.Map;
     private final MPConfig mConfig;
 
     // Messages for our thread
-    private static int ENQUEUE_PEOPLE = 0; // submit events and people data
-    private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
-    private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
-    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
-    private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
-    private static int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
+    private static final int ENQUEUE_PEOPLE = 0; // submit events and people data
+    private static final int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
+    private static final int FLUSH_QUEUE = 2; // push given JSON message to events DB
+    private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
+    private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
+    private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
     private static long mRetryAfter = -1;
