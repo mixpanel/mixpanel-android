@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="com_mixpanel_android_next">Следующий вопрос</string>
+    <string name="com_mixpanel_android_previous">Предыдущий вопрос</string>
+    <string name="com_mixpanel_android_logo">By Mixpanel</string>
+    <string name="com_mixpanel_android_exit">Завершить</string>
+    <string name="com_mixpanel_android_close">Закрыть</string>
+    <string name="com_mixpanel_android_done">Готово</string>
+    <string name="com_mixpanel_android_notification_image">Image not displayed</string>
+    <string name="com_mixpanel_android_survey_prompt_dialog_title">Нам важна обратная связь</string>
+    <string name="com_mixpanel_android_survey_prompt_dialog_message">Примите участие в небольшом опросе?</string>
+    <string name="com_mixpanel_android_sure">Конечно!</string>
+    <string name="com_mixpanel_android_no_thanks">Нет, спасибо</string>
+</resources>
