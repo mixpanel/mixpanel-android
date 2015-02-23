@@ -381,9 +381,9 @@ import java.util.Map;
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
                 } else {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                             new String[]{mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                             new String[]{mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
+                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
                 }
             }
 
