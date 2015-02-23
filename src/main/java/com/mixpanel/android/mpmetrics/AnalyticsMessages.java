@@ -289,14 +289,14 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if (queueDepth >= mConfig.getBulkUploadLimit()) { // <<<<<<<<<<<<<<<< what should we do in this case
+                    if (queueDepth >= mConfig.getBulkUploadLimit() && SystemClock.uptimeMillis() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
                             sendAllData(mDbAdapter);
                             mDecideChecker.runDecideChecks(getPoster());
                         } catch (ServiceUnavailableException e) {
-                            // should I drop all the messages?
+                            mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
                         }
                     } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
