@@ -35,7 +35,8 @@ public class HttpTest extends AndroidTestCase {
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) throws IOException {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs)
+                throws ServiceUnavailableException, IOException {
                 try {
                     if (null == nameValuePairs) {
                         mDecideCalls.put(endpointUrl);
@@ -49,6 +50,8 @@ public class HttpTest extends AndroidTestCase {
                             throw (IOException)obj;
                         } else if (obj instanceof MalformedURLException) {
                             throw (MalformedURLException)obj;
+                        } else if (obj instanceof ServiceUnavailableException) {
+                            throw (ServiceUnavailableException)obj;
                         }
                         return (byte[])obj;
                     }
@@ -70,6 +73,8 @@ public class HttpTest extends AndroidTestCase {
                         throw (IOException)obj;
                     } else if (obj instanceof MalformedURLException) {
                         throw (MalformedURLException)obj;
+                    } else if (obj instanceof ServiceUnavailableException) {
+                        throw (ServiceUnavailableException)obj;
                     }
                     return (byte[])obj;
 
@@ -193,8 +198,9 @@ public class HttpTest extends AndroidTestCase {
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
 
+            // 503 exception -- should wait for 2 seconds until the queue is able to flush
             mCleanupCalls.clear();
-            mFlushResults.add(new ServiceUnavailableException("", "5"));
+            mFlushResults.add(new ServiceUnavailableException("", "2"));
             mFlushResults.add(TestUtils.bytes("1\n"));
             mMetrics.track("Should Succeed", null);
             mMetrics.flush();
@@ -203,6 +209,10 @@ public class HttpTest extends AndroidTestCase {
             assertEquals(0, mCleanupCalls.size());
             mMetrics.flush();
             Thread.sleep(500);
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            Thread.sleep(1000);
+            mMetrics.flush();
             assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
