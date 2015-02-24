@@ -104,7 +104,7 @@ import android.util.Log;
 
         public boolean belowMemThreshold() {
             if (mDatabaseFile.exists()) {
-                return mDatabaseFile.getUsableSpace() >= Math.max(mDatabaseFile.length(), 20 * 1024 * 1024);
+                return Math.min(mDatabaseFile.getUsableSpace(), 20 * 1024 * 1024) >= mDatabaseFile.length();
             }
             return true;
         }
