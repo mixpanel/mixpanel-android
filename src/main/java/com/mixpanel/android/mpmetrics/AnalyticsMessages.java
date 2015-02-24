@@ -297,7 +297,7 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if (queueDepth >= mConfig.getBulkUploadLimit() && SystemClock.elapsedRealtime() >= mRetryAfter) {
+                    if ((queueDepth >= mConfig.getBulkUploadLimit() || !mDbAdapter.belowMemThreshold()) && SystemClock.elapsedRealtime() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
