@@ -71,15 +71,13 @@ public class MPConfig {
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
-            //eventsEndpoint = "https://api.mixpanel.com/track?ip=1"; <<<<<<< change me back
-            eventsEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
+            eventsEndpoint = "https://api.mixpanel.com/track?ip=1";
         }
         mEventsEndpoint = eventsEndpoint;
 
         String eventsFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint");
         if (null == eventsFallbackEndpoint) {
-            eventsFallbackEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
-            //eventsFallbackEndpoint = "http://api.mixpanel.com/track?ip=1";
+            eventsFallbackEndpoint = "http://api.mixpanel.com/track?ip=1";
         }
         mEventsFallbackEndpoint = eventsFallbackEndpoint;
 
@@ -97,15 +95,13 @@ public class MPConfig {
 
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
         if (null == decideEndpoint) {
-            //decideEndpoint = "https://decide.mixpanel.com/decide";
-            decideEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
+            decideEndpoint = "https://decide.mixpanel.com/decide";
         }
         mDecideEndpoint = decideEndpoint;
 
         String decideFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint");
         if (null == decideFallbackEndpoint) {
-            //decideFallbackEndpoint = "http://decide.mixpanel.com/decide";
-            decideFallbackEndpoint = "http://yinfei.dev.mixpanel.org:9012/asd";
+            decideFallbackEndpoint = "http://decide.mixpanel.com/decide";
         }
         mDecideFallbackEndpoint = decideFallbackEndpoint;
 
