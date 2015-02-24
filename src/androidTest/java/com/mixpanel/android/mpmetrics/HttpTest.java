@@ -32,6 +32,7 @@ public class HttpTest extends AndroidTestCase {
         mDecideCalls = new LinkedBlockingQueue<String>();
         mCleanupCalls = new ArrayList<String>();
         mDecideResults = new ArrayList<Object>();
+        mForceOverMemThreshold = false;
 
         final ServerMessage mockPoster = new ServerMessage() {
             @Override
@@ -118,6 +119,15 @@ public class HttpTest extends AndroidTestCase {
             public void cleanupEvents(String last_id, Table table) {
                 mCleanupCalls.add("called");
                 super.cleanupEvents(last_id, table);
+            }
+
+            @Override
+            public boolean belowMemThreshold() {
+                if (mForceOverMemThreshold) {
+                    return false;
+                } else {
+                    return super.belowMemThreshold();
+                }
             }
         };
 
@@ -216,6 +226,22 @@ public class HttpTest extends AndroidTestCase {
             assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
+
+            // short of memory test - should drop all the new queries
+            mForceOverMemThreshold = true;
+            mCleanupCalls.clear();
+            mMetrics.track("Should Fail", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            mForceOverMemThreshold = false;
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }
@@ -227,5 +253,6 @@ public class HttpTest extends AndroidTestCase {
     private List<String> mCleanupCalls;
     private MixpanelAPI mMetrics;
     private volatile boolean mDisableFallback;
+    private volatile boolean mForceOverMemThreshold;
     private static final int POLL_WAIT_SECONDS = 5;
 }

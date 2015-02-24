@@ -235,7 +235,11 @@ import java.util.Map;
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
 
-                        queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
+                        if (mDbAdapter.belowMemThreshold()) {
+                            queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
+                        } else {
+                            Log.e(LOGTAG, "Dropping events queries due to short of memory");
+                        }
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
@@ -243,7 +247,11 @@ import java.util.Map;
                             final JSONObject message = prepareEventObject(eventDescription);
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
-                            queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                            if (mDbAdapter.belowMemThreshold()) {
+                                queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                            } else {
+                                Log.e(LOGTAG, "Dropping events queries due to short of memory");
+                            }
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -322,6 +330,8 @@ import java.util.Map;
                         }
                     }
                 }
+
+
             }// handleMessage
 
             private void runGCMRegistration(String senderID) {

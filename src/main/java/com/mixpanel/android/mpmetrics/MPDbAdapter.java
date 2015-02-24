@@ -102,6 +102,13 @@ import android.util.Log;
             db.execSQL(PEOPLE_TIME_INDEX);
         }
 
+        public boolean belowMemThreshold() {
+            if (mDatabaseFile.exists()) {
+                return mDatabaseFile.getUsableSpace() >= mDatabaseFile.length();
+            }
+            return true;
+        }
+
         private final File mDatabaseFile;
     }
 
@@ -267,5 +274,9 @@ import android.util.Log;
             return ret;
         }
         return null;
+    }
+
+    public boolean belowMemThreshold() {
+        return mDb.belowMemThreshold();
     }
 }
