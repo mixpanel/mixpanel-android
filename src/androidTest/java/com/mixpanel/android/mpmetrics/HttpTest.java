@@ -208,9 +208,9 @@ public class HttpTest extends AndroidTestCase {
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
 
-            // 503 exception -- should wait for 2 seconds until the queue is able to flush
+            // 503 exception -- should wait for 10 seconds until the queue is able to flush
             mCleanupCalls.clear();
-            mFlushResults.add(new ServiceUnavailableException("", "2"));
+            mFlushResults.add(new ServiceUnavailableException("", "10"));
             mFlushResults.add(TestUtils.bytes("1\n"));
             mMetrics.track("Should Succeed", null);
             mMetrics.flush();
@@ -222,7 +222,7 @@ public class HttpTest extends AndroidTestCase {
             Thread.sleep(500);
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(0, mCleanupCalls.size());
-            Thread.sleep(1000);
+            Thread.sleep(10000);
             mMetrics.flush();
             assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));

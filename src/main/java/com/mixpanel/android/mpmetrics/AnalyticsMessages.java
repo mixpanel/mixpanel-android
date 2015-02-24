@@ -598,7 +598,7 @@ import java.util.Map;
     private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
-    private static long mRetryAfter = -1;
+    private long mRetryAfter = -1;
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 
