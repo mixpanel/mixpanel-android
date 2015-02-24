@@ -216,6 +216,7 @@ public class HttpTest extends AndroidTestCase {
             mMetrics.flush();
             Thread.sleep(500);
             assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(0, mCleanupCalls.size());
             mMetrics.flush();
             Thread.sleep(500);

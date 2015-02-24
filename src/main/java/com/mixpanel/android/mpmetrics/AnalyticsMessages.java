@@ -330,8 +330,6 @@ import java.util.Map;
                         }
                     }
                 }
-
-
             }// handleMessage
 
             private void runGCMRegistration(String senderID) {
