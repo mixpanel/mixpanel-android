@@ -39,11 +39,14 @@ import android.util.Log;
         private final String mTableName;
     }
 
-    private static final String DATABASE_NAME = "mixpanel";
-    private static final int DATABASE_VERSION = 4;
-
     public static final String KEY_DATA = "data";
     public static final String KEY_CREATED_AT = "created_at";
+
+    public static final int DBUpdateError = -1;
+    public static final int DBOutOfMemoryError = -2;
+
+    private static final String DATABASE_NAME = "mixpanel";
+    private static final int DATABASE_VERSION = 4;
 
     private static final String CREATE_EVENTS_TABLE =
        "CREATE TABLE " + Table.EVENTS.getName() + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -104,7 +107,7 @@ import android.util.Log;
 
         public boolean belowMemThreshold() {
             if (mDatabaseFile.exists()) {
-                return Math.min(mDatabaseFile.getUsableSpace(), 20 * 1024 * 1024) >= mDatabaseFile.length();
+                return Math.max(mDatabaseFile.getUsableSpace(), 20 * 1024 * 1024) >= mDatabaseFile.length();
             }
             return true;
         }
@@ -128,10 +131,16 @@ import android.util.Log;
      * @return the number of rows in the table, or -1 on failure
      */
     public int addJSON(JSONObject j, Table table) {
+        // we are aware of the race condition here, but what can we do..?
+        if (!this.belowMemThreshold()) {
+            Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+            return DBOutOfMemoryError;
+        }
+
         final String tableName = table.getName();
 
         Cursor c = null;
-        int count = -1;
+        int count = DBUpdateError;
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();

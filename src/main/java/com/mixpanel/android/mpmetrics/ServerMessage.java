@@ -159,16 +159,18 @@ import java.util.List;
 class ServiceUnavailableException extends Exception {
     public ServiceUnavailableException(String message, String strRetryAfter) {
         super(message);
+        int retry;
         try {
-            mRetryAfter = Integer.parseInt(strRetryAfter);
+            retry = Integer.parseInt(strRetryAfter);
         } catch (NumberFormatException e) {
-            mRetryAfter = 0;
+            retry = 0;
         }
+        mRetryAfter = retry;
     }
 
     public int getRetryAfter() {
         return mRetryAfter;
     }
 
-    private int mRetryAfter;
+    private final int mRetryAfter;
 }

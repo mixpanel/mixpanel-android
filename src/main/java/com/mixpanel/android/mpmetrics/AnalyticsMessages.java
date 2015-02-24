@@ -216,6 +216,7 @@ import java.util.Map;
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
+                mRetryAfter = -1;
             }
 
             @Override
@@ -227,7 +228,7 @@ import java.util.Map;
                 }
 
                 try {
-                    int queueDepth = -1;
+                    int returnCode = MPDbAdapter.DBUpdateError;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final JSONObject message = (JSONObject) msg.obj;
@@ -235,11 +236,7 @@ import java.util.Map;
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
 
-                        if (mDbAdapter.belowMemThreshold()) {
-                            queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
-                        } else {
-                            Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so a people analytics update was not sent");
-                        }
+                        returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
@@ -247,11 +244,7 @@ import java.util.Map;
                             final JSONObject message = prepareEventObject(eventDescription);
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
-                            if (mDbAdapter.belowMemThreshold()) {
-                                queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
-                            } else {
-                                Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so an event was not sent");
-                            }
+                            returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -297,7 +290,8 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if ((queueDepth >= mConfig.getBulkUploadLimit() || !mDbAdapter.belowMemThreshold()) && SystemClock.elapsedRealtime() >= mRetryAfter) {
+                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DBOutOfMemoryError) &&
+                            SystemClock.elapsedRealtime() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
@@ -306,14 +300,14 @@ import java.util.Map;
                         } catch (ServiceUnavailableException e) {
                             mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                         }
-                    } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
+                    } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
                         // Callers outside of this thread can still send
                         // a flush right here, so we may end up with two flushes
                         // in our queue, but we're OK with that.
 
-                        logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
+                        logAboutMessageToMixpanel("Queue depth " + returnCode + " - Adding flush in " + mFlushInterval);
                         if (mFlushInterval >= 0) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
@@ -555,6 +549,7 @@ import java.util.Map;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
+            private long mRetryAfter;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -598,7 +593,6 @@ import java.util.Map;
     private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
     private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
-    private long mRetryAfter = -1;
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 
