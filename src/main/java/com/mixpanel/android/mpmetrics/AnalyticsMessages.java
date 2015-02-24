@@ -259,12 +259,12 @@ import java.util.Map;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        if (SystemClock.uptimeMillis() >= mRetryAfter) {
+                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
                             try {
                                 sendAllData(mDbAdapter);
                                 mDecideChecker.runDecideChecks(getPoster());
                             } catch (ServiceUnavailableException e) {
-                                mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
+                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
                     }
@@ -272,11 +272,11 @@ import java.util.Map;
                         logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
-                        if (SystemClock.uptimeMillis() >= mRetryAfter) {
+                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
                             try {
                                 mDecideChecker.runDecideChecks(getPoster());
                             } catch (ServiceUnavailableException e) {
-                                mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
+                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
                     }
@@ -297,14 +297,14 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if (queueDepth >= mConfig.getBulkUploadLimit() && SystemClock.uptimeMillis() >= mRetryAfter) {
+                    if (queueDepth >= mConfig.getBulkUploadLimit() && SystemClock.elapsedRealtime() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
                             sendAllData(mDbAdapter);
                             mDecideChecker.runDecideChecks(getPoster());
                         } catch (ServiceUnavailableException e) {
-                            mRetryAfter = SystemClock.uptimeMillis() + e.getRetryAfter() * 1000;
+                            mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                         }
                     } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
