@@ -238,7 +238,7 @@ import java.util.Map;
                         if (mDbAdapter.belowMemThreshold()) {
                             queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                         } else {
-                            Log.e(LOGTAG, "Dropping events queries due to short of memory");
+                            Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so a people analytics update was not sent");
                         }
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
@@ -250,7 +250,7 @@ import java.util.Map;
                             if (mDbAdapter.belowMemThreshold()) {
                                 queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                             } else {
-                                Log.e(LOGTAG, "Dropping events queries due to short of memory");
+                                Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so an event was not sent");
                             }
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
