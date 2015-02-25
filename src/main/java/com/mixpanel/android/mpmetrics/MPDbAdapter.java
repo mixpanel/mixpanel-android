@@ -287,7 +287,7 @@ import android.util.Log;
         return null;
     }
 
-    public boolean belowMemThreshold() {
+    protected boolean belowMemThreshold() {
         return mDb.belowMemThreshold();
     }
 }

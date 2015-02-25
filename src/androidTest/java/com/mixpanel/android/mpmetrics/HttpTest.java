@@ -122,7 +122,7 @@ public class HttpTest extends AndroidTestCase {
             }
 
             @Override
-            public boolean belowMemThreshold() {
+            protected boolean belowMemThreshold() {
                 if (mForceOverMemThreshold) {
                     return false;
                 } else {
