@@ -69,6 +69,7 @@ import android.util.Log;
         MPDatabaseHelper(Context context, String dbName) {
             super(context, dbName, null, DATABASE_VERSION);
             mDatabaseFile = context.getDatabasePath(dbName);
+            mConfig = MPConfig.getInstance(context);
         }
 
         /**
@@ -107,12 +108,13 @@ import android.util.Log;
 
         public boolean belowMemThreshold() {
             if (mDatabaseFile.exists()) {
-                return Math.max(mDatabaseFile.getUsableSpace(), 20 * 1024 * 1024) >= mDatabaseFile.length();
+                return Math.max(mDatabaseFile.getUsableSpace(), mConfig.getDBMaxSize()) >= mDatabaseFile.length();
             }
             return true;
         }
 
         private final File mDatabaseFile;
+        private final MPConfig mConfig;
     }
 
     public MPDbAdapter(Context context) {
