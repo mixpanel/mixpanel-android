@@ -228,7 +228,7 @@ import java.util.Map;
                 }
 
                 try {
-                    int returnCode = MPDbAdapter.DB_UPDATE_ERROR;
+                    int returnCode = MPDbAdapter.DB_UNDEFINED_CODE;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final JSONObject message = (JSONObject) msg.obj;

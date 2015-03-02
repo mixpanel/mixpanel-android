@@ -44,6 +44,7 @@ import android.util.Log;
 
     public static final int DB_UPDATE_ERROR = -1;
     public static final int DB_OUT_OF_MEMORY_ERROR = -2;
+    public static final int DB_UNDEFINED_CODE = -3;
 
     private static final String DATABASE_NAME = "mixpanel";
     private static final int DATABASE_VERSION = 4;
