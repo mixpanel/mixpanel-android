@@ -131,7 +131,8 @@ import android.util.Log;
      * to the SQLiteDatabase.
      * @param j the JSON to record
      * @param table the table to insert into, either "events" or "people"
-     * @return the number of rows in the table, or -1 on failure
+     * @return the number of rows in the table, or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
+     * on failure
      */
     public int addJSON(JSONObject j, Table table) {
         // we are aware of the race condition here, but what can we do..?
