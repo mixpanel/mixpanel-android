@@ -28,7 +28,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
-    public void testReadEmptyLists() {
+    public void testReadEmptyLists() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes("{}");
@@ -49,7 +49,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         });
     }
 
-    public void testReadSurvey1() {
+    public void testReadSurvey1() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes(
@@ -93,7 +93,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(textChoices.size(), 0);
     }
 
-    public void testReadSurvey2() {
+    public void testReadSurvey2() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
         mPoster.response = bytes(
                 "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
@@ -124,7 +124,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(mcChoices.get(2), "Answer1,3");
     }
 
-    public void testBadDecideResponses() {
+    public void testBadDecideResponses() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         // Corrupted or crazy responses.
@@ -190,7 +190,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.seen.clear();
     }
 
-    public void testDecideHonorsFallbackDisabled() {
+    public void testDecideHonorsFallbackDisabled() throws ServiceUnavailableException {
         mConfig.fallbackDisabled = false;
         mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
         mDecideChecker.addDecideCheck(mDecideMessages1);
