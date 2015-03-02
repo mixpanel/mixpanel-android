@@ -42,8 +42,8 @@ import android.util.Log;
     public static final String KEY_DATA = "data";
     public static final String KEY_CREATED_AT = "created_at";
 
-    public static final int DBUpdateError = -1;
-    public static final int DBOutOfMemoryError = -2;
+    public static final int DB_UPDATE_ERROR = -1;
+    public static final int DB_OUT_OF_MEMORY_ERROR = -2;
 
     private static final String DATABASE_NAME = "mixpanel";
     private static final int DATABASE_VERSION = 4;
@@ -136,13 +136,13 @@ import android.util.Log;
         // we are aware of the race condition here, but what can we do..?
         if (!this.belowMemThreshold()) {
             Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
-            return DBOutOfMemoryError;
+            return DB_OUT_OF_MEMORY_ERROR;
         }
 
         final String tableName = table.getName();
 
         Cursor c = null;
-        int count = DBUpdateError;
+        int count = DB_UPDATE_ERROR;
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();

@@ -228,7 +228,7 @@ import java.util.Map;
                 }
 
                 try {
-                    int returnCode = MPDbAdapter.DBUpdateError;
+                    int returnCode = MPDbAdapter.DB_UPDATE_ERROR;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final JSONObject message = (JSONObject) msg.obj;
@@ -290,7 +290,7 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DBOutOfMemoryError) &&
+                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) &&
                             SystemClock.elapsedRealtime() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
