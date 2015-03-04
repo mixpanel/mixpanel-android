@@ -124,7 +124,6 @@ public class MixpanelAPI {
         mToken = token;
         mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
-        mMessages = getAnalyticsMessages();
         mConfig = getConfig();
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -154,6 +153,8 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         mDecideMessages.setDistinctId(peopleId);
+
+        mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
         registerMixpanelActivityLifecycleCallbacks();
