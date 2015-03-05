@@ -842,6 +842,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         public void trackVariants(Set<Pair <Integer, Integer>> variants) {
+            if (variants.size() == 0) {
+                return; // Nothing to track
+            }
+
             final JSONObject variantObject = new JSONObject();
 
             try {
@@ -860,7 +864,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
             }
 
-            mMixpanel.getPeople().merge("$experiments", variantObject); // TODO is this thread safe?
+            mMixpanel.getPeople().merge("$experiments", variantObject);
             mMixpanel.updateSuperProperties(new SuperPropertyUpdate() {
                 public JSONObject update(JSONObject in) {
                     try {
