@@ -309,16 +309,26 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
 
         @Override
-        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings) {
-            super.reportResults(newSurveys, newNotifications, newBindings);
+        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings, JSONArray variants) {
+            super.reportResults(newSurveys, newNotifications, newBindings, variants);
             mExpectations.resolve();
         }
     }
 
     private class MockUpdates implements UpdatesFromMixpanel {
         @Override
+        public void startUpdates() {
+            ;
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
             ; // TODO we need to test that (possibly empty, never null) bindings come through
+        }
+
+        @Override
+        public void setVariants(JSONArray variants) {
+            ;
         }
 
         @Override

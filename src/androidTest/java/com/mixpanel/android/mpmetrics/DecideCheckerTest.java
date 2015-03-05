@@ -20,6 +20,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideChecker = new DecideChecker(getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
+        mEventBinder.startUpdates();
         mDecideMessages1 = new DecideMessages("TOKEN 1", null, mEventBinder);
         mDecideMessages1.setDistinctId("DISTINCT ID 1");
         mDecideMessages2 = new DecideMessages("TOKEN 2", null, mEventBinder);
@@ -336,19 +337,31 @@ public class DecideCheckerTest extends AndroidTestCase {
     private static class MockUpdatesFromMixpanel implements UpdatesFromMixpanel {
 
         @Override
+        public void startUpdates() {
+            mStarted = true;
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
+            assertTrue(mStarted);
             seen.add(bindings);
         }
 
         @Override
-        public void setVariants(JSONArray variants) { seen.add(variants); }
+        public void setVariants(JSONArray variants) {
+            assertTrue(mStarted);
+            seen.add(variants);
+        }
 
         @Override
         public Tweaks getTweaks() {
+            assertTrue(mStarted);
             return null;
         }
 
         public List<JSONArray> seen = new ArrayList<JSONArray>();
+
+        private volatile boolean mStarted = false;
     }
 
     private static class MockConfig extends MPConfig {
