@@ -39,7 +39,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
         mDecideChecker.runDecideChecks(mPoster);
@@ -134,7 +134,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {}); // No updates at all on parsing failure
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid JSON but bad (no name)
         mPoster.response = bytes(
@@ -144,9 +144,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
+                new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Just pure (but legal) JSON craziness
         mPoster.response = bytes("null");
@@ -154,7 +154,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{});
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
@@ -162,9 +162,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
+                new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid survey with no questions
         mPoster.response = bytes(
@@ -176,7 +176,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[]{
             new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid survey with a question with no choices
         mPoster.response = bytes(
@@ -188,7 +188,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[]{
             new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
     }
 
     public void testDecideHonorsFallbackDisabled() {
@@ -307,10 +307,10 @@ public class DecideCheckerTest extends AndroidTestCase {
     }
 
     private void assertUpdatesSeen(JSONArray[] expected) {
-        assertEquals(expected.length, mEventBinder.seen.size());
+        assertEquals(expected.length, mEventBinder.bindingsSeen.size());
         for (int bindingCallIx = 0; bindingCallIx < expected.length; bindingCallIx++) {
             final JSONArray expectedArray = expected[bindingCallIx];
-            final JSONArray seen = mEventBinder.seen.get(bindingCallIx);
+            final JSONArray seen = mEventBinder.bindingsSeen.get(bindingCallIx);
             assertEquals(expectedArray.toString(), seen.toString());
         }
     }
@@ -344,13 +344,13 @@ public class DecideCheckerTest extends AndroidTestCase {
         @Override
         public void setEventBindings(JSONArray bindings) {
             assertTrue(mStarted);
-            seen.add(bindings);
+            bindingsSeen.add(bindings);
         }
 
         @Override
         public void setVariants(JSONArray variants) {
             assertTrue(mStarted);
-            seen.add(variants);
+            variantsSeen.add(variants);
         }
 
         @Override
@@ -359,7 +359,8 @@ public class DecideCheckerTest extends AndroidTestCase {
             return null;
         }
 
-        public List<JSONArray> seen = new ArrayList<JSONArray>();
+        public List<JSONArray> bindingsSeen = new ArrayList<JSONArray>();
+        public List<JSONArray> variantsSeen = new ArrayList<JSONArray>();
 
         private volatile boolean mStarted = false;
     }
