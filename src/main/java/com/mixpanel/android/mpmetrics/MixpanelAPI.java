@@ -531,6 +531,16 @@ public class MixpanelAPI {
     }
 
     /**
+     * Tweaks allow applications to specify dynamic variables that can be modified in the Mixpanel UI
+     * and delivered to your applications.
+     *
+     * @return A Tweaks object you can use to check for information that has been delivered from Mixpanel.
+     */
+    public Tweaks getTweaks() {
+        return mUpdatesFromMixpanel.getTweaks();
+    }
+
+    /**
      * Clears all distinct_ids, superProperties, and push registrations from persistent storage.
      * Will not clear referrer information.
      */

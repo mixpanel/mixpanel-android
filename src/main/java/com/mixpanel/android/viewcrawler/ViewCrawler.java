@@ -266,7 +266,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mPersistentChanges = new ArrayList<VariantChange>();
             mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
             mSeenExperiments = new HashSet<Pair<Integer, Integer>>();
-            mStarted = false;
             mStartLock = new ReentrantLock();
             mStartLock.lock();
         }
