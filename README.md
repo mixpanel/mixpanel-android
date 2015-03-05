@@ -37,12 +37,11 @@ Changelog
 #### v4.5.3
 
  * Disable $app_open event by default. Users can opt-in to sending automatic $app_open events by adding
+
  ```
   <meta-data android:name="com.mixpanel.android.MPConfig.DisableAppOpenEvent"
        android:value="false" />
  ```
-
- Enabling $app_open events will enable Notification open tracking for push notifications.
 
 #### v4.5.2
 
