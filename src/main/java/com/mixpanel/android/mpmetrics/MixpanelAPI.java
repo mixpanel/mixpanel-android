@@ -153,7 +153,6 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         mDecideMessages.setDistinctId(peopleId);
-
         mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
@@ -162,6 +161,8 @@ public class MixpanelAPI {
         if (sendAppOpen()) {
             track("$app_open", null);
         }
+
+        mUpdatesFromMixpanel.startUpdates();
     }
 
     /**
@@ -1736,6 +1737,11 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void startUpdates() {
+            // No op
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
             // No op
         }
@@ -1842,8 +1848,8 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
-    private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
+    private static final String LOGTAG = "MixpanelAPI.API";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     private final Context mContext;

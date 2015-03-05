@@ -152,5 +152,5 @@ import java.util.Set;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.DecideUpdates";
+    private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
 }

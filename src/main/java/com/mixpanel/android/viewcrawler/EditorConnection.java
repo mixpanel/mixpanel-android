@@ -115,9 +115,6 @@ import java.nio.ByteBuffer;
         }
     }
 
-    /* WILL SEND GARBAGE if multiple responses end up interleaved.
-     * Only one response should be in progress at a time.
-     */
     private class WebSocketOutputStream extends OutputStream {
         @Override
         public void write(int b)
@@ -167,5 +164,5 @@ import java.nio.ByteBuffer;
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
-    private static final String LOGTAG = "MixpanelAPI.EditorConnection";
+    private static final String LOGTAG = "MixpanelAPI.EditorCnctn";
 }

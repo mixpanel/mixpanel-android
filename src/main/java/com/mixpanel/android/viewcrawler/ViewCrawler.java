@@ -44,6 +44,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -76,7 +78,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper());
-        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
 
         mTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
         mVariantTracker = new VariantTracker(mixpanel);
@@ -94,6 +95,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
+    }
+
+    @Override
+    public void startUpdates() {
+        mMessageThreadHandler.start();
+        mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
     }
 
     @Override
@@ -259,43 +266,56 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mPersistentChanges = new ArrayList<VariantChange>();
             mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
             mSeenExperiments = new HashSet<Pair<Integer, Integer>>();
+            mStarted = false;
+            mStartLock = new ReentrantLock();
+            mStartLock.lock();
+        }
+
+        public void start() {
+            mStartLock.unlock();
         }
 
         @Override
         public void handleMessage(Message msg) {
-            final @MessageType int what = msg.what;
-            switch (what) {
-                case MESSAGE_INITIALIZE_CHANGES:
-                    loadKnownChanges();
-                    initializeChanges();
-                    break;
-                case MESSAGE_CONNECT_TO_EDITOR:
-                    connectToEditor();
-                    break;
-                case MESSAGE_SEND_DEVICE_INFO:
-                    sendDeviceInfo();
-                    break;
-                case MESSAGE_SEND_STATE_FOR_EDITING:
-                    sendSnapshot((JSONObject) msg.obj);
-                    break;
-                case MESSAGE_SEND_EVENT_TRACKED:
-                    sendReportTrackToEditor((String) msg.obj);
-                    break;
-                case MESSAGE_VARIANTS_RECEIVED:
-                    handleVariantsReceived((JSONArray) msg.obj);
-                    break;
-                case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
-                    handleEditorChangeReceived((JSONObject) msg.obj);
-                    break;
-                case MESSAGE_EVENT_BINDINGS_RECEIVED:
-                    handleEventBindingsReceived((JSONArray) msg.obj);
-                    break;
-                case MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED:
-                    handleEditorBindingsReceived((JSONObject) msg.obj);
-                    break;
-                case MESSAGE_HANDLE_EDITOR_CLOSED:
-                    handleEditorClosed();
-                    break;
+            mStartLock.lock();
+            try {
+
+                final @MessageType int what = msg.what;
+                switch (what) {
+                    case MESSAGE_INITIALIZE_CHANGES:
+                        loadKnownChanges();
+                        initializeChanges();
+                        break;
+                    case MESSAGE_CONNECT_TO_EDITOR:
+                        connectToEditor();
+                        break;
+                    case MESSAGE_SEND_DEVICE_INFO:
+                        sendDeviceInfo();
+                        break;
+                    case MESSAGE_SEND_STATE_FOR_EDITING:
+                        sendSnapshot((JSONObject) msg.obj);
+                        break;
+                    case MESSAGE_SEND_EVENT_TRACKED:
+                        sendReportTrackToEditor((String) msg.obj);
+                        break;
+                    case MESSAGE_VARIANTS_RECEIVED:
+                        handleVariantsReceived((JSONArray) msg.obj);
+                        break;
+                    case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
+                        handleEditorChangeReceived((JSONObject) msg.obj);
+                        break;
+                    case MESSAGE_EVENT_BINDINGS_RECEIVED:
+                        handleEventBindingsReceived((JSONArray) msg.obj);
+                        break;
+                    case MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED:
+                        handleEditorBindingsReceived((JSONObject) msg.obj);
+                        break;
+                    case MESSAGE_HANDLE_EDITOR_CLOSED:
+                        handleEditorClosed();
+                        break;
+                }
+            } finally {
+                mStartLock.unlock();
             }
         }
 
@@ -760,6 +780,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         private ViewSnapshot mSnapshot;
         private final Context mContext;
         private final String mToken;
+        private final Lock mStartLock;
 
         private final List<Pair<String,JSONObject>> mEditorChanges;
         private final List<Pair<String,JSONObject>> mEditorEventBindings;
