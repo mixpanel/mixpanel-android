@@ -261,5 +261,5 @@ public class MPConfig {
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();
-    private static final String LOGTAG = "MixpanelAPI.Configuration";
+    private static final String LOGTAG = "MixpanelAPI.Conf";
 }
