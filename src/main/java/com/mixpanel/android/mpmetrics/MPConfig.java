@@ -119,7 +119,7 @@ public class MPConfig {
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
-                "    DBMaxSize " + getMinimumDatabaseLimit() + "\n" +
+                "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
