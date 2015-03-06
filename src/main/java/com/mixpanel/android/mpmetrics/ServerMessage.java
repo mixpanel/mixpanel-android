@@ -40,7 +40,7 @@ import java.util.List;
         return isOnline;
     }
 
-    public byte[] getUrls(Context context, String[] urls) {
+    public byte[] getUrls(Context context, String[] urls) throws ServiceUnavailableException {
         if (! isOnline(context)) {
             return null;
         }
@@ -65,7 +65,7 @@ import java.util.List;
         return response;
     }
 
-    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException {
+    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws ServiceUnavailableException, IOException {
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Attempting request to " + endpointUrl);
         }
@@ -111,7 +111,14 @@ import java.util.List;
                     Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 }
                 retries = retries + 1;
-            } finally {
+            } catch (final IOException e) {
+                if (503 == connection.getResponseCode()) {
+                    throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
+                } else {
+                    throw e;
+                }
+            }
+            finally {
                 if (null != bout)
                     try { bout.close(); } catch (final IOException e) { ; }
                 if (null != out)

@@ -837,5 +837,5 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     private Future<SharedPreferences> mMockPreferences;
 
-    private static final int POLL_WAIT_SECONDS = 5;
+    private static final int POLL_WAIT_SECONDS = 10;
 }

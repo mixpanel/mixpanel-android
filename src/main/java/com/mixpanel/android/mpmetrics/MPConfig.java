@@ -56,6 +56,7 @@ public class MPConfig {
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
+        mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
@@ -118,6 +119,7 @@ public class MPConfig {
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
+                "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
@@ -149,6 +151,8 @@ public class MPConfig {
     public int getDataExpiration() {
         return mDataExpiration;
     }
+
+    public int getMinimumDatabaseLimit() { return mMinimumDatabaseLimit; }
 
     public boolean getDisableFallback() {
         return mDisableFallback;
@@ -244,6 +248,7 @@ public class MPConfig {
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
     private final int mDataExpiration;
+    private final int mMinimumDatabaseLimit;
     private final boolean mDisableFallback;
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;

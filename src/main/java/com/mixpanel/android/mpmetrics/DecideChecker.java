@@ -47,7 +47,7 @@ import java.util.List;
         mChecks.add(check);
     }
 
-    public void runDecideChecks(final ServerMessage poster) {
+    public void runDecideChecks(final ServerMessage poster) throws ServiceUnavailableException {
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
@@ -70,7 +70,7 @@ import java.util.List;
     }
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
-        throws UnintelligibleMessageException {
+        throws ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -177,7 +177,8 @@ import java.util.List;
         return ret;
     }
 
-    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster) {
+    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster)
+            throws ServiceUnavailableException {
         final String escapedToken;
         final String escapedId;
         try {
@@ -226,7 +227,8 @@ import java.util.List;
         }
     }
 
-    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
+    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster)
+        throws ServiceUnavailableException {
         Bitmap ret = null;
         String[] urls = { notification.getImage2xUrl() };
 
