@@ -200,7 +200,9 @@ import java.util.List;
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Querying decide server at " + urls[0]);
-            Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
+            if (urls.length > 1) {
+                Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
+            }
         }
 
         final byte[] response = poster.getUrls(mContext, urls);
