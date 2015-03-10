@@ -27,6 +27,9 @@ class MockMixpanel extends MixpanelAPI {
         return new MockPeople();
     }
 
+    @Override
+    public Tweaks getTweaks() { return new Tweaks(); }
+
     public static class MockPeople implements People {
 
         @Override
@@ -56,6 +59,11 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public void increment(final String name, final double increment) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void merge(String name, JSONObject updates) {
             Assert.fail("Unexpected call");
         }
 

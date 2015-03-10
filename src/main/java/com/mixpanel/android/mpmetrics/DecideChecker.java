@@ -29,10 +29,12 @@ import java.util.List;
             surveys = new ArrayList<Survey>();
             notifications = new ArrayList<InAppNotification>();
             eventBindings = EMPTY_JSON_ARRAY;
+            variants = EMPTY_JSON_ARRAY;
         }
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
+        public JSONArray variants;
     }
 
     public DecideChecker(final Context context, final MPConfig config) {
@@ -45,14 +47,14 @@ import java.util.List;
         mChecks.add(check);
     }
 
-    public void runDecideChecks(final ServerMessage poster) {
+    public void runDecideChecks(final ServerMessage poster) throws ServiceUnavailableException {
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
-                updates.reportResults(result.surveys, result.notifications, result.eventBindings);
+                updates.reportResults(result.surveys, result.notifications, result.eventBindings, result.variants);
             } catch (final UnintelligibleMessageException e) {
                 Log.e(LOGTAG, e.getMessage(), e);
             }
@@ -60,15 +62,15 @@ import java.util.List;
     }
 
     /* package */ static class UnintelligibleMessageException extends Exception {
-		private static final long serialVersionUID = -6501269367559104957L;
+        private static final long serialVersionUID = -6501269367559104957L;
 
-		public UnintelligibleMessageException(String message, JSONException cause) {
+        public UnintelligibleMessageException(String message, JSONException cause) {
             super(message, cause);
         }
     }
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
-        throws UnintelligibleMessageException {
+        throws ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -164,10 +166,19 @@ import java.util.List;
             }
         }
 
+        if (response.has("variants")) {
+            try {
+                ret.variants = response.getJSONArray("variants");
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
+            }
+        }
+
         return ret;
     }
 
-    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster) {
+    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster)
+            throws ServiceUnavailableException {
         final String escapedToken;
         final String escapedId;
         try {
@@ -199,8 +210,10 @@ import java.util.List;
         }
 
         if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Querying decide server at " + urls[0]);
-            Log.v(LOGTAG, "    (with fallback " + urls[1] + ")");
+            Log.v(LOGTAG, "Querying decide server, urls:");
+            for (int i = 0; i < urls.length; i++) {
+                Log.v(LOGTAG, "    >> " + urls[i]);
+            }
         }
 
         final byte[] response = poster.getUrls(mContext, urls);
@@ -214,7 +227,8 @@ import java.util.List;
         }
     }
 
-    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
+    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster)
+        throws ServiceUnavailableException {
         Bitmap ret = null;
         String[] urls = { notification.getImage2xUrl() };
 

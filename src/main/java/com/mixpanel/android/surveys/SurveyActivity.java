@@ -174,7 +174,7 @@ public class SurveyActivity extends Activity {
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
-			public boolean onTouch(View v, MotionEvent event) {
+            public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
                 } else {

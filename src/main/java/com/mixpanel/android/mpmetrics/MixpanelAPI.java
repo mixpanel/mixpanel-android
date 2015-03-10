@@ -124,7 +124,6 @@ public class MixpanelAPI {
         mToken = token;
         mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
-        mMessages = getAnalyticsMessages();
         mConfig = getConfig();
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -154,6 +153,7 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         mDecideMessages.setDistinctId(peopleId);
+        mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
         registerMixpanelActivityLifecycleCallbacks();
@@ -161,6 +161,8 @@ public class MixpanelAPI {
         if (sendAppOpen()) {
             track("$app_open", null);
         }
+
+        mUpdatesFromMixpanel.startUpdates();
     }
 
     /**
@@ -505,6 +507,19 @@ public class MixpanelAPI {
     }
 
     /**
+     * Updates super properties in place. Given a SuperPropertyUpdate object, will
+     * pass the current values of SuperProperties to that update and replace all
+     * results with the return value of the update. Updates are synchronized on
+     * the underlying super properties store, so they are guaranteed to be thread safe
+     * (but long running updates may slow down your tracking.)
+     *
+     * @param update A function from one set of super properties to another. The update should not return null.
+     */
+    public void updateSuperProperties(SuperPropertyUpdate update) {
+        mPersistentIdentity.updateSuperProperties(update);
+    }
+
+    /**
      * Returns a Mixpanel.People object that can be used to set and increment
      * People Analytics properties.
      *
@@ -513,6 +528,16 @@ public class MixpanelAPI {
      */
     public People getPeople() {
         return mPeople;
+    }
+
+    /**
+     * Tweaks allow applications to specify dynamic variables that can be modified in the Mixpanel UI
+     * and delivered to your applications.
+     *
+     * @return A Tweaks object you can use to check for information that has been delivered from Mixpanel.
+     */
+    public Tweaks getTweaks() {
+        return mUpdatesFromMixpanel.getTweaks();
     }
 
     /**
@@ -646,6 +671,18 @@ public class MixpanelAPI {
          * @see #increment(Map)
          */
         public void increment(String name, double increment);
+
+        /**
+         * Merge a given JSONObject into the object-valued property named name. If the user does not
+         * already have the associated property, an new property will be created with the value of
+         * the given updates. If the user already has a value for the given property, the updates will
+         * be merged into the existing value, with key/value pairs in updates taking precedence over
+         * existing key/value pairs where the keys are the same.
+         *
+         * @param name the People Analytics property that should have the update merged into it
+         * @param updates a JSONObject with keys and values that will be merged into the property
+         */
+        public void merge(String name, JSONObject updates);
 
         /**
          * Change the existing values of multiple People Analytics properties at once.
@@ -1173,6 +1210,19 @@ public class MixpanelAPI {
         }
 
         @Override
+        // Must be thread safe
+        public void merge(String property, JSONObject updates) {
+            final JSONObject mergeMessage = new JSONObject();
+            try {
+                mergeMessage.put(property, updates);
+                final JSONObject message = stdPeopleMessage("$merge", mergeMessage);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception merging a property", e);
+            }
+        }
+
+        @Override
         public void increment(String property, double value) {
             final Map<String, Double> map = new HashMap<String, Double>();
             map.put(property, value);
@@ -1442,14 +1492,14 @@ public class MixpanelAPI {
         private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
-            final String distinctId = getDistinctId();
+            final String distinctId = getDistinctId(); // TODO ensure getDistinctId is thread safe
 
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
 
             if (null != distinctId) {
-                dataObj.put("$distinct_id", getDistinctId());
+                dataObj.put("$distinct_id", distinctId);
             }
 
             return dataObj;
@@ -1697,7 +1747,17 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void startUpdates() {
+            // No op
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
+            // No op
+        }
+
+        @Override
+        public void setVariants(JSONArray variants) {
             // No op
         }
 
@@ -1798,8 +1858,8 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
-    private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
+    private static final String LOGTAG = "MixpanelAPI.API";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 
     private final Context mContext;

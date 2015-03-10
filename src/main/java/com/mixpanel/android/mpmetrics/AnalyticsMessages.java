@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -214,6 +216,7 @@ import java.util.Map;
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
+                mRetryAfter = -1;
             }
 
             @Override
@@ -225,7 +228,7 @@ import java.util.Map;
                 }
 
                 try {
-                    int queueDepth = -1;
+                    int returnCode = MPDbAdapter.DB_UNDEFINED_CODE;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final JSONObject message = (JSONObject) msg.obj;
@@ -233,7 +236,7 @@ import java.util.Map;
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
 
-                        queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
+                        returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
                     }
                     else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
@@ -241,7 +244,7 @@ import java.util.Map;
                             final JSONObject message = prepareEventObject(eventDescription);
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
-                            queueDepth = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
+                            returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -249,14 +252,26 @@ import java.util.Map;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        sendAllData(mDbAdapter);
-                        mDecideChecker.runDecideChecks(getPoster());
+                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
+                            try {
+                                sendAllData(mDbAdapter);
+                                mDecideChecker.runDecideChecks(getPoster());
+                            } catch (ServiceUnavailableException e) {
+                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                            }
+                        }
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
                         logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
-                        mDecideChecker.runDecideChecks(getPoster());
+                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
+                            try {
+                                mDecideChecker.runDecideChecks(getPoster());
+                            } catch (ServiceUnavailableException e) {
+                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                            }
+                        }
                     }
                     else if (msg.what == REGISTER_FOR_GCM) {
                         final String senderId = (String) msg.obj;
@@ -275,19 +290,24 @@ import java.util.Map;
 
                     ///////////////////////////
 
-                    if (queueDepth >= mConfig.getBulkUploadLimit()) {
+                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) &&
+                            SystemClock.elapsedRealtime() >= mRetryAfter) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
-                        sendAllData(mDbAdapter);
-                        mDecideChecker.runDecideChecks(getPoster());
-                    } else if (queueDepth > 0 && !hasMessages(FLUSH_QUEUE)) {
+                        try {
+                            sendAllData(mDbAdapter);
+                            mDecideChecker.runDecideChecks(getPoster());
+                        } catch (ServiceUnavailableException e) {
+                            mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                        }
+                    } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
                         // Callers outside of this thread can still send
                         // a flush right here, so we may end up with two flushes
                         // in our queue, but we're OK with that.
 
-                        logAboutMessageToMixpanel("Queue depth " + queueDepth + " - Adding flush in " + mFlushInterval);
+                        logAboutMessageToMixpanel("Queue depth " + returnCode + " - Adding flush in " + mFlushInterval);
                         if (mFlushInterval >= 0) {
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
                         }
@@ -350,7 +370,7 @@ import java.util.Map;
                 });
             }
 
-            private void sendAllData(MPDbAdapter dbAdapter) {
+            private void sendAllData(MPDbAdapter dbAdapter) throws ServiceUnavailableException {
                 final ServerMessage poster = getPoster();
                 if (! poster.isOnline(mContext)) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
@@ -361,7 +381,7 @@ import java.util.Map;
                 if (mDisableFallback) {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
-                 } else {
+                } else {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
                              new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
@@ -369,7 +389,7 @@ import java.util.Map;
                 }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) throws ServiceUnavailableException {
                 final ServerMessage poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
@@ -529,6 +549,7 @@ import java.util.Map;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
+            private long mRetryAfter;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
@@ -564,14 +585,14 @@ import java.util.Map;
     private final MPConfig mConfig;
 
     // Messages for our thread
-    private static int ENQUEUE_PEOPLE = 0; // submit events and people data
-    private static int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
-    private static int FLUSH_QUEUE = 2; // push given JSON message to events DB
-    private static int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
-    private static int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
-    private static int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
+    private static final int ENQUEUE_PEOPLE = 0; // submit events and people data
+    private static final int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
+    private static final int FLUSH_QUEUE = 2; // push given JSON message to events DB
+    private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
+    private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
+    private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
-    private static final String LOGTAG = "MixpanelAPI.AnalyticsMessages";
+    private static final String LOGTAG = "MixpanelAPI.Messages";
 
     private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
 

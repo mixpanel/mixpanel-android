@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
+import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -19,9 +20,9 @@ import java.util.List;
 /* package */ class EditProtocol {
 
     public static class BadInstructionsException extends Exception {
-		private static final long serialVersionUID = -4062004792184145311L;
+        private static final long serialVersionUID = -4062004792184145311L;
 
-		public BadInstructionsException(String message) {
+        public BadInstructionsException(String message) {
             super(message);
         }
 
@@ -31,9 +32,9 @@ import java.util.List;
     }
 
     public static class InapplicableInstructionsException extends BadInstructionsException {
-		private static final long serialVersionUID = 3977056710817909104L;
+        private static final long serialVersionUID = 3977056710817909104L;
 
-		public InapplicableInstructionsException(String message) {
+        public InapplicableInstructionsException(String message) {
             super(message);
         }
     }
@@ -89,8 +90,12 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
-            final String targetClassName = pathEnd.viewClassName;
+            final JSONObject propertyDesc = source.getJSONObject("property");
+            final String targetClassName = propertyDesc.getString("classname");
+            if (null == targetClassName) {
+                throw new BadInstructionsException("Can't bind an edit property without a target class");
+            }
+
             final Class<?> targetClass;
             try {
                 targetClass = Class.forName(targetClassName);
@@ -99,7 +104,6 @@ import java.util.List;
             }
 
             final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
-
             final JSONArray argsAndTypes = source.getJSONArray("args");
             final Object[] methodArgs = new Object[argsAndTypes.length()];
             for (int i = 0; i < argsAndTypes.length(); i++) {
@@ -219,7 +223,8 @@ import java.util.List;
         return explicitId;
     }
 
-    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc) throws BadInstructionsException {
+    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc)
+            throws BadInstructionsException {
         try {
             final String propName = propertyDesc.getString("name");
 

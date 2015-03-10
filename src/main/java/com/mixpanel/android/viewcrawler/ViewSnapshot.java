@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -222,6 +223,8 @@ import java.util.concurrent.TimeoutException;
                     j.name(desc.name).value((Number) value);
                 } else if (value instanceof Boolean) {
                     j.name(desc.name).value((Boolean) value);
+                } else if (value instanceof ColorStateList) {
+                    j.name(desc.name).value((Integer) ((ColorStateList) value).getDefaultColor());
                 } else {
                     j.name(desc.name).value(value.toString());
                 }
@@ -235,7 +238,7 @@ import java.util.concurrent.TimeoutException;
         }
 
         @Override
-		protected String create(Class<?> klass) {
+        protected String create(Class<?> klass) {
             return klass.getCanonicalName();
         }
     }

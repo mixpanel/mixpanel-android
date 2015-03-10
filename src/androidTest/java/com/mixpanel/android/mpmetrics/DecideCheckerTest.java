@@ -20,6 +20,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideChecker = new DecideChecker(getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
+        mEventBinder.startUpdates();
         mDecideMessages1 = new DecideMessages("TOKEN 1", null, mEventBinder);
         mDecideMessages1.setDistinctId("DISTINCT ID 1");
         mDecideMessages2 = new DecideMessages("TOKEN 2", null, mEventBinder);
@@ -28,7 +29,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
-    public void testReadEmptyLists() {
+    public void testReadEmptyLists() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes("{}");
@@ -38,7 +39,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
         mDecideChecker.runDecideChecks(mPoster);
@@ -49,7 +50,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         });
     }
 
-    public void testReadSurvey1() {
+    public void testReadSurvey1() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes(
@@ -93,7 +94,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(textChoices.size(), 0);
     }
 
-    public void testReadSurvey2() {
+    public void testReadSurvey2() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
         mPoster.response = bytes(
                 "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
@@ -124,7 +125,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(mcChoices.get(2), "Answer1,3");
     }
 
-    public void testBadDecideResponses() {
+    public void testBadDecideResponses() throws ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         // Corrupted or crazy responses.
@@ -133,7 +134,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {}); // No updates at all on parsing failure
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid JSON but bad (no name)
         mPoster.response = bytes(
@@ -143,9 +144,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
+                new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Just pure (but legal) JSON craziness
         mPoster.response = bytes("null");
@@ -153,7 +154,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{});
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
@@ -161,9 +162,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
+                new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid survey with no questions
         mPoster.response = bytes(
@@ -175,7 +176,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[]{
             new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
 
         // Valid survey with a question with no choices
         mPoster.response = bytes(
@@ -187,10 +188,10 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertUpdatesSeen(new JSONArray[]{
             new JSONArray()
         });
-        mEventBinder.seen.clear();
+        mEventBinder.bindingsSeen.clear();
     }
 
-    public void testDecideHonorsFallbackDisabled() {
+    public void testDecideHonorsFallbackDisabled() throws ServiceUnavailableException {
         mConfig.fallbackDisabled = false;
         mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
         mDecideChecker.addDecideCheck(mDecideMessages1);
@@ -306,10 +307,10 @@ public class DecideCheckerTest extends AndroidTestCase {
     }
 
     private void assertUpdatesSeen(JSONArray[] expected) {
-        assertEquals(expected.length, mEventBinder.seen.size());
+        assertEquals(expected.length, mEventBinder.bindingsSeen.size());
         for (int bindingCallIx = 0; bindingCallIx < expected.length; bindingCallIx++) {
             final JSONArray expectedArray = expected[bindingCallIx];
-            final JSONArray seen = mEventBinder.seen.get(bindingCallIx);
+            final JSONArray seen = mEventBinder.bindingsSeen.get(bindingCallIx);
             assertEquals(expectedArray.toString(), seen.toString());
         }
     }
@@ -336,16 +337,32 @@ public class DecideCheckerTest extends AndroidTestCase {
     private static class MockUpdatesFromMixpanel implements UpdatesFromMixpanel {
 
         @Override
+        public void startUpdates() {
+            mStarted = true;
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
-            seen.add(bindings);
+            assertTrue(mStarted);
+            bindingsSeen.add(bindings);
+        }
+
+        @Override
+        public void setVariants(JSONArray variants) {
+            assertTrue(mStarted);
+            variantsSeen.add(variants);
         }
 
         @Override
         public Tweaks getTweaks() {
+            assertTrue(mStarted);
             return null;
         }
 
-        public List<JSONArray> seen = new ArrayList<JSONArray>();
+        public List<JSONArray> bindingsSeen = new ArrayList<JSONArray>();
+        public List<JSONArray> variantsSeen = new ArrayList<JSONArray>();
+
+        private volatile boolean mStarted = false;
     }
 
     private static class MockConfig extends MPConfig {

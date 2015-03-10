@@ -58,7 +58,7 @@ import java.util.Set;
      * setEdits can be called from any thread, although the changes will occur (eventually) on the
      * UI thread of the application, and may not appear immediately.
      *
-     * @param newEdits A Map from
+     * @param newEdits A Map from activity name to a list of edits to apply
      */
     // Must be thread-safe
     public void setEdits(Map<String, List<ViewVisitor>> newEdits) {

@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * Tweaks allows applications to specify dynamic variables that can be modified in the Mixpanel UI
- * and reflected in the app.
+ * and delivered to your application.
  *
  * Example (assignment):
  *              String welcomeMsg = getTweaks().getString("welcome message", "Welcome to the app!");
