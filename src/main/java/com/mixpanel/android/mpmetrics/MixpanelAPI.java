@@ -15,6 +15,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -538,6 +540,11 @@ public class MixpanelAPI {
      */
     public Tweaks getTweaks() {
         return mUpdatesFromMixpanel.getTweaks();
+    }
+
+    public void registerForTweaks(Object ob) {
+        final Tweaks tweaks = getTweaks();
+        tweaks.registerForTweaks(ob);
     }
 
     /**
@@ -1743,7 +1750,7 @@ public class MixpanelAPI {
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
         public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks();
+            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()));
         }
 
         @Override

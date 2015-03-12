@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,55 +30,83 @@ import java.util.Map;
  *
  */
 public class Tweaks {
-
-    /* package */ interface TweakChangeCallback { // TO BE MADE PUBLIC WHEN THESE FEATURES ARE EXPOSED
+    public interface TweakChangeCallback {
         public void onChange(Object value);
     }
 
-    public Tweaks() {
+    public interface TweakRegistrar {
+        public void registerObjectForTweaks(Tweaks t, Object registrant);
+    }
+
+    public static void setRegistrar(Class klass, TweakRegistrar registrar) {
+        synchronized (sRegistrars) {
+            sRegistrars.put(klass, registrar);
+        }
+    }
+
+    public Tweaks(Handler callbackHandler) {
         mTweaks = new HashMap<String, Object>();
         mBindings = new HashMap<String, List<TweakChangeCallback>>();
-        mUiHandler = new Handler(Looper.getMainLooper());
+        mUiHandler = callbackHandler;
     }
 
     public String getString(String tweakName, String defaultValue) {
+        String ret = null;
         try {
-            return (String) get(tweakName, defaultValue);
+            ret = (String) get(tweakName, defaultValue);
         } catch (ClassCastException e) {
-            return defaultValue;
         }
+
+        if (null == ret) {
+            ret = defaultValue;
+        }
+
+        return ret;
     }
 
-    public Integer getInteger(String tweakName, Integer defaultValue) {
+    public double getDouble(String tweakName, double defaultValue) {
+        Double ret = null;
         try {
-            return (Integer) get(tweakName, defaultValue);
+            ret = (Double) get(tweakName, defaultValue);
         } catch (ClassCastException e) {
-            return defaultValue;
+            ;
         }
+
+        if (null == ret) {
+            ret = defaultValue;
+        }
+
+        return ret;
     }
 
-    public Long getLong(String tweakName, Long defaultValue) {
+    public long getLong(String tweakName, long defaultValue) {
+        Long ret = null;
         try {
-            return (Long) get(tweakName, defaultValue);
+            ret = (Long) get(tweakName, defaultValue);
         } catch (ClassCastException e) {
-            return defaultValue;
+            ;
         }
+
+        if (null == ret) {
+            ret = defaultValue;
+        }
+
+        return ret;
     }
 
-    public Float getFloat(String tweakName, Float defaultValue) {
+    public boolean getBoolean(String tweakName, boolean defaultValue) {
+        Boolean ret = null;
         try {
-            return (Float) get(tweakName, defaultValue);
+            ret = (Boolean) get(tweakName, defaultValue);
         } catch (ClassCastException e) {
-            return defaultValue;
+            ;
         }
-    }
 
-    public Double getDouble(String tweakName, Double defaultValue) {
-        try {
-            return (Double) get(tweakName, defaultValue);
-        } catch (ClassCastException e) {
-            return defaultValue;
+        if (null == ret) {
+            ret = defaultValue;
         }
+
+        return ret;
     }
 
     public synchronized Object get(String tweakName, Object defaultValue) {
@@ -109,6 +138,19 @@ public class Tweaks {
         }
     }
 
+    public void registerForTweaks(Object registrant) {
+        synchronized (sRegistrars) {
+            Class klass = registrant.getClass();
+            while (klass != Object.class) {
+                if (sRegistrars.containsKey(klass)) {
+                    final TweakRegistrar registrar = sRegistrars.get(klass);
+                    registrar.registerObjectForTweaks(this, registrant);
+                }
+                klass = klass.getSuperclass();
+            }
+        }
+    }
+
     private synchronized void set(String tweakName, Object value, boolean isDefault) {
         mTweaks.put(tweakName, value);
 
@@ -131,4 +173,9 @@ public class Tweaks {
     private final Map<String, Object> mTweaks;
     private final Map<String, List<TweakChangeCallback>> mBindings;
     private final Handler mUiHandler;
+
+    // Access must be synchronized
+    private static final Map<Class, TweakRegistrar> sRegistrars = new HashMap<Class, TweakRegistrar>();
+
+    private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }
