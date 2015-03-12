@@ -84,15 +84,22 @@ import android.util.Log;
         };
     }
 
-    public synchronized JSONObject getSuperProperties() {
-        if (null == mSuperPropertiesCache) {
-            readSuperProperties();
+    public synchronized void addSuperPropertiesToObject(JSONObject ob) {
+        final JSONObject superProperties = this.getSuperPropertiesCache();
+        final Iterator<?> superIter = superProperties.keys();
+        while (superIter.hasNext()) {
+            final String key = (String) superIter.next();
+
+            try {
+                ob.put(key, superProperties.get(key));
+            } catch (JSONException e) {
+                Log.wtf(LOGTAG, "Object read from one JSON Object cannot be written to another", e);
+            }
         }
-        return mSuperPropertiesCache;
     }
 
     public synchronized void updateSuperProperties(SuperPropertyUpdate updates) {
-        final JSONObject oldPropCache = getSuperProperties();
+        final JSONObject oldPropCache = getSuperPropertiesCache();
         final JSONObject copy = new JSONObject();
 
         try {
@@ -202,7 +209,7 @@ import android.util.Log;
     }
 
     public synchronized void registerSuperProperties(JSONObject superProperties) {
-        final JSONObject propCache = getSuperProperties();
+        final JSONObject propCache = getSuperPropertiesCache();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
             final String key = (String) iter.next();
@@ -256,14 +263,14 @@ import android.util.Log;
     }
 
     public synchronized void unregisterSuperProperty(String superPropertyName) {
-        final JSONObject propCache = getSuperProperties();
+        final JSONObject propCache = getSuperPropertiesCache();
         propCache.remove(superPropertyName);
 
         storeSuperProperties();
     }
 
     public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
-        final JSONObject propCache = getSuperProperties();
+        final JSONObject propCache = getSuperPropertiesCache();
 
         for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
             final String key = (String) iter.next();
@@ -285,6 +292,14 @@ import android.util.Log;
     }
 
     //////////////////////////////////////////////////
+
+    // Must be called from a synchronized setting
+    private JSONObject getSuperPropertiesCache() {
+        if (null == mSuperPropertiesCache) {
+            readSuperProperties();
+        }
+        return mSuperPropertiesCache;
+    }
 
     // All access should be synchronized on this
     private void readSuperProperties() {

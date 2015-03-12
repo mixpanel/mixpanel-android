@@ -360,12 +360,7 @@ public class MixpanelAPI {
                 messageProps.put(key, value);
             }
 
-            final JSONObject superProperties = mPersistentIdentity.getSuperProperties();
-            final Iterator<?> superIter = superProperties.keys();
-            while (superIter.hasNext()) {
-                final String key = (String) superIter.next();
-                messageProps.put(key, superProperties.get(key));
-            }
+            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
 
             // Don't allow super properties or referral properties to override these fields,
             // but DO allow the caller to override them in their given properties.
@@ -422,8 +417,10 @@ public class MixpanelAPI {
      * and persist beyond the lifetime of your application.
      */
       public JSONObject getSuperProperties() {
-        return mPersistentIdentity.getSuperProperties();
-    }
+          JSONObject ret = new JSONObject();
+          mPersistentIdentity.addSuperPropertiesToObject(ret);
+          return ret;
+      }
 
     /**
      * Returns the string id currently being used to uniquely identify the user associated
