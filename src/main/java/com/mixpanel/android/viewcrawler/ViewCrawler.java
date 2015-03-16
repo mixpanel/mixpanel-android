@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
@@ -484,6 +485,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         writer.write(":");
                         writer.write(JSONObject.quote(entry.getValue()));
                     }
+                    writer.write(",");
+                    writer.write("\"scaled_density\":");
+                    writer.write(Float.toString(Resources.getSystem().getDisplayMetrics().scaledDensity));
                 writer.write("}"); // payload
                 writer.write("}");
             } catch (final IOException e) {
