@@ -68,7 +68,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
         mProtocol = new EditProtocol(resourceIds);
         mEditState = new EditState();
-        mTweaks = new Tweaks(new Handler(Looper.getMainLooper()));
+        mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
 
         final Application app = (Application) context.getApplicationContext();

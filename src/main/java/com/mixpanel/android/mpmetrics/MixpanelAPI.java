@@ -1750,7 +1750,7 @@ public class MixpanelAPI {
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
         public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()));
+            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         }
 
         @Override
