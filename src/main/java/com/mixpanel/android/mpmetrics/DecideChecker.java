@@ -96,8 +96,7 @@ import java.util.List;
         return parsed;
     }// runDecideCheck
 
-    /* package */
-    static Result parseDecideResponse(String responseString)
+    /* package */ static Result parseDecideResponse(String responseString)
             throws UnintelligibleMessageException {
         JSONObject response;
         final Result ret = new Result();

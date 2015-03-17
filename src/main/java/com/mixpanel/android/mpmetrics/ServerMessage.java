@@ -51,11 +51,9 @@ import java.util.List;
             try {
                 response = performRequest(url, null);
                 break;
-            }
-            catch(final FileNotFoundException e){
+            } catch (final FileNotFoundException e) {
                 Log.e(LOGTAG, "Cannot get " + url + ", file not found.", e);
-            }
-            catch (final MalformedURLException e) {
+            } catch (final MalformedURLException e) {
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final IOException e) {
                 if (MPConfig.DEBUG) {
