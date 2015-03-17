@@ -30,6 +30,7 @@ import java.util.List;
             notifications = new ArrayList<InAppNotification>();
             eventBindings = EMPTY_JSON_ARRAY;
         }
+
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
@@ -60,15 +61,15 @@ import java.util.List;
     }
 
     /* package */ static class UnintelligibleMessageException extends Exception {
-		private static final long serialVersionUID = -6501269367559104957L;
+        private static final long serialVersionUID = -6501269367559104957L;
 
-		public UnintelligibleMessageException(String message, JSONException cause) {
+        public UnintelligibleMessageException(String message, JSONException cause) {
             super(message, cause);
         }
     }
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
-        throws UnintelligibleMessageException {
+            throws UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -85,7 +86,7 @@ import java.util.List;
             final Bitmap image = getNotificationImage(notification, mContext, poster);
             if (null == image) {
                 Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
-                              ", will not show the notification.");
+                        ", will not show the notification.");
                 notificationIterator.remove();
             } else {
                 notification.setImage(image);
@@ -95,8 +96,9 @@ import java.util.List;
         return parsed;
     }// runDecideCheck
 
-    /* package */ static Result parseDecideResponse(String responseString)
-        throws UnintelligibleMessageException {
+    /* package */
+    static Result parseDecideResponse(String responseString)
+            throws UnintelligibleMessageException {
         JSONObject response;
         final Result ret = new Result();
 
@@ -177,7 +179,7 @@ import java.util.List;
             } else {
                 escapedId = null;
             }
-        } catch(final UnsupportedEncodingException e) {
+        } catch (final UnsupportedEncodingException e) {
             throw new RuntimeException("Mixpanel library requires utf-8 string encoding to be available", e);
         }
 
@@ -195,7 +197,7 @@ import java.util.List;
             urls = new String[]{mConfig.getDecideEndpoint() + checkQuery};
         } else {
             urls = new String[]{mConfig.getDecideEndpoint() + checkQuery,
-                                mConfig.getDecideFallbackEndpoint() + checkQuery};
+                    mConfig.getDecideFallbackEndpoint() + checkQuery};
         }
 
         if (MPConfig.DEBUG) {
@@ -216,14 +218,14 @@ import java.util.List;
 
     private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster) {
         Bitmap ret = null;
-        String[] urls = { notification.getImage2xUrl() };
+        String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 
         final WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         final Display display = wm.getDefaultDisplay();
         final int displayWidth = getDisplayWidth(display);
 
         if (notification.getType() == InAppNotification.Type.TAKEOVER && displayWidth >= 720) {
-            urls = new String[]{ notification.getImage4xUrl(), notification.getImage2xUrl() };
+            urls = new String[]{notification.getImage4xUrl(), notification.getImage2xUrl(), notification.getImageUrl()};
         }
 
         final byte[] response = poster.getUrls(context, urls);
