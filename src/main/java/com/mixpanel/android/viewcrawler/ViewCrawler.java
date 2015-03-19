@@ -34,6 +34,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -906,6 +908,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             MESSAGE_HANDLE_EDITOR_CLOSED,
             MESSAGE_VARIANTS_RECEIVED
     })
+
+    @Retention(RetentionPolicy.SOURCE)
     public @interface MessageType {}
 
     private static final @MessageType int MESSAGE_INITIALIZE_CHANGES = 0;

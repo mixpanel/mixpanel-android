@@ -1,7 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import java.lang.reflect.Field;
@@ -39,12 +38,6 @@ public class Tweaks {
         public void registerObjectForTweaks(Tweaks t, Object registrant);
     }
 
-    public static void setRegistrar(Class klass, TweakRegistrar registrar) {
-        synchronized (sRegistrars) {
-            sRegistrars.put(klass, registrar);
-        }
-    }
-
     public Tweaks(Handler callbackHandler, String tweakClassName) {
         mTweaks = new HashMap<String, Object>();
         mBindings = new HashMap<String, List<TweakChangeCallback>>();
@@ -57,6 +50,7 @@ public class Tweaks {
         try {
             ret = (String) get(tweakName, defaultValue);
         } catch (ClassCastException e) {
+            ;
         }
 
         if (null == ret) {
@@ -144,19 +138,15 @@ public class Tweaks {
         synchronized (sRegistrars) {
             Class klass = registrant.getClass();
             while (klass != Object.class) {
-                if (sRegistrars.containsKey(klass)) {
-                    final TweakRegistrar registrar = sRegistrars.get(klass);
-                    registrar.registerObjectForTweaks(this, registrant);
-                } else {
+                if (! sRegistrars.containsKey(klass)) {
                     final ClassLoader loader = klass.getClassLoader();
                     final Package registrantPackage = klass.getPackage();
 
                     try {
                         final Class found = loader.loadClass(registrantPackage.getName() + "." + mTweakClassName);
-                        final Field instanceField = found.getField("INSTANCE");
+                        final Field instanceField = found.getField("TWEAK_REGISTRAR");
                         final TweakRegistrar registrar = (TweakRegistrar) instanceField.get(null);
-                        setRegistrar(klass, registrar);
-                        registrar.registerObjectForTweaks(this, registrant);
+                        sRegistrars.put(klass, registrar);
                     } catch (ClassNotFoundException e) {
                         ; // Ok, no such class.
                     } catch (NoSuchFieldException e) {
@@ -170,6 +160,12 @@ public class Tweaks {
                         Log.i(LOGTAG, "    There may be a bug in the Tweaks Annotation processor, or otherwise an issue with the generated $$TWEAK_REGISTRAR class.");
                     }
                 }
+
+                if (sRegistrars.containsKey(klass)) {
+                    final TweakRegistrar registrar = sRegistrars.get(klass);
+                    registrar.registerObjectForTweaks(this, registrant);
+                }
+
                 klass = klass.getSuperclass();
             }
         }
