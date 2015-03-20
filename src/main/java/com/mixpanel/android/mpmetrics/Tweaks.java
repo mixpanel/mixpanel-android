@@ -45,70 +45,51 @@ public class Tweaks {
         mTweakClassName = tweakClassName;
     }
 
-    public String getString(String tweakName, String defaultValue) {
+    public String getString(String tweakName) {
         String ret = null;
         try {
-            ret = (String) get(tweakName, defaultValue);
+            ret = (String) get(tweakName);
         } catch (ClassCastException e) {
             ;
-        }
-
-        if (null == ret) {
-            ret = defaultValue;
         }
 
         return ret;
     }
 
-    public double getDouble(String tweakName, double defaultValue) {
+    public double getDouble(String tweakName) {
         Double ret = null;
         try {
-            ret = (Double) get(tweakName, defaultValue);
+            ret = (Double) get(tweakName);
         } catch (ClassCastException e) {
             ;
-        }
-
-        if (null == ret) {
-            ret = defaultValue;
         }
 
         return ret;
     }
 
-    public long getLong(String tweakName, long defaultValue) {
+    public long getLong(String tweakName) {
         Long ret = null;
         try {
-            ret = (Long) get(tweakName, defaultValue);
+            ret = (Long) get(tweakName);
         } catch (ClassCastException e) {
             ;
-        }
-
-        if (null == ret) {
-            ret = defaultValue;
         }
 
         return ret;
     }
 
-    public boolean getBoolean(String tweakName, boolean defaultValue) {
+    public boolean getBoolean(String tweakName) {
         Boolean ret = null;
         try {
-            ret = (Boolean) get(tweakName, defaultValue);
+            ret = (Boolean) get(tweakName);
         } catch (ClassCastException e) {
             ;
-        }
-
-        if (null == ret) {
-            ret = defaultValue;
         }
 
         return ret;
     }
 
-    public synchronized Object get(String tweakName, Object defaultValue) {
-        if (!mTweaks.containsKey(tweakName)) {
-            set(tweakName, defaultValue, true);
-        }
+    public synchronized Object get(String tweakName) {
         return mTweaks.get(tweakName);
     }
 
@@ -120,12 +101,24 @@ public class Tweaks {
         if (!mBindings.containsKey(tweakName)) {
             mBindings.put(tweakName, new ArrayList<TweakChangeCallback>());
         }
-        mBindings.get(tweakName).add(callback);
-        runCallback(callback, get(tweakName, defaultValue));
+
+        if (!mTweaks.containsKey(tweakName)) {
+            mTweaks.put(tweakName, defaultValue);
+        }
+
+        if (null != callback) {
+            mBindings.get(tweakName).add(callback);
+            runCallback(callback, get(tweakName));
+        }
     }
 
-    public void set(String tweakName, Object value) {
-        set(tweakName, value, false);
+    public synchronized void set(String tweakName, Object value) {
+        mTweaks.put(tweakName, value);
+        if (mBindings.containsKey(tweakName)) {
+            for(TweakChangeCallback changeCallback : mBindings.get(tweakName)) {
+                runCallback(changeCallback, value);
+            }
+        }
     }
 
     public void set(Map<String, Object> tweakUpdates) {
@@ -167,16 +160,6 @@ public class Tweaks {
                 }
 
                 klass = klass.getSuperclass();
-            }
-        }
-    }
-
-    private synchronized void set(String tweakName, Object value, boolean isDefault) {
-        mTweaks.put(tweakName, value);
-
-        if (!isDefault && mBindings.containsKey(tweakName)) {
-            for(TweakChangeCallback changeCallback : mBindings.get(tweakName)) {
-                runCallback(changeCallback, value);
             }
         }
     }
