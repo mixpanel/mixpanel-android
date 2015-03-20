@@ -5,9 +5,11 @@ import android.util.Log;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Tweaks allows applications to specify dynamic variables that can be modified in the Mixpanel UI
@@ -40,7 +42,7 @@ public class Tweaks {
 
     public Tweaks(Handler callbackHandler, String tweakClassName) {
         mTweaks = new HashMap<String, Object>();
-        mBindings = new HashMap<String, List<TweakChangeCallback>>();
+        mBindings = new HashMap<String, WeakHashMap<Object, List<TweakChangeCallback>>>();
         mUiHandler = callbackHandler;
         mTweakClassName = tweakClassName;
     }
@@ -97,17 +99,28 @@ public class Tweaks {
         return new HashMap<String, Object>(mTweaks);
     }
 
-    public synchronized void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
+    public void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
+        bind(tweakName, defaultValue, this, callback);
+    }
+
+    public synchronized void bind(String tweakName, Object defaultValue, Object gcScope, TweakChangeCallback callback) {
         if (!mBindings.containsKey(tweakName)) {
-            mBindings.put(tweakName, new ArrayList<TweakChangeCallback>());
+            mBindings.put(tweakName, new WeakHashMap<Object, List<TweakChangeCallback>>());
         }
+        final WeakHashMap<Object, List<TweakChangeCallback>> scopes = mBindings.get(tweakName);
 
         if (!mTweaks.containsKey(tweakName)) {
             mTweaks.put(tweakName, defaultValue);
         }
 
         if (null != callback) {
-            mBindings.get(tweakName).add(callback);
+            List<TweakChangeCallback> callbackList = scopes.get(gcScope);
+            if (null == callbackList) {
+                callbackList = new ArrayList<TweakChangeCallback>();
+            }
+            callbackList.add(callback);
+            scopes.put(gcScope, callbackList);
+
             runCallback(callback, get(tweakName));
         }
     }
@@ -115,8 +128,13 @@ public class Tweaks {
     public synchronized void set(String tweakName, Object value) {
         mTweaks.put(tweakName, value);
         if (mBindings.containsKey(tweakName)) {
-            for(TweakChangeCallback changeCallback : mBindings.get(tweakName)) {
-                runCallback(changeCallback, value);
+            final Collection<List<TweakChangeCallback>> callbackLists = mBindings.get(tweakName).values();
+            for(List<TweakChangeCallback> callbackList:callbackLists) {
+                final int size = callbackList.size();
+                for (int i = 0; i < size; i++) {
+                    final TweakChangeCallback callback = callbackList.get(i);
+                    runCallback(callback, value);
+                }
             }
         }
     }
@@ -174,7 +192,7 @@ public class Tweaks {
     }
 
     private final Map<String, Object> mTweaks;
-    private final Map<String, List<TweakChangeCallback>> mBindings;
+    private final Map<String, WeakHashMap<Object, List<TweakChangeCallback>>> mBindings;
     private final Handler mUiHandler;
     private final String mTweakClassName;
 
