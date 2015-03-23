@@ -59,7 +59,7 @@ public class Tweaks {
     }
 
     public double getDouble(String tweakName) {
-        Double ret = null;
+        double ret = 0.0;
         try {
             ret = (Double) get(tweakName);
         } catch (ClassCastException e) {
@@ -70,7 +70,7 @@ public class Tweaks {
     }
 
     public long getLong(String tweakName) {
-        Long ret = null;
+        long ret = 0;
         try {
             ret = (Long) get(tweakName);
         } catch (ClassCastException e) {
@@ -81,7 +81,7 @@ public class Tweaks {
     }
 
     public boolean getBoolean(String tweakName) {
-        Boolean ret = null;
+        boolean ret = false;
         try {
             ret = (Boolean) get(tweakName);
         } catch (ClassCastException e) {

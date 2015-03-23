@@ -28,7 +28,7 @@ class MockMixpanel extends MixpanelAPI {
     }
 
     @Override
-    public Tweaks getTweaks() { return new Tweaks(); }
+    public Tweaks getTweaks() { return new Tweaks(new TestUtils.SynchronousHandler(), "WHO CARES"); }
 
     public static class MockPeople implements People {
 
