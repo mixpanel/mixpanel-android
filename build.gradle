@@ -120,7 +120,7 @@ uploadArchives {
                 developer {
                     id 'mixpanel_dev'
                     name 'Mixpanel Developers'
-                    email 'dev@mixpanel.com'
+                    email 'dev+android@mixpanel.com'
                 }
             }
         }
