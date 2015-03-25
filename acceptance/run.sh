@@ -49,12 +49,12 @@ function run_test {
 function clean_up {
 	if [ $NODE_SERVER_PID != NULL ]
 	then
-		kill -9 $NODE_SERVER_PID
+		kill $NODE_SERVER_PID
 	fi
 	
 	if [ $SELEDROID_PID != NULL ]
 	then
-		kill -9 $SELEDROID_PID
+		kill $SELEDROID_PID
 	fi
 }
 
