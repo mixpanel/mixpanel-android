@@ -98,8 +98,6 @@ function clean_up {
 	fi
 }
 
-echo "looking for sample app.."
-
 echo "looking for required module - express.."
 npm_package_check
 
@@ -111,6 +109,7 @@ build_apk
 
 echo "starting the local decide server.."
 start_node_server
+
 echo "starting the seledroid server.."
 start_selendroid_server
 

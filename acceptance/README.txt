@@ -12,6 +12,6 @@
     eg. my IP is 172.16.20.43, so I set them to "http://172.16.20.43:8000"
 8.  change MIXPANEL_API_TOKEN in config to your project token
 9.  do uploadArchives
-10.  launch emulator or hook up your Android device (make sure there's only 1 device/emulator connected to your
+10. launch emulator or hook up your Android device (make sure there's only 1 device/emulator connected to your
     machine
 11. now run "run.sh"
