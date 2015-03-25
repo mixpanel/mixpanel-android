@@ -14,7 +14,7 @@ function build_apk {
 
 function start_node_server {
     python http_server.py&
-	NODE_SERVER_PID=$!
+    NODE_SERVER_PID=$!
 }
 
 function start_selendroid_server {
