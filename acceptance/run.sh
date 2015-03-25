@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CONFIG_FILE=config
-SAMPLE_APP_DIR=sample-android-mixpanel-integration
+SAMPLE_APP_DIR=test-application
 TESTS=(test.py)
 HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
