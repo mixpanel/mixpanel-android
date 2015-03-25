@@ -13,7 +13,7 @@ function build_apk {
 }
 
 function start_node_server {
-	node server.js&
+    python http_server.py&
 	NODE_SERVER_PID=$!
 }
 
