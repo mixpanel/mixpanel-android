@@ -7,9 +7,9 @@ HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
 
 function build_apk {
-	pushd ${SAMPLE_APP_DIR} > /dev/null
+	pushd ${SAMPLE_APP_DIR}
 	./gradlew clean :assembleDebug
-	popd > /dev/null
+	popd
 }
 
 function start_node_server {
