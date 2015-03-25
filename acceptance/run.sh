@@ -1,14 +1,14 @@
 #!/bin/bash
 
 CONFIG_FILE=config
-SAMPLE_APP_DIR=test-application
+TEST_APP_DIR=test-application
 TESTS=(test.py)
 HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
 ANDROID_HOME=~/Library/Android/sdk/
 
 function build_apk {
-	pushd ${SAMPLE_APP_DIR}
+	pushd ${TEST_APP_DIR}
 	./gradlew clean :assembleDebug
 	popd
 }
@@ -20,7 +20,7 @@ function start_node_server {
 
 function start_selendroid_server {
 	export $ANDROID_HOME
-	java -jar selendroid-standalone-0.15.0-with-dependencies.jar -app sample-android-mixpanel-integration/build/outputs/apk/sample-android-mixpanel-integration-debug.apk&
+	java -jar selendroid-standalone-0.15.0-with-dependencies.jar -app $TEST_APP_DIR/build/outputs/apk/test-application-debug.apk&
 	SELEDROID_PID=$!
 }
 
