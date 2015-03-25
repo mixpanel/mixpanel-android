@@ -43,6 +43,9 @@ import com.mixpanel.android.util.StackBlurManager;
         protected Void doInBackground(Void ...params) {
             if (null != mSourceImage) {
                 try {
+                    /* TODO there is a better and more efficient way to do this, consider
+                     * https://github.com/500px/500px-android-blur
+                     */
                     StackBlurManager.process(mSourceImage, 20);
                     final Canvas canvas = new Canvas(mSourceImage);
                     canvas.drawColor(GRAY_72PERCENT_OPAQUE, PorterDuff.Mode.SRC_ATOP);

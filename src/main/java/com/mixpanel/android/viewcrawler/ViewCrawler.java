@@ -35,6 +35,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -69,7 +71,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
         mProtocol = new EditProtocol(resourceIds);
         mEditState = new EditState();
-        mTweaks = new Tweaks();
+        mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
 
         final Application app = (Application) context.getApplicationContext();
@@ -910,18 +912,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             MESSAGE_HANDLE_EDITOR_CLOSED,
             MESSAGE_VARIANTS_RECEIVED
     })
+
+    @Retention(RetentionPolicy.SOURCE)
     public @interface MessageType {}
 
-    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
-    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
-    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
-    private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
-    private static final int MESSAGE_SEND_DEVICE_INFO = 4;
-    private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 6;
-    private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 8;
-    private static final int MESSAGE_SEND_EVENT_TRACKED = 9;
-    private static final int MESSAGE_HANDLE_EDITOR_CLOSED = 10;
-    private static final int MESSAGE_VARIANTS_RECEIVED = 11;
+    private static final @MessageType int MESSAGE_INITIALIZE_CHANGES = 0;
+    private static final @MessageType int MESSAGE_CONNECT_TO_EDITOR = 1;
+    private static final @MessageType int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
+    private static final @MessageType int MESSAGE_SEND_DEVICE_INFO = 4;
+    private static final @MessageType int MESSAGE_EVENT_BINDINGS_RECEIVED = 5;
+    private static final @MessageType int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 6;
+    private static final @MessageType int MESSAGE_SEND_EVENT_TRACKED = 7;
+    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CLOSED = 8;
+    private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 

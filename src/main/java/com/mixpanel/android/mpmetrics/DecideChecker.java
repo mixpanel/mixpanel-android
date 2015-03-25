@@ -269,5 +269,5 @@ import java.util.List;
 
     private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
 
-    private static final String LOGTAG = "MixpanelAPI.DecideChecker";
+    private static final String LOGTAG = "MixpanelAPI.DChecker";
 }

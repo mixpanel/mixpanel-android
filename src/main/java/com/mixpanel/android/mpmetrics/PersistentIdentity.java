@@ -449,5 +449,5 @@ import android.util.Log;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
-    private static final String LOGTAG = "MixpanelAPI.PersistentIdentity";
+    private static final String LOGTAG = "MixpanelAPI.PIdentity";
 }
