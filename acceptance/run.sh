@@ -5,6 +5,7 @@ SAMPLE_APP_DIR=sample-android-mixpanel-integration
 TESTS=(test.py)
 HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
+ANDROID_HOME=~/Library/Android/sdk/
 
 function build_apk {
 	pushd ${SAMPLE_APP_DIR}
@@ -18,7 +19,7 @@ function start_node_server {
 }
 
 function start_selendroid_server {
-	export ANDROID_HOME=~/Library/Android/sdk/
+	export $ANDROID_HOME
 	java -jar selendroid-standalone-0.15.0-with-dependencies.jar -app sample-android-mixpanel-integration/build/outputs/apk/sample-android-mixpanel-integration-debug.apk&
 	SELEDROID_PID=$!
 }
