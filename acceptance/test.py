@@ -1,7 +1,7 @@
 import unittest
 from selenium import webdriver
 
-class FindElementTest(unittest.TestCase):
+class AndroidTest(unittest.TestCase):
     def _launch_app(self):
         desired_capabilities = {'aut': 'com.mixpanel.example.hello:1.0'}
         self.driver = webdriver.Remote(
