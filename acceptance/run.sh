@@ -5,19 +5,6 @@ SAMPLE_APP_DIR=sample-android-mixpanel-integration
 TESTS=(test.py)
 NODE_SERVER_PID=NULL
 SELEDROID_PID=NULL
-NPM_PACKAGES_REQUIRED=(express)
-
-function npm_package_check {
-	for package in $NPM_PACKAGES_REQUIRED
-	do
-		ls node_modules 2> /dev/null | grep $package > /dev/null
-		if [ $? != 0 ]
-		then
-			echo "$package is missing. installing.."
-			npm install $package --save
-		fi
-	done
-}
 
 function build_apk {
 	pushd ${SAMPLE_APP_DIR} > /dev/null
@@ -71,7 +58,6 @@ function clean_up {
 	fi
 }
 
-npm_package_check
 build_apk
 start_node_server
 start_selendroid_server
