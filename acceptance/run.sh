@@ -3,7 +3,7 @@
 CONFIG_FILE=config
 SAMPLE_APP_DIR=sample-android-mixpanel-integration
 TESTS=(test.py)
-NODE_SERVER_PID=NULL
+HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
 
 function build_apk {
@@ -14,7 +14,7 @@ function build_apk {
 
 function start_node_server {
     python http_server.py&
-    NODE_SERVER_PID=$!
+    HTTP_SERVER_PID=$!
 }
 
 function start_selendroid_server {
@@ -47,9 +47,9 @@ function run_test {
 }
 
 function clean_up {
-	if [ $NODE_SERVER_PID != NULL ]
+	if [ $HTTP_SERVER_PID != NULL ]
 	then
-		kill $NODE_SERVER_PID
+		kill $HTTP_SERVER_PID
 	fi
 	
 	if [ $SELEDROID_PID != NULL ]
