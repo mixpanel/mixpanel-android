@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
     public interface Editor {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
+        public void clearEdits(JSONObject message);
         public void bindEvents(JSONObject message);
         public void sendDeviceInfo();
         public void cleanup();
@@ -91,6 +92,8 @@ import java.nio.ByteBuffer;
                     mService.performEdit(messageJson);
                 } else if (type.equals("event_binding_request")) {
                     mService.bindEvents(messageJson);
+                } else if (type.equals("clear_request")) {
+                    mService.clearEdits(messageJson);
                 }
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad JSON received:" + message, e);

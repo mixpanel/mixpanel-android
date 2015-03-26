@@ -39,11 +39,20 @@ import java.util.WeakHashMap;
             super(path);
             mMutator = mutator;
             mAccessor = accessor;
+            mOriginalValueHolder = new Object[1];
+            mOriginalValues = new WeakHashMap<View, Object>();
         }
 
         @Override
-        public void cleanup() {
-            // Do nothing, we don't have any references and we haven't installed any listeners.
+        public void cleanup() { // TODO this needs to be cleaned up not only on remove, but also on RESET (by id)
+            for (Map.Entry<View, Object> original:mOriginalValues.entrySet()) {
+                final View changedView = original.getKey();
+                final Object originalValue = original.getValue();
+                if (null != originalValue) {
+                    mOriginalValueHolder[0] = originalValue;
+                    mMutator.applyMethodWithArguments(changedView, mOriginalValueHolder);
+                }
+            }
         }
 
         @Override
@@ -69,6 +78,17 @@ import java.util.WeakHashMap;
                             return;
                         }
                     }
+
+                    if (desiredValue instanceof Bitmap || mOriginalValues.containsKey(found)) {
+                        ; // Cache exactly one, non-bitmap original value
+                    } else {
+                        mOriginalValueHolder[0] = currentValue;
+                        if (mMutator.argsAreApplicable(mOriginalValueHolder)) {
+                            mOriginalValues.put(found, currentValue);
+                        } else {
+                            mOriginalValues.put(found, null);
+                        }
+                    }
                 }
             }
 
@@ -81,6 +101,8 @@ import java.util.WeakHashMap;
 
         private final Caller mMutator;
         private final Caller mAccessor;
+        private final WeakHashMap<View, Object> mOriginalValues;
+        private final Object[] mOriginalValueHolder;
     }
 
     /**
