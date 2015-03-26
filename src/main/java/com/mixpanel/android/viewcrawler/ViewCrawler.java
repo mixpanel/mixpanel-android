@@ -480,7 +480,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     writer.write("\"device_name\":");
                     writer.write(JSONObject.quote(Build.BRAND + "/" + Build.MODEL));
                     writer.write(",");
-                    writer.write("\"tweaks\": []"); // TODO send tweaks back home
+                    writer.write("\"tweaks\": [");
+                    // TODO SOMETHING WONDERFUL HAPPENS HERE
+                    writer.write("]"); // TODO send tweaks back home
                     for (final Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
                         writer.write(",");
                         writer.write(JSONObject.quote(entry.getKey()));

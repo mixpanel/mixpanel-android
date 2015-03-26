@@ -1,8 +1,11 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.os.Handler;
+import android.support.annotation.IntDef;
 import android.util.Log;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,6 +35,24 @@ import java.util.WeakHashMap;
  *
  */
 public class Tweaks {
+
+    @IntDef({
+        UNKNOWN_TYPE,
+        STRING_TYPE,
+        DOUBLE_TYPE,
+        LONG_TYPE,
+        BOOLEAN_TYPE
+    })
+
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface TweakType {}
+
+    public static final @TweakType int UNKNOWN_TYPE = 0;
+    public static final @TweakType int STRING_TYPE = 1;
+    public static final @TweakType int DOUBLE_TYPE = 2;
+    public static final @TweakType int LONG_TYPE = 3;
+    public static final @TweakType int BOOLEAN_TYPE = 4;
+
     public interface TweakChangeCallback {
         public void onChange(Object value);
     }
@@ -40,9 +61,22 @@ public class Tweaks {
         public void registerObjectForTweaks(Tweaks t, Object registrant);
     }
 
+    public static class TweakDescription {
+        public TweakDescription(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax) {
+            type = aType;
+            defaultValue = aDefaultValue;
+            min = aMin;
+            max = aMax;
+        }
+
+        public final @TweakType int type;
+        public final Number min;
+        public final Number max;
+        public final Object defaultValue;
+    }
+
     public Tweaks(Handler callbackHandler, String tweakClassName) {
-        mTweaks = new HashMap<String, Object>();
-        mBindings = new HashMap<String, WeakHashMap<Object, List<TweakChangeCallback>>>();
+        mTweaks = new HashMap<String, TweakValue>();
         mUiHandler = callbackHandler;
         mTweakClassName = tweakClassName;
     }
@@ -92,51 +126,70 @@ public class Tweaks {
     }
 
     public synchronized Object get(String tweakName) {
-        return mTweaks.get(tweakName);
+        Object ret = null;
+        final TweakValue value = mTweaks.get(tweakName);
+        if (null != value) {
+            ret = value.getValue();
+        }
+        return ret;
     }
 
-    public synchronized Map<String, Object> getAll() {
+    public synchronized Map<String, Object> getDescriptions() {
         return new HashMap<String, Object>(mTweaks);
     }
 
-    public void bind(String tweakName, Object defaultValue, TweakChangeCallback callback) {
-        bind(tweakName, defaultValue, this, callback);
+    public synchronized void defineTweak(String tweakName, Object defaultValue) {
+        if (mTweaks.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
+            return;
+        }
+
+        final @TweakType int tweakType = determineType(defaultValue);
+        final TweakDescription description = new TweakDescription(tweakType, defaultValue, null, null);
+        final TweakValue value = new TweakValue(description);
+        mTweaks.put(tweakName, value);
     }
 
-    public synchronized void bind(String tweakName, Object defaultValue, Object gcScope, TweakChangeCallback callback) {
-        if (!mBindings.containsKey(tweakName)) {
-            mBindings.put(tweakName, new WeakHashMap<Object, List<TweakChangeCallback>>());
+    public synchronized void bind(String tweakName, Object gcScope, TweakChangeCallback callback) {
+        if (null == gcScope) {
+            gcScope = this;
         }
-        final WeakHashMap<Object, List<TweakChangeCallback>> scopes = mBindings.get(tweakName);
 
         if (!mTweaks.containsKey(tweakName)) {
-            mTweaks.put(tweakName, defaultValue);
+            Log.w(LOGTAG, "Attempt to bind to a tweak \"" + tweakName + "\" which doesn't exist");
+            return;
         }
 
-        if (null != callback) {
-            List<TweakChangeCallback> callbackList = scopes.get(gcScope);
-            if (null == callbackList) {
-                callbackList = new ArrayList<TweakChangeCallback>();
-            }
-            callbackList.add(callback);
-            scopes.put(gcScope, callbackList);
+        final TweakValue value = mTweaks.get(tweakName);
 
-            runCallback(callback, get(tweakName));
+        List<TweakChangeCallback> callbackList = value.bindings.get(gcScope);
+        if (null == callbackList) {
+            callbackList = new ArrayList<TweakChangeCallback>();
         }
+
+        callbackList.add(callback);
+        value.bindings.put(gcScope, callbackList);
+        runCallback(callback, get(tweakName));
     }
 
     public synchronized void set(String tweakName, Object value) {
-        mTweaks.put(tweakName, value);
-        if (mBindings.containsKey(tweakName)) {
-            final Collection<List<TweakChangeCallback>> callbackLists = mBindings.get(tweakName).values();
-            for(List<TweakChangeCallback> callbackList:callbackLists) {
-                final int size = callbackList.size();
-                for (int i = 0; i < size; i++) {
-                    final TweakChangeCallback callback = callbackList.get(i);
-                    runCallback(callback, value);
-                }
+        if (!mTweaks.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
+            return;
+        }
+
+        final TweakValue container = mTweaks.get(tweakName);
+        container.setValue(value);
+
+        final Collection<List<TweakChangeCallback>> callbackLists = container.bindings.values();
+        for(List<TweakChangeCallback> descList:callbackLists) {
+            final int size = descList.size();
+            for (int i = 0; i < size; i++) {
+                final TweakChangeCallback callback = descList.get(i);
+                runCallback(callback, value);
             }
         }
+
     }
 
     public void set(Map<String, Object> tweakUpdates) {
@@ -191,8 +244,49 @@ public class Tweaks {
         });
     }
 
-    private final Map<String, Object> mTweaks;
-    private final Map<String, WeakHashMap<Object, List<TweakChangeCallback>>> mBindings;
+    private @TweakType int determineType(Object thing) {
+        if (thing instanceof String) {
+            return STRING_TYPE;
+        }
+
+        if (thing instanceof Double) {
+            return DOUBLE_TYPE;
+        }
+
+        if (thing instanceof Long) {
+            return LONG_TYPE;
+        }
+
+        if (thing instanceof Boolean) {
+            return BOOLEAN_TYPE;
+        }
+
+        return UNKNOWN_TYPE;
+    }
+
+    private static class TweakValue {
+
+        public final WeakHashMap<Object, List<TweakChangeCallback>> bindings;
+        public final TweakDescription description;
+
+        public TweakValue(TweakDescription aDescription) {
+            description = aDescription;
+            bindings = new WeakHashMap<Object, List<TweakChangeCallback>>();
+            mValue = aDescription.defaultValue;
+        }
+
+        public Object getValue() {
+            return mValue;
+        }
+
+        public void setValue(Object value) {
+            mValue = value;
+        }
+
+        private Object mValue;
+    }
+
+    private final Map<String, TweakValue> mTweaks;
     private final Handler mUiHandler;
     private final String mTweakClassName;
 

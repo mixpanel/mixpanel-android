@@ -22,24 +22,25 @@ public class TweaksTest extends AndroidTestCase {
     }
 
     public void testTweakWithDefault() {
-        mTweaks.bind("Some Tweak", "Default Value", null);
+        mTweaks.defineTweak("Some Tweak", "Default Value");
         assertEquals("Default Value", mTweaks.getString("Some Tweak"));
     }
 
     public void testNonStringTweakWithWrongType() {
-        mTweaks.bind("Some Tweak", 100.0, null);
+        mTweaks.defineTweak("Some Tweak", 100.0);
         assertNull(mTweaks.getString("Some Tweak"));
     }
 
     public void testPrimitiveTweakWithWrongType() {
-        mTweaks.bind("Some Tweak", "String Default", null);
+        mTweaks.defineTweak("Some Tweak", "String Default");
         assertEquals(0.0, mTweaks.getDouble("Some Tweak"));
     }
 
     public void testTweakFiresOnBinding() {
         final List<Object> found = new ArrayList<Object>();
 
-        mTweaks.bind("Some Tweak", "Default Value", new Tweaks.TweakChangeCallback() {
+        mTweaks.defineTweak("Some Tweak", "Default Value");
+        mTweaks.bind("Some Tweak", null, new Tweaks.TweakChangeCallback() {
             @Override
             public void onChange(Object value) {
                 found.add(value);
@@ -53,7 +54,8 @@ public class TweaksTest extends AndroidTestCase {
     public void testTweakFiresOnUpdate() {
         final List<Object> found = new ArrayList<Object>();
 
-        mTweaks.bind("Some Tweak", "Default Value", new Tweaks.TweakChangeCallback() {
+        mTweaks.defineTweak("Some Tweak", "Default Value");
+        mTweaks.bind("Some Tweak", null, new Tweaks.TweakChangeCallback() {
             @Override
             public void onChange(Object value) {
                 found.add(value);
