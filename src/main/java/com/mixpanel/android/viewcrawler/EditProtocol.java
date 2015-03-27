@@ -283,5 +283,5 @@ import java.util.List;
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.EditProtocol";
+    private static final String LOGTAG = "MixpanelAPI.EProtocol";
 } // EditProtocol

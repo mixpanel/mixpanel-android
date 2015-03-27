@@ -264,7 +264,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mToken = token;
             mSnapshot = null;
 
-            mEditorChanges = new ArrayList<Pair<String, JSONObject>>();
+            mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
             mPersistentChanges = new ArrayList<VariantChange>();
             mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
@@ -311,6 +311,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         break;
                     case MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED:
                         handleEditorBindingsReceived((JSONObject) msg.obj);
+                        break;
+                    case MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED:
+                        handleEditorBindingsCleared((JSONObject) msg.obj);
                         break;
                     case MESSAGE_HANDLE_EDITOR_CLOSED:
                         handleEditorClosed();
@@ -607,12 +610,31 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 for (int i = 0; i < actions.length(); i++) {
                     final JSONObject change = actions.getJSONObject(i);
                     final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
-                    mEditorChanges.add(new Pair<String, JSONObject>(targetActivity, change));
+                    final String name = change.getString("name");
+                    mEditorChanges.put(name, new Pair<String, JSONObject>(targetActivity, change));
                 }
 
                 updateEditState();
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
+            }
+        }
+
+        /**
+         * Remove a change from the connected UI.
+         */
+        private void handleEditorBindingsCleared(JSONObject clearMessage) {
+            try {
+                final JSONObject payload = clearMessage.getJSONObject("payload");
+                final JSONArray actions = payload.getJSONArray("actions");
+                for (int i = 0; i < actions.length(); i++) {
+                    final String changeId = actions.getString(i);
+                    mEditorChanges.remove(changeId);
+                }
+
+                updateEditState();
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Bad clear request received", e);
             }
         }
 
@@ -624,8 +646,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
             editor.commit();
-
-            // Mark inbound stuff as in
 
             initializeChanges();
         }
@@ -715,9 +735,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
 
             {
-                final int size = mEditorChanges.size();
-                for (int i = 0; i < size; i++) {
-                    final Pair<String, JSONObject> changeInfo = mEditorChanges.get(i);
+                for (Pair<String, JSONObject> changeInfo:mEditorChanges.values()) {
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
@@ -789,7 +807,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         private final String mToken;
         private final Lock mStartLock;
 
-        private final List<Pair<String,JSONObject>> mEditorChanges;
+        private final Map<String, Pair<String,JSONObject>> mEditorChanges;
         private final List<Pair<String,JSONObject>> mEditorEventBindings;
         private final List<VariantChange> mPersistentChanges;
         private final List<Pair<String,JSONObject>> mPersistentEventBindings;
@@ -808,6 +826,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         @Override
         public void performEdit(JSONObject message) {
             final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void clearEdits(JSONObject message) {
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED);
             msg.obj = message;
             mMessageThreadHandler.sendMessage(msg);
         }
@@ -928,6 +953,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final @MessageType int MESSAGE_SEND_EVENT_TRACKED = 7;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_CLOSED = 8;
     private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
+    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 
