@@ -38,20 +38,20 @@ public class Tweaks {
 
     @IntDef({
         UNKNOWN_TYPE,
-        STRING_TYPE,
+        BOOLEAN_TYPE,
         DOUBLE_TYPE,
         LONG_TYPE,
-        BOOLEAN_TYPE
+        STRING_TYPE
     })
 
     @Retention(RetentionPolicy.SOURCE)
     public @interface TweakType {}
 
     public static final @TweakType int UNKNOWN_TYPE = 0;
-    public static final @TweakType int STRING_TYPE = 1;
+    public static final @TweakType int BOOLEAN_TYPE = 1;
     public static final @TweakType int DOUBLE_TYPE = 2;
     public static final @TweakType int LONG_TYPE = 3;
-    public static final @TweakType int BOOLEAN_TYPE = 4;
+    public static final @TweakType int STRING_TYPE = 4;
 
     public interface TweakChangeCallback {
         public void onChange(Object value);
@@ -65,13 +65,13 @@ public class Tweaks {
         public TweakDescription(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax) {
             type = aType;
             defaultValue = aDefaultValue;
-            min = aMin;
-            max = aMax;
+            minimum = aMin;
+            maximum = aMax;
         }
 
         public final @TweakType int type;
-        public final Number min;
-        public final Number max;
+        public final Number minimum;
+        public final Number maximum;
         public final Object defaultValue;
     }
 
@@ -134,8 +134,12 @@ public class Tweaks {
         return ret;
     }
 
-    public synchronized Map<String, Object> getDescriptions() {
-        return new HashMap<String, Object>(mTweaks);
+    public synchronized Map<String, TweakDescription> getDescriptions() {
+        final Map<String, TweakDescription> ret = new HashMap<String, TweakDescription>();
+        for (Map.Entry<String, TweakValue> entry:mTweaks.entrySet()) {
+            ret.put(entry.getKey(), entry.getValue().description);
+        }
+        return ret;
     }
 
     public synchronized void defineTweak(String tweakName, Object defaultValue) {
