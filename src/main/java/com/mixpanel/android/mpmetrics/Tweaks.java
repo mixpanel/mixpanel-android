@@ -10,8 +10,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
@@ -154,9 +156,10 @@ public class Tweaks {
         mTweaks.put(tweakName, value);
     }
 
-    public synchronized void bind(String tweakName, Object gcScope, TweakChangeCallback callback) {
-        if (null == gcScope) {
-            gcScope = this;
+    /* Only one callback will be stored per scope. When scope is garbage collected, references to callback will be removed */
+    public synchronized void bind(String tweakName, Object scope, TweakChangeCallback callback) {
+        if (null == scope) {
+            scope = this;
         }
 
         if (!mTweaks.containsKey(tweakName)) {
@@ -165,14 +168,7 @@ public class Tweaks {
         }
 
         final TweakValue value = mTweaks.get(tweakName);
-
-        List<TweakChangeCallback> callbackList = value.bindings.get(gcScope);
-        if (null == callbackList) {
-            callbackList = new ArrayList<TweakChangeCallback>();
-        }
-
-        callbackList.add(callback);
-        value.bindings.put(gcScope, callbackList);
+        value.bindings.put(scope, callback);
         runCallback(callback, get(tweakName));
     }
 
@@ -185,36 +181,29 @@ public class Tweaks {
         final TweakValue container = mTweaks.get(tweakName);
         container.setValue(value);
 
-        final Collection<List<TweakChangeCallback>> callbackLists = container.bindings.values();
-        for(List<TweakChangeCallback> descList:callbackLists) {
-            final int size = descList.size();
-            for (int i = 0; i < size; i++) {
-                final TweakChangeCallback callback = descList.get(i);
-                runCallback(callback, value);
-            }
-        }
-
-    }
-
-    public void set(Map<String, Object> tweakUpdates) {
-        for(String tweakName : tweakUpdates.keySet()) {
-            set(tweakName, tweakUpdates.get(tweakName));
+        final Collection<TweakChangeCallback> callbackLists = container.bindings.values();
+        for(final TweakChangeCallback callback:callbackLists) {
+            runCallback(callback, value);
         }
     }
 
     public void registerForTweaks(Object registrant) {
+        final Set<Package> seenPackages = new HashSet<Package>();
         synchronized (sRegistrars) {
-            Class klass = registrant.getClass();
-            while (klass != Object.class) {
-                if (! sRegistrars.containsKey(klass)) {
+            for (Class klass = registrant.getClass(); klass != Object.class; klass = klass.getSuperclass()) {
+                final Package registrantPackage = klass.getPackage();
+                if (seenPackages.contains(registrantPackage)) {
+                    continue;
+                }
+
+                if (!sRegistrars.containsKey(registrantPackage)) {
                     final ClassLoader loader = klass.getClassLoader();
-                    final Package registrantPackage = klass.getPackage();
 
                     try {
                         final Class found = loader.loadClass(registrantPackage.getName() + "." + mTweakClassName);
                         final Field instanceField = found.getField("TWEAK_REGISTRAR");
                         final TweakRegistrar registrar = (TweakRegistrar) instanceField.get(null);
-                        sRegistrars.put(klass, registrar);
+                        sRegistrars.put(registrantPackage, registrar);
                     } catch (ClassNotFoundException e) {
                         ; // Ok, no such class.
                     } catch (NoSuchFieldException e) {
@@ -229,14 +218,14 @@ public class Tweaks {
                     }
                 }
 
-                if (sRegistrars.containsKey(klass)) {
-                    final TweakRegistrar registrar = sRegistrars.get(klass);
+                if (sRegistrars.containsKey(registrantPackage)) {
+                    final TweakRegistrar registrar = sRegistrars.get(registrantPackage);
                     registrar.registerObjectForTweaks(this, registrant);
                 }
 
-                klass = klass.getSuperclass();
-            }
-        }
+                seenPackages.add(registrantPackage);
+            } // for
+        } // synchronized(sRegistrars)
     }
 
     private void runCallback(final TweakChangeCallback callback, final Object value) {
@@ -270,12 +259,12 @@ public class Tweaks {
 
     private static class TweakValue {
 
-        public final WeakHashMap<Object, List<TweakChangeCallback>> bindings;
+        public final WeakHashMap<Object, TweakChangeCallback> bindings;
         public final TweakDescription description;
 
         public TweakValue(TweakDescription aDescription) {
             description = aDescription;
-            bindings = new WeakHashMap<Object, List<TweakChangeCallback>>();
+            bindings = new WeakHashMap<Object, TweakChangeCallback>();
             mValue = aDescription.defaultValue;
         }
 
@@ -295,7 +284,7 @@ public class Tweaks {
     private final String mTweakClassName;
 
     // Access must be synchronized
-    private static final Map<Class, TweakRegistrar> sRegistrars = new HashMap<Class, TweakRegistrar>();
+    private static final Map<Package, TweakRegistrar> sRegistrars = new HashMap<Package, TweakRegistrar>();
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }
