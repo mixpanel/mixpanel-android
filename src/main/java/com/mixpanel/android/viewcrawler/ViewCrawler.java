@@ -318,6 +318,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         break;
                     case MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED:
                         handleEditorTweaksReceived((JSONObject) msg.obj);
+                        break;
                     case MESSAGE_HANDLE_EDITOR_CLOSED:
                         handleEditorClosed();
                         break;
@@ -563,6 +564,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 final JSONObject payload = message.getJSONObject("payload");
                 if (payload.has("config")) {
                     mSnapshot = mProtocol.readSnapshotConfig(payload);
+                    if (MPConfig.DEBUG) {
+                        Log.v(LOGTAG, "Initializing snapshot with configuration");
+                    }
                 }
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
@@ -762,6 +766,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
             // Free (or make available) snapshot memory
             mSnapshot = null;
+
+            if (MPConfig.DEBUG) {
+                Log.v(LOGTAG, "Editor closed- freeing snapshot");
+            }
 
             updateEditState();
         }
