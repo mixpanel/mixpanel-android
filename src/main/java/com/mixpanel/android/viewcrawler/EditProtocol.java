@@ -165,7 +165,7 @@ import java.util.Objects;
                 final String encoding = tweakDesc.getString("encoding");
                 if ("d".equals(encoding)) {
                     value = tweakDesc.getDouble("value");
-                } else if ("l".equals(type)) {
+                } else if ("l".equals(encoding)) {
                     value = tweakDesc.getLong("value");
                 } else {
                     throw new BadInstructionsException("number must have encoding of type \"l\" for long or \"d\" for double in: " + tweakDesc);
