@@ -1,7 +1,7 @@
 package com.mixpanel.android.viewcrawler;
 
 /* package */ class PropertyDescription {
-    public PropertyDescription(String name, Class<?> targetClass, Caller accessor, String mutatorName) {
+    public PropertyDescription(String name, Class<?> targetClass, PropertySetCaller accessor, String mutatorName) {
         this.name = name;
         this.targetClass = targetClass;
         this.accessor = accessor;
@@ -9,13 +9,13 @@ package com.mixpanel.android.viewcrawler;
         mMutatorName = mutatorName;
     }
 
-    public Caller makeMutator(Object[] methodArgs)
+    public PropertySetCaller makeMutator(Object[] methodArgs)
         throws NoSuchMethodException {
         if (null == mMutatorName) {
             return null;
         }
 
-        return new Caller(this.targetClass, mMutatorName, methodArgs, Void.TYPE);
+        return new PropertySetCaller(this.targetClass, mMutatorName, methodArgs, Void.TYPE);
     }
 
     @Override
@@ -25,7 +25,7 @@ package com.mixpanel.android.viewcrawler;
 
     public final String name;
     public final Class<?> targetClass;
-    public final Caller accessor;
+    public final PropertySetCaller accessor;
 
     private final String mMutatorName;
 }

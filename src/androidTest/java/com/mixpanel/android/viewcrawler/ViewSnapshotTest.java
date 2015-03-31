@@ -18,7 +18,6 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,11 +31,11 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
         final List<PropertyDescription> props = new ArrayList<PropertyDescription>();
 
-        final Caller textGetter = new Caller(TextView.class, "getText", new Object[0], CharSequence.class);
+        final PropertySetCaller textGetter = new PropertySetCaller(TextView.class, "getText", new Object[0], CharSequence.class);
         final PropertyDescription text = new PropertyDescription("text", TextView.class, textGetter, "setText");
         props.add(text);
 
-        final Caller customPropGetter = new Caller(TestView.CustomPropButton.class, "getCustomProperty", new Object[0], CharSequence.class);
+        final PropertySetCaller customPropGetter = new PropertySetCaller(TestView.CustomPropButton.class, "getCustomProperty", new Object[0], CharSequence.class);
         final PropertyDescription custom = new PropertyDescription(
              "custom",
              TestView.CustomPropButton.class,
@@ -57,14 +56,14 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
     public void testBadMethods() {
         try {
-            final Caller crazyGetter = new Caller(View.class, "CRAZY GETTER", new Object[0], Void.TYPE);
+            final PropertySetCaller crazyGetter = new PropertySetCaller(View.class, "CRAZY GETTER", new Object[0], Void.TYPE);
             fail("Exception was not thrown when constructing a bad caller");
         } catch (NoSuchMethodException e) {
             // OK!
         }
 
         try {
-            final Caller badTypesGetter = new Caller(TextView.class, "getText", new Object[0], Integer.class);
+            final PropertySetCaller badTypesGetter = new PropertySetCaller(TextView.class, "getText", new Object[0], Integer.class);
             fail("Exception was not thrown when constructing a caller with bad types");
         } catch (NoSuchMethodException e) {
             // OK!

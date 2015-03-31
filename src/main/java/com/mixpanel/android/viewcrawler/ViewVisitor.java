@@ -35,7 +35,7 @@ import java.util.WeakHashMap;
      * prevent calls to the mutator if the property already has the intended value.
      */
     public static class PropertySetVisitor extends ViewVisitor {
-        public PropertySetVisitor(List<Pathfinder.PathElement> path, Caller mutator, Caller accessor) {
+        public PropertySetVisitor(List<Pathfinder.PathElement> path, PropertySetCaller mutator, PropertySetCaller accessor) {
             super(path);
             mMutator = mutator;
             mAccessor = accessor;
@@ -99,11 +99,48 @@ import java.util.WeakHashMap;
             return "Property Mutator";
         }
 
-        private final Caller mMutator;
-        private final Caller mAccessor;
+        private final PropertySetCaller mMutator;
+        private final PropertySetCaller mAccessor;
         private final WeakHashMap<View, Object> mOriginalValues;
         private final Object[] mOriginalValueHolder;
     }
+
+    public static class LayoutSetVisitor extends ViewVisitor {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, PropertySetCaller mutator, PropertySetCaller accessor) {
+            super(path);
+            mMutator = mutator;
+            mAccessor = accessor;
+            mOriginalValueHolder = new Object[1];
+            mOriginalValues = new WeakHashMap<View, Object>();
+        }
+
+        @Override
+        public void cleanup() {
+            for (Map.Entry<View, Object> original:mOriginalValues.entrySet()) {
+                final View changedView = original.getKey();
+                final Object originalValue = original.getValue();
+                if (null != originalValue) {
+                    mOriginalValueHolder[0] = originalValue;
+                    mMutator.applyMethodWithArguments(changedView, mOriginalValueHolder);
+                }
+            }
+        }
+
+        @Override
+        public void accumulate(View found) {
+
+        }
+
+        protected String name() {
+            return "Layout Mutator";
+        }
+
+        private final PropertySetCaller mMutator;
+        private final PropertySetCaller mAccessor;
+        private final WeakHashMap<View, Object> mOriginalValues;
+        private final Object[] mOriginalValueHolder;
+    }
+
 
     /**
      * Adds an accessibility event, which will fire OnEvent, to every matching view.

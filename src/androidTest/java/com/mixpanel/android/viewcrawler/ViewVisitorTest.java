@@ -319,10 +319,10 @@ public class ViewVisitorTest extends AndroidTestCase {
         final Canvas canvas2 = new Canvas(bitmap2);
         canvas2.drawCircle(6, 6, 4, paint);
 
-        final Caller mutateBitmap1a = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1a }, Void.TYPE);
-        final Caller mutateBitmap1b = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1b }, Void.TYPE);
-        final Caller mutateBitmap2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap2 }, Void.TYPE);
-        final Caller accessBitmap = new Caller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
+        final PropertySetCaller mutateBitmap1a = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1a }, Void.TYPE);
+        final PropertySetCaller mutateBitmap1b = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1b }, Void.TYPE);
+        final PropertySetCaller mutateBitmap2 = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap2 }, Void.TYPE);
+        final PropertySetCaller accessBitmap = new PropertySetCaller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
 
         {
             final ViewVisitor propertySetVisitor1_1 =
@@ -355,10 +355,10 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testDuplicateTextSet() throws NoSuchMethodException {
-        final Caller mutateCountingProperty1a = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String1"}, Void.TYPE);
-        final Caller mutateCountingProperty1b = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String1"}, Void.TYPE);
-        final Caller mutateCountingProperty2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String2"}, Void.TYPE);
-        final Caller accessCountingProperty = new Caller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
+        final PropertySetCaller mutateCountingProperty1a = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String1"}, Void.TYPE);
+        final PropertySetCaller mutateCountingProperty1b = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String1"}, Void.TYPE);
+        final PropertySetCaller mutateCountingProperty2 = new PropertySetCaller(TestView.AdHocButton2.class, "setCountingProperty", new Object[]{"Set String2"}, Void.TYPE);
+        final PropertySetCaller accessCountingProperty = new PropertySetCaller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
 
         {
             final ViewVisitor propertySetVisitor1_1 =

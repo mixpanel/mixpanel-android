@@ -3,7 +3,6 @@ package com.mixpanel.android.viewcrawler;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
-import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -113,7 +112,7 @@ import java.util.List;
                 methodArgs[i] = convertArgument(jsonArg, argType);
             }
 
-            final Caller mutator = prop.makeMutator(methodArgs);
+            final PropertySetCaller mutator = prop.makeMutator(methodArgs);
             if (null == mutator) {
                 throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
             }
@@ -228,13 +227,13 @@ import java.util.List;
         try {
             final String propName = propertyDesc.getString("name");
 
-            Caller accessor = null;
+            PropertySetCaller accessor = null;
             if (propertyDesc.has("get")) {
                 final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
                 final String accessorName = accessorConfig.getString("selector");
                 final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                 final Class<?> accessorResultType = Class.forName(accessorResultTypeName);
-                accessor = new Caller(targetClass, accessorName, NO_PARAMS, accessorResultType);
+                accessor = new PropertySetCaller(targetClass, accessorName, NO_PARAMS, accessorResultType);
             }
 
             final String mutatorName;

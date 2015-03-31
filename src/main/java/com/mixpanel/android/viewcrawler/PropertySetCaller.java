@@ -6,8 +6,8 @@ import android.view.View;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-/* package */ class Caller {
-    public Caller(Class<?> targetClass, String methodName, Object[] methodArgs, Class<?> resultType)
+/* package */ class PropertySetCaller {
+    public PropertySetCaller(Class<?> targetClass, String methodName, Object[] methodArgs, Class<?> resultType)
         throws NoSuchMethodException {
         mMethodName = methodName;
 
