@@ -20,6 +20,7 @@ import android.util.LruCache;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -181,6 +182,7 @@ import java.util.concurrent.TimeoutException;
         j.endArray();
 
         addProperties(j, view);
+        addLayouts(j, view);
 
         j.name("subviews");
         j.beginArray();
@@ -229,6 +231,21 @@ import java.util.concurrent.TimeoutException;
                     j.name(desc.name).value(value.toString());
                 }
             }
+        }
+    }
+
+    // we only do layouts for views with RelativeLayout for now
+    private void addLayouts(JsonWriter j, View v)
+        throws IOException {
+        if (v.getParent() instanceof RelativeLayout) {
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) (v.getLayoutParams());
+            int[] rules = layoutParams.getRules();
+            j.name("layoutRules");
+            j.beginArray();
+            for (int value : rules) {
+                j.value(value);
+            }
+            j.endArray();
         }
     }
 

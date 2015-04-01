@@ -89,35 +89,43 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final JSONObject propertyDesc = source.getJSONObject("property");
-            final String targetClassName = propertyDesc.getString("classname");
-            if (null == targetClassName) {
-                throw new BadInstructionsException("Can't bind an edit property without a target class");
-            }
+            if (source.has("property")) {
+                final JSONObject propertyDesc = source.getJSONObject("property");
+                final String targetClassName = propertyDesc.getString("classname");
+                if (null == targetClassName) {
+                    throw new BadInstructionsException("Can't bind an edit property without a target class");
+                }
 
-            final Class<?> targetClass;
-            try {
-                targetClass = Class.forName(targetClassName);
-            } catch (final ClassNotFoundException e) {
-                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
-            }
+                final Class<?> targetClass;
+                try {
+                    targetClass = Class.forName(targetClassName);
+                } catch (final ClassNotFoundException e) {
+                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+                }
 
-            final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
-            final JSONArray argsAndTypes = source.getJSONArray("args");
-            final Object[] methodArgs = new Object[argsAndTypes.length()];
-            for (int i = 0; i < argsAndTypes.length(); i++) {
-                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                final Object jsonArg = argPlusType.get(0);
-                final String argType = argPlusType.getString(1);
-                methodArgs[i] = convertArgument(jsonArg, argType);
-            }
+                final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+                final JSONArray argsAndTypes = source.getJSONArray("args");
+                final Object[] methodArgs = new Object[argsAndTypes.length()];
+                for (int i = 0; i < argsAndTypes.length(); i++) {
+                    final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                    final Object jsonArg = argPlusType.get(0);
+                    final String argType = argPlusType.getString(1);
+                    methodArgs[i] = convertArgument(jsonArg, argType);
+                }
 
-            final PropertySetCaller mutator = prop.makeMutator(methodArgs);
-            if (null == mutator) {
-                throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
-            }
+                final PropertySetCaller mutator = prop.makeMutator(methodArgs);
+                if (null == mutator) {
+                    throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
+                }
 
-            return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+                return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+            } else if (source.has("layout")) {
+                final JSONObject layoutDesc = source.getJSONObject("layout");
+                final String targetClassName = layoutDesc.getString("classname");
+                return new ViewVisitor.LayoutSetVisitor(path);
+            } else {
+                return null;
+            }
         } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property mutator", e);
         } catch (final JSONException e) {
@@ -252,6 +260,11 @@ import java.util.List;
         } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
         }
+    }
+
+    private LayoutDescription readLayoutDescription()
+            throws BadInstructionsException {
+            return new LayoutDescription();
     }
 
     private Object convertArgument(Object jsonArgument, String type) throws BadInstructionsException {

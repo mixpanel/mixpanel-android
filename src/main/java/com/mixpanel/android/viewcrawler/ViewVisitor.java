@@ -106,10 +106,8 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, PropertySetCaller mutator, PropertySetCaller accessor) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path) {
             super(path);
-            mMutator = mutator;
-            mAccessor = accessor;
             mOriginalValueHolder = new Object[1];
             mOriginalValues = new WeakHashMap<View, Object>();
         }
@@ -121,22 +119,20 @@ import java.util.WeakHashMap;
                 final Object originalValue = original.getValue();
                 if (null != originalValue) {
                     mOriginalValueHolder[0] = originalValue;
-                    mMutator.applyMethodWithArguments(changedView, mOriginalValueHolder);
+                    //mMutator.applyMethodWithArguments(changedView, mOriginalValueHolder);
                 }
             }
         }
 
         @Override
         public void accumulate(View found) {
-
+            //mMutator.applyMethod(found);
         }
 
         protected String name() {
             return "Layout Mutator";
         }
 
-        private final PropertySetCaller mMutator;
-        private final PropertySetCaller mAccessor;
         private final WeakHashMap<View, Object> mOriginalValues;
         private final Object[] mOriginalValueHolder;
     }
