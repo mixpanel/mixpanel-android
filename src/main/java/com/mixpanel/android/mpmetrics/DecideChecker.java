@@ -10,11 +10,16 @@ import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
+import com.mixpanel.android.util.ServerMessage;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,7 +53,7 @@ import java.util.List;
         mChecks.add(check);
     }
 
-    public void runDecideChecks(final ServerMessage poster) throws ServiceUnavailableException {
+    public void runDecideChecks(final ServerMessage poster) throws ServerMessage.ServiceUnavailableException {
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
@@ -71,7 +76,7 @@ import java.util.List;
     }
 
     private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
-        throws ServiceUnavailableException, UnintelligibleMessageException {
+        throws ServerMessage.ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -179,7 +184,7 @@ import java.util.List;
     }
 
     private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster)
-            throws ServiceUnavailableException {
+            throws ServerMessage.ServiceUnavailableException {
         final String escapedToken;
         final String escapedId;
         try {
@@ -217,7 +222,7 @@ import java.util.List;
             }
         }
 
-        final byte[] response = poster.getUrls(mContext, urls);
+        final byte[] response = getUrls(poster, mContext, urls);
         if (null == response) {
             return null;
         }
@@ -229,7 +234,7 @@ import java.util.List;
     }
 
     private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster)
-        throws ServiceUnavailableException {
+        throws ServerMessage.ServiceUnavailableException {
         Bitmap ret = null;
         String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 
@@ -241,7 +246,7 @@ import java.util.List;
             urls = new String[]{notification.getImage4xUrl(), notification.getImage2xUrl(), notification.getImageUrl()};
         }
 
-        final byte[] response = poster.getUrls(context, urls);
+        final byte[] response = getUrls(poster, context, urls);
         if (null != response) {
             ret = BitmapFactory.decodeByteArray(response, 0, response.length);
         } else {
@@ -261,6 +266,36 @@ import java.util.List;
             display.getSize(displaySize);
             return displaySize.x;
         }
+    }
+
+    private static byte[] getUrls(ServerMessage poster, Context context, String[] urls)
+        throws ServerMessage.ServiceUnavailableException {
+        if (! poster.isOnline(context)) {
+            return null;
+        }
+
+        byte[] response = null;
+        for (String url : urls) {
+            try {
+                response = poster.performRequest(url, null);
+                break;
+            } catch (final MalformedURLException e) {
+                Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+            } catch (final FileNotFoundException e) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
+                }
+            } catch (final IOException e) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
+                }
+            } catch (final OutOfMemoryError e) {
+                Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
+                break;
+            }
+        }
+
+        return response;
     }
 
     private final MPConfig mConfig;

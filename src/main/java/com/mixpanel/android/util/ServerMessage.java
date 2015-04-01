@@ -1,9 +1,11 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.util;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
+
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -11,16 +13,36 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 
-/* package */ class ServerMessage {
+/**
+ * An HTTP utility class for internal use in the Mixpanel library.
+ */
+public class ServerMessage {
+
+    public static class ServiceUnavailableException extends Exception {
+        public ServiceUnavailableException(String message, String strRetryAfter) {
+            super(message);
+            int retry;
+            try {
+                retry = Integer.parseInt(strRetryAfter);
+            } catch (NumberFormatException e) {
+                retry = 0;
+            }
+            mRetryAfter = retry;
+        }
+
+        public int getRetryAfter() {
+            return mRetryAfter;
+        }
+
+        private final int mRetryAfter;
+    }
 
     public boolean isOnline(Context context) {
         boolean isOnline;
@@ -39,35 +61,6 @@ import java.util.List;
             }
         }
         return isOnline;
-    }
-
-    public byte[] getUrls(Context context, String[] urls) throws ServiceUnavailableException {
-        if (! isOnline(context)) {
-            return null;
-        }
-
-        byte[] response = null;
-        for (String url : urls) {
-            try {
-                response = performRequest(url, null);
-                break;
-            } catch (final MalformedURLException e) {
-                Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-            } catch (final FileNotFoundException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
-                }
-            } catch (final IOException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
-                }
-            } catch (final OutOfMemoryError e) {
-                Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
-                break;
-            }
-        }
-
-        return response;
     }
 
     public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws ServiceUnavailableException, IOException {

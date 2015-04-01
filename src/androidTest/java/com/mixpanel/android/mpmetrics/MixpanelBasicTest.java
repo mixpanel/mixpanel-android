@@ -13,25 +13,22 @@ import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
 import com.mixpanel.android.util.Base64Coder;
+import com.mixpanel.android.util.ServerMessage;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class MixpanelBasicTest extends AndroidTestCase {
 

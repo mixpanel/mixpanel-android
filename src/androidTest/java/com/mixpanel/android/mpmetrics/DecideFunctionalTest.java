@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.util.ServerMessage;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.apache.http.NameValuePair;

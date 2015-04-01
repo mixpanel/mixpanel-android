@@ -4,9 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
-import android.util.Pair;
 
 import com.mixpanel.android.util.Base64Coder;
+import com.mixpanel.android.util.ServerMessage;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
@@ -210,7 +210,7 @@ public class HttpTest extends AndroidTestCase {
 
             // 503 exception -- should wait for 10 seconds until the queue is able to flush
             mCleanupCalls.clear();
-            mFlushResults.add(new ServiceUnavailableException("", "10"));
+            mFlushResults.add(new ServerMessage.ServiceUnavailableException("", "10"));
             mFlushResults.add(TestUtils.bytes("1\n"));
             mMetrics.track("Should Succeed", null);
             mMetrics.flush();
