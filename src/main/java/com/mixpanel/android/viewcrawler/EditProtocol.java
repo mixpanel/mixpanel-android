@@ -120,9 +120,9 @@ import java.util.List;
 
                 return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.has("layout")) {
-                final JSONObject layoutDesc = source.getJSONObject("layout");
-                final String targetClassName = layoutDesc.getString("classname");
-                return new ViewVisitor.LayoutSetVisitor(path);
+                final JSONArray args = source.getJSONArray("args");
+                final LayoutSetCaller mutator = new LayoutSetCaller(args);
+                return new ViewVisitor.LayoutSetVisitor(path, mutator);
             } else {
                 return null;
             }
@@ -260,11 +260,6 @@ import java.util.List;
         } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't read property JSON, relevant arg/return class not found", e);
         }
-    }
-
-    private LayoutDescription readLayoutDescription()
-            throws BadInstructionsException {
-            return new LayoutDescription();
     }
 
     private Object convertArgument(Object jsonArgument, String type) throws BadInstructionsException {

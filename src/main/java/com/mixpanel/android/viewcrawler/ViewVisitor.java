@@ -6,9 +6,12 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+
+import org.json.JSONArray;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -106,35 +109,45 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutSetCaller mutator) {
             super(path);
-            mOriginalValueHolder = new Object[1];
-            mOriginalValues = new WeakHashMap<View, Object>();
+            mOriginalValues = new WeakHashMap<View, int[]>();
+            mMutator = mutator;
         }
 
         @Override
         public void cleanup() {
-            for (Map.Entry<View, Object> original:mOriginalValues.entrySet()) {
+            for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final Object originalValue = original.getValue();
-                if (null != originalValue) {
-                    mOriginalValueHolder[0] = originalValue;
-                    //mMutator.applyMethodWithArguments(changedView, mOriginalValueHolder);
-                }
+                final int[] originalValue = (int[])original.getValue();
+                mMutator.applyMethodWithArguments(changedView, originalValue);
             }
         }
 
         @Override
         public void accumulate(View found) {
-            //mMutator.applyMethod(found);
+            // currentRules is an array which has rule_index as the index and anchor_id as the value
+            // newRule and currentRule are individual rules which looks like {rules_index, anchor_id}
+            final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
+            final int[] currentRules = currentParams.getRules().clone();
+            final int[] newRule = mMutator.getArgs();
+            final int rule_index = newRule[LayoutSetCaller.RULE_INDEX];
+            final int[] currentRule = {rule_index, currentRules[rule_index]};
+
+            if (currentRules[rule_index] == newRule[LayoutSetCaller.ANCHOR_ID]) {
+                return;
+            }
+
+            mOriginalValues.put(found, currentRule);
+            mMutator.applyMethod(found);
         }
 
         protected String name() {
             return "Layout Mutator";
         }
 
-        private final WeakHashMap<View, Object> mOriginalValues;
-        private final Object[] mOriginalValueHolder;
+        private final WeakHashMap<View, int[]> mOriginalValues;
+        private final LayoutSetCaller mMutator;
     }
 
 
