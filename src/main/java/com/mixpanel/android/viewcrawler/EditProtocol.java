@@ -113,7 +113,7 @@ import java.util.List;
                     methodArgs[i] = convertArgument(jsonArg, argType);
                 }
 
-                final PropertySetCaller mutator = prop.makeMutator(methodArgs);
+                final PropertyCaller mutator = prop.makeMutator(methodArgs);
                 if (null == mutator) {
                     throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
                 }
@@ -121,7 +121,7 @@ import java.util.List;
                 return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.has("layout")) {
                 final JSONArray args = source.getJSONArray("args");
-                final LayoutSetCaller mutator = new LayoutSetCaller(args);
+                final LayoutCaller mutator = new LayoutCaller(args);
                 return new ViewVisitor.LayoutSetVisitor(path, mutator);
             } else {
                 return null;
@@ -235,13 +235,13 @@ import java.util.List;
         try {
             final String propName = propertyDesc.getString("name");
 
-            PropertySetCaller accessor = null;
+            PropertyCaller accessor = null;
             if (propertyDesc.has("get")) {
                 final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
                 final String accessorName = accessorConfig.getString("selector");
                 final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                 final Class<?> accessorResultType = Class.forName(accessorResultTypeName);
-                accessor = new PropertySetCaller(targetClass, accessorName, NO_PARAMS, accessorResultType);
+                accessor = new PropertyCaller(targetClass, accessorName, NO_PARAMS, accessorResultType);
             }
 
             final String mutatorName;

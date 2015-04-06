@@ -5,11 +5,8 @@ import android.widget.RelativeLayout;
 
 import org.json.JSONArray;
 
-/**
- * Created by yinfeiru on 3/31/15.
- */
-public class LayoutSetCaller {
-    public LayoutSetCaller(JSONArray args) {
+public class LayoutCaller {
+    public LayoutCaller(JSONArray args) {
         if (args.length() == 1) {
             mArgs = new int[]{args.optInt(RULE_INDEX), RelativeLayout.TRUE};
         } else {

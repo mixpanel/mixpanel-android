@@ -11,8 +11,6 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONArray;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -38,7 +36,7 @@ import java.util.WeakHashMap;
      * prevent calls to the mutator if the property already has the intended value.
      */
     public static class PropertySetVisitor extends ViewVisitor {
-        public PropertySetVisitor(List<Pathfinder.PathElement> path, PropertySetCaller mutator, PropertySetCaller accessor) {
+        public PropertySetVisitor(List<Pathfinder.PathElement> path, PropertyCaller mutator, PropertyCaller accessor) {
             super(path);
             mMutator = mutator;
             mAccessor = accessor;
@@ -102,14 +100,14 @@ import java.util.WeakHashMap;
             return "Property Mutator";
         }
 
-        private final PropertySetCaller mMutator;
-        private final PropertySetCaller mAccessor;
+        private final PropertyCaller mMutator;
+        private final PropertyCaller mAccessor;
         private final WeakHashMap<View, Object> mOriginalValues;
         private final Object[] mOriginalValueHolder;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutSetCaller mutator) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutCaller mutator) {
             super(path);
             mOriginalValues = new WeakHashMap<View, int[]>();
             mMutator = mutator;
@@ -119,7 +117,7 @@ import java.util.WeakHashMap;
         public void cleanup() {
             for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final int[] originalValue = (int[])original.getValue();
+                final int[] originalValue = original.getValue();
                 mMutator.applyMethodWithArguments(changedView, originalValue);
             }
         }
@@ -131,10 +129,10 @@ import java.util.WeakHashMap;
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules().clone();
             final int[] newRule = mMutator.getArgs();
-            final int rule_index = newRule[LayoutSetCaller.RULE_INDEX];
+            final int rule_index = newRule[LayoutCaller.RULE_INDEX];
             final int[] currentRule = {rule_index, currentRules[rule_index]};
 
-            if (currentRules[rule_index] == newRule[LayoutSetCaller.ANCHOR_ID]) {
+            if (currentRules[rule_index] == newRule[LayoutCaller.ANCHOR_ID]) {
                 return;
             }
 
@@ -147,9 +145,8 @@ import java.util.WeakHashMap;
         }
 
         private final WeakHashMap<View, int[]> mOriginalValues;
-        private final LayoutSetCaller mMutator;
+        private final LayoutCaller mMutator;
     }
-
 
     /**
      * Adds an accessibility event, which will fire OnEvent, to every matching view.
