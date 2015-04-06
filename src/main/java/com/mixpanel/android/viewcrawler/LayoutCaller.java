@@ -4,13 +4,19 @@ import android.view.View;
 import android.widget.RelativeLayout;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class LayoutCaller {
-    public LayoutCaller(JSONArray args) {
-        if (args.length() == 1) {
-            mArgs = new int[]{args.optInt(RULE_INDEX), RelativeLayout.TRUE};
+    public LayoutCaller(JSONArray args) throws JSONException {
+        JSONObject layout_info = args.optJSONObject(0);
+        int rule_id = layout_info.getInt("rule_id");
+        if (layout_info.getString("operation").equals("remove")) {
+            mArgs = new int[]{rule_id, 0};
+        } else if (layout_info.has("anchor_id")) {
+            mArgs = new int[]{rule_id, layout_info.getInt("anchor_id")};
         } else {
-            mArgs = new int[]{args.optInt(RULE_INDEX), args.optInt(ANCHOR_ID)};
+            mArgs = new int[]{rule_id, RelativeLayout.TRUE};
         }
     }
 
