@@ -1,6 +1,11 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.os.Build;
 import android.test.AndroidTestCase;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -14,6 +19,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +33,13 @@ public class EditProtocolTest extends AndroidTestCase {
         idMap.put("ALSO PRESENT", 1002);
 
         mResourceIds = new TestUtils.TestResourceIds(idMap);
-        mProtocol = new EditProtocol(mResourceIds);
+        mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) {
+                fail("Unexpected call to getImage");
+                return null;
+            }
+        });
         mSnapshotConfig = new JSONObject(
             "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
         );
@@ -39,6 +51,9 @@ public class EditProtocolTest extends AndroidTestCase {
         );
         mAppearsEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":3}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}"
+        );
+        mTextEdit = new JSONObject(
+            "{\"args\":[[\"Hello\",\"java.lang.CharSequence\"]],\"name\":\"c236\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.TEXT2_VIEW_ID + "}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]},\"classname\":\"android.widget.TextView\"}}"
         );
         mJustClassPath = new JSONArray("[{},{},{},{\"view_class\":\"android.widget.Button\"}]");
         mJustIdPath = new JSONArray("[{},{},{},{\"id\": 2000}]");
@@ -260,6 +275,43 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mListener.visitsRecorded.get(0), "Engines On!");
     }
 
+    public void testEdit() throws EditProtocol.BadInstructionsException {
+        final ViewVisitor textEdit = mProtocol.readEdit(mTextEdit);
+        textEdit.visit(mRootView);
+        assertEquals("Hello", mRootView.mTextView2.getText());
+
+        textEdit.cleanup();
+        assertEquals("Original Text", mRootView.mTextView2.getText());
+    }
+
+    public void testEditWithImage() throws JSONException, EditProtocol.BadInstructionsException {
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) {
+                assertEquals("TEST URL", url);
+                return IMAGE_10x10_GREEN;
+            }
+        });
+
+        final JSONObject obj = new JSONObject(
+                "{\"args\":[[{\"url\":\"TEST URL\"},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+        );
+
+        final ViewVisitor imageEdit = protocol.readEdit(obj);
+        imageEdit.visit(mRootView);
+        final BitmapDrawable drawable = (BitmapDrawable) mRootView.mImageView.getDrawable();
+        final Bitmap bmp = drawable.getBitmap();
+
+        for (int x = 0; x < bmp.getWidth(); x++) {
+            for (int y = 0; y < bmp.getHeight(); y++) {
+                assertEquals(
+                    IMAGE_10x10_GREEN.getPixel(x, y),
+                    bmp.getPixel(x, y)
+                );
+            }
+        }
+    }
     private static class TestEventListener implements ViewVisitor.OnEventListener {
         @Override
         public void OnEvent(View v, String eventName, boolean debounce) {
@@ -275,6 +327,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONObject mPropertyEdit;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
+    private JSONObject mTextEdit;
     private JSONArray mJustClassPath;
     private JSONArray mJustIdPath;
     private JSONArray mJustIndexPath;
@@ -287,4 +340,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mIdAndNameDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
+
+    private static final byte[] IMAGE_10x10_GREEN_BYTES = Base64.decode("R0lGODlhCgAKALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//////ywAAAAACgAKAAAEClDJSau9OOvNe44AOw==".getBytes(), 0);
+    private static final Bitmap IMAGE_10x10_GREEN = BitmapFactory.decodeByteArray(IMAGE_10x10_GREEN_BYTES, 0, IMAGE_10x10_GREEN_BYTES.length);
 }

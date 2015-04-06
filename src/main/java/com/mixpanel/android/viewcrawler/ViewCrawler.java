@@ -27,6 +27,7 @@ import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
+import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -69,7 +70,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
-        mProtocol = new EditProtocol(resourceIds);
+        final ImageStore imageStore = new ImageStore(context);
+        mProtocol = new EditProtocol(resourceIds, imageStore);
         mEditState = new EditState();
         mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();

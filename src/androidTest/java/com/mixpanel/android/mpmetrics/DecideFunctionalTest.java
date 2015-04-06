@@ -6,7 +6,8 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.apache.http.NameValuePair;
@@ -56,7 +57,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         };
 
         mExpectations = new Expectations();
-        mMockPoster = new ServerMessage() {
+        mMockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 return mExpectations.setExpectationsRequest(endpointUrl, nameValuePairs);
@@ -72,7 +73,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         mMockMessages = new AnalyticsMessages(getContext()) {
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mMockPoster;
             }
 
@@ -341,6 +342,6 @@ public class DecideFunctionalTest extends AndroidTestCase {
     private MPConfig mMockConfig;
     private Future<SharedPreferences> mMockPreferences;
     private Expectations mExpectations;
-    private ServerMessage mMockPoster;
+    private RemoteService mMockPoster;
     private AnalyticsMessages mMockMessages;
 }

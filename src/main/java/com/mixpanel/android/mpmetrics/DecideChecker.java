@@ -10,7 +10,7 @@ import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -53,7 +53,7 @@ import java.util.List;
         mChecks.add(check);
     }
 
-    public void runDecideChecks(final ServerMessage poster) throws ServerMessage.ServiceUnavailableException {
+    public void runDecideChecks(final RemoteService poster) throws RemoteService.ServiceUnavailableException {
         final Iterator<DecideMessages> itr = mChecks.iterator();
         while (itr.hasNext()) {
             final DecideMessages updates = itr.next();
@@ -75,8 +75,8 @@ import java.util.List;
         }
     }
 
-    private Result runDecideCheck(final String token, final String distinctId, final ServerMessage poster)
-        throws ServerMessage.ServiceUnavailableException, UnintelligibleMessageException {
+    private Result runDecideCheck(final String token, final String distinctId, final RemoteService poster)
+        throws RemoteService.ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
@@ -183,8 +183,8 @@ import java.util.List;
         return ret;
     }
 
-    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, ServerMessage poster)
-            throws ServerMessage.ServiceUnavailableException {
+    private String getDecideResponseFromServer(String unescapedToken, String unescapedDistinctId, RemoteService poster)
+            throws RemoteService.ServiceUnavailableException {
         final String escapedToken;
         final String escapedId;
         try {
@@ -233,8 +233,8 @@ import java.util.List;
         }
     }
 
-    private static Bitmap getNotificationImage(InAppNotification notification, Context context, ServerMessage poster)
-        throws ServerMessage.ServiceUnavailableException {
+    private static Bitmap getNotificationImage(InAppNotification notification, Context context, RemoteService poster)
+        throws RemoteService.ServiceUnavailableException {
         Bitmap ret = null;
         String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 
@@ -268,8 +268,8 @@ import java.util.List;
         }
     }
 
-    private static byte[] getUrls(ServerMessage poster, Context context, String[] urls)
-        throws ServerMessage.ServiceUnavailableException {
+    private static byte[] getUrls(RemoteService poster, Context context, String[] urls)
+        throws RemoteService.ServiceUnavailableException {
         if (! poster.isOnline(context)) {
             return null;
         }

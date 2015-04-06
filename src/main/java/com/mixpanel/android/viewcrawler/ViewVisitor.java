@@ -68,7 +68,7 @@ import java.util.WeakHashMap;
                     }
 
                     if (null != desiredValue) {
-                        if (desiredValue instanceof Bitmap && currentValue instanceof Bitmap) {
+                        if (desiredValue instanceof Bitmap && currentValue instanceof Bitmap) { // TODO THIS IS WRONG- values should be DRAWABLES!
                             final Bitmap desiredBitmap = (Bitmap) desiredValue;
                             final Bitmap currentBitmap = (Bitmap) currentValue;
                             if (desiredBitmap.sameAs(currentBitmap)) {

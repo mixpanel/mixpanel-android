@@ -13,7 +13,8 @@ import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
@@ -289,7 +290,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 final boolean isIdentified = isIdentifiedRef.get();
@@ -359,7 +360,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
         };
@@ -793,7 +794,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testAlias() {
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 try {
@@ -815,7 +816,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
         };

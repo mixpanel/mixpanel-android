@@ -6,7 +6,8 @@ import android.os.Bundle;
 import android.test.AndroidTestCase;
 
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
@@ -34,7 +35,7 @@ public class HttpTest extends AndroidTestCase {
         mDecideResults = new ArrayList<Object>();
         mForceOverMemThreshold = false;
 
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs)
                 throws ServiceUnavailableException, IOException {
@@ -138,7 +139,7 @@ public class HttpTest extends AndroidTestCase {
             }
 
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
 
@@ -210,7 +211,7 @@ public class HttpTest extends AndroidTestCase {
 
             // 503 exception -- should wait for 10 seconds until the queue is able to flush
             mCleanupCalls.clear();
-            mFlushResults.add(new ServerMessage.ServiceUnavailableException("", "10"));
+            mFlushResults.add(new RemoteService.ServiceUnavailableException("", "10"));
             mFlushResults.add(TestUtils.bytes("1\n"));
             mMetrics.track("Should Succeed", null);
             mMetrics.flush();

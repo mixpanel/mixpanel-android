@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -47,6 +48,7 @@ public class TestView extends FrameLayout {
 
         mTextView2 = new TextView(getContext());
         mTextView2.setId(TEXT2_VIEW_ID);
+        mTextView2.setText("Original Text");
         mTextView2.setTag(SIMPLE_TAG);
         mTextView2.setContentDescription(TEXT_2_CONTENT_DESCRIPTION);
 
@@ -81,6 +83,13 @@ public class TestView extends FrameLayout {
         mAdHocButton1.setContentDescription(BUTTON_3_CONTENT_DESCRIPTION);
         mAllViews.add(mAdHocButton3);
         mFourthLayer.add(mAdHocButton3);
+
+        mImageView = new ImageView(getContext());
+        mImageView.setId(IMAGE_VIEW_ID);
+        mImageView.setImageResource(android.R.drawable.btn_star_big_off);
+        linear.addView(mImageView);
+        mAllViews.add(mImageView);
+        mThirdLayer.add(mImageView);
 
         mButtonParentView = mButtonGroup;
 
@@ -174,6 +183,7 @@ public class TestView extends FrameLayout {
     public final AdHocButton1 mAdHocButton1;
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;
+    public final ImageView mImageView;
     public final Set<View> mSecondLayer;
     public final Set<View> mThirdLayer;
     public final Set<View> mFourthLayer;
@@ -185,6 +195,7 @@ public class TestView extends FrameLayout {
     public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
+    public static final int IMAGE_VIEW_ID = 6000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String ROOT_DESCRIPTION = "This is the root view";

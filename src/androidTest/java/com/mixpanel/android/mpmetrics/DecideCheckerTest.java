@@ -4,11 +4,14 @@ import android.content.Context;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
+import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +33,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
-    public void testReadEmptyLists() throws ServerMessage.ServiceUnavailableException {
+    public void testReadEmptyLists() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes("{}");
@@ -51,7 +54,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         });
     }
 
-    public void testReadSurvey1() throws ServerMessage.ServiceUnavailableException {
+    public void testReadSurvey1() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes(
@@ -95,7 +98,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(textChoices.size(), 0);
     }
 
-    public void testReadSurvey2() throws ServerMessage.ServiceUnavailableException {
+    public void testReadSurvey2() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
         mPoster.response = bytes(
                 "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
@@ -126,7 +129,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         assertEquals(mcChoices.get(2), "Answer1,3");
     }
 
-    public void testBadDecideResponses() throws ServerMessage.ServiceUnavailableException {
+    public void testBadDecideResponses() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         // Corrupted or crazy responses.
@@ -192,18 +195,24 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.bindingsSeen.clear();
     }
 
-    public void testDecideHonorsFallbackDisabled() throws ServerMessage.ServiceUnavailableException {
+    public void testDecideHonorsFallbackEnabled() throws RemoteService.ServiceUnavailableException {
         mConfig.fallbackDisabled = false;
-        mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
+        mPoster.requestedUrls.clear();
+        mPoster.response = null;
+        mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
         mDecideChecker.runDecideChecks(mPoster);
-        assertEquals(mPoster.requestedUrls.length, 2);
+        assertEquals(2, mPoster.requestedUrls.size());
+    }
 
+    public void testDecideHonorsFallbackDisabled() throws RemoteService.ServiceUnavailableException {
         mConfig.fallbackDisabled = true;
-        mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
+        mPoster.requestedUrls.clear();
+        mPoster.response =  null;
+        mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
         mDecideChecker.runDecideChecks(mPoster);
-        assertEquals(mPoster.requestedUrls.length, 1);
+        assertEquals(1, mPoster.requestedUrls.size());
     }
 
     public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException {
@@ -324,15 +333,21 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
     }
 
-    private static class MockPoster extends ServerMessage {
+    private static class MockPoster extends HttpService {
         @Override
-        public byte[] getUrls(Context context, String[] urls) {
-            requestedUrls = urls;
+        public byte[] performRequest(String url, List<NameValuePair> pairs) throws IOException {
+            assertNull(pairs);
+            requestedUrls.add(url);
+
+            if (null != exception) {
+                throw exception;
+            }
             return response;
         }
 
-        public String[] requestedUrls = null;
+        public List<String> requestedUrls = new ArrayList<String>();
         public byte[] response = null;
+        public IOException exception = null;
     }
 
     private static class MockUpdatesFromMixpanel implements UpdatesFromMixpanel {

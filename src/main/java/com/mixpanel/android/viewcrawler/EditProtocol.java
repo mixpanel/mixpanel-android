@@ -1,10 +1,11 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.graphics.BitmapFactory;
-import android.util.Base64;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.util.Pair;
-import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -17,8 +18,6 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /* package */ class EditProtocol {
 
@@ -42,8 +41,9 @@ import java.util.Objects;
         }
     }
 
-    public EditProtocol(ResourceIds resourceIds) {
+    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore) {
         mResourceIds = resourceIds;
+        mImageStore = imageStore;
     }
 
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnEventListener listener) throws BadInstructionsException {
@@ -297,9 +297,8 @@ import java.util.Objects;
                 return ((Number) jsonArgument).intValue();
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
-            } else if ("android.graphics.Bitmap".equals(type)) {
-                final byte[] bytes = Base64.decode((String) jsonArgument, 0);
-                return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            } else if ("android.graphics.drawable.Drawable".equals(type)) {
+                return readDrawable((JSONObject) jsonArgument);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }
@@ -308,7 +307,28 @@ import java.util.Objects;
         }
     }
 
+    private Drawable readDrawable(JSONObject description) throws BadInstructionsException {
+        try {
+            final String url = description.getString("url");
+
+            /*
+            // TODO scaling and such (this is a lot of redundant information...)
+            final JSONObject dimensions = description.getJSONObject("dimensions");
+            final int scale = description.getInt("scale");
+            final int size = description.getInt("size");
+            final int width = dimensions.getInt("Width");
+            final int height = dimensions.getInt("Height");
+            */
+
+            final Bitmap image = mImageStore.getImage(url);
+            return new BitmapDrawable(Resources.getSystem(), image); // TODO actually needs dimensions and scale and such
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Couldn't read drawable description", e);
+        }
+    }
+
     private final ResourceIds mResourceIds;
+    private final ImageStore mImageStore;
 
     private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();

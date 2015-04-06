@@ -11,7 +11,6 @@ import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,27 +22,9 @@ import java.util.List;
 /**
  * An HTTP utility class for internal use in the Mixpanel library.
  */
-public class ServerMessage {
+public class HttpService implements RemoteService {
 
-    public static class ServiceUnavailableException extends Exception {
-        public ServiceUnavailableException(String message, String strRetryAfter) {
-            super(message);
-            int retry;
-            try {
-                retry = Integer.parseInt(strRetryAfter);
-            } catch (NumberFormatException e) {
-                retry = 0;
-            }
-            mRetryAfter = retry;
-        }
-
-        public int getRetryAfter() {
-            return mRetryAfter;
-        }
-
-        private final int mRetryAfter;
-    }
-
+    @Override
     public boolean isOnline(Context context) {
         boolean isOnline;
         try {
@@ -63,6 +44,7 @@ public class ServerMessage {
         return isOnline;
     }
 
+    @Override
     public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws ServiceUnavailableException, IOException {
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Attempting request to " + endpointUrl);
@@ -100,7 +82,7 @@ public class ServerMessage {
                     out = null;
                 }
                 in = connection.getInputStream();
-                response = slurp(in);
+                response = Utilities.slurp(in);
                 in.close();
                 in = null;
                 succeeded = true;
@@ -133,22 +115,6 @@ public class ServerMessage {
             }
         }
         return response;
-    }
-
-    // Does not close input stream
-    private byte[] slurp(final InputStream inputStream)
-        throws IOException {
-        final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-
-        int nRead;
-        byte[] data = new byte[8192];
-
-        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, nRead);
-        }
-
-        buffer.flush();
-        return buffer.toByteArray();
     }
 
     private static final String LOGTAG = "MixpanelAPI.Message";

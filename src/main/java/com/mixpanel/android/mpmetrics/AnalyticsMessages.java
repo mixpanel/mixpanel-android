@@ -14,7 +14,8 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.ServerMessage;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
@@ -130,8 +131,8 @@ import java.util.Map;
         return MPConfig.getInstance(context);
     }
 
-    protected ServerMessage getPoster() {
-        return new ServerMessage();
+    protected RemoteService getPoster() {
+        return new HttpService();
     }
 
     ////////////////////////////////////////////////////
@@ -256,7 +257,7 @@ import java.util.Map;
                             try {
                                 sendAllData(mDbAdapter);
                                 mDecideChecker.runDecideChecks(getPoster());
-                            } catch (ServerMessage.ServiceUnavailableException e) {
+                            } catch (RemoteService.ServiceUnavailableException e) {
                                 mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
@@ -268,7 +269,7 @@ import java.util.Map;
                         if (SystemClock.elapsedRealtime() >= mRetryAfter) {
                             try {
                                 mDecideChecker.runDecideChecks(getPoster());
-                            } catch (ServerMessage.ServiceUnavailableException e) {
+                            } catch (RemoteService.ServiceUnavailableException e) {
                                 mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
@@ -297,7 +298,7 @@ import java.util.Map;
                         try {
                             sendAllData(mDbAdapter);
                             mDecideChecker.runDecideChecks(getPoster());
-                        } catch (ServerMessage.ServiceUnavailableException e) {
+                        } catch (RemoteService.ServiceUnavailableException e) {
                             mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                         }
                     } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE)) {
@@ -370,8 +371,8 @@ import java.util.Map;
                 });
             }
 
-            private void sendAllData(MPDbAdapter dbAdapter) throws ServerMessage.ServiceUnavailableException {
-                final ServerMessage poster = getPoster();
+            private void sendAllData(MPDbAdapter dbAdapter) throws RemoteService.ServiceUnavailableException {
+                final RemoteService poster = getPoster();
                 if (! poster.isOnline(mContext)) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
                     return;
@@ -389,8 +390,8 @@ import java.util.Map;
                 }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) throws ServerMessage.ServiceUnavailableException {
-                final ServerMessage poster = getPoster();
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) throws RemoteService.ServiceUnavailableException {
+                final RemoteService poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
                 if (eventsData != null) {
