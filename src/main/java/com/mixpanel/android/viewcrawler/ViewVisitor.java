@@ -125,18 +125,22 @@ import java.util.WeakHashMap;
         @Override
         public void accumulate(View found) {
             // currentRules is an array which has rule_index as the index and anchor_id as the value
-            // newRule and currentRule are individual rules which looks like {rules_index, anchor_id}
+            // newRule and currentRule are individual rules which look like {rules_index, anchor_id}
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules().clone();
             final int[] newRule = mMutator.getArgs();
             final int rule_index = newRule[LayoutCaller.RULE_INDEX];
             final int[] currentRule = {rule_index, currentRules[rule_index]};
 
-            if (currentRules[rule_index] == newRule[LayoutCaller.ANCHOR_ID]) {
+            if (currentRule[LayoutCaller.ANCHOR_ID] == newRule[LayoutCaller.ANCHOR_ID]) {
                 return;
             }
 
-            mOriginalValues.put(found, currentRule);
+            if (mOriginalValues.containsKey(found)) {
+                ; // Cache exactly one
+            } else {
+                mOriginalValues.put(found, currentRule);
+            }
             mMutator.applyMethod(found);
         }
 

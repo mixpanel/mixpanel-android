@@ -242,8 +242,8 @@ import java.util.concurrent.TimeoutException;
             int[] rules = layoutParams.getRules();
             j.name("layoutRules");
             j.beginArray();
-            for (int value : rules) {
-                j.value(value);
+            for (int rule : rules) {
+                j.value(rule);
             }
             j.endArray();
         }
