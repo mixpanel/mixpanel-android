@@ -127,7 +127,7 @@ import java.util.WeakHashMap;
             // currentRules is an array which has rule_index as the index and anchor_id as the value
             // newRule and currentRule are individual rules which look like {rules_index, anchor_id}
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
-            final int[] currentRules = currentParams.getRules().clone();
+            final int[] currentRules = currentParams.getRules();
             final int[] newRule = mMutator.getArgs();
             final int rule_index = newRule[LayoutCaller.RULE_INDEX];
             final int[] currentRule = {rule_index, currentRules[rule_index]};
