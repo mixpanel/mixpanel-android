@@ -133,8 +133,7 @@ import java.util.List;
                     params = new int[]{rule_id, RelativeLayout.TRUE};
                 }
 
-                final LayoutCaller mutator = new LayoutCaller(params);
-                return new ViewVisitor.LayoutSetVisitor(path, mutator);
+                return new ViewVisitor.LayoutSetVisitor(path, params);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }

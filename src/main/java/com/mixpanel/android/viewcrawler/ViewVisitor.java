@@ -107,10 +107,10 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutCaller mutator) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, int[] args) {
             super(path);
             mOriginalValues = new WeakHashMap<View, int[]>();
-            mMutator = mutator;
+            mArgs = args;
         }
 
         @Override
@@ -118,38 +118,43 @@ import java.util.WeakHashMap;
             for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
                 final int[] originalValue = original.getValue();
-                mMutator.applyMethodWithArguments(changedView, originalValue);
+                setLayout(changedView, originalValue[RULE_INDEX], originalValue[ANCHOR_ID]);
             }
         }
 
         @Override
         public void accumulate(View found) {
             // currentRules is an array which has rule_index as the index and anchor_id as the value
-            // newRule and currentRule are individual rules which look like {rules_index, anchor_id}
+            // newRule is an individual rule which looks like {rules_index, anchor_id}
+            final int newRuleIndex = mArgs[RULE_INDEX];
+            final int newAnchorId = mArgs[ANCHOR_ID];
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules();
-            final int[] newRule = mMutator.getArgs();
-            final int rule_index = newRule[LayoutCaller.RULE_INDEX];
-            final int[] currentRule = {rule_index, currentRules[rule_index]};
 
-            if (currentRule[LayoutCaller.ANCHOR_ID] == newRule[LayoutCaller.ANCHOR_ID]) {
+            if (currentRules[newRuleIndex] == newAnchorId) {
                 return;
             }
 
             if (mOriginalValues.containsKey(found)) {
                 ; // Cache exactly one
             } else {
-                mOriginalValues.put(found, currentRule);
+                mOriginalValues.put(found, new int[] {newRuleIndex, currentRules[newRuleIndex]});
             }
-            mMutator.applyMethod(found);
+            setLayout(found, newRuleIndex, newAnchorId);
         }
 
-        protected String name() {
-            return "Layout Mutator";
+        private void setLayout(View target, int ruleIndex, int anchorId) {
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
+            params.addRule(ruleIndex, anchorId);
+            target.setLayoutParams(params);
         }
+
+        protected String name() { return "Layout Mutator"; }
 
         private final WeakHashMap<View, int[]> mOriginalValues;
-        private final LayoutCaller mMutator;
+        private final int[] mArgs;
+        private final int RULE_INDEX = 0;
+        private final int ANCHOR_ID = 1;
     }
 
     /**
