@@ -183,9 +183,10 @@ import java.util.concurrent.TimeoutException;
 
         addProperties(j, view);
 
-        if (view.getParent() instanceof RelativeLayout) {
-            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) (view.getLayoutParams());
-            int[] rules = layoutParams.getRules();
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams instanceof RelativeLayout.LayoutParams) {
+            RelativeLayout.LayoutParams relativeLayoutParams = (RelativeLayout.LayoutParams) layoutParams;
+            int[] rules = relativeLayoutParams.getRules();
             j.name("layoutRules");
             j.beginArray();
             for (int rule : rules) {
