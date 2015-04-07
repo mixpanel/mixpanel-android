@@ -11,6 +11,9 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -107,18 +110,18 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, int[] args) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, JSONObject args) {
             super(path);
-            mOriginalValues = new WeakHashMap<View, int[]>();
+            mOriginalValues = new WeakHashMap<View, JSONObject>();
             mArgs = args;
         }
 
         @Override
         public void cleanup() {
-            for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
+            for (Map.Entry<View, JSONObject> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final int[] originalValue = original.getValue();
-                setLayout(changedView, originalValue[RULE_INDEX], originalValue[ANCHOR_ID]);
+                final JSONObject originalValue = original.getValue();
+                setLayout(changedView, originalValue.optInt("verb"), originalValue.optInt("anchor"));
             }
         }
 
@@ -126,8 +129,8 @@ import java.util.WeakHashMap;
         public void accumulate(View found) {
             // currentRules is an array which has rule_index as the index and anchor_id as the value
             // newRule is an individual rule which looks like {rules_index, anchor_id}
-            final int newRuleIndex = mArgs[RULE_INDEX];
-            final int newAnchorId = mArgs[ANCHOR_ID];
+            final int newRuleIndex = mArgs.optInt("verb");
+            final int newAnchorId = mArgs.optInt("anchor");
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules();
 
@@ -138,7 +141,14 @@ import java.util.WeakHashMap;
             if (mOriginalValues.containsKey(found)) {
                 ; // Cache exactly one
             } else {
-                mOriginalValues.put(found, new int[] {newRuleIndex, currentRules[newRuleIndex]});
+                JSONObject originalValue = new JSONObject();
+                try {
+                    originalValue.put("verb", newRuleIndex);
+                    originalValue.put("anchor", currentRules[newRuleIndex]);
+                } catch (JSONException e) {
+                    ; // keys won't be null..
+                }
+                mOriginalValues.put(found, originalValue);
             }
             setLayout(found, newRuleIndex, newAnchorId);
         }
@@ -151,10 +161,8 @@ import java.util.WeakHashMap;
 
         protected String name() { return "Layout Mutator"; }
 
-        private final WeakHashMap<View, int[]> mOriginalValues;
-        private final int[] mArgs;
-        private final int RULE_INDEX = 0;
-        private final int ANCHOR_ID = 1;
+        private final WeakHashMap<View, JSONObject> mOriginalValues;
+        private final JSONObject mArgs;
     }
 
     /**
