@@ -127,8 +127,6 @@ import java.util.WeakHashMap;
 
         @Override
         public void accumulate(View found) {
-            // currentRules is an array which has rule_index as the index and anchor_id as the value
-            // newRule is an individual rule which looks like {rules_index, anchor_id}
             final int newRuleIndex = mArgs.optInt("verb");
             final int newAnchorId = mArgs.optInt("anchor");
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
