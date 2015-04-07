@@ -182,7 +182,17 @@ import java.util.concurrent.TimeoutException;
         j.endArray();
 
         addProperties(j, view);
-        addLayouts(j, view);
+
+        if (view.getParent() instanceof RelativeLayout) {
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) (view.getLayoutParams());
+            int[] rules = layoutParams.getRules();
+            j.name("layoutRules");
+            j.beginArray();
+            for (int rule : rules) {
+                j.value(rule);
+            }
+            j.endArray();
+        }
 
         j.name("subviews");
         j.beginArray();
@@ -231,21 +241,6 @@ import java.util.concurrent.TimeoutException;
                     j.name(desc.name).value(value.toString());
                 }
             }
-        }
-    }
-
-    // we only do layouts for views with RelativeLayout for now
-    private void addLayouts(JsonWriter j, View v)
-        throws IOException {
-        if (v.getParent() instanceof RelativeLayout) {
-            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) (v.getLayoutParams());
-            int[] rules = layoutParams.getRules();
-            j.name("layoutRules");
-            j.beginArray();
-            for (int rule : rules) {
-                j.value(rule);
-            }
-            j.endArray();
         }
     }
 
