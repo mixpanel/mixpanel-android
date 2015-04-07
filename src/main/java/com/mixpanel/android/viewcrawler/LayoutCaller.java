@@ -8,16 +8,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class LayoutCaller {
-    public LayoutCaller(JSONArray args) throws JSONException {
-        JSONObject layout_info = args.optJSONObject(0);
-        int rule_id = layout_info.getInt("rule_id");
-        if (layout_info.getString("operation").equals("remove")) {
-            mArgs = new int[]{rule_id, 0};
-        } else if (layout_info.has("anchor_id")) {
-            mArgs = new int[]{rule_id, layout_info.getInt("anchor_id")};
-        } else {
-            mArgs = new int[]{rule_id, RelativeLayout.TRUE};
-        }
+    public LayoutCaller(int[] args) throws JSONException {
+        mArgs = args;
     }
 
     public int[] getArgs() {

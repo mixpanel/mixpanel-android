@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.util.JSONUtils;
@@ -121,7 +122,18 @@ import java.util.List;
                 return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.has("is_layout")) {
                 final JSONArray args = source.getJSONArray("args");
-                final LayoutCaller mutator = new LayoutCaller(args);
+                JSONObject layout_info = args.optJSONObject(0);
+                int rule_id = layout_info.getInt("rule_id");
+                int[] params;
+                if (layout_info.getString("operation").equals("remove")) {
+                    params = new int[]{rule_id, 0};
+                } else if (layout_info.has("anchor_id")) {
+                    params = new int[]{rule_id, layout_info.getInt("anchor_id")};
+                } else {
+                    params = new int[]{rule_id, RelativeLayout.TRUE};
+                }
+
+                final LayoutCaller mutator = new LayoutCaller(params);
                 return new ViewVisitor.LayoutSetVisitor(path, mutator);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
