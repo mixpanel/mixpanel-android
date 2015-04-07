@@ -119,12 +119,12 @@ import java.util.List;
                 }
 
                 return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
-            } else if (source.has("layout")) {
+            } else if (source.has("is_layout")) {
                 final JSONArray args = source.getJSONArray("args");
                 final LayoutCaller mutator = new LayoutCaller(args);
                 return new ViewVisitor.LayoutSetVisitor(path, mutator);
             } else {
-                return null;
+                throw new BadInstructionsException("Can't figure out the edit type");
             }
         } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property mutator", e);
