@@ -114,7 +114,7 @@ import java.util.List;
                     methodArgs[i] = convertArgument(jsonArg, argType);
                 }
 
-                final PropertyCaller mutator = prop.makeMutator(methodArgs);
+                final Caller mutator = prop.makeMutator(methodArgs);
                 if (null == mutator) {
                     throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
                 }
@@ -246,13 +246,13 @@ import java.util.List;
         try {
             final String propName = propertyDesc.getString("name");
 
-            PropertyCaller accessor = null;
+            Caller accessor = null;
             if (propertyDesc.has("get")) {
                 final JSONObject accessorConfig = propertyDesc.getJSONObject("get");
                 final String accessorName = accessorConfig.getString("selector");
                 final String accessorResultTypeName = accessorConfig.getJSONObject("result").getString("type");
                 final Class<?> accessorResultType = Class.forName(accessorResultTypeName);
-                accessor = new PropertyCaller(targetClass, accessorName, NO_PARAMS, accessorResultType);
+                accessor = new Caller(targetClass, accessorName, NO_PARAMS, accessorResultType);
             }
 
             final String mutatorName;

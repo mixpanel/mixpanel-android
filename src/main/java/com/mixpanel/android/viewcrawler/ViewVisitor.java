@@ -39,7 +39,7 @@ import java.util.WeakHashMap;
      * prevent calls to the mutator if the property already has the intended value.
      */
     public static class PropertySetVisitor extends ViewVisitor {
-        public PropertySetVisitor(List<Pathfinder.PathElement> path, PropertyCaller mutator, PropertyCaller accessor) {
+        public PropertySetVisitor(List<Pathfinder.PathElement> path, Caller mutator, Caller accessor) {
             super(path);
             mMutator = mutator;
             mAccessor = accessor;
@@ -103,8 +103,8 @@ import java.util.WeakHashMap;
             return "Property Mutator";
         }
 
-        private final PropertyCaller mMutator;
-        private final PropertyCaller mAccessor;
+        private final Caller mMutator;
+        private final Caller mAccessor;
         private final WeakHashMap<View, Object> mOriginalValues;
         private final Object[] mOriginalValueHolder;
     }
