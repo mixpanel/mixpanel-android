@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.util.HashMap;
@@ -83,6 +84,17 @@ public class TestView extends FrameLayout {
         mFourthLayer.add(mAdHocButton3);
 
         mButtonParentView = mButtonGroup;
+
+        ViewGroup relative = new RelativeLayout(getContext());
+        addView(relative);
+        mAllViews.add(relative);
+        mSecondLayer.add(relative);
+        mRelativeLayoutButton = new Button(getContext());
+        mRelativeLayoutButton.setText("Yo!");
+        mRelativeLayoutButton.setId(RELATIVE_LAYOUT_BUTTON_ID);
+        relative.addView(mRelativeLayoutButton);
+        mAllViews.add(mRelativeLayoutButton);
+        mThirdLayer.add(mRelativeLayoutButton);
 
         mViewsByHashcode = new HashMap<Integer, View>();
         for (View v:mAllViews) {
@@ -174,6 +186,7 @@ public class TestView extends FrameLayout {
     public final AdHocButton1 mAdHocButton1;
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;
+    public final Button mRelativeLayoutButton;
     public final Set<View> mSecondLayer;
     public final Set<View> mThirdLayer;
     public final Set<View> mFourthLayer;
@@ -185,6 +198,7 @@ public class TestView extends FrameLayout {
     public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
+    public static final int RELATIVE_LAYOUT_BUTTON_ID = 6000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String ROOT_DESCRIPTION = "This is the root view";
