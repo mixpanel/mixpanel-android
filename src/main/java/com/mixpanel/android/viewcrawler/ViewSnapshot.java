@@ -8,6 +8,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -225,6 +227,25 @@ import java.util.concurrent.TimeoutException;
                     j.name(desc.name).value((Boolean) value);
                 } else if (value instanceof ColorStateList) {
                     j.name(desc.name).value((Integer) ((ColorStateList) value).getDefaultColor());
+                } else if (value instanceof Drawable) {
+                    final Drawable drawable = (Drawable) value;
+                    final Rect bounds = drawable.getBounds();
+                    j.name(desc.name);
+                    j.beginObject();
+                        j.name("classes");
+                        j.beginArray();
+                            Class klass = drawable.getClass();
+                            while (klass != Object.class) {
+                                j.value(klass.getCanonicalName());
+                                klass = klass.getSuperclass();
+                            }
+                        j.endArray();
+                        j.name("dimensions");
+                        j.beginObject();
+                            j.name("Height").value(bounds.height());
+                            j.name("Width").value(bounds.width());
+                        j.endObject();
+                    j.endObject();
                 } else {
                     j.name(desc.name).value(value.toString());
                 }

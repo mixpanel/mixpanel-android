@@ -195,7 +195,7 @@ public class TestView extends FrameLayout {
     public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
-    public static final int IMAGE_VIEW_ID = 6000;
+    public static final int IMAGE_VIEW_ID = 7000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String ROOT_DESCRIPTION = "This is the root view";
