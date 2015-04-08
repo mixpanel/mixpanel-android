@@ -123,14 +123,14 @@ import java.util.List;
             } else if (source.getString("change_type").equals("layout")) {
                 final JSONArray args = source.getJSONArray("args");
                 JSONObject layout_info = args.optJSONObject(0);
-                JSONObject params = new JSONObject();
-                params.put("verb", layout_info.getInt("rule_id"));
+                ViewVisitor.LayoutRule params;
+                int verb = layout_info.getInt("rule_id");
                 if (layout_info.getString("operation").equals("remove")) {
-                    params.put("anchor", 0);
+                    params = new ViewVisitor.LayoutRule(verb, 0);
                 } else if (layout_info.has("anchor_id")) {
-                    params.put("anchor", layout_info.getInt("anchor_id"));
+                    params = new ViewVisitor.LayoutRule(verb, layout_info.getInt("anchor_id"));
                 } else {
-                    params.put("anchor", RelativeLayout.TRUE);
+                    params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
                 }
 
                 return new ViewVisitor.LayoutSetVisitor(path, params);

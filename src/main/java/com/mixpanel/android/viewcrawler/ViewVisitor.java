@@ -110,25 +110,25 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, JSONObject args) {
+        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
             super(path);
-            mOriginalValues = new WeakHashMap<View, JSONObject>();
+            mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
         }
 
         @Override
         public void cleanup() {
-            for (Map.Entry<View, JSONObject> original:mOriginalValues.entrySet()) {
+            for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final JSONObject originalValue = original.getValue();
-                setLayout(changedView, originalValue.optInt("verb"), originalValue.optInt("anchor"));
+                final LayoutRule originalValue = original.getValue();
+                setLayout(changedView, originalValue.verb, originalValue.anchor);
             }
         }
 
         @Override
         public void accumulate(View found) {
-            final int newVerb = mArgs.optInt("verb");
-            final int newAnchorId = mArgs.optInt("anchor");
+            final int newVerb = mArgs.verb;
+            final int newAnchorId = mArgs.anchor;
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules();
 
@@ -139,13 +139,7 @@ import java.util.WeakHashMap;
             if (mOriginalValues.containsKey(found)) {
                 ; // Cache exactly one
             } else {
-                JSONObject originalValue = new JSONObject();
-                try {
-                    originalValue.put("verb", newVerb);
-                    originalValue.put("anchor", currentRules[newVerb]);
-                } catch (JSONException e) {
-                    ; // keys won't be null..
-                }
+                LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
                 mOriginalValues.put(found, originalValue);
             }
             setLayout(found, newVerb, newAnchorId);
@@ -157,10 +151,20 @@ import java.util.WeakHashMap;
             target.setLayoutParams(params);
         }
 
-        protected String name() { return "Layout Mutator"; }
+        protected String name() { return "Layout Update"; }
 
-        private final WeakHashMap<View, JSONObject> mOriginalValues;
-        private final JSONObject mArgs;
+        private final WeakHashMap<View, LayoutRule> mOriginalValues;
+        private final LayoutRule mArgs;
+    }
+
+    public static class LayoutRule {
+        public LayoutRule(int v, int a) {
+            verb = v;
+            anchor = a;
+        }
+
+        public final int verb;
+        public final int anchor;
     }
 
     /**
