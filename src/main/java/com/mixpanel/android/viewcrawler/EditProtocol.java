@@ -90,7 +90,7 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            if (source.has("property")) {
+            if (source.getString("change_type").equals("property")) {
                 final JSONObject propertyDesc = source.getJSONObject("property");
                 final String targetClassName = propertyDesc.getString("classname");
                 if (null == targetClassName) {
@@ -120,7 +120,7 @@ import java.util.List;
                 }
 
                 return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
-            } else if (source.has("is_layout")) {
+            } else if (source.getString("change_type").equals("layout")) {
                 final JSONArray args = source.getJSONArray("args");
                 JSONObject layout_info = args.optJSONObject(0);
                 JSONObject params = new JSONObject();
