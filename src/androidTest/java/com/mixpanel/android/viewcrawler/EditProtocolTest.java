@@ -250,7 +250,7 @@ public class EditProtocolTest extends AndroidTestCase {
         }
     }
 
-    public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
+    public void testPropertyEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
         final ViewVisitor visitor = mProtocol.readEdit(mPropertyEdit);
         visitor.visit(mRootView);
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
@@ -275,7 +275,7 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mListener.visitsRecorded.get(0), "Engines On!");
     }
 
-    public void testEdit() throws EditProtocol.BadInstructionsException {
+    public void testEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
         final ViewVisitor textEdit = mProtocol.readEdit(mTextEdit);
         textEdit.visit(mRootView);
         assertEquals("Hello", mRootView.mTextView2.getText());
@@ -284,7 +284,7 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals("Original Text", mRootView.mTextView2.getText());
     }
 
-    public void testEditWithImage() throws JSONException, EditProtocol.BadInstructionsException {
+    public void testEditWithImage() throws JSONException, EditProtocol.BadInstructionsException,  EditProtocol.CantGetEditAssetsException {
         final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
         final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
             @Override
@@ -312,6 +312,29 @@ public class EditProtocolTest extends AndroidTestCase {
             }
         }
     }
+
+    public void testWithMissingImage() throws JSONException, EditProtocol.BadInstructionsException {
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) {
+                assertEquals("TEST URL", url);
+                return null;
+            }
+        });
+
+        final JSONObject obj = new JSONObject(
+                "{\"args\":[[{\"url\":\"TEST URL\"},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+        );
+
+        try {
+            final ViewVisitor imageEdit = protocol.readEdit(obj);
+            fail("Expected a CantGetEditAssetsException to be thrown");
+        } catch (EditProtocol.CantGetEditAssetsException e) {
+            ; // ok! expected this
+        }
+    }
+
     private static class TestEventListener implements ViewVisitor.OnEventListener {
         @Override
         public void OnEvent(View v, String eventName, boolean debounce) {

@@ -41,6 +41,12 @@ import java.util.List;
         }
     }
 
+    public static class CantGetEditAssetsException extends Exception {
+        public CantGetEditAssetsException(String message) {
+            super(message);
+        }
+    }
+
     public EditProtocol(ResourceIds resourceIds, ImageStore imageStore) {
         mResourceIds = resourceIds;
         mImageStore = imageStore;
@@ -84,7 +90,7 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
+    public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException, CantGetEditAssetsException {
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<Pathfinder.PathElement> path = readPath(pathDesc, mResourceIds);
@@ -286,7 +292,8 @@ import java.util.List;
         }
     }
 
-    private Object convertArgument(Object jsonArgument, String type) throws BadInstructionsException {
+    private Object convertArgument(Object jsonArgument, String type)
+            throws BadInstructionsException, CantGetEditAssetsException {
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
         try {
             if ("java.lang.CharSequence".equals(type)) { // Because we're assignable
@@ -307,7 +314,8 @@ import java.util.List;
         }
     }
 
-    private Drawable readDrawable(JSONObject description) throws BadInstructionsException {
+    private Drawable readDrawable(JSONObject description)
+            throws BadInstructionsException, CantGetEditAssetsException {
         try {
             final String url = description.getString("url");
 
@@ -321,6 +329,9 @@ import java.util.List;
             */
 
             final Bitmap image = mImageStore.getImage(url);
+            if (null == image) {
+                throw new CantGetEditAssetsException("Can't get image for drawable at url " + url);
+            }
             return new BitmapDrawable(Resources.getSystem(), image); // TODO actually needs dimensions and scale and such
         } catch (JSONException e) {
             throw new BadInstructionsException("Couldn't read drawable description", e);

@@ -796,9 +796,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.change);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.activityName, visitor));
-                        if (! mSeenExperiments.contains(changeInfo.variantId)) {
+                        if (!mSeenExperiments.contains(changeInfo.variantId)) {
                             toTrack.add(changeInfo.variantId);
                         }
+                    } catch (final EditProtocol.CantGetEditAssetsException e) {
+                        Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -812,6 +814,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     try {
                         final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
                         newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                    } catch (final EditProtocol.CantGetEditAssetsException e) {
+                        Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
