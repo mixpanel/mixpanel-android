@@ -108,6 +108,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testPath() {
+
         {
             final CollectorEditor button2Editor = new CollectorEditor(mButton2Path);
             button2Editor.visit(mRootView);
@@ -406,19 +407,15 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
     }
 
-    public void testLayoutVisitor () {
+    public void testLayoutVisitor () throws JSONException {
         JSONObject params = new JSONObject();
-        try {
-            params.put("verb", 0);
-            params.put("anchor", RelativeLayout.TRUE);
-        } catch (JSONException e) {
-            ;
-        }
+        params.put("verb", 0);
+        params.put("anchor", RelativeLayout.TRUE);
 
         final ViewVisitor layoutVisitor =
                 new ViewVisitor.LayoutSetVisitor(mRelativeLayoutButtonPath, params);
-
         layoutVisitor.visit(mRootView);
+
         RelativeLayout.LayoutParams layoutParams =
                 (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton.getLayoutParams();
         int[] rules = layoutParams.getRules();
