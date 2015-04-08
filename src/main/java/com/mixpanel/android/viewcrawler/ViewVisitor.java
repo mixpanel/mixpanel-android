@@ -127,12 +127,12 @@ import java.util.WeakHashMap;
 
         @Override
         public void accumulate(View found) {
-            final int newRuleIndex = mArgs.optInt("verb");
+            final int newVerb = mArgs.optInt("verb");
             final int newAnchorId = mArgs.optInt("anchor");
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
             final int[] currentRules = currentParams.getRules();
 
-            if (currentRules[newRuleIndex] == newAnchorId) {
+            if (currentRules[newVerb] == newAnchorId) {
                 return;
             }
 
@@ -141,19 +141,19 @@ import java.util.WeakHashMap;
             } else {
                 JSONObject originalValue = new JSONObject();
                 try {
-                    originalValue.put("verb", newRuleIndex);
-                    originalValue.put("anchor", currentRules[newRuleIndex]);
+                    originalValue.put("verb", newVerb);
+                    originalValue.put("anchor", currentRules[newVerb]);
                 } catch (JSONException e) {
                     ; // keys won't be null..
                 }
                 mOriginalValues.put(found, originalValue);
             }
-            setLayout(found, newRuleIndex, newAnchorId);
+            setLayout(found, newVerb, newAnchorId);
         }
 
-        private void setLayout(View target, int ruleIndex, int anchorId) {
+        private void setLayout(View target, int verb, int anchorId) {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
-            params.addRule(ruleIndex, anchorId);
+            params.addRule(verb, anchorId);
             target.setLayoutParams(params);
         }
 
