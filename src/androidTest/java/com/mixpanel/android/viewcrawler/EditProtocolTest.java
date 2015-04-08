@@ -4,6 +4,7 @@ import android.test.AndroidTestCase;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -34,6 +35,8 @@ public class EditProtocolTest extends AndroidTestCase {
         mPropertyEdit = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"classname\":\"android.widget.Button\",\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]]}"
         );
+        mLayoutEdit = new JSONObject(
+            String.format("{\"args\":[{\"rule_id\":\"11\",\"operation\":\"add\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"is_layout\": true}", TestView.RELATIVE_LAYOUT_BUTTON_ID));
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
@@ -241,6 +244,14 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
     }
 
+    public void testLayoutEdit() throws EditProtocol.BadInstructionsException {
+        final ViewVisitor visitor = mProtocol.readEdit(mLayoutEdit);
+        visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton.getLayoutParams();
+        int[] rules = params.getRules();
+        assertEquals(rules[11], -1);
+    }
+
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
         final ViewVisitor eventListener = mProtocol.readEventBinding(mClickEvent, mListener);
         eventListener.visit(mRootView);
@@ -273,6 +284,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private ResourceIds mResourceIds;
     private JSONObject mSnapshotConfig;
     private JSONObject mPropertyEdit;
+    private JSONObject mLayoutEdit;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
     private JSONArray mJustClassPath;
