@@ -1,13 +1,16 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.test.AndroidTestCase;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.ImageView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -17,6 +20,20 @@ import java.util.Set;
 public class ViewVisitorTest extends AndroidTestCase {
     public void setUp() throws Exception {
         super.setUp();
+
+        final Paint paint = new Paint();
+        paint.setColor(Color.BLUE);
+
+        final Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+        mBitmap1a = Bitmap.createBitmap(10, 10, conf); // this creates a MUTABLE bitmap
+        final Canvas canvas1 = new Canvas(mBitmap1a);
+        canvas1.drawCircle(3, 3, 4, paint);
+
+        mBitmap1b = Bitmap.createBitmap(mBitmap1a);
+
+        mBitmap2 = Bitmap.createBitmap(10, 10, conf);
+        final Canvas canvas2 = new Canvas(mBitmap2);
+        canvas2.drawCircle(6, 6, 4, paint);
 
         mRootView = new TestView(getContext());
 
@@ -305,32 +322,18 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testDuplicateBitmapSet() throws NoSuchMethodException {
-        final Paint paint = new Paint();
-        paint.setColor(Color.BLUE);
-
-        final Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        final Bitmap bitmap1a = Bitmap.createBitmap(10, 10, conf); // this creates a MUTABLE bitmap
-        final Canvas canvas1 = new Canvas(bitmap1a);
-        canvas1.drawCircle(3, 3, 4, paint);
-
-        final Bitmap bitmap1b = Bitmap.createBitmap(bitmap1a);
-
-        final Bitmap bitmap2 = Bitmap.createBitmap(10, 10, conf);
-        final Canvas canvas2 = new Canvas(bitmap2);
-        canvas2.drawCircle(6, 6, 4, paint);
-
-        final Caller mutateBitmap1a = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1a }, Void.TYPE);
-        final Caller mutateBitmap1b = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap1b }, Void.TYPE);
-        final Caller mutateBitmap2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { bitmap2 }, Void.TYPE);
-        final Caller accessBitmap = new Caller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
+        final Caller mutateBitmap1a = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { mBitmap1a }, Void.TYPE);
+        final Caller mutateBitmap1b = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { mBitmap1b }, Void.TYPE);
+        final Caller mutateBitmap2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { mBitmap2 }, Void.TYPE);
+        final Caller accessor = new Caller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
 
         {
             final ViewVisitor propertySetVisitor1_1 =
-                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap1a, accessBitmap);
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap1a, accessor);
 
             propertySetVisitor1_1.visit(mRootView);
             assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
-            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, bitmap1a);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, mBitmap1a);
 
             propertySetVisitor1_1.visit(mRootView);
             assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
@@ -338,19 +341,58 @@ public class ViewVisitorTest extends AndroidTestCase {
 
         {
             final ViewVisitor propertySetVisitor1_2 =
-                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap1b, accessBitmap);
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap1b, accessor);
 
             propertySetVisitor1_2.visit(mRootView);
             assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
-            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, bitmap1a);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, mBitmap1a);
         }
 
         {
             final ViewVisitor propertySetVisitor2 =
-                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap2, accessBitmap);
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateBitmap2, accessor);
             propertySetVisitor2.visit(mRootView);
             assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 2);
-            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, bitmap2);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, mBitmap2);
+        }
+    }
+
+    public void testDuplicateDrawableSet() throws NoSuchMethodException {
+        final BitmapDrawable drawable1a_1 = new BitmapDrawable(Resources.getSystem(), mBitmap1a);
+        final BitmapDrawable drawable1a_2 = new BitmapDrawable(Resources.getSystem(), mBitmap1a);
+        final BitmapDrawable drawable2 = new BitmapDrawable(Resources.getSystem(), mBitmap2);
+        final Caller mutateDrawable1a_1 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { drawable1a_1 }, Void.TYPE);
+        final Caller mutateDrawable1a_2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { drawable1a_2 }, Void.TYPE);
+        final Caller mutateDrawable2 = new Caller(TestView.AdHocButton2.class, "setCountingProperty", new Object[] { drawable2 }, Void.TYPE);
+        final Caller accessor = new Caller(TestView.AdHocButton2.class, "getCountingProperty", new Object[]{}, Object.class);
+
+        {
+            final ViewVisitor propertySetVisitor1_1 =
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateDrawable1a_1, accessor);
+
+            propertySetVisitor1_1.visit(mRootView);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, drawable1a_1);
+
+            propertySetVisitor1_1.visit(mRootView);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
+        }
+
+        {
+            final ViewVisitor propertySetVisitor1_2 =
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateDrawable1a_2, accessor);
+
+            propertySetVisitor1_2.visit(mRootView);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 1);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, drawable1a_1);
+        }
+
+        {
+            final ViewVisitor propertySetVisitor2 =
+                    new ViewVisitor.PropertySetVisitor(mButton2Path, mutateDrawable2, accessor);
+            propertySetVisitor2.visit(mRootView);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyCount, 2);
+            assertEquals(mRootView.mAdHocButton2.countingPropertyValue, drawable2);
         }
     }
 
@@ -431,6 +473,10 @@ public class ViewVisitorTest extends AndroidTestCase {
 
         public final List<String> events = new ArrayList<String>();
     }
+
+    private Bitmap mBitmap1a;
+    private Bitmap mBitmap1b;
+    private Bitmap mBitmap2;
 
     private List<Pathfinder.PathElement> mButton2Path;
     private List<Pathfinder.PathElement> mWorkingRootPath1;

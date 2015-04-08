@@ -2,6 +2,8 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -68,10 +70,16 @@ import java.util.WeakHashMap;
                     }
 
                     if (null != desiredValue) {
-                        if (desiredValue instanceof Bitmap && currentValue instanceof Bitmap) { // TODO THIS IS WRONG- values should be DRAWABLES!
+                        if (desiredValue instanceof Bitmap && currentValue instanceof Bitmap) {
                             final Bitmap desiredBitmap = (Bitmap) desiredValue;
                             final Bitmap currentBitmap = (Bitmap) currentValue;
                             if (desiredBitmap.sameAs(currentBitmap)) {
+                                return;
+                            }
+                        } else if (desiredValue instanceof BitmapDrawable && currentValue instanceof BitmapDrawable) {
+                            final Bitmap desiredBitmap = ((BitmapDrawable) desiredValue).getBitmap();
+                            final Bitmap currentBitmap = ((BitmapDrawable) currentValue).getBitmap();
+                            if (desiredBitmap != null && desiredBitmap.sameAs(currentBitmap)) {
                                 return;
                             }
                         } else if (desiredValue.equals(currentValue)) {
@@ -79,8 +87,10 @@ import java.util.WeakHashMap;
                         }
                     }
 
-                    if (desiredValue instanceof Bitmap || mOriginalValues.containsKey(found)) {
-                        ; // Cache exactly one, non-bitmap original value
+                    if (currentValue instanceof Bitmap ||
+                            currentValue instanceof BitmapDrawable ||
+                            mOriginalValues.containsKey(found)) {
+                        ; // Cache exactly one non-image original value
                     } else {
                         mOriginalValueHolder[0] = currentValue;
                         if (mMutator.argsAreApplicable(mOriginalValueHolder)) {
