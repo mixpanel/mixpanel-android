@@ -11,6 +11,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -82,7 +83,7 @@ public class HttpService implements RemoteService {
                     out = null;
                 }
                 in = connection.getInputStream();
-                response = Utilities.slurp(in);
+                response = slurp(in);
                 in.close();
                 in = null;
                 succeeded = true;
@@ -115,6 +116,21 @@ public class HttpService implements RemoteService {
             }
         }
         return response;
+    }
+
+    private static byte[] slurp(final InputStream inputStream)
+            throws IOException {
+        final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+        int nRead;
+        byte[] data = new byte[8192];
+
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+
+        buffer.flush();
+        return buffer.toByteArray();
     }
 
     private static final String LOGTAG = "MixpanelAPI.Message";
