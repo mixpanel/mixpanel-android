@@ -318,21 +318,20 @@ import java.util.List;
             throws BadInstructionsException, CantGetEditAssetsException {
         try {
             final String url = description.getString("url");
-
-            /*
-            // TODO scaling and such (this is a lot of redundant information...)
             final JSONObject dimensions = description.getJSONObject("dimensions");
-            final int scale = description.getInt("scale");
-            final int size = description.getInt("size");
-            final int width = dimensions.getInt("Width");
-            final int height = dimensions.getInt("Height");
-            */
+            final int left = dimensions.getInt("left");
+            final int right = dimensions.getInt("right");
+            final int top = dimensions.getInt("top");
+            final int bottom = dimensions.getInt("bottom");
 
             final Bitmap image = mImageStore.getImage(url);
             if (null == image) {
                 throw new CantGetEditAssetsException("Can't get image for drawable at url " + url);
             }
-            return new BitmapDrawable(Resources.getSystem(), image); // TODO actually needs dimensions and scale and such
+
+            final Drawable ret = new BitmapDrawable(Resources.getSystem(), image);
+            ret.setBounds(left, top, right, bottom);
+            return ret;
         } catch (JSONException e) {
             throw new BadInstructionsException("Couldn't read drawable description", e);
         }

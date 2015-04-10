@@ -295,7 +295,7 @@ public class EditProtocolTest extends AndroidTestCase {
         });
 
         final JSONObject obj = new JSONObject(
-                "{\"args\":[[{\"url\":\"TEST URL\"},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
         );
 
         final ViewVisitor imageEdit = protocol.readEdit(obj);
@@ -324,7 +324,7 @@ public class EditProtocolTest extends AndroidTestCase {
         });
 
         final JSONObject obj = new JSONObject(
-                "{\"args\":[[{\"url\":\"TEST URL\"},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
         );
 
         try {

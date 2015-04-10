@@ -242,8 +242,10 @@ import java.util.concurrent.TimeoutException;
                         j.endArray();
                         j.name("dimensions");
                         j.beginObject();
-                            j.name("Height").value(bounds.height());
-                            j.name("Width").value(bounds.width());
+                            j.name("left").value(bounds.left);
+                            j.name("right").value(bounds.right);
+                            j.name("top").value(bounds.top);
+                            j.name("bottom").value(bounds.bottom);
                         j.endObject();
                     j.endObject();
                 } else {

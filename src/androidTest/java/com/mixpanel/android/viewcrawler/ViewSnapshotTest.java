@@ -102,10 +102,15 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
         final Rect realBounds = realDrawable.getBounds();
         final JSONObject dimensions = drawableDesc.getJSONObject("dimensions");
-        final int height = dimensions.getInt("Height");
-        assertEquals(realBounds.height(), height);
-        final int width = dimensions.getInt("Width");
-        assertEquals(realBounds.width(), width);
+        final int top = dimensions.getInt("top");
+        final int bottom = dimensions.getInt("bottom");
+        final int left = dimensions.getInt("left");
+        final int right = dimensions.getInt("right");
+
+        assertEquals(realBounds.top, top);
+        assertEquals(realBounds.bottom, bottom);
+        assertEquals(realBounds.left, left);
+        assertEquals(realBounds.right, right);
     }
 
     public void testSnapshotComplete() throws IOException, JSONException {
