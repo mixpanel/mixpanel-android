@@ -7,9 +7,7 @@ import org.apache.http.NameValuePair;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Created by joe on 4/2/15.
- */
+
 public interface RemoteService {
     boolean isOnline(Context context);
 
