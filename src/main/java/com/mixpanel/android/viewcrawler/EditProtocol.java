@@ -124,7 +124,7 @@ import java.util.List;
                 final JSONArray args = source.getJSONArray("args");
                 JSONObject layout_info = args.optJSONObject(0);
                 ViewVisitor.LayoutRule params;
-                int verb = layout_info.getInt("rule_id");
+                int verb = layout_info.getInt("verb");
                 if (layout_info.getString("operation").equals("remove")) {
                     params = new ViewVisitor.LayoutRule(verb, 0);
                 } else if (layout_info.has("anchor_id")) {
