@@ -82,6 +82,8 @@ import java.util.List;
     }
 
     public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
+        final ViewVisitor visitor;
+
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<Pathfinder.PathElement> path = readPath(pathDesc, mResourceIds);
@@ -119,7 +121,7 @@ import java.util.List;
                     throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
                 }
 
-                return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+                visitor = new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.getString("change_type").equals("layout")) {
                 final JSONArray args = source.getJSONArray("args");
                 JSONObject layout_info = args.optJSONObject(0);
@@ -133,7 +135,7 @@ import java.util.List;
                     params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
                 }
 
-                return new ViewVisitor.LayoutUpdateVisitor(path, params);
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }
@@ -142,6 +144,8 @@ import java.util.List;
         } catch (final JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
+
+        return visitor;
     }
 
     public ViewSnapshot readSnapshotConfig(JSONObject source) throws BadInstructionsException {
