@@ -10,9 +10,6 @@ import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.RelativeLayout;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -411,7 +408,7 @@ public class ViewVisitorTest extends AndroidTestCase {
         ViewVisitor.LayoutRule params = new ViewVisitor.LayoutRule(0, RelativeLayout.TRUE);
 
         final ViewVisitor layoutVisitor =
-                new ViewVisitor.LayoutSetVisitor(mRelativeLayoutButtonPath, params);
+                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutButtonPath, params);
         layoutVisitor.visit(mRootView);
 
         RelativeLayout.LayoutParams layoutParams =

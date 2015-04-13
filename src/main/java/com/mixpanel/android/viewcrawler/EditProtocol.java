@@ -133,7 +133,7 @@ import java.util.List;
                     params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
                 }
 
-                return new ViewVisitor.LayoutSetVisitor(path, params);
+                return new ViewVisitor.LayoutUpdateVisitor(path, params);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }

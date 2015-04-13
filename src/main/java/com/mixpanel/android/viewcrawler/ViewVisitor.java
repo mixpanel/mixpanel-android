@@ -109,8 +109,8 @@ import java.util.WeakHashMap;
         private final Object[] mOriginalValueHolder;
     }
 
-    public static class LayoutSetVisitor extends ViewVisitor {
-        public LayoutSetVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
+    public static class LayoutUpdateVisitor extends ViewVisitor {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
