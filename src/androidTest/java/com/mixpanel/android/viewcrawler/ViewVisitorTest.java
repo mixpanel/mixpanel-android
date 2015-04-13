@@ -407,10 +407,8 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
     }
 
-    public void testLayoutVisitor () throws JSONException {
-        JSONObject params = new JSONObject();
-        params.put("verb", 0);
-        params.put("anchor", RelativeLayout.TRUE);
+    public void testLayoutVisitor () {
+        ViewVisitor.LayoutRule params = new ViewVisitor.LayoutRule(0, RelativeLayout.TRUE);
 
         final ViewVisitor layoutVisitor =
                 new ViewVisitor.LayoutSetVisitor(mRelativeLayoutButtonPath, params);
