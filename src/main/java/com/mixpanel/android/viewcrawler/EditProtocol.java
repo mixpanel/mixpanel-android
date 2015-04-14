@@ -3,6 +3,8 @@ package com.mixpanel.android.viewcrawler;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
+import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.RelativeLayout;
 
@@ -16,6 +18,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /* package */ class EditProtocol {
 
@@ -172,6 +176,34 @@ import java.util.List;
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
+        }
+    }
+
+    public Pair<String, Object> readTweak(JSONObject tweakDesc) throws BadInstructionsException {
+        try {
+            final String tweakName = tweakDesc.getString("name");
+            final String type = tweakDesc.getString("type");
+            Object value;
+            if ("number".equals(type)) {
+                final String encoding = tweakDesc.getString("encoding");
+                if ("d".equals(encoding)) {
+                    value = tweakDesc.getDouble("value");
+                } else if ("l".equals(encoding)) {
+                    value = tweakDesc.getLong("value");
+                } else {
+                    throw new BadInstructionsException("number must have encoding of type \"l\" for long or \"d\" for double in: " + tweakDesc);
+                }
+            } else if ("boolean".equals(type)) {
+                value = tweakDesc.getBoolean("value");
+            } else if ("string".equals(type)) {
+                value = tweakDesc.getString("value");
+            } else {
+                throw new BadInstructionsException("Unrecognized tweak type " + type + " in: " + tweakDesc);
+            }
+
+            return new Pair<String, Object>(tweakName, value);
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Can't read tweak update", e);
         }
     }
 

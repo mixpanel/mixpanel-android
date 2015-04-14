@@ -61,10 +61,23 @@ import java.lang.reflect.Method;
         }
 
         for (int i = 0; i < proposedArgs.length; i++) {
-            final Class<?> argumentType = assignableArgType(proposedArgs[i].getClass());
             final Class<?> paramType = assignableArgType(paramTypes[i]);
-            if (!paramType.isAssignableFrom(argumentType)) {
-                return false;
+            if (null == proposedArgs[i]) {
+                if (paramType == byte.class ||
+                        paramType == short.class ||
+                        paramType == int.class ||
+                        paramType == long.class ||
+                        paramType == float.class ||
+                        paramType == double.class ||
+                        paramType == boolean.class ||
+                        paramType == char.class) {
+                    return false;
+                }
+            } else {
+                final Class<?> argumentType = assignableArgType(proposedArgs[i].getClass());
+                if (!paramType.isAssignableFrom(argumentType)) {
+                    return false;
+                }
             }
         }
 
@@ -78,14 +91,22 @@ import java.lang.reflect.Method;
         // to make the Object types primitive types. When the
         // function is finally invoked, autoboxing will take
         // care of the the cast.
-        if (type == Integer.class) {
+        if (type == Byte.class) {
+            type = byte.class;
+        } else if (type == Short.class) {
+            type = short.class;
+        } else if (type == Integer.class) {
             type = int.class;
+        } else if (type == Long.class) {
+            type = long.class;
         } else if (type == Float.class) {
             type = float.class;
         } else if (type == Double.class) {
             type = double.class;
         } else if (type == Boolean.class) {
             type = boolean.class;
+        } else if (type == Character.class) {
+            type = char.class;
         }
 
         return type;

@@ -73,6 +73,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         mEditState = new EditState();
         mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
+        mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -315,6 +316,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     case MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED:
                         handleEditorBindingsCleared((JSONObject) msg.obj);
                         break;
+                    case MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED:
+                        handleEditorTweaksReceived((JSONObject) msg.obj);
+                        break;
                     case MESSAGE_HANDLE_EDITOR_CLOSED:
                         handleEditorClosed();
                         break;
@@ -363,7 +367,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
             try {
                 if (null != storedChanges) {
-                    mPersistentChanges.clear(); // TODO undo/unapply these guys
+                    mPersistentChanges.clear();
 
                     final JSONArray variants = new JSONArray(storedChanges);
                     final int variantsLength = variants.length();
@@ -381,7 +385,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                             mPersistentChanges.add(variantChange);
                         }
 
-                        // TODO final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
+                        final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
+                        final int length = tweaks.length();
+                        for (int i = 0; i < length; i++) {
+                            final JSONObject tweakDesc = tweaks.getJSONObject(i);
+                            final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
+                            mTweaks.set(tweakValue.first, tweakValue.second);
+                        }
                     }
                 }
 
@@ -397,6 +407,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
             } catch (final JSONException e) {
                 Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
+                final SharedPreferences.Editor editor = preferences.edit();
+                editor.remove(SHARED_PREF_CHANGES_KEY);
+                editor.remove(SHARED_PREF_BINDINGS_KEY);
+                editor.commit();
+            } catch (final EditProtocol.BadInstructionsException e) {
+                Log.i(LOGTAG, "Bad instructions in saved changes, clearing persistent memory", e);
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
@@ -474,34 +490,65 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
          */
         private void sendDeviceInfo() {
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
-            final OutputStreamWriter writer = new OutputStreamWriter(out);
+            final JsonWriter j = new JsonWriter(new OutputStreamWriter(out));
 
             try {
-                writer.write("{\"type\": \"device_info_response\",");
-                writer.write("\"payload\": {");
-                    writer.write("\"device_type\": \"Android\",");
-                    writer.write("\"device_name\":");
-                    writer.write(JSONObject.quote(Build.BRAND + "/" + Build.MODEL));
-                    writer.write(",");
-                    writer.write("\"tweaks\": [");
-                    // TODO SOMETHING WONDERFUL HAPPENS HERE
-                    writer.write("]"); // TODO send tweaks back home
+                j.beginObject();
+                j.name("type").value("device_info_response");
+                j.name("payload").beginObject();
+                    j.name("device_type").value("Android");
+                    j.name("device_name").value(Build.BRAND + "/" + Build.MODEL);
+                    j.name("scaled_density").value(mScaledDensity);
                     for (final Map.Entry<String, String> entry : mDeviceInfo.entrySet()) {
-                        writer.write(",");
-                        writer.write(JSONObject.quote(entry.getKey()));
-                        writer.write(":");
-                        writer.write(JSONObject.quote(entry.getValue()));
+                        j.name(entry.getKey()).value(entry.getValue());
                     }
-                    writer.write(",");
-                    writer.write("\"scaled_density\":");
-                    writer.write(Float.toString(Resources.getSystem().getDisplayMetrics().scaledDensity));
-                writer.write("}"); // payload
-                writer.write("}");
+
+                    final Map<String, Tweaks.TweakDescription> tweakDescs = mTweaks.getDescriptions();
+                    j.name("tweaks").beginArray();
+                    for (Map.Entry<String, Tweaks.TweakDescription> tweak:tweakDescs.entrySet()) {
+                        final Tweaks.TweakDescription desc = tweak.getValue();
+                        final String tweakName = tweak.getKey();
+                        j.beginObject();
+                        j.name("name").value(tweakName);
+                        j.name("minimum").value(desc.minimum);
+                        j.name("maximum").value(desc.maximum);
+                        switch (desc.type) {
+                            case Tweaks.UNKNOWN_TYPE:
+                                final Object currentValue = mTweaks.get(tweakName);
+                                j.name("type").value("unknown");
+                                j.name("value").value(null == currentValue ? null : currentValue.toString());
+                                break;
+                            case Tweaks.BOOLEAN_TYPE:
+                                j.name("type").value("boolean");
+                                j.name("value").value(mTweaks.getBoolean(tweakName));
+                                break;
+                            case Tweaks.DOUBLE_TYPE:
+                                j.name("type").value("number");
+                                j.name("encoding").value("d");
+                                j.name("value").value(mTweaks.getDouble(tweakName));
+                                break;
+                            case Tweaks.LONG_TYPE:
+                                j.name("type").value("number");
+                                j.name("encoding").value("l");
+                                j.name("value").value(mTweaks.getLong(tweakName));
+                                break;
+                            case Tweaks.STRING_TYPE:
+                                j.name("type").value("string");
+                                j.name("value").value(mTweaks.getString(tweakName));
+                                break;
+                            default:
+                                Log.wtf(LOGTAG, "Unrecognized Tweak Type " + desc.type + " encountered.");
+                        }
+                        j.endObject();
+                    }
+                    j.endArray();
+                j.endObject(); // payload
+                j.endObject();
             } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write device_info to server", e);
             } finally {
                 try {
-                    writer.close();
+                    j.close();
                 } catch (final IOException e) {
                     Log.e(LOGTAG, "Can't close websocket writer", e);
                 }
@@ -517,6 +564,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 final JSONObject payload = message.getJSONObject("payload");
                 if (payload.has("config")) {
                     mSnapshot = mProtocol.readSnapshotConfig(payload);
+                    if (MPConfig.DEBUG) {
+                        Log.v(LOGTAG, "Initializing snapshot with configuration");
+                    }
                 }
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
@@ -638,6 +688,23 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
         }
 
+        private void handleEditorTweaksReceived(JSONObject tweaksMessage) {
+            try {
+                final JSONObject payload = tweaksMessage.getJSONObject("payload");
+                final JSONArray tweaks = payload.getJSONArray("tweaks");
+                final int length = tweaks.length();
+                for (int i = 0; i < length; i++) {
+                    final JSONObject tweakDesc = tweaks.getJSONObject(i);
+                    final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
+                    mTweaks.set(tweakValue.first, tweakValue.second);
+                }
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Bad tweaks received", e);
+            } catch (final EditProtocol.BadInstructionsException e) {
+                Log.e(LOGTAG, "Strange tweaks received", e);
+            }
+        }
+
         /**
          * Accept and apply variant changes from a non-interactive source.
          */
@@ -699,6 +766,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
             // Free (or make available) snapshot memory
             mSnapshot = null;
+
+            if (MPConfig.DEBUG) {
+                Log.v(LOGTAG, "Editor closed- freeing snapshot");
+            }
 
             updateEditState();
         }
@@ -838,6 +909,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         }
 
         @Override
+        public void setTweaks(JSONObject message) {
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED);
+            msg.obj = message;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+
+        @Override
         public void bindEvents(JSONObject message) {
             final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED);
             msg.obj = message;
@@ -922,22 +1000,25 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final VariantTracker mVariantTracker;
+    private final float mScaledDensity;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
 
     @IntDef({
-            MESSAGE_INITIALIZE_CHANGES,
-            MESSAGE_CONNECT_TO_EDITOR,
-            MESSAGE_SEND_STATE_FOR_EDITING,
-            MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED,
-            MESSAGE_SEND_DEVICE_INFO,
-            MESSAGE_EVENT_BINDINGS_RECEIVED,
-            MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED,
-            MESSAGE_SEND_EVENT_TRACKED,
-            MESSAGE_HANDLE_EDITOR_CLOSED,
-            MESSAGE_VARIANTS_RECEIVED
+        MESSAGE_INITIALIZE_CHANGES,
+        MESSAGE_CONNECT_TO_EDITOR,
+        MESSAGE_SEND_STATE_FOR_EDITING,
+        MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED,
+        MESSAGE_SEND_DEVICE_INFO,
+        MESSAGE_EVENT_BINDINGS_RECEIVED,
+        MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED,
+        MESSAGE_SEND_EVENT_TRACKED,
+        MESSAGE_HANDLE_EDITOR_CLOSED,
+        MESSAGE_VARIANTS_RECEIVED,
+        MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED,
+        MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED
     })
 
     @Retention(RetentionPolicy.SOURCE)
@@ -954,6 +1035,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_CLOSED = 8;
     private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
+    private static final @MessageType int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 

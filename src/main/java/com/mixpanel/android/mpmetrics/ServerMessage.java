@@ -51,10 +51,12 @@ import java.util.List;
             try {
                 response = performRequest(url, null);
                 break;
-            } catch (final FileNotFoundException e) {
-                Log.e(LOGTAG, "Cannot get " + url + ", file not found.", e);
             } catch (final MalformedURLException e) {
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+            } catch (final FileNotFoundException e) {
+                if (MPConfig.DEBUG) {
+                    Log.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
+                }
             } catch (final IOException e) {
                 if (MPConfig.DEBUG) {
                     Log.v(LOGTAG, "Cannot get " + url + ".", e);
@@ -156,5 +158,5 @@ import java.util.List;
         return buffer.toByteArray();
     }
 
-    private static final String LOGTAG = "MixpanelAPI.ServerMessage";
+    private static final String LOGTAG = "MixpanelAPI.Message";
 }
