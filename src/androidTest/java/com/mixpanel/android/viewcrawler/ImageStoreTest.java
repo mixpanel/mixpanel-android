@@ -28,10 +28,8 @@ public class ImageStoreTest extends AndroidTestCase {
 
     }
 
-    public void testFreshImageLoaded() {
+    public void testFreshImageLoaded() throws ImageStore.CantGetImageException {
         final Bitmap image = mImageStore.getImage("HELLO");
-        assertNotNull(image);
-
         int[] pixels = new int[100];
         image.getPixels(pixels, 0, 10, 0, 0, 10, 10);
 
@@ -40,26 +38,33 @@ public class ImageStoreTest extends AndroidTestCase {
         }
     }
 
-    public void testWriteWhenRead() {
+    public void testWriteWhenRead() throws ImageStore.CantGetImageException {
         final Bitmap image1 = mImageStore.getImage("HELLO");
-        assertNotNull(image1);
         assertEquals(1, mService.queries);
 
         final Bitmap image2 = mImageStore.getImage("HELLO");
-        assertNotNull(image2);
         assertEquals(1, mService.queries);
     }
 
     public void testNoResponse() {
         final byte[] goodResponse = mService.response;
         mService.response = null;
-        final Bitmap image1 = mImageStore.getImage("HELLO");
-        assertNull(image1);
+        try {
+            final Bitmap image1 = mImageStore.getImage("HELLO");
+            fail("Expected exception to be thrown");
+        } catch (ImageStore.CantGetImageException e) {
+            ; // OK
+        }
+
         assertEquals(1, mService.queries);
 
         mService.response = goodResponse;
-        final Bitmap image2 = mImageStore.getImage("HELLO");
-        assertNotNull(image2);
+        try {
+            final Bitmap image2 = mImageStore.getImage("HELLO");
+        } catch (ImageStore.CantGetImageException e) {
+            fail("Unexpected exception thrown");
+        }
+
         assertEquals(2, mService.queries);
     }
 

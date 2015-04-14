@@ -28,7 +28,7 @@ import java.util.List;
             super(message);
         }
 
-        public BadInstructionsException(String message, Exception e) {
+        public BadInstructionsException(String message, Throwable e) {
             super(message, e);
         }
     }
@@ -44,6 +44,10 @@ import java.util.List;
     public static class CantGetEditAssetsException extends Exception {
         public CantGetEditAssetsException(String message) {
             super(message);
+        }
+
+        public CantGetEditAssetsException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 
@@ -324,9 +328,11 @@ import java.util.List;
             final int top = dimensions.getInt("top");
             final int bottom = dimensions.getInt("bottom");
 
-            final Bitmap image = mImageStore.getImage(url);
-            if (null == image) {
-                throw new CantGetEditAssetsException("Can't get image for drawable at url " + url);
+            final Bitmap image;
+            try {
+                image = mImageStore.getImage(url);
+            } catch (ImageStore.CantGetImageException e) {
+                throw new CantGetEditAssetsException(e.getMessage(), e.getCause());
             }
 
             final Drawable ret = new BitmapDrawable(Resources.getSystem(), image);

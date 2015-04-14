@@ -317,9 +317,9 @@ public class EditProtocolTest extends AndroidTestCase {
         final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
         final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
             @Override
-            public Bitmap getImage(String url) {
+            public Bitmap getImage(String url) throws CantGetImageException {
                 assertEquals("TEST URL", url);
-                return null;
+                throw new CantGetImageException("Bang!");
             }
         });
 

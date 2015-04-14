@@ -25,6 +25,16 @@ import java.security.NoSuchAlgorithmException;
  * Writes and reads files and directories at known paths, and uses a shared instance of MessageDigest.
  */
 /* package */ class ImageStore {
+    public static class CantGetImageException extends Exception {
+        public CantGetImageException(String message) {
+            super(message);
+        }
+
+        public CantGetImageException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
     public ImageStore(Context context) {
         this(
             context.getDir(DEFAULT_DIRECTORY_NAME, Context.MODE_PRIVATE),
@@ -46,16 +56,16 @@ import java.security.NoSuchAlgorithmException;
         mDigest = useDigest;
     }
 
-    public Bitmap getImage(String url) {
+    public Bitmap getImage(String url) throws CantGetImageException {
         final File file = storedFile(url);
         byte[] bytes = null;
         if (null == file || !file.exists()) {
             try {
                 bytes = mPoster.performRequest(url, null);
             } catch (IOException e) {
-                Log.i(LOGTAG, "Can't download bitmap", e);
+                throw new CantGetImageException("Can't download bitmap", e);
             } catch (RemoteService.ServiceUnavailableException e) {
-                Log.i(LOGTAG, "Couldn't download ");
+                throw new CantGetImageException("Couldn't download image due to service availability", e);
             }
         }
 
@@ -67,9 +77,9 @@ import java.security.NoSuchAlgorithmException;
                     out = new FileOutputStream(file);
                     out.write(bytes);
                 } catch (FileNotFoundException e) {
-                    Log.e(LOGTAG, "It appears that ImageStore is misconfigured, or disk storage is unavailable- can't write to bitmap directory", e);
+                    throw new CantGetImageException("It appears that ImageStore is misconfigured, or disk storage is unavailable- can't write to bitmap directory", e);
                 } catch (IOException e) {
-                    Log.w(LOGTAG, "Can't store bitmap", e);
+                    throw new CantGetImageException("Can't store bitmap", e);
                 } finally {
                     if (null != out) {
                         try {
@@ -83,13 +93,13 @@ import java.security.NoSuchAlgorithmException;
 
             bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             if (null == bitmap) {
-                Log.w(LOGTAG, "Downloaded bitmap could not be interpreted");
+                throw new CantGetImageException("Downloaded data could not be interpreted as a bitmap");
             }
         } else {
             bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
             if (null == bitmap) {
-                Log.w(LOGTAG, "Bitmap on disk can't be opened or is corrupt");
                 final boolean ignored = file.delete();
+                throw new CantGetImageException("Bitmap on disk can't be opened or was corrupt");
             }
         }
 
