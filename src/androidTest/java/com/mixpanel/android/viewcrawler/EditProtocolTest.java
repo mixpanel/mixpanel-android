@@ -56,7 +56,7 @@ public class EditProtocolTest extends AndroidTestCase {
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":3}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}"
         );
         mTextEdit = new JSONObject(
-            "{\"args\":[[\"Hello\",\"java.lang.CharSequence\"]],\"name\":\"c236\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.TEXT2_VIEW_ID + "}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]},\"classname\":\"android.widget.TextView\"}}"
+            "{\"args\":[[\"Hello\",\"java.lang.CharSequence\"]],\"name\":\"c236\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.TEXT2_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]},\"classname\":\"android.widget.TextView\"}}"
         );
         mJustClassPath = new JSONArray("[{},{},{},{\"view_class\":\"android.widget.Button\"}]");
         mJustIdPath = new JSONArray("[{},{},{},{\"id\": 2000}]");
@@ -259,7 +259,7 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
     }
 
-    public void testLayoutEdit() throws EditProtocol.BadInstructionsException {
+    public void testLayoutEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
         final ViewVisitor visitor = mProtocol.readEdit(mLayoutEdit);
         visitor.visit(mRootView);
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton.getLayoutParams();
@@ -306,7 +306,7 @@ public class EditProtocolTest extends AndroidTestCase {
         });
 
         final JSONObject obj = new JSONObject(
-                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
         );
 
         final ViewVisitor imageEdit = protocol.readEdit(obj);
@@ -335,7 +335,7 @@ public class EditProtocolTest extends AndroidTestCase {
         });
 
         final JSONObject obj = new JSONObject(
-                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
         );
 
         try {
