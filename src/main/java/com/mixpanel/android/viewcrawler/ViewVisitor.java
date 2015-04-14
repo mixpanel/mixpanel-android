@@ -8,9 +8,13 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -113,6 +117,64 @@ import java.util.WeakHashMap;
         private final Caller mAccessor;
         private final WeakHashMap<View, Object> mOriginalValues;
         private final Object[] mOriginalValueHolder;
+    }
+
+    public static class LayoutUpdateVisitor extends ViewVisitor {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
+            super(path);
+            mOriginalValues = new WeakHashMap<View, LayoutRule>();
+            mArgs = args;
+        }
+
+        @Override
+        public void cleanup() {
+            for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
+                final View changedView = original.getKey();
+                final LayoutRule originalValue = original.getValue();
+                setLayout(changedView, originalValue.verb, originalValue.anchor);
+            }
+        }
+
+        @Override
+        public void accumulate(View found) {
+            final int newVerb = mArgs.verb;
+            final int newAnchorId = mArgs.anchor;
+            final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
+            final int[] currentRules = currentParams.getRules();
+
+            if (currentRules[newVerb] == newAnchorId) {
+                return;
+            }
+
+            if (mOriginalValues.containsKey(found)) {
+                ; // Cache exactly one
+            } else {
+                LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
+                mOriginalValues.put(found, originalValue);
+            }
+            setLayout(found, newVerb, newAnchorId);
+        }
+
+        private void setLayout(View target, int verb, int anchorId) {
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
+            params.addRule(verb, anchorId);
+            target.setLayoutParams(params);
+        }
+
+        protected String name() { return "Layout Update"; }
+
+        private final WeakHashMap<View, LayoutRule> mOriginalValues;
+        private final LayoutRule mArgs;
+    }
+
+    public static class LayoutRule {
+        public LayoutRule(int v, int a) {
+            verb = v;
+            anchor = a;
+        }
+
+        public final int verb;
+        public final int anchor;
     }
 
     /**

@@ -22,6 +22,7 @@ import android.util.LruCache;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -183,6 +184,18 @@ import java.util.concurrent.TimeoutException;
         j.endArray();
 
         addProperties(j, view);
+
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams instanceof RelativeLayout.LayoutParams) {
+            RelativeLayout.LayoutParams relativeLayoutParams = (RelativeLayout.LayoutParams) layoutParams;
+            int[] rules = relativeLayoutParams.getRules();
+            j.name("layoutRules");
+            j.beginArray();
+            for (int rule : rules) {
+                j.value(rule);
+            }
+            j.endArray();
+        }
 
         j.name("subviews");
         j.beginArray();

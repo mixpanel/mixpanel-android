@@ -11,6 +11,7 @@ import android.test.AndroidTestCase;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -113,6 +114,9 @@ public class ViewVisitorTest extends AndroidTestCase {
 
         mFindButton2 = new ArrayList<Pathfinder.PathElement>();
         mFindButton2.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, mRootView.mAdHocButton2.getClass().getCanonicalName(), -1, -1, null, null));
+
+        mRelativeLayoutButtonPath = new ArrayList<Pathfinder.PathElement>();
+        mRelativeLayoutButtonPath.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, null, -1, TestView.RELATIVE_LAYOUT_BUTTON_ID, null, null));
 
         mTrackListener = new CollectingEventListener();
     }
@@ -442,6 +446,19 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
     }
 
+    public void testLayoutVisitor () {
+        ViewVisitor.LayoutRule params = new ViewVisitor.LayoutRule(0, RelativeLayout.TRUE);
+
+        final ViewVisitor layoutVisitor =
+                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutButtonPath, params);
+        layoutVisitor.visit(mRootView);
+
+        RelativeLayout.LayoutParams layoutParams =
+                (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton.getLayoutParams();
+        int[] rules = layoutParams.getRules();
+        assertEquals(rules[0], -1);
+    }
+
     private static class CollectorEditor extends ViewVisitor {
         public CollectorEditor(List<Pathfinder.PathElement> path) {
             super(path);
@@ -494,6 +511,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<Pathfinder.PathElement> mFirstInButtonGroup;
     private List<Pathfinder.PathElement> mFindButtonGroupInRoot;
     private List<Pathfinder.PathElement> mFindButton2;
+    private List<Pathfinder.PathElement> mRelativeLayoutButtonPath;
 
     private List<Pathfinder.PathElement> mRootWildcardPath;
     private List<Pathfinder.PathElement> mRootGoodTagIdPath;

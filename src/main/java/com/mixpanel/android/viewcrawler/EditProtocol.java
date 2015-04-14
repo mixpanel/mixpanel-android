@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.util.Pair;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.util.JSONUtils;
@@ -95,6 +96,8 @@ import java.util.List;
     }
 
     public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException, CantGetEditAssetsException {
+        final ViewVisitor visitor;
+
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<Pathfinder.PathElement> path = readPath(pathDesc, mResourceIds);
@@ -103,40 +106,60 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final JSONObject propertyDesc = source.getJSONObject("property");
-            final String targetClassName = propertyDesc.getString("classname");
-            if (null == targetClassName) {
-                throw new BadInstructionsException("Can't bind an edit property without a target class");
-            }
+            if (source.getString("change_type").equals("property")) {
+                final JSONObject propertyDesc = source.getJSONObject("property");
+                final String targetClassName = propertyDesc.getString("classname");
+                if (null == targetClassName) {
+                    throw new BadInstructionsException("Can't bind an edit property without a target class");
+                }
 
-            final Class<?> targetClass;
-            try {
-                targetClass = Class.forName(targetClassName);
-            } catch (final ClassNotFoundException e) {
-                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
-            }
+                final Class<?> targetClass;
+                try {
+                    targetClass = Class.forName(targetClassName);
+                } catch (final ClassNotFoundException e) {
+                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+                }
 
-            final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
-            final JSONArray argsAndTypes = source.getJSONArray("args");
-            final Object[] methodArgs = new Object[argsAndTypes.length()];
-            for (int i = 0; i < argsAndTypes.length(); i++) {
-                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                final Object jsonArg = argPlusType.get(0);
-                final String argType = argPlusType.getString(1);
-                methodArgs[i] = convertArgument(jsonArg, argType);
-            }
+                final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+                final JSONArray argsAndTypes = source.getJSONArray("args");
+                final Object[] methodArgs = new Object[argsAndTypes.length()];
+                for (int i = 0; i < argsAndTypes.length(); i++) {
+                    final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                    final Object jsonArg = argPlusType.get(0);
+                    final String argType = argPlusType.getString(1);
+                    methodArgs[i] = convertArgument(jsonArg, argType);
+                }
 
-            final Caller mutator = prop.makeMutator(methodArgs);
-            if (null == mutator) {
-                throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
-            }
+                final Caller mutator = prop.makeMutator(methodArgs);
+                if (null == mutator) {
+                    throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
+                }
 
-            return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+                visitor = new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+            } else if (source.getString("change_type").equals("layout")) {
+                final JSONArray args = source.getJSONArray("args");
+                JSONObject layout_info = args.optJSONObject(0);
+                ViewVisitor.LayoutRule params;
+                int verb = layout_info.getInt("verb");
+                if (layout_info.getString("operation").equals("remove")) {
+                    params = new ViewVisitor.LayoutRule(verb, 0);
+                } else if (layout_info.has("anchor_id")) {
+                    params = new ViewVisitor.LayoutRule(verb, layout_info.getInt("anchor_id"));
+                } else {
+                    params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
+                }
+
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params);
+            } else {
+                throw new BadInstructionsException("Can't figure out the edit type");
+            }
         } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property mutator", e);
         } catch (final JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
+
+        return visitor;
     }
 
     public ViewSnapshot readSnapshotConfig(JSONObject source) throws BadInstructionsException {
