@@ -159,7 +159,12 @@ import java.util.Set;
             }
             // ELSE View is alive and we are alive
 
-            mEdit.visit(viewRoot);
+            try {
+                mEdit.visit(viewRoot);
+            } catch (ViewVisitor.LayoutUpdateException e) {
+                cleanUp();
+                return;
+            }
             mHandler.removeCallbacks(this);
             mHandler.postDelayed(this, 1000);
         }

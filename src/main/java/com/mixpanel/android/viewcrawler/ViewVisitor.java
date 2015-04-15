@@ -7,7 +7,11 @@ import android.graphics.drawable.Drawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.util.ArrayMap;
+import android.util.SparseArray;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -18,7 +22,10 @@ import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.IllegalFormatException;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -119,6 +126,12 @@ import java.util.WeakHashMap;
         private final Object[] mOriginalValueHolder;
     }
 
+    public static class LayoutUpdateException extends IllegalStateException {
+        public LayoutUpdateException(String message) {
+            super(message);
+        }
+    }
+
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
             super(path);
@@ -152,19 +165,100 @@ import java.util.WeakHashMap;
                 LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
                 mOriginalValues.put(found, originalValue);
             }
-            setLayout(found, newVerb, newAnchorId);
+
+            try {
+                setLayout(found, newVerb, newAnchorId);
+            } catch (LayoutUpdateException e) {
+                throw e;
+            }
         }
 
-        private void setLayout(View target, int verb, int anchorId) {
+        private void setLayout (View target, int verb, int anchorId) {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
             params.addRule(verb, anchorId);
+
+            final ArrayList<Integer> rules;
+            if (horizontal_rules.contains(verb)) {
+                rules = horizontal_rules;
+            } else if (vertical_rules.contains(verb)) {
+                rules = vertical_rules;
+            } else {
+                rules = null;
+            }
+
+            if (rules != null && !verifyLayout(target, rules)) {
+                throw new LayoutUpdateException("Circular dependency detected!");
+            }
+
             target.setLayoutParams(params);
+        }
+
+        private boolean verifyLayout(View target, ArrayList<Integer> rules) {
+            ViewGroup parent = (ViewGroup) target.getParent();
+            SparseArray<View> idToChild = new SparseArray<View>();
+
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                View child = parent.getChildAt(i);
+                idToChild.put(child.getId(), child);
+            }
+
+            ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
+            for (int i = 0; i < idToChild.size(); i++) {
+                final View child = idToChild.valueAt(i);
+                final RelativeLayout.LayoutParams childLayoutParams = (RelativeLayout.LayoutParams) child.getLayoutParams();
+                int[] layoutRules = childLayoutParams.getRules();
+
+                ArrayList<View> dependencies = new ArrayList<View>();
+                for (int rule : rules) {
+                    int dependencyId = layoutRules[rule];
+                    if (dependencyId != child.getId()) {
+                        dependencies.add(idToChild.get(dependencyId));
+                    }
+                }
+
+                dependencyGraph.put(child, dependencies);
+            }
+
+            View node = dependencyGraph.keyAt(0);
+            ArrayList<View> dfsStack = new ArrayList<View>();
+            return detectCycle(dependencyGraph, node, dfsStack);
+        }
+
+        private boolean detectCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
+                                    View currentNode, ArrayList<View> dfsStack) {
+            if (dfsStack.contains(currentNode)) {
+                return false;
+            }
+
+            if (dependencyGraph.containsKey(currentNode)) {
+                ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
+                dfsStack.add(currentNode);
+
+                for (int i = 0; i < dependencies.size(); i++) {
+                    if (!detectCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
+                        return false;
+                    }
+                }
+
+                dfsStack.remove(currentNode);
+            }
+
+            return true;
         }
 
         protected String name() { return "Layout Update"; }
 
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
+        final ArrayList<Integer> horizontal_rules = new ArrayList<>(Arrays.asList(
+                RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
+                RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
+        ));
+        final ArrayList<Integer> vertical_rules = new ArrayList<>(Arrays.asList(
+                RelativeLayout.ABOVE, RelativeLayout.BELOW,
+                RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
+                RelativeLayout.ALIGN_BOTTOM
+        ));
     }
 
     public static class LayoutRule {
@@ -413,7 +507,7 @@ import java.util.WeakHashMap;
     /**
      * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
      */
-    public void visit(View rootView) {
+    public void visit(View rootView) throws LayoutUpdateException {
         mPathfinder.findTargetsInRoot(rootView, mPath, this);
     }
 

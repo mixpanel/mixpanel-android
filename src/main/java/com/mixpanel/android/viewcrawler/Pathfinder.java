@@ -108,7 +108,8 @@ import java.util.List;
         mIndexStack = new IntStack();
     }
 
-    public void findTargetsInRoot(View givenRootView, List<PathElement> path, Accumulator accumulator) {
+    public void findTargetsInRoot(View givenRootView, List<PathElement> path, Accumulator accumulator)
+            throws ViewVisitor.LayoutUpdateException {
         if (path.isEmpty()) {
             return;
         }
@@ -130,7 +131,8 @@ import java.util.List;
         }
     }
 
-    private void findTargetsInMatchedView(View alreadyMatched, List<PathElement> remainingPath, Accumulator accumulator) {
+    private void findTargetsInMatchedView(View alreadyMatched, List<PathElement> remainingPath, Accumulator accumulator)
+            throws ViewVisitor.LayoutUpdateException {
         // When this is run, alreadyMatched has already been matched to a path prefix.
         // path is a possibly empty "remaining path" suffix left over after the match
 
