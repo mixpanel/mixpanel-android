@@ -793,7 +793,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
          * will all be submitted to our EditState
          */
         private void updateEditState() {
-            final List<Pair<String, ViewVisitor>> newEdits = new ArrayList<Pair<String, ViewVisitor>>();
+            final List<Pair<String, ViewVisitor>> newVisitors = new ArrayList<Pair<String, ViewVisitor>>();
             final Set<Pair<Integer, Integer>> toTrack = new HashSet<Pair<Integer, Integer>>();
 
             {
@@ -802,7 +802,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     final VariantChange changeInfo = mPersistentChanges.get(i);
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.change);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
+                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
                         if (!mSeenExperiments.contains(changeInfo.variantId)) {
                             toTrack.add(changeInfo.variantId);
                         }
@@ -820,7 +820,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 for (Pair<String, JSONObject> changeInfo:mEditorChanges.values()) {
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.second);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, edit.visitor));
+                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, edit.visitor));
                         mEditorAssetUrls.addAll(edit.imageUrls);
                     } catch (final EditProtocol.CantGetEditAssetsException e) {
                         Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
@@ -838,7 +838,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     final Pair<String, JSONObject> changeInfo = mPersistentEventBindings.get(i);
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mTracker);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -853,7 +853,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     final Pair<String, JSONObject> changeInfo = mEditorEventBindings.get(i);
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mTracker);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         Log.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -863,9 +863,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
 
             final Map<String, List<ViewVisitor>> editMap = new HashMap<String, List<ViewVisitor>>();
-            final int totalEdits = newEdits.size();
+            final int totalEdits = newVisitors.size();
             for (int i = 0; i < totalEdits; i++) {
-                final Pair<String, ViewVisitor> next = newEdits.get(i);
+                final Pair<String, ViewVisitor> next = newVisitors.get(i);
                 final List<ViewVisitor> mapElement;
                 if (editMap.containsKey(next.first)) {
                     mapElement = editMap.get(next.first);
