@@ -268,7 +268,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
             mImageStore = new ImageStore(context);
             mProtocol = new EditProtocol(resourceIds, mImageStore);
-
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
@@ -886,7 +885,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final String sharedPrefsName = SHARED_PREF_EDITS_FILE + mToken;
             return mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
         }
-
 
         private EditorConnection mEditorConnection;
         private ViewSnapshot mSnapshot;
