@@ -64,14 +64,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
 
-        String resourcePackage = mConfig.getResourcePackageName();
-        if (null == resourcePackage) {
-            resourcePackage = context.getPackageName();
-        }
-
-        final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
-        final ImageStore imageStore = new ImageStore(context);
-        mProtocol = new EditProtocol(resourceIds, imageStore);
         mEditState = new EditState();
         mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
@@ -267,7 +259,18 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             mToken = token;
             mSnapshot = null;
 
+            String resourcePackage = mConfig.getResourcePackageName();
+            if (null == resourcePackage) {
+                resourcePackage = context.getPackageName();
+            }
+
+            final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
+
+            mImageStore = new ImageStore(context);
+            mProtocol = new EditProtocol(resourceIds, mImageStore);
+
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
+            mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
             mPersistentChanges = new ArrayList<VariantChange>();
             mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
@@ -679,15 +682,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             try {
                 final JSONObject payload = clearMessage.getJSONObject("payload");
                 final JSONArray actions = payload.getJSONArray("actions");
+
+                // Don't throw any JSONExceptions after this, or you'll leak the item
                 for (int i = 0; i < actions.length(); i++) {
                     final String changeId = actions.getString(i);
                     mEditorChanges.remove(changeId);
                 }
-
-                updateEditState();
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad clear request received", e);
             }
+
+            updateEditState();
         }
 
         private void handleEditorTweaksReceived(JSONObject tweaksMessage) {
@@ -774,6 +779,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             }
 
             updateEditState();
+            for (final String assetUrl:mEditorAssetUrls) {
+                mImageStore.deleteStorage(assetUrl);
+            }
         }
 
         /**
@@ -794,8 +802,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 for (int i = 0; i < size; i++) {
                     final VariantChange changeInfo = mPersistentChanges.get(i);
                     try {
-                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.change);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.activityName, visitor));
+                        final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.change);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
                         if (!mSeenExperiments.contains(changeInfo.variantId)) {
                             toTrack.add(changeInfo.variantId);
                         }
@@ -812,8 +820,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             {
                 for (Pair<String, JSONObject> changeInfo:mEditorChanges.values()) {
                     try {
-                        final ViewVisitor visitor = mProtocol.readEdit(changeInfo.second);
-                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.second);
+                        newEdits.add(new Pair<String, ViewVisitor>(changeInfo.first, edit.visitor));
+                        mEditorAssetUrls.addAll(edit.imageUrls);
                     } catch (final EditProtocol.CantGetEditAssetsException e) {
                         Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
@@ -878,13 +887,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             return mContext.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
         }
 
+
         private EditorConnection mEditorConnection;
         private ViewSnapshot mSnapshot;
         private final Context mContext;
         private final String mToken;
         private final Lock mStartLock;
+        private final EditProtocol mProtocol;
+        private final ImageStore mImageStore;
 
         private final Map<String, Pair<String,JSONObject>> mEditorChanges;
+        private final List<String> mEditorAssetUrls;
         private final List<Pair<String,JSONObject>> mEditorEventBindings;
         private final List<VariantChange> mPersistentChanges;
         private final List<Pair<String,JSONObject>> mPersistentEventBindings;
@@ -1000,7 +1013,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private final MPConfig mConfig;
     private final DynamicEventTracker mTracker;
     private final SSLSocketFactory mSSLSocketFactory;
-    private final EditProtocol mProtocol;
     private final EditState mEditState;
     private final Tweaks mTweaks;
     private final Map<String, String> mDeviceInfo;

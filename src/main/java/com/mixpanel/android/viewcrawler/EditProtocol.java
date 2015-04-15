@@ -52,6 +52,15 @@ import java.util.List;
         }
     }
 
+    public static class Edit {
+        private Edit(ViewVisitor aVisitor, List<String> someUrls) {
+            visitor = aVisitor;
+            imageUrls = someUrls;
+        }
+        public final ViewVisitor visitor;
+        public final List<String> imageUrls;
+    }
+
     public EditProtocol(ResourceIds resourceIds, ImageStore imageStore) {
         mResourceIds = resourceIds;
         mImageStore = imageStore;
@@ -95,8 +104,9 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException, CantGetEditAssetsException {
+    public Edit readEdit(JSONObject source) throws BadInstructionsException, CantGetEditAssetsException {
         final ViewVisitor visitor;
+        final List<String> assetsLoaded = new ArrayList<String>();
 
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
@@ -127,7 +137,7 @@ import java.util.List;
                     final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
                     final Object jsonArg = argPlusType.get(0);
                     final String argType = argPlusType.getString(1);
-                    methodArgs[i] = convertArgument(jsonArg, argType);
+                    methodArgs[i] = convertArgument(jsonArg, argType, assetsLoaded);
                 }
 
                 final Caller mutator = prop.makeMutator(methodArgs);
@@ -159,7 +169,7 @@ import java.util.List;
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
 
-        return visitor;
+        return new Edit(visitor, assetsLoaded);
     }
 
     public ViewSnapshot readSnapshotConfig(JSONObject source) throws BadInstructionsException {
@@ -319,7 +329,7 @@ import java.util.List;
         }
     }
 
-    private Object convertArgument(Object jsonArgument, String type)
+    private Object convertArgument(Object jsonArgument, String type, List<String> assetsLoaded)
             throws BadInstructionsException, CantGetEditAssetsException {
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
         try {
@@ -332,7 +342,7 @@ import java.util.List;
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
             } else if ("android.graphics.drawable.Drawable".equals(type)) {
-                return readDrawable((JSONObject) jsonArgument);
+                return readDrawable((JSONObject) jsonArgument, assetsLoaded);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }
@@ -341,7 +351,7 @@ import java.util.List;
         }
     }
 
-    private Drawable readDrawable(JSONObject description)
+    private Drawable readDrawable(JSONObject description, List<String> assetsLoaded)
             throws BadInstructionsException, CantGetEditAssetsException {
         try {
             final String url = description.getString("url");
@@ -354,6 +364,7 @@ import java.util.List;
             final Bitmap image;
             try {
                 image = mImageStore.getImage(url);
+                assetsLoaded.add(url);
             } catch (ImageStore.CantGetImageException e) {
                 throw new CantGetEditAssetsException(e.getMessage(), e.getCause());
             }

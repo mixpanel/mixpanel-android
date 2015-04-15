@@ -62,6 +62,8 @@ import java.util.Set;
      */
     // Must be thread-safe
     public void setEdits(Map<String, List<ViewVisitor>> newEdits) {
+        // Delete images that are no longer needed
+
         synchronized (mCurrentEdits) {
             for (final EditBinding stale : mCurrentEdits) {
                 stale.kill();

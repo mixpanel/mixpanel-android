@@ -50,7 +50,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void cleanup() { // TODO this needs to be cleaned up not only on remove, but also on RESET (by id)
+        public void cleanup() {
             for (Map.Entry<View, Object> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
                 final Object originalValue = original.getValue();

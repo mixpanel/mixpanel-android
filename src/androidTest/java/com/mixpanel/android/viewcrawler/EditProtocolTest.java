@@ -254,14 +254,14 @@ public class EditProtocolTest extends AndroidTestCase {
     }
 
     public void testPropertyEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
-        final ViewVisitor visitor = mProtocol.readEdit(mPropertyEdit);
-        visitor.visit(mRootView);
+        final EditProtocol.Edit edit = mProtocol.readEdit(mPropertyEdit);
+        edit.visitor.visit(mRootView);
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
     }
 
     public void testLayoutEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
-        final ViewVisitor visitor = mProtocol.readEdit(mLayoutEdit);
-        visitor.visit(mRootView);
+        final EditProtocol.Edit edit = mProtocol.readEdit(mLayoutEdit);
+        edit.visitor.visit(mRootView);
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton.getLayoutParams();
         int[] rules = params.getRules();
         assertEquals(rules[11], -1);
@@ -287,11 +287,11 @@ public class EditProtocolTest extends AndroidTestCase {
     }
 
     public void testEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
-        final ViewVisitor textEdit = mProtocol.readEdit(mTextEdit);
-        textEdit.visit(mRootView);
+        final EditProtocol.Edit textEdit = mProtocol.readEdit(mTextEdit);
+        textEdit.visitor.visit(mRootView);
         assertEquals("Hello", mRootView.mTextView2.getText());
 
-        textEdit.cleanup();
+        textEdit.visitor.cleanup();
         assertEquals("Original Text", mRootView.mTextView2.getText());
     }
 
@@ -309,8 +309,10 @@ public class EditProtocolTest extends AndroidTestCase {
                 "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
         );
 
-        final ViewVisitor imageEdit = protocol.readEdit(obj);
-        imageEdit.visit(mRootView);
+        final EditProtocol.Edit imageEdit = protocol.readEdit(obj);
+        assertEquals(1, imageEdit.imageUrls.size());
+        assertEquals("TEST URL", imageEdit.imageUrls.get(0));
+        imageEdit.visitor.visit(mRootView);
         final BitmapDrawable drawable = (BitmapDrawable) mRootView.mImageView.getDrawable();
         final Bitmap bmp = drawable.getBitmap();
 
@@ -339,7 +341,7 @@ public class EditProtocolTest extends AndroidTestCase {
         );
 
         try {
-            final ViewVisitor imageEdit = protocol.readEdit(obj);
+            final EditProtocol.Edit imageEdit = protocol.readEdit(obj);
             fail("Expected a CantGetEditAssetsException to be thrown");
         } catch (EditProtocol.CantGetEditAssetsException e) {
             ; // ok! expected this
