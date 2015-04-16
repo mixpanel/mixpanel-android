@@ -13,7 +13,7 @@ buildscript {
 
 android {
     compileSdkVersion 21
-    buildToolsVersion "21.1.1"
+    buildToolsVersion "21.1.2"
 
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
