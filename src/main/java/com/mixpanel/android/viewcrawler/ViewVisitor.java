@@ -163,6 +163,7 @@ import java.util.WeakHashMap;
                     ; // shouldn't reach here
                 }
             }
+            mAlive = false;
         }
 
         @Override
@@ -194,7 +195,6 @@ import java.util.WeakHashMap;
                 setLayout(found, newVerb, newAnchorId);
             } catch (CantVisitException e) {
                 cleanup();
-                mAlive = false;
                 mEditErrorListener.sendErrorMessage(e);
             }
         }
