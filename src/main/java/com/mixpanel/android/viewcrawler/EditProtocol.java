@@ -141,6 +141,7 @@ import java.util.List;
                 JSONObject layout_info = args.optJSONObject(0);
                 ViewVisitor.LayoutRule params;
                 int verb = layout_info.getInt("verb");
+                String name = source.getString("name");
                 if (layout_info.getString("operation").equals("remove")) {
                     params = new ViewVisitor.LayoutRule(verb, 0);
                 } else if (layout_info.has("anchor_id")) {
@@ -149,7 +150,7 @@ import java.util.List;
                     params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
                 }
 
-                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params);
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params, name);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }

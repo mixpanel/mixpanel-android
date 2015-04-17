@@ -17,6 +17,7 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -127,16 +128,25 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutUpdateException extends IllegalStateException {
-        public LayoutUpdateException(String message) {
+        public LayoutUpdateException(String message, JSONObject info) {
             super(message);
+            mErrorInfo = info;
         }
+
+        public JSONObject getErrorInfo() {
+            return mErrorInfo;
+        }
+
+        private JSONObject mErrorInfo;
     }
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args, String name) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
+            mName = name;
+
         }
 
         @Override
@@ -187,7 +197,14 @@ import java.util.WeakHashMap;
             }
 
             if (rules != null && !verifyLayout(target, rules)) {
-                throw new LayoutUpdateException("Circular dependency detected!");
+                JSONObject errorInfo = new JSONObject();
+                try {
+                    errorInfo.put("type", "layout_error");
+                    errorInfo.put("cid", mName);
+                } catch (JSONException e) {
+                    ;
+                }
+                throw new LayoutUpdateException("Circular dependency detected!", errorInfo);
             }
 
             target.setLayoutParams(params);
@@ -219,13 +236,23 @@ import java.util.WeakHashMap;
                 dependencyGraph.put(child, dependencies);
             }
 
-            View node = dependencyGraph.keyAt(0);
-            ArrayList<View> dfsStack = new ArrayList<View>();
-            return detectCycle(dependencyGraph, node, dfsStack);
+            return hasCycle(dependencyGraph);
         }
 
-        private boolean detectCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
-                                    View currentNode, ArrayList<View> dfsStack) {
+        private boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
+            ArrayList<View> dfsStack = new ArrayList<View>();
+            while (!dependencyGraph.isEmpty()) {
+                View currentNode = dependencyGraph.keyAt(0);
+                if (!subGraphHasCycle(dependencyGraph, currentNode, dfsStack)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean subGraphHasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
+                                         View currentNode, ArrayList<View> dfsStack) {
             if (dfsStack.contains(currentNode)) {
                 return false;
             }
@@ -235,7 +262,7 @@ import java.util.WeakHashMap;
                 dfsStack.add(currentNode);
 
                 for (int i = 0; i < dependencies.size(); i++) {
-                    if (!detectCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
+                    if (!subGraphHasCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
                         return false;
                     }
                 }
@@ -250,6 +277,7 @@ import java.util.WeakHashMap;
 
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
+        private final String mName;
         final ArrayList<Integer> horizontal_rules = new ArrayList<>(Arrays.asList(
                 RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
                 RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
@@ -508,7 +536,9 @@ import java.util.WeakHashMap;
      * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
      */
     public void visit(View rootView) throws LayoutUpdateException {
-        mPathfinder.findTargetsInRoot(rootView, mPath, this);
+        if (mAlive) {
+            mPathfinder.findTargetsInRoot(rootView, mPath, this);
+        }
     }
 
     /**
@@ -520,12 +550,18 @@ import java.util.WeakHashMap;
     protected ViewVisitor(List<Pathfinder.PathElement> path) {
         mPath = path;
         mPathfinder = new Pathfinder();
+        mAlive = true;
+    }
+
+    public void invalidate() {
+        mAlive = false;
     }
 
     protected abstract String name();
 
     private final List<Pathfinder.PathElement> mPath;
     private final Pathfinder mPathfinder;
+    private boolean mAlive;
 
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";

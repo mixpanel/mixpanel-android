@@ -7,6 +7,8 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
+import org.json.JSONObject;
+
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,10 +25,15 @@ import java.util.Set;
  */
 /* package */ class EditState extends UIThreadSet<Activity> {
 
-    public EditState() {
+    public interface EditErrorMessage {
+        public void sendErrorMessage(JSONObject errorMessage);
+    }
+
+    public EditState(EditErrorMessage editerrorMessage) {
         mUiThreadHandler = new Handler(Looper.getMainLooper());
         mIntendedEdits = new HashMap<String, List<ViewVisitor>>();
         mCurrentEdits = new HashSet<EditBinding>();
+        mEditErrorMessage = editerrorMessage;
     }
 
     /**
@@ -119,15 +126,20 @@ import java.util.Set;
             final int size = changes.size();
             for (int i = 0; i < size; i++) {
                 final ViewVisitor visitor = changes.get(i);
-                final EditBinding binding = new EditBinding(rootView, visitor, mUiThreadHandler);
-                mCurrentEdits.add(binding);
+                try {
+                    final EditBinding binding = new EditBinding(rootView, visitor, mUiThreadHandler);
+                    mCurrentEdits.add(binding);
+                } catch (ViewVisitor.LayoutUpdateException e) {
+                    mEditErrorMessage.sendErrorMessage(e.getErrorInfo());
+                }
             }
         }
     }
 
     /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
     private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener, Runnable {
-        public EditBinding(View viewRoot, ViewVisitor edit, Handler uiThreadHandler) {
+        public EditBinding(View viewRoot, ViewVisitor edit, Handler uiThreadHandler)
+        throws ViewVisitor.LayoutUpdateException {
             mEdit = edit;
             mViewRoot = new WeakReference<View>(viewRoot);
             mHandler = uiThreadHandler;
@@ -163,7 +175,7 @@ import java.util.Set;
                 mEdit.visit(viewRoot);
             } catch (ViewVisitor.LayoutUpdateException e) {
                 cleanUp();
-                return;
+                throw e;
             }
             mHandler.removeCallbacks(this);
             mHandler.postDelayed(this, 1000);
@@ -199,6 +211,7 @@ import java.util.Set;
     private final Handler mUiThreadHandler;
     private final Map<String, List<ViewVisitor>> mIntendedEdits;
     private final Set<EditBinding> mCurrentEdits;
+    private final EditErrorMessage mEditErrorMessage;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.EditState";

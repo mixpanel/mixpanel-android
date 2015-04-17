@@ -27,7 +27,6 @@ import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
-import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -59,7 +58,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditState.EditErrorMessage {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
@@ -72,7 +71,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
         final ImageStore imageStore = new ImageStore(context);
         mProtocol = new EditProtocol(resourceIds, imageStore);
-        mEditState = new EditState();
+        mEditState = new EditState(this);
         mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
@@ -134,6 +133,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         m.what = MESSAGE_SEND_EVENT_TRACKED;
         m.obj = eventName;
 
+        mMessageThreadHandler.sendMessage(m);
+    }
+
+
+    @Override
+    public void sendErrorMessage(JSONObject errorMessage) {
+        final Message m = mMessageThreadHandler.obtainMessage();
+        m.what = MESSAGE_SEND_LAYOUT_ERROR;
+        m.obj = errorMessage;
         mMessageThreadHandler.sendMessage(m);
     }
 
@@ -302,6 +310,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         break;
                     case MESSAGE_SEND_EVENT_TRACKED:
                         sendReportTrackToEditor((String) msg.obj);
+                        break;
+                    case MESSAGE_SEND_LAYOUT_ERROR:
+                        sendLayoutError((JSONObject) msg.obj);
                         break;
                     case MESSAGE_VARIANTS_RECEIVED:
                         handleVariantsReceived((JSONArray) msg.obj);
@@ -647,6 +658,30 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                     j.close();
                 } catch (final IOException e) {
                     Log.e(LOGTAG, "Can't close writer.", e);
+                }
+            }
+        }
+
+        private void sendLayoutError(JSONObject errorMessage) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+                return;
+            }
+
+            final OutputStream out = mEditorConnection.getBufferedOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
+
+            try {
+                errorMessage.put("type", "layout_error");
+                writer.write(errorMessage.toString());
+            } catch (final IOException e) {
+                Log.e(LOGTAG, "Can't write track_message to server", e);
+            } catch (final JSONException e) {
+                ; // won't reach here
+            } finally {
+                try {
+                    writer.close();
+                } catch (final IOException e) {
+                    Log.e(LOGTAG, "Could not close output writer to editor", e);
                 }
             }
         }
@@ -1042,6 +1077,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
+    private static final @MessageType int MESSAGE_SEND_LAYOUT_ERROR = 12;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 
