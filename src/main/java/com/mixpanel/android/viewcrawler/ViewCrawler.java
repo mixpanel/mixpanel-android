@@ -136,7 +136,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditStat
         mMessageThreadHandler.sendMessage(m);
     }
 
-
     @Override
     public void sendErrorMessage(JSONObject errorMessage) {
         final Message m = mMessageThreadHandler.obtainMessage();

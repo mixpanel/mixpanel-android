@@ -139,7 +139,7 @@ import java.util.Set;
     /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
     private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener, Runnable {
         public EditBinding(View viewRoot, ViewVisitor edit, Handler uiThreadHandler)
-        throws ViewVisitor.LayoutUpdateException {
+                throws ViewVisitor.LayoutUpdateException {
             mEdit = edit;
             mViewRoot = new WeakReference<View>(viewRoot);
             mHandler = uiThreadHandler;

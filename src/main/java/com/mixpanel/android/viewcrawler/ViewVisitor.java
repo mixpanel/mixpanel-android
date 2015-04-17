@@ -3,7 +3,6 @@ package com.mixpanel.android.viewcrawler;
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -11,13 +10,11 @@ import android.util.ArrayMap;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -26,7 +23,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.IllegalFormatException;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -147,6 +143,15 @@ import java.util.WeakHashMap;
             mArgs = args;
             mName = name;
 
+            mHorizontalRules = new ArrayList<>(Arrays.asList(
+                    RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
+                    RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
+            ));
+            mVerticalRules = new ArrayList<>(Arrays.asList(
+                    RelativeLayout.ABOVE, RelativeLayout.BELOW,
+                    RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
+                    RelativeLayout.ALIGN_BOTTOM
+            ));
         }
 
         @Override
@@ -183,15 +188,15 @@ import java.util.WeakHashMap;
             }
         }
 
-        private void setLayout (View target, int verb, int anchorId) {
+        private void setLayout(View target, int verb, int anchorId) {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
             params.addRule(verb, anchorId);
 
             final ArrayList<Integer> rules;
-            if (horizontal_rules.contains(verb)) {
-                rules = horizontal_rules;
-            } else if (vertical_rules.contains(verb)) {
-                rules = vertical_rules;
+            if (mHorizontalRules.contains(verb)) {
+                rules = mHorizontalRules;
+            } else if (mVerticalRules.contains(verb)) {
+                rules = mVerticalRules;
             } else {
                 rules = null;
             }
@@ -199,10 +204,10 @@ import java.util.WeakHashMap;
             if (rules != null && !verifyLayout(target, rules)) {
                 JSONObject errorInfo = new JSONObject();
                 try {
-                    errorInfo.put("type", "layout_error");
                     errorInfo.put("cid", mName);
+                    errorInfo.put("error_type", "circular_dependency");
                 } catch (JSONException e) {
-                    ;
+                    ; // won't reach here
                 }
                 throw new LayoutUpdateException("Circular dependency detected!", errorInfo);
             }
@@ -228,7 +233,7 @@ import java.util.WeakHashMap;
                 ArrayList<View> dependencies = new ArrayList<View>();
                 for (int rule : rules) {
                     int dependencyId = layoutRules[rule];
-                    if (dependencyId != child.getId()) {
+                    if (dependencyId > 0 && dependencyId != child.getId()) {
                         dependencies.add(idToChild.get(dependencyId));
                     }
                 }
@@ -278,15 +283,8 @@ import java.util.WeakHashMap;
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
         private final String mName;
-        final ArrayList<Integer> horizontal_rules = new ArrayList<>(Arrays.asList(
-                RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
-                RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
-        ));
-        final ArrayList<Integer> vertical_rules = new ArrayList<>(Arrays.asList(
-                RelativeLayout.ABOVE, RelativeLayout.BELOW,
-                RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
-                RelativeLayout.ALIGN_BOTTOM
-        ));
+        final ArrayList<Integer> mHorizontalRules;
+        final ArrayList<Integer> mVerticalRules;
     }
 
     public static class LayoutRule {
