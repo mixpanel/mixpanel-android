@@ -354,6 +354,10 @@ import java.util.List;
     private Drawable readDrawable(JSONObject description, List<String> assetsLoaded)
             throws BadInstructionsException, CantGetEditAssetsException {
         try {
+            if (description.isNull("url")) {
+                throw new BadInstructionsException("Can't construct a drawable with a null url");
+            }
+
             final String url = description.getString("url");
             final JSONObject dimensions = description.getJSONObject("dimensions");
             final int left = dimensions.getInt("left");
