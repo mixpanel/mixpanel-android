@@ -15,9 +15,6 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -144,13 +141,13 @@ import java.util.WeakHashMap;
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, EditProtocol.EditErrorMessage editErrorMessage) {
+                                   String name, EditProtocol.OnErrorListener editErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mEditErrorMessage = editErrorMessage;
+            mEditErrorListener = editErrorListener;
 
             mHorizontalRules = new ArrayList<>(Arrays.asList(
                     RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
@@ -206,7 +203,7 @@ import java.util.WeakHashMap;
             } catch (CantVisitException e) {
                 cleanup();
                 mAlive = false;
-                mEditErrorMessage.sendErrorMessage(e);
+                mEditErrorListener.sendErrorMessage(e);
             }
         }
 
@@ -234,7 +231,8 @@ import java.util.WeakHashMap;
             ViewGroup parent = (ViewGroup) target.getParent();
             SparseArray<View> idToChild = new SparseArray<View>();
 
-            for (int i = 0; i < parent.getChildCount(); i++) {
+            int count = parent.getChildCount();
+            for (int i = 0; i < count; i++) {
                 View child = parent.getChildAt(i);
                 int childId = child.getId();
                 if (childId > 0) {
@@ -243,7 +241,8 @@ import java.util.WeakHashMap;
             }
 
             ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
-            for (int i = 0; i < idToChild.size(); i++) {
+            int size = idToChild.size();
+            for (int i = 0; i < size; i++) {
                 final View child = idToChild.valueAt(i);
                 final RelativeLayout.LayoutParams childLayoutParams = (RelativeLayout.LayoutParams) child.getLayoutParams();
                 int[] layoutRules = childLayoutParams.getRules();
@@ -284,7 +283,8 @@ import java.util.WeakHashMap;
                 ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
                 dfsStack.add(currentNode);
 
-                for (int i = 0; i < dependencies.size(); i++) {
+                int size = dependencies.size();
+                for (int i = 0; i < size; i++) {
                     if (!subGraphHasCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
                         return false;
                     }
@@ -304,7 +304,7 @@ import java.util.WeakHashMap;
         private final ArrayList<Integer> mHorizontalRules;
         private final ArrayList<Integer> mVerticalRules;
         private boolean mAlive;
-        private final EditProtocol.EditErrorMessage mEditErrorMessage;
+        private final EditProtocol.OnErrorListener mEditErrorListener;
     }
 
     public static class LayoutRule {

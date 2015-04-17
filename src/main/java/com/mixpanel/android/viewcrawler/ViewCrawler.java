@@ -58,7 +58,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditProtocol.EditErrorMessage {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditProtocol.OnErrorListener {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
