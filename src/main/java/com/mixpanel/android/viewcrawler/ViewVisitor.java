@@ -565,7 +565,6 @@ import java.util.WeakHashMap;
     protected ViewVisitor(List<Pathfinder.PathElement> path) {
         mPath = path;
         mPathfinder = new Pathfinder();
-        mAlive = true;
     }
 
     protected List<Pathfinder.PathElement> getPath() {
@@ -580,7 +579,6 @@ import java.util.WeakHashMap;
 
     private final List<Pathfinder.PathElement> mPath;
     private final Pathfinder mPathfinder;
-    private boolean mAlive;
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }
