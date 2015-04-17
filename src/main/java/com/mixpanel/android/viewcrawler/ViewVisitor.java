@@ -236,7 +236,10 @@ import java.util.WeakHashMap;
 
             for (int i = 0; i < parent.getChildCount(); i++) {
                 View child = parent.getChildAt(i);
-                idToChild.put(child.getId(), child);
+                int childId = child.getId();
+                if (childId > 0) {
+                    idToChild.put(childId, child);
+                }
             }
 
             ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
