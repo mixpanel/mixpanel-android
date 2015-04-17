@@ -38,7 +38,7 @@ import java.util.WeakHashMap;
         public void OnEvent(View host, String eventName, boolean debounce);
     }
 
-    protected static class CantVisitException extends Exception {
+    public static class CantVisitException extends Exception {
         public CantVisitException(String message, String exceptionType, String name) {
             super(message);
             mExceptionType = exceptionType;
