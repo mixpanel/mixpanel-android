@@ -53,7 +53,7 @@ import java.util.List;
     }
 
     public interface OnErrorListener {
-        public void sendErrorMessage(ViewVisitor.CantVisitException e);
+        public void onError(ViewVisitor.CantVisitException e);
     }
 
     public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, OnErrorListener editErrorListener) {

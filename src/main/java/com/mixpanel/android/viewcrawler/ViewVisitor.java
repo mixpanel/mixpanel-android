@@ -195,7 +195,7 @@ import java.util.WeakHashMap;
                 setLayout(found, newVerb, newAnchorId);
             } catch (CantVisitException e) {
                 cleanup();
-                mOnEditErrorListener.sendErrorMessage(e);
+                mOnEditErrorListener.onError(e);
             }
         }
 

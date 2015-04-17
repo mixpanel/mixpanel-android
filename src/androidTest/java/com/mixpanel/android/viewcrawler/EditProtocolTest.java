@@ -30,7 +30,7 @@ public class EditProtocolTest extends AndroidTestCase {
             errorList = new ArrayList<ViewVisitor.CantVisitException>();
         }
 
-        public void sendErrorMessage(ViewVisitor.CantVisitException e) {
+        public void onError(ViewVisitor.CantVisitException e) {
             errorList.add(e);
         }
 

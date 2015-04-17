@@ -137,7 +137,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditProt
     }
 
     @Override
-    public void sendErrorMessage(ViewVisitor.CantVisitException e) {
+    public void onError(ViewVisitor.CantVisitException e) {
         final Message m = mMessageThreadHandler.obtainMessage();
         m.what = MESSAGE_SEND_LAYOUT_ERROR;
         m.obj = e;
