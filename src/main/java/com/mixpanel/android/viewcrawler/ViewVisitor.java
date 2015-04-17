@@ -536,9 +536,7 @@ import java.util.WeakHashMap;
      * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
      */
     public void visit(View rootView) throws LayoutUpdateException {
-        if (mAlive) {
-            mPathfinder.findTargetsInRoot(rootView, mPath, this);
-        }
+        mPathfinder.findTargetsInRoot(rootView, mPath, this);
     }
 
     /**
@@ -550,19 +548,12 @@ import java.util.WeakHashMap;
     protected ViewVisitor(List<Pathfinder.PathElement> path) {
         mPath = path;
         mPathfinder = new Pathfinder();
-        mAlive = true;
-    }
-
-    public void invalidate() {
-        mAlive = false;
     }
 
     protected abstract String name();
 
     private final List<Pathfinder.PathElement> mPath;
     private final Pathfinder mPathfinder;
-    private boolean mAlive;
-
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }
