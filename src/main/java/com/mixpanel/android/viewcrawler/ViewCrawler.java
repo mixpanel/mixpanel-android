@@ -58,7 +58,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditState.EditErrorMessage {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditProtocol.EditErrorMessage {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
@@ -70,8 +70,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditStat
 
         final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
         final ImageStore imageStore = new ImageStore(context);
-        mProtocol = new EditProtocol(resourceIds, imageStore);
-        mEditState = new EditState(this);
+        mProtocol = new EditProtocol(resourceIds, imageStore, this);
+        mEditState = new EditState();
         mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;

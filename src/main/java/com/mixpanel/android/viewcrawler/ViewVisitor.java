@@ -85,7 +85,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) throws CantVisitException {
+        public void accumulate(View found) {
             if (null != mAccessor) {
                 final Object[] setArgs = mMutator.getArgs();
                 if (1 == setArgs.length) {
@@ -143,11 +143,14 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args, String name) {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
+                                   String name, EditProtocol.EditErrorMessage editErrorMessage) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
             mName = name;
+            mAlive = true;
+            mEditErrorMessage = editErrorMessage;
 
             mHorizontalRules = new ArrayList<>(Arrays.asList(
                     RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
@@ -174,7 +177,14 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) throws CantVisitException {
+        public void visit(View rootView) {
+            if (mAlive) {
+                super.getPathfinder().findTargetsInRoot(rootView, super.getPath(), this);
+            }
+        }
+
+        @Override
+        public void accumulate(View found) {
             final int newVerb = mArgs.verb;
             final int newAnchorId = mArgs.anchor;
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
@@ -191,7 +201,13 @@ import java.util.WeakHashMap;
                 mOriginalValues.put(found, originalValue);
             }
 
-            setLayout(found, newVerb, newAnchorId);
+            try {
+                setLayout(found, newVerb, newAnchorId);
+            } catch (CantVisitException e) {
+                cleanup();
+                mAlive = false;
+                mEditErrorMessage.sendErrorMessage(e);
+            }
         }
 
         private void setLayout(View target, int verb, int anchorId) throws CantVisitException {
@@ -284,6 +300,8 @@ import java.util.WeakHashMap;
         private final String mName;
         private final ArrayList<Integer> mHorizontalRules;
         private final ArrayList<Integer> mVerticalRules;
+        private boolean mAlive;
+        private final EditProtocol.EditErrorMessage mEditErrorMessage;
     }
 
     public static class LayoutRule {
@@ -326,7 +344,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) throws CantVisitException {
+        public void accumulate(View found) {
             final View.AccessibilityDelegate realDelegate = getOldDelegate(found);
             if (realDelegate instanceof TrackingAccessibilityDelegate) {
                 final TrackingAccessibilityDelegate currentTracker = (TrackingAccessibilityDelegate) realDelegate;
@@ -432,7 +450,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) throws CantVisitException {
+        public void accumulate(View found) {
             if (found instanceof TextView) {
                 final TextView foundTextView = (TextView) found;
                 final TextWatcher watcher = new TrackingTextWatcher(foundTextView);
@@ -492,7 +510,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) throws CantVisitException {
+        public void accumulate(View found) {
             if (found != null && !mSeen) {
                 fireEvent(found);
             }
@@ -532,15 +550,8 @@ import java.util.WeakHashMap;
     /**
      * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
      */
-    public void visit(View rootView) throws ViewVisitor.CantVisitException {
-        if (mAlive) {
-            try {
-                mPathfinder.findTargetsInRoot(rootView, mPath, this);
-            } catch (CantVisitException e) {
-                mAlive = false;
-                throw e;
-            }
-        }
+    public void visit(View rootView) {
+        mPathfinder.findTargetsInRoot(rootView, mPath, this);
     }
 
     /**
@@ -553,6 +564,14 @@ import java.util.WeakHashMap;
         mPath = path;
         mPathfinder = new Pathfinder();
         mAlive = true;
+    }
+
+    protected List<Pathfinder.PathElement> getPath() {
+        return mPath;
+    }
+
+    protected Pathfinder getPathfinder() {
+        return mPathfinder;
     }
 
     protected abstract String name();

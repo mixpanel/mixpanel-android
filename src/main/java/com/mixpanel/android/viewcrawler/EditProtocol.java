@@ -52,9 +52,14 @@ import java.util.List;
         }
     }
 
-    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore) {
+    public interface EditErrorMessage {
+        public void sendErrorMessage(ViewVisitor.CantVisitException e);
+    }
+
+    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, EditErrorMessage editErrorMessage) {
         mResourceIds = resourceIds;
         mImageStore = imageStore;
+        mEditErrorMessage = editErrorMessage;
     }
 
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnEventListener listener) throws BadInstructionsException {
@@ -150,7 +155,7 @@ import java.util.List;
                     params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
                 }
 
-                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params, name);
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params, name, mEditErrorMessage);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }
@@ -369,6 +374,7 @@ import java.util.List;
 
     private final ResourceIds mResourceIds;
     private final ImageStore mImageStore;
+    private final EditErrorMessage mEditErrorMessage;
 
     private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();
