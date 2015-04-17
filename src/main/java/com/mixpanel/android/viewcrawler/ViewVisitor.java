@@ -20,8 +20,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
@@ -148,16 +150,6 @@ import java.util.WeakHashMap;
             mName = name;
             mAlive = true;
             mEditErrorListener = editErrorListener;
-
-            mHorizontalRules = new ArrayList<>(Arrays.asList(
-                    RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
-                    RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
-            ));
-            mVerticalRules = new ArrayList<>(Arrays.asList(
-                    RelativeLayout.ABOVE, RelativeLayout.BELOW,
-                    RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
-                    RelativeLayout.ALIGN_BOTTOM
-            ));
         }
 
         @Override
@@ -211,7 +203,7 @@ import java.util.WeakHashMap;
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
             params.addRule(verb, anchorId);
 
-            final ArrayList<Integer> rules;
+            final Set<Integer> rules;
             if (mHorizontalRules.contains(verb)) {
                 rules = mHorizontalRules;
             } else if (mVerticalRules.contains(verb)) {
@@ -227,7 +219,7 @@ import java.util.WeakHashMap;
             target.setLayoutParams(params);
         }
 
-        private boolean verifyLayout(View target, ArrayList<Integer> rules) {
+        private boolean verifyLayout(View target, Set<Integer> rules) {
             ViewGroup parent = (ViewGroup) target.getParent();
             SparseArray<View> idToChild = new SparseArray<View>();
 
@@ -301,8 +293,15 @@ import java.util.WeakHashMap;
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
         private final String mName;
-        private final ArrayList<Integer> mHorizontalRules;
-        private final ArrayList<Integer> mVerticalRules;
+        private static final Set<Integer> mHorizontalRules = new HashSet<Integer>(Arrays.asList(
+                RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
+                RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
+        ));
+        private static final Set<Integer> mVerticalRules = new HashSet<Integer>(Arrays.asList(
+                RelativeLayout.ABOVE, RelativeLayout.BELOW,
+                RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
+                RelativeLayout.ALIGN_BOTTOM
+        ));
         private boolean mAlive;
         private final EditProtocol.OnErrorListener mEditErrorListener;
     }
