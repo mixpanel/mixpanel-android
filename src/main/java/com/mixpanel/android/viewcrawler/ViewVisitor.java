@@ -283,8 +283,8 @@ import java.util.WeakHashMap;
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
         private final String mName;
-        final ArrayList<Integer> mHorizontalRules;
-        final ArrayList<Integer> mVerticalRules;
+        private final ArrayList<Integer> mHorizontalRules;
+        private final ArrayList<Integer> mVerticalRules;
     }
 
     public static class LayoutRule {
