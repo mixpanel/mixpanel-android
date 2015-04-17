@@ -137,10 +137,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditStat
     }
 
     @Override
-    public void sendErrorMessage(JSONObject errorMessage) {
+    public void sendErrorMessage(ViewVisitor.CantVisitException e) {
         final Message m = mMessageThreadHandler.obtainMessage();
         m.what = MESSAGE_SEND_LAYOUT_ERROR;
-        m.obj = errorMessage;
+        m.obj = e;
         mMessageThreadHandler.sendMessage(m);
     }
 
@@ -311,7 +311,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditStat
                         sendReportTrackToEditor((String) msg.obj);
                         break;
                     case MESSAGE_SEND_LAYOUT_ERROR:
-                        sendLayoutError((JSONObject) msg.obj);
+                        sendLayoutError((ViewVisitor.CantVisitException) msg.obj);
                         break;
                     case MESSAGE_VARIANTS_RECEIVED:
                         handleVariantsReceived((JSONArray) msg.obj);
@@ -661,26 +661,29 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditStat
             }
         }
 
-        private void sendLayoutError(JSONObject errorMessage) {
+        private void sendLayoutError(ViewVisitor.CantVisitException exception) {
             if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
             }
 
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final OutputStreamWriter writer = new OutputStreamWriter(out);
+            final JsonWriter j = new JsonWriter(writer);
 
             try {
-                errorMessage.put("type", "layout_error");
-                writer.write(errorMessage.toString());
+                j.beginObject();
+                j.name("type").value("layout_error");
+                j.name("exception_type").value(exception.getExceptionType());
+                j.name("cid").value(exception.getName());
+                j.endObject();
+                j.flush();
             } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write track_message to server", e);
-            } catch (final JSONException e) {
-                ; // won't reach here
             } finally {
                 try {
-                    writer.close();
+                    j.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Could not close output writer to editor", e);
+                    Log.e(LOGTAG, "Can't close writer.", e);
                 }
             }
         }

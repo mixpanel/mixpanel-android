@@ -26,7 +26,7 @@ import java.util.Set;
 /* package */ class EditState extends UIThreadSet<Activity> {
 
     public interface EditErrorMessage {
-        public void sendErrorMessage(JSONObject errorMessage);
+        public void sendErrorMessage(ViewVisitor.CantVisitException e);
     }
 
     public EditState(EditErrorMessage editerrorMessage) {
@@ -126,25 +126,21 @@ import java.util.Set;
             final int size = changes.size();
             for (int i = 0; i < size; i++) {
                 final ViewVisitor visitor = changes.get(i);
-                try {
-                    final EditBinding binding = new EditBinding(rootView, visitor, mUiThreadHandler);
-                    mCurrentEdits.add(binding);
-                } catch (ViewVisitor.LayoutUpdateException e) {
-                    mEditErrorMessage.sendErrorMessage(e.getErrorInfo());
-                }
+                final EditBinding binding = new EditBinding(rootView, visitor, mUiThreadHandler, mEditErrorMessage);
+                mCurrentEdits.add(binding);
             }
         }
     }
 
     /* The binding between a bunch of edits and a view. Should be instantiated and live on the UI thread */
     private static class EditBinding implements ViewTreeObserver.OnGlobalLayoutListener, Runnable {
-        public EditBinding(View viewRoot, ViewVisitor edit, Handler uiThreadHandler)
-                throws ViewVisitor.LayoutUpdateException {
+        public EditBinding(View viewRoot, ViewVisitor edit, Handler uiThreadHandler, EditErrorMessage editErrorMessage) {
             mEdit = edit;
             mViewRoot = new WeakReference<View>(viewRoot);
             mHandler = uiThreadHandler;
             mAlive = true;
             mDying = false;
+            mEditErrorMessage = editErrorMessage;
 
             final ViewTreeObserver observer = viewRoot.getViewTreeObserver();
             if (observer.isAlive()) {
@@ -173,9 +169,9 @@ import java.util.Set;
 
             try {
                 mEdit.visit(viewRoot);
-            } catch (ViewVisitor.LayoutUpdateException e) {
+            } catch (ViewVisitor.CantVisitException e) {
                 cleanUp();
-                throw e;
+                mEditErrorMessage.sendErrorMessage(e);
             }
             mHandler.removeCallbacks(this);
             mHandler.postDelayed(this, 1000);
@@ -206,6 +202,7 @@ import java.util.Set;
         private final WeakReference<View> mViewRoot;
         private final ViewVisitor mEdit;
         private final Handler mHandler;
+        private final EditErrorMessage mEditErrorMessage;
     }
 
     private final Handler mUiThreadHandler;

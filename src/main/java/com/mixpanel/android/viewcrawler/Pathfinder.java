@@ -101,7 +101,7 @@ import java.util.List;
     }
 
     public interface Accumulator {
-        public void accumulate(View v);
+        public void accumulate (View v) throws ViewVisitor.CantVisitException;
     }
 
     public Pathfinder() {
@@ -109,7 +109,7 @@ import java.util.List;
     }
 
     public void findTargetsInRoot(View givenRootView, List<PathElement> path, Accumulator accumulator)
-            throws ViewVisitor.LayoutUpdateException {
+            throws ViewVisitor.CantVisitException {
         if (path.isEmpty()) {
             return;
         }
@@ -132,7 +132,7 @@ import java.util.List;
     }
 
     private void findTargetsInMatchedView(View alreadyMatched, List<PathElement> remainingPath, Accumulator accumulator)
-            throws ViewVisitor.LayoutUpdateException {
+            throws ViewVisitor.CantVisitException {
         // When this is run, alreadyMatched has already been matched to a path prefix.
         // path is a possibly empty "remaining path" suffix left over after the match
 

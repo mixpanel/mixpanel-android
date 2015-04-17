@@ -39,6 +39,25 @@ import java.util.WeakHashMap;
         public void OnEvent(View host, String eventName, boolean debounce);
     }
 
+    protected static class CantVisitException extends Exception {
+        public CantVisitException(String message, String exceptionType, String name) {
+            super(message);
+            mExceptionType = exceptionType;
+            mName = name;
+        }
+
+        public String getExceptionType() {
+            return mExceptionType;
+        }
+
+        public String getName() {
+            return mName;
+        }
+
+        private final String mExceptionType;
+        private final String mName;
+    }
+
     /**
      * Attempts to apply mutator to every matching view. Use this to update properties
      * in the view hierarchy. If accessor is non-null, it will be used to attempt to
@@ -66,7 +85,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) {
+        public void accumulate(View found) throws CantVisitException {
             if (null != mAccessor) {
                 final Object[] setArgs = mMutator.getArgs();
                 if (1 == setArgs.length) {
@@ -123,19 +142,6 @@ import java.util.WeakHashMap;
         private final Object[] mOriginalValueHolder;
     }
 
-    public static class LayoutUpdateException extends IllegalStateException {
-        public LayoutUpdateException(String message, JSONObject info) {
-            super(message);
-            mErrorInfo = info;
-        }
-
-        public JSONObject getErrorInfo() {
-            return mErrorInfo;
-        }
-
-        private JSONObject mErrorInfo;
-    }
-
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args, String name) {
             super(path);
@@ -159,12 +165,16 @@ import java.util.WeakHashMap;
             for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
                 final LayoutRule originalValue = original.getValue();
-                setLayout(changedView, originalValue.verb, originalValue.anchor);
+                try {
+                    setLayout(changedView, originalValue.verb, originalValue.anchor);
+                } catch (CantVisitException e) {
+                    ; // shouldn't reach here
+                }
             }
         }
 
         @Override
-        public void accumulate(View found) {
+        public void accumulate(View found) throws CantVisitException {
             final int newVerb = mArgs.verb;
             final int newAnchorId = mArgs.anchor;
             final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
@@ -181,14 +191,10 @@ import java.util.WeakHashMap;
                 mOriginalValues.put(found, originalValue);
             }
 
-            try {
-                setLayout(found, newVerb, newAnchorId);
-            } catch (LayoutUpdateException e) {
-                throw e;
-            }
+            setLayout(found, newVerb, newAnchorId);
         }
 
-        private void setLayout(View target, int verb, int anchorId) {
+        private void setLayout(View target, int verb, int anchorId) throws CantVisitException {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
             params.addRule(verb, anchorId);
 
@@ -202,14 +208,7 @@ import java.util.WeakHashMap;
             }
 
             if (rules != null && !verifyLayout(target, rules)) {
-                JSONObject errorInfo = new JSONObject();
-                try {
-                    errorInfo.put("cid", mName);
-                    errorInfo.put("error_type", "circular_dependency");
-                } catch (JSONException e) {
-                    ; // won't reach here
-                }
-                throw new LayoutUpdateException("Circular dependency detected!", errorInfo);
+                throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
             }
 
             target.setLayoutParams(params);
@@ -327,7 +326,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) {
+        public void accumulate(View found) throws CantVisitException {
             final View.AccessibilityDelegate realDelegate = getOldDelegate(found);
             if (realDelegate instanceof TrackingAccessibilityDelegate) {
                 final TrackingAccessibilityDelegate currentTracker = (TrackingAccessibilityDelegate) realDelegate;
@@ -433,7 +432,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) {
+        public void accumulate(View found) throws CantVisitException {
             if (found instanceof TextView) {
                 final TextView foundTextView = (TextView) found;
                 final TextWatcher watcher = new TrackingTextWatcher(foundTextView);
@@ -493,7 +492,7 @@ import java.util.WeakHashMap;
         }
 
         @Override
-        public void accumulate(View found) {
+        public void accumulate(View found) throws CantVisitException {
             if (found != null && !mSeen) {
                 fireEvent(found);
             }
@@ -533,8 +532,15 @@ import java.util.WeakHashMap;
     /**
      * Scans the View hierarchy below rootView, applying it's operation to each matching child view.
      */
-    public void visit(View rootView) throws LayoutUpdateException {
-        mPathfinder.findTargetsInRoot(rootView, mPath, this);
+    public void visit(View rootView) throws ViewVisitor.CantVisitException {
+        if (mAlive) {
+            try {
+                mPathfinder.findTargetsInRoot(rootView, mPath, this);
+            } catch (CantVisitException e) {
+                mAlive = false;
+                throw e;
+            }
+        }
     }
 
     /**
@@ -546,12 +552,14 @@ import java.util.WeakHashMap;
     protected ViewVisitor(List<Pathfinder.PathElement> path) {
         mPath = path;
         mPathfinder = new Pathfinder();
+        mAlive = true;
     }
 
     protected abstract String name();
 
     private final List<Pathfinder.PathElement> mPath;
     private final Pathfinder mPathfinder;
+    private boolean mAlive;
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }
