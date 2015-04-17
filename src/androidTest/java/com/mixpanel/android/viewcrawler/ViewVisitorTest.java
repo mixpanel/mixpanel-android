@@ -10,7 +10,6 @@ import android.os.Build;
 import android.test.AndroidTestCase;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
-import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
 import java.util.ArrayList;
@@ -116,7 +115,7 @@ public class ViewVisitorTest extends AndroidTestCase {
         mFindButton2.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, mRootView.mAdHocButton2.getClass().getCanonicalName(), -1, -1, null, null));
 
         mRelativeLayoutButtonPath = new ArrayList<Pathfinder.PathElement>();
-        mRelativeLayoutButtonPath.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, null, -1, TestView.RELATIVE_LAYOUT_BUTTON_ID, null, null));
+        mRelativeLayoutButtonPath.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, null, -1, TestView.RELATIVE_LAYOUT_BUTTON1_ID, null, null));
 
         mTrackListener = new CollectingEventListener();
     }
@@ -450,11 +449,11 @@ public class ViewVisitorTest extends AndroidTestCase {
         ViewVisitor.LayoutRule params = new ViewVisitor.LayoutRule(0, RelativeLayout.TRUE);
 
         final ViewVisitor layoutVisitor =
-                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutButtonPath, params);
+                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutButtonPath, params, "test", null);
         layoutVisitor.visit(mRootView);
 
         RelativeLayout.LayoutParams layoutParams =
-                (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton.getLayoutParams();
+                (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton1.getLayoutParams();
         int[] rules = layoutParams.getRules();
         assertEquals(rules[0], -1);
     }
