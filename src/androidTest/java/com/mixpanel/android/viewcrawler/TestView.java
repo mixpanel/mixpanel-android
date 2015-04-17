@@ -112,7 +112,6 @@ public class TestView extends FrameLayout {
         mAllViews.add(mRelativeLayoutButton2);
         mThirdLayer.add(mRelativeLayoutButton2);
 
-
         mViewsByHashcode = new HashMap<Integer, View>();
         for (View v:mAllViews) {
             mViewsByHashcode.put(v.hashCode(), v);

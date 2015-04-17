@@ -143,13 +143,13 @@ import java.util.WeakHashMap;
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, EditProtocol.OnErrorListener editErrorListener) {
+                                   String name, EditProtocol.OnErrorListener onEditErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mEditErrorListener = editErrorListener;
+            mOnEditErrorListener = onEditErrorListener;
         }
 
         @Override
@@ -195,7 +195,7 @@ import java.util.WeakHashMap;
                 setLayout(found, newVerb, newAnchorId);
             } catch (CantVisitException e) {
                 cleanup();
-                mEditErrorListener.sendErrorMessage(e);
+                mOnEditErrorListener.sendErrorMessage(e);
             }
         }
 
@@ -303,7 +303,7 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final EditProtocol.OnErrorListener mEditErrorListener;
+        private final EditProtocol.OnErrorListener mOnEditErrorListener;
     }
 
     public static class LayoutRule {
