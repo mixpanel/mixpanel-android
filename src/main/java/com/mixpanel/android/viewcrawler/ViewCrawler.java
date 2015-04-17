@@ -676,7 +676,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, EditProt
                 j.name("exception_type").value(exception.getExceptionType());
                 j.name("cid").value(exception.getName());
                 j.endObject();
-                j.flush();
             } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write track_message to server", e);
             } finally {
