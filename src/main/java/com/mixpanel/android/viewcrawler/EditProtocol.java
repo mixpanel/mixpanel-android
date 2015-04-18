@@ -342,7 +342,9 @@ import java.util.List;
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
             } else if ("android.graphics.drawable.Drawable".equals(type)) {
-                return readDrawable((JSONObject) jsonArgument, assetsLoaded);
+                return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
+            } else if ("android.graphics.drawable.BitmapDrawable".equals(type)) {
+                return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }
@@ -351,11 +353,11 @@ import java.util.List;
         }
     }
 
-    private Drawable readDrawable(JSONObject description, List<String> assetsLoaded)
+    private Drawable readBitmapDrawable(JSONObject description, List<String> assetsLoaded)
             throws BadInstructionsException, CantGetEditAssetsException {
         try {
             if (description.isNull("url")) {
-                throw new BadInstructionsException("Can't construct a drawable with a null url");
+                throw new BadInstructionsException("Can't construct a BitmapDrawable with a null url");
             }
 
             final String url = description.getString("url");
