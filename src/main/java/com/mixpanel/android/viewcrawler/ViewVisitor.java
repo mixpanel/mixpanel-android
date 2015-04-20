@@ -173,7 +173,7 @@ import java.util.WeakHashMap;
         @Override
         public void visit(View rootView) {
             if (mAlive) {
-                super.getPathfinder().findTargetsInRoot(rootView, super.getPath(), this);
+                getPathfinder().findTargetsInRoot(rootView, getPath(), this);
             }
         }
 
