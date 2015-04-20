@@ -98,12 +98,19 @@ public class TestView extends FrameLayout {
         addView(relative);
         mAllViews.add(relative);
         mSecondLayer.add(relative);
-        mRelativeLayoutButton = new Button(getContext());
-        mRelativeLayoutButton.setText("Yo!");
-        mRelativeLayoutButton.setId(RELATIVE_LAYOUT_BUTTON_ID);
-        relative.addView(mRelativeLayoutButton);
-        mAllViews.add(mRelativeLayoutButton);
-        mThirdLayer.add(mRelativeLayoutButton);
+        mRelativeLayoutButton1 = new Button(getContext());
+        mRelativeLayoutButton1.setText("Yo!");
+        mRelativeLayoutButton1.setId(RELATIVE_LAYOUT_BUTTON1_ID);
+        relative.addView(mRelativeLayoutButton1);
+        mAllViews.add(mRelativeLayoutButton1);
+        mThirdLayer.add(mRelativeLayoutButton1);
+
+        mRelativeLayoutButton2 = new Button(getContext());
+        mRelativeLayoutButton2.setText("Yeah!");
+        mRelativeLayoutButton2.setId(RELATIVE_LAYOUT_BUTTON2_ID);
+        relative.addView(mRelativeLayoutButton2);
+        mAllViews.add(mRelativeLayoutButton2);
+        mThirdLayer.add(mRelativeLayoutButton2);
 
         mViewsByHashcode = new HashMap<Integer, View>();
         for (View v:mAllViews) {
@@ -196,7 +203,8 @@ public class TestView extends FrameLayout {
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;
     public final ImageView mImageView;
-    public final Button mRelativeLayoutButton;
+    public final Button mRelativeLayoutButton1;
+    public final Button mRelativeLayoutButton2;
     public final Set<View> mSecondLayer;
     public final Set<View> mThirdLayer;
     public final Set<View> mFourthLayer;
@@ -208,8 +216,9 @@ public class TestView extends FrameLayout {
     public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
-    public static final int RELATIVE_LAYOUT_BUTTON_ID = 6000;
-    public static final int IMAGE_VIEW_ID = 7000;
+    public static final int RELATIVE_LAYOUT_BUTTON1_ID = 6000;
+    public static final int RELATIVE_LAYOUT_BUTTON2_ID = 7000;
+    public static final int IMAGE_VIEW_ID = 8000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String ROOT_DESCRIPTION = "This is the root view";

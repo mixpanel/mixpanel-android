@@ -3,24 +3,27 @@ package com.mixpanel.android.viewcrawler;
 import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.util.ArrayMap;
+import android.util.SparseArray;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
@@ -33,6 +36,29 @@ import java.util.WeakHashMap;
      */
     public interface OnEventListener {
         public void OnEvent(View host, String eventName, boolean debounce);
+    }
+
+    public interface OnErrorListener {
+        public void onError(ViewVisitor.CantVisitException e);
+    }
+
+    public static class CantVisitException extends Exception {
+        public CantVisitException(String message, String exceptionType, String name) {
+            super(message);
+            mExceptionType = exceptionType;
+            mName = name;
+        }
+
+        public String getExceptionType() {
+            return mExceptionType;
+        }
+
+        public String getName() {
+            return mName;
+        }
+
+        private final String mExceptionType;
+        private final String mName;
     }
 
     /**
@@ -120,10 +146,60 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args) {
+        private class CycleDetector {
+
+            /**
+             * This function detects circular dependencies for all the views under the parent
+             * of the updated view. The basic idea is to consider the views as a directed
+             * graph and perform a DFS on all the nodes in the graph. If the current node is
+             * in the DFS stack already, there must be a circle in the graph. To speed up the
+             * search, all the parsed nodes will be removed from the graph.
+             */
+            public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
+                ArrayList<View> dfsStack = new ArrayList<View>();
+                while (!dependencyGraph.isEmpty()) {
+                    View currentNode = dependencyGraph.keyAt(0);
+                    if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
+                                                View currentNode, ArrayList<View> dfsStack) {
+                if (dfsStack.contains(currentNode)) {
+                    return false;
+                }
+
+                if (dependencyGraph.containsKey(currentNode)) {
+                    ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
+                    dfsStack.add(currentNode);
+
+                    int size = dependencies.size();
+                    for (int i = 0; i < size; i++) {
+                        if (!detectSubgraphCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
+                            return false;
+                        }
+                    }
+
+                    dfsStack.remove(currentNode);
+                }
+
+                return true;
+            }
+        }
+
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
+                                   String name, OnErrorListener onEditErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
+            mName = name;
+            mAlive = true;
+            mOnEditErrorListener = onEditErrorListener;
+            mCycleDetector = new CycleDetector();
         }
 
         @Override
@@ -131,7 +207,19 @@ import java.util.WeakHashMap;
             for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
                 final LayoutRule originalValue = original.getValue();
-                setLayout(changedView, originalValue.verb, originalValue.anchor);
+                try {
+                    setLayout(changedView, originalValue.verb, originalValue.anchor);
+                } catch (CantVisitException e) {
+                    ; // shouldn't reach here
+                }
+            }
+            mAlive = false;
+        }
+
+        @Override
+        public void visit(View rootView) {
+            if (mAlive) {
+                getPathfinder().findTargetsInRoot(rootView, getPath(), this);
             }
         }
 
@@ -152,19 +240,86 @@ import java.util.WeakHashMap;
                 LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
                 mOriginalValues.put(found, originalValue);
             }
-            setLayout(found, newVerb, newAnchorId);
+
+            try {
+                setLayout(found, newVerb, newAnchorId);
+            } catch (CantVisitException e) {
+                cleanup();
+                mOnEditErrorListener.onError(e);
+            }
         }
 
-        private void setLayout(View target, int verb, int anchorId) {
+        private void setLayout(View target, int verb, int anchorId) throws CantVisitException {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
             params.addRule(verb, anchorId);
+
+            final Set<Integer> rules;
+            if (mHorizontalRules.contains(verb)) {
+                rules = mHorizontalRules;
+            } else if (mVerticalRules.contains(verb)) {
+                rules = mVerticalRules;
+            } else {
+                rules = null;
+            }
+
+            if (rules != null && !verifyLayout(target, rules)) {
+                throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
+            }
+
             target.setLayoutParams(params);
+        }
+
+        private boolean verifyLayout(View target, Set<Integer> rules) {
+            ViewGroup parent = (ViewGroup) target.getParent();
+            SparseArray<View> idToChild = new SparseArray<View>();
+
+            int count = parent.getChildCount();
+            for (int i = 0; i < count; i++) {
+                View child = parent.getChildAt(i);
+                int childId = child.getId();
+                if (childId > 0) {
+                    idToChild.put(childId, child);
+                }
+            }
+
+            ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
+            int size = idToChild.size();
+            for (int i = 0; i < size; i++) {
+                final View child = idToChild.valueAt(i);
+                final RelativeLayout.LayoutParams childLayoutParams = (RelativeLayout.LayoutParams) child.getLayoutParams();
+                int[] layoutRules = childLayoutParams.getRules();
+
+                ArrayList<View> dependencies = new ArrayList<View>();
+                for (int rule : rules) {
+                    int dependencyId = layoutRules[rule];
+                    if (dependencyId > 0 && dependencyId != child.getId()) {
+                        dependencies.add(idToChild.get(dependencyId));
+                    }
+                }
+
+                dependencyGraph.put(child, dependencies);
+            }
+
+            return mCycleDetector.hasCycle(dependencyGraph);
         }
 
         protected String name() { return "Layout Update"; }
 
         private final WeakHashMap<View, LayoutRule> mOriginalValues;
         private final LayoutRule mArgs;
+        private final String mName;
+        private static final Set<Integer> mHorizontalRules = new HashSet<Integer>(Arrays.asList(
+                RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
+                RelativeLayout.ALIGN_LEFT, RelativeLayout.ALIGN_RIGHT
+        ));
+        private static final Set<Integer> mVerticalRules = new HashSet<Integer>(Arrays.asList(
+                RelativeLayout.ABOVE, RelativeLayout.BELOW,
+                RelativeLayout.ALIGN_BASELINE, RelativeLayout.ALIGN_TOP,
+                RelativeLayout.ALIGN_BOTTOM
+        ));
+        private boolean mAlive;
+        private final OnErrorListener mOnEditErrorListener;
+        private final CycleDetector mCycleDetector;
     }
 
     public static class LayoutRule {
@@ -428,11 +583,18 @@ import java.util.WeakHashMap;
         mPathfinder = new Pathfinder();
     }
 
+    protected List<Pathfinder.PathElement> getPath() {
+        return mPath;
+    }
+
+    protected Pathfinder getPathfinder() {
+        return mPathfinder;
+    }
+
     protected abstract String name();
 
     private final List<Pathfinder.PathElement> mPath;
     private final Pathfinder mPathfinder;
-
 
     private static final String LOGTAG = "MixpanelAPI.ViewVisitor";
 }

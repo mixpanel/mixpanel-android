@@ -27,7 +27,6 @@ import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.JSONUtils;
-import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -59,7 +58,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisitor.OnErrorListener {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
@@ -75,7 +74,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         final HandlerThread thread = new HandlerThread(ViewCrawler.class.getCanonicalName());
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
-        mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper());
+        mMessageThreadHandler = new ViewCrawlerHandler(context, token, thread.getLooper(), this);
 
         mTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
         mVariantTracker = new VariantTracker(mixpanel);
@@ -126,6 +125,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
         m.what = MESSAGE_SEND_EVENT_TRACKED;
         m.obj = eventName;
 
+        mMessageThreadHandler.sendMessage(m);
+    }
+
+    @Override
+    public void onError(ViewVisitor.CantVisitException e) {
+        final Message m = mMessageThreadHandler.obtainMessage();
+        m.what = MESSAGE_SEND_LAYOUT_ERROR;
+        m.obj = e;
         mMessageThreadHandler.sendMessage(m);
     }
 
@@ -253,7 +260,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
 
     private class ViewCrawlerHandler extends Handler {
 
-        public ViewCrawlerHandler(Context context, String token, Looper looper) {
+        public ViewCrawlerHandler(Context context, String token, Looper looper, ViewVisitor.OnErrorListener editErrorListener) {
             super(looper);
             mContext = context;
             mToken = token;
@@ -267,7 +274,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
             final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
 
             mImageStore = new ImageStore(context);
-            mProtocol = new EditProtocol(resourceIds, mImageStore);
+            mProtocol = new EditProtocol(resourceIds, mImageStore, editErrorListener);
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
@@ -304,6 +311,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                         break;
                     case MESSAGE_SEND_EVENT_TRACKED:
                         sendReportTrackToEditor((String) msg.obj);
+                        break;
+                    case MESSAGE_SEND_LAYOUT_ERROR:
+                        sendLayoutError((ViewVisitor.CantVisitException) msg.obj);
                         break;
                     case MESSAGE_VARIANTS_RECEIVED:
                         handleVariantsReceived((JSONArray) msg.obj);
@@ -642,6 +652,32 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
                 }
                 j.endObject();
                 j.flush();
+            } catch (final IOException e) {
+                Log.e(LOGTAG, "Can't write track_message to server", e);
+            } finally {
+                try {
+                    j.close();
+                } catch (final IOException e) {
+                    Log.e(LOGTAG, "Can't close writer.", e);
+                }
+            }
+        }
+
+        private void sendLayoutError(ViewVisitor.CantVisitException exception) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+                return;
+            }
+
+            final OutputStream out = mEditorConnection.getBufferedOutputStream();
+            final OutputStreamWriter writer = new OutputStreamWriter(out);
+            final JsonWriter j = new JsonWriter(writer);
+
+            try {
+                j.beginObject();
+                j.name("type").value("layout_error");
+                j.name("exception_type").value(exception.getExceptionType());
+                j.name("cid").value(exception.getName());
+                j.endObject();
             } catch (final IOException e) {
                 Log.e(LOGTAG, "Can't write track_message to server", e);
             } finally {
@@ -1052,6 +1088,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug {
     private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
     private static final @MessageType int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
+    private static final @MessageType int MESSAGE_SEND_LAYOUT_ERROR = 12;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 
