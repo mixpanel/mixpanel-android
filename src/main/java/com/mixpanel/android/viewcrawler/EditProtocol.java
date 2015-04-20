@@ -52,11 +52,7 @@ import java.util.List;
         }
     }
 
-    public interface OnErrorListener {
-        public void onError(ViewVisitor.CantVisitException e);
-    }
-
-    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, OnErrorListener editErrorListener) {
+    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnErrorListener editErrorListener) {
         mResourceIds = resourceIds;
         mImageStore = imageStore;
         mEditErrorListener = editErrorListener;
@@ -374,7 +370,7 @@ import java.util.List;
 
     private final ResourceIds mResourceIds;
     private final ImageStore mImageStore;
-    private final OnErrorListener mEditErrorListener;
+    private final ViewVisitor.OnErrorListener mEditErrorListener;
 
     private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();

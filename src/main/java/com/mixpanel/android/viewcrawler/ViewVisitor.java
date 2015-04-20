@@ -38,6 +38,10 @@ import java.util.WeakHashMap;
         public void OnEvent(View host, String eventName, boolean debounce);
     }
 
+    public interface OnErrorListener {
+        public void onError(ViewVisitor.CantVisitException e);
+    }
+
     public static class CantVisitException extends Exception {
         public CantVisitException(String message, String exceptionType, String name) {
             super(message);
@@ -143,7 +147,7 @@ import java.util.WeakHashMap;
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, EditProtocol.OnErrorListener onEditErrorListener) {
+                                   String name, OnErrorListener onEditErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
@@ -310,7 +314,7 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final EditProtocol.OnErrorListener mOnEditErrorListener;
+        private final OnErrorListener mOnEditErrorListener;
     }
 
     public static class LayoutRule {
