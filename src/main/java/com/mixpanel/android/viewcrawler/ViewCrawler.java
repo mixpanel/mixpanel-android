@@ -58,7 +58,7 @@ import javax.net.ssl.SSLSocketFactory;
  * not be called directly by your code.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
-public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisitor.OnErrorListener {
+public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisitor.OnLayoutErrorListener {
 
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
         mConfig = MPConfig.getInstance(context);
@@ -260,7 +260,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
     private class ViewCrawlerHandler extends Handler {
 
-        public ViewCrawlerHandler(Context context, String token, Looper looper, ViewVisitor.OnErrorListener editErrorListener) {
+        public ViewCrawlerHandler(Context context, String token, Looper looper, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
             super(looper);
             mContext = context;
             mToken = token;
@@ -274,7 +274,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
 
             mImageStore = new ImageStore(context);
-            mProtocol = new EditProtocol(resourceIds, mImageStore, editErrorListener);
+            mProtocol = new EditProtocol(resourceIds, mImageStore, layoutErrorListener);
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();

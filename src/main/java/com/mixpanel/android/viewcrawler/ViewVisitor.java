@@ -38,7 +38,7 @@ import java.util.WeakHashMap;
         public void OnEvent(View host, String eventName, boolean debounce);
     }
 
-    public interface OnErrorListener {
+    public interface OnLayoutErrorListener {
         public void onError(ViewVisitor.CantVisitException e);
     }
 
@@ -192,13 +192,13 @@ import java.util.WeakHashMap;
         }
 
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, OnErrorListener onEditErrorListener) {
+                                   String name, OnLayoutErrorListener onLayoutErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, LayoutRule>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mOnEditErrorListener = onEditErrorListener;
+            mOnLayoutErrorListener = onLayoutErrorListener;
             mCycleDetector = new CycleDetector();
         }
 
@@ -245,7 +245,7 @@ import java.util.WeakHashMap;
                 setLayout(found, newVerb, newAnchorId);
             } catch (CantVisitException e) {
                 cleanup();
-                mOnEditErrorListener.onError(e);
+                mOnLayoutErrorListener.onError(e);
             }
         }
 
@@ -318,7 +318,7 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final OnErrorListener mOnEditErrorListener;
+        private final OnLayoutErrorListener mOnLayoutErrorListener;
         private final CycleDetector mCycleDetector;
     }
 
