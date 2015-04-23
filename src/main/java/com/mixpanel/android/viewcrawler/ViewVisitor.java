@@ -191,86 +191,45 @@ import java.util.WeakHashMap;
             }
         }
 
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, OnLayoutErrorListener onLayoutErrorListener) {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, ArrayList<LayoutRule> args,
+                                   String name, OnLayoutErrorListener onEditErrorListener) {
             super(path);
-            mOriginalValues = new WeakHashMap<View, LayoutRule>();
+            mOriginalValues = new WeakHashMap<View, int[]>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mOnLayoutErrorListener = onLayoutErrorListener;
+            mOnEditErrorListener = onEditErrorListener;
             mCycleDetector = new CycleDetector();
         }
 
         @Override
         public void cleanup() {
-            for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
+            // TODO find a way to optimize this.. remove this visitor and trigger a re-layout??
+            for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final LayoutRule originalValue = original.getValue();
-                try {
-                    setLayout(changedView, originalValue.verb, originalValue.anchor);
-                } catch (CantVisitException e) {
-                    ; // shouldn't reach here
+                final int[] originalValue = original.getValue();
+                RelativeLayout.LayoutParams originalParams = (RelativeLayout.LayoutParams) changedView.getLayoutParams();
+                for (int i = 0; i < originalValue.length; i++) {
+                    originalParams.addRule(i, originalValue[i]);
                 }
+                changedView.setLayoutParams(originalParams);
             }
             mAlive = false;
         }
 
-        @Override
-        public void visit(View rootView) {
-            if (mAlive) {
-                getPathfinder().findTargetsInRoot(rootView, getPath(), this);
-            }
-        }
-
+        // layout changes are performed on the children of found according to the LayoutRule
         @Override
         public void accumulate(View found) {
-            final int newVerb = mArgs.verb;
-            final int newAnchorId = mArgs.anchor;
-            final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
-            final int[] currentRules = currentParams.getRules();
-
-            if (currentRules[newVerb] == newAnchorId) {
-                return;
-            }
-
-            if (mOriginalValues.containsKey(found)) {
-                ; // Cache exactly one
-            } else {
-                LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
-                mOriginalValues.put(found, originalValue);
-            }
-
             try {
-                setLayout(found, newVerb, newAnchorId);
+                setLayout(found);
             } catch (CantVisitException e) {
                 cleanup();
-                mOnLayoutErrorListener.onError(e);
+                mOnEditErrorListener.onError(e);
             }
         }
 
-        private void setLayout(View target, int verb, int anchorId) throws CantVisitException {
-            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
-            params.addRule(verb, anchorId);
-
-            final Set<Integer> rules;
-            if (mHorizontalRules.contains(verb)) {
-                rules = mHorizontalRules;
-            } else if (mVerticalRules.contains(verb)) {
-                rules = mVerticalRules;
-            } else {
-                rules = null;
-            }
-
-            if (rules != null && !verifyLayout(target, rules)) {
-                throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
-            }
-
-            target.setLayoutParams(params);
-        }
-
-        private boolean verifyLayout(View target, Set<Integer> rules) {
-            ViewGroup parent = (ViewGroup) target.getParent();
+        private void setLayout(View target) throws CantVisitException {
+            ViewGroup parent = (ViewGroup) target;
             SparseArray<View> idToChild = new SparseArray<View>();
 
             int count = parent.getChildCount();
@@ -282,6 +241,51 @@ import java.util.WeakHashMap;
                 }
             }
 
+            int size = mArgs.size();
+            for (int i = 0; i < size; i++) {
+                LayoutRule layoutRule = mArgs.get(i);
+                final int viewId = layoutRule.viewId;
+                final int newVerb = layoutRule.verb;
+                final int newAnchorId = layoutRule.anchor;
+                final View currentNode = idToChild.get(viewId);
+
+                // typecast ViewGroup.LayoutParams is needed for API 18 and lower
+                final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentNode.getLayoutParams();
+                final int[] currentRules = currentParams.getRules().clone();
+
+                if (currentRules[newVerb] == newAnchorId) {
+                    continue;
+                }
+
+                if (mOriginalValues.containsKey(currentNode)) {
+                    ; // Cache exactly one
+                } else {
+                    mOriginalValues.put(currentNode, currentRules);
+                }
+
+                RelativeLayout.LayoutParams newParams = (RelativeLayout.LayoutParams)currentNode.getLayoutParams();
+                newParams.addRule(newVerb, newAnchorId);
+
+                // only need to verify the last layout change as others have been verified in the previous visit
+                if (i == size - 1) {
+                    final Set<Integer> rules;
+                    if (mHorizontalRules.contains(newVerb)) {
+                        rules = mHorizontalRules;
+                    } else if (mVerticalRules.contains(newVerb)) {
+                        rules = mVerticalRules;
+                    } else {
+                        rules = null;
+                    }
+
+                    if (rules != null && !verifyLayout(rules, idToChild)) {
+                        throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
+                    }
+                }
+                currentNode.setLayoutParams(newParams);
+            }
+        }
+
+        private boolean verifyLayout(Set<Integer> rules, SparseArray<View> idToChild) {
             ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
             int size = idToChild.size();
             for (int i = 0; i < size; i++) {
@@ -305,8 +309,8 @@ import java.util.WeakHashMap;
 
         protected String name() { return "Layout Update"; }
 
-        private final WeakHashMap<View, LayoutRule> mOriginalValues;
-        private final LayoutRule mArgs;
+        private final WeakHashMap<View, int[]> mOriginalValues;
+        private final ArrayList<LayoutRule> mArgs;
         private final String mName;
         private static final Set<Integer> mHorizontalRules = new HashSet<Integer>(Arrays.asList(
                 RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
@@ -318,16 +322,18 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final OnLayoutErrorListener mOnLayoutErrorListener;
+        private final OnLayoutErrorListener mOnEditErrorListener;
         private final CycleDetector mCycleDetector;
     }
 
     public static class LayoutRule {
-        public LayoutRule(int v, int a) {
+        public LayoutRule(int vi, int v, int a) {
+            viewId = vi;
             verb = v;
             anchor = a;
         }
 
+        public final int viewId;
         public final int verb;
         public final int anchor;
     }

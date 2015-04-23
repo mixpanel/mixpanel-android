@@ -149,19 +149,24 @@ import java.util.List;
                 visitor = new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.getString("change_type").equals("layout")) {
                 final JSONArray args = source.getJSONArray("args");
-                JSONObject layout_info = args.optJSONObject(0);
-                ViewVisitor.LayoutRule params;
-                int verb = layout_info.getInt("verb");
-                String name = source.getString("name");
-                if (layout_info.getString("operation").equals("remove")) {
-                    params = new ViewVisitor.LayoutRule(verb, 0);
-                } else if (layout_info.has("anchor_id")) {
-                    params = new ViewVisitor.LayoutRule(verb, layout_info.getInt("anchor_id"));
-                } else {
-                    params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
+                ArrayList<ViewVisitor.LayoutRule> newParams = new ArrayList<ViewVisitor.LayoutRule>();
+                int length = args.length();
+                for (int i = 0; i < length; i++) {
+                    JSONObject layout_info = args.optJSONObject(i);
+                    ViewVisitor.LayoutRule params;
+                    int verb = layout_info.getInt("verb");
+                    int viewId = layout_info.getInt("view_id");
+                    if (layout_info.getString("operation").equals("remove")) {
+                        params = new ViewVisitor.LayoutRule(viewId, verb, 0);
+                    } else if (layout_info.has("anchor_id")) {
+                        params = new ViewVisitor.LayoutRule(viewId, verb, layout_info.getInt("anchor_id"));
+                    } else {
+                        params = new ViewVisitor.LayoutRule(viewId, verb, RelativeLayout.TRUE);
+                    }
+                    newParams.add(params);
                 }
-
-                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params, name, mLayoutErrorListener);
+                String name = source.getString("name");
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, name, mLayoutErrorListener);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }
