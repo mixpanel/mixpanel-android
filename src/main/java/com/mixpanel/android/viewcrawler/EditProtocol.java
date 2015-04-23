@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.util.Pair;
@@ -342,9 +343,13 @@ import java.util.List;
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
             } else if ("android.graphics.drawable.Drawable".equals(type)) {
+                // For historical reasons, we attempt to interpret generic Drawables as BitmapDrawables
                 return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
             } else if ("android.graphics.drawable.BitmapDrawable".equals(type)) {
                 return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
+            } else if ("android.graphics.drawable.ColorDrawable".equals(type)) {
+                int colorValue = ((Number) jsonArgument).intValue();
+                return new ColorDrawable(colorValue);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }

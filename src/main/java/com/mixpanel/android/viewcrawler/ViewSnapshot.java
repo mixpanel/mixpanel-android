@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
@@ -260,6 +261,10 @@ import java.util.concurrent.TimeoutException;
                             j.name("top").value(bounds.top);
                             j.name("bottom").value(bounds.bottom);
                         j.endObject();
+                        if (drawable instanceof ColorDrawable) {
+                            final ColorDrawable colorDrawable = (ColorDrawable) drawable;
+                            j.name("color").value(colorDrawable.getColor());
+                        }
                     j.endObject();
                 } else {
                     j.name(desc.name).value(value.toString());
