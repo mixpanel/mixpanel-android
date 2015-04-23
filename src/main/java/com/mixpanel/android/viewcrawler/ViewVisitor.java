@@ -39,7 +39,7 @@ import java.util.WeakHashMap;
     }
 
     public interface OnLayoutErrorListener {
-        public void onError(ViewVisitor.CantVisitException e);
+        public void onLayoutError(ViewVisitor.CantVisitException e);
     }
 
     public static class CantVisitException extends Exception {
@@ -234,7 +234,7 @@ import java.util.WeakHashMap;
                 setLayout(found);
             } catch (CantVisitException e) {
                 cleanup();
-                mOnEditErrorListener.onError(e);
+                mOnEditErrorListener.onLayoutError(e);
             }
         }
 

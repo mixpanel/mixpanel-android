@@ -129,7 +129,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     @Override
-    public void onError(ViewVisitor.CantVisitException e) {
+    public void onLayoutError(ViewVisitor.CantVisitException e) {
         final Message m = mMessageThreadHandler.obtainMessage();
         m.what = MESSAGE_SEND_LAYOUT_ERROR;
         m.obj = e;
