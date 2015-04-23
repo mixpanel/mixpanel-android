@@ -114,6 +114,9 @@ public class ViewVisitorTest extends AndroidTestCase {
         mFindButton2 = new ArrayList<Pathfinder.PathElement>();
         mFindButton2.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, mRootView.mAdHocButton2.getClass().getCanonicalName(), -1, -1, null, null));
 
+        mRelativeLayoutPath = new ArrayList<Pathfinder.PathElement>();
+        mRelativeLayoutPath.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, null, -1, TestView.RELATIVE_LAYOUT_ID, null, null));
+
         mRelativeLayoutButtonPath = new ArrayList<Pathfinder.PathElement>();
         mRelativeLayoutButtonPath.add(new Pathfinder.PathElement(Pathfinder.PathElement.SHORTEST_PREFIX, null, -1, TestView.RELATIVE_LAYOUT_BUTTON1_ID, null, null));
 
@@ -446,10 +449,11 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testLayoutVisitor () {
-        ViewVisitor.LayoutRule params = new ViewVisitor.LayoutRule(0, RelativeLayout.TRUE);
+        ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
+        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, 0, RelativeLayout.TRUE));
 
         final ViewVisitor layoutVisitor =
-                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutButtonPath, params, "test", null);
+                new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutPath, params, "test", null);
         layoutVisitor.visit(mRootView);
 
         RelativeLayout.LayoutParams layoutParams =
@@ -510,6 +514,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<Pathfinder.PathElement> mFirstInButtonGroup;
     private List<Pathfinder.PathElement> mFindButtonGroupInRoot;
     private List<Pathfinder.PathElement> mFindButton2;
+    private List<Pathfinder.PathElement> mRelativeLayoutPath;
     private List<Pathfinder.PathElement> mRelativeLayoutButtonPath;
 
     private List<Pathfinder.PathElement> mRootWildcardPath;
