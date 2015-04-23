@@ -154,13 +154,8 @@ import java.util.List;
                 for (int i = 0; i < length; i++) {
                     JSONObject layout_info = args.optJSONObject(i);
                     ViewVisitor.LayoutRule params;
-                    int verb = layout_info.getInt("verb");
-                    int viewId = layout_info.getInt("view_id");
-                    if (layout_info.getString("operation").equals("remove")) {
-                        params = new ViewVisitor.LayoutRule(viewId, verb, 0);
-                    } else {
-                        params = new ViewVisitor.LayoutRule(viewId, verb, layout_info.getInt("anchor_id"));
-                    }
+                    params = new ViewVisitor.LayoutRule(layout_info.getInt("view_id"),
+                            layout_info.getInt("verb"), layout_info.getInt("anchor_id"));
                     newParams.add(params);
                 }
                 String name = source.getString("name");
