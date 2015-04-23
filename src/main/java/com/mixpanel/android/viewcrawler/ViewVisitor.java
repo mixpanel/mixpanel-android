@@ -208,7 +208,7 @@ import java.util.WeakHashMap;
             for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
                 final int[] originalValue = original.getValue();
-                RelativeLayout.LayoutParams originalParams = (RelativeLayout.LayoutParams) changedView.getLayoutParams();
+                final RelativeLayout.LayoutParams originalParams = (RelativeLayout.LayoutParams) changedView.getLayoutParams();
                 for (int i = 0; i < originalValue.length; i++) {
                     originalParams.addRule(i, originalValue[i]);
                 }
