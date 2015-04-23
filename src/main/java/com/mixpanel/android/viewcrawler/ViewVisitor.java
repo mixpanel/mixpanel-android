@@ -217,6 +217,16 @@ import java.util.WeakHashMap;
             mAlive = false;
         }
 
+        @Override
+        public void visit(View rootView) {
+            // this check is necessary - if the layout change is invalid, accumulate will send an error message
+            // to the Web UI; before Web UI removes such change, this visit may get called by Android again and
+            // thus send another error message to Web UI which leads to lots of weird problems
+            if (mAlive) {
+                getPathfinder().findTargetsInRoot(rootView, getPath(), this);
+            }
+        }
+
         // layout changes are performed on the children of found according to the LayoutRule
         @Override
         public void accumulate(View found) {

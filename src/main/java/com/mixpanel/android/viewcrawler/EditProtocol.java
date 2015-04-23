@@ -158,10 +158,8 @@ import java.util.List;
                     int viewId = layout_info.getInt("view_id");
                     if (layout_info.getString("operation").equals("remove")) {
                         params = new ViewVisitor.LayoutRule(viewId, verb, 0);
-                    } else if (layout_info.has("anchor_id")) {
-                        params = new ViewVisitor.LayoutRule(viewId, verb, layout_info.getInt("anchor_id"));
                     } else {
-                        params = new ViewVisitor.LayoutRule(viewId, verb, RelativeLayout.TRUE);
+                        params = new ViewVisitor.LayoutRule(viewId, verb, layout_info.getInt("anchor_id"));
                     }
                     newParams.add(params);
                 }
