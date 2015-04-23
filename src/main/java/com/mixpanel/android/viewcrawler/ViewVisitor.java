@@ -145,52 +145,52 @@ import java.util.WeakHashMap;
         private final Object[] mOriginalValueHolder;
     }
 
-    public static class LayoutUpdateVisitor extends ViewVisitor {
-        private class CycleDetector {
+    private static class CycleDetector {
 
-            /**
-             * This function detects circular dependencies for all the views under the parent
-             * of the updated view. The basic idea is to consider the views as a directed
-             * graph and perform a DFS on all the nodes in the graph. If the current node is
-             * in the DFS stack already, there must be a circle in the graph. To speed up the
-             * search, all the parsed nodes will be removed from the graph.
-             */
-            public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
-                ArrayList<View> dfsStack = new ArrayList<View>();
-                while (!dependencyGraph.isEmpty()) {
-                    View currentNode = dependencyGraph.keyAt(0);
-                    if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
+        /**
+         * This function detects circular dependencies for all the views under the parent
+         * of the updated view. The basic idea is to consider the views as a directed
+         * graph and perform a DFS on all the nodes in the graph. If the current node is
+         * in the DFS stack already, there must be a circle in the graph. To speed up the
+         * search, all the parsed nodes will be removed from the graph.
+         */
+        public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
+            ArrayList<View> dfsStack = new ArrayList<View>();
+            while (!dependencyGraph.isEmpty()) {
+                View currentNode = dependencyGraph.keyAt(0);
+                if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
+                                            View currentNode, ArrayList<View> dfsStack) {
+            if (dfsStack.contains(currentNode)) {
+                return false;
+            }
+
+            if (dependencyGraph.containsKey(currentNode)) {
+                ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
+                dfsStack.add(currentNode);
+
+                int size = dependencies.size();
+                for (int i = 0; i < size; i++) {
+                    if (!detectSubgraphCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
                         return false;
                     }
                 }
 
-                return true;
+                dfsStack.remove(currentNode);
             }
 
-            private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
-                                                View currentNode, ArrayList<View> dfsStack) {
-                if (dfsStack.contains(currentNode)) {
-                    return false;
-                }
-
-                if (dependencyGraph.containsKey(currentNode)) {
-                    ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
-                    dfsStack.add(currentNode);
-
-                    int size = dependencies.size();
-                    for (int i = 0; i < size; i++) {
-                        if (!detectSubgraphCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
-                            return false;
-                        }
-                    }
-
-                    dfsStack.remove(currentNode);
-                }
-
-                return true;
-            }
+            return true;
         }
+    }
 
+    public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, ArrayList<LayoutRule> args,
                                    String name, OnLayoutErrorListener onEditErrorListener) {
             super(path);
