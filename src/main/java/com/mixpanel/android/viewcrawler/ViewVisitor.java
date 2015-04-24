@@ -261,23 +261,21 @@ import java.util.WeakHashMap;
 
                 currentParams.addRule(layoutRule.verb, layoutRule.anchor);
 
-                // only need to verify the last layout change as others have been verified in the previous visit
-                if (i == size - 1) {
-                    final Set<Integer> rules;
-                    if (mHorizontalRules.contains(layoutRule.verb)) {
-                        rules = mHorizontalRules;
-                    } else if (mVerticalRules.contains(layoutRule.verb)) {
-                        rules = mVerticalRules;
-                    } else {
-                        rules = null;
-                    }
-
-                    if (rules != null && !verifyLayout(rules, idToChild)) {
-                        cleanup();
-                        mOnLayoutErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
-                        return;
-                    }
+                final Set<Integer> rules;
+                if (mHorizontalRules.contains(layoutRule.verb)) {
+                    rules = mHorizontalRules;
+                } else if (mVerticalRules.contains(layoutRule.verb)) {
+                    rules = mVerticalRules;
+                } else {
+                    rules = null;
                 }
+
+                if (rules != null && !verifyLayout(rules, idToChild)) {
+                    cleanup();
+                    mOnLayoutErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
+                    return;
+                }
+
                 currentChild.setLayoutParams(currentParams);
             }
         }
