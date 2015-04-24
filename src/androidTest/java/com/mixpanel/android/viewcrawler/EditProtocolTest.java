@@ -27,14 +27,14 @@ import java.util.Map;
 public class EditProtocolTest extends AndroidTestCase {
     private static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
         public MockOnLayoutErrorListener() {
-            errorList = new ArrayList<ViewVisitor.CantVisitException>();
+            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
         }
 
-        public void onLayoutError(ViewVisitor.CantVisitException e) {
+        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
             errorList.add(e);
         }
 
-        public List<ViewVisitor.CantVisitException> errorList;
+        public List<ViewVisitor.LayoutErrorMessage> errorList;
     }
 
     @Override
@@ -298,8 +298,8 @@ public class EditProtocolTest extends AndroidTestCase {
         int[] rules3 = params3.getRules();
         assertEquals(rules3[3], 0);
         assertEquals(mLayoutErrorListener.errorList.size(), 1);
-        ViewVisitor.CantVisitException e = mLayoutErrorListener.errorList.get(0);
-        assertEquals(e.getExceptionType(), "circular_dependency");
+        ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
+        assertEquals(e.getErrorType(), "circular_dependency");
         assertEquals(e.getName(), "test3");
     }
 

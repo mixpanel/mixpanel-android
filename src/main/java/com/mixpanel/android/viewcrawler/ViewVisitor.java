@@ -39,25 +39,24 @@ import java.util.WeakHashMap;
     }
 
     public interface OnLayoutErrorListener {
-        public void onLayoutError(ViewVisitor.CantVisitException e);
+        public void onLayoutError(LayoutErrorMessage e);
     }
 
-    public static class CantVisitException extends Exception {
-        public CantVisitException(String message, String exceptionType, String name) {
-            super(message);
-            mExceptionType = exceptionType;
+    public static class LayoutErrorMessage {
+        public LayoutErrorMessage(String errorType, String name) {
+            mErrorType = errorType;
             mName = name;
         }
 
-        public String getExceptionType() {
-            return mExceptionType;
+        public String getErrorType() {
+            return mErrorType;
         }
 
         public String getName() {
             return mName;
         }
 
-        private final String mExceptionType;
+        private final String mErrorType;
         private final String mName;
     }
 
@@ -230,16 +229,7 @@ import java.util.WeakHashMap;
         // layout changes are performed on the children of found according to the LayoutRule
         @Override
         public void accumulate(View found) {
-            try {
-                setLayout(found);
-            } catch (CantVisitException e) {
-                cleanup();
-                mOnEditErrorListener.onLayoutError(e);
-            }
-        }
-
-        private void setLayout(View target) throws CantVisitException {
-            ViewGroup parent = (ViewGroup) target;
+            ViewGroup parent = (ViewGroup) found;
             SparseArray<View> idToChild = new SparseArray<View>();
 
             int count = parent.getChildCount();
@@ -288,7 +278,9 @@ import java.util.WeakHashMap;
                     }
 
                     if (rules != null && !verifyLayout(rules, idToChild)) {
-                        throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
+                        cleanup();
+                        mOnEditErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
+                        return;
                     }
                 }
                 currentNode.setLayoutParams(newParams);

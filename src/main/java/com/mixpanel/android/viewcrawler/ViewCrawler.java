@@ -129,7 +129,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     @Override
-    public void onLayoutError(ViewVisitor.CantVisitException e) {
+    public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
         final Message m = mMessageThreadHandler.obtainMessage();
         m.what = MESSAGE_SEND_LAYOUT_ERROR;
         m.obj = e;
@@ -313,7 +313,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         sendReportTrackToEditor((String) msg.obj);
                         break;
                     case MESSAGE_SEND_LAYOUT_ERROR:
-                        sendLayoutError((ViewVisitor.CantVisitException) msg.obj);
+                        sendLayoutError((ViewVisitor.LayoutErrorMessage) msg.obj);
                         break;
                     case MESSAGE_VARIANTS_RECEIVED:
                         handleVariantsReceived((JSONArray) msg.obj);
@@ -663,7 +663,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
         }
 
-        private void sendLayoutError(ViewVisitor.CantVisitException exception) {
+        private void sendLayoutError(ViewVisitor.LayoutErrorMessage exception) {
             if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
             }
@@ -675,7 +675,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             try {
                 j.beginObject();
                 j.name("type").value("layout_error");
-                j.name("exception_type").value(exception.getExceptionType());
+                j.name("exception_type").value(exception.getErrorType());
                 j.name("cid").value(exception.getName());
                 j.endObject();
             } catch (final IOException e) {
