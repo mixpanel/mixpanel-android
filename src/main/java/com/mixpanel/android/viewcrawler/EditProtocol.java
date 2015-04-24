@@ -158,8 +158,7 @@ import java.util.List;
                             layout_info.getInt("verb"), layout_info.getInt("anchor_id"));
                     newParams.add(params);
                 }
-                String name = source.getString("name");
-                visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, name, mLayoutErrorListener);
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, source.getString("name"), mLayoutErrorListener);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }
