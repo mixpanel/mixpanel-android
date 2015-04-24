@@ -246,7 +246,6 @@ import java.util.WeakHashMap;
                 LayoutRule layoutRule = mArgs.get(i);
                 final View currentNode = idToChild.get(layoutRule.viewId);
 
-                // typecast ViewGroup.LayoutParams is needed for API 18 and lower
                 final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentNode.getLayoutParams();
                 final int[] currentRules = currentParams.getRules().clone();
 
