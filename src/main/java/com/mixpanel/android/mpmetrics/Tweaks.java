@@ -97,7 +97,7 @@ public class Tweaks {
     public double getDouble(String tweakName) {
         double ret = 0.0;
         try {
-            ret = (Double) get(tweakName);
+            ret = ((Number) get(tweakName)).doubleValue();
         } catch (ClassCastException e) {
             ;
         }
@@ -108,7 +108,7 @@ public class Tweaks {
     public long getLong(String tweakName) {
         long ret = 0;
         try {
-            ret = (Long) get(tweakName);
+            ret = ((Number) get(tweakName)).longValue();
         } catch (ClassCastException e) {
             ;
         }
