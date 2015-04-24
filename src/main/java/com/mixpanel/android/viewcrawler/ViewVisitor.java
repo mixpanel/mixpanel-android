@@ -246,7 +246,7 @@ import java.util.WeakHashMap;
                 LayoutRule layoutRule = mArgs.get(i);
                 final View currentChild = idToChild.get(layoutRule.viewId);
 
-                final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentChild.getLayoutParams();
+                RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentChild.getLayoutParams();
                 final int[] currentRules = currentParams.getRules().clone();
 
                 if (currentRules[layoutRule.verb] == layoutRule.anchor) {
@@ -259,8 +259,7 @@ import java.util.WeakHashMap;
                     mOriginalValues.put(currentChild, currentRules);
                 }
 
-                RelativeLayout.LayoutParams newParams = (RelativeLayout.LayoutParams)currentChild.getLayoutParams();
-                newParams.addRule(layoutRule.verb, layoutRule.anchor);
+                currentParams.addRule(layoutRule.verb, layoutRule.anchor);
 
                 // only need to verify the last layout change as others have been verified in the previous visit
                 if (i == size - 1) {
@@ -279,7 +278,7 @@ import java.util.WeakHashMap;
                         return;
                     }
                 }
-                currentChild.setLayoutParams(newParams);
+                currentChild.setLayoutParams(currentParams);
             }
         }
 
