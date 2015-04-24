@@ -244,22 +244,22 @@ import java.util.WeakHashMap;
             int size = mArgs.size();
             for (int i = 0; i < size; i++) {
                 LayoutRule layoutRule = mArgs.get(i);
-                final View currentNode = idToChild.get(layoutRule.viewId);
+                final View currentChild = idToChild.get(layoutRule.viewId);
 
-                final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentNode.getLayoutParams();
+                final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentChild.getLayoutParams();
                 final int[] currentRules = currentParams.getRules().clone();
 
                 if (currentRules[layoutRule.verb] == layoutRule.anchor) {
                     continue;
                 }
 
-                if (mOriginalValues.containsKey(currentNode)) {
-                    ; // Cache exactly one
+                if (mOriginalValues.containsKey(currentChild)) {
+                    ; // Cache exactly one set of rules per child view
                 } else {
-                    mOriginalValues.put(currentNode, currentRules);
+                    mOriginalValues.put(currentChild, currentRules);
                 }
 
-                RelativeLayout.LayoutParams newParams = (RelativeLayout.LayoutParams)currentNode.getLayoutParams();
+                RelativeLayout.LayoutParams newParams = (RelativeLayout.LayoutParams)currentChild.getLayoutParams();
                 newParams.addRule(layoutRule.verb, layoutRule.anchor);
 
                 // only need to verify the last layout change as others have been verified in the previous visit
@@ -279,7 +279,7 @@ import java.util.WeakHashMap;
                         return;
                     }
                 }
-                currentNode.setLayoutParams(newParams);
+                currentChild.setLayoutParams(newParams);
             }
         }
 
