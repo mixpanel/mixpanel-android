@@ -244,16 +244,13 @@ import java.util.WeakHashMap;
             int size = mArgs.size();
             for (int i = 0; i < size; i++) {
                 LayoutRule layoutRule = mArgs.get(i);
-                final int viewId = layoutRule.viewId;
-                final int newVerb = layoutRule.verb;
-                final int newAnchorId = layoutRule.anchor;
-                final View currentNode = idToChild.get(viewId);
+                final View currentNode = idToChild.get(layoutRule.viewId);
 
                 // typecast ViewGroup.LayoutParams is needed for API 18 and lower
                 final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentNode.getLayoutParams();
                 final int[] currentRules = currentParams.getRules().clone();
 
-                if (currentRules[newVerb] == newAnchorId) {
+                if (currentRules[layoutRule.verb] == layoutRule.anchor) {
                     continue;
                 }
 
@@ -264,14 +261,14 @@ import java.util.WeakHashMap;
                 }
 
                 RelativeLayout.LayoutParams newParams = (RelativeLayout.LayoutParams)currentNode.getLayoutParams();
-                newParams.addRule(newVerb, newAnchorId);
+                newParams.addRule(layoutRule.verb, layoutRule.anchor);
 
                 // only need to verify the last layout change as others have been verified in the previous visit
                 if (i == size - 1) {
                     final Set<Integer> rules;
-                    if (mHorizontalRules.contains(newVerb)) {
+                    if (mHorizontalRules.contains(layoutRule.verb)) {
                         rules = mHorizontalRules;
-                    } else if (mVerticalRules.contains(newVerb)) {
+                    } else if (mVerticalRules.contains(layoutRule.verb)) {
                         rules = mVerticalRules;
                     } else {
                         rules = null;
