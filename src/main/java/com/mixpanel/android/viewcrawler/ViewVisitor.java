@@ -191,13 +191,13 @@ import java.util.WeakHashMap;
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
         public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, ArrayList<LayoutRule> args,
-                                   String name, OnLayoutErrorListener onEditErrorListener) {
+                                   String name, OnLayoutErrorListener onLayoutErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, int[]>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mOnEditErrorListener = onEditErrorListener;
+            mOnLayoutErrorListener = onLayoutErrorListener;
             mCycleDetector = new CycleDetector();
         }
 
@@ -274,7 +274,7 @@ import java.util.WeakHashMap;
 
                     if (rules != null && !verifyLayout(rules, idToChild)) {
                         cleanup();
-                        mOnEditErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
+                        mOnLayoutErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
                         return;
                     }
                 }
@@ -319,7 +319,7 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final OnLayoutErrorListener mOnEditErrorListener;
+        private final OnLayoutErrorListener mOnLayoutErrorListener;
         private final CycleDetector mCycleDetector;
     }
 
