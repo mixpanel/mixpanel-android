@@ -62,10 +62,10 @@ import java.util.List;
         public final List<String> imageUrls;
     }
 
-    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnErrorListener editErrorListener) {
+    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
         mResourceIds = resourceIds;
         mImageStore = imageStore;
-        mEditErrorListener = editErrorListener;
+        mLayoutErrorListener = layoutErrorListener;
     }
 
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnEventListener listener) throws BadInstructionsException {
@@ -150,19 +150,16 @@ import java.util.List;
                 visitor = new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
             } else if (source.getString("change_type").equals("layout")) {
                 final JSONArray args = source.getJSONArray("args");
-                JSONObject layout_info = args.optJSONObject(0);
-                ViewVisitor.LayoutRule params;
-                int verb = layout_info.getInt("verb");
-                String name = source.getString("name");
-                if (layout_info.getString("operation").equals("remove")) {
-                    params = new ViewVisitor.LayoutRule(verb, 0);
-                } else if (layout_info.has("anchor_id")) {
-                    params = new ViewVisitor.LayoutRule(verb, layout_info.getInt("anchor_id"));
-                } else {
-                    params = new ViewVisitor.LayoutRule(verb, RelativeLayout.TRUE);
+                ArrayList<ViewVisitor.LayoutRule> newParams = new ArrayList<ViewVisitor.LayoutRule>();
+                int length = args.length();
+                for (int i = 0; i < length; i++) {
+                    JSONObject layout_info = args.optJSONObject(i);
+                    ViewVisitor.LayoutRule params;
+                    params = new ViewVisitor.LayoutRule(layout_info.getInt("view_id"),
+                            layout_info.getInt("verb"), layout_info.getInt("anchor_id"));
+                    newParams.add(params);
                 }
-
-                visitor = new ViewVisitor.LayoutUpdateVisitor(path, params, name, mEditErrorListener);
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, source.getString("name"), mLayoutErrorListener);
             } else {
                 throw new BadInstructionsException("Can't figure out the edit type");
             }
@@ -392,7 +389,7 @@ import java.util.List;
 
     private final ResourceIds mResourceIds;
     private final ImageStore mImageStore;
-    private final ViewVisitor.OnErrorListener mEditErrorListener;
+    private final ViewVisitor.OnLayoutErrorListener mLayoutErrorListener;
 
     private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();

@@ -38,26 +38,25 @@ import java.util.WeakHashMap;
         public void OnEvent(View host, String eventName, boolean debounce);
     }
 
-    public interface OnErrorListener {
-        public void onError(ViewVisitor.CantVisitException e);
+    public interface OnLayoutErrorListener {
+        public void onLayoutError(LayoutErrorMessage e);
     }
 
-    public static class CantVisitException extends Exception {
-        public CantVisitException(String message, String exceptionType, String name) {
-            super(message);
-            mExceptionType = exceptionType;
+    public static class LayoutErrorMessage {
+        public LayoutErrorMessage(String errorType, String name) {
+            mErrorType = errorType;
             mName = name;
         }
 
-        public String getExceptionType() {
-            return mExceptionType;
+        public String getErrorType() {
+            return mErrorType;
         }
 
         public String getName() {
             return mName;
         }
 
-        private final String mExceptionType;
+        private final String mErrorType;
         private final String mName;
     }
 
@@ -145,132 +144,92 @@ import java.util.WeakHashMap;
         private final Object[] mOriginalValueHolder;
     }
 
-    public static class LayoutUpdateVisitor extends ViewVisitor {
-        private class CycleDetector {
+    private static class CycleDetector {
 
-            /**
-             * This function detects circular dependencies for all the views under the parent
-             * of the updated view. The basic idea is to consider the views as a directed
-             * graph and perform a DFS on all the nodes in the graph. If the current node is
-             * in the DFS stack already, there must be a circle in the graph. To speed up the
-             * search, all the parsed nodes will be removed from the graph.
-             */
-            public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
-                ArrayList<View> dfsStack = new ArrayList<View>();
-                while (!dependencyGraph.isEmpty()) {
-                    View currentNode = dependencyGraph.keyAt(0);
-                    if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
+        /**
+         * This function detects circular dependencies for all the views under the parent
+         * of the updated view. The basic idea is to consider the views as a directed
+         * graph and perform a DFS on all the nodes in the graph. If the current node is
+         * in the DFS stack already, there must be a circle in the graph. To speed up the
+         * search, all the parsed nodes will be removed from the graph.
+         */
+        public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
+            ArrayList<View> dfsStack = new ArrayList<View>();
+            while (!dependencyGraph.isEmpty()) {
+                View currentNode = dependencyGraph.keyAt(0);
+                if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
+                                            View currentNode, ArrayList<View> dfsStack) {
+            if (dfsStack.contains(currentNode)) {
+                return false;
+            }
+
+            if (dependencyGraph.containsKey(currentNode)) {
+                ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
+                dfsStack.add(currentNode);
+
+                int size = dependencies.size();
+                for (int i = 0; i < size; i++) {
+                    if (!detectSubgraphCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
                         return false;
                     }
                 }
 
-                return true;
+                dfsStack.remove(currentNode);
             }
 
-            private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
-                                                View currentNode, ArrayList<View> dfsStack) {
-                if (dfsStack.contains(currentNode)) {
-                    return false;
-                }
-
-                if (dependencyGraph.containsKey(currentNode)) {
-                    ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
-                    dfsStack.add(currentNode);
-
-                    int size = dependencies.size();
-                    for (int i = 0; i < size; i++) {
-                        if (!detectSubgraphCycle(dependencyGraph, dependencies.get(i), dfsStack)) {
-                            return false;
-                        }
-                    }
-
-                    dfsStack.remove(currentNode);
-                }
-
-                return true;
-            }
+            return true;
         }
+    }
 
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, LayoutRule args,
-                                   String name, OnErrorListener onEditErrorListener) {
+    public static class LayoutUpdateVisitor extends ViewVisitor {
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, ArrayList<LayoutRule> args,
+                                   String name, OnLayoutErrorListener onLayoutErrorListener) {
             super(path);
-            mOriginalValues = new WeakHashMap<View, LayoutRule>();
+            mOriginalValues = new WeakHashMap<View, int[]>();
             mArgs = args;
             mName = name;
             mAlive = true;
-            mOnEditErrorListener = onEditErrorListener;
+            mOnLayoutErrorListener = onLayoutErrorListener;
             mCycleDetector = new CycleDetector();
         }
 
         @Override
         public void cleanup() {
-            for (Map.Entry<View, LayoutRule> original:mOriginalValues.entrySet()) {
+            // TODO find a way to optimize this.. remove this visitor and trigger a re-layout??
+            for (Map.Entry<View, int[]> original:mOriginalValues.entrySet()) {
                 final View changedView = original.getKey();
-                final LayoutRule originalValue = original.getValue();
-                try {
-                    setLayout(changedView, originalValue.verb, originalValue.anchor);
-                } catch (CantVisitException e) {
-                    ; // shouldn't reach here
+                final int[] originalValue = original.getValue();
+                final RelativeLayout.LayoutParams originalParams = (RelativeLayout.LayoutParams) changedView.getLayoutParams();
+                for (int i = 0; i < originalValue.length; i++) {
+                    originalParams.addRule(i, originalValue[i]);
                 }
+                changedView.setLayoutParams(originalParams);
             }
             mAlive = false;
         }
 
         @Override
         public void visit(View rootView) {
+            // this check is necessary - if the layout change is invalid, accumulate will send an error message
+            // to the Web UI; before Web UI removes such change, this visit may get called by Android again and
+            // thus send another error message to Web UI which leads to lots of weird problems
             if (mAlive) {
                 getPathfinder().findTargetsInRoot(rootView, getPath(), this);
             }
         }
 
+        // layout changes are performed on the children of found according to the LayoutRule
         @Override
         public void accumulate(View found) {
-            final int newVerb = mArgs.verb;
-            final int newAnchorId = mArgs.anchor;
-            final RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams)found.getLayoutParams();
-            final int[] currentRules = currentParams.getRules();
-
-            if (currentRules[newVerb] == newAnchorId) {
-                return;
-            }
-
-            if (mOriginalValues.containsKey(found)) {
-                ; // Cache exactly one
-            } else {
-                LayoutRule originalValue = new LayoutRule(newVerb, currentRules[newVerb]);
-                mOriginalValues.put(found, originalValue);
-            }
-
-            try {
-                setLayout(found, newVerb, newAnchorId);
-            } catch (CantVisitException e) {
-                cleanup();
-                mOnEditErrorListener.onError(e);
-            }
-        }
-
-        private void setLayout(View target, int verb, int anchorId) throws CantVisitException {
-            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)target.getLayoutParams();
-            params.addRule(verb, anchorId);
-
-            final Set<Integer> rules;
-            if (mHorizontalRules.contains(verb)) {
-                rules = mHorizontalRules;
-            } else if (mVerticalRules.contains(verb)) {
-                rules = mVerticalRules;
-            } else {
-                rules = null;
-            }
-
-            if (rules != null && !verifyLayout(target, rules)) {
-                throw new CantVisitException("Circular dependency detected!", "circular_dependency", mName);
-            }
-
-            target.setLayoutParams(params);
-        }
-
-        private boolean verifyLayout(View target, Set<Integer> rules) {
-            ViewGroup parent = (ViewGroup) target.getParent();
+            ViewGroup parent = (ViewGroup) found;
             SparseArray<View> idToChild = new SparseArray<View>();
 
             int count = parent.getChildCount();
@@ -282,6 +241,46 @@ import java.util.WeakHashMap;
                 }
             }
 
+            int size = mArgs.size();
+            for (int i = 0; i < size; i++) {
+                LayoutRule layoutRule = mArgs.get(i);
+                final View currentChild = idToChild.get(layoutRule.viewId);
+
+                RelativeLayout.LayoutParams currentParams = (RelativeLayout.LayoutParams) currentChild.getLayoutParams();
+                final int[] currentRules = currentParams.getRules().clone();
+
+                if (currentRules[layoutRule.verb] == layoutRule.anchor) {
+                    continue;
+                }
+
+                if (mOriginalValues.containsKey(currentChild)) {
+                    ; // Cache exactly one set of rules per child view
+                } else {
+                    mOriginalValues.put(currentChild, currentRules);
+                }
+
+                currentParams.addRule(layoutRule.verb, layoutRule.anchor);
+
+                final Set<Integer> rules;
+                if (mHorizontalRules.contains(layoutRule.verb)) {
+                    rules = mHorizontalRules;
+                } else if (mVerticalRules.contains(layoutRule.verb)) {
+                    rules = mVerticalRules;
+                } else {
+                    rules = null;
+                }
+
+                if (rules != null && !verifyLayout(rules, idToChild)) {
+                    cleanup();
+                    mOnLayoutErrorListener.onLayoutError(new LayoutErrorMessage("circular_dependency", mName));
+                    return;
+                }
+
+                currentChild.setLayoutParams(currentParams);
+            }
+        }
+
+        private boolean verifyLayout(Set<Integer> rules, SparseArray<View> idToChild) {
             ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
             int size = idToChild.size();
             for (int i = 0; i < size; i++) {
@@ -305,8 +304,8 @@ import java.util.WeakHashMap;
 
         protected String name() { return "Layout Update"; }
 
-        private final WeakHashMap<View, LayoutRule> mOriginalValues;
-        private final LayoutRule mArgs;
+        private final WeakHashMap<View, int[]> mOriginalValues;
+        private final ArrayList<LayoutRule> mArgs;
         private final String mName;
         private static final Set<Integer> mHorizontalRules = new HashSet<Integer>(Arrays.asList(
                 RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
@@ -318,16 +317,18 @@ import java.util.WeakHashMap;
                 RelativeLayout.ALIGN_BOTTOM
         ));
         private boolean mAlive;
-        private final OnErrorListener mOnEditErrorListener;
+        private final OnLayoutErrorListener mOnLayoutErrorListener;
         private final CycleDetector mCycleDetector;
     }
 
     public static class LayoutRule {
-        public LayoutRule(int v, int a) {
+        public LayoutRule(int vi, int v, int a) {
+            viewId = vi;
             verb = v;
             anchor = a;
         }
 
+        public final int viewId;
         public final int verb;
         public final int anchor;
     }
