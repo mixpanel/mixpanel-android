@@ -86,7 +86,8 @@ public class Tweaks {
     public String getString(String tweakName) {
         String ret = null;
         try {
-            ret = (String) get(tweakName);
+            final Object raw = get(tweakName);
+            ret = (String) raw;
         } catch (ClassCastException e) {
             ;
         }
@@ -97,7 +98,8 @@ public class Tweaks {
     public double getDouble(String tweakName) {
         double ret = 0.0;
         try {
-            ret = ((Number) get(tweakName)).doubleValue();
+            final Object raw = get(tweakName);
+            ret = ((Number) raw).doubleValue();
         } catch (ClassCastException e) {
             ;
         }
@@ -108,7 +110,8 @@ public class Tweaks {
     public long getLong(String tweakName) {
         long ret = 0;
         try {
-            ret = ((Number) get(tweakName)).longValue();
+            final Object raw = get(tweakName);
+            ret = ((Number) raw).longValue();
         } catch (ClassCastException e) {
             ;
         }
@@ -119,7 +122,8 @@ public class Tweaks {
     public boolean getBoolean(String tweakName) {
         boolean ret = false;
         try {
-            ret = (Boolean) get(tweakName);
+            final Object raw = get(tweakName);
+            ret = (Boolean) raw;
         } catch (ClassCastException e) {
             ;
         }
