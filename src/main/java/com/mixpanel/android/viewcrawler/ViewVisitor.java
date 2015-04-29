@@ -245,7 +245,7 @@ import java.util.WeakHashMap;
             for (int i = 0; i < size; i++) {
                 LayoutRule layoutRule = mArgs.get(i);
                 final View currentChild = idToChild.get(layoutRule.viewId);
-                if (null != currentChild) {
+                if (null == currentChild) {
                     continue;
                 }
 
