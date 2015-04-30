@@ -158,14 +158,14 @@ import java.util.List;
 
                     final String view_id_name = layout_info.getString("view_id_name");
                     final String anchor_id_name = layout_info.getString("anchor_id_name");
-                    final Integer view_id = reconcileIdsInPath(-1, view_id_name, mResourceIds);
+                    final Integer view_id = reconcileIds(-1, view_id_name, mResourceIds);
                     final Integer anchor_id;
                     if (anchor_id_name.equals("0")) {
                         anchor_id = 0;
                     } else if (anchor_id_name.equals("-1")) {
                         anchor_id = RelativeLayout.TRUE;
                     } else {
-                        anchor_id = reconcileIdsInPath(-1, anchor_id_name, mResourceIds);
+                        anchor_id = reconcileIds(-1, anchor_id_name, mResourceIds);
                     }
 
                     if (view_id == null || anchor_id == null) {
@@ -271,7 +271,7 @@ import java.util.List;
 
             final int targetId;
 
-            final Integer targetIdOrNull = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            final Integer targetIdOrNull = reconcileIds(targetExplicitId, targetIdName, idNameToId);
             if (null == targetIdOrNull) {
                 return NEVER_MATCH_PATH;
             } else {
@@ -285,7 +285,7 @@ import java.util.List;
     }
 
     // May return null (and log a warning) if arguments cannot be reconciled
-    private Integer reconcileIdsInPath(int explicitId, String idName, ResourceIds idNameToId) {
+    private Integer reconcileIds(int explicitId, String idName, ResourceIds idNameToId) {
         final int idFromName;
         if (null != idName) {
             if (idNameToId.knownIdName(idName)) {
