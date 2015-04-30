@@ -166,8 +166,7 @@ import java.util.List;
                         anchor_id = reconcileIdsInPath(-1, layout_info.getString("anchor_id"), mResourceIds);
                     }
 
-                    params = new ViewVisitor.LayoutRule(view_id,
-                            layout_info.getInt("verb"), anchor_id);
+                    params = new ViewVisitor.LayoutRule(view_id, layout_info.getInt("verb"), anchor_id);
                     newParams.add(params);
                 }
                 visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, source.getString("name"), mLayoutErrorListener);
