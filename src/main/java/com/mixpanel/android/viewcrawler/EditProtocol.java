@@ -156,14 +156,18 @@ import java.util.List;
                     JSONObject layout_info = args.optJSONObject(i);
                     ViewVisitor.LayoutRule params;
 
-                    final int view_id = reconcileIdsInPath(-1, layout_info.getString("view_id"), mResourceIds);
-                    final int anchor_id;
+                    final Integer view_id = reconcileIdsInPath(-1, layout_info.getString("view_id"), mResourceIds);
+                    final Integer anchor_id;
                     if (layout_info.getString("anchor_id").equals("0")) {
                         anchor_id = 0;
                     } else if (layout_info.getString("anchor_id").equals("-1")) {
                         anchor_id = RelativeLayout.TRUE;
                     } else {
                         anchor_id = reconcileIdsInPath(-1, layout_info.getString("anchor_id"), mResourceIds);
+                    }
+
+                    if (view_id == null || anchor_id == null) {
+                        continue;
                     }
 
                     params = new ViewVisitor.LayoutRule(view_id, layout_info.getInt("verb"), anchor_id);
