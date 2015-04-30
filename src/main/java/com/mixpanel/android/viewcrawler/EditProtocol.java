@@ -167,6 +167,8 @@ import java.util.List;
                     }
 
                     if (view_id == null || anchor_id == null) {
+                        Log.w(LOGTAG, "View (" + layout_info.getString("view_id") + ") or anchor (" +
+                                layout_info.getString("anchor_id") + ") not found.");
                         continue;
                     }
 
