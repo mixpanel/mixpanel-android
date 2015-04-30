@@ -156,19 +156,20 @@ import java.util.List;
                     JSONObject layout_info = args.optJSONObject(i);
                     ViewVisitor.LayoutRule params;
 
-                    final Integer view_id = reconcileIdsInPath(-1, layout_info.getString("view_id"), mResourceIds);
+                    final String view_id_name = layout_info.getString("view_id_name");
+                    final String anchor_id_name = layout_info.getString("anchor_id_name");
+                    final Integer view_id = reconcileIdsInPath(-1, view_id_name, mResourceIds);
                     final Integer anchor_id;
-                    if (layout_info.getString("anchor_id").equals("0")) {
+                    if (anchor_id_name.equals("0")) {
                         anchor_id = 0;
-                    } else if (layout_info.getString("anchor_id").equals("-1")) {
+                    } else if (anchor_id_name.equals("-1")) {
                         anchor_id = RelativeLayout.TRUE;
                     } else {
-                        anchor_id = reconcileIdsInPath(-1, layout_info.getString("anchor_id"), mResourceIds);
+                        anchor_id = reconcileIdsInPath(-1, anchor_id_name, mResourceIds);
                     }
 
                     if (view_id == null || anchor_id == null) {
-                        Log.w(LOGTAG, "View (" + layout_info.getString("view_id") + ") or anchor (" +
-                                layout_info.getString("anchor_id") + ") not found.");
+                        Log.w(LOGTAG, "View (" + view_id_name + ") or anchor (" + anchor_id_name + ") not found.");
                         continue;
                     }
 
