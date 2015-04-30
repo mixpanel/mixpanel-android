@@ -42,6 +42,8 @@ public class EditProtocolTest extends AndroidTestCase {
         final Map<String, Integer> idMap = new HashMap<String, Integer>();
         idMap.put("NAME PRESENT", 1001);
         idMap.put("ALSO PRESENT", 1002);
+        idMap.put("relativelayout_button1", TestView.RELATIVE_LAYOUT_BUTTON1_ID);
+        idMap.put("relativelayout_button2", TestView.RELATIVE_LAYOUT_BUTTON2_ID);
 
         mLayoutErrorListener = new MockOnLayoutErrorListener();
         mResourceIds = new TestUtils.TestResourceIds(idMap);
@@ -59,11 +61,11 @@ public class EditProtocolTest extends AndroidTestCase {
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"classname\":\"android.widget.Button\",\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]],\"change_type\": \"property\"}"
         );
         mLayoutEditAlignParentRight = new JSONObject(
-            String.format("{\"args\":[{\"verb\":11,\"anchor_id\":-1,\"view_id\":%d}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.RELATIVE_LAYOUT_ID));
+            String.format("{\"args\":[{\"verb\":11,\"anchor_id\":\"-1\",\"view_id\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", TestView.RELATIVE_LAYOUT_ID));
         mLayoutEditBelow = new JSONObject(
-                String.format("{\"args\":[{\"verb\":3,\"anchor_id\":%d,\"view_id\":%d}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.RELATIVE_LAYOUT_ID));
+                String.format("{\"args\":[{\"verb\":3,\"anchor_id\":\"relativelayout_button1\",\"view_id\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.RELATIVE_LAYOUT_ID));
         mLayoutEditAbove = new JSONObject(
-                String.format("{\"args\":[{\"verb\":2,\"anchor_id\":%d,\"view_id\":%d}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.RELATIVE_LAYOUT_ID));
+                String.format("{\"args\":[{\"verb\":2,\"anchor_id\":\"relativelayout_button2\",\"view_id\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
