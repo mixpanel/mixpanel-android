@@ -58,10 +58,10 @@ public class EditProtocolTest extends AndroidTestCase {
                 String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.BELOW, TestView.RELATIVE_LAYOUT_ID)
         );
         mLayoutEditRemoveBelow = new JSONObject(
-                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.BELOW, TestView.NO_ANCHOR, TestView.RELATIVE_LAYOUT_ID)
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.BELOW, TestView.NO_ANCHOR, TestView.RELATIVE_LAYOUT_ID)
         );
         mLayoutEditAbsentAnchor = new JSONObject(
-                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.BELOW, TestView.RELATIVE_LAYOUT_ID)
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test4\"}", TestView.BELOW, TestView.RELATIVE_LAYOUT_ID)
         );
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
