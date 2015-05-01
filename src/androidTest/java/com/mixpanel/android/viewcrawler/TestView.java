@@ -10,8 +10,10 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -195,6 +197,18 @@ public class TestView extends FrameLayout {
         }
     }
 
+    public static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
+        public MockOnLayoutErrorListener() {
+            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
+        }
+
+        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
+            errorList.add(e);
+        }
+
+        public List<ViewVisitor.LayoutErrorMessage> errorList;
+    }
+
     public final Set<View> mAllViews;
     public final View mButtonParentView;
     public final ViewGroup mButtonGroup;
@@ -227,4 +241,6 @@ public class TestView extends FrameLayout {
     public static final String TEXT_2_CONTENT_DESCRIPTION = "The Second Test Text View";
     public static final String BUTTON_1_CONTENT_DESCRIPTION = "Ad Hoc Button Number 1";
     public static final String BUTTON_3_CONTENT_DESCRIPTION = "Ad Hoc Button Number 3";
+
+    public static final int NO_ANCHOR = 0;
 }

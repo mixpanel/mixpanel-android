@@ -14,6 +14,8 @@ import android.widget.TextView;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.TestUtils;
 
+import junit.framework.Test;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,17 +27,6 @@ import java.util.Map;
 
 
 public class EditProtocolTest extends AndroidTestCase {
-    private static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
-        public MockOnLayoutErrorListener() {
-            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
-        }
-
-        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
-            errorList.add(e);
-        }
-
-        public List<ViewVisitor.LayoutErrorMessage> errorList;
-    }
 
     @Override
     public void setUp() throws JSONException {
@@ -45,7 +36,7 @@ public class EditProtocolTest extends AndroidTestCase {
         idMap.put("relativelayout_button1", TestView.RELATIVE_LAYOUT_BUTTON1_ID);
         idMap.put("relativelayout_button2", TestView.RELATIVE_LAYOUT_BUTTON2_ID);
 
-        mLayoutErrorListener = new MockOnLayoutErrorListener();
+        mLayoutErrorListener = new TestView.MockOnLayoutErrorListener();
         mResourceIds = new TestUtils.TestResourceIds(idMap);
         mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext()) {
             @Override
@@ -61,11 +52,17 @@ public class EditProtocolTest extends AndroidTestCase {
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"classname\":\"android.widget.Button\",\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]],\"change_type\": \"property\"}"
         );
         mLayoutEditAlignParentRight = new JSONObject(
-            String.format("{\"args\":[{\"verb\":11,\"anchor_id_name\":\"-1\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", TestView.RELATIVE_LAYOUT_ID));
+            String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE, TestView.RELATIVE_LAYOUT_ID)
+        );
         mLayoutEditBelow = new JSONObject(
-                String.format("{\"args\":[{\"verb\":3,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.RELATIVE_LAYOUT_ID));
-        mLayoutEditAbove = new JSONObject(
-                String.format("{\"args\":[{\"verb\":2,\"anchor_id_name\":\"relativelayout_button2\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_ID)
+        );
+        mLayoutEditRemoveBelow = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", RelativeLayout.BELOW, TestView.NO_ANCHOR, TestView.RELATIVE_LAYOUT_ID)
+        );
+        mLayoutEditAbsentAnchor = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test4\"}", RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_ID)
+        );
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
@@ -277,32 +274,33 @@ public class EditProtocolTest extends AndroidTestCase {
     }
 
     public void testLayoutEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
-        // add LAYOUT_ALIGNPARENTRIGHT to mRelativeLayoutButton1, should success
+        // add ALIGN_PARENT_RIGHT to mRelativeLayoutButton1, should success
         final EditProtocol.Edit edit1 = mProtocol.readEdit(mLayoutEditAlignParentRight);
         edit1.visitor.visit(mRootView);
         RelativeLayout.LayoutParams params1 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton1.getLayoutParams();
         int[] rules1 = params1.getRules();
-        assertEquals(rules1[11], -1);
-        assertEquals(mLayoutErrorListener.errorList.size(), 0);
+        assertEquals(RelativeLayout.TRUE, rules1[RelativeLayout.ALIGN_PARENT_RIGHT]);
 
-        // add "LAYOUT_BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
+        // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
         final EditProtocol.Edit edit2 = mProtocol.readEdit(mLayoutEditBelow);
         edit2.visitor.visit(mRootView);
         RelativeLayout.LayoutParams params2 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
         int[] rules2 = params2.getRules();
-        assertEquals(rules2[3], TestView.RELATIVE_LAYOUT_BUTTON1_ID);
-        assertEquals(mLayoutErrorListener.errorList.size(), 0);
+        assertEquals(TestView.RELATIVE_LAYOUT_BUTTON1_ID, rules2[RelativeLayout.BELOW]);
 
-        // add "LAYOUT_ABOVE mRelativeLayoutButton2" to mRelativeLayoutButton1, should fail
-        final EditProtocol.Edit edit3 = mProtocol.readEdit(mLayoutEditAbove);
+        // remove "BELOW mRelativeLayoutButton1" from mRelativeLayoutButton2, should success
+        final EditProtocol.Edit edit3 = mProtocol.readEdit(mLayoutEditRemoveBelow);
         edit3.visitor.visit(mRootView);
-        RelativeLayout.LayoutParams params3 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton1.getLayoutParams();
-        int[] rules3 = params3.getRules();
-        assertEquals(rules3[3], 0);
-        assertEquals(mLayoutErrorListener.errorList.size(), 1);
-        ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
-        assertEquals(e.getErrorType(), "circular_dependency");
-        assertEquals(e.getName(), "test3");
+        RelativeLayout.LayoutParams params3 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rule3 = params3.getRules();
+        assertEquals(TestView.NO_ANCHOR, rule3[RelativeLayout.BELOW]);
+
+        // add "BELOW mRelativeLayoutButton3 (absent)" to mRelativeLayoutButton2, should fail
+        final EditProtocol.Edit edit4 = mProtocol.readEdit(mLayoutEditAbsentAnchor);
+        edit4.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params4 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rules4 = params4.getRules();
+        assertEquals( TestView.NO_ANCHOR, rules4[RelativeLayout.BELOW]);
     }
 
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
@@ -402,6 +400,8 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONObject mLayoutEditAlignParentRight;
     private JSONObject mLayoutEditBelow;
     private JSONObject mLayoutEditAbove;
+    private JSONObject mLayoutEditRemoveBelow;
+    private JSONObject mLayoutEditAbsentAnchor;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
     private JSONObject mTextEdit;
@@ -417,7 +417,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mIdAndNameDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
-    private MockOnLayoutErrorListener mLayoutErrorListener;
+    private TestView.MockOnLayoutErrorListener mLayoutErrorListener;
 
     private static final byte[] IMAGE_10x10_GREEN_BYTES = Base64.decode("R0lGODlhCgAKALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//////ywAAAAACgAKAAAEClDJSau9OOvNe44AOw==".getBytes(), 0);
     private static final Bitmap IMAGE_10x10_GREEN = BitmapFactory.decodeByteArray(IMAGE_10x10_GREEN_BYTES, 0, IMAGE_10x10_GREEN_BYTES.length);
