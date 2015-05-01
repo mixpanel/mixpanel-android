@@ -66,6 +66,8 @@ public class EditProtocolTest extends AndroidTestCase {
                 String.format("{\"args\":[{\"verb\":3,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.RELATIVE_LAYOUT_ID));
         mLayoutEditAbove = new JSONObject(
                 String.format("{\"args\":[{\"verb\":2,\"anchor_id_name\":\"relativelayout_button2\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
+        mLayoutEditAbsentAnchor = new JSONObject(
+                String.format("{\"args\":[{\"verb\":3,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
@@ -303,6 +305,15 @@ public class EditProtocolTest extends AndroidTestCase {
         ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
         assertEquals(e.getErrorType(), "circular_dependency");
         assertEquals(e.getName(), "test3");
+        mLayoutErrorListener.errorList.clear();
+
+        // add absent anchor view to mRelativeLayoutButton2, should fail
+        final EditProtocol.Edit edit5 = mProtocol.readEdit(mLayoutEditAbsentAnchor);
+        edit5.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params5 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rules5 = params5.getRules();
+        assertEquals(rules5[3], TestView.RELATIVE_LAYOUT_BUTTON1_ID);
+        assertEquals(mLayoutErrorListener.errorList.size(), 0);
     }
 
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
@@ -402,6 +413,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONObject mLayoutEditAlignParentRight;
     private JSONObject mLayoutEditBelow;
     private JSONObject mLayoutEditAbove;
+    private JSONObject mLayoutEditAbsentAnchor;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
     private JSONObject mTextEdit;
