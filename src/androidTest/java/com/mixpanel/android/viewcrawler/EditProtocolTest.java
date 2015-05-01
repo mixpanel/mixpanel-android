@@ -14,6 +14,8 @@ import android.widget.TextView;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.TestUtils;
 
+import junit.framework.Test;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -61,13 +63,13 @@ public class EditProtocolTest extends AndroidTestCase {
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"classname\":\"android.widget.Button\",\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]],\"change_type\": \"property\"}"
         );
         mLayoutEditAlignParentRight = new JSONObject(
-            String.format("{\"args\":[{\"verb\":11,\"anchor_id_name\":\"-1\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", TestView.RELATIVE_LAYOUT_ID));
+            String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", LAYOUT_ALIGNPARENTRIGHT, PARENT_OF_VIEW, TestView.RELATIVE_LAYOUT_ID));
         mLayoutEditBelow = new JSONObject(
-                String.format("{\"args\":[{\"verb\":3,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", TestView.RELATIVE_LAYOUT_ID));
-        mLayoutEditAbove = new JSONObject(
-                String.format("{\"args\":[{\"verb\":2,\"anchor_id_name\":\"relativelayout_button2\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", LAYOUT_BELOW, TestView.RELATIVE_LAYOUT_ID));
+        mLayoutEditRemoveBelow = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", LAYOUT_BELOW, NO_ANCHOR, TestView.RELATIVE_LAYOUT_ID));
         mLayoutEditAbsentAnchor = new JSONObject(
-                String.format("{\"args\":[{\"verb\":3,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", TestView.RELATIVE_LAYOUT_ID));
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", LAYOUT_BELOW, TestView.RELATIVE_LAYOUT_ID));
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
@@ -284,36 +286,28 @@ public class EditProtocolTest extends AndroidTestCase {
         edit1.visitor.visit(mRootView);
         RelativeLayout.LayoutParams params1 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton1.getLayoutParams();
         int[] rules1 = params1.getRules();
-        assertEquals(rules1[11], -1);
-        assertEquals(mLayoutErrorListener.errorList.size(), 0);
+        assertEquals(rules1[LAYOUT_ALIGNPARENTRIGHT], PARENT_OF_VIEW);
 
         // add "LAYOUT_BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
         final EditProtocol.Edit edit2 = mProtocol.readEdit(mLayoutEditBelow);
         edit2.visitor.visit(mRootView);
         RelativeLayout.LayoutParams params2 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
         int[] rules2 = params2.getRules();
-        assertEquals(rules2[3], TestView.RELATIVE_LAYOUT_BUTTON1_ID);
-        assertEquals(mLayoutErrorListener.errorList.size(), 0);
+        assertEquals(rules2[LAYOUT_BELOW], TestView.RELATIVE_LAYOUT_BUTTON1_ID);
 
-        // add "LAYOUT_ABOVE mRelativeLayoutButton2" to mRelativeLayoutButton1, should fail
-        final EditProtocol.Edit edit3 = mProtocol.readEdit(mLayoutEditAbove);
+        // remove "LAYOUT_BELOW mRelativeLayoutButton1" from mRelativeLayoutButton2, should success
+        final EditProtocol.Edit edit3 = mProtocol.readEdit(mLayoutEditRemoveBelow);
         edit3.visitor.visit(mRootView);
-        RelativeLayout.LayoutParams params3 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton1.getLayoutParams();
-        int[] rules3 = params3.getRules();
-        assertEquals(rules3[3], 0);
-        assertEquals(mLayoutErrorListener.errorList.size(), 1);
-        ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
-        assertEquals(e.getErrorType(), "circular_dependency");
-        assertEquals(e.getName(), "test3");
-        mLayoutErrorListener.errorList.clear();
+        RelativeLayout.LayoutParams params3 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rule3 = params3.getRules();
+        assertEquals(rule3[LAYOUT_BELOW], NO_ANCHOR);
 
-        // add absent anchor view to mRelativeLayoutButton2, should fail
-        final EditProtocol.Edit edit5 = mProtocol.readEdit(mLayoutEditAbsentAnchor);
-        edit5.visitor.visit(mRootView);
-        RelativeLayout.LayoutParams params5 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
-        int[] rules5 = params5.getRules();
-        assertEquals(rules5[3], TestView.RELATIVE_LAYOUT_BUTTON1_ID);
-        assertEquals(mLayoutErrorListener.errorList.size(), 0);
+        // add "LAYOUT_BELOW relativelayout_button3 (absent)" to mRelativeLayoutButton2, should fail
+        final EditProtocol.Edit edit4 = mProtocol.readEdit(mLayoutEditAbsentAnchor);
+        edit4.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params4 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rules4 = params4.getRules();
+        assertEquals(rules4[LAYOUT_BELOW], NO_ANCHOR);
     }
 
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
@@ -413,6 +407,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONObject mLayoutEditAlignParentRight;
     private JSONObject mLayoutEditBelow;
     private JSONObject mLayoutEditAbove;
+    private JSONObject mLayoutEditRemoveBelow;
     private JSONObject mLayoutEditAbsentAnchor;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
@@ -433,4 +428,9 @@ public class EditProtocolTest extends AndroidTestCase {
 
     private static final byte[] IMAGE_10x10_GREEN_BYTES = Base64.decode("R0lGODlhCgAKALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//////ywAAAAACgAKAAAEClDJSau9OOvNe44AOw==".getBytes(), 0);
     private static final Bitmap IMAGE_10x10_GREEN = BitmapFactory.decodeByteArray(IMAGE_10x10_GREEN_BYTES, 0, IMAGE_10x10_GREEN_BYTES.length);
+
+    private static final int LAYOUT_ALIGNPARENTRIGHT = 11;
+    private static final int LAYOUT_BELOW = 3;
+    private static final int PARENT_OF_VIEW = -1;
+    private static final int NO_ANCHOR = 0;
 }
