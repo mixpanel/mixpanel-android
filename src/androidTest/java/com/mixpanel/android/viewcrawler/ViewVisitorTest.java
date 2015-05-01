@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 
 public class ViewVisitorTest extends AndroidTestCase {
-
     public void setUp() throws Exception {
         super.setUp();
 
