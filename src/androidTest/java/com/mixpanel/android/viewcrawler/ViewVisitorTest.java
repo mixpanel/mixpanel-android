@@ -585,12 +585,6 @@ public class ViewVisitorTest extends AndroidTestCase {
         }
     }
 
-    public void testAddAnchorLayout() {
-        // add LAYOUT_BELOW to mRelativeLayoutButton1, should success
-        ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
-
-    }
-
     private static class CollectorEditor extends ViewVisitor {
         public CollectorEditor(List<Pathfinder.PathElement> path) {
             super(path);
