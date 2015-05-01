@@ -155,8 +155,25 @@ import java.util.List;
                 for (int i = 0; i < length; i++) {
                     JSONObject layout_info = args.optJSONObject(i);
                     ViewVisitor.LayoutRule params;
-                    params = new ViewVisitor.LayoutRule(layout_info.getInt("view_id"),
-                            layout_info.getInt("verb"), layout_info.getInt("anchor_id"));
+
+                    final String view_id_name = layout_info.getString("view_id_name");
+                    final String anchor_id_name = layout_info.getString("anchor_id_name");
+                    final Integer view_id = reconcileIds(-1, view_id_name, mResourceIds);
+                    final Integer anchor_id;
+                    if (anchor_id_name.equals("0")) {
+                        anchor_id = 0;
+                    } else if (anchor_id_name.equals("-1")) {
+                        anchor_id = RelativeLayout.TRUE;
+                    } else {
+                        anchor_id = reconcileIds(-1, anchor_id_name, mResourceIds);
+                    }
+
+                    if (view_id == null || anchor_id == null) {
+                        Log.w(LOGTAG, "View (" + view_id_name + ") or anchor (" + anchor_id_name + ") not found.");
+                        continue;
+                    }
+
+                    params = new ViewVisitor.LayoutRule(view_id, layout_info.getInt("verb"), anchor_id);
                     newParams.add(params);
                 }
                 visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, source.getString("name"), mLayoutErrorListener);
@@ -254,7 +271,7 @@ import java.util.List;
 
             final int targetId;
 
-            final Integer targetIdOrNull = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            final Integer targetIdOrNull = reconcileIds(targetExplicitId, targetIdName, idNameToId);
             if (null == targetIdOrNull) {
                 return NEVER_MATCH_PATH;
             } else {
@@ -268,7 +285,7 @@ import java.util.List;
     }
 
     // May return null (and log a warning) if arguments cannot be reconciled
-    private Integer reconcileIdsInPath(int explicitId, String idName, ResourceIds idNameToId) {
+    private Integer reconcileIds(int explicitId, String idName, ResourceIds idNameToId) {
         final int idFromName;
         if (null != idName) {
             if (idNameToId.knownIdName(idName)) {
