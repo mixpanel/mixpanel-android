@@ -550,7 +550,7 @@ public class ViewVisitorTest extends AndroidTestCase {
             params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.LEFT_OF, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
             // add "ALIGN_LEFT mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
             params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
-            // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should fail
+            // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
             params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
 
             final ViewVisitor layoutVisitor =
