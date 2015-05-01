@@ -18,17 +18,6 @@ import java.util.List;
 import java.util.Set;
 
 public class ViewVisitorTest extends AndroidTestCase {
-    private static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
-        public MockOnLayoutErrorListener() {
-            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
-        }
-
-        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
-            errorList.add(e);
-        }
-
-        public List<ViewVisitor.LayoutErrorMessage> errorList;
-    }
 
     public void setUp() throws Exception {
         super.setUp();
@@ -134,7 +123,7 @@ public class ViewVisitorTest extends AndroidTestCase {
 
         mTrackListener = new CollectingEventListener();
 
-        mLayoutErrorListener = new MockOnLayoutErrorListener();
+        mLayoutErrorListener = new TestView.MockOnLayoutErrorListener();
     }
 
     public void testPath() {
@@ -647,6 +636,6 @@ public class ViewVisitorTest extends AndroidTestCase {
     private List<Pathfinder.PathElement> mThirdLayerViewTag;
     private List<Pathfinder.PathElement> mThirdLayerWildcard;
     private CollectingEventListener mTrackListener;
-    private MockOnLayoutErrorListener mLayoutErrorListener;
+    private TestView.MockOnLayoutErrorListener mLayoutErrorListener;
     private TestView mRootView;
 }

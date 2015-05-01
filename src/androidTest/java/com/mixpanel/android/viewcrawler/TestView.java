@@ -10,8 +10,10 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -193,6 +195,18 @@ public class TestView extends FrameLayout {
         public boolean includeForAccessibility() {
             return true;
         }
+    }
+
+    public static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
+        public MockOnLayoutErrorListener() {
+            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
+        }
+
+        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
+            errorList.add(e);
+        }
+
+        public List<ViewVisitor.LayoutErrorMessage> errorList;
     }
 
     public final Set<View> mAllViews;

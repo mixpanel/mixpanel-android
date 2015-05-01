@@ -27,17 +27,6 @@ import java.util.Map;
 
 
 public class EditProtocolTest extends AndroidTestCase {
-    private static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
-        public MockOnLayoutErrorListener() {
-            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
-        }
-
-        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
-            errorList.add(e);
-        }
-
-        public List<ViewVisitor.LayoutErrorMessage> errorList;
-    }
 
     @Override
     public void setUp() throws JSONException {
@@ -47,7 +36,7 @@ public class EditProtocolTest extends AndroidTestCase {
         idMap.put("relativelayout_button1", TestView.RELATIVE_LAYOUT_BUTTON1_ID);
         idMap.put("relativelayout_button2", TestView.RELATIVE_LAYOUT_BUTTON2_ID);
 
-        mLayoutErrorListener = new MockOnLayoutErrorListener();
+        mLayoutErrorListener = new TestView.MockOnLayoutErrorListener();
         mResourceIds = new TestUtils.TestResourceIds(idMap);
         mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext()) {
             @Override
@@ -428,7 +417,7 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mIdAndNameDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
-    private MockOnLayoutErrorListener mLayoutErrorListener;
+    private TestView.MockOnLayoutErrorListener mLayoutErrorListener;
 
     private static final byte[] IMAGE_10x10_GREEN_BYTES = Base64.decode("R0lGODlhCgAKALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//////ywAAAAACgAKAAAEClDJSau9OOvNe44AOw==".getBytes(), 0);
     private static final Bitmap IMAGE_10x10_GREEN = BitmapFactory.decodeByteArray(IMAGE_10x10_GREEN_BYTES, 0, IMAGE_10x10_GREEN_BYTES.length);
