@@ -454,13 +454,13 @@ public class ViewVisitorTest extends AndroidTestCase {
     public void testLayoutBasicInteraction() {
         ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
         // add LAYOUT_ALIGNPARENTTOP
-        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
+        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
         // add "LAYOUT_BELOW mRelativeLayoutButton2" to mRelativeLayoutButton1
-        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.BELOW, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
+        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
         // add LAYOUT_ALIGNPARENTBOTTOM to mRelativeLayoutButton1
-        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
+        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
         // remove LAYOUT_ALIGNPARENTBOTTOM from mRelativeLayoutButton1
-        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_BOTTOM, TestView.NO_ANCHOR));
+        params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_BOTTOM, TestView.NO_ANCHOR));
 
         final ViewVisitor layoutVisitor =
                 new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutPath, params, "test", mLayoutErrorListener);
@@ -469,9 +469,9 @@ public class ViewVisitorTest extends AndroidTestCase {
         RelativeLayout.LayoutParams layoutParams =
                 (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton1.getLayoutParams();
         int[] rules = layoutParams.getRules();
-        assertEquals(RelativeLayout.TRUE, rules[TestView.ALIGN_PARENT_TOP]);
-        assertEquals(TestView.RELATIVE_LAYOUT_BUTTON2_ID, rules[TestView.BELOW]);
-        assertEquals(TestView.NO_ANCHOR, rules[TestView.ALIGN_PARENT_BOTTOM]);
+        assertEquals(RelativeLayout.TRUE, rules[RelativeLayout.ALIGN_PARENT_TOP]);
+        assertEquals(TestView.RELATIVE_LAYOUT_BUTTON2_ID, rules[RelativeLayout.BELOW]);
+        assertEquals(TestView.NO_ANCHOR, rules[RelativeLayout.ALIGN_PARENT_BOTTOM]);
 
         assertEquals(true, mLayoutErrorListener.errorList.isEmpty());
     }
@@ -480,13 +480,13 @@ public class ViewVisitorTest extends AndroidTestCase {
         {   // vertical layout circle
             ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
             // add ALIGN_PARENT_TOP
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
             // add "BELOW mRelativeLayoutButton2" to mRelativeLayoutButton1, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.BELOW, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
             // add "ALIGN_LEFT mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.ALIGN_LEFT, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ALIGN_LEFT, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
             // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should fail
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.ABOVE, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ABOVE, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
 
             final ViewVisitor layoutVisitor =
                     new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutPath, params, "test1", mLayoutErrorListener);
@@ -495,14 +495,14 @@ public class ViewVisitorTest extends AndroidTestCase {
             RelativeLayout.LayoutParams layoutParamsButton1 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton1.getLayoutParams();
             int[] rulesButton1 = layoutParamsButton1.getRules();
-            assertEquals(TestView.NO_ANCHOR, rulesButton1[TestView.ALIGN_PARENT_TOP]);
-            assertEquals(TestView.NO_ANCHOR, rulesButton1[TestView.BELOW]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton1[RelativeLayout.ALIGN_PARENT_TOP]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton1[RelativeLayout.BELOW]);
 
             RelativeLayout.LayoutParams layoutParamsButton2 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton2.getLayoutParams();
             int[] rulesButton2 = layoutParamsButton2.getRules();
-            assertEquals(TestView.NO_ANCHOR, rulesButton2[TestView.ALIGN_LEFT]);
-            assertEquals(TestView.NO_ANCHOR, rulesButton2[TestView.ABOVE]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton2[RelativeLayout.ALIGN_LEFT]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton2[RelativeLayout.ABOVE]);
 
             ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
             assertEquals("circular_dependency", e.getErrorType());
@@ -513,13 +513,13 @@ public class ViewVisitorTest extends AndroidTestCase {
         {   // horizontal layout circle
             ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
             // add ALIGN_PARENT_BOTTOM to mRelativeLayoutButton1, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
             // add "LEFT_OF mRelativeLayoutButton2" to mRelativeLayoutButton1, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.LEFT_OF, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.LEFT_OF, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
             // add "ALIGN_BOTTOM mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.ALIGN_BOTTOM, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ALIGN_BOTTOM, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
             // add "ALIGN_RIGHT mRelativeLayoutButton1" to mRelativeLayoutButton2, should fail
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.ALIGN_RIGHT, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ALIGN_RIGHT, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
 
             final ViewVisitor layoutVisitor =
                     new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutPath, params, "test2", mLayoutErrorListener);
@@ -528,14 +528,14 @@ public class ViewVisitorTest extends AndroidTestCase {
             RelativeLayout.LayoutParams layoutParamsButton1 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton1.getLayoutParams();
             int[] rulesButton1 = layoutParamsButton1.getRules();
-            assertEquals(TestView.NO_ANCHOR, rulesButton1[TestView.ALIGN_PARENT_BOTTOM]);
-            assertEquals(TestView.NO_ANCHOR, rulesButton1[TestView.LEFT_OF]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton1[RelativeLayout.ALIGN_PARENT_BOTTOM]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton1[RelativeLayout.LEFT_OF]);
 
             RelativeLayout.LayoutParams layoutParamsButton2 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton2.getLayoutParams();
             int[] rulesButton2 = layoutParamsButton2.getRules();
-            assertEquals(TestView.NO_ANCHOR, rulesButton2[TestView.ALIGN_BOTTOM]);
-            assertEquals(TestView.NO_ANCHOR, rulesButton2[TestView.ALIGN_RIGHT]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton2[RelativeLayout.ALIGN_BOTTOM]);
+            assertEquals(TestView.NO_ANCHOR, rulesButton2[RelativeLayout.ALIGN_RIGHT]);
 
             ViewVisitor.LayoutErrorMessage e = mLayoutErrorListener.errorList.get(0);
             assertEquals("circular_dependency", e.getErrorType());
@@ -546,13 +546,13 @@ public class ViewVisitorTest extends AndroidTestCase {
         {   // mix of vertical and horizontal layouts, no circle
             ArrayList<ViewVisitor.LayoutRule> params = new ArrayList<ViewVisitor.LayoutRule>();
             // add ALIGN_PARENT_BOTTOM to mRelativeLayoutButton1, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE));
             // add "LEFT_OF mRelativeLayoutButton2" to mRelativeLayoutButton1, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, TestView.LEFT_OF, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON1_ID, RelativeLayout.LEFT_OF, TestView.RELATIVE_LAYOUT_BUTTON2_ID));
             // add "ALIGN_LEFT mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE));
             // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should fail
-            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, TestView.BELOW, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
+            params.add(new ViewVisitor.LayoutRule(TestView.RELATIVE_LAYOUT_BUTTON2_ID, RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_BUTTON1_ID));
 
             final ViewVisitor layoutVisitor =
                     new ViewVisitor.LayoutUpdateVisitor(mRelativeLayoutPath, params, "test3", mLayoutErrorListener);
@@ -561,14 +561,14 @@ public class ViewVisitorTest extends AndroidTestCase {
             RelativeLayout.LayoutParams layoutParamsButton1 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton1.getLayoutParams();
             int[] rulesButton1 = layoutParamsButton1.getRules();
-            assertEquals(RelativeLayout.TRUE, rulesButton1[TestView.ALIGN_PARENT_BOTTOM]);
-            assertEquals(TestView.RELATIVE_LAYOUT_BUTTON2_ID, rulesButton1[TestView.LEFT_OF]);
+            assertEquals(RelativeLayout.TRUE, rulesButton1[RelativeLayout.ALIGN_PARENT_BOTTOM]);
+            assertEquals(TestView.RELATIVE_LAYOUT_BUTTON2_ID, rulesButton1[RelativeLayout.LEFT_OF]);
 
             RelativeLayout.LayoutParams layoutParamsButton2 =
                     (RelativeLayout.LayoutParams) mRootView.mRelativeLayoutButton2.getLayoutParams();
             int[] rulesButton2 = layoutParamsButton2.getRules();
-            assertEquals(RelativeLayout.TRUE, rulesButton2[TestView.ALIGN_PARENT_TOP]);
-            assertEquals(TestView.RELATIVE_LAYOUT_BUTTON1_ID, rulesButton2[TestView.BELOW]);
+            assertEquals(RelativeLayout.TRUE, rulesButton2[RelativeLayout.ALIGN_PARENT_TOP]);
+            assertEquals(TestView.RELATIVE_LAYOUT_BUTTON1_ID, rulesButton2[RelativeLayout.BELOW]);
 
             assertEquals(true, mLayoutErrorListener.errorList.isEmpty());
         }
