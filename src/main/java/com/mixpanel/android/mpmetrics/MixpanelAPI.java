@@ -507,6 +507,19 @@ public class MixpanelAPI {
     }
 
     /**
+     * Map version of registerSuperPropertiesOnce API below.
+     *
+     * @param superProperties A Map containing the super properties to register.
+     */
+    public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
+        if (null == superProperties) {
+            Log.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
+            return;
+        }
+        registerSuperPropertiesOnce(new JSONObject(superProperties));
+    }
+
+    /**
      * Register super properties for events, only if no other super property with the
      * same names has already been registered.
      *
