@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -327,6 +328,21 @@ public class MixpanelAPI {
         synchronized (mEventTimings) {
             mEventTimings.put(eventName, writeTime);
         }
+    }
+
+    /**
+     * Map version of the track() API below
+     *
+     * @param eventName The name of the event to send
+     * @param properties A Map containing the key value pairs of the properties to include in this event.
+     *                   Pass null if no extra properties exist. Cannot be null.
+     */
+    public void trackMap(String eventName, Map<String, Object> properties) {
+        if (null == properties) {
+            Log.e(LOGTAG, "trackMap does not accept null properties");
+            return;
+        }
+        track(eventName, new JSONObject(properties));
     }
 
     /**
