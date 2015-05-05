@@ -331,9 +331,9 @@ public class MixpanelAPI {
     }
 
     /**
-     * Map version of the track() API below
+     * Map version of the track API below.
      *
-     * @param eventName The name of the event to send
+     * @param eventName The name of the event to send.
      * @param properties A Map containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist. Cannot be null.
      */
@@ -457,6 +457,18 @@ public class MixpanelAPI {
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
      }
+
+    /**
+     * Map version of registerSuperProperties API below.
+     * @param superProperties A Map containing super properties to register
+     */
+    public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
+        if (null == superProperties) {
+            Log.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
+            return;
+        }
+        registerSuperProperties(new JSONObject(superProperties));
+    }
 
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
