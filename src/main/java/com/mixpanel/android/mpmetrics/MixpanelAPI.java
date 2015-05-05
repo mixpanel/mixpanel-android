@@ -330,14 +330,25 @@ public class MixpanelAPI {
     }
 
     /**
-     * Map version of the {@link #track(String, org.json.JSONObject)} API below.
+     * Track an event.
+     *
+     * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
+     * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+     * have a string name, and an optional set of name/value pairs that describe the properties of
+     * that event.
+     *
+     * @param eventName The name of the event to send
+     * @param properties A Map containing the key value pairs of the properties to include in this event.
+     *                   Pass null if no extra properties exist.
+     *
+     * See also {@link #track(String, org.json.JSONObject)}
      */
     public void trackMap(String eventName, Map<String, Object> properties) {
         if (null == properties) {
-            Log.e(LOGTAG, "trackMap does not accept null properties");
-            return;
+            track(eventName, null);
+        } else {
+            track(eventName, new JSONObject(properties));
         }
-        track(eventName, new JSONObject(properties));
     }
 
     /**
@@ -454,7 +465,21 @@ public class MixpanelAPI {
      }
 
     /**
-     * Map version of {@link #registerSuperProperties(org.json.JSONObject)} API below.
+     * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
+     *
+     * <p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+     * and persist beyond the lifetime of your application.
+     *
+     * <p>Setting a superProperty with registerSuperProperties will store a new superProperty,
+     * possibly overwriting any existing superProperty with the same name (to set a
+     * superProperty only if it is currently unset, use {@link #registerSuperPropertiesOnce(JSONObject)})
+     *
+     * <p>SuperProperties will persist even if your application is taken completely out of memory.
+     * to remove a superProperty, call {@link #unregisterSuperProperty(String)} or {@link #clearSuperProperties()}
+     *
+     * @param superProperties    A Map containing super properties to register
+     *
+     * See also {@link #registerSuperProperties(org.json.JSONObject)}
      */
     public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
@@ -501,7 +526,14 @@ public class MixpanelAPI {
     }
 
     /**
-     * Map version of {@link #registerSuperPropertiesOnce(org.json.JSONObject)} API below.
+     * Register super properties for events, only if no other super property with the
+     * same names has already been registered.
+     *
+     * <p>Calling registerSuperPropertiesOnce will never overwrite existing properties.
+     *
+     * @param superProperties A Map containing the super properties to register.
+     *
+     * See also {@link #registerSuperPropertiesOnce(org.json.JSONObject)}
      */
     public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
@@ -672,7 +704,13 @@ public class MixpanelAPI {
         public void set(String propertyName, Object value);
 
         /**
-         * Map version of {@link #set(org.json.JSONObject)} API below.
+         * Set a collection of properties on the identified user all at once.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #set(org.json.JSONObject)}
          */
         public void setMap(Map<String, Object> properties);
 
@@ -694,7 +732,13 @@ public class MixpanelAPI {
         public void setOnce(String propertyName, Object value);
 
         /**
-         * Map version of {@link #setOnce(org.json.JSONObject)} API below
+         * Like {@link People#set(String, Object)}, but will not set properties that already exist on a record.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #setOnce(org.json.JSONObject)}
          */
         public void setOnceMap(Map<String, Object> properties);
 
