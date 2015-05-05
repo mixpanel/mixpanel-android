@@ -347,7 +347,11 @@ public class MixpanelAPI {
         if (null == properties) {
             track(eventName, null);
         } else {
-            track(eventName, new JSONObject(properties));
+            try {
+                track(eventName, new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties!");
+            }
         }
     }
 
@@ -486,7 +490,12 @@ public class MixpanelAPI {
             Log.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
             return;
         }
-        registerSuperProperties(new JSONObject(superProperties));
+
+        try {
+            registerSuperProperties(new JSONObject(superProperties));
+        } catch (NullPointerException e) {
+            Log.w(LOGTAG, "Can't have null keys in the properties!");
+        }
     }
 
     /**
@@ -540,7 +549,12 @@ public class MixpanelAPI {
             Log.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
             return;
         }
-        registerSuperPropertiesOnce(new JSONObject(superProperties));
+
+        try {
+            registerSuperPropertiesOnce(new JSONObject(superProperties));
+        } catch (NullPointerException e) {
+            Log.w(LOGTAG, "Can't have null keys in the properties!");
+        }
     }
 
     /**
@@ -1251,7 +1265,12 @@ public class MixpanelAPI {
                 Log.e(LOGTAG, "setMap does not accept null properties");
                 return;
             }
-            set(new JSONObject(properties));
+
+            try {
+                set(new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties!");
+            }
         }
 
         @Override
@@ -1285,7 +1304,11 @@ public class MixpanelAPI {
                 Log.e(LOGTAG, "setOnceMap does not accept null properties");
                 return;
             }
-            setOnce(new JSONObject(properties));
+            try {
+                setOnce(new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties!");
+            }
         }
 
         @Override
