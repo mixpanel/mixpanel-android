@@ -330,11 +330,7 @@ public class MixpanelAPI {
     }
 
     /**
-     * Map version of the track API below.
-     *
-     * @param eventName The name of the event to send.
-     * @param properties A Map containing the key value pairs of the properties to include in this event.
-     *                   Pass null if no extra properties exist. Cannot be null.
+     * Map version of the {@link #track(String, org.json.JSONObject)} API below.
      */
     public void trackMap(String eventName, Map<String, Object> properties) {
         if (null == properties) {
@@ -458,8 +454,7 @@ public class MixpanelAPI {
      }
 
     /**
-     * Map version of registerSuperProperties API below.
-     * @param superProperties A Map containing super properties to register
+     * Map version of {@link #registerSuperProperties(org.json.JSONObject)} API below.
      */
     public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
@@ -506,9 +501,7 @@ public class MixpanelAPI {
     }
 
     /**
-     * Map version of registerSuperPropertiesOnce API below.
-     *
-     * @param superProperties A Map containing the super properties to register.
+     * Map version of {@link #registerSuperPropertiesOnce(org.json.JSONObject)} API below.
      */
     public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
@@ -679,11 +672,7 @@ public class MixpanelAPI {
         public void set(String propertyName, Object value);
 
         /**
-         * Map version of set API below.
-         *
-         * @param properties a Map containing the collection of properties you wish to apply
-         *      to the identified user.Each key in the Map will be associated with
-         *      a property name, and the value of that key will be assigned to the property.
+         * Map version of {@link #set(org.json.JSONObject)} API below.
          */
         public void setMap(Map<String, Object> properties);
 
@@ -705,11 +694,7 @@ public class MixpanelAPI {
         public void setOnce(String propertyName, Object value);
 
         /**
-         * Map version of setOnce API below
-         *
-         * @param properties a Map containing the collection of properties you wish to apply
-         *      to the identified user. Each key in the Map will be associated with
-         *      a property name, and the value of that key will be assigned to the property.
+         * Map version of {@link #setOnce(org.json.JSONObject)} API below
          */
         public void setOnceMap(Map<String, Object> properties);
 
