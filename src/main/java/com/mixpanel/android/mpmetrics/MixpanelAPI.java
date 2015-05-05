@@ -680,6 +680,15 @@ public class MixpanelAPI {
         public void set(String propertyName, Object value);
 
         /**
+         * Map version of set API below.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user.Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         */
+        public void setMap(Map<String, Object> properties);
+
+        /**
          * Set a collection of properties on the identified user all at once.
          *
          * @param properties a JSONObject containing the collection of properties you wish to apply
@@ -695,6 +704,15 @@ public class MixpanelAPI {
          * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
          */
         public void setOnce(String propertyName, Object value);
+
+        /**
+         * Map version of setOnce API below
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         */
+        public void setOnceMap(Map<String, Object> properties);
 
         /**
          * Like {@link People#set(String, Object)}, but will not set properties that already exist on a record.
@@ -1200,6 +1218,15 @@ public class MixpanelAPI {
          }
 
         @Override
+        public void setMap(Map<String, Object> properties) {
+            if (null == properties) {
+                Log.e(LOGTAG, "setMap does not accept null properties");
+                return;
+            }
+            set(new JSONObject(properties));
+        }
+
+        @Override
         public void set(JSONObject properties) {
             try {
                 final JSONObject sendProperties = new JSONObject(mDeviceInfo);
@@ -1222,6 +1249,15 @@ public class MixpanelAPI {
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "set", e);
             }
+        }
+
+        @Override
+        public void setOnceMap(Map<String, Object> properties) {
+            if (null == properties) {
+                Log.e(LOGTAG, "setOnceMap does not accept null properties");
+                return;
+            }
+            set(new JSONObject(properties));
         }
 
         @Override
