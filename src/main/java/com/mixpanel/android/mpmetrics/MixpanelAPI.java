@@ -1257,7 +1257,7 @@ public class MixpanelAPI {
                 Log.e(LOGTAG, "setOnceMap does not accept null properties");
                 return;
             }
-            set(new JSONObject(properties));
+            setOnce(new JSONObject(properties));
         }
 
         @Override
