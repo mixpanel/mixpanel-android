@@ -43,6 +43,9 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void setMap(Map<String, Object> properties) { Assert.fail("Unexpected call"); }
+
+        @Override
         public void set(final JSONObject properties) {
             Assert.fail("Unexpected call");
         }
@@ -51,6 +54,9 @@ class MockMixpanel extends MixpanelAPI {
         public void setOnce(final String propertyName, final Object value) {
             Assert.fail("Unexpected call");
         }
+
+        @Override
+        public void setOnceMap(Map<String, Object> properties) { Assert.fail("Unexpected call"); }
 
         @Override
         public void setOnce(final JSONObject properties) {

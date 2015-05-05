@@ -157,12 +157,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
+        Map<String, Object> mapObj1 = new HashMap<>();
+        mapObj1.put("SET MAP INT", 1);
+        Map<String, Object> mapObj2 = new HashMap<>();
+        mapObj2.put("SET ONCE MAP STR", "SET ONCE MAP VALUE");
+
         mixpanel.getPeople().identify("TEST IDENTITY");
 
         mixpanel.getPeople().set("SET NAME", "SET VALUE");
+        mixpanel.getPeople().setMap(mapObj1);
         mixpanel.getPeople().increment("INCREMENT NAME", 1);
         mixpanel.getPeople().append("APPEND NAME", "APPEND VALUE");
         mixpanel.getPeople().setOnce("SET ONCE NAME", "SET ONCE VALUE");
+        mixpanel.getPeople().setOnceMap(mapObj2);
         mixpanel.getPeople().union("UNION NAME", new JSONArray("[100]"));
         mixpanel.getPeople().unset("UNSET NAME");
         mixpanel.getPeople().trackCharge(100, new JSONObject("{\"name\": \"val\"}"));
@@ -172,33 +179,39 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject setMessage = messages.get(0).getJSONObject("$set");
         assertEquals("SET VALUE", setMessage.getString("SET NAME"));
 
-        JSONObject addMessage = messages.get(1).getJSONObject("$add");
+        JSONObject setMapMessage = messages.get(1).getJSONObject("$set");
+        assertEquals(1, setMapMessage.getInt("SET MAP INT"));
+
+        JSONObject addMessage = messages.get(2).getJSONObject("$add");
         assertEquals(1, addMessage.getInt("INCREMENT NAME"));
 
-        JSONObject appendMessage = messages.get(2).getJSONObject("$append");
+        JSONObject appendMessage = messages.get(3).getJSONObject("$append");
         assertEquals("APPEND VALUE", appendMessage.get("APPEND NAME"));
 
-        JSONObject setOnceMessage = messages.get(3).getJSONObject("$set_once");
+        JSONObject setOnceMessage = messages.get(4).getJSONObject("$set_once");
         assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
 
-        JSONObject unionMessage = messages.get(4).getJSONObject("$union");
+        JSONObject setOnceMapMessage = messages.get(5).getJSONObject("$set_once");
+        assertEquals("SET ONCE MAP VALUE", setOnceMapMessage.getString("SET ONCE MAP STR"));
+
+        JSONObject unionMessage = messages.get(6).getJSONObject("$union");
         JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
         assertEquals(1, unionValues.length());
         assertEquals(100, unionValues.getInt(0));
 
-        JSONArray unsetMessage = messages.get(5).getJSONArray("$unset");
+        JSONArray unsetMessage = messages.get(7).getJSONArray("$unset");
         assertEquals(1, unsetMessage.length());
         assertEquals("UNSET NAME", unsetMessage.get(0));
 
-        JSONObject trackChargeMessage = messages.get(6).getJSONObject("$append");
+        JSONObject trackChargeMessage = messages.get(8).getJSONObject("$append");
         JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
         assertEquals(100.0d, transaction.getDouble("$amount"));
 
-        JSONArray clearChargesMessage = messages.get(7).getJSONArray("$unset");
+        JSONArray clearChargesMessage = messages.get(9).getJSONArray("$unset");
         assertEquals(1, clearChargesMessage.length());
         assertEquals("$transactions", clearChargesMessage.getString(0));
 
-        assertTrue(messages.get(8).has("$delete"));
+        assertTrue(messages.get(10).has("$delete"));
     }
 
     public void testIdentifyAfterSet() {
