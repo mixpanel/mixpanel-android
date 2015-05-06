@@ -140,6 +140,116 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    public void testEventOperations() throws JSONException {
+        final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
+
+        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+                messages.add(message);
+                return 1;
+            }
+        };
+
+        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(getContext()) {
+            // This will throw inside of our worker thread.
+            @Override
+            public MPDbAdapter makeDbAdapter(Context context) {
+                return eventOperationsAdapter;
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test event operations") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return eventOperationsMessages;
+            }
+        };
+
+        JSONObject jsonObj1 = new JSONObject();
+        JSONObject jsonObj2 = new JSONObject();
+        JSONObject jsonObj3 = new JSONObject();
+        JSONObject jsonObj4 = new JSONObject();
+        JSONObject jsonObjCombined = new JSONObject();
+        Map<String, Object> mapObj1 = new HashMap<>();
+        Map<String, Object> mapObj2 = new HashMap<>();
+        Map<String, Object> mapObj3 = new HashMap<>();
+        Map<String, Object> mapObj4 = new HashMap<>();
+        Map<String, Object> mapObjCombined = new HashMap<>();
+
+
+        try {
+            jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
+            jsonObj2.put("TRACK JSON INT", 1);
+            jsonObj3.put("TRACK JSON STRING ONCE", "TRACK JSON STRING ONCE VALUE");
+            jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
+        } catch (JSONException e) {
+            ;
+        }
+
+        mapObj1.put("TRACK MAP STRING", "TRACK MAP STRING VALUE");
+        mapObj2.put("TRACK MAP INT", 1);
+        mapObj3.put("TRACK MAP STRING ONCE", "TRACK MAP STRING ONCE VALUE");
+        mapObj4.put("TRACK MAP STRING ONCE", "SHOULD NOT SEE ME");
+
+        try {
+            JSONObject message;
+            JSONObject properties;
+
+            mixpanel.track("event1", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event1", message.getString("event"));
+
+            mixpanel.track("event2", jsonObj1);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event2", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(jsonObj1.getString("TRACK JSON STRING"), properties.getString("TRACK JSON STRING"));
+
+            mixpanel.trackMap("event3", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event3", message.getString("event"));
+
+            mixpanel.trackMap("event4", mapObj1);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event4", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(mapObj1.get("TRACK MAP STRING"), properties.getString("TRACK MAP STRING"));
+
+            mixpanel.registerSuperProperties(jsonObj2);
+            mixpanel.registerSuperPropertiesOnce(jsonObj3);
+            mixpanel.registerSuperPropertiesOnce(jsonObj4);
+            mixpanel.registerSuperPropertiesMap(mapObj2);
+            mixpanel.registerSuperPropertiesOnceMap(mapObj3);
+            mixpanel.registerSuperPropertiesOnceMap(mapObj4);
+
+            mixpanel.track("event5", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event5", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(jsonObj2.getInt("TRACK JSON INT"), properties.getInt("TRACK JSON INT"));
+            assertEquals(jsonObj3.getString("TRACK JSON STRING ONCE"), properties.getString("TRACK JSON STRING ONCE"));
+            assertEquals(mapObj2.get("TRACK MAP INT"), properties.getInt("TRACK MAP INT"));
+            assertEquals(mapObj3.get("TRACK MAP STRING ONCE"), properties.getString("TRACK MAP STRING ONCE"));
+
+            mixpanel.unregisterSuperProperty("TRACK JSON INT");
+            mixpanel.track("event6", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event6", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertFalse(properties.has("TRACK JSON INT"));
+
+            mixpanel.clearSuperProperties();
+            mixpanel.track("event7", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event7", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertFalse(properties.has("TRACK JSON STRING ONCE"));
+        } catch (InterruptedException e) {
+            fail("Unexpected interruption");
+        }
+    }
+
     public void testPeopleOperations() throws JSONException {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 
