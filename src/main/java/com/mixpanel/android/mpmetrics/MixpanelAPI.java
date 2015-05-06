@@ -350,7 +350,7 @@ public class MixpanelAPI {
             try {
                 track(eventName, new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties!");
+                Log.w(LOGTAG, "Can't have null keys in the properties of trackMap!");
             }
         }
     }
@@ -494,7 +494,7 @@ public class MixpanelAPI {
         try {
             registerSuperProperties(new JSONObject(superProperties));
         } catch (NullPointerException e) {
-            Log.w(LOGTAG, "Can't have null keys in the properties!");
+            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap!");
         }
     }
 
@@ -553,7 +553,7 @@ public class MixpanelAPI {
         try {
             registerSuperPropertiesOnce(new JSONObject(superProperties));
         } catch (NullPointerException e) {
-            Log.w(LOGTAG, "Can't have null keys in the properties!");
+            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesOnce!");
         }
     }
 
@@ -1269,7 +1269,7 @@ public class MixpanelAPI {
             try {
                 set(new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties!");
+                Log.w(LOGTAG, "Can't have null keys in the properties of setMap!");
             }
         }
 
@@ -1307,7 +1307,7 @@ public class MixpanelAPI {
             try {
                 setOnce(new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties!");
+                Log.w(LOGTAG, "Can't have null keys in the properties setOnceMap!");
             }
         }
 
