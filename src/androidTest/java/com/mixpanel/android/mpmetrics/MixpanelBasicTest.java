@@ -175,14 +175,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         Map<String, Object> mapObj3 = new HashMap<>();
         Map<String, Object> mapObj4 = new HashMap<>();
 
-        try {
-            jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
-            jsonObj2.put("TRACK JSON INT", 1);
-            jsonObj3.put("TRACK JSON STRING ONCE", "TRACK JSON STRING ONCE VALUE");
-            jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
-        } catch (JSONException e) {
-            ;
-        }
+        jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
+        jsonObj2.put("TRACK JSON INT", 1);
+        jsonObj3.put("TRACK JSON STRING ONCE", "TRACK JSON STRING ONCE VALUE");
+        jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
 
         mapObj1.put("TRACK MAP STRING", "TRACK MAP STRING VALUE");
         mapObj2.put("TRACK MAP INT", 1);
