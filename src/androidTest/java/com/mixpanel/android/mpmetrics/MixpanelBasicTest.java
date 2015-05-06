@@ -170,13 +170,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject jsonObj2 = new JSONObject();
         JSONObject jsonObj3 = new JSONObject();
         JSONObject jsonObj4 = new JSONObject();
-        JSONObject jsonObjCombined = new JSONObject();
         Map<String, Object> mapObj1 = new HashMap<>();
         Map<String, Object> mapObj2 = new HashMap<>();
         Map<String, Object> mapObj3 = new HashMap<>();
         Map<String, Object> mapObj4 = new HashMap<>();
-        Map<String, Object> mapObjCombined = new HashMap<>();
-
 
         try {
             jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
