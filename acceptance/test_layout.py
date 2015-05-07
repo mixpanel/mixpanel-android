@@ -56,5 +56,11 @@ class AndroidTest(unittest.TestCase):
         self.assertTrue(set_background_image_size['width'] > send_to_mixpanel_size['width'])
         self.assertTrue(set_background_image_size['height'] > send_to_mixpanel_size['height'])
 
+    def test_layout_absent_views(self):
+        decide_message = '{"notifications":[],"surveys":[],"variants":[{"tweaks":[],"actions":[{"args":[{"view_id_name":"edit_email_address","verb":3,"anchor_id_name":"0"}],"name":"c155","path":[{"prefix":"shortest","index":0,"id":16908290},{"view_class":"android.widget.RelativeLayout","index":0}],"change_type":"layout"},{"args":[{"view_id_name":"fake_view","verb":3,"anchor_id_name":"0"}],"name":"c155","path":[{"prefix":"shortest","index":0,"id":16908290},{"view_class":"android.widget.RelativeLayout","index":0}],"change_type":"layout"},{"args":[{"view_id_name":"edit_email_address","verb":3,"anchor_id_name":"fake_view"}],"name":"c155","path":[{"prefix":"shortest","index":0,"id":16908290},{"view_class":"android.widget.RelativeLayout","index":0}],"change_type":"layout"}],"id":8990,"experiment_id":4302}]}'
+        self._launch_app(decide_message)
+
+        self.assertEquals(self.driver.find_element_by_id('edit_email_address').location['y'], self.driver.find_element_by_id('edit_first_name').location['y'])
+
 if __name__ == '__main__':
 	unittest.main()
