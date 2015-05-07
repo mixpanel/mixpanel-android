@@ -35,7 +35,6 @@ function run_test {
             let failure_cnt+=1
         fi
         let total_cnt+=1
-        echo $test_file
     done
 
     bold=`tput bold`
