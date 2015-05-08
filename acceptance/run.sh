@@ -1,7 +1,7 @@
 #!/bin/bash
 
 TEST_APP_DIR=test-application
-TESTS=(test.py)
+TESTS=(test_property.py test_layout.py)
 HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
 ANDROID_SDK_DIR=~/Library/Android/sdk/
@@ -27,14 +27,14 @@ function start_selendroid_server {
 function run_test {
     total_cnt=0
     failure_cnt=0
-    for test_file in $TESTS
+    for test_file in ${TESTS[@]}
     do
         python $test_file
         if [ $? != 0 ]
         then
             let failure_cnt+=1
         fi
-        let total_cnt=total_cnt+1
+        let total_cnt+=1
     done
 
     bold=`tput bold`
