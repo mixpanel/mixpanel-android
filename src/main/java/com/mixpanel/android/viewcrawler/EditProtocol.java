@@ -365,11 +365,23 @@ import java.util.List;
             }
 
             final String url = description.getString("url");
-            final JSONObject dimensions = description.getJSONObject("dimensions");
-            final int left = dimensions.getInt("left");
-            final int right = dimensions.getInt("right");
-            final int top = dimensions.getInt("top");
-            final int bottom = dimensions.getInt("bottom");
+
+            final boolean useBounds;
+            final int left;
+            final int right;
+            final int top;
+            final int bottom;
+            if (description.isNull("dimensions")) {
+                left = right = top = bottom = 0;
+                useBounds = false;
+            } else {
+                final JSONObject dimensions = description.getJSONObject("dimensions");
+                left = dimensions.getInt("left");
+                right = dimensions.getInt("right");
+                top = dimensions.getInt("top");
+                bottom = dimensions.getInt("bottom");
+                useBounds = true;
+            }
 
             final Bitmap image;
             try {
@@ -380,7 +392,10 @@ import java.util.List;
             }
 
             final Drawable ret = new BitmapDrawable(Resources.getSystem(), image);
-            ret.setBounds(left, top, right, bottom);
+            if (useBounds) {
+                ret.setBounds(left, top, right, bottom);
+            }
+
             return ret;
         } catch (JSONException e) {
             throw new BadInstructionsException("Couldn't read drawable description", e);
