@@ -295,7 +295,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
 
         JSONObject setOnceMapMessage = messages.get(5).getJSONObject("$set_once");
-        assertEquals(mapObj2.get("SET ONCE MAP"), setOnceMapMessage.getString("SET ONCE MAP STR"));
+        assertEquals(mapObj2.get("SET ONCE MAP STR"), setOnceMapMessage.getString("SET ONCE MAP STR"));
 
         JSONObject unionMessage = messages.get(6).getJSONObject("$union");
         JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
