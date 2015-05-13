@@ -60,11 +60,11 @@ import javax.net.ssl.SSLSocketFactory;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisitor.OnLayoutErrorListener {
 
-    public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
+    public ViewCrawler(Context context, String token, MixpanelAPI mixpanel, Tweaks tweaks) {
         mConfig = MPConfig.getInstance(context);
 
         mEditState = new EditState();
-        mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
+        mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
 

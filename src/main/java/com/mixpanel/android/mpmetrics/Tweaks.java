@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.os.Handler;
 import android.support.annotation.IntDef;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.lang.annotation.Retention;
@@ -60,6 +61,7 @@ public class Tweaks {
     }
 
     public interface TweakRegistrar {
+        public void declareTweaks(Tweaks t);
         public void registerObjectForTweaks(Tweaks t, Object registrant);
     }
 
@@ -77,10 +79,36 @@ public class Tweaks {
         public final Object defaultValue;
     }
 
-    public Tweaks(Handler callbackHandler, String tweakClassName) {
+    public static TweakRegistrar findRegistrar(String packageName) {
+        Tweaks.TweakRegistrar ret = null;
+        try {
+            final ClassLoader loader = TweakRegistrar.class.getClassLoader();
+            final Class found = loader.loadClass(packageName + ".$$TWEAK_REGISTRAR");
+            final Field instanceField = found.getField("TWEAK_REGISTRAR");
+            ret = (Tweaks.TweakRegistrar) instanceField.get(null);
+        } catch (ClassNotFoundException e) {
+            // Ok, no need for
+        } catch (NoSuchFieldException e) {
+            Log.w(LOGTAG, "Found apparent TweakRegistrar class, but with no TWEAK_REGISTRAR member", e);
+        } catch (IllegalAccessException e) {
+            Log.w(LOGTAG, "Found apparent TweakRegistrar class but TWEAK_REGISTRAR wasn't public and/or static", e);
+        } catch (ClassCastException e) {
+            Log.w(LOGTAG, "Found apparent TweakRegistrar class, but TWEAK_REGISTRAR was not a TweakRegistrar", e);
+        }
+
+        return ret;
+    }
+
+    public Tweaks(Handler callbackHandler, @Nullable TweakRegistrar registrar) {
         mTweaks = new HashMap<String, TweakValue>();
         mUiHandler = callbackHandler;
-        mTweakClassName = tweakClassName;
+        mRegistrar = registrar;
+
+        if (null != mRegistrar) {
+            synchronized (mRegistrar) {
+                mRegistrar.declareTweaks(this);
+            }
+        }
     }
 
     public String getString(String tweakName) {
@@ -192,44 +220,11 @@ public class Tweaks {
     }
 
     public void registerForTweaks(Object registrant) {
-        final Set<Package> seenPackages = new HashSet<Package>();
-        synchronized (sRegistrars) {
-            for (Class klass = registrant.getClass(); klass != Object.class; klass = klass.getSuperclass()) {
-                final Package registrantPackage = klass.getPackage();
-                if (seenPackages.contains(registrantPackage)) {
-                    continue;
-                }
-
-                if (!sRegistrars.containsKey(registrantPackage)) {
-                    final ClassLoader loader = klass.getClassLoader();
-
-                    try {
-                        final Class found = loader.loadClass(registrantPackage.getName() + "." + mTweakClassName);
-                        final Field instanceField = found.getField("TWEAK_REGISTRAR");
-                        final TweakRegistrar registrar = (TweakRegistrar) instanceField.get(null);
-                        sRegistrars.put(registrantPackage, registrar);
-                    } catch (ClassNotFoundException e) {
-                        ; // Ok, no such class.
-                    } catch (NoSuchFieldException e) {
-                        Log.w(LOGTAG, "Found a class named $$TWEAK_REGISTRAR in package " + registrantPackage.getName() + " but did not find an INSTANCE member.\n");
-                        Log.i(LOGTAG, "    There may be a bug in the Tweaks Annotation processor, or otherwise an issue with the generated $$TWEAK_REGISTRAR class.");
-                    } catch (IllegalAccessException e) {
-                        Log.w(LOGTAG, "Found a class named $$TWEAK_REGISTRAR in package " + registrantPackage.getName() + " but INSTANCE member is not public or not static.\n");
-                        Log.i(LOGTAG, "    There may be a bug in the Tweaks Annotation processor, or otherwise an issue with the generated $$TWEAK_REGISTRAR class.");
-                    } catch (ClassCastException e) {
-                        Log.w(LOGTAG, "Found a class named $$TWEAK_REGISTRAR in package " + registrantPackage.getName() + " but INSTANCE member can't be cast to a TweakRegistrar.\n");
-                        Log.i(LOGTAG, "    There may be a bug in the Tweaks Annotation processor, or otherwise an issue with the generated $$TWEAK_REGISTRAR class.");
-                    }
-                }
-
-                if (sRegistrars.containsKey(registrantPackage)) {
-                    final TweakRegistrar registrar = sRegistrars.get(registrantPackage);
-                    registrar.registerObjectForTweaks(this, registrant);
-                }
-
-                seenPackages.add(registrantPackage);
-            } // for
-        } // synchronized(sRegistrars)
+        if (null != mRegistrar) {
+            synchronized (mRegistrar) {
+                mRegistrar.registerObjectForTweaks(this, registrant);
+            }
+        }
     }
 
     private void runCallback(final TweakChangeCallback callback, final Object value) {
@@ -285,7 +280,7 @@ public class Tweaks {
 
     private final Map<String, TweakValue> mTweaks;
     private final Handler mUiHandler;
-    private final String mTweakClassName;
+    private final TweakRegistrar mRegistrar;
 
     // Access must be synchronized
     private static final Map<Package, TweakRegistrar> sRegistrars = new HashMap<Package, TweakRegistrar>();

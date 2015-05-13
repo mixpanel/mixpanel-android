@@ -11,7 +11,13 @@ import java.util.List;
 public class RegistrarRuns implements Tweaks.TweakRegistrar {
 
     public RegistrarRuns() {
+        declareWasCalled = false;
         wasRegistered = new ArrayList<Pair<Tweaks, Object>>();
+    }
+
+    @Override
+    public void declareTweaks(final Tweaks t) {
+        declareWasCalled = true;
     }
 
     @Override
@@ -19,7 +25,6 @@ public class RegistrarRuns implements Tweaks.TweakRegistrar {
         wasRegistered.add(new Pair<Tweaks,Object>(t, registrant));
     }
 
+    public boolean declareWasCalled;
     public List<Pair<Tweaks, Object>> wasRegistered;
-
-    public static final RegistrarRuns TWEAK_REGISTRAR = new RegistrarRuns();
 }

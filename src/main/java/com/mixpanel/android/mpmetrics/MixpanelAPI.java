@@ -30,6 +30,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
@@ -1233,7 +1234,10 @@ public class MixpanelAPI {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return new UnsupportedUpdatesFromMixpanel();
         } else {
-            return new ViewCrawler(mContext, mToken, this);
+            final Tweaks.TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
+            final Handler handler = new Handler(Looper.getMainLooper());
+            final Tweaks tweaks = new Tweaks(handler, registrar);
+            return new ViewCrawler(mContext, mToken, this, tweaks);
         }
     }
 
@@ -1875,7 +1879,7 @@ public class MixpanelAPI {
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
         public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
+            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), null);
         }
 
         @Override
