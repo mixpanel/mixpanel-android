@@ -246,11 +246,11 @@ public class Tweaks {
             return STRING_TYPE;
         }
 
-        if (thing instanceof Double) {
+        if (thing instanceof Double || thing instanceof Float) {
             return DOUBLE_TYPE;
         }
 
-        if (thing instanceof Long) {
+        if (thing instanceof Long || thing instanceof Integer || thing instanceof Short || thing instanceof Byte) {
             return LONG_TYPE;
         }
 
