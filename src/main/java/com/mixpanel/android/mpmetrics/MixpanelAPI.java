@@ -30,7 +30,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
@@ -1046,10 +1045,10 @@ public class MixpanelAPI {
 
         /**
          * Tells MixPanel that you have handled an {@link com.mixpanel.android.mpmetrics.InAppNotification}
-         * in the case where you are manually dealing with your notifications ({@link People:getNotificationIfAvailable()}).
+         * in the case where you are manually dealing with your notifications ({@link People#getNotificationIfAvailable()}).
          *
          * Note: if you do not acknowledge the notification you will receive it again each time
-         * you call {@link People#identify(String)} and then call {@link People:getNotificationIfAvailable()}
+         * you call {@link People#identify(String)} and then call {@link People#getNotificationIfAvailable()}
          *
          * @param notif the notification to track (no-op on null)
          */
@@ -1234,7 +1233,7 @@ public class MixpanelAPI {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return new UnsupportedUpdatesFromMixpanel();
         } else {
-            final Tweaks.TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
+            final TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
             final Handler handler = new Handler(Looper.getMainLooper());
             final Tweaks tweaks = new Tweaks(handler, registrar);
             return new ViewCrawler(mContext, mToken, this, tweaks);

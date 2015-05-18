@@ -3,7 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import android.test.AndroidTestCase;
 import android.util.Pair;
 
-import com.mixpanel.android.mpmetrics.test_autotweak_package.RegistrarRuns;
 import com.mixpanel.android.mpmetrics.test_autotweak_package.TweakableThing;
 
 import java.util.ArrayList;

@@ -54,11 +54,13 @@ android.libraryVariants.all { variant ->
             '**/FadingImageView.java',
             '**/InAppFragment.java',
             '**/MiniCircleImageView.java',
+            '**/ResourceIds.java',
+            '**/ResourceReader.java',
             '**/SurveyActivity.java',
             '**/SurveyChoiceView.java',
             '**/SurveyCallbacks.java',
             '**/TrackingDebug.java',
-            '**/Tweaks.java', // Someday this will be exposed to the public
+            '**/TweakRegistrar.java', // Consider making TweakRegistrar public at some point.
             '**/UpdateDisplayState.java',
             '**/UpdatesFromMixpanel.java',
             '**/ViewCrawler.java'

@@ -1,14 +1,15 @@
-package com.mixpanel.android.mpmetrics.test_autotweak_package;
+package com.mixpanel.android.mpmetrics;
 
 
 import android.util.Pair;
 
+import com.mixpanel.android.mpmetrics.TweakRegistrar;
 import com.mixpanel.android.mpmetrics.Tweaks;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RegistrarRuns implements Tweaks.TweakRegistrar {
+public class RegistrarRuns implements TweakRegistrar {
 
     public RegistrarRuns() {
         declareWasCalled = false;
