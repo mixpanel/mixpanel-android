@@ -22,7 +22,6 @@ import android.os.Bundle;
         mMpInstance.getPeople().showSurveyIfAvailable(activity);
     }
 
-
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) { }
 
@@ -36,7 +35,9 @@ import android.os.Bundle;
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) { }
 
     @Override
-    public void onActivityResumed(Activity activity) { }
+    public void onActivityResumed(Activity activity) {
+        mMpInstance.getPeople().joinExperimentIfAvailable();
+    }
 
     @Override
     public void onActivityStopped(Activity activity) { }

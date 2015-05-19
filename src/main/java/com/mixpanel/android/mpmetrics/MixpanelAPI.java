@@ -990,6 +990,23 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
+         * Applies A/B test changes, if they are present. By default, your application will attempt
+         * to join available experiments any time an activity is resumed, but you can disable this
+         * automatic behavior by adding the following tag to the &lt;application&gt; tag in your AndroidManifest.xml
+         * {@code
+         *     <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
+         *                android:value="false" />
+         * }
+         *
+         * If you disable AutoShowMixpanelUpdates, you'll need to call joinExperimentIfAvailable to
+         * join or clear existing experiments. If you want to display a loading screen or otherwise
+         * wait for experiments to load from the server before you apply them, you can use
+         * {@link #addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener)} to
+         * be informed that new experiments are ready.
+         */
+        public void joinExperimentIfAvailable();
+
+        /**
          * Shows the given in app notification to the user. Display will occur just as if the
          * notification was shown via showNotificationIfAvailable. In most cases, it is
          * easier and more efficient to use showNotificationIfAvailable.
@@ -1082,17 +1099,19 @@ public class MixpanelAPI {
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like surveys or in app notifications) are discovered.
+         * (like surveys, in app notifications, or A/B test experiments) are discovered. Most users of the library
+         * will not need this method, since surveys, in-app notifications, and experiments are
+         * applied automatically to your application by default.
          *
          * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>Once this listener is called, you may call {@link People#getSurveyIfAvailable()}
-         * or {@link People#getNotificationIfAvailable()}
-         * to retrieve a Survey or InAppNotification object. However, if you have multiple
-         * listeners registered, one listener may have consumed the available Survey or
-         * InAppNotification, and so the other listeners may obtain null when calling
-         * {@link People#getSurveyIfAvailable()} or {@link People#getNotificationIfAvailable()}.
+         * <p>The listener will be called when new surveys, in app notifications, or experiments
+         * are detected as available. That means you wait to call {@link People#showSurveyIfAvailable(Activity)},
+         * {@link People#showNotificationIfAvailable(Activity)}, and {@link People#joinExperimentIfAvailable()}
+         * to show content and updates that have been delivered to your app. (You can also call these
+         * functions whenever else you would like, they're inexpensive and will do nothing if no
+         * content is available.)
          *
          * @param listener the listener to add
          */
@@ -1166,7 +1185,7 @@ public class MixpanelAPI {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
-                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys or in-app notifications.");
+                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments.");
             }
         }
     }
@@ -1496,6 +1515,14 @@ public class MixpanelAPI {
         @Override
         public void trackNotification(final String eventName, final InAppNotification notif) {
             track(eventName, notif.getCampaignProperties());
+        }
+
+        @Override
+        public void joinExperimentIfAvailable() {
+            final JSONArray variants = mDecideMessages.getVariants();
+            if (null != variants) {
+                mUpdatesFromMixpanel.setVariants(variants);
+            }
         }
 
         @Override
