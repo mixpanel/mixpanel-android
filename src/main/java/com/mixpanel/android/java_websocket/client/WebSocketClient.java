@@ -1,5 +1,7 @@
 package com.mixpanel.android.java_websocket.client;
 
+import android.annotation.SuppressLint;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,6 +31,7 @@ import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
  * A subclass must implement at least <var>onOpen</var>, <var>onClose</var>, and <var>onMessage</var> to be
  * useful. At runtime the user is expected to establish a connection via {@link #connect()}, then receive events like {@link #onMessage(String)} via the overloaded methods and to {@link #send(String)} data to the server.
  */
+@SuppressLint("Assert")
 public abstract class WebSocketClient extends WebSocketAdapter implements Runnable, WebSocket {
 
 	/**

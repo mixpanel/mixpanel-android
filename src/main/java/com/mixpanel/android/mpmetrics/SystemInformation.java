@@ -22,7 +22,6 @@ import android.view.WindowManager;
  * and handles permission-dependent queries for default system information.
  */
 /* package */ class SystemInformation {
-    public static final String LOGTAG = "MixpanelAPI.SystemInformation";
 
     public SystemInformation(Context context) {
         mContext = context;
@@ -171,4 +170,6 @@ import android.view.WindowManager;
     private final DisplayMetrics mDisplayMetrics;
     private final String mAppVersionName;
     private final Integer mAppVersionCode;
+
+    private static final String LOGTAG = "MixpanelAPI.SysInfo";
 }

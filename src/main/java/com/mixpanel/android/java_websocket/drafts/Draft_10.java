@@ -1,4 +1,6 @@
 package com.mixpanel.android.java_websocket.drafts;
+import android.annotation.SuppressLint;
+
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -28,6 +30,7 @@ import com.mixpanel.android.java_websocket.handshake.ServerHandshakeBuilder;
 import com.mixpanel.android.java_websocket.util.Base64;
 import com.mixpanel.android.java_websocket.util.Charsetfunctions;
 
+@SuppressLint({"Assert", "UseValueOf"})
 public class Draft_10 extends Draft {
 
 	private class IncompleteException extends Throwable {

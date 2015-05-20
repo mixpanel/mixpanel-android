@@ -6,7 +6,6 @@ import android.graphics.drawable.BitmapDrawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.util.ArrayMap;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.WeakHashMap;
 
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
@@ -153,10 +153,10 @@ import java.util.WeakHashMap;
          * in the DFS stack already, there must be a circle in the graph. To speed up the
          * search, all the parsed nodes will be removed from the graph.
          */
-        public boolean hasCycle(ArrayMap<View, ArrayList<View>> dependencyGraph) {
-            ArrayList<View> dfsStack = new ArrayList<View>();
+        public boolean hasCycle(TreeMap<View, List<View>> dependencyGraph) {
+            final List<View> dfsStack = new ArrayList<View>();
             while (!dependencyGraph.isEmpty()) {
-                View currentNode = dependencyGraph.keyAt(0);
+                View currentNode = dependencyGraph.firstKey();
                 if (!detectSubgraphCycle(dependencyGraph, currentNode, dfsStack)) {
                     return false;
                 }
@@ -165,14 +165,14 @@ import java.util.WeakHashMap;
             return true;
         }
 
-        private boolean detectSubgraphCycle(ArrayMap<View, ArrayList<View>> dependencyGraph,
-                                            View currentNode, ArrayList<View> dfsStack) {
+        private boolean detectSubgraphCycle(TreeMap<View, List<View>> dependencyGraph,
+                                            View currentNode, List<View> dfsStack) {
             if (dfsStack.contains(currentNode)) {
                 return false;
             }
 
             if (dependencyGraph.containsKey(currentNode)) {
-                ArrayList<View> dependencies = dependencyGraph.remove(currentNode);
+                final List<View> dependencies = dependencyGraph.remove(currentNode);
                 dfsStack.add(currentNode);
 
                 int size = dependencies.size();
@@ -190,7 +190,7 @@ import java.util.WeakHashMap;
     }
 
     public static class LayoutUpdateVisitor extends ViewVisitor {
-        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, ArrayList<LayoutRule> args,
+        public LayoutUpdateVisitor(List<Pathfinder.PathElement> path, List<LayoutRule> args,
                                    String name, OnLayoutErrorListener onLayoutErrorListener) {
             super(path);
             mOriginalValues = new WeakHashMap<View, int[]>();
@@ -284,14 +284,14 @@ import java.util.WeakHashMap;
         }
 
         private boolean verifyLayout(Set<Integer> rules, SparseArray<View> idToChild) {
-            ArrayMap<View, ArrayList<View>> dependencyGraph = new ArrayMap<View, ArrayList<View>>();
+            final TreeMap<View, List<View>> dependencyGraph = new TreeMap<View, List<View>>();
             int size = idToChild.size();
             for (int i = 0; i < size; i++) {
                 final View child = idToChild.valueAt(i);
                 final RelativeLayout.LayoutParams childLayoutParams = (RelativeLayout.LayoutParams) child.getLayoutParams();
                 int[] layoutRules = childLayoutParams.getRules();
 
-                ArrayList<View> dependencies = new ArrayList<View>();
+                final List<View> dependencies = new ArrayList<View>();
                 for (int rule : rules) {
                     int dependencyId = layoutRules[rule];
                     if (dependencyId > 0 && dependencyId != child.getId()) {
@@ -308,7 +308,7 @@ import java.util.WeakHashMap;
         protected String name() { return "Layout Update"; }
 
         private final WeakHashMap<View, int[]> mOriginalValues;
-        private final ArrayList<LayoutRule> mArgs;
+        private final List<LayoutRule> mArgs;
         private final String mName;
         private static final Set<Integer> mHorizontalRules = new HashSet<Integer>(Arrays.asList(
                 RelativeLayout.LEFT_OF, RelativeLayout.RIGHT_OF,
