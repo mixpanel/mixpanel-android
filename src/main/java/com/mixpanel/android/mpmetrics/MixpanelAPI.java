@@ -953,9 +953,9 @@ public class MixpanelAPI {
          * <p>The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -968,16 +968,16 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Shows an in app notification to the user if one is available. If the notification
+         * Shows an in-app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
          * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
          * display the Takeover notification.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -1007,7 +1007,7 @@ public class MixpanelAPI {
         public void joinExperimentIfAvailable();
 
         /**
-         * Shows the given in app notification to the user. Display will occur just as if the
+         * Shows the given in-app notification to the user. Display will occur just as if the
          * notification was shown via showNotificationIfAvailable. In most cases, it is
          * easier and more efficient to use showNotificationIfAvailable.
          *
@@ -1044,7 +1044,7 @@ public class MixpanelAPI {
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display in app notifications should call this
+         * no survey is currently available. Callers who want to display in-app notifications should call this
          * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
@@ -1082,7 +1082,7 @@ public class MixpanelAPI {
         public void showSurveyById(int id, final Activity parent);
 
         /**
-         * Shows an in app notification identified by id. The behavior of this is otherwise identical to
+         * Shows an in-app notification identified by id. The behavior of this is otherwise identical to
          * {@link People#showNotificationIfAvailable(Activity)}.
          *
          * @param id the id of the InAppNotification you wish to show.
@@ -1099,14 +1099,14 @@ public class MixpanelAPI {
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like surveys, in app notifications, or A/B test experiments) are discovered. Most users of the library
+         * (like surveys, in-app notifications, or A/B test experiments) are discovered. Most users of the library
          * will not need this method, since surveys, in-app notifications, and experiments are
          * applied automatically to your application by default.
          *
          * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>The listener will be called when new surveys, in app notifications, or experiments
+         * <p>The listener will be called when new surveys, in-app notifications, or experiments
          * are detected as available. That means you wait to call {@link People#showSurveyIfAvailable(Activity)},
          * {@link People#showNotificationIfAvailable(Activity)}, and {@link People#joinExperimentIfAvailable()}
          * to show content and updates that have been delivered to your app. (You can also call these
@@ -1168,7 +1168,7 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show surveys and in app notifications
+     * Once registered, we can automatically check for and show surveys and in-app notifications
      * when any Activity is opened.
      *
      * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
@@ -1456,7 +1456,7 @@ public class MixpanelAPI {
             try {
                 notifProperties.put("$time", dateFormat.format(new Date()));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+                Log.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
             }
             people.append("$campaigns", notif.getId());
             people.append("$notifications", notifProperties);
