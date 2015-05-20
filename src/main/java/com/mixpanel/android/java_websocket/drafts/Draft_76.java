@@ -1,5 +1,7 @@
 package com.mixpanel.android.java_websocket.drafts;
 
+import android.annotation.SuppressLint;
+
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -25,6 +27,7 @@ import com.mixpanel.android.java_websocket.handshake.Handshakedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshakeBuilder;
 
+@SuppressLint("UseValueOf")
 public class Draft_76 extends Draft_75 {
 	private boolean failed = false;
 	private static final byte[] closehandshake = { -1, 0 };

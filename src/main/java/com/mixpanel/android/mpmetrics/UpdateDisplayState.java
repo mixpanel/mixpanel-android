@@ -436,7 +436,7 @@ public class UpdateDisplayState implements Parcelable {
     private static int sNextIntentId = 0;
     private static int sShowingIntentId = -1;
 
-    private static final String LOGTAG = "MixpanelAPI.UpdateDisplayState";
+    private static final String LOGTAG = "MixpanelAPI.UpDisplSt";
     private static final long MAX_LOCK_TIME_MILLIS = 12 * 60 * 60 * 1000; // Twelve hour timeout on survey activities
 
     private static final String DISTINCT_ID_BUNDLE_KEY = "com.mixpanel.android.mpmetrics.UpdateDisplayState.DISTINCT_ID_BUNDLE_KEY";

@@ -528,7 +528,7 @@ public class SurveyActivity extends Activity {
     private static final int SHADOW_SIZE_THRESHOLD_PX = 100;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.SurveyActivity";
+    private static final String LOGTAG = "MixpanelAPI.SrvyActvty";
 
     public static final String INTENT_ID_KEY = "com.mixpanel.android.surveys.SurveyActivity.INTENT_ID_KEY";
 }
