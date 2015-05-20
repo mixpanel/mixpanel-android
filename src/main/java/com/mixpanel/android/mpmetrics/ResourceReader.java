@@ -10,6 +10,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * This class is for internal use in the Mixpanel library, and should not be imported into
+ * client code.
+ */
 public abstract class ResourceReader implements ResourceIds {
 
     public static class Ids extends ResourceReader {
@@ -141,5 +145,5 @@ public abstract class ResourceReader implements ResourceIds {
     private final SparseArray<String> mIdToIdName;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.ResourceReader";
+    private static final String LOGTAG = "MixpanelAPI.RsrcReader";
 }

@@ -1,13 +1,20 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.test.AndroidTestCase;
+import android.util.Base64;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.TestUtils;
+
+import junit.framework.Test;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,25 +27,50 @@ import java.util.Map;
 
 
 public class EditProtocolTest extends AndroidTestCase {
+
     @Override
     public void setUp() throws JSONException {
         final Map<String, Integer> idMap = new HashMap<String, Integer>();
         idMap.put("NAME PRESENT", 1001);
         idMap.put("ALSO PRESENT", 1002);
+        idMap.put("relativelayout_button1", TestView.RELATIVE_LAYOUT_BUTTON1_ID);
+        idMap.put("relativelayout_button2", TestView.RELATIVE_LAYOUT_BUTTON2_ID);
 
+        mLayoutErrorListener = new TestView.MockOnLayoutErrorListener();
         mResourceIds = new TestUtils.TestResourceIds(idMap);
-        mProtocol = new EditProtocol(mResourceIds);
+        mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) {
+                fail("Unexpected call to getImage");
+                return null;
+            }
+        }, mLayoutErrorListener);
         mSnapshotConfig = new JSONObject(
-            "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageBitmap\",\"parameters\":[{\"type\":\"android.graphics.Bitmap\"}]}}]}]}}"
+            "{\"config\": {\"classes\":[{\"name\":\"android.view.View\",\"properties\":[{\"name\":\"importantForAccessibility\",\"get\":{\"selector\":\"isImportantForAccessibility\",\"parameters\":[],\"result\":{\"type\":\"java.lang.Boolean\"}}}]},{\"name\":\"android.widget.TextView\",\"properties\":[{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}}]},{\"name\":\"android.widget.ImageView\",\"properties\":[{\"name\":\"image\",\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]}}]}]}}"
         );
         mPropertyEdit = new JSONObject(
-            "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]]}"
+            "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"property\":{\"classname\":\"android.widget.Button\",\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]}},\"args\":[[\"Ground Control to Major Tom\",\"java.lang.CharSequence\"]],\"change_type\": \"property\"}"
+        );
+        mLayoutEditAlignParentRight = new JSONObject(
+            String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button1\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test1\"}", RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE, TestView.RELATIVE_LAYOUT_ID)
+        );
+        mLayoutEditBelow = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button1\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test2\"}", RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_ID)
+        );
+        mLayoutEditRemoveBelow = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"%d\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test3\"}", RelativeLayout.BELOW, TestView.NO_ANCHOR, TestView.RELATIVE_LAYOUT_ID)
+        );
+        mLayoutEditAbsentAnchor = new JSONObject(
+                String.format("{\"args\":[{\"verb\":%d,\"anchor_id_name\":\"relativelayout_button3\",\"view_id_name\":\"relativelayout_button2\"}],\"path\": [{\"prefix\": \"shortest\", \"index\": 0, \"id\": %d }],\"change_type\": \"layout\", \"name\": \"test4\"}", RelativeLayout.BELOW, TestView.RELATIVE_LAYOUT_ID)
         );
         mClickEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":1}],\"event_type\":\"click\",\"event_name\":\"Commencing Count-Down\"}"
         );
         mAppearsEvent = new JSONObject(
             "{\"path\":[{\"view_class\":\"com.mixpanel.android.viewcrawler.TestView\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.LinearLayout\",\"index\":0},{\"view_class\":\"android.widget.Button\",\"index\":3}],\"event_type\":\"detected\",\"event_name\":\"Engines On!\"}"
+        );
+        mTextEdit = new JSONObject(
+            "{\"args\":[[\"Hello\",\"java.lang.CharSequence\"]],\"name\":\"c236\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.TEXT2_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"text\",\"get\":{\"selector\":\"getText\",\"parameters\":[],\"result\":{\"type\":\"java.lang.CharSequence\"}},\"set\":{\"selector\":\"setText\",\"parameters\":[{\"type\":\"java.lang.CharSequence\"}]},\"classname\":\"android.widget.TextView\"}}"
         );
         mJustClassPath = new JSONArray("[{},{},{},{\"view_class\":\"android.widget.Button\"}]");
         mJustIdPath = new JSONArray("[{},{},{},{\"id\": 2000}]");
@@ -235,10 +267,40 @@ public class EditProtocolTest extends AndroidTestCase {
         }
     }
 
-    public void testPropertyEdit() throws EditProtocol.BadInstructionsException {
-        final ViewVisitor visitor = mProtocol.readEdit(mPropertyEdit);
-        visitor.visit(mRootView);
+    public void testPropertyEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
+        final EditProtocol.Edit edit = mProtocol.readEdit(mPropertyEdit);
+        edit.visitor.visit(mRootView);
         assertEquals(mRootView.mAdHocButton2.getText(), "Ground Control to Major Tom");
+    }
+
+    public void testLayoutEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
+        // add ALIGN_PARENT_RIGHT to mRelativeLayoutButton1, should success
+        final EditProtocol.Edit edit1 = mProtocol.readEdit(mLayoutEditAlignParentRight);
+        edit1.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params1 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton1.getLayoutParams();
+        int[] rules1 = params1.getRules();
+        assertEquals(RelativeLayout.TRUE, rules1[RelativeLayout.ALIGN_PARENT_RIGHT]);
+
+        // add "BELOW mRelativeLayoutButton1" to mRelativeLayoutButton2, should success
+        final EditProtocol.Edit edit2 = mProtocol.readEdit(mLayoutEditBelow);
+        edit2.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params2 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rules2 = params2.getRules();
+        assertEquals(TestView.RELATIVE_LAYOUT_BUTTON1_ID, rules2[RelativeLayout.BELOW]);
+
+        // remove "BELOW mRelativeLayoutButton1" from mRelativeLayoutButton2, should success
+        final EditProtocol.Edit edit3 = mProtocol.readEdit(mLayoutEditRemoveBelow);
+        edit3.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params3 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rule3 = params3.getRules();
+        assertEquals(TestView.NO_ANCHOR, rule3[RelativeLayout.BELOW]);
+
+        // add "BELOW mRelativeLayoutButton3 (absent)" to mRelativeLayoutButton2, should fail
+        final EditProtocol.Edit edit4 = mProtocol.readEdit(mLayoutEditAbsentAnchor);
+        edit4.visitor.visit(mRootView);
+        RelativeLayout.LayoutParams params4 = (RelativeLayout.LayoutParams)mRootView.mRelativeLayoutButton2.getLayoutParams();
+        int[] rules4 = params4.getRules();
+        assertEquals( TestView.NO_ANCHOR, rules4[RelativeLayout.BELOW]);
     }
 
     public void testClickEvent() throws EditProtocol.BadInstructionsException {
@@ -260,6 +322,68 @@ public class EditProtocolTest extends AndroidTestCase {
         assertEquals(mListener.visitsRecorded.get(0), "Engines On!");
     }
 
+    public void testEdit() throws EditProtocol.BadInstructionsException, EditProtocol.CantGetEditAssetsException {
+        final EditProtocol.Edit textEdit = mProtocol.readEdit(mTextEdit);
+        textEdit.visitor.visit(mRootView);
+        assertEquals("Hello", mRootView.mTextView2.getText());
+
+        textEdit.visitor.cleanup();
+        assertEquals("Original Text", mRootView.mTextView2.getText());
+    }
+
+    public void testEditWithImage() throws JSONException, EditProtocol.BadInstructionsException,  EditProtocol.CantGetEditAssetsException {
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) {
+                assertEquals("TEST URL", url);
+                return IMAGE_10x10_GREEN;
+            }
+        }, mLayoutErrorListener);
+
+        final JSONObject obj = new JSONObject(
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+        );
+
+        final EditProtocol.Edit imageEdit = protocol.readEdit(obj);
+        assertEquals(1, imageEdit.imageUrls.size());
+        assertEquals("TEST URL", imageEdit.imageUrls.get(0));
+        imageEdit.visitor.visit(mRootView);
+        final BitmapDrawable drawable = (BitmapDrawable) mRootView.mImageView.getDrawable();
+        final Bitmap bmp = drawable.getBitmap();
+
+        for (int x = 0; x < bmp.getWidth(); x++) {
+            for (int y = 0; y < bmp.getHeight(); y++) {
+                assertEquals(
+                    IMAGE_10x10_GREEN.getPixel(x, y),
+                    bmp.getPixel(x, y)
+                );
+            }
+        }
+    }
+
+    public void testWithMissingImage() throws JSONException, EditProtocol.BadInstructionsException {
+        final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+            @Override
+            public Bitmap getImage(String url) throws CantGetImageException {
+                assertEquals("TEST URL", url);
+                throw new CantGetImageException("Bang!");
+            }
+        }, mLayoutErrorListener);
+
+        final JSONObject obj = new JSONObject(
+                "{\"args\":[[{\"url\":\"TEST URL\", \"dimensions\":{\"left\":10,\"right\":20,\"top\":40,\"bottom\":50}},\"android.graphics.drawable.Drawable\"]],\"name\":\"test\",\"path\":[{\"prefix\":\"shortest\",\"index\":0,\"id\":" + TestView.IMAGE_VIEW_ID + "}],\"change_type\": \"property\",\"property\":{\"name\":\"image\",\"get\":{\"selector\":\"getDrawable\",\"parameters\":[],\"result\":{\"type\":\"android.graphics.drawable.Drawable\"}},\"set\":{\"selector\":\"setImageDrawable\",\"parameters\":[{\"type\":\"android.graphics.drawable.Drawable\"}]},\"classname\":\"android.widget.ImageView\"}}"
+        );
+
+        try {
+            final EditProtocol.Edit imageEdit = protocol.readEdit(obj);
+            fail("Expected a CantGetEditAssetsException to be thrown");
+        } catch (EditProtocol.CantGetEditAssetsException e) {
+            ; // ok! expected this
+        }
+    }
+
     private static class TestEventListener implements ViewVisitor.OnEventListener {
         @Override
         public void OnEvent(View v, String eventName, boolean debounce) {
@@ -273,8 +397,14 @@ public class EditProtocolTest extends AndroidTestCase {
     private ResourceIds mResourceIds;
     private JSONObject mSnapshotConfig;
     private JSONObject mPropertyEdit;
+    private JSONObject mLayoutEditAlignParentRight;
+    private JSONObject mLayoutEditBelow;
+    private JSONObject mLayoutEditAbove;
+    private JSONObject mLayoutEditRemoveBelow;
+    private JSONObject mLayoutEditAbsentAnchor;
     private JSONObject mClickEvent;
     private JSONObject mAppearsEvent;
+    private JSONObject mTextEdit;
     private JSONArray mJustClassPath;
     private JSONArray mJustIdPath;
     private JSONArray mJustIndexPath;
@@ -287,4 +417,8 @@ public class EditProtocolTest extends AndroidTestCase {
     private JSONArray mIdAndNameDontMatch;
     private TestEventListener mListener;
     private TestView mRootView;
+    private TestView.MockOnLayoutErrorListener mLayoutErrorListener;
+
+    private static final byte[] IMAGE_10x10_GREEN_BYTES = Base64.decode("R0lGODlhCgAKALMAAAAAAIAAAACAAICAAAAAgIAAgACAgMDAwICAgP8AAAD/AP//AAAA//8A/wD//////ywAAAAACgAKAAAEClDJSau9OOvNe44AOw==".getBytes(), 0);
+    private static final Bitmap IMAGE_10x10_GREEN = BitmapFactory.decodeByteArray(IMAGE_10x10_GREEN_BYTES, 0, IMAGE_10x10_GREEN_BYTES.length);
 }

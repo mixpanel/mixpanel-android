@@ -5,6 +5,8 @@
  */
 package com.mixpanel.android.java_websocket;
 
+import android.annotation.SuppressLint;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -30,6 +32,7 @@ import javax.net.ssl.SSLSession;
 /**
  * Implements the relevant portions of the SocketChannel interface with the SSLEngine wrapper.
  */
+@SuppressLint("Assert")
 public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
 	/**
 	 * This object is used to feed the {@link SSLEngine}'s wrap and unwrap methods during the handshake phase.

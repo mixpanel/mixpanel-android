@@ -21,14 +21,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
-* BroadcastReciever for handling Google Cloud Messaging intents.
+* BroadcastReceiver for handling Google Cloud Messaging intents.
 *
-* <p>You can use GCMReciever to report Google Cloud Messaging registration identifiers
+* <p>You can use GCMReceiver to report Google Cloud Messaging registration identifiers
 * to Mixpanel, and to display incoming notifications from Mixpanel to
 * the device status bar. Together with {@link MixpanelAPI.People#initPushHandling(String) }
 * this is the simplest way to get up and running with notifications from Mixpanel.
 *
-* <p>To enable GCMReciever in your application, add a clause like the following
+* <p>To enable GCMReceiver in your application, add a clause like the following
 * to the &lt;application&gt; tag of your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
 * in the snippet with the actual package name of your app.)
 *
@@ -47,7 +47,7 @@ import java.util.Map;
 *}
 *</pre>
 *
-* <p>In addition, GCMReciever will also need the following permissions configured
+* <p>In addition, GCMReceiver will also need the following permissions configured
 * in your AndroidManifest.xml file:
 *
 * <pre>
@@ -65,7 +65,7 @@ import java.util.Map;
 * }
 * </pre>
 *
-* <p>Once the GCMReciever is configured, the only thing you have to do to
+* <p>Once the GCMReceiver is configured, the only thing you have to do to
 * get set up Mixpanel messages is call {@link MixpanelAPI.People#identify(String) }
 * with a distinct id for your user, and call {@link MixpanelAPI.People#initPushHandling(String) }
 * with the your Google API project identifier.
@@ -80,8 +80,8 @@ import java.util.Map;
 * </pre>
 *
 * <p>If you would prefer to handle either sending a registration id to Mixpanel yourself
-* but allow GCMReciever to handle displaying Mixpanel messages, remove the
-* REGISTRATION intent from the GCMReciever {@code <reciever> } tag, and call
+* but allow GCMReceiver to handle displaying Mixpanel messages, remove the
+* REGISTRATION intent from the GCMReceiver {@code <receiver> } tag, and call
 * {@link MixpanelAPI.People#setPushRegistrationId(String)}
 * in your own REGISTRATION handler.
 *

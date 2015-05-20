@@ -7,25 +7,26 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.0.0'
+        classpath 'com.android.tools.build:gradle:1.1.0'
     }
 }
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "21.1.1"
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
 
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
         // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
         minSdkVersion 9
-        targetSdkVersion 21
+        targetSdkVersion 22
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
 
         lintOptions {
             abortOnError true
             warningsAsErrors true
+            disable "UnusedResources"
         }
     }
 }
@@ -54,11 +55,13 @@ android.libraryVariants.all { variant ->
             '**/FadingImageView.java',
             '**/InAppFragment.java',
             '**/MiniCircleImageView.java',
+            '**/ResourceIds.java',
+            '**/ResourceReader.java',
             '**/SurveyActivity.java',
             '**/SurveyChoiceView.java',
             '**/SurveyCallbacks.java',
             '**/TrackingDebug.java',
-            '**/Tweaks.java', // Someday this will be exposed to the public
+            '**/TweakRegistrar.java', // Consider making TweakRegistrar public at some point.
             '**/UpdateDisplayState.java',
             '**/UpdatesFromMixpanel.java',
             '**/ViewCrawler.java'
@@ -118,14 +121,9 @@ uploadArchives {
             }
             developers {
                 developer {
-                    id 'jbwyme'
-                    name 'Josh Wymer'
-                    email 'josh@mixpanel.com'
-                }
-                developer {
-                    id 'joeatwork'
-                    name 'Joe Bowers'
-                    email 'joe@mixpanel.com'
+                    id 'mixpanel_dev'
+                    name 'Mixpanel Developers'
+                    email 'dev+android@mixpanel.com'
                 }
             }
         }

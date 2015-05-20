@@ -1,9 +1,11 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.util;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
+
+import com.mixpanel.android.mpmetrics.MPConfig;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -15,12 +17,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 
-/* package */ class ServerMessage {
+/**
+ * An HTTP utility class for internal use in the Mixpanel library.
+ */
+public class HttpService implements RemoteService {
 
+    @Override
     public boolean isOnline(Context context) {
         boolean isOnline;
         try {
@@ -40,32 +45,8 @@ import java.util.List;
         return isOnline;
     }
 
-    public byte[] getUrls(Context context, String[] urls) {
-        if (! isOnline(context)) {
-            return null;
-        }
-
-        byte[] response = null;
-        for (String url : urls) {
-            try {
-                response = performRequest(url, null);
-                break;
-            } catch (final MalformedURLException e) {
-                Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-            } catch (final IOException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
-                }
-            } catch (final OutOfMemoryError e) {
-                Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
-                break;
-            }
-        }
-
-        return response;
-    }
-
-    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws IOException {
+    @Override
+    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws ServiceUnavailableException, IOException {
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Attempting request to " + endpointUrl);
         }
@@ -111,7 +92,14 @@ import java.util.List;
                     Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 }
                 retries = retries + 1;
-            } finally {
+            } catch (final IOException e) {
+                if (503 == connection.getResponseCode()) {
+                    throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
+                } else {
+                    throw e;
+                }
+            }
+            finally {
                 if (null != bout)
                     try { bout.close(); } catch (final IOException e) { ; }
                 if (null != out)
@@ -130,9 +118,8 @@ import java.util.List;
         return response;
     }
 
-    // Does not close input stream
-    private byte[] slurp(final InputStream inputStream)
-        throws IOException {
+    private static byte[] slurp(final InputStream inputStream)
+            throws IOException {
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
         int nRead;
@@ -146,5 +133,5 @@ import java.util.List;
         return buffer.toByteArray();
     }
 
-    private static final String LOGTAG = "MixpanelAPI.ServerMessage";
+    private static final String LOGTAG = "MixpanelAPI.Message";
 }

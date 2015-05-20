@@ -45,9 +45,10 @@ import java.util.Set;
     }
 
     // Do not consult destroyed status inside of this method.
-    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings) {
+    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
+        mUpdatesFromMixpanel.setVariants(variants);
 
         for (final Survey s : newSurveys) {
             final int id = s.getId();
@@ -151,5 +152,5 @@ import java.util.Set;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.DecideUpdates";
+    private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
 }

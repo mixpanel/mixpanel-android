@@ -27,9 +27,9 @@ import java.nio.ByteBuffer;
 /* package */ class EditorConnection {
 
     public class EditorConnectionException extends IOException {
-		private static final long serialVersionUID = -1884953175346045636L;
+        private static final long serialVersionUID = -1884953175346045636L;
 
-		public EditorConnectionException(Throwable cause) {
+        public EditorConnectionException(Throwable cause) {
             super(cause.getMessage()); // IOException(cause) is only available in API level 9!
         }
     }
@@ -37,7 +37,9 @@ import java.nio.ByteBuffer;
     public interface Editor {
         public void sendSnapshot(JSONObject message);
         public void performEdit(JSONObject message);
+        public void clearEdits(JSONObject message);
         public void bindEvents(JSONObject message);
+        public void setTweaks(JSONObject message);
         public void sendDeviceInfo();
         public void cleanup();
     }
@@ -91,6 +93,10 @@ import java.nio.ByteBuffer;
                     mService.performEdit(messageJson);
                 } else if (type.equals("event_binding_request")) {
                     mService.bindEvents(messageJson);
+                } else if (type.equals("clear_request")) {
+                    mService.clearEdits(messageJson);
+                } else if (type.equals("tweak_request")) {
+                    mService.setTweaks(messageJson);
                 }
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad JSON received:" + message, e);
@@ -115,9 +121,6 @@ import java.nio.ByteBuffer;
         }
     }
 
-    /* WILL SEND GARBAGE if multiple responses end up interleaved.
-     * Only one response should be in progress at a time.
-     */
     private class WebSocketOutputStream extends OutputStream {
         @Override
         public void write(int b)
@@ -167,5 +170,5 @@ import java.nio.ByteBuffer;
     private static final int CONNECT_TIMEOUT = 5000;
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
 
-    private static final String LOGTAG = "MixpanelAPI.EditorConnection";
+    private static final String LOGTAG = "MixpanelAPI.EditorCnctn";
 }
