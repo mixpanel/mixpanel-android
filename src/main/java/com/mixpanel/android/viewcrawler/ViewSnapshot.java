@@ -101,6 +101,7 @@ import java.util.concurrent.TimeoutException;
             }
             writer.write("]");
             writer.flush();
+            return;
         } catch (final InterruptedException e) {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
@@ -114,6 +115,8 @@ import java.util.concurrent.TimeoutException;
                 Log.e(LOGTAG, "Exception thrown during screenshot attempt", e);
             }
         }
+        writer.write("\"\"");
+        writer.flush();
     }
 
     // For testing only
