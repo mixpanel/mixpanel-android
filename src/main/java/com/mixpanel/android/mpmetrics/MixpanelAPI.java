@@ -1581,11 +1581,9 @@ public class MixpanelAPI {
                 }
 
                 mPersistentIdentity.storePushId(registrationId);
-                try {
-                    union("$android_devices", new JSONArray("[" + registrationId + "]"));
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "set push registration id error", e);
-                }
+                final JSONArray ids = new JSONArray();
+                ids.put(registrationId);
+                union("$android_devices", ids);
             }
         }
 
