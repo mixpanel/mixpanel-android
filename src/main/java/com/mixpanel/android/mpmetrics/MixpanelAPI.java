@@ -618,6 +618,11 @@ public class MixpanelAPI {
         return mUpdatesFromMixpanel.getTweaks();
     }
 
+    /**
+     * Registers a single instance for updates from tweaks. This is primarily for use with
+     * &commat;Tweak annotations - instances with annotated methods will have those methods
+     * called when tweaks change their values.
+     */
     public void registerForTweaks(Object ob) {
         final Tweaks tweaks = getTweaks();
         tweaks.registerForTweaks(ob);

@@ -198,6 +198,7 @@ public class Tweaks {
      * Declare a new tweak and provide its default value.
      *
      * Tweaks are only visible in the Mixpanel UI after defineTweak has been called, so
+     * it's good to define them early in the lifetime of your app.
      *
      * @param defaultValue
      */
