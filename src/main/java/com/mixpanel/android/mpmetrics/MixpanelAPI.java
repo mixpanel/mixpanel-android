@@ -15,8 +15,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -616,16 +614,6 @@ public class MixpanelAPI {
      */
     public Tweaks getTweaks() {
         return mUpdatesFromMixpanel.getTweaks();
-    }
-
-    /**
-     * Registers a single instance for updates from tweaks. This is primarily for use with
-     * &commat;Tweak annotations - instances with annotated methods will have those methods
-     * called when tweaks change their values.
-     */
-    public void registerForTweaks(Object ob) {
-        final Tweaks tweaks = getTweaks();
-        tweaks.registerForTweaks(ob);
     }
 
     /**
@@ -1253,13 +1241,11 @@ public class MixpanelAPI {
     }
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
+        final Tweaks tweaks = new Tweaks();
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel();
+            return new UnsupportedUpdatesFromMixpanel(tweaks);
         } else {
-            final TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
-            final Handler handler = new Handler(Looper.getMainLooper());
-            final Tweaks tweaks = new Tweaks(handler, registrar);
             return new ViewCrawler(mContext, mToken, this, tweaks);
         }
     }
@@ -1907,8 +1893,8 @@ public class MixpanelAPI {
     }
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
-        public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), null);
+        public UnsupportedUpdatesFromMixpanel(Tweaks tweaks) {
+            mTweaks = tweaks;
         }
 
         @Override
@@ -1928,10 +1914,10 @@ public class MixpanelAPI {
 
         @Override
         public Tweaks getTweaks() {
-            return mEmptyTweaks;
+            return mTweaks;
         }
 
-        private final Tweaks mEmptyTweaks;
+        private final Tweaks mTweaks;
     }
 
     ////////////////////////////////////////////////////

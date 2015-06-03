@@ -62,7 +62,7 @@ public class Tweaks {
     })
 
     @Retention(RetentionPolicy.SOURCE)
-    public @interface TweakType {}
+    private @interface TweakType {}
 
     /**
      * An internal description of the type of a tweak.
@@ -75,19 +75,6 @@ public class Tweaks {
     public static final @TweakType int DOUBLE_TYPE = 2;
     public static final @TweakType int LONG_TYPE = 3;
     public static final @TweakType int STRING_TYPE = 4;
-
-    /**
-     * You can use this interface together with {@link #bind(String, Object, TweakChangeCallback)} to
-     * get callbacks when a new tweak value is received from Mixpanel.
-     */
-    public interface TweakChangeCallback {
-        /**
-         * onChange will be called at least once for each value of the tweak discovered.
-         * It will be called on the main UI thread. onChange may be called multiple times,
-         * both with values from Mixpanel or with the default tweak value.
-         */
-        void onChange(Object value);
-    }
 
     /**
      * Represents a tweak (but not a tweak value) known to the system. This class
@@ -214,28 +201,6 @@ public class Tweaks {
         mTweaks.put(tweakName, value);
     }
 
-    /**
-     * Install a callback for a given tweak. Only a single callback is stored for each tweak
-     * name - multiple calls to bind will overwrite previous callbacks.
-     *
-     * @param tweakName the name of the tweak to observe. When this tweak's value is updated, the callback will be called.
-     * @param scope if non-null, the callback will be associated with a weak reference to the given scope. You can use scope to prevent leaking callbacks when interested objects are garbage collected.
-     * @param callback a {@link com.mixpanel.android.mpmetrics.Tweaks.TweakChangeCallback}. When the given tweak's value changes, the {@link com.mixpanel.android.mpmetrics.Tweaks.TweakChangeCallback#onChange(Object)} method will be called.
-     */
-    public synchronized void bind(String tweakName, Object scope, TweakChangeCallback callback) {
-        if (null == scope) {
-            scope = this;
-        }
-
-        if (!mTweaks.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to bind to a tweak \"" + tweakName + "\" which doesn't exist");
-            return;
-        }
-
-        final TweakValue value = mTweaks.get(tweakName);
-        value.bindings.put(scope, callback);
-        runCallback(callback, get(tweakName));
-    }
 
     /**
      * Manually set the value of a tweak. Most users of the library will not need to call this
@@ -249,11 +214,6 @@ public class Tweaks {
 
         final TweakValue container = mTweaks.get(tweakName);
         container.setValue(value);
-
-        final Collection<TweakChangeCallback> callbackLists = container.bindings.values();
-        for(final TweakChangeCallback callback:callbackLists) {
-            runCallback(callback, value);
-        }
     }
 
     /**
@@ -270,53 +230,8 @@ public class Tweaks {
         return ret;
     }
 
-    /* package */ Tweaks(Handler callbackHandler, @Nullable TweakRegistrar registrar) {
+    /* package */ Tweaks() {
         mTweaks = new HashMap<String, TweakValue>();
-        mUiHandler = callbackHandler;
-        mRegistrar = registrar;
-
-        if (null != mRegistrar) {
-            synchronized (mRegistrar) {
-                mRegistrar.declareTweaks(this);
-            }
-        }
-    }
-
-    /* package */ void registerForTweaks(Object registrant) {
-        if (null != mRegistrar) {
-            synchronized (mRegistrar) {
-                mRegistrar.registerObjectForTweaks(this, registrant);
-            }
-        }
-    }
-
-    /* package */ static TweakRegistrar findRegistrar(String packageName) {
-        TweakRegistrar ret = null;
-        try {
-            final ClassLoader loader = TweakRegistrar.class.getClassLoader();
-            final Class found = loader.loadClass(packageName + ".$$TWEAK_REGISTRAR");
-            final Field instanceField = found.getField("TWEAK_REGISTRAR");
-            ret = (TweakRegistrar) instanceField.get(null);
-        } catch (ClassNotFoundException e) {
-            // Ok, no need for
-        } catch (NoSuchFieldException e) {
-            Log.w(LOGTAG, "Found apparent TweakRegistrar class, but with no TWEAK_REGISTRAR member", e);
-        } catch (IllegalAccessException e) {
-            Log.w(LOGTAG, "Found apparent TweakRegistrar class but TWEAK_REGISTRAR wasn't public and/or static", e);
-        } catch (ClassCastException e) {
-            Log.w(LOGTAG, "Found apparent TweakRegistrar class, but TWEAK_REGISTRAR was not a TweakRegistrar", e);
-        }
-
-        return ret;
-    }
-
-    private void runCallback(final TweakChangeCallback callback, final Object value) {
-        mUiHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                callback.onChange(value);
-            }
-        });
     }
 
     private @TweakType int determineType(Object thing) {
@@ -341,12 +256,10 @@ public class Tweaks {
 
     private static class TweakValue {
 
-        public final WeakHashMap<Object, TweakChangeCallback> bindings;
         public final TweakDescription description;
 
         public TweakValue(TweakDescription aDescription) {
             description = aDescription;
-            bindings = new WeakHashMap<Object, TweakChangeCallback>();
             mValue = aDescription.defaultValue;
         }
 
@@ -362,11 +275,6 @@ public class Tweaks {
     }
 
     private final Map<String, TweakValue> mTweaks;
-    private final Handler mUiHandler;
-    private final TweakRegistrar mRegistrar;
-
-    // Access must be synchronized
-    private static final Map<Package, TweakRegistrar> sRegistrars = new HashMap<Package, TweakRegistrar>();
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }
