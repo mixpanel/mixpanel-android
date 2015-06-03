@@ -36,6 +36,7 @@ import java.io.OutputStreamWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -66,41 +67,11 @@ import java.util.concurrent.TimeoutException;
         mMainThreadHandler.post(infoFuture);
 
         final OutputStreamWriter writer = new OutputStreamWriter(out);
+        List<RootViewInfo> infoList = Collections.<RootViewInfo>emptyList();
+        writer.write("[");
 
         try {
-            final List<RootViewInfo> infoList = infoFuture.get(1, TimeUnit.SECONDS);
-            final int infoCount = infoList.size();
-            writer.write("[");
-            for (int i = 0; i < infoCount; i++) {
-                if (i > 0) {
-                    writer.write(",");
-                }
-                final RootViewInfo info = infoList.get(i);
-                writer.write("{");
-                writer.write("\"activity\":");
-                writer.write(JSONObject.quote(info.activityName));
-                writer.write(",");
-                writer.write("\"scale\":");
-                writer.write(String.format("%s", info.scale));
-                writer.write(",");
-                writer.write("\"serialized_objects\":");
-                {
-                    final JsonWriter j = new JsonWriter(writer);
-                    j.beginObject();
-                    j.name("rootObject").value(info.rootView.hashCode());
-                    j.name("objects");
-                    snapshotViewHierarchy(j, info.rootView);
-                    j.endObject();
-                    j.flush();
-                }
-                writer.write(",");
-                writer.write("\"screenshot\":");
-                writer.flush();
-                info.screenshot.writeBitmapJSON(Bitmap.CompressFormat.PNG, 100, out);
-                writer.write("}");
-            }
-            writer.write("]");
-            writer.flush();
+            infoList = infoFuture.get(1, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
             if (MPConfig.DEBUG) {
                 Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
@@ -109,13 +80,44 @@ import java.util.concurrent.TimeoutException;
             if (MPConfig.DEBUG) {
                 Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
             }
-            writer.write("[]");
-            writer.flush();
         } catch (final ExecutionException e) {
             if (MPConfig.DEBUG) {
                 Log.e(LOGTAG, "Exception thrown during screenshot attempt", e);
             }
         }
+
+        final int infoCount = infoList.size();
+        for (int i = 0; i < infoCount; i++) {
+            if (i > 0) {
+                writer.write(",");
+            }
+            final RootViewInfo info = infoList.get(i);
+            writer.write("{");
+            writer.write("\"activity\":");
+            writer.write(JSONObject.quote(info.activityName));
+            writer.write(",");
+            writer.write("\"scale\":");
+            writer.write(String.format("%s", info.scale));
+            writer.write(",");
+            writer.write("\"serialized_objects\":");
+            {
+                final JsonWriter j = new JsonWriter(writer);
+                j.beginObject();
+                j.name("rootObject").value(info.rootView.hashCode());
+                j.name("objects");
+                snapshotViewHierarchy(j, info.rootView);
+                j.endObject();
+                j.flush();
+            }
+            writer.write(",");
+            writer.write("\"screenshot\":");
+            writer.flush();
+            info.screenshot.writeBitmapJSON(Bitmap.CompressFormat.PNG, 100, out);
+            writer.write("}");
+        }
+
+        writer.write("]");
+        writer.flush();
     }
 
     // For testing only
