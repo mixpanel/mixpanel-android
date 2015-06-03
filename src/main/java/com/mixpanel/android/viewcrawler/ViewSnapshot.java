@@ -109,7 +109,7 @@ import java.util.concurrent.TimeoutException;
             if (MPConfig.DEBUG) {
                 Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
             }
-            writer.write("\"\"");
+            writer.write("[]");
             writer.flush();
         } catch (final ExecutionException e) {
             if (MPConfig.DEBUG) {
