@@ -541,8 +541,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final String tweakName = tweak.getKey();
                         j.beginObject();
                         j.name("name").value(tweakName);
-                        j.name("minimum").value(desc.minimum);
-                        j.name("maximum").value(desc.maximum);
+                        j.name("minimum").value((Number) null);
+                        j.name("maximum").value((Number) null);
                         switch (desc.type) {
                             case Tweaks.BOOLEAN_TYPE:
                                 j.name("type").value("boolean");

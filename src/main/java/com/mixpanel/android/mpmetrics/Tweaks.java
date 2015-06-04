@@ -140,10 +140,11 @@ public class Tweaks {
         }
 
         public final @TweakType int type;
-        public final Object defaultValue;
-        public final Number minimum;
-        public final Number maximum;
-        public final Object value;
+
+        private final Object value;
+        private final Object defaultValue;
+        private final Number minimum;
+        private final Number maximum;
     }
 
     /**
