@@ -424,6 +424,15 @@ public class MixpanelAPI {
     }
 
     /**
+     * Equivalent to {@link #track(String, JSONObject)} with a null argument for properties.
+     * Consider adding properties to your tracking to get the best insights and experience from Mixpanel.
+     * @param eventName the name of the event to send
+     */
+    public void track(String eventName) {
+        track(eventName, null);
+    }
+
+    /**
      * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
      *
      * <p>Events and People messages are pushed gradually throughout
