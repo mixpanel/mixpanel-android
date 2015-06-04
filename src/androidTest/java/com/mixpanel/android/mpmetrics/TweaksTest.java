@@ -9,24 +9,8 @@ public class TweaksTest extends AndroidTestCase {
         mTweaks = new Tweaks();
     }
 
-    public void testNoSuchTweakPoll() {
-        // Should return null for tweaks we know nothing about
-        assertNull(mTweaks.getString("Some Tweak"));
-    }
-
-    public void testTweakWithDefault() {
-        mTweaks.defineTweak("Some Tweak", "Default Value");
-        assertEquals("Default Value", mTweaks.getString("Some Tweak"));
-    }
-
-    public void testNonStringTweakWithWrongType() {
-        mTweaks.defineTweak("Some Tweak", 100.0);
-        assertNull(mTweaks.getString("Some Tweak"));
-    }
-
-    public void testPrimitiveTweakWithWrongType() {
-        mTweaks.defineTweak("Some Tweak", "String Default");
-        assertEquals(0.0, mTweaks.getDouble("Some Tweak"));
+    public void testWriteSomeTests() {
+        fail("You need to write tests for each type of tweak and for TweakValue");
     }
 
     Tweaks mTweaks;

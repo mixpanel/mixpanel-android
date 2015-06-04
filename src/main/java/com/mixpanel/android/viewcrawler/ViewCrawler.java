@@ -518,10 +518,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         j.name(entry.getKey()).value(entry.getValue());
                     }
 
-                    final Map<String, Tweaks.TweakDescription> tweakDescs = mTweaks.getDescriptions();
+                    final Map<String, Tweaks.TweakValue> tweakDescs = mTweaks.getAllValues();
                     j.name("tweaks").beginArray();
-                    for (Map.Entry<String, Tweaks.TweakDescription> tweak:tweakDescs.entrySet()) {
-                        final Tweaks.TweakDescription desc = tweak.getValue();
+                    for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDescs.entrySet()) {
+                        final Tweaks.TweakValue desc = tweak.getValue();
                         final String tweakName = tweak.getKey();
                         j.beginObject();
                         j.name("name").value(tweakName);
@@ -529,27 +529,26 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         j.name("maximum").value(desc.maximum);
                         switch (desc.type) {
                             case Tweaks.UNKNOWN_TYPE:
-                                final Object currentValue = mTweaks.get(tweakName);
                                 j.name("type").value("unknown");
-                                j.name("value").value(null == currentValue ? null : currentValue.toString());
+                                j.name("value").value(null == desc.value ? null : desc.value.toString());
                                 break;
                             case Tweaks.BOOLEAN_TYPE:
                                 j.name("type").value("boolean");
-                                j.name("value").value(mTweaks.getBoolean(tweakName));
+                                j.name("value").value(desc.getBooleanValue());
                                 break;
                             case Tweaks.DOUBLE_TYPE:
                                 j.name("type").value("number");
                                 j.name("encoding").value("d");
-                                j.name("value").value(mTweaks.getDouble(tweakName));
+                                j.name("value").value(desc.getNumberValue().doubleValue());
                                 break;
                             case Tweaks.LONG_TYPE:
                                 j.name("type").value("number");
                                 j.name("encoding").value("l");
-                                j.name("value").value(mTweaks.getLong(tweakName));
+                                j.name("value").value(desc.getNumberValue().longValue());
                                 break;
                             case Tweaks.STRING_TYPE:
-                                j.name("type").value("string");
-                                j.name("value").value(mTweaks.getString(tweakName));
+                                j.name("type").value("unknown");
+                                j.name("value").value(desc.getStringValue());
                                 break;
                             default:
                                 Log.wtf(LOGTAG, "Unrecognized Tweak Type " + desc.type + " encountered.");
