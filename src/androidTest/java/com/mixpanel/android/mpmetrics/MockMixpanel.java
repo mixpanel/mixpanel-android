@@ -27,6 +27,9 @@ class MockMixpanel extends MixpanelAPI {
         return new MockPeople();
     }
 
+    @Override
+    public Tweaks getTweaks() { return new Tweaks(); }
+
     public static class MockPeople implements People {
 
         @Override
@@ -40,6 +43,9 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void setMap(Map<String, Object> properties) { Assert.fail("Unexpected call"); }
+
+        @Override
         public void set(final JSONObject properties) {
             Assert.fail("Unexpected call");
         }
@@ -50,12 +56,20 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void setOnceMap(Map<String, Object> properties) { Assert.fail("Unexpected call"); }
+
+        @Override
         public void setOnce(final JSONObject properties) {
             Assert.fail("Unexpected call");
         }
 
         @Override
         public void increment(final String name, final double increment) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void merge(String name, JSONObject updates) {
             Assert.fail("Unexpected call");
         }
 
@@ -122,6 +136,11 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public void showNotificationIfAvailable(final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void joinExperimentIfAvailable() {
             Assert.fail("Unexpected call");
         }
 

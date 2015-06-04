@@ -13,25 +13,23 @@ import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
 import com.mixpanel.android.util.Base64Coder;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class MixpanelBasicTest extends AndroidTestCase {
 
@@ -142,6 +140,109 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    public void testEventOperations() throws JSONException {
+        final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
+
+        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+                messages.add(message);
+                return 1;
+            }
+        };
+
+        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(getContext()) {
+            // This will throw inside of our worker thread.
+            @Override
+            public MPDbAdapter makeDbAdapter(Context context) {
+                return eventOperationsAdapter;
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test event operations") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return eventOperationsMessages;
+            }
+        };
+
+        JSONObject jsonObj1 = new JSONObject();
+        JSONObject jsonObj2 = new JSONObject();
+        JSONObject jsonObj3 = new JSONObject();
+        JSONObject jsonObj4 = new JSONObject();
+        Map<String, Object> mapObj1 = new HashMap<>();
+        Map<String, Object> mapObj2 = new HashMap<>();
+        Map<String, Object> mapObj3 = new HashMap<>();
+        Map<String, Object> mapObj4 = new HashMap<>();
+
+        jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
+        jsonObj2.put("TRACK JSON INT", 1);
+        jsonObj3.put("TRACK JSON STRING ONCE", "TRACK JSON STRING ONCE VALUE");
+        jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
+
+        mapObj1.put("TRACK MAP STRING", "TRACK MAP STRING VALUE");
+        mapObj2.put("TRACK MAP INT", 1);
+        mapObj3.put("TRACK MAP STRING ONCE", "TRACK MAP STRING ONCE VALUE");
+        mapObj4.put("TRACK MAP STRING ONCE", "SHOULD NOT SEE ME");
+
+        try {
+            JSONObject message;
+            JSONObject properties;
+
+            mixpanel.track("event1", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event1", message.getString("event"));
+
+            mixpanel.track("event2", jsonObj1);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event2", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(jsonObj1.getString("TRACK JSON STRING"), properties.getString("TRACK JSON STRING"));
+
+            mixpanel.trackMap("event3", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event3", message.getString("event"));
+
+            mixpanel.trackMap("event4", mapObj1);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event4", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(mapObj1.get("TRACK MAP STRING"), properties.getString("TRACK MAP STRING"));
+
+            mixpanel.registerSuperProperties(jsonObj2);
+            mixpanel.registerSuperPropertiesOnce(jsonObj3);
+            mixpanel.registerSuperPropertiesOnce(jsonObj4);
+            mixpanel.registerSuperPropertiesMap(mapObj2);
+            mixpanel.registerSuperPropertiesOnceMap(mapObj3);
+            mixpanel.registerSuperPropertiesOnceMap(mapObj4);
+
+            mixpanel.track("event5", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event5", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(jsonObj2.getInt("TRACK JSON INT"), properties.getInt("TRACK JSON INT"));
+            assertEquals(jsonObj3.getString("TRACK JSON STRING ONCE"), properties.getString("TRACK JSON STRING ONCE"));
+            assertEquals(mapObj2.get("TRACK MAP INT"), properties.getInt("TRACK MAP INT"));
+            assertEquals(mapObj3.get("TRACK MAP STRING ONCE"), properties.getString("TRACK MAP STRING ONCE"));
+
+            mixpanel.unregisterSuperProperty("TRACK JSON INT");
+            mixpanel.track("event6", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event6", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertFalse(properties.has("TRACK JSON INT"));
+
+            mixpanel.clearSuperProperties();
+            mixpanel.track("event7", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event7", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertFalse(properties.has("TRACK JSON STRING ONCE"));
+        } catch (InterruptedException e) {
+            fail("Unexpected interruption");
+        }
+    }
+
     public void testPeopleOperations() throws JSONException {
         final List<JSONObject> messages = new ArrayList<JSONObject>();
 
@@ -159,12 +260,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
+        Map<String, Object> mapObj1 = new HashMap<>();
+        mapObj1.put("SET MAP INT", 1);
+        Map<String, Object> mapObj2 = new HashMap<>();
+        mapObj2.put("SET ONCE MAP STR", "SET ONCE MAP VALUE");
+
         mixpanel.getPeople().identify("TEST IDENTITY");
 
         mixpanel.getPeople().set("SET NAME", "SET VALUE");
+        mixpanel.getPeople().setMap(mapObj1);
         mixpanel.getPeople().increment("INCREMENT NAME", 1);
         mixpanel.getPeople().append("APPEND NAME", "APPEND VALUE");
         mixpanel.getPeople().setOnce("SET ONCE NAME", "SET ONCE VALUE");
+        mixpanel.getPeople().setOnceMap(mapObj2);
         mixpanel.getPeople().union("UNION NAME", new JSONArray("[100]"));
         mixpanel.getPeople().unset("UNSET NAME");
         mixpanel.getPeople().trackCharge(100, new JSONObject("{\"name\": \"val\"}"));
@@ -174,33 +282,39 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject setMessage = messages.get(0).getJSONObject("$set");
         assertEquals("SET VALUE", setMessage.getString("SET NAME"));
 
-        JSONObject addMessage = messages.get(1).getJSONObject("$add");
+        JSONObject setMapMessage = messages.get(1).getJSONObject("$set");
+        assertEquals(mapObj1.get("SET MAP INT"), setMapMessage.getInt("SET MAP INT"));
+
+        JSONObject addMessage = messages.get(2).getJSONObject("$add");
         assertEquals(1, addMessage.getInt("INCREMENT NAME"));
 
-        JSONObject appendMessage = messages.get(2).getJSONObject("$append");
+        JSONObject appendMessage = messages.get(3).getJSONObject("$append");
         assertEquals("APPEND VALUE", appendMessage.get("APPEND NAME"));
 
-        JSONObject setOnceMessage = messages.get(3).getJSONObject("$set_once");
+        JSONObject setOnceMessage = messages.get(4).getJSONObject("$set_once");
         assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
 
-        JSONObject unionMessage = messages.get(4).getJSONObject("$union");
+        JSONObject setOnceMapMessage = messages.get(5).getJSONObject("$set_once");
+        assertEquals(mapObj2.get("SET ONCE MAP STR"), setOnceMapMessage.getString("SET ONCE MAP STR"));
+
+        JSONObject unionMessage = messages.get(6).getJSONObject("$union");
         JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
         assertEquals(1, unionValues.length());
         assertEquals(100, unionValues.getInt(0));
 
-        JSONArray unsetMessage = messages.get(5).getJSONArray("$unset");
+        JSONArray unsetMessage = messages.get(7).getJSONArray("$unset");
         assertEquals(1, unsetMessage.length());
         assertEquals("UNSET NAME", unsetMessage.get(0));
 
-        JSONObject trackChargeMessage = messages.get(6).getJSONObject("$append");
+        JSONObject trackChargeMessage = messages.get(8).getJSONObject("$append");
         JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
         assertEquals(100.0d, transaction.getDouble("$amount"));
 
-        JSONArray clearChargesMessage = messages.get(7).getJSONArray("$unset");
+        JSONArray clearChargesMessage = messages.get(9).getJSONArray("$unset");
         assertEquals(1, clearChargesMessage.length());
         assertEquals("$transactions", clearChargesMessage.getString(0));
 
-        assertTrue(messages.get(8).has("$delete"));
+        assertTrue(messages.get(10).has("$delete"));
     }
 
     public void testIdentifyAfterSet() {
@@ -292,7 +406,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.PEOPLE);
 
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 final boolean isIdentified = isIdentifiedRef.get();
@@ -362,7 +476,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
         };
@@ -448,7 +562,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals(1, peopleSent.length());
 
         } catch (InterruptedException e) {
-            fail("Expected a log message about mixpanel communication but did not recieve it.");
+            fail("Expected a log message about mixpanel communication but did not receive it.");
         } catch (JSONException e) {
             fail("Expected a JSON object message and got something silly instead: " + expectedJSONMessage);
         }
@@ -796,7 +910,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testAlias() {
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 try {
@@ -818,7 +932,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
         };
@@ -837,5 +951,5 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     private Future<SharedPreferences> mMockPreferences;
 
-    private static final int POLL_WAIT_SECONDS = 5;
+    private static final int POLL_WAIT_SECONDS = 10;
 }

@@ -1,9 +1,14 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.graphics.BitmapFactory;
-import android.util.Base64;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
+import android.util.Pair;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.util.JSONUtils;
@@ -19,27 +24,48 @@ import java.util.List;
 /* package */ class EditProtocol {
 
     public static class BadInstructionsException extends Exception {
-		private static final long serialVersionUID = -4062004792184145311L;
+        private static final long serialVersionUID = -4062004792184145311L;
 
-		public BadInstructionsException(String message) {
+        public BadInstructionsException(String message) {
             super(message);
         }
 
-        public BadInstructionsException(String message, Exception e) {
+        public BadInstructionsException(String message, Throwable e) {
             super(message, e);
         }
     }
 
     public static class InapplicableInstructionsException extends BadInstructionsException {
-		private static final long serialVersionUID = 3977056710817909104L;
+        private static final long serialVersionUID = 3977056710817909104L;
 
-		public InapplicableInstructionsException(String message) {
+        public InapplicableInstructionsException(String message) {
             super(message);
         }
     }
 
-    public EditProtocol(ResourceIds resourceIds) {
+    public static class CantGetEditAssetsException extends Exception {
+        public CantGetEditAssetsException(String message) {
+            super(message);
+        }
+
+        public CantGetEditAssetsException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    public static class Edit {
+        private Edit(ViewVisitor aVisitor, List<String> someUrls) {
+            visitor = aVisitor;
+            imageUrls = someUrls;
+        }
+        public final ViewVisitor visitor;
+        public final List<String> imageUrls;
+    }
+
+    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
         mResourceIds = resourceIds;
+        mImageStore = imageStore;
+        mLayoutErrorListener = layoutErrorListener;
     }
 
     public ViewVisitor readEventBinding(JSONObject source, ViewVisitor.OnEventListener listener) throws BadInstructionsException {
@@ -80,7 +106,10 @@ import java.util.List;
         }
     }
 
-    public ViewVisitor readEdit(JSONObject source) throws BadInstructionsException {
+    public Edit readEdit(JSONObject source) throws BadInstructionsException, CantGetEditAssetsException {
+        final ViewVisitor visitor;
+        final List<String> assetsLoaded = new ArrayList<String>();
+
         try {
             final JSONArray pathDesc = source.getJSONArray("path");
             final List<Pathfinder.PathElement> path = readPath(pathDesc, mResourceIds);
@@ -89,37 +118,75 @@ import java.util.List;
                 throw new InapplicableInstructionsException("Edit will not be bound to any element in the UI.");
             }
 
-            final Pathfinder.PathElement pathEnd = path.get(path.size() - 1);
-            final String targetClassName = pathEnd.viewClassName;
-            final Class<?> targetClass;
-            try {
-                targetClass = Class.forName(targetClassName);
-            } catch (final ClassNotFoundException e) {
-                throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+            if (source.getString("change_type").equals("property")) {
+                final JSONObject propertyDesc = source.getJSONObject("property");
+                final String targetClassName = propertyDesc.getString("classname");
+                if (null == targetClassName) {
+                    throw new BadInstructionsException("Can't bind an edit property without a target class");
+                }
+
+                final Class<?> targetClass;
+                try {
+                    targetClass = Class.forName(targetClassName);
+                } catch (final ClassNotFoundException e) {
+                    throw new BadInstructionsException("Can't find class for visit path: " + targetClassName, e);
+                }
+
+                final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
+                final JSONArray argsAndTypes = source.getJSONArray("args");
+                final Object[] methodArgs = new Object[argsAndTypes.length()];
+                for (int i = 0; i < argsAndTypes.length(); i++) {
+                    final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
+                    final Object jsonArg = argPlusType.get(0);
+                    final String argType = argPlusType.getString(1);
+                    methodArgs[i] = convertArgument(jsonArg, argType, assetsLoaded);
+                }
+
+                final Caller mutator = prop.makeMutator(methodArgs);
+                if (null == mutator) {
+                    throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
+                }
+
+                visitor = new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
+            } else if (source.getString("change_type").equals("layout")) {
+                final JSONArray args = source.getJSONArray("args");
+                ArrayList<ViewVisitor.LayoutRule> newParams = new ArrayList<ViewVisitor.LayoutRule>();
+                int length = args.length();
+                for (int i = 0; i < length; i++) {
+                    JSONObject layout_info = args.optJSONObject(i);
+                    ViewVisitor.LayoutRule params;
+
+                    final String view_id_name = layout_info.getString("view_id_name");
+                    final String anchor_id_name = layout_info.getString("anchor_id_name");
+                    final Integer view_id = reconcileIds(-1, view_id_name, mResourceIds);
+                    final Integer anchor_id;
+                    if (anchor_id_name.equals("0")) {
+                        anchor_id = 0;
+                    } else if (anchor_id_name.equals("-1")) {
+                        anchor_id = RelativeLayout.TRUE;
+                    } else {
+                        anchor_id = reconcileIds(-1, anchor_id_name, mResourceIds);
+                    }
+
+                    if (view_id == null || anchor_id == null) {
+                        Log.w(LOGTAG, "View (" + view_id_name + ") or anchor (" + anchor_id_name + ") not found.");
+                        continue;
+                    }
+
+                    params = new ViewVisitor.LayoutRule(view_id, layout_info.getInt("verb"), anchor_id);
+                    newParams.add(params);
+                }
+                visitor = new ViewVisitor.LayoutUpdateVisitor(path, newParams, source.getString("name"), mLayoutErrorListener);
+            } else {
+                throw new BadInstructionsException("Can't figure out the edit type");
             }
-
-            final PropertyDescription prop = readPropertyDescription(targetClass, source.getJSONObject("property"));
-
-            final JSONArray argsAndTypes = source.getJSONArray("args");
-            final Object[] methodArgs = new Object[argsAndTypes.length()];
-            for (int i = 0; i < argsAndTypes.length(); i++) {
-                final JSONArray argPlusType = argsAndTypes.getJSONArray(i);
-                final Object jsonArg = argPlusType.get(0);
-                final String argType = argPlusType.getString(1);
-                methodArgs[i] = convertArgument(jsonArg, argType);
-            }
-
-            final Caller mutator = prop.makeMutator(methodArgs);
-            if (null == mutator) {
-                throw new BadInstructionsException("Can't update a read-only property " + prop.name + " (add a mutator to make this work)");
-            }
-
-            return new ViewVisitor.PropertySetVisitor(path, mutator, prop.accessor);
         } catch (final NoSuchMethodException e) {
             throw new BadInstructionsException("Can't create property mutator", e);
         } catch (final JSONException e) {
             throw new BadInstructionsException("Can't interpret instructions due to JSONException", e);
         }
+
+        return new Edit(visitor, assetsLoaded);
     }
 
     public ViewSnapshot readSnapshotConfig(JSONObject source) throws BadInstructionsException {
@@ -146,6 +213,34 @@ import java.util.List;
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (final ClassNotFoundException e) {
             throw new BadInstructionsException("Can't resolve types for snapshot configuration", e);
+        }
+    }
+
+    public Pair<String, Object> readTweak(JSONObject tweakDesc) throws BadInstructionsException {
+        try {
+            final String tweakName = tweakDesc.getString("name");
+            final String type = tweakDesc.getString("type");
+            Object value;
+            if ("number".equals(type)) {
+                final String encoding = tweakDesc.getString("encoding");
+                if ("d".equals(encoding)) {
+                    value = tweakDesc.getDouble("value");
+                } else if ("l".equals(encoding)) {
+                    value = tweakDesc.getLong("value");
+                } else {
+                    throw new BadInstructionsException("number must have encoding of type \"l\" for long or \"d\" for double in: " + tweakDesc);
+                }
+            } else if ("boolean".equals(type)) {
+                value = tweakDesc.getBoolean("value");
+            } else if ("string".equals(type)) {
+                value = tweakDesc.getString("value");
+            } else {
+                throw new BadInstructionsException("Unrecognized tweak type " + type + " in: " + tweakDesc);
+            }
+
+            return new Pair<String, Object>(tweakName, value);
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Can't read tweak update", e);
         }
     }
 
@@ -176,7 +271,7 @@ import java.util.List;
 
             final int targetId;
 
-            final Integer targetIdOrNull = reconcileIdsInPath(targetExplicitId, targetIdName, idNameToId);
+            final Integer targetIdOrNull = reconcileIds(targetExplicitId, targetIdName, idNameToId);
             if (null == targetIdOrNull) {
                 return NEVER_MATCH_PATH;
             } else {
@@ -190,7 +285,7 @@ import java.util.List;
     }
 
     // May return null (and log a warning) if arguments cannot be reconciled
-    private Integer reconcileIdsInPath(int explicitId, String idName, ResourceIds idNameToId) {
+    private Integer reconcileIds(int explicitId, String idName, ResourceIds idNameToId) {
         final int idFromName;
         if (null != idName) {
             if (idNameToId.knownIdName(idName)) {
@@ -219,7 +314,8 @@ import java.util.List;
         return explicitId;
     }
 
-    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc) throws BadInstructionsException {
+    private PropertyDescription readPropertyDescription(Class<?> targetClass, JSONObject propertyDesc)
+            throws BadInstructionsException {
         try {
             final String propName = propertyDesc.getString("name");
 
@@ -250,7 +346,8 @@ import java.util.List;
         }
     }
 
-    private Object convertArgument(Object jsonArgument, String type) throws BadInstructionsException {
+    private Object convertArgument(Object jsonArgument, String type, List<String> assetsLoaded)
+            throws BadInstructionsException, CantGetEditAssetsException {
         // Object is a Boolean, JSONArray, JSONObject, Number, String, or JSONObject.NULL
         try {
             if ("java.lang.CharSequence".equals(type)) { // Because we're assignable
@@ -261,9 +358,14 @@ import java.util.List;
                 return ((Number) jsonArgument).intValue();
             } else if ("float".equals(type) || "java.lang.Float".equals(type)) {
                 return ((Number) jsonArgument).floatValue();
-            } else if ("android.graphics.Bitmap".equals(type)) {
-                final byte[] bytes = Base64.decode((String) jsonArgument, 0);
-                return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            } else if ("android.graphics.drawable.Drawable".equals(type)) {
+                // For historical reasons, we attempt to interpret generic Drawables as BitmapDrawables
+                return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
+            } else if ("android.graphics.drawable.BitmapDrawable".equals(type)) {
+                return readBitmapDrawable((JSONObject) jsonArgument, assetsLoaded);
+            } else if ("android.graphics.drawable.ColorDrawable".equals(type)) {
+                int colorValue = ((Number) jsonArgument).intValue();
+                return new ColorDrawable(colorValue);
             } else {
                 throw new BadInstructionsException("Don't know how to interpret type " + type + " (arg was " + jsonArgument + ")");
             }
@@ -272,11 +374,58 @@ import java.util.List;
         }
     }
 
+    private Drawable readBitmapDrawable(JSONObject description, List<String> assetsLoaded)
+            throws BadInstructionsException, CantGetEditAssetsException {
+        try {
+            if (description.isNull("url")) {
+                throw new BadInstructionsException("Can't construct a BitmapDrawable with a null url");
+            }
+
+            final String url = description.getString("url");
+
+            final boolean useBounds;
+            final int left;
+            final int right;
+            final int top;
+            final int bottom;
+            if (description.isNull("dimensions")) {
+                left = right = top = bottom = 0;
+                useBounds = false;
+            } else {
+                final JSONObject dimensions = description.getJSONObject("dimensions");
+                left = dimensions.getInt("left");
+                right = dimensions.getInt("right");
+                top = dimensions.getInt("top");
+                bottom = dimensions.getInt("bottom");
+                useBounds = true;
+            }
+
+            final Bitmap image;
+            try {
+                image = mImageStore.getImage(url);
+                assetsLoaded.add(url);
+            } catch (ImageStore.CantGetImageException e) {
+                throw new CantGetEditAssetsException(e.getMessage(), e.getCause());
+            }
+
+            final Drawable ret = new BitmapDrawable(Resources.getSystem(), image);
+            if (useBounds) {
+                ret.setBounds(left, top, right, bottom);
+            }
+
+            return ret;
+        } catch (JSONException e) {
+            throw new BadInstructionsException("Couldn't read drawable description", e);
+        }
+    }
+
     private final ResourceIds mResourceIds;
+    private final ImageStore mImageStore;
+    private final ViewVisitor.OnLayoutErrorListener mLayoutErrorListener;
 
     private static final Class<?>[] NO_PARAMS = new Class[0];
     private static final List<Pathfinder.PathElement> NEVER_MATCH_PATH = Collections.<Pathfinder.PathElement>emptyList();
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.EditProtocol";
+    private static final String LOGTAG = "MixpanelAPI.EProtocol";
 } // EditProtocol

@@ -7,5 +7,9 @@
     <string name="com_mixpanel_android_close">Close</string>
     <string name="com_mixpanel_android_done">Done</string>
     <string name="com_mixpanel_android_notification_image">Image not displayed</string>
+    <string name="com_mixpanel_android_survey_prompt_dialog_title">We\'d love your feedback!</string>
+    <string name="com_mixpanel_android_survey_prompt_dialog_message">Mind taking a quick survey?</string>
+    <string name="com_mixpanel_android_sure">Sure</string>
+    <string name="com_mixpanel_android_no_thanks">No, Thanks</string>
     <color name="com_mixpanel_android_selected">#66ffffff</color>
 </resources>

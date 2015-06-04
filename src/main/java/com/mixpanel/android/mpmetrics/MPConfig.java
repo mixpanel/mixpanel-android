@@ -9,14 +9,78 @@ import android.util.Log;
 
 
 /**
- * Stores global configuration options for the Mixpanel library.
+ * Stores global configuration options for the Mixpanel library. You can enable and disable configuration
+ * options using &lt;meta-data&gt; tags inside of the &lt;application&gt; tag in your AndroidManifest.xml.
+ * All settings are optional, and default to reasonable recommended values. Most users will not have to
+ * set any options.
+ *
+ * Mixpanel understands the following options:
+ *
+ * <dl>
+ *     <dt>com.mixpanel.android.MPConfig.EnableDebugLogging</dt>
+ *     <dd>A boolean value. If true, emit more detailed log messages. Defaults to false</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.BulkUploadLimit</dt>
+ *     <dd>An integer count of messages, the maximum number of messages to queue before an upload attempt. This value should be less than 50.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.FlushInterval</dt>
+ *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DataExpiration</dt>
+ *     <dd>An integer number of milliseconds, the maximum age of records to send to Mixpanel. Corresponds to Mixpanel's server-side limit on record age.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.MinimumDatabaseLimit</dt>
+ *     <dd>An integer number of bytes. Mixpanel attempts to limit the size of its persistent data
+ *          queue based on the storage capacity of the device, but will always allow queing below this limit. Higher values
+ *          will take up more storage even when user storage is very full.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableFallback</dt>
+ *     <dd>A boolean value. If true, do not send data over HTTP, even if HTTPS is unavailable. Defaults to true - by default, Mixpanel will only attempt to communicate over HTTPS.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.ResourcePackageName</dt>
+ *     <dd>A string java package name. Defaults to the package name of the Application. Users should set if the package name of their R class is different from the application package name due to application id settings.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableGestureBindingUI</dt>
+ *     <dd>A boolean value. If true, do not allow connecting to the codeless event binding or A/B testing editor using an accelerometer gesture. Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableEmulatorBindingUI</dt>
+ *     <dd>A boolean value. If true, do not attempt to connect to the codeless event binding or A/B testing editor when running in the Android emulator. Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableAppOpenEvent</dt>
+ *     <dd>A boolean value. If true, do not send an "$app_open" event when the MixpanelAPI object is created for the first time. Defaults to true - the $app_open event will not be sent by default.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates</dt>
+ *     <dd>A boolean value. If true, automatically show surveys, notifications, and A/B test variants. Defaults to true.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.EventsEndpoint</dt>
+ *     <dd>A string URL. If present, the library will attempt to send events to this endpoint rather than to the default Mixpanel endpoint.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.EventsFallbackEndpoint</dt>
+ *     <dd>A string URL. If present, AND if DisableFallback is false, events will be sent to this endpoint if the EventsEndpoint cannot be reached.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.PeopleEndpoint</dt>
+ *     <dd>A string URL. If present, the library will attempt to send people updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.PeopleFallbackEndpoint</dt>
+ *     <dd>A string URL. If present, AND if DisableFallback is false, people updates will be sent to this endpoint if the EventsEndpoint cannot be reached.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DecideEndpoint</dt>
+ *     <dd>A string URL. If present, the library will attempt to get survey, notification, codeless event tracking, and A/B test variant information from this url rather than the default Mixpanel endpoint.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DecideFallbackEndpoint</dt>
+ *     <dd>A string URL. If present, AND if DisableFallback is false, the library will query this url if the DecideEndpoint url cannot be reached.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.EditorUrl</dt>
+ *     <dd>A string URL. If present, the library will attempt to connect to this endpoint when in interactive editing mode, rather than to the default Mixpanel editor url.</dd>
+ * </dl>
+ *
  */
 public class MPConfig {
 
     // Unfortunately, as long as we support building from source in Eclipse,
     // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
     // be hard-coded both in our gradle files and here in code.
-    public static final String VERSION = "4.5.3";
+    public static final String VERSION = "4.5.4-SNAPSHOT";
 
     public static boolean DEBUG = false;
 
@@ -56,6 +120,7 @@ public class MPConfig {
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
+        mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
@@ -118,6 +183,7 @@ public class MPConfig {
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
+                "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
@@ -149,6 +215,8 @@ public class MPConfig {
     public int getDataExpiration() {
         return mDataExpiration;
     }
+
+    public int getMinimumDatabaseLimit() { return mMinimumDatabaseLimit; }
 
     public boolean getDisableFallback() {
         return mDisableFallback;
@@ -244,6 +312,7 @@ public class MPConfig {
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
     private final int mDataExpiration;
+    private final int mMinimumDatabaseLimit;
     private final boolean mDisableFallback;
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;
@@ -261,5 +330,5 @@ public class MPConfig {
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();
-    private static final String LOGTAG = "MixpanelAPI.Configuration";
+    private static final String LOGTAG = "MixpanelAPI.Conf";
 }

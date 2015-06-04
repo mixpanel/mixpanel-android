@@ -27,10 +27,19 @@ public class DecideMessagesTest extends AndroidTestCase {
         };
 
         mMockUpdates = new UpdatesFromMixpanel() {
+            @Override
+            public void startUpdates() {
+                ; // do nothing
+            }
 
             @Override
             public void setEventBindings(JSONArray bindings) {
                 ; // TODO should observe bindings here
+            }
+
+            @Override
+            public void setVariants(JSONArray variants) {
+                ; // TODO should observe this
             }
 
             @Override
@@ -63,11 +72,12 @@ public class DecideMessagesTest extends AndroidTestCase {
         mSomeNotifications.add(new InAppNotification(notifsDesc1));
         mSomeNotifications.add(new InAppNotification(notifsDesc2));
 
-        mSomeBindings = new JSONArray(); // TODO need to test with actual bindings?
+        mSomeBindings = new JSONArray(); // TODO need some bindings
+        mSomeVariants = new JSONArray(); // TODO need some variants
     }
 
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
-        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings, mSomeVariants);
 
         final List<Survey> fakeSurveys = new ArrayList<Survey>(mSomeSurveys.size());
         for (final Survey real: mSomeSurveys) {
@@ -84,7 +94,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         assertNull(mDecideMessages.getSurvey(false));
         assertNull(mDecideMessages.getNotification(false));
 
-        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings, mSomeVariants);
 
         assertNull(mDecideMessages.getSurvey(false));
         assertNull(mDecideMessages.getNotification(false));
@@ -101,7 +111,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification unseenNotification = new InAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(fakeSurveys, fakeNotifications, mSomeBindings, mSomeVariants);
 
         assertEquals(mDecideMessages.getSurvey(false), unseenSurvey);
         assertEquals(mDecideMessages.getNotification(false), unseenNotification);
@@ -117,7 +127,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings, mSomeVariants);
 
         final Survey s1 = mDecideMessages.getSurvey(false);
         assertEquals(mSomeSurveys.get(0), s1);
@@ -140,12 +150,12 @@ public class DecideMessagesTest extends AndroidTestCase {
 
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings, mSomeVariants);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings);
+        mDecideMessages.reportResults(mSomeSurveys, mSomeNotifications, mSomeBindings, mSomeVariants);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -156,7 +166,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(mSomeSurveys, newNotifications, mSomeBindings);
+        mDecideMessages.reportResults(mSomeSurveys, newNotifications, mSomeBindings, mSomeVariants);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }
@@ -166,6 +176,7 @@ public class DecideMessagesTest extends AndroidTestCase {
     private UpdatesFromMixpanel mMockUpdates;
     private DecideMessages mDecideMessages;
     private JSONArray mSomeBindings;
+    private JSONArray mSomeVariants;
     private List<Survey> mSomeSurveys;
     private List<InAppNotification> mSomeNotifications;
 }

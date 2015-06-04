@@ -5,11 +5,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,6 +51,7 @@ public class TestView extends FrameLayout {
 
         mTextView2 = new TextView(getContext());
         mTextView2.setId(TEXT2_VIEW_ID);
+        mTextView2.setText("Original Text");
         mTextView2.setTag(SIMPLE_TAG);
         mTextView2.setContentDescription(TEXT_2_CONTENT_DESCRIPTION);
 
@@ -82,7 +87,33 @@ public class TestView extends FrameLayout {
         mAllViews.add(mAdHocButton3);
         mFourthLayer.add(mAdHocButton3);
 
+        mImageView = new ImageView(getContext());
+        mImageView.setId(IMAGE_VIEW_ID);
+        mImageView.setImageResource(android.R.drawable.btn_star_big_off);
+        linear.addView(mImageView);
+        mAllViews.add(mImageView);
+        mThirdLayer.add(mImageView);
+
         mButtonParentView = mButtonGroup;
+
+        ViewGroup relative = new RelativeLayout(getContext());
+        relative.setId(RELATIVE_LAYOUT_ID);
+        addView(relative);
+        mAllViews.add(relative);
+        mSecondLayer.add(relative);
+        mRelativeLayoutButton1 = new Button(getContext());
+        mRelativeLayoutButton1.setText("Yo!");
+        mRelativeLayoutButton1.setId(RELATIVE_LAYOUT_BUTTON1_ID);
+        relative.addView(mRelativeLayoutButton1);
+        mAllViews.add(mRelativeLayoutButton1);
+        mThirdLayer.add(mRelativeLayoutButton1);
+
+        mRelativeLayoutButton2 = new Button(getContext());
+        mRelativeLayoutButton2.setText("Yeah!");
+        mRelativeLayoutButton2.setId(RELATIVE_LAYOUT_BUTTON2_ID);
+        relative.addView(mRelativeLayoutButton2);
+        mAllViews.add(mRelativeLayoutButton2);
+        mThirdLayer.add(mRelativeLayoutButton2);
 
         mViewsByHashcode = new HashMap<Integer, View>();
         for (View v:mAllViews) {
@@ -166,6 +197,18 @@ public class TestView extends FrameLayout {
         }
     }
 
+    public static class MockOnLayoutErrorListener implements ViewVisitor.OnLayoutErrorListener {
+        public MockOnLayoutErrorListener() {
+            errorList = new ArrayList<ViewVisitor.LayoutErrorMessage>();
+        }
+
+        public void onLayoutError(ViewVisitor.LayoutErrorMessage e) {
+            errorList.add(e);
+        }
+
+        public List<ViewVisitor.LayoutErrorMessage> errorList;
+    }
+
     public final Set<View> mAllViews;
     public final View mButtonParentView;
     public final ViewGroup mButtonGroup;
@@ -174,6 +217,9 @@ public class TestView extends FrameLayout {
     public final AdHocButton1 mAdHocButton1;
     public final AdHocButton2 mAdHocButton2;
     public final AdHocButton3 mAdHocButton3;
+    public final ImageView mImageView;
+    public final Button mRelativeLayoutButton1;
+    public final Button mRelativeLayoutButton2;
     public final Set<View> mSecondLayer;
     public final Set<View> mThirdLayer;
     public final Set<View> mFourthLayer;
@@ -185,10 +231,16 @@ public class TestView extends FrameLayout {
     public static final int TEXT2_VIEW_ID = 3500;
     public static final int LINEAR_ID = 4000;
     public static final int BUTTON_GROUP_ID = 5000;
+    public static final int RELATIVE_LAYOUT_ID = 6000;
+    public static final int RELATIVE_LAYOUT_BUTTON1_ID = 7000;
+    public static final int RELATIVE_LAYOUT_BUTTON2_ID = 8000;
+    public static final int IMAGE_VIEW_ID = 9000;
     public static final String SIMPLE_TAG = "this_is_a_simple_tag";
     public static final String CRAZY_TAG = "this is a long and \"CRAZY\" \\\"Tag";
     public static final String ROOT_DESCRIPTION = "This is the root view";
     public static final String TEXT_2_CONTENT_DESCRIPTION = "The Second Test Text View";
     public static final String BUTTON_1_CONTENT_DESCRIPTION = "Ad Hoc Button Number 1";
     public static final String BUTTON_3_CONTENT_DESCRIPTION = "Ad Hoc Button Number 3";
+
+    public static final int NO_ANCHOR = 0;
 }

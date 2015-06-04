@@ -3,10 +3,14 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,6 +23,7 @@ import android.util.LruCache;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.ResourceIds;
@@ -181,6 +186,18 @@ import java.util.concurrent.TimeoutException;
 
         addProperties(j, view);
 
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+        if (layoutParams instanceof RelativeLayout.LayoutParams) {
+            RelativeLayout.LayoutParams relativeLayoutParams = (RelativeLayout.LayoutParams) layoutParams;
+            int[] rules = relativeLayoutParams.getRules();
+            j.name("layoutRules");
+            j.beginArray();
+            for (int rule : rules) {
+                j.value(rule);
+            }
+            j.endArray();
+        }
+
         j.name("subviews");
         j.beginArray();
         if (view instanceof ViewGroup) {
@@ -222,6 +239,33 @@ import java.util.concurrent.TimeoutException;
                     j.name(desc.name).value((Number) value);
                 } else if (value instanceof Boolean) {
                     j.name(desc.name).value((Boolean) value);
+                } else if (value instanceof ColorStateList) {
+                    j.name(desc.name).value((Integer) ((ColorStateList) value).getDefaultColor());
+                } else if (value instanceof Drawable) {
+                    final Drawable drawable = (Drawable) value;
+                    final Rect bounds = drawable.getBounds();
+                    j.name(desc.name);
+                    j.beginObject();
+                        j.name("classes");
+                        j.beginArray();
+                            Class klass = drawable.getClass();
+                            while (klass != Object.class) {
+                                j.value(klass.getCanonicalName());
+                                klass = klass.getSuperclass();
+                            }
+                        j.endArray();
+                        j.name("dimensions");
+                        j.beginObject();
+                            j.name("left").value(bounds.left);
+                            j.name("right").value(bounds.right);
+                            j.name("top").value(bounds.top);
+                            j.name("bottom").value(bounds.bottom);
+                        j.endObject();
+                        if (drawable instanceof ColorDrawable) {
+                            final ColorDrawable colorDrawable = (ColorDrawable) drawable;
+                            j.name("color").value(colorDrawable.getColor());
+                        }
+                    j.endObject();
                 } else {
                     j.name(desc.name).value(value.toString());
                 }
@@ -235,7 +279,7 @@ import java.util.concurrent.TimeoutException;
         }
 
         @Override
-		protected String create(Class<?> klass) {
+        protected String create(Class<?> klass) {
             return klass.getCanonicalName();
         }
     }
@@ -409,5 +453,5 @@ import java.util.concurrent.TimeoutException;
     private static final int MAX_CLASS_NAME_CACHE_SIZE = 255;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.ViewSnapshot";
+    private static final String LOGTAG = "MixpanelAPI.Snapshot";
 }

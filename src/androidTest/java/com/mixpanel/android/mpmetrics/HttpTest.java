@@ -4,9 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
-import android.util.Pair;
 
 import com.mixpanel.android.util.Base64Coder;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.apache.http.NameValuePair;
 import org.json.JSONArray;
@@ -32,10 +33,12 @@ public class HttpTest extends AndroidTestCase {
         mDecideCalls = new LinkedBlockingQueue<String>();
         mCleanupCalls = new ArrayList<String>();
         mDecideResults = new ArrayList<Object>();
+        mForceOverMemThreshold = false;
 
-        final ServerMessage mockPoster = new ServerMessage() {
+        final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) throws IOException {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs)
+                throws ServiceUnavailableException, IOException {
                 try {
                     if (null == nameValuePairs) {
                         mDecideCalls.put(endpointUrl);
@@ -49,6 +52,8 @@ public class HttpTest extends AndroidTestCase {
                             throw (IOException)obj;
                         } else if (obj instanceof MalformedURLException) {
                             throw (MalformedURLException)obj;
+                        } else if (obj instanceof ServiceUnavailableException) {
+                            throw (ServiceUnavailableException)obj;
                         }
                         return (byte[])obj;
                     }
@@ -70,6 +75,8 @@ public class HttpTest extends AndroidTestCase {
                         throw (IOException)obj;
                     } else if (obj instanceof MalformedURLException) {
                         throw (MalformedURLException)obj;
+                    } else if (obj instanceof ServiceUnavailableException) {
+                        throw (ServiceUnavailableException)obj;
                     }
                     return (byte[])obj;
 
@@ -114,6 +121,15 @@ public class HttpTest extends AndroidTestCase {
                 mCleanupCalls.add("called");
                 super.cleanupEvents(last_id, table);
             }
+
+            @Override
+            protected boolean belowMemThreshold() {
+                if (mForceOverMemThreshold) {
+                    return false;
+                } else {
+                    return super.belowMemThreshold();
+                }
+            }
         };
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
@@ -123,7 +139,7 @@ public class HttpTest extends AndroidTestCase {
             }
 
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mockPoster;
             }
 
@@ -192,6 +208,42 @@ public class HttpTest extends AndroidTestCase {
             assertEquals("Should Fail", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
             assertEquals(1, mCleanupCalls.size());
+
+            // 503 exception -- should wait for 10 seconds until the queue is able to flush
+            mCleanupCalls.clear();
+            mFlushResults.add(new RemoteService.ServiceUnavailableException("", "10"));
+            mFlushResults.add(TestUtils.bytes("1\n"));
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            Thread.sleep(10000);
+            mMetrics.flush();
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
+
+            // short of memory test - should drop all the new queries
+            mForceOverMemThreshold = true;
+            mCleanupCalls.clear();
+            mMetrics.track("Should Fail", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(0, mCleanupCalls.size());
+            mForceOverMemThreshold = false;
+            mMetrics.track("Should Succeed", null);
+            mMetrics.flush();
+            Thread.sleep(500);
+            assertEquals("Should Succeed", mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+            assertEquals(1, mCleanupCalls.size());
         } catch (InterruptedException e) {
             throw new RuntimeException("Test was interrupted.");
         }
@@ -203,5 +255,6 @@ public class HttpTest extends AndroidTestCase {
     private List<String> mCleanupCalls;
     private MixpanelAPI mMetrics;
     private volatile boolean mDisableFallback;
+    private volatile boolean mForceOverMemThreshold;
     private static final int POLL_WAIT_SECONDS = 5;
 }

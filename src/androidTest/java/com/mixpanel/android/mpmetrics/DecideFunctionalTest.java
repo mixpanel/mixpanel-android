@@ -6,6 +6,8 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.apache.http.NameValuePair;
@@ -55,7 +57,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         };
 
         mExpectations = new Expectations();
-        mMockPoster = new ServerMessage() {
+        mMockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
                 return mExpectations.setExpectationsRequest(endpointUrl, nameValuePairs);
@@ -71,7 +73,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         mMockMessages = new AnalyticsMessages(getContext()) {
             @Override
-            protected ServerMessage getPoster() {
+            protected RemoteService getPoster() {
                 return mMockPoster;
             }
 
@@ -309,16 +311,26 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
 
         @Override
-        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings) {
-            super.reportResults(newSurveys, newNotifications, newBindings);
+        public void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray newBindings, JSONArray variants) {
+            super.reportResults(newSurveys, newNotifications, newBindings, variants);
             mExpectations.resolve();
         }
     }
 
     private class MockUpdates implements UpdatesFromMixpanel {
         @Override
+        public void startUpdates() {
+            ;
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
             ; // TODO we need to test that (possibly empty, never null) bindings come through
+        }
+
+        @Override
+        public void setVariants(JSONArray variants) {
+            ;
         }
 
         @Override
@@ -330,6 +342,6 @@ public class DecideFunctionalTest extends AndroidTestCase {
     private MPConfig mMockConfig;
     private Future<SharedPreferences> mMockPreferences;
     private Expectations mExpectations;
-    private ServerMessage mMockPoster;
+    private RemoteService mMockPoster;
     private AnalyticsMessages mMockMessages;
 }

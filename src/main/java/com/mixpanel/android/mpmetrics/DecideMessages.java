@@ -45,7 +45,7 @@ import java.util.Set;
     }
 
     // Do not consult destroyed status inside of this method.
-    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings) {
+    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
 
@@ -66,6 +66,8 @@ import java.util.Set;
                 newContent = true;
             }
         }
+
+        mVariants = variants;
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
@@ -103,6 +105,10 @@ import java.util.Set;
         return survey;
     }
 
+    public synchronized JSONArray getVariants() {
+        return mVariants;
+    }
+
     public synchronized InAppNotification getNotification(boolean replace) {
         if (mUnseenNotifications.isEmpty()) {
             if (MPConfig.DEBUG) {
@@ -136,7 +142,7 @@ import java.util.Set;
     }
 
     public synchronized boolean hasUpdatesAvailable() {
-        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty());
+        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty()) || mVariants != null;
     }
 
     // Mutable, must be synchronized
@@ -149,7 +155,8 @@ import java.util.Set;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
+    private JSONArray mVariants;
 
     @SuppressWarnings("unused")
-    private static final String LOGTAG = "MixpanelAPI.DecideUpdates";
+    private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
 }

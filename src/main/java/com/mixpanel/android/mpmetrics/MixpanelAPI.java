@@ -115,6 +115,38 @@ public class MixpanelAPI {
      */
     public static final String VERSION = MPConfig.VERSION;
 
+    public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
+        return sDefaultTweaks.stringTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
+        return sDefaultTweaks.booleanTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
+        return sDefaultTweaks.doubleTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
+        return sDefaultTweaks.floatTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
+        return sDefaultTweaks.longTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
+        return sDefaultTweaks.intTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
+        return sDefaultTweaks.shortTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
+        return sDefaultTweaks.byteTweak(tweakName, defaultValue);
+    }
+
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
@@ -124,7 +156,6 @@ public class MixpanelAPI {
         mToken = token;
         mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
-        mMessages = getAnalyticsMessages();
         mConfig = getConfig();
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -154,6 +185,7 @@ public class MixpanelAPI {
         // purpose of PersistentIdentity's laziness.
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         mDecideMessages.setDistinctId(peopleId);
+        mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
         registerMixpanelActivityLifecycleCallbacks();
@@ -161,6 +193,8 @@ public class MixpanelAPI {
         if (sendAppOpen()) {
             track("$app_open", null);
         }
+
+        mUpdatesFromMixpanel.startUpdates();
     }
 
     /**
@@ -334,6 +368,32 @@ public class MixpanelAPI {
      * that event.
      *
      * @param eventName The name of the event to send
+     * @param properties A Map containing the key value pairs of the properties to include in this event.
+     *                   Pass null if no extra properties exist.
+     *
+     * See also {@link #track(String, org.json.JSONObject)}
+     */
+    public void trackMap(String eventName, Map<String, Object> properties) {
+        if (null == properties) {
+            track(eventName, null);
+        } else {
+            try {
+                track(eventName, new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties of trackMap!");
+            }
+        }
+    }
+
+    /**
+     * Track an event.
+     *
+     * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
+     * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+     * have a string name, and an optional set of name/value pairs that describe the properties of
+     * that event.
+     *
+     * @param eventName The name of the event to send
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist.
      */
@@ -358,12 +418,7 @@ public class MixpanelAPI {
                 messageProps.put(key, value);
             }
 
-            final JSONObject superProperties = mPersistentIdentity.getSuperProperties();
-            final Iterator<?> superIter = superProperties.keys();
-            while (superIter.hasNext()) {
-                final String key = (String) superIter.next();
-                messageProps.put(key, superProperties.get(key));
-            }
+            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
 
             // Don't allow super properties or referral properties to override these fields,
             // but DO allow the caller to override them in their given properties.
@@ -420,8 +475,10 @@ public class MixpanelAPI {
      * and persist beyond the lifetime of your application.
      */
       public JSONObject getSuperProperties() {
-        return mPersistentIdentity.getSuperProperties();
-    }
+          JSONObject ret = new JSONObject();
+          mPersistentIdentity.addSuperPropertiesToObject(ret);
+          return ret;
+      }
 
     /**
      * Returns the string id currently being used to uniquely identify the user associated
@@ -440,6 +497,36 @@ public class MixpanelAPI {
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
      }
+
+    /**
+     * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
+     *
+     * <p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+     * and persist beyond the lifetime of your application.
+     *
+     * <p>Setting a superProperty with registerSuperProperties will store a new superProperty,
+     * possibly overwriting any existing superProperty with the same name (to set a
+     * superProperty only if it is currently unset, use {@link #registerSuperPropertiesOnce(JSONObject)})
+     *
+     * <p>SuperProperties will persist even if your application is taken completely out of memory.
+     * to remove a superProperty, call {@link #unregisterSuperProperty(String)} or {@link #clearSuperProperties()}
+     *
+     * @param superProperties    A Map containing super properties to register
+     *
+     * See also {@link #registerSuperProperties(org.json.JSONObject)}
+     */
+    public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
+        if (null == superProperties) {
+            Log.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
+            return;
+        }
+
+        try {
+            registerSuperProperties(new JSONObject(superProperties));
+        } catch (NullPointerException e) {
+            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap!");
+        }
+    }
 
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
@@ -483,6 +570,29 @@ public class MixpanelAPI {
      *
      * <p>Calling registerSuperPropertiesOnce will never overwrite existing properties.
      *
+     * @param superProperties A Map containing the super properties to register.
+     *
+     * See also {@link #registerSuperPropertiesOnce(org.json.JSONObject)}
+     */
+    public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
+        if (null == superProperties) {
+            Log.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
+            return;
+        }
+
+        try {
+            registerSuperPropertiesOnce(new JSONObject(superProperties));
+        } catch (NullPointerException e) {
+            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesOnce!");
+        }
+    }
+
+    /**
+     * Register super properties for events, only if no other super property with the
+     * same names has already been registered.
+     *
+     * <p>Calling registerSuperPropertiesOnce will never overwrite existing properties.
+     *
      * @param superProperties A JSONObject containing the super properties to register.
      * @see #registerSuperProperties(JSONObject)
      */
@@ -505,6 +615,19 @@ public class MixpanelAPI {
     }
 
     /**
+     * Updates super properties in place. Given a SuperPropertyUpdate object, will
+     * pass the current values of SuperProperties to that update and replace all
+     * results with the return value of the update. Updates are synchronized on
+     * the underlying super properties store, so they are guaranteed to be thread safe
+     * (but long running updates may slow down your tracking.)
+     *
+     * @param update A function from one set of super properties to another. The update should not return null.
+     */
+    public void updateSuperProperties(SuperPropertyUpdate update) {
+        mPersistentIdentity.updateSuperProperties(update);
+    }
+
+    /**
      * Returns a Mixpanel.People object that can be used to set and increment
      * People Analytics properties.
      *
@@ -513,6 +636,16 @@ public class MixpanelAPI {
      */
     public People getPeople() {
         return mPeople;
+    }
+
+    /**
+     * Tweaks allow applications to specify dynamic variables that can be modified in the Mixpanel UI
+     * and delivered to your applications.
+     *
+     * @return A Tweaks object you can use to check for information that has been delivered from Mixpanel.
+     */
+    public Tweaks getTweaks() {
+        return mUpdatesFromMixpanel.getTweaks();
     }
 
     /**
@@ -612,6 +745,17 @@ public class MixpanelAPI {
         /**
          * Set a collection of properties on the identified user all at once.
          *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #set(org.json.JSONObject)}
+         */
+        public void setMap(Map<String, Object> properties);
+
+        /**
+         * Set a collection of properties on the identified user all at once.
+         *
          * @param properties a JSONObject containing the collection of properties you wish to apply
          *      to the identified user. Each key in the JSONObject will be associated with
          *      a property name, and the value of that key will be assigned to the property.
@@ -625,6 +769,17 @@ public class MixpanelAPI {
          * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
          */
         public void setOnce(String propertyName, Object value);
+
+        /**
+         * Like {@link People#set(String, Object)}, but will not set properties that already exist on a record.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified user. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #setOnce(org.json.JSONObject)}
+         */
+        public void setOnceMap(Map<String, Object> properties);
 
         /**
          * Like {@link People#set(String, Object)}, but will not set properties that already exist on a record.
@@ -646,6 +801,18 @@ public class MixpanelAPI {
          * @see #increment(Map)
          */
         public void increment(String name, double increment);
+
+        /**
+         * Merge a given JSONObject into the object-valued property named name. If the user does not
+         * already have the associated property, an new property will be created with the value of
+         * the given updates. If the user already has a value for the given property, the updates will
+         * be merged into the existing value, with key/value pairs in updates taking precedence over
+         * existing key/value pairs where the keys are the same.
+         *
+         * @param name the People Analytics property that should have the update merged into it
+         * @param updates a JSONObject with keys and values that will be merged into the property
+         */
+        public void merge(String name, JSONObject updates);
 
         /**
          * Change the existing values of multiple People Analytics properties at once.
@@ -811,9 +978,9 @@ public class MixpanelAPI {
          * <p>The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -826,16 +993,16 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Shows an in app notification to the user if one is available. If the notification
+         * Shows an in-app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
          * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
          * display the Takeover notification.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -848,7 +1015,24 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
-         * Shows the given in app notification to the user. Display will occur just as if the
+         * Applies A/B test changes, if they are present. By default, your application will attempt
+         * to join available experiments any time an activity is resumed, but you can disable this
+         * automatic behavior by adding the following tag to the &lt;application&gt; tag in your AndroidManifest.xml
+         * {@code
+         *     <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
+         *                android:value="false" />
+         * }
+         *
+         * If you disable AutoShowMixpanelUpdates, you'll need to call joinExperimentIfAvailable to
+         * join or clear existing experiments. If you want to display a loading screen or otherwise
+         * wait for experiments to load from the server before you apply them, you can use
+         * {@link #addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener)} to
+         * be informed that new experiments are ready.
+         */
+        public void joinExperimentIfAvailable();
+
+        /**
+         * Shows the given in-app notification to the user. Display will occur just as if the
          * notification was shown via showNotificationIfAvailable. In most cases, it is
          * easier and more efficient to use showNotificationIfAvailable.
          *
@@ -885,7 +1069,7 @@ public class MixpanelAPI {
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display in app notifications should call this
+         * no survey is currently available. Callers who want to display in-app notifications should call this
          * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
@@ -903,10 +1087,10 @@ public class MixpanelAPI {
 
         /**
          * Tells MixPanel that you have handled an {@link com.mixpanel.android.mpmetrics.InAppNotification}
-         * in the case where you are manually dealing with your notifications ({@link People:getNotificationIfAvailable()}).
+         * in the case where you are manually dealing with your notifications ({@link People#getNotificationIfAvailable()}).
          *
          * Note: if you do not acknowledge the notification you will receive it again each time
-         * you call {@link People#identify(String)} and then call {@link People:getNotificationIfAvailable()}
+         * you call {@link People#identify(String)} and then call {@link People#getNotificationIfAvailable()}
          *
          * @param notif the notification to track (no-op on null)
          */
@@ -923,7 +1107,7 @@ public class MixpanelAPI {
         public void showSurveyById(int id, final Activity parent);
 
         /**
-         * Shows an in app notification identified by id. The behavior of this is otherwise identical to
+         * Shows an in-app notification identified by id. The behavior of this is otherwise identical to
          * {@link People#showNotificationIfAvailable(Activity)}.
          *
          * @param id the id of the InAppNotification you wish to show.
@@ -940,17 +1124,19 @@ public class MixpanelAPI {
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like surveys or in app notifications) are discovered.
+         * (like surveys, in-app notifications, or A/B test experiments) are discovered. Most users of the library
+         * will not need this method, since surveys, in-app notifications, and experiments are
+         * applied automatically to your application by default.
          *
          * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>Once this listener is called, you may call {@link People#getSurveyIfAvailable()}
-         * or {@link People#getNotificationIfAvailable()}
-         * to retrieve a Survey or InAppNotification object. However, if you have multiple
-         * listeners registered, one listener may have consumed the available Survey or
-         * InAppNotification, and so the other listeners may obtain null when calling
-         * {@link People#getSurveyIfAvailable()} or {@link People#getNotificationIfAvailable()}.
+         * <p>The listener will be called when new surveys, in-app notifications, or experiments
+         * are detected as available. That means you wait to call {@link People#showSurveyIfAvailable(Activity)},
+         * {@link People#showNotificationIfAvailable(Activity)}, and {@link People#joinExperimentIfAvailable()}
+         * to show content and updates that have been delivered to your app. (You can also call these
+         * functions whenever else you would like, they're inexpensive and will do nothing if no
+         * content is available.)
          *
          * @param listener the listener to add
          */
@@ -1007,7 +1193,7 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show surveys and in app notifications
+     * Once registered, we can automatically check for and show surveys and in-app notifications
      * when any Activity is opened.
      *
      * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
@@ -1024,7 +1210,7 @@ public class MixpanelAPI {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
-                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys or in-app notifications.");
+                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments.");
             }
         }
     }
@@ -1089,9 +1275,9 @@ public class MixpanelAPI {
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel();
+            return new UnsupportedUpdatesFromMixpanel(sDefaultTweaks);
         } else {
-            return new ViewCrawler(mContext, mToken, this);
+            return new ViewCrawler(mContext, mToken, this, sDefaultTweaks);
         }
     }
 
@@ -1118,6 +1304,20 @@ public class MixpanelAPI {
          }
 
         @Override
+        public void setMap(Map<String, Object> properties) {
+            if (null == properties) {
+                Log.e(LOGTAG, "setMap does not accept null properties");
+                return;
+            }
+
+            try {
+                set(new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties of setMap!");
+            }
+        }
+
+        @Override
         public void set(JSONObject properties) {
             try {
                 final JSONObject sendProperties = new JSONObject(mDeviceInfo);
@@ -1139,6 +1339,19 @@ public class MixpanelAPI {
                 set(new JSONObject().put(property, value));
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "set", e);
+            }
+        }
+
+        @Override
+        public void setOnceMap(Map<String, Object> properties) {
+            if (null == properties) {
+                Log.e(LOGTAG, "setOnceMap does not accept null properties");
+                return;
+            }
+            try {
+                setOnce(new JSONObject(properties));
+            } catch (NullPointerException e) {
+                Log.w(LOGTAG, "Can't have null keys in the properties setOnceMap!");
             }
         }
 
@@ -1169,6 +1382,19 @@ public class MixpanelAPI {
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception incrementing properties", e);
+            }
+        }
+
+        @Override
+        // Must be thread safe
+        public void merge(String property, JSONObject updates) {
+            final JSONObject mergeMessage = new JSONObject();
+            try {
+                mergeMessage.put(property, updates);
+                final JSONObject message = stdPeopleMessage("$merge", mergeMessage);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception merging a property", e);
             }
         }
 
@@ -1252,7 +1478,7 @@ public class MixpanelAPI {
             try {
                 notifProperties.put("$time", dateFormat.format(new Date()));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+                Log.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
             }
             people.append("$campaigns", notif.getId());
             people.append("$notifications", notifProperties);
@@ -1314,6 +1540,14 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void joinExperimentIfAvailable() {
+            final JSONArray variants = mDecideMessages.getVariants();
+            if (null != variants) {
+                mUpdatesFromMixpanel.setVariants(variants);
+            }
+        }
+
+        @Override
         public void trackCharge(double amount, JSONObject properties) {
             final Date now = new Date();
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
@@ -1364,11 +1598,9 @@ public class MixpanelAPI {
                 }
 
                 mPersistentIdentity.storePushId(registrationId);
-                try {
-                    union("$android_devices", new JSONArray("[" + registrationId + "]"));
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "set push registration id error", e);
-                }
+                final JSONArray ids = new JSONArray();
+                ids.put(registrationId);
+                union("$android_devices", ids);
             }
         }
 
@@ -1442,14 +1674,14 @@ public class MixpanelAPI {
         private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
-            final String distinctId = getDistinctId();
+            final String distinctId = getDistinctId(); // TODO ensure getDistinctId is thread safe
 
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
 
             if (null != distinctId) {
-                dataObj.put("$distinct_id", getDistinctId());
+                dataObj.put("$distinct_id", distinctId);
             }
 
             return dataObj;
@@ -1692,8 +1924,13 @@ public class MixpanelAPI {
     }
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
-        public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks();
+        public UnsupportedUpdatesFromMixpanel(Tweaks tweaks) {
+            mTweaks = tweaks;
+        }
+
+        @Override
+        public void startUpdates() {
+            // No op
         }
 
         @Override
@@ -1702,11 +1939,16 @@ public class MixpanelAPI {
         }
 
         @Override
-        public Tweaks getTweaks() {
-            return mEmptyTweaks;
+        public void setVariants(JSONArray variants) {
+            // No op
         }
 
-        private final Tweaks mEmptyTweaks;
+        @Override
+        public Tweaks getTweaks() {
+            return mTweaks;
+        }
+
+        private final Tweaks mTweaks;
     }
 
     ////////////////////////////////////////////////////
@@ -1798,10 +2040,6 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.MixpanelAPI";
-    private static final String APP_LINKS_LOGTAG = "MixpanelAPI - App Links (OPTIONAL)";
-    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
@@ -1818,5 +2056,10 @@ public class MixpanelAPI {
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
+    private static final Tweaks sDefaultTweaks = new Tweaks();
     private static Future<SharedPreferences> sReferrerPrefs;
+
+    private static final String LOGTAG = "MixpanelAPI.API";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
+    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 }

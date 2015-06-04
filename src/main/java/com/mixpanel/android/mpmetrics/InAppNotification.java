@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -12,9 +13,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Represents a in-app notification delivered from Mixpanel.
+ * Represents a in-app notification delivered from Mixpanel. Under ordinary circumstances,
+ * most code won't have to interact with this class directly, but rather will display
+ * InAppNotifications using {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable(Activity)}
+ * This class is public to
  */
 public class InAppNotification implements Parcelable {
+
+    /**
+     * InApp Notifications in Mixpanel are either TAKEOVERs, that display full screen,
+     * or MINI notifications that appear and disappear on the margins of the screen.
+     */
     public enum Type {
         UNKNOWN {
             @Override
@@ -200,6 +209,6 @@ public class InAppNotification implements Parcelable {
     private final String mCallToAction;
     private final String mCallToActionUrl;
 
-    private static final String LOGTAG = "MixpanelAPI.InAppNotification";
+    private static final String LOGTAG = "MixpanelAPI.InAppNotif";
     private static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("(\\.[^./]+$)");
 }
