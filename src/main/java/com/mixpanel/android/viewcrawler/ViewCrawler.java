@@ -93,6 +93,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
+
+        mTweaks.addOnTweakDeclaredListener(new Tweaks.OnTweakDeclaredListener() {
+            @Override
+            public void onTweakDeclared() {
+                final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_SEND_DEVICE_INFO);
+                mMessageThreadHandler.sendMessage(msg);
+            }
+        });
     }
 
     @Override
@@ -476,6 +484,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Send a string error message to the connected web UI.
          */
         private void sendError(String errorMessage) {
+            if (mEditorConnection == null) {
+                return;
+            }
+
             final JSONObject errorObject = new JSONObject();
             try {
                 errorObject.put("error_message", errorMessage);
@@ -504,6 +516,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report on device info to the connected web UI.
          */
         private void sendDeviceInfo() {
+            if (mEditorConnection == null) {
+                return;
+            }
+
             final OutputStream out = mEditorConnection.getBufferedOutputStream();
             final JsonWriter j = new JsonWriter(new OutputStreamWriter(out));
 
@@ -633,7 +649,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report that a track has occurred to the connected web UI.
          */
         private void sendReportTrackToEditor(String eventName) {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+            if (mEditorConnection == null) {
                 return;
             }
 
@@ -664,7 +680,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private void sendLayoutError(ViewVisitor.LayoutErrorMessage exception) {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+            if (mEditorConnection == null ) {
                 return;
             }
 

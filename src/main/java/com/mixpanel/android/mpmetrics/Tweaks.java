@@ -5,7 +5,9 @@ import android.util.Log;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -125,6 +127,14 @@ public class Tweaks {
         public final Object value;
     }
 
+    /**
+     * This interface is used internally to expose tweaks to the Mixpanel UI,
+     * and will likely not be directly useful to code that imports the Mixpanel library.
+     */
+    public interface OnTweakDeclaredListener {
+        void onTweakDeclared();
+    }
+
     public Tweak<String> stringTweak(final String tweakName, final String defaultValue) {
         defineTweak(tweakName, defaultValue);
         return new Tweak<String>() {
@@ -219,19 +229,16 @@ public class Tweaks {
         };
     }
 
-    private synchronized TweakValue getValue(String tweakName) {
-        return mTweakValues.get(tweakName);
-    }
-
-    private synchronized void defineTweak(String tweakName, Object defaultValue) {
-        if (mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
-            return;
+    /**
+     * This method is used internally to expose tweaks to the Mixpanel UI,
+     * and will likely not be directly useful to code that imports the Mixpanel library.
+     * The given listener's onTweakDeclared method will be called when a new tweak is declared.
+     */
+    public synchronized void addOnTweakDeclaredListener(OnTweakDeclaredListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("listener cannot be null");
         }
-
-        final @TweakType int tweakType = determineType(defaultValue);
-        final TweakValue value = new TweakValue(tweakType, defaultValue, null, null, defaultValue);
-        mTweakValues.put(tweakName, value);
+        mTweakDeclaredListeners.add(listener);
     }
 
     /**
@@ -261,6 +268,26 @@ public class Tweaks {
 
     /* package */ Tweaks() {
         mTweakValues = new HashMap<String, TweakValue>();
+        mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
+    }
+
+    private synchronized TweakValue getValue(String tweakName) {
+        return mTweakValues.get(tweakName);
+    }
+
+    private void defineTweak(String tweakName, Object defaultValue) {
+        if (mTweakValues.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
+            return;
+        }
+
+        final @TweakType int tweakType = determineType(defaultValue);
+        final TweakValue value = new TweakValue(tweakType, defaultValue, null, null, defaultValue);
+        mTweakValues.put(tweakName, value);
+        final int listenerSize = mTweakDeclaredListeners.size();
+        for (int i = 0; i < listenerSize; i++) {
+            mTweakDeclaredListeners.get(i).onTweakDeclared();
+        }
     }
 
     private @TweakType int determineType(Object thing) {
@@ -285,6 +312,7 @@ public class Tweaks {
 
     // All access to mTweakValues must be synchronized
     private final Map<String, TweakValue> mTweakValues;
+    private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }
