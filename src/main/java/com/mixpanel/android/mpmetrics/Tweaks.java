@@ -18,7 +18,6 @@ import java.util.Map;
 public class Tweaks {
 
     @IntDef({
-        UNKNOWN_TYPE,
         BOOLEAN_TYPE,
         DOUBLE_TYPE,
         LONG_TYPE,
@@ -34,10 +33,30 @@ public class Tweaks {
      * tweaks to the Mixpanel UI, and will likely not be directly useful to
      * code that imports the Mixpanel library.
      */
-    public static final @TweakType int UNKNOWN_TYPE = 0;
     public static final @TweakType int BOOLEAN_TYPE = 1;
+
+    /**
+     * An internal description of the type of a tweak.
+     * These values are used internally to expose
+     * tweaks to the Mixpanel UI, and will likely not be directly useful to
+     * code that imports the Mixpanel library.
+     */
     public static final @TweakType int DOUBLE_TYPE = 2;
+
+    /**
+     * An internal description of the type of a tweak.
+     * These values are used internally to expose
+     * tweaks to the Mixpanel UI, and will likely not be directly useful to
+     * code that imports the Mixpanel library.
+     */
     public static final @TweakType int LONG_TYPE = 3;
+
+    /**
+     * An internal description of the type of a tweak.
+     * These values are used internally to expose
+     * tweaks to the Mixpanel UI, and will likely not be directly useful to
+     * code that imports the Mixpanel library.
+     */
     public static final @TweakType int STRING_TYPE = 4;
 
     /**
@@ -136,7 +155,7 @@ public class Tweaks {
     }
 
     public Tweak<String> stringTweak(final String tweakName, final String defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, STRING_TYPE);
         return new Tweak<String>() {
             @Override
             public String get() {
@@ -147,7 +166,7 @@ public class Tweaks {
     }
 
     public Tweak<Double> doubleTweak(final String tweakName, final double defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
         return new Tweak<Double>() {
             @Override
             public Double get() {
@@ -159,7 +178,7 @@ public class Tweaks {
     }
 
     public Tweak<Float> floatTweak(final String tweakName, final float defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
         return new Tweak<Float>() {
             @Override
             public Float get() {
@@ -171,7 +190,7 @@ public class Tweaks {
     }
 
     public Tweak<Long> longTweak(final String tweakName, final long defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Long>() {
             @Override
             public Long get() {
@@ -183,7 +202,7 @@ public class Tweaks {
     }
 
     public Tweak<Integer> intTweak(final String tweakName, final int defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Integer>() {
             @Override
             public Integer get() {
@@ -195,7 +214,7 @@ public class Tweaks {
     }
 
     public Tweak<Byte> byteTweak(final String tweakName, final byte defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Byte>() {
             @Override
             public Byte get() {
@@ -207,7 +226,7 @@ public class Tweaks {
     }
 
     public Tweak<Short> shortTweak(final String tweakName, final short defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Short>() {
             @Override
             public Short get() {
@@ -219,7 +238,7 @@ public class Tweaks {
     }
 
     public Tweak<Boolean> booleanTweak(final String tweakName, final boolean defaultValue) {
-        defineTweak(tweakName, defaultValue);
+        declareTweak(tweakName, defaultValue, BOOLEAN_TYPE);
         return new Tweak<Boolean>() {
             @Override
             public Boolean get() {
@@ -257,7 +276,7 @@ public class Tweaks {
     }
 
     /**
-     * Returns the descriptions of all tweaks currently introduced with {@link #defineTweak(String, Object)}.
+     * Returns the descriptions of all tweaks that currently exist.
      *
      * The Mixpanel library uses this method internally to expose tweaks and their types to the UI. Most
      * users will not need to call this method directly.
@@ -275,39 +294,18 @@ public class Tweaks {
         return mTweakValues.get(tweakName);
     }
 
-    private void defineTweak(String tweakName, Object defaultValue) {
+    private void declareTweak(String tweakName, Object defaultValue, @TweakType int tweakType) {
         if (mTweakValues.containsKey(tweakName)) {
             Log.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;
         }
 
-        final @TweakType int tweakType = determineType(defaultValue);
         final TweakValue value = new TweakValue(tweakType, defaultValue, null, null, defaultValue);
         mTweakValues.put(tweakName, value);
         final int listenerSize = mTweakDeclaredListeners.size();
         for (int i = 0; i < listenerSize; i++) {
             mTweakDeclaredListeners.get(i).onTweakDeclared();
         }
-    }
-
-    private @TweakType int determineType(Object thing) {
-        if (thing instanceof String) {
-            return STRING_TYPE;
-        }
-
-        if (thing instanceof Double || thing instanceof Float) {
-            return DOUBLE_TYPE;
-        }
-
-        if (thing instanceof Long || thing instanceof Integer || thing instanceof Short || thing instanceof Byte) {
-            return LONG_TYPE;
-        }
-
-        if (thing instanceof Boolean) {
-            return BOOLEAN_TYPE;
-        }
-
-        return UNKNOWN_TYPE;
     }
 
     // All access to mTweakValues must be synchronized

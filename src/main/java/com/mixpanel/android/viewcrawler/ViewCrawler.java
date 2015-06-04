@@ -544,10 +544,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         j.name("minimum").value(desc.minimum);
                         j.name("maximum").value(desc.maximum);
                         switch (desc.type) {
-                            case Tweaks.UNKNOWN_TYPE:
-                                j.name("type").value("unknown");
-                                j.name("value").value(null == desc.value ? null : desc.value.toString());
-                                break;
                             case Tweaks.BOOLEAN_TYPE:
                                 j.name("type").value("boolean");
                                 j.name("value").value(desc.getBooleanValue());
