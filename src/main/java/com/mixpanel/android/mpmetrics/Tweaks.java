@@ -196,7 +196,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Short> byteTweak(final String tweakName, final short defaultValue) {
+    public Tweak<Short> shortTweak(final String tweakName, final short defaultValue) {
         defineTweak(tweakName, defaultValue);
         return new Tweak<Short>() {
             @Override

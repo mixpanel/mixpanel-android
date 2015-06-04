@@ -115,6 +115,38 @@ public class MixpanelAPI {
      */
     public static final String VERSION = MPConfig.VERSION;
 
+    public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
+        return sDefaultTweaks.stringTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
+        return sDefaultTweaks.booleanTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
+        return sDefaultTweaks.doubleTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
+        return sDefaultTweaks.floatTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
+        return sDefaultTweaks.longTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
+        return sDefaultTweaks.intTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
+        return sDefaultTweaks.shortTweak(tweakName, defaultValue);
+    }
+
+    public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
+        return sDefaultTweaks.byteTweak(tweakName, defaultValue);
+    }
+
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
@@ -1241,12 +1273,11 @@ public class MixpanelAPI {
     }
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
-        final Tweaks tweaks = new Tweaks();
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel(tweaks);
+            return new UnsupportedUpdatesFromMixpanel(sDefaultTweaks);
         } else {
-            return new ViewCrawler(mContext, mToken, this, tweaks);
+            return new ViewCrawler(mContext, mToken, this, sDefaultTweaks);
         }
     }
 
@@ -2009,10 +2040,6 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.API";
-    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
-    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
@@ -2029,5 +2056,10 @@ public class MixpanelAPI {
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
+    private static final Tweaks sDefaultTweaks = new Tweaks();
     private static Future<SharedPreferences> sReferrerPrefs;
+
+    private static final String LOGTAG = "MixpanelAPI.API";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
+    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 }
