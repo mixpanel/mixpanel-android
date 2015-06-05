@@ -15,8 +15,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.mixpanel.android.R;
@@ -116,6 +114,78 @@ public class MixpanelAPI {
      * String version of the library.
      */
     public static final String VERSION = MPConfig.VERSION;
+
+    /**
+     * Declare a string-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
+        return sSharedTweaks.stringTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare a boolean-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
+        return sSharedTweaks.booleanTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare a double-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
+        return sSharedTweaks.doubleTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
+        return sSharedTweaks.floatTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare a long-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
+        return sSharedTweaks.longTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
+        return sSharedTweaks.intTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare short-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
+        return sSharedTweaks.shortTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare byte-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
+        return sSharedTweaks.byteTweak(tweakName, defaultValue);
+    }
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
@@ -236,11 +306,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
         Log.i(
-            LOGTAG,
-            "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
-            "    To set a custom Mixpanel flush interval for your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
+                LOGTAG,
+                "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
+                        "    To set a custom Mixpanel flush interval for your application, add\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
+                        "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
@@ -252,11 +322,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
         Log.i(
-            LOGTAG,
-            "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
-            "    To enable fallback in your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
+                LOGTAG,
+                "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
+                        "    To enable fallback in your application, add\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
+                        "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
@@ -622,26 +692,6 @@ public class MixpanelAPI {
      */
     public People getPeople() {
         return mPeople;
-    }
-
-    /**
-     * Tweaks allow applications to specify dynamic variables that can be modified in the Mixpanel UI
-     * and delivered to your applications.
-     *
-     * @return A Tweaks object you can use to check for information that has been delivered from Mixpanel.
-     */
-    public Tweaks getTweaks() {
-        return mUpdatesFromMixpanel.getTweaks();
-    }
-
-    /**
-     * Registers a single instance for updates from tweaks. This is primarily for use with
-     * &commat;Tweak annotations - instances with annotated methods will have those methods
-     * called when tweaks change their values.
-     */
-    public void registerForTweaks(Object ob) {
-        final Tweaks tweaks = getTweaks();
-        tweaks.registerForTweaks(ob);
     }
 
     /**
@@ -1252,12 +1302,9 @@ public class MixpanelAPI {
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel();
+            return new UnsupportedUpdatesFromMixpanel(sSharedTweaks);
         } else {
-            final TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
-            final Handler handler = new Handler(Looper.getMainLooper());
-            final Tweaks tweaks = new Tweaks(handler, registrar);
-            return new ViewCrawler(mContext, mToken, this, tweaks);
+            return new ViewCrawler(mContext, mToken, this, sSharedTweaks);
         }
     }
 
@@ -1893,8 +1940,8 @@ public class MixpanelAPI {
     }
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
-        public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), null);
+        public UnsupportedUpdatesFromMixpanel(Tweaks tweaks) {
+            mTweaks = tweaks;
         }
 
         @Override
@@ -1914,10 +1961,10 @@ public class MixpanelAPI {
 
         @Override
         public Tweaks getTweaks() {
-            return mEmptyTweaks;
+            return mTweaks;
         }
 
-        private final Tweaks mEmptyTweaks;
+        private final Tweaks mTweaks;
     }
 
     ////////////////////////////////////////////////////
@@ -2009,10 +2056,6 @@ public class MixpanelAPI {
         }
     }
 
-    private static final String LOGTAG = "MixpanelAPI.API";
-    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
-    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
@@ -2029,5 +2072,10 @@ public class MixpanelAPI {
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
+    private static final Tweaks sSharedTweaks = new Tweaks();
     private static Future<SharedPreferences> sReferrerPrefs;
+
+    private static final String LOGTAG = "MixpanelAPI.API";
+    private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
+    private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 }

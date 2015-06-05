@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -284,7 +285,21 @@ import java.util.WeakHashMap;
         }
 
         private boolean verifyLayout(Set<Integer> rules, SparseArray<View> idToChild) {
-            final TreeMap<View, List<View>> dependencyGraph = new TreeMap<View, List<View>>();
+            // We don't really care about the order, as long as it's always the same.
+            final TreeMap<View, List<View>> dependencyGraph = new TreeMap<View, List<View>>(new Comparator<View>() {
+                @Override
+                public int compare(final View lhs, final View rhs) {
+                    if (lhs == rhs) {
+                        return 0;
+                    } else if (null == lhs) {
+                        return -1;
+                    } else if (null == rhs){
+                        return 1;
+                    } else {
+                        return rhs.hashCode() - lhs.hashCode();
+                    }
+                }
+            });
             int size = idToChild.size();
             for (int i = 0; i < size; i++) {
                 final View child = idToChild.valueAt(i);
