@@ -121,7 +121,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
-        return sDefaultTweaks.stringTweak(tweakName, defaultValue);
+        return sSharedTweaks.stringTweak(tweakName, defaultValue);
     }
 
     /**
@@ -130,7 +130,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
-        return sDefaultTweaks.booleanTweak(tweakName, defaultValue);
+        return sSharedTweaks.booleanTweak(tweakName, defaultValue);
     }
 
     /**
@@ -139,7 +139,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
-        return sDefaultTweaks.doubleTweak(tweakName, defaultValue);
+        return sSharedTweaks.doubleTweak(tweakName, defaultValue);
     }
 
     /**
@@ -148,7 +148,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
-        return sDefaultTweaks.floatTweak(tweakName, defaultValue);
+        return sSharedTweaks.floatTweak(tweakName, defaultValue);
     }
 
     /**
@@ -157,7 +157,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
-        return sDefaultTweaks.longTweak(tweakName, defaultValue);
+        return sSharedTweaks.longTweak(tweakName, defaultValue);
     }
 
     /**
@@ -166,7 +166,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
-        return sDefaultTweaks.intTweak(tweakName, defaultValue);
+        return sSharedTweaks.intTweak(tweakName, defaultValue);
     }
 
     /**
@@ -175,7 +175,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
-        return sDefaultTweaks.shortTweak(tweakName, defaultValue);
+        return sSharedTweaks.shortTweak(tweakName, defaultValue);
     }
 
     /**
@@ -184,7 +184,7 @@ public class MixpanelAPI {
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
-        return sDefaultTweaks.byteTweak(tweakName, defaultValue);
+        return sSharedTweaks.byteTweak(tweakName, defaultValue);
     }
 
     /**
@@ -1305,9 +1305,9 @@ public class MixpanelAPI {
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel(sDefaultTweaks);
+            return new UnsupportedUpdatesFromMixpanel(sSharedTweaks);
         } else {
-            return new ViewCrawler(mContext, mToken, this, sDefaultTweaks);
+            return new ViewCrawler(mContext, mToken, this, sSharedTweaks);
         }
     }
 
@@ -2086,7 +2086,7 @@ public class MixpanelAPI {
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
-    private static final Tweaks sDefaultTweaks = new Tweaks();
+    private static final Tweaks sSharedTweaks = new Tweaks();
     private static Future<SharedPreferences> sReferrerPrefs;
 
     private static final String LOGTAG = "MixpanelAPI.API";
