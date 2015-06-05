@@ -137,6 +137,11 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void joinExperimentIfAvailable() {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
         public Survey getSurveyIfAvailable() {
             Assert.fail("Unexpected call");
             return null;
