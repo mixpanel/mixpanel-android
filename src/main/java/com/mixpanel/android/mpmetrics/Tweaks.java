@@ -11,9 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Tweaks are a mechanism for declaring and receiving dynamic values that you can change and deploy
- * to users through Mixpanel. In general, you won't need to interact with this class directly -
- * it's used internally to communicate changes in tweak values to the tweaks you define with
+ * In general, you won't need to interact with this class directly -
+ * it's used internally to communicate changes in values to the tweaks you define with
  * {@link MixpanelAPI#stringTweak(String, String)}, {@link MixpanelAPI#booleanTweak(String, boolean)},
  * {@link MixpanelAPI#doubleTweak(String, double)}, {@link MixpanelAPI#longTweak(String, long)},
  * and other tweak-related interfaces on MixpanelAPI.

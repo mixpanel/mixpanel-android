@@ -115,34 +115,74 @@ public class MixpanelAPI {
      */
     public static final String VERSION = MPConfig.VERSION;
 
+    /**
+     * Declare a string-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
         return sDefaultTweaks.stringTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare a boolean-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
         return sDefaultTweaks.booleanTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare a double-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
         return sDefaultTweaks.doubleTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
         return sDefaultTweaks.floatTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare a long-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
         return sDefaultTweaks.longTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
         return sDefaultTweaks.intTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare short-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
         return sDefaultTweaks.shortTweak(tweakName, defaultValue);
     }
 
+    /**
+     * Declare byte-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
     public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
         return sDefaultTweaks.byteTweak(tweakName, defaultValue);
     }
@@ -261,11 +301,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
         Log.i(
-            LOGTAG,
-            "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
-            "    To set a custom Mixpanel flush interval for your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
+                LOGTAG,
+                "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
+                        "    To set a custom Mixpanel flush interval for your application, add\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
+                        "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
@@ -277,11 +317,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
         Log.i(
-            LOGTAG,
-            "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
-            "    To enable fallback in your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
+                LOGTAG,
+                "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
+                        "    To enable fallback in your application, add\n" +
+                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
+                        "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
