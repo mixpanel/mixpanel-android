@@ -412,9 +412,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 final boolean isIdentified = isIdentifiedRef.get();
                 if (null == nameValuePairs) {
                     if (isIdentified) {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=new+person", endpointUrl);
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=PEOPLE+ID", endpointUrl);
                     } else {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing", endpointUrl);
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID", endpointUrl);
                     }
                     return TestUtils.bytes("{}");
                 }
@@ -488,6 +488,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
+        metrics.identify("EVENTS ID");
+
         // Test filling up the message queue
         for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
             metrics.track("frequent event", null);
@@ -541,7 +543,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
             isIdentifiedRef.set(true);
-            metrics.getPeople().identify("new person");
+            metrics.getPeople().identify("PEOPLE ID");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
 
@@ -551,7 +553,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject peopleMessage = new JSONObject(expectedJSONMessage);
 
-            assertEquals("new person", peopleMessage.getString("$distinct_id"));
+            assertEquals("PEOPLE ID", peopleMessage.getString("$distinct_id"));
             assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
 
             String peopleFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
