@@ -61,7 +61,7 @@ android.libraryVariants.all { variant ->
             '**/SurveyChoiceView.java',
             '**/SurveyCallbacks.java',
             '**/TrackingDebug.java',
-            '**/TweakRegistrar.java', // Consider making TweakRegistrar public at some point.
+            '**/Tweaks.java',
             '**/UpdateDisplayState.java',
             '**/UpdatesFromMixpanel.java',
             '**/ViewCrawler.java'
