@@ -301,11 +301,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
         Log.i(
-                LOGTAG,
-                "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
-                        "    To set a custom Mixpanel flush interval for your application, add\n" +
-                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
-                        "    to the <application> section of your AndroidManifest.xml."
+            LOGTAG,
+            "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
+            "    To set a custom Mixpanel flush interval for your application, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
+            "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
@@ -317,11 +317,11 @@ public class MixpanelAPI {
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
         Log.i(
-                LOGTAG,
-                "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
-                        "    To enable fallback in your application, add\n" +
-                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
-                        "    to the <application> section of your AndroidManifest.xml."
+            LOGTAG,
+            "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
+            "    To enable fallback in your application, add\n" +
+            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.DisableFallback\" android:value=\"false\" />\n" +
+            "    to the <application> section of your AndroidManifest.xml."
         );
     }
 
