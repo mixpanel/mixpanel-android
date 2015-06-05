@@ -34,6 +34,31 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v5.0.0
+
+ * Mixpanel A/B testing is now supported on Android. Users can
+   register and recieve A/B testing tweaks and alter application look
+   and feel using the Mixpanel A/B testing tool.
+
+ * Addition of
+
+       trackMap(String, Map<String, Object>)
+       registerSuperPropertiesMap(String, Map<String, Object>)
+       registerSuperPropertiesOnceMap(String, Map<String, Object>)
+       setMap(Map<String, Object>)
+       setOnceMap(Map<String, Object)
+
+   which allow updates to properties and user profiles without
+   requiring the construction of a JSONObject.
+
+ * updateSuperProperties() which allows users to update super
+   properties in place, in a thread-safe manner.
+
+ * addition of merge() to the People API
+
+ * Many Mixpanel logtags have changed to conform to the expectation
+   that all logtags should be under 23 characters long.
+
 #### v4.5.3
 
  * Disable $app_open event by default. Users can opt-in to sending automatic $app_open events by adding
