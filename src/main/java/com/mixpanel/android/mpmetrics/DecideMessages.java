@@ -34,6 +34,8 @@ import java.util.Set;
         return mToken;
     }
 
+    // Called from other synchronized code. Do not call into other synchronized code or you'll
+    // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
         mUnseenSurveys.clear();
         mUnseenNotifications.clear();

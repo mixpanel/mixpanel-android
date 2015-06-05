@@ -223,8 +223,11 @@ public class MixpanelAPI {
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
-        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
-        mDecideMessages.setDistinctId(peopleId);
+        String decideId = mPersistentIdentity.getPeopleDistinctId();
+        if (null == decideId) {
+            decideId = mPersistentIdentity.getEventsDistinctId();
+        }
+        mDecideMessages.setDistinctId(decideId);
         mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
@@ -382,7 +385,14 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
-       mPersistentIdentity.setEventsDistinctId(distinctId);
+        synchronized (mPersistentIdentity) {
+            mPersistentIdentity.setEventsDistinctId(distinctId);
+            String decideId = mPersistentIdentity.getPeopleDistinctId();
+            if (null == decideId) {
+                decideId = mPersistentIdentity.getEventsDistinctId();
+            }
+            mDecideMessages.setDistinctId(decideId);
+        }
     }
 
     /**
@@ -1158,6 +1168,7 @@ public class MixpanelAPI {
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
          * This is used by Mixpanel Surveys but is likely not needed in your code.
+         * Instances returned by withIdentity will not check decide with the given distinctId.
          */
         public People withIdentity(String distinctId);
 
@@ -1337,8 +1348,10 @@ public class MixpanelAPI {
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
-            mPersistentIdentity.setPeopleDistinctId(distinctId);
-            mDecideMessages.setDistinctId(distinctId);
+            synchronized (mPersistentIdentity) {
+                mPersistentIdentity.setPeopleDistinctId(distinctId);
+                mDecideMessages.setDistinctId(distinctId);
+            }
             pushWaitingPeopleRecord();
          }
 
