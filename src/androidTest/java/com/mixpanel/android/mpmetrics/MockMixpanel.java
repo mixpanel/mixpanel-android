@@ -33,11 +33,6 @@ class MockMixpanel extends MixpanelAPI {
     public static class MockPeople implements People {
 
         @Override
-        public void identify(final String distinctId) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
         public void set(final String propertyName, final Object value) {
             Assert.fail("Unexpected call");
         }
@@ -136,6 +131,11 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public void showNotificationIfAvailable(final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void joinExperimentIfAvailable() {
             Assert.fail("Unexpected call");
         }
 

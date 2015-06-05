@@ -153,8 +153,13 @@ public class MixpanelAPI {
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
-        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
-        mDecideMessages.setDistinctId(peopleId);
+        final String distinctId;
+        if (mPersistentIdentity.getDistinctId() != null) {
+            distinctId = mPersistentIdentity.getDistinctId();
+        } else {
+            distinctId = mPersistentIdentity.getDistinctId();
+        }
+        mDecideMessages.setDistinctId(distinctId);
         mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
@@ -312,7 +317,9 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
-       mPersistentIdentity.setEventsDistinctId(distinctId);
+        mPersistentIdentity.setDistinctId(distinctId);
+        mDecideMessages.setDistinctId(distinctId);
+        pushWaitingPeopleRecord();
     }
 
     /**
@@ -474,7 +481,7 @@ public class MixpanelAPI {
      * @see People#getDistinctId()
      */
     public String getDistinctId() {
-        return mPersistentIdentity.getEventsDistinctId();
+        return mPersistentIdentity.getDistinctId();
      }
 
     /**
@@ -701,25 +708,6 @@ public class MixpanelAPI {
      * @see MixpanelAPI
      */
     public interface People {
-        /**
-         * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
-         * and {@link #initPushHandling(String)} with a particular People Analytics user.
-         *
-         * <p>All future calls to the People object will rely on this value to assign
-         * and increment properties. The user identification will persist across
-         * restarts of your application. We recommend calling
-         * People.identify as soon as you know the distinct id of the user.
-         *
-         * @param distinctId a String that uniquely identifies the user. Users identified with
-         *     the same distinct id will be considered to be the same user in Mixpanel,
-         *     across all platforms and devices. We recommend choosing a distinct id
-         *     that is meaningful to your other systems (for example, a server-side account
-         *     identifier), and using the same distinct id for both calls to People.identify
-         *     and {@link MixpanelAPI#identify(String)}
-         *
-         * @see MixpanelAPI#identify(String)
-         */
-        public void identify(String distinctId);
 
         /**
          * Sets a single property with the given name and value for this user.
@@ -1288,12 +1276,6 @@ public class MixpanelAPI {
     ///////////////////////
 
     private class PeopleImpl implements People {
-        @Override
-        public void identify(String distinctId) {
-            mPersistentIdentity.setPeopleDistinctId(distinctId);
-            mDecideMessages.setDistinctId(distinctId);
-            pushWaitingPeopleRecord();
-         }
 
         @Override
         public void setMap(Map<String, Object> properties) {
@@ -1585,7 +1567,7 @@ public class MixpanelAPI {
         public void setPushRegistrationId(String registrationId) {
             // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
-                if (mPersistentIdentity.getPeopleDistinctId() == null) {
+                if (mPersistentIdentity.getDistinctId() == null) {
                     return;
                 }
 
@@ -1632,7 +1614,7 @@ public class MixpanelAPI {
 
         @Override
         public String getDistinctId() {
-            return mPersistentIdentity.getPeopleDistinctId();
+            return mPersistentIdentity.getDistinctId();
         }
 
         @Override
@@ -1644,11 +1626,6 @@ public class MixpanelAPI {
                 @Override
                 public String getDistinctId() {
                     return distinctId;
-                }
-
-                @Override
-                public void identify(String distinctId) {
-                    throw new RuntimeException("This MixpanelPeople object has a fixed, constant distinctId");
                 }
             };
         }

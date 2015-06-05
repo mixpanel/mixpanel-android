@@ -138,14 +138,14 @@ public class PersistentIdentityTest extends AndroidTestCase {
     public void testUnsetEventsId() {
         final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
-        final String eventsId = mPersistentIdentity.getEventsDistinctId();
+        final String eventsId = mPersistentIdentity.getDistinctId();
         assertTrue(Pattern.matches("^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$", eventsId));
 
         final String autoId = testPreferences.getString("events_distinct_id", "NOPE");
         assertEquals(autoId, eventsId);
 
-        mPersistentIdentity.setEventsDistinctId("TEST ID TO SET");
-        final String heardId = mPersistentIdentity.getEventsDistinctId();
+        mPersistentIdentity.setDistinctId("TEST ID TO SET");
+        final String heardId = mPersistentIdentity.getDistinctId();
         assertEquals("TEST ID TO SET", heardId);
 
         final String storedId = testPreferences.getString("events_distinct_id", "NOPE");
@@ -155,11 +155,11 @@ public class PersistentIdentityTest extends AndroidTestCase {
     public void testUnsetPeopleId() {
         final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
-        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
+        final String peopleId = mPersistentIdentity.getDistinctId();
         assertNull(peopleId);
 
-        mPersistentIdentity.setPeopleDistinctId("TEST ID TO SET");
-        final String heardId = mPersistentIdentity.getPeopleDistinctId();
+        mPersistentIdentity.setDistinctId("TEST ID TO SET");
+        final String heardId = mPersistentIdentity.getDistinctId();
         assertEquals("TEST ID TO SET", heardId);
 
         final String storedId = testPreferences.getString("people_distinct_id", "NOPE");
