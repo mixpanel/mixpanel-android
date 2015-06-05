@@ -12,16 +12,57 @@ import java.util.Map;
 
 /**
  * Tweaks are a mechanism for declaring and receiving dynamic values that you can change and deploy
- * to users through Mixpanel. You can declare and access tweaks in your code, and then deploy new
- * values to some or all of your users using a Mixpanel A/B test.
+ * to users through Mixpanel. In general, you won't need to interact with this class directly -
+ * it's used internally to communicate changes in tweak values to the tweaks you define with
+ * {@link MixpanelAPI#stringTweak(String, String)}, {@link MixpanelAPI#booleanTweak(String, boolean)},
+ * {@link MixpanelAPI#doubleTweak(String, double)}, {@link MixpanelAPI#longTweak(String, long)},
+ * and other tweak-related interfaces on MixpanelAPI.
+ *
+ * Instances of tweaks aren't available to library user code.
  */
 public class Tweaks {
+    /**
+     * This method is used internally to expose tweaks to the Mixpanel UI,
+     * and will likely not be directly useful to code that imports the Mixpanel library.
+     * The given listener's onTweakDeclared method will be called when a new tweak is declared.
+     */
+    public synchronized void addOnTweakDeclaredListener(OnTweakDeclaredListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("listener cannot be null");
+        }
+        mTweakDeclaredListeners.add(listener);
+    }
+
+    /**
+     * Manually set the value of a tweak. Most users of the library will not need to call this
+     * directly - instead, the library will call set when new values of the tweak are published.
+     */
+    public synchronized void set(String tweakName, Object value) {
+        if (!mTweakValues.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
+            return;
+        }
+
+        final TweakValue container = mTweakValues.get(tweakName);
+        final TweakValue updated = container.updateValue(value);
+        mTweakValues.put(tweakName, updated);
+    }
+
+    /**
+     * Returns the descriptions of all tweaks that currently exist.
+     *
+     * The Mixpanel library uses this method internally to expose tweaks and their types to the UI. Most
+     * users will not need to call this method directly.
+     */
+    public synchronized Map<String, TweakValue> getAllValues() {
+        return new HashMap<String, TweakValue>(mTweakValues);
+    }
 
     @IntDef({
-        BOOLEAN_TYPE,
-        DOUBLE_TYPE,
-        LONG_TYPE,
-        STRING_TYPE
+            BOOLEAN_TYPE,
+            DOUBLE_TYPE,
+            LONG_TYPE,
+            STRING_TYPE
     })
 
     @Retention(RetentionPolicy.SOURCE)
@@ -155,7 +196,13 @@ public class Tweaks {
         void onTweakDeclared();
     }
 
-    public Tweak<String> stringTweak(final String tweakName, final String defaultValue) {
+    /* package */ Tweaks() {
+        mTweakValues = new HashMap<String, TweakValue>();
+        mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
+    }
+
+
+    /* package */ Tweak<String> stringTweak(final String tweakName, final String defaultValue) {
         declareTweak(tweakName, defaultValue, STRING_TYPE);
         return new Tweak<String>() {
             @Override
@@ -166,7 +213,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Double> doubleTweak(final String tweakName, final double defaultValue) {
+    /* package */ Tweak<Double> doubleTweak(final String tweakName, final double defaultValue) {
         declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
         return new Tweak<Double>() {
             @Override
@@ -178,7 +225,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Float> floatTweak(final String tweakName, final float defaultValue) {
+    /* package */  Tweak<Float> floatTweak(final String tweakName, final float defaultValue) {
         declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
         return new Tweak<Float>() {
             @Override
@@ -190,7 +237,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Long> longTweak(final String tweakName, final long defaultValue) {
+    /* package */  Tweak<Long> longTweak(final String tweakName, final long defaultValue) {
         declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Long>() {
             @Override
@@ -202,7 +249,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Integer> intTweak(final String tweakName, final int defaultValue) {
+    /* package */ Tweak<Integer> intTweak(final String tweakName, final int defaultValue) {
         declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Integer>() {
             @Override
@@ -214,7 +261,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Byte> byteTweak(final String tweakName, final byte defaultValue) {
+    /* package */ Tweak<Byte> byteTweak(final String tweakName, final byte defaultValue) {
         declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Byte>() {
             @Override
@@ -226,7 +273,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Short> shortTweak(final String tweakName, final short defaultValue) {
+    /* package */ Tweak<Short> shortTweak(final String tweakName, final short defaultValue) {
         declareTweak(tweakName, defaultValue, LONG_TYPE);
         return new Tweak<Short>() {
             @Override
@@ -238,7 +285,7 @@ public class Tweaks {
         };
     }
 
-    public Tweak<Boolean> booleanTweak(final String tweakName, final boolean defaultValue) {
+    /* package */ Tweak<Boolean> booleanTweak(final String tweakName, final boolean defaultValue) {
         declareTweak(tweakName, defaultValue, BOOLEAN_TYPE);
         return new Tweak<Boolean>() {
             @Override
@@ -247,48 +294,6 @@ public class Tweaks {
                 return tweakValue.getBooleanValue();
             }
         };
-    }
-
-    /**
-     * This method is used internally to expose tweaks to the Mixpanel UI,
-     * and will likely not be directly useful to code that imports the Mixpanel library.
-     * The given listener's onTweakDeclared method will be called when a new tweak is declared.
-     */
-    public synchronized void addOnTweakDeclaredListener(OnTweakDeclaredListener listener) {
-        if (null == listener) {
-            throw new NullPointerException("listener cannot be null");
-        }
-        mTweakDeclaredListeners.add(listener);
-    }
-
-    /**
-     * Manually set the value of a tweak. Most users of the library will not need to call this
-     * directly - instead, the library will call set when new values of the tweak are published.
-     */
-    public synchronized void set(String tweakName, Object value) {
-        if (!mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
-            return;
-        }
-
-        final TweakValue container = mTweakValues.get(tweakName);
-        final TweakValue updated = container.updateValue(value);
-        mTweakValues.put(tweakName, updated);
-    }
-
-    /**
-     * Returns the descriptions of all tweaks that currently exist.
-     *
-     * The Mixpanel library uses this method internally to expose tweaks and their types to the UI. Most
-     * users will not need to call this method directly.
-     */
-    public synchronized Map<String, TweakValue> getAllValues() {
-        return new HashMap<String, TweakValue>(mTweakValues);
-    }
-
-    /* package */ Tweaks() {
-        mTweakValues = new HashMap<String, TweakValue>();
-        mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
     }
 
     private synchronized TweakValue getValue(String tweakName) {

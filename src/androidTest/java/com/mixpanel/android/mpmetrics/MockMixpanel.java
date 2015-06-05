@@ -27,9 +27,6 @@ class MockMixpanel extends MixpanelAPI {
         return new MockPeople();
     }
 
-    @Override
-    public Tweaks getTweaks() { return new Tweaks(); }
-
     public static class MockPeople implements People {
 
         @Override
