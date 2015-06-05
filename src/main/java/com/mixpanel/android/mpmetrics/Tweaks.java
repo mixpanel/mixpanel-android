@@ -122,7 +122,7 @@ public class Tweaks {
 
             try {
                 ret = (String) defaultValue;
-            } catch (ClassCastException e2) {
+            } catch (ClassCastException e) {
                 ; // ok
             }
 
