@@ -559,7 +559,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                                 j.name("value").value(desc.getNumberValue().longValue());
                                 break;
                             case Tweaks.STRING_TYPE:
-                                j.name("type").value("unknown");
+                                j.name("type").value("string");
                                 j.name("value").value(desc.getStringValue());
                                 break;
                             default:
