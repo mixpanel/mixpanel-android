@@ -28,14 +28,9 @@ class MockMixpanel extends MixpanelAPI {
     }
 
     @Override
-    public Tweaks getTweaks() { return new Tweaks(new TestUtils.SynchronousHandler(), "WHO CARES"); }
+    public Tweaks getTweaks() { return new Tweaks(new TestUtils.SynchronousHandler(), null); }
 
     public static class MockPeople implements People {
-
-        @Override
-        public void identify(final String distinctId) {
-            Assert.fail("Unexpected call");
-        }
 
         @Override
         public void set(final String propertyName, final Object value) {
@@ -136,6 +131,11 @@ class MockMixpanel extends MixpanelAPI {
 
         @Override
         public void showNotificationIfAvailable(final Activity parent) {
+            Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void joinExperimentIfAvailable() {
             Assert.fail("Unexpected call");
         }
 

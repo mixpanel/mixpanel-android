@@ -1,5 +1,7 @@
 package com.mixpanel.android.java_websocket;
 
+import android.annotation.SuppressLint;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -42,6 +44,7 @@ import com.mixpanel.android.java_websocket.util.Charsetfunctions;
  * text frames, and receiving frames through an event-based model.
  * 
  */
+@SuppressLint("Assert")
 public class WebSocketImpl implements WebSocket {
 
 	public static int RCVBUF = 16384;

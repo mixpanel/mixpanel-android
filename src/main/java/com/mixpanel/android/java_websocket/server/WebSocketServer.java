@@ -1,5 +1,7 @@
 package com.mixpanel.android.java_websocket.server;
 
+import android.annotation.SuppressLint;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -48,6 +50,7 @@ import com.mixpanel.android.java_websocket.handshake.ServerHandshakeBuilder;
  * functionality/purpose to the server.
  * 
  */
+@SuppressLint("Assert")
 public abstract class WebSocketServer extends WebSocketAdapter implements Runnable {
 
 	public static int DECODERS = Runtime.getRuntime().availableProcessors();

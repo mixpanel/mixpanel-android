@@ -258,6 +258,6 @@ public class InAppFragment extends Fragment {
 
     private boolean mCleanedUp;
 
-    private static final String LOGTAG = "MixpanelAPI.InAppFragment";
+    private static final String LOGTAG = "MixpanelAPI.InAppFrag";
     private static final int MINI_REMOVE_TIME = 10000;
 }

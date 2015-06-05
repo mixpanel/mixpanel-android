@@ -3,7 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import android.test.AndroidTestCase;
 import android.util.Pair;
 
-import com.mixpanel.android.mpmetrics.test_autotweak_package.RegistrarRuns;
 import com.mixpanel.android.mpmetrics.test_autotweak_package.TweakableThing;
 
 import java.util.ArrayList;
@@ -13,12 +12,17 @@ import java.util.List;
 public class TweaksTest extends AndroidTestCase {
     @Override
     public void setUp() {
-        mTweaks = new Tweaks(new TestUtils.SynchronousHandler(), "RegistrarRuns");
+        mRegistrar = new RegistrarRuns();
+        mTweaks = new Tweaks(new TestUtils.SynchronousHandler(), mRegistrar);
     }
 
     public void testNoSuchTweakPoll() {
         // Should return null for tweaks we know nothing about
         assertNull(mTweaks.getString("Some Tweak"));
+    }
+
+    public void testDeclareWasCalled() {
+        assertTrue(mRegistrar.declareWasCalled);
     }
 
     public void testTweakWithDefault() {
@@ -68,20 +72,15 @@ public class TweaksTest extends AndroidTestCase {
         assertEquals("Hello", found.get(1));
     }
 
-    public void testNoRegistrarFound() {
-        List l = new ArrayList();
-        mTweaks.registerForTweaks(l);
-        assertEquals(0, RegistrarRuns.TWEAK_REGISTRAR.wasRegistered.size());
-    }
-
     public void testRegistrarFound() {
         TweakableThing thing = new TweakableThing();
         mTweaks.registerForTweaks(thing);
-        assertEquals(1, RegistrarRuns.TWEAK_REGISTRAR.wasRegistered.size());
-        Pair<Tweaks, Object> found = RegistrarRuns.TWEAK_REGISTRAR.wasRegistered.get(0);
+        assertEquals(1, mRegistrar.wasRegistered.size());
+        Pair<Tweaks, Object> found = mRegistrar.wasRegistered.get(0);
         assertEquals(mTweaks, found.first);
         assertEquals(thing, found.second);
     }
 
     Tweaks mTweaks;
+    RegistrarRuns mRegistrar;
 }

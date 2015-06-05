@@ -1,5 +1,7 @@
 package com.mixpanel.android.java_websocket.util;
 
+import android.annotation.SuppressLint;
+
 /**
  * <p>Encodes and decodes to and from Base64 notation.</p>
  * <p>Homepage: <a href="http://iharder.net/base64">http://iharder.net/base64</a>.</p>
@@ -147,6 +149,7 @@ package com.mixpanel.android.java_websocket.util;
  * @author rob@iharder.net
  * @version 2.3.7
  */
+@SuppressLint("Assert")
 public class Base64
 {
     

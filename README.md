@@ -123,7 +123,7 @@ This method was deprecated in version 4.0, and now is a no-op. To change the flu
 interval for your application, use the com.mixpanel.android.MPConfig.FlushInterval
 meta-data tag in your manifest. To get available surveys, call getSurveyIfAvailable()
 
-* The minimum Android OS version necessary for surveys, in app notifications, and dynamic event binding
+* The minimum Android OS version necessary for surveys, in-app notifications, and dynamic event binding
   has been increased to JellyBean/API 16. The minimum OS version to use basic tracking features
   has been increased to Gingerbread/API 9.
 
@@ -174,10 +174,10 @@ meta-data tag in your manifest. To get available surveys, call getSurveyIfAvaila
 
 #### v4.1.0
 
-This version adds support for Android in app notifications.
+This version adds support for Android in-app notifications.
 
 * There is now an additional theme parameter on the SurveyActivity declaration in AndroidManifest.xml
-  that is used for full screen in app notifications.
+  that is used for full screen in-app notifications.
 
   ```
   <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
@@ -185,33 +185,33 @@ This version adds support for Android in app notifications.
   ```
 
 * A new unified set of functions have been created to make it easier to fetch and display surveys
-  and in app notifications.
+  and in-app notifications.
 
   * `getSurveyIfAvailable()` and `getNotificationIfAvailable()` have been added to fetch Survey and
     InAppNotification objects when the library has successfully received them. You may use these objects
-    to display your own custom surveys or in app notifications.
+    to display your own custom surveys or in-app notifications.
 
   * `showSurveyIfAvailable()` and `showNotificationIfAvailable()` have been added to display surveys and
     notifications when the library has successfully received them.
 
   * `addOnMixpanelUpdatesReceivedListener()` and `removeOnMixpanelUpdatesReceivedListener()` have been added
-    so you may be notified when the library has successfully received a survey or in app notification in the
+    so you may be notified when the library has successfully received a survey or in-app notification in the
     background.
 
   * `showSurvey()` and `checkForSurvey()` functions have been deprecated.
 
 * `com.mixpanel.android.MPConfig.AutoCheckForSurveys` has been deprecated. The option has been renamed
-  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It is also now used for both surveys and in app
+  to `com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates`. It is also now used for both surveys and in-app
   notifications.
 
 * `com.mixpanel.android.MPConfig.TestMode` has been added. This option, when set to true, will render
-  your in app notifications and surveys but not track that they have been displayed. If you have multiple
+  your in-app notifications and surveys but not track that they have been displayed. If you have multiple
   notifications/surveys, calls the respective show/get methods will simply rotate through them.
 
 * `MixpanelAPI.logPosts()` has been deprecated. Set the `com.mixpanel.android.MPConfig.EnableDebugLogging`
   flag to true to now get extensive debugging output.
 
-* The minimum Android version necessary for surveys and in app notifications has been increased to 14,
+* The minimum Android version necessary for surveys and in-app notifications has been increased to 14,
   Ice Cream Sandwich to improve stability.
 
 * `MixpanelAPI.alias()` has been added.
@@ -224,7 +224,7 @@ This version adds support for Android in app notifications.
   ```
   <application>
           <!-- This activity allows your application to show Mixpanel
-               surveys and takeover in app notifications. -->
+               surveys and takeover in-app notifications. -->
           <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
                     android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
 

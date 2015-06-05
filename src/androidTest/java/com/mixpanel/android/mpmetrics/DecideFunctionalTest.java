@@ -117,7 +117,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                   "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
              "}"
         );
-        api.getPeople().identify("DECIDE CHECKS ID 1");
+        api.identify("DECIDE CHECKS ID 1");
         mExpectations.checkExpectations();
 
         // We should be done, and Updates should have our goodies waiting
@@ -176,7 +176,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                     "\"event_bindings\": [{\"event_name\":\"EVENT NAME\",\"path\":[{\"index\":0,\"view_class\":\"com.android.internal.policy.impl.PhoneWindow.DecorView\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarOverlayLayout\"},{\"index\":0,\"view_class\":\"com.android.internal.widget.ActionBarContainer\"}],\"target_activity\":\"ACTIVITY\",\"event_type\":\"EVENT TYPE\"}]" +
             "}"
         );
-        api.getPeople().identify("DECIDE CHECKS ID 2");
+        api.identify("DECIDE CHECKS ID 2");
         api.flush();
 
         mExpectations.checkExpectations();
@@ -191,7 +191,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + useToken;
         final SharedPreferences ret = getContext().getSharedPreferences(prefsName, Context.MODE_PRIVATE);
         final SharedPreferences.Editor editor = ret.edit();
-        editor.putString("people_distinct_id", "Present Before Construction");
+        editor.putString("distinct_id", "Present Before Construction");
         editor.commit();
 
         // We should run a check on construction if we are constructed with a people distinct id

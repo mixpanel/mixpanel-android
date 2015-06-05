@@ -263,7 +263,7 @@ import java.util.Map;
                         }
                     }
                     else if (msg.what == INSTALL_DECIDE_CHECK) {
-                        logAboutMessageToMixpanel("Installing a check for surveys and in app notifications");
+                        logAboutMessageToMixpanel("Installing a check for surveys and in-app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
                         if (SystemClock.elapsedRealtime() >= mRetryAfter) {

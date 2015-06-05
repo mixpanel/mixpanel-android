@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -60,11 +61,11 @@ import javax.net.ssl.SSLSocketFactory;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisitor.OnLayoutErrorListener {
 
-    public ViewCrawler(Context context, String token, MixpanelAPI mixpanel) {
+    public ViewCrawler(Context context, String token, MixpanelAPI mixpanel, Tweaks tweaks) {
         mConfig = MPConfig.getInstance(context);
 
         mEditState = new EditState();
-        mTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
+        mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
 
@@ -247,7 +248,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 return false;
             }
 
-            if (!Build.MODEL.toLowerCase().contains("sdk")) {
+            if (!Build.MODEL.toLowerCase(Locale.US).contains("sdk")) {
                 return false;
             }
 
@@ -366,7 +367,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     final SharedPreferences.Editor editor = preferences.edit();
                     editor.remove(SHARED_PREF_CHANGES_KEY);
                     editor.remove(SHARED_PREF_BINDINGS_KEY);
-                    editor.commit();
+                    editor.apply();
                 }
             }
 
@@ -424,13 +425,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
-                editor.commit();
+                editor.apply();
             } catch (final EditProtocol.BadInstructionsException e) {
                 Log.i(LOGTAG, "Bad instructions in saved changes, clearing persistent memory", e);
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
-                editor.commit();
+                editor.apply();
             }
 
             updateEditState();
@@ -754,7 +755,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
-            editor.commit();
+            editor.apply();
 
             initializeChanges();
         }
@@ -766,7 +767,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_BINDINGS_KEY, eventBindings.toString());
-            editor.commit();
+            editor.apply();
             initializeChanges();
         }
 

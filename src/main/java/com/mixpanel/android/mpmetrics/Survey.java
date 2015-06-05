@@ -18,7 +18,6 @@ import android.os.Parcelable;
  * display a custom interface for the survey yourself.
  */
 public class Survey implements Parcelable {
-
     public static Creator<Survey> CREATOR = new Creator<Survey>() {
         @Override
         public Survey createFromParcel(final Parcel source) {
@@ -88,6 +87,10 @@ public class Survey implements Parcelable {
         dest.writeString(toJSON());
     }
 
+    /**
+     * Surveys are of type MULTIPLE_CHOICE, containing a selection of possible answers, or
+     * TEXT, which allow free text responses from users.
+     */
     public enum QuestionType {
         UNKNOWN {
             @Override

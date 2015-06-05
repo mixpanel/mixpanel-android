@@ -153,8 +153,13 @@ public class MixpanelAPI {
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
-        final String peopleId = mPersistentIdentity.getPeopleDistinctId();
-        mDecideMessages.setDistinctId(peopleId);
+        final String distinctId;
+        if (mPersistentIdentity.getDistinctId() != null) {
+            distinctId = mPersistentIdentity.getDistinctId();
+        } else {
+            distinctId = mPersistentIdentity.getDistinctId();
+        }
+        mDecideMessages.setDistinctId(distinctId);
         mMessages = getAnalyticsMessages();
         mMessages.installDecideCheck(mDecideMessages);
 
@@ -312,7 +317,9 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
-       mPersistentIdentity.setEventsDistinctId(distinctId);
+        mPersistentIdentity.setDistinctId(distinctId);
+        mDecideMessages.setDistinctId(distinctId);
+        pushWaitingPeopleRecord();
     }
 
     /**
@@ -424,6 +431,15 @@ public class MixpanelAPI {
     }
 
     /**
+     * Equivalent to {@link #track(String, JSONObject)} with a null argument for properties.
+     * Consider adding properties to your tracking to get the best insights and experience from Mixpanel.
+     * @param eventName the name of the event to send
+     */
+    public void track(String eventName) {
+        track(eventName, null);
+    }
+
+    /**
      * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
      *
      * <p>Events and People messages are pushed gradually throughout
@@ -465,7 +481,7 @@ public class MixpanelAPI {
      * @see People#getDistinctId()
      */
     public String getDistinctId() {
-        return mPersistentIdentity.getEventsDistinctId();
+        return mPersistentIdentity.getDistinctId();
      }
 
     /**
@@ -618,6 +634,11 @@ public class MixpanelAPI {
         return mUpdatesFromMixpanel.getTweaks();
     }
 
+    /**
+     * Registers a single instance for updates from tweaks. This is primarily for use with
+     * &commat;Tweak annotations - instances with annotated methods will have those methods
+     * called when tweaks change their values.
+     */
     public void registerForTweaks(Object ob) {
         final Tweaks tweaks = getTweaks();
         tweaks.registerForTweaks(ob);
@@ -687,25 +708,6 @@ public class MixpanelAPI {
      * @see MixpanelAPI
      */
     public interface People {
-        /**
-         * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
-         * and {@link #initPushHandling(String)} with a particular People Analytics user.
-         *
-         * <p>All future calls to the People object will rely on this value to assign
-         * and increment properties. The user identification will persist across
-         * restarts of your application. We recommend calling
-         * People.identify as soon as you know the distinct id of the user.
-         *
-         * @param distinctId a String that uniquely identifies the user. Users identified with
-         *     the same distinct id will be considered to be the same user in Mixpanel,
-         *     across all platforms and devices. We recommend choosing a distinct id
-         *     that is meaningful to your other systems (for example, a server-side account
-         *     identifier), and using the same distinct id for both calls to People.identify
-         *     and {@link MixpanelAPI#identify(String)}
-         *
-         * @see MixpanelAPI#identify(String)
-         */
-        public void identify(String distinctId);
 
         /**
          * Sets a single property with the given name and value for this user.
@@ -953,9 +955,9 @@ public class MixpanelAPI {
          * <p>The survey activity will use the root of the given view to take a screenshot
          * for its background.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -968,16 +970,16 @@ public class MixpanelAPI {
         public void showSurveyIfAvailable(Activity parent);
 
         /**
-         * Shows an in app notification to the user if one is available. If the notification
+         * Shows an in-app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
          * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
          * display the Takeover notification.
          *
-         * <p>It is safe to call this method any time you want to potentially display an in app notification.
-         * This method will be a no-op if there is already a survey or in app notification being displayed.
-         * Thus, if you have both surveys and in app notification campaigns built in Mixpanel, you may call
+         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
+         * This method will be a no-op if there is already a survey or in-app notification being displayed.
+         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
          * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
          * only one of them will be displayed.
          *
@@ -990,7 +992,24 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
-         * Shows the given in app notification to the user. Display will occur just as if the
+         * Applies A/B test changes, if they are present. By default, your application will attempt
+         * to join available experiments any time an activity is resumed, but you can disable this
+         * automatic behavior by adding the following tag to the &lt;application&gt; tag in your AndroidManifest.xml
+         * {@code
+         *     <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
+         *                android:value="false" />
+         * }
+         *
+         * If you disable AutoShowMixpanelUpdates, you'll need to call joinExperimentIfAvailable to
+         * join or clear existing experiments. If you want to display a loading screen or otherwise
+         * wait for experiments to load from the server before you apply them, you can use
+         * {@link #addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener)} to
+         * be informed that new experiments are ready.
+         */
+        public void joinExperimentIfAvailable();
+
+        /**
+         * Shows the given in-app notification to the user. Display will occur just as if the
          * notification was shown via showNotificationIfAvailable. In most cases, it is
          * easier and more efficient to use showNotificationIfAvailable.
          *
@@ -1027,7 +1046,7 @@ public class MixpanelAPI {
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display in app notifications should call this
+         * no survey is currently available. Callers who want to display in-app notifications should call this
          * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
@@ -1045,10 +1064,10 @@ public class MixpanelAPI {
 
         /**
          * Tells MixPanel that you have handled an {@link com.mixpanel.android.mpmetrics.InAppNotification}
-         * in the case where you are manually dealing with your notifications ({@link People:getNotificationIfAvailable()}).
+         * in the case where you are manually dealing with your notifications ({@link People#getNotificationIfAvailable()}).
          *
          * Note: if you do not acknowledge the notification you will receive it again each time
-         * you call {@link People#identify(String)} and then call {@link People:getNotificationIfAvailable()}
+         * you call {@link People#identify(String)} and then call {@link People#getNotificationIfAvailable()}
          *
          * @param notif the notification to track (no-op on null)
          */
@@ -1065,7 +1084,7 @@ public class MixpanelAPI {
         public void showSurveyById(int id, final Activity parent);
 
         /**
-         * Shows an in app notification identified by id. The behavior of this is otherwise identical to
+         * Shows an in-app notification identified by id. The behavior of this is otherwise identical to
          * {@link People#showNotificationIfAvailable(Activity)}.
          *
          * @param id the id of the InAppNotification you wish to show.
@@ -1082,17 +1101,19 @@ public class MixpanelAPI {
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like surveys or in app notifications) are discovered.
+         * (like surveys, in-app notifications, or A/B test experiments) are discovered. Most users of the library
+         * will not need this method, since surveys, in-app notifications, and experiments are
+         * applied automatically to your application by default.
          *
          * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>Once this listener is called, you may call {@link People#getSurveyIfAvailable()}
-         * or {@link People#getNotificationIfAvailable()}
-         * to retrieve a Survey or InAppNotification object. However, if you have multiple
-         * listeners registered, one listener may have consumed the available Survey or
-         * InAppNotification, and so the other listeners may obtain null when calling
-         * {@link People#getSurveyIfAvailable()} or {@link People#getNotificationIfAvailable()}.
+         * <p>The listener will be called when new surveys, in-app notifications, or experiments
+         * are detected as available. That means you wait to call {@link People#showSurveyIfAvailable(Activity)},
+         * {@link People#showNotificationIfAvailable(Activity)}, and {@link People#joinExperimentIfAvailable()}
+         * to show content and updates that have been delivered to your app. (You can also call these
+         * functions whenever else you would like, they're inexpensive and will do nothing if no
+         * content is available.)
          *
          * @param listener the listener to add
          */
@@ -1149,7 +1170,7 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show surveys and in app notifications
+     * Once registered, we can automatically check for and show surveys and in-app notifications
      * when any Activity is opened.
      *
      * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
@@ -1166,7 +1187,7 @@ public class MixpanelAPI {
                 final Application app = (Application) mContext.getApplicationContext();
                 app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
             } else {
-                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys or in-app notifications.");
+                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments.");
             }
         }
     }
@@ -1233,7 +1254,10 @@ public class MixpanelAPI {
             Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
             return new UnsupportedUpdatesFromMixpanel();
         } else {
-            return new ViewCrawler(mContext, mToken, this);
+            final TweakRegistrar registrar = Tweaks.findRegistrar(context.getPackageName());
+            final Handler handler = new Handler(Looper.getMainLooper());
+            final Tweaks tweaks = new Tweaks(handler, registrar);
+            return new ViewCrawler(mContext, mToken, this, tweaks);
         }
     }
 
@@ -1252,12 +1276,6 @@ public class MixpanelAPI {
     ///////////////////////
 
     private class PeopleImpl implements People {
-        @Override
-        public void identify(String distinctId) {
-            mPersistentIdentity.setPeopleDistinctId(distinctId);
-            mDecideMessages.setDistinctId(distinctId);
-            pushWaitingPeopleRecord();
-         }
 
         @Override
         public void setMap(Map<String, Object> properties) {
@@ -1434,7 +1452,7 @@ public class MixpanelAPI {
             try {
                 notifProperties.put("$time", dateFormat.format(new Date()));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception trying to track an in app notification seen", e);
+                Log.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
             }
             people.append("$campaigns", notif.getId());
             people.append("$notifications", notifProperties);
@@ -1496,6 +1514,14 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void joinExperimentIfAvailable() {
+            final JSONArray variants = mDecideMessages.getVariants();
+            if (null != variants) {
+                mUpdatesFromMixpanel.setVariants(variants);
+            }
+        }
+
+        @Override
         public void trackCharge(double amount, JSONObject properties) {
             final Date now = new Date();
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
@@ -1541,16 +1567,14 @@ public class MixpanelAPI {
         public void setPushRegistrationId(String registrationId) {
             // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
-                if (mPersistentIdentity.getPeopleDistinctId() == null) {
+                if (mPersistentIdentity.getDistinctId() == null) {
                     return;
                 }
 
                 mPersistentIdentity.storePushId(registrationId);
-                try {
-                    union("$android_devices", new JSONArray("[" + registrationId + "]"));
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "set push registration id error", e);
-                }
+                final JSONArray ids = new JSONArray();
+                ids.put(registrationId);
+                union("$android_devices", ids);
             }
         }
 
@@ -1590,7 +1614,7 @@ public class MixpanelAPI {
 
         @Override
         public String getDistinctId() {
-            return mPersistentIdentity.getPeopleDistinctId();
+            return mPersistentIdentity.getDistinctId();
         }
 
         @Override
@@ -1602,11 +1626,6 @@ public class MixpanelAPI {
                 @Override
                 public String getDistinctId() {
                     return distinctId;
-                }
-
-                @Override
-                public void identify(String distinctId) {
-                    throw new RuntimeException("This MixpanelPeople object has a fixed, constant distinctId");
                 }
             };
         }
@@ -1875,7 +1894,7 @@ public class MixpanelAPI {
 
     private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
         public UnsupportedUpdatesFromMixpanel() {
-            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), "$$TWEAK_REGISTRAR");
+            mEmptyTweaks = new Tweaks(new Handler(Looper.getMainLooper()), null);
         }
 
         @Override

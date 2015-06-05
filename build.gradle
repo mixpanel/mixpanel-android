@@ -13,7 +13,7 @@ buildscript {
 
 android {
     compileSdkVersion 21
-    buildToolsVersion "21.1.2"
+    buildToolsVersion "22.0.1"
 
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
@@ -26,6 +26,7 @@ android {
         lintOptions {
             abortOnError true
             warningsAsErrors true
+            disable "UnusedResources"
         }
     }
 }
@@ -54,11 +55,13 @@ android.libraryVariants.all { variant ->
             '**/FadingImageView.java',
             '**/InAppFragment.java',
             '**/MiniCircleImageView.java',
+            '**/ResourceIds.java',
+            '**/ResourceReader.java',
             '**/SurveyActivity.java',
             '**/SurveyChoiceView.java',
             '**/SurveyCallbacks.java',
             '**/TrackingDebug.java',
-            '**/Tweaks.java', // Someday this will be exposed to the public
+            '**/TweakRegistrar.java', // Consider making TweakRegistrar public at some point.
             '**/UpdateDisplayState.java',
             '**/UpdatesFromMixpanel.java',
             '**/ViewCrawler.java'
