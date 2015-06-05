@@ -25,9 +25,9 @@ import android.util.Log;
     // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
     public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
         JSONArray ret = null;
-        final String distinctId = storedPreferences.getString("distinct_id", null);
+        final String peopleDistinctId = storedPreferences.getString("people_distinct_id", null);
         final String waitingPeopleRecords = storedPreferences.getString("waiting_array", null);
-        if ((null != waitingPeopleRecords) && (null != distinctId)) {
+        if ((null != waitingPeopleRecords) && (null != peopleDistinctId)) {
             JSONArray waitingObjects = null;
             try {
                 waitingObjects = new JSONArray(waitingPeopleRecords);
@@ -40,7 +40,7 @@ import android.util.Log;
             for (int i = 0; i < waitingObjects.length(); i++) {
                 try {
                     final JSONObject ob = waitingObjects.getJSONObject(i);
-                    ob.put("$distinct_id", distinctId);
+                    ob.put("$distinct_id", peopleDistinctId);
                     ret.put(ob);
                 } catch (final JSONException e) {
                     Log.e(LOGTAG, "Unparsable object found in waiting people records", e);
@@ -134,18 +134,33 @@ import android.util.Log;
         return mReferrerPropertiesCache;
     }
 
-    public synchronized String getDistinctId() {
+    public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
-        return mDistinctId;
+        return mEventsDistinctId;
     }
 
-    public synchronized void setDistinctId(String distinctId) {
+    public synchronized void setEventsDistinctId(String eventsDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
-        mDistinctId = distinctId;
+        mEventsDistinctId = eventsDistinctId;
+        writeIdentities();
+    }
+
+    public synchronized String getPeopleDistinctId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mPeopleDistinctId;
+    }
+
+    public synchronized void setPeopleDistinctId(String peopleDistinctId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
     }
 
@@ -370,7 +385,8 @@ import android.util.Log;
             return;
         }
 
-        mDistinctId = prefs.getString("distinct_id", null);
+        mEventsDistinctId = prefs.getString("events_distinct_id", null);
+        mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mWaitingPeopleRecords = null;
 
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
@@ -382,8 +398,8 @@ import android.util.Log;
             }
         }
 
-        if (null == mDistinctId) {
-            mDistinctId = UUID.randomUUID().toString();
+        if (null == mEventsDistinctId) {
+            mEventsDistinctId = UUID.randomUUID().toString();
             writeIdentities();
         }
 
@@ -396,7 +412,8 @@ import android.util.Log;
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
 
-            prefsEditor.putString("distinct_id", mDistinctId);
+            prefsEditor.putString("events_distinct_id", mEventsDistinctId);
+            prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             }
@@ -426,7 +443,8 @@ import android.util.Log;
     private JSONObject mSuperPropertiesCache;
     private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
-    private String mDistinctId;
+    private String mEventsDistinctId;
+    private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
 
     private static boolean sReferrerPrefsDirty = true;

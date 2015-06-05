@@ -260,13 +260,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-
         Map<String, Object> mapObj1 = new HashMap<>();
         mapObj1.put("SET MAP INT", 1);
         Map<String, Object> mapObj2 = new HashMap<>();
         mapObj2.put("SET ONCE MAP STR", "SET ONCE MAP VALUE");
 
-        mixpanel.identify("TEST IDENTITY");
+        mixpanel.getPeople().identify("TEST IDENTITY");
 
         mixpanel.getPeople().set("SET NAME", "SET VALUE");
         mixpanel.getPeople().setMap(mapObj1);
@@ -343,7 +342,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         people.increment("the prop", 4);
         people.append("the prop", 5);
         people.append("the prop", 6);
-        mixpanel.identify("Personal Identity");
+        people.identify("Personal Identity");
 
         assertEquals(messages.size(), 7);
         try {
@@ -360,6 +359,30 @@ public class MixpanelBasicTest extends AndroidTestCase {
         } catch (JSONException e) {
             fail("Unexpected JSON error in stored messages.");
         }
+    }
+
+    public void testIdentifyAndGetDistinctId() {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+
+        String generatedId = metrics.getDistinctId();
+        assertNotNull(generatedId);
+
+        String emptyId = metrics.getPeople().getDistinctId();
+        assertNull(emptyId);
+
+        metrics.identify("Events Id");
+        String setId = metrics.getDistinctId();
+        assertEquals("Events Id", setId);
+
+        String stillEmpty = metrics.getPeople().getDistinctId();
+        assertNull(stillEmpty);
+
+        metrics.getPeople().identify("People Id");
+        String unchangedId = metrics.getDistinctId();
+        assertEquals("Events Id", unchangedId);
+
+        String setPeopleId = metrics.getPeople().getDistinctId();
+        assertEquals("People Id", setPeopleId);
     }
 
     public void testMessageQueuing() {
@@ -518,7 +541,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
             isIdentifiedRef.set(true);
-            metrics.identify("new person");
+            metrics.getPeople().identify("new person");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
 
@@ -571,7 +594,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
 
         MixpanelAPI api = new ListeningAPI(getContext(), mMockPreferences, "TRACKCHARGE TEST TOKEN");
-        api.identify("TRACKCHARGE PERSON");
+        api.getPeople().identify("TRACKCHARGE PERSON");
 
         JSONObject props;
         try {
@@ -610,7 +633,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metricsOne.clearSuperProperties();
         metricsOne.registerSuperProperties(props);
         metricsOne.identify("Expected Events Identity");
-        metricsOne.identify("Expected People Identity");
+        metricsOne.getPeople().identify("Expected People Identity");
 
         // We exploit the fact that any metrics object with the same token
         // will get their values from the same persistent store.
