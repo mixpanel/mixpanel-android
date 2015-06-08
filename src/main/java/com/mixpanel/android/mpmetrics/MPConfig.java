@@ -122,7 +122,7 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 1 * 1000); // one second default
+        mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.DebugFlushInterval", 1 * 1000); // one second default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
