@@ -207,7 +207,7 @@ public class MPConfig {
     }
 
     // Target max milliseconds between flushes. This is advisory.
-    public int getmFlushInterval() {
+    public int getFlushInterval() {
         return getFlushInterval(null);
     }
 
