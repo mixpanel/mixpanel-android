@@ -383,7 +383,7 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     private static class MockConfig extends MPConfig {
         MockConfig(Bundle metaData) {
-            super(metaData);
+            super(metaData, null);
         }
 
         @Override

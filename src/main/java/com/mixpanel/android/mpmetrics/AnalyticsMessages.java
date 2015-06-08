@@ -215,7 +215,7 @@ import java.util.Map;
                 mDbAdapter = null;
                 mDecideChecker = new DecideChecker(mContext, mConfig);
                 mDisableFallback = mConfig.getDisableFallback();
-                mFlushInterval = mConfig.getFlushInterval();
+                mFlushInterval = mConfig.getFlushInterval(mContext);
                 mSystemInformation = new SystemInformation(mContext);
                 mRetryAfter = -1;
             }

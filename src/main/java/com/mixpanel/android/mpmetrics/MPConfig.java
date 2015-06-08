@@ -26,6 +26,9 @@ import android.util.Log;
  *     <dt>com.mixpanel.android.MPConfig.FlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.DebugFlushInterval</dt>
+ *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached in debug mode.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.DataExpiration</dt>
  *     <dd>An integer number of milliseconds, the maximum age of records to send to Mixpanel. Corresponds to Mixpanel's server-side limit on record age.</dd>
  *
@@ -80,7 +83,7 @@ public class MPConfig {
     // Unfortunately, as long as we support building from source in Eclipse,
     // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
     // be hard-coded both in our gradle files and here in code.
-    public static final String VERSION = "4.5.4-SNAPSHOT";
+    public static final String VERSION = "4.6.0-SNAPSHOT";
 
     public static boolean DEBUG = false;
 
@@ -109,7 +112,7 @@ public class MPConfig {
         return sInstance;
     }
 
-    /* package */ MPConfig(Bundle metaData) {
+    /* package */ MPConfig(Bundle metaData, Context context) {
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
@@ -119,6 +122,7 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
+        mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.DebugFlushInterval", 1 * 1000); // one second default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
@@ -181,7 +185,7 @@ public class MPConfig {
                 "Mixpanel configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
-                "    FlushInterval " + getFlushInterval() + "\n" +
+                "    FlushInterval " + getFlushInterval(context) + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
@@ -208,7 +212,16 @@ public class MPConfig {
 
     // Target max milliseconds between flushes. This is advisory.
     public int getFlushInterval() {
-        return mFlushInterval;
+        return getFlushInterval(null);
+    }
+
+    public int getFlushInterval(Context context) {
+        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE ) );
+        if (isDebuggable) {
+            return mDebugFlushInterval;
+        } else {
+            return mFlushInterval;
+        }
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
@@ -303,7 +316,7 @@ public class MPConfig {
             if (null == configBundle) {
                 configBundle = new Bundle();
             }
-            return new MPConfig(configBundle);
+            return new MPConfig(configBundle, appContext);
         } catch (final NameNotFoundException e) {
             throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
         }
@@ -311,6 +324,7 @@ public class MPConfig {
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
+    private final int mDebugFlushInterval;
     private final int mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mDisableFallback;
