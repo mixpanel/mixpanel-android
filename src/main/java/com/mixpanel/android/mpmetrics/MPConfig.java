@@ -109,7 +109,7 @@ public class MPConfig {
         return sInstance;
     }
 
-    /* package */ MPConfig(Bundle metaData) {
+    /* package */ MPConfig(Bundle metaData, Context context) {
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
@@ -181,7 +181,7 @@ public class MPConfig {
                 "Mixpanel configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
-                "    FlushInterval " + getFlushInterval() + "\n" +
+                "    FlushInterval " + getFlushInterval(context) + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
@@ -207,8 +207,17 @@ public class MPConfig {
     }
 
     // Target max milliseconds between flushes. This is advisory.
-    public int getFlushInterval() {
-        return mFlushInterval;
+    public int getmFlushInterval() {
+        return getFlushInterval(null);
+    }
+
+    public int getFlushInterval(Context context) {
+        boolean isDebuggable =  context != null && ( 0 != ( context.getApplicationInfo().flags &= ApplicationInfo.FLAG_INSTALLED ) );
+        if (isDebuggable) {
+            return 1000;
+        } else {
+            return mFlushInterval;
+        }
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
@@ -303,7 +312,7 @@ public class MPConfig {
             if (null == configBundle) {
                 configBundle = new Bundle();
             }
-            return new MPConfig(configBundle);
+            return new MPConfig(configBundle, appContext);
         } catch (final NameNotFoundException e) {
             throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
         }

@@ -434,7 +434,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
 
-        final MPConfig mockConfig = new MPConfig(new Bundle()) {
+        final MPConfig mockConfig = new MPConfig(new Bundle(), getContext()) {
             @Override
             public int getFlushInterval() {
                 return -1;

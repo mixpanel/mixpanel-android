@@ -88,7 +88,7 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        final MPConfig config = new MPConfig(new Bundle()) {
+        final MPConfig config = new MPConfig(new Bundle(), getContext()) {
             @Override
             public String getDecideEndpoint() {
                 return "DECIDE ENDPOINT";
