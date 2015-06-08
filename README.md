@@ -34,7 +34,7 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
-#### v5.0.0
+#### v4.6
 
  * Mixpanel A/B testing is now supported on Android. Users can
    register and recieve A/B testing tweaks and alter application look
@@ -58,6 +58,8 @@ Changelog
 
  * Many Mixpanel logtags have changed to conform to the expectation
    that all logtags should be under 23 characters long.
+
+ * Added a new configuration for flush interval when the app is in debug mode, defaults to 1 second
 
 #### v4.5.3
 
