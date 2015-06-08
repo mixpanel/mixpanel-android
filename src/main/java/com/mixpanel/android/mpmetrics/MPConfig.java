@@ -26,6 +26,9 @@ import android.util.Log;
  *     <dt>com.mixpanel.android.MPConfig.FlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.DebugFlushInterval</dt>
+ *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached in debug mode.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.DataExpiration</dt>
  *     <dd>An integer number of milliseconds, the maximum age of records to send to Mixpanel. Corresponds to Mixpanel's server-side limit on record age.</dd>
  *
@@ -119,6 +122,7 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
+        mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 1 * 1000); // one second default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
@@ -214,7 +218,7 @@ public class MPConfig {
     public int getFlushInterval(Context context) {
         boolean isDebuggable =  context != null && ( 0 != ( context.getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE ) );
         if (isDebuggable) {
-            return 1000;
+            return mDebugFlushInterval;
         } else {
             return mFlushInterval;
         }
@@ -320,6 +324,7 @@ public class MPConfig {
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
+    private final int mDebugFlushInterval;
     private final int mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mDisableFallback;
