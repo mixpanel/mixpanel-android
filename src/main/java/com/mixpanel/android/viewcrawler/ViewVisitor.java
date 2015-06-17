@@ -36,11 +36,11 @@ import java.util.WeakHashMap;
      * on click)
      */
     public interface OnEventListener {
-        public void OnEvent(View host, String eventName, boolean debounce);
+        void OnEvent(View host, String eventName, boolean debounce);
     }
 
     public interface OnLayoutErrorListener {
-        public void onLayoutError(LayoutErrorMessage e);
+        void onLayoutError(LayoutErrorMessage e);
     }
 
     public static class LayoutErrorMessage {

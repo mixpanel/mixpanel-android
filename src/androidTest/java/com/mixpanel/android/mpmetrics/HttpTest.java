@@ -23,6 +23,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class HttpTest extends AndroidTestCase {
 
     public void setUp() {
@@ -37,7 +39,7 @@ public class HttpTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs)
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
                 try {
                     if (null == nameValuePairs) {

@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.util.Base64;
 import android.util.Log;
 
+import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
 
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * ABSOLUTELY NOT thread, or even process safe.
@@ -36,15 +39,13 @@ import java.security.NoSuchAlgorithmException;
     }
 
     public ImageStore(Context context) {
-        this(
-            context.getDir(DEFAULT_DIRECTORY_NAME, Context.MODE_PRIVATE),
-            new HttpService()
-        );
+        this(context, DEFAULT_DIRECTORY_NAME, new HttpService());
     }
 
-    public ImageStore(File directory, RemoteService poster) {
-        mDirectory = directory;
+    public ImageStore(Context context, String directoryName, RemoteService poster) {
+        mDirectory = context.getDir(directoryName, Context.MODE_PRIVATE);
         mPoster = poster;
+        mConfig = MPConfig.getInstance(context);
         MessageDigest useDigest;
         try {
             useDigest = MessageDigest.getInstance("SHA1");
@@ -61,7 +62,8 @@ import java.security.NoSuchAlgorithmException;
         byte[] bytes = null;
         if (null == file || !file.exists()) {
             try {
-                bytes = mPoster.performRequest(url, null);
+                final SSLSocketFactory factory = mConfig.getSSLSocketFactory();
+                bytes = mPoster.performRequest(url, null, factory);
             } catch (IOException e) {
                 throw new CantGetImageException("Can't download bitmap", e);
             } catch (RemoteService.ServiceUnavailableException e) {
@@ -138,6 +140,7 @@ import java.security.NoSuchAlgorithmException;
     private final File mDirectory;
     private final RemoteService mPoster;
     private final MessageDigest mDigest;
+    private final MPConfig mConfig;
 
     private static final String DEFAULT_DIRECTORY_NAME = "MixpanelAPI.Images";
     private static final int MAX_BITMAP_SIZE = 10000000; // 10 MB

@@ -79,21 +79,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         mTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
         mVariantTracker = new VariantTracker(mixpanel);
-
-        // We build our own, private SSL context here to prevent things from going
-        // crazy if client libs are using older versions of OkHTTP, or otherwise doing crazy junk
-        // with the default SSL context: https://github.com/square/okhttp/issues/184
-        SSLSocketFactory foundSSLFactory;
-        try {
-            final SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, null, null);
-            foundSSLFactory = sslContext.getSocketFactory();
-        } catch (final GeneralSecurityException e) {
-            Log.i(LOGTAG, "System has no SSL support. Built-in events editor will not be available", e);
-            foundSSLFactory = null;
-        }
-        mSSLSocketFactory = foundSSLFactory;
-
         mTweaks.addOnTweakDeclaredListener(new Tweaks.OnTweakDeclaredListener() {
             @Override
             public void onTweakDeclared() {
@@ -460,7 +445,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 return;
             }
 
-            if (null == mSSLSocketFactory) {
+            final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
+            if (null == socketFactory) {
                 if (MPConfig.DEBUG) {
                     Log.v(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
                 }
@@ -469,7 +455,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             final String url = MPConfig.getInstance(mContext).getEditorUrl() + mToken;
             try {
-                final Socket sslSocket = mSSLSocketFactory.createSocket();
+                final Socket sslSocket = socketFactory.createSocket();
                 mEditorConnection = new EditorConnection(new URI(url), new Editor(), sslSocket);
             } catch (final URISyntaxException e) {
                 Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
@@ -1058,7 +1044,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
     private final MPConfig mConfig;
     private final DynamicEventTracker mTracker;
-    private final SSLSocketFactory mSSLSocketFactory;
     private final EditState mEditState;
     private final Tweaks mTweaks;
     private final Map<String, String> mDeviceInfo;

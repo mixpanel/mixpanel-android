@@ -16,6 +16,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class DecideCheckerTest extends AndroidTestCase {
 
     @Override
@@ -335,7 +337,7 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     private static class MockPoster extends HttpService {
         @Override
-        public byte[] performRequest(String url, List<NameValuePair> pairs) throws IOException {
+        public byte[] performRequest(String url, List<NameValuePair> pairs, SSLSocketFactory socketFactory) throws IOException {
             assertNull(pairs);
             requestedUrls.add(url);
 

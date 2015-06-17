@@ -7,6 +7,11 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.util.Log;
 
+import java.security.GeneralSecurityException;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+
 
 /**
  * Stores global configuration options for the Mixpanel library. You can enable and disable configuration
@@ -112,7 +117,48 @@ public class MPConfig {
         return sInstance;
     }
 
+    /**
+     * The MixpanelAPI will use the system default SSL socket settings under ordinary circumstances.
+     * That means it will ignore settings you associated with the default SSLSocketFactory in the
+     * schema registry or in underlying HTTP libraries. If you'd prefer for Mixpanel to use your
+     * own SSL settings, you'll need to call setSSLSocketFactory early in your code, like this
+     *
+     * {@code
+     * <pre>
+     *     MPConfig.getInstance(context).setSSLSocketFactory(someCustomizedSocketFactory);
+     * </pre>
+     * }
+     *
+     * Your settings will be globally available to all Mixpanel instances, and will be used for
+     * all SSL connections in the library. The call is thread safe, but should be done before
+     * your first call to MixpanelAPI.getInstance to insure that the library never uses it's
+     * default.
+     *
+     * The given socket factory may be used from multiple threads, which is safe for the system
+     * SSLSocketFactory class, but if you pass a subclass you should ensure that it is thread-safe
+     * before passing it to Mixpanel.
+     *
+     * @param factory an SSLSocketFactory that
+     */
+    public synchronized void setSSLSocketFactory(SSLSocketFactory factory) {
+        mSSLSocketFactory = factory;
+    }
+
     /* package */ MPConfig(Bundle metaData, Context context) {
+
+        // By default, we use a clean, FACTORY default SSLSocket. In general this is the right
+        // thing to do, and some other third party libraries change the
+        SSLSocketFactory foundSSLFactory;
+        try {
+            final SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, null, null);
+            foundSSLFactory = sslContext.getSocketFactory();
+        } catch (final GeneralSecurityException e) {
+            Log.i("MixpanelAPI.Conf", "System has no SSL support. Built-in events editor will not be available", e);
+            foundSSLFactory = null;
+        }
+        mSSLSocketFactory = foundSSLFactory;
+
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
@@ -305,6 +351,13 @@ public class MPConfig {
         return mResourcePackageName;
     }
 
+    // This method is thread safe, and assumes that SSLSocketFactory is also thread safe
+    // (At this writing, all HttpsURLConnections in the framework share a single factory,
+    // so this is pretty safe even if the docs are ambiguous)
+    public synchronized SSLSocketFactory getSSLSocketFactory() {
+        return mSSLSocketFactory;
+    }
+
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
@@ -341,6 +394,9 @@ public class MPConfig {
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;
+
+    // Mutable, with synchronized accessor and mutator
+    private SSLSocketFactory mSSLSocketFactory;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();

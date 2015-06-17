@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class DecideFunctionalTest extends AndroidTestCase {
 
     public void setUp() throws InterruptedException {
@@ -59,7 +61,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mExpectations = new Expectations();
         mMockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory) {
                 return mExpectations.setExpectationsRequest(endpointUrl, nameValuePairs);
             }
         };

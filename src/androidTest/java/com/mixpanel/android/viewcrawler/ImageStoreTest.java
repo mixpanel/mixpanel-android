@@ -18,12 +18,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class ImageStoreTest extends AndroidTestCase {
     public void setUp() {
         mService = new PretendService();
         mService.online = true;
-        final File testDirectory = getContext().getDir("TEST_DIRECTORY", Context.MODE_PRIVATE);
-        mImageStore = new ImageStore(testDirectory, mService);
+        mImageStore = new ImageStore(getContext(), "TEST_DIRECTORY", mService);
         mImageStore.clearStorage();
 
     }
@@ -82,7 +83,7 @@ public class ImageStoreTest extends AndroidTestCase {
         }
 
         @Override
-        public byte[] performRequest(final String endpointUrl, final List<NameValuePair> params)
+        public byte[] performRequest(final String endpointUrl, final List<NameValuePair> params, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
             queries++;
             return response;

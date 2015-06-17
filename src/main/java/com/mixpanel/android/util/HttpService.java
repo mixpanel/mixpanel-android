@@ -20,11 +20,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
+
 /**
- * An HTTP utility class for internal use in the Mixpanel library.
+ * An HTTP utility class for internal use in the Mixpanel library. Not thread-safe.
  */
 public class HttpService implements RemoteService {
-
     @Override
     public boolean isOnline(Context context) {
         boolean isOnline;
@@ -46,7 +48,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public byte[] performRequest(String endpointUrl, List<NameValuePair> params) throws ServiceUnavailableException, IOException {
+    public byte[] performRequest(String endpointUrl, List<NameValuePair> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Attempting request to " + endpointUrl);
         }
@@ -67,6 +69,10 @@ public class HttpService implements RemoteService {
             try {
                 final URL url = new URL(endpointUrl);
                 connection = (HttpURLConnection) url.openConnection();
+                if (null != socketFactory && connection instanceof HttpsURLConnection) {
+                    ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
+                }
+
                 connection.setConnectTimeout(2000);
                 connection.setReadTimeout(10000);
                 if (null != params) {

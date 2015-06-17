@@ -31,6 +31,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLSocketFactory;
+
 public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
@@ -408,7 +410,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory) {
                 final boolean isIdentified = isIdentifiedRef.get();
                 if (null == nameValuePairs) {
                     if (isIdentified) {
@@ -914,7 +916,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs) {
+            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory) {
                 try {
                     assertEquals(nameValuePairs.get(0).getName(), "data");
                     final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());

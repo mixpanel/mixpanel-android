@@ -31,6 +31,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.net.ssl.SSLSocketFactory;
+
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
  *
@@ -409,7 +411,8 @@ import java.util.Map;
                     byte[] response;
                     for (String url : urls) {
                         try {
-                            response = poster.performRequest(url, params);
+                            final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
+                            response = poster.performRequest(url, params, socketFactory);
                             deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                             if (null == response) {
                                 logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");

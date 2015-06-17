@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import javax.net.ssl.SSLSocketFactory;
+
 /* package */ class DecideChecker {
 
     /* package */ static class Result {
@@ -277,7 +279,9 @@ import java.util.List;
         byte[] response = null;
         for (String url : urls) {
             try {
-                response = poster.performRequest(url, null);
+                final MPConfig config = MPConfig.getInstance(context);
+                final SSLSocketFactory socketFactory = config.getSSLSocketFactory();
+                response = poster.performRequest(url, null, socketFactory);
                 break;
             } catch (final MalformedURLException e) {
                 Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
