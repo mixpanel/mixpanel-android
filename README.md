@@ -34,6 +34,15 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.6.1
+
+ * The Mixpanel library no longer uses the default SSLSocketFactory
+   from the system schema registry, instead preferring the system
+   defaults. Most users will not need to make any changes to their
+   integrations. To change the SSL settings that the Mixpanel library
+   uses, call MPConfig.getInstance(context).setSSLSocketFactory(socketFactory)
+
+
 #### v4.6
 
  * Mixpanel A/B testing is now supported on Android. Users can
