@@ -221,27 +221,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private boolean isInEmulator() {
-            if (!Build.HARDWARE.equals("goldfish")) {
-                return false;
+            if (Build.HARDWARE.equals("vbox86") &&
+                    Build.BRAND.startsWith("generic") &&
+                    Build.DEVICE.equals("vbox86p") &&
+                    Build.PRODUCT.equals("vbox86p")) {
+                return true;
             }
 
-            if (!Build.BRAND.startsWith("generic")) {
-                return false;
+            if (Build.HARDWARE.equals("goldfish") &&
+                    Build.BRAND.startsWith("generic") &&
+                    Build.DEVICE.startsWith("generic") &&
+                    Build.PRODUCT.contains("sdk") &&
+                    Build.MODEL.toLowerCase(Locale.US).contains("sdk")) {
+                return true;
             }
 
-            if (!Build.DEVICE.startsWith("generic")) {
-                return false;
-            }
-
-            if (!Build.PRODUCT.contains("sdk")) {
-                return false;
-            }
-
-            if (!Build.MODEL.toLowerCase(Locale.US).contains("sdk")) {
-                return false;
-            }
-
-            return true;
+            return false;
         }
 
         private final FlipGesture mFlipGesture;
