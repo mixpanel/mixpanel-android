@@ -15,7 +15,6 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
-import android.support.annotation.IntDef;
 import android.util.JsonWriter;
 import android.util.Log;
 import android.util.Pair;
@@ -288,7 +287,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             mStartLock.lock();
             try {
 
-                final @MessageType int what = msg.what;
+                final int what = msg.what;
                 switch (what) {
                     case MESSAGE_INITIALIZE_CHANGES:
                         loadKnownChanges();
@@ -1080,37 +1079,19 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
 
-    @IntDef({
-        MESSAGE_INITIALIZE_CHANGES,
-        MESSAGE_CONNECT_TO_EDITOR,
-        MESSAGE_SEND_STATE_FOR_EDITING,
-        MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED,
-        MESSAGE_SEND_DEVICE_INFO,
-        MESSAGE_EVENT_BINDINGS_RECEIVED,
-        MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED,
-        MESSAGE_SEND_EVENT_TRACKED,
-        MESSAGE_HANDLE_EDITOR_CLOSED,
-        MESSAGE_VARIANTS_RECEIVED,
-        MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED,
-        MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED
-    })
-
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface MessageType {}
-
-    private static final @MessageType int MESSAGE_INITIALIZE_CHANGES = 0;
-    private static final @MessageType int MESSAGE_CONNECT_TO_EDITOR = 1;
-    private static final @MessageType int MESSAGE_SEND_STATE_FOR_EDITING = 2;
-    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
-    private static final @MessageType int MESSAGE_SEND_DEVICE_INFO = 4;
-    private static final @MessageType int MESSAGE_EVENT_BINDINGS_RECEIVED = 5;
-    private static final @MessageType int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 6;
-    private static final @MessageType int MESSAGE_SEND_EVENT_TRACKED = 7;
-    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CLOSED = 8;
-    private static final @MessageType int MESSAGE_VARIANTS_RECEIVED = 9;
-    private static final @MessageType int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
-    private static final @MessageType int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
-    private static final @MessageType int MESSAGE_SEND_LAYOUT_ERROR = 12;
+    private static final int MESSAGE_INITIALIZE_CHANGES = 0;
+    private static final int MESSAGE_CONNECT_TO_EDITOR = 1;
+    private static final int MESSAGE_SEND_STATE_FOR_EDITING = 2;
+    private static final int MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED = 3;
+    private static final int MESSAGE_SEND_DEVICE_INFO = 4;
+    private static final int MESSAGE_EVENT_BINDINGS_RECEIVED = 5;
+    private static final int MESSAGE_HANDLE_EDITOR_BINDINGS_RECEIVED = 6;
+    private static final int MESSAGE_SEND_EVENT_TRACKED = 7;
+    private static final int MESSAGE_HANDLE_EDITOR_CLOSED = 8;
+    private static final int MESSAGE_VARIANTS_RECEIVED = 9;
+    private static final int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
+    private static final int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
+    private static final int MESSAGE_SEND_LAYOUT_ERROR = 12;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 
