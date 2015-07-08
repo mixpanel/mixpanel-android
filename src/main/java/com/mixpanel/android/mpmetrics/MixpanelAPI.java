@@ -46,7 +46,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.net.ssl.SSLSocketFactory;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -187,12 +186,6 @@ public class MixpanelAPI {
      */
     public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
         return sSharedTweaks.byteTweak(tweakName, defaultValue);
-    }
-
-    public static void setSSLSocketFactory(SSLSocketFactory factory) {
-        synchronized (MixpanelAPI.class) {
-            sSSLSocketFactory = factory;
-        }
     }
 
     /**
@@ -2118,7 +2111,6 @@ public class MixpanelAPI {
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
     private static final Tweaks sSharedTweaks = new Tweaks();
     private static Future<SharedPreferences> sReferrerPrefs;
-    private static SSLSocketFactory sSSLSocketFactory;
 
     private static final String LOGTAG = "MixpanelAPI.API";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
