@@ -15,7 +15,7 @@ import java.util.Set;
 /* package */ class DecideMessages {
 
     public interface OnNewResultsListener {
-        public void onNewResults();
+        void onNewResults();
     }
 
     public DecideMessages(String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
@@ -46,7 +46,6 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    // Do not consult destroyed status inside of this method.
     public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);

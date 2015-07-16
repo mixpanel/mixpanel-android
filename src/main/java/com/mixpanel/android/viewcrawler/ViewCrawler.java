@@ -350,7 +350,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     for (int i = 0; i < variantsLength; i++) {
                         final JSONObject variant = variants.getJSONObject(i);
                         final int variantId = variant.getInt("id");
-                        final int experimentId = variant.getInt("experiment");
+                        final int experimentId = variant.getInt("experiment_id");
                         final Pair<Integer,Integer> sight = new Pair<Integer,Integer>(experimentId, variantId);
                         mSeenExperiments.add(sight);
                     }
