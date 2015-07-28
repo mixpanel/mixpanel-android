@@ -99,6 +99,37 @@ public class Tweaks {
      */
     public static final @TweakType int STRING_TYPE = 4;
 
+
+    /**
+     * This interface is used to notify anyone who cares that a tweak has been changed.
+     * E.g. when the values have been loaded from the server.
+     *
+     * Please note that such a change might not necessarily be caused by data synchronization and after a change
+     */
+    public interface TweakChangeCallback {
+        /**
+         *
+         * @param value The updated value T of a Tweak<T>
+         */
+        void onChange(Object value);
+    }
+
+
+    /**
+     *
+     * @param tweakName name of the Tweak that should react to this callback, needs to be defined via MixpanelAPI.intTweak(tweakName, defaultValue) first - if it's not int use your thinking mush to find the correct method..
+     * @param callback the callback that should be called when the value of a named tweak changes.
+     */
+    public void bindChangeCallback(String tweakName, TweakChangeCallback callback) {
+        if (!mTweakValues.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to bind to a tweak \"" + tweakName + "\" which doesn't exist");
+            return;
+        }
+
+        final TweakValue value = mTweakValues.get(tweakName);
+        value.setTweakChangeCallback(callback);
+    }
+
     /**
      * Represents the value and definition of a tweak known to the system. This class
      * is used internally to expose tweaks to the Mixpanel UI,
@@ -114,7 +145,13 @@ public class Tweaks {
         }
 
         public TweakValue updateValue(Object newValue) {
+            if(changeCallback != null)
+                changeCallback.onChange(newValue);
             return new TweakValue(type, defaultValue, minimum, maximum, newValue);
+        }
+
+        public void setTweakChangeCallback(TweakChangeCallback callback){
+            changeCallback = callback;
         }
 
         public String getStringValue() {
@@ -185,6 +222,8 @@ public class Tweaks {
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;
+
+        private TweakChangeCallback changeCallback = null;
     }
 
     /**
