@@ -1,6 +1,7 @@
 package com.mixpanel.android.viewcrawler;
 
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -198,7 +199,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
 
     private SparseArray<JSONObject> snapshotsByHashcode() throws IOException, JSONException {
         final JSONArray viewsJson = requestSnapshot();
-        final Map<Integer, View> viewsByHashcode = new HashMap<Integer, View>(mRootView.mViewsByHashcode);
+        @SuppressLint("UseSparseArrays") final Map<Integer, View> viewsByHashcode = new HashMap<Integer, View>(mRootView.mViewsByHashcode);
         final SparseArray<JSONObject> ret = new SparseArray<JSONObject>();
 
         for (int viewIx = 0; viewIx < viewsJson.length(); viewIx++) {

@@ -1,32 +1,41 @@
-apply plugin: 'android-library'
+apply plugin: 'com.android.library'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.1.0'
+        classpath 'com.android.tools.build:gradle:1.3.0-beta4'
     }
 }
 
 android {
-    compileSdkVersion 21
+    compileSdkVersion 22
     buildToolsVersion "22.0.1"
 
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
         // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
         minSdkVersion 9
-        targetSdkVersion 21
+        targetSdkVersion 22
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
 
         lintOptions {
             abortOnError true
             warningsAsErrors true
-            disable "UnusedResources"
+            disable "UnusedResources",
+                    // Lint warns that the project doesn't contain a drawable-xxxhdpi folder. Ignore the error.
+                    "IconMissingDensityFolder",
+                    // Lint warns of a Weak RNG security error in SSLSocketChannel2.wrap(ByteBuffer).
+                    // More information here: http://android-developers.blogspot.com/2013/08/some-securerandom-thoughts.html.
+                    // Ignore the error.
+                    "TrulyRandom",
+                    // Lint suggests using .apply() instead of .commit() on SharedPreferences. Ignore the error.
+                    "CommitPrefEdits"
         }
     }
 }

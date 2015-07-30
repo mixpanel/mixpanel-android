@@ -39,7 +39,8 @@ https://groups.google.com/forum/#!msg/android-developers/qcclW4oekVY/IeQtoAruCTg
         android:lines="3" android:singleLine="true"
         android:padding="5dp"
         android:gravity="top|left"
-        android:visibility="gone" />
+        android:visibility="gone"
+        tools:ignore="RtlHardcoded"/>
 
     <!-- cacheColorHint setting from http://android-developers.blogspot.com/2009/01/why-is-my-list-black-android.html -->
     <ListView
