@@ -5,10 +5,14 @@ import android.util.Log;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
@@ -68,12 +72,39 @@ import java.util.Set;
             }
         }
 
-        mVariants = variants;
+        int newVariantsLength = variants.length();
+
+        for (int i = 0; i < newVariantsLength; i++) {
+            try {
+                JSONObject variant = variants.getJSONObject(i);
+                if (mVariants == null || !mLoadedVariants.contains(variant.getInt("id"))) {
+                    mVariants = variants;
+                    newContent = true;
+                    break;
+                }
+            } catch(JSONException e) {
+                Log.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while comparing the new variants", e);
+            }
+        }
+
+        if (mVariants == variants) {
+            mLoadedVariants.clear();
+
+            for (int i = 0; i < newVariantsLength; i++) {
+                try {
+                    JSONObject variant = mVariants.getJSONObject(i);
+                    mLoadedVariants.add(variant.getInt("id"));
+                } catch(JSONException e) {
+                    Log.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while updating the map", e);
+                }
+            }
+        }
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
                     newSurveys.size() + " surveys and " +
-                    newNotifications.size() + " notifications have been added.");
+                    newNotifications.size() + " notifications and " +
+                    variants.length() + " experiments have been added.");
         }
 
         if (newContent && hasUpdatesAvailable() && null != mListener) {
@@ -157,6 +188,7 @@ import java.util.Set;
     private final OnNewResultsListener mListener;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private JSONArray mVariants;
+    private static final Set<Integer> mLoadedVariants = new HashSet<>();
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
