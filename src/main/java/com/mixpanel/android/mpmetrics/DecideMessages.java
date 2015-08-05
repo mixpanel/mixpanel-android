@@ -68,12 +68,16 @@ import java.util.Set;
             }
         }
 
-        mVariants = variants;
+        if (variants.length() > 0) {
+            mVariants = variants;
+            newContent = true;
+        } 
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
                     newSurveys.size() + " surveys and " +
-                    newNotifications.size() + " notifications have been added.");
+                    newNotifications.size() + " notifications and " +
+                    variants.length() + " experiments have been added.");
         }
 
         if (newContent && hasUpdatesAvailable() && null != mListener) {
