@@ -69,10 +69,9 @@ import java.util.Set;
         }
 
         if (variants.length() > 0) {
+            mVariants = variants;
             newContent = true;
-        }
-
-        mVariants = variants;
+        } 
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
