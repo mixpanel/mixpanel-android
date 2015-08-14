@@ -75,7 +75,7 @@ import java.util.Set;
         for (int i = 0; i < newVariantsLength; i++) {
             try {
                 JSONObject variant = variants.getJSONObject(i);
-                if (mVariants == null || !mLoadedVariants.contains(variant.getInt("id"))) {
+                if (!mLoadedVariants.contains(variant.getInt("id"))) {
                     mVariants = variants;
                     newContent = true;
                     break;
