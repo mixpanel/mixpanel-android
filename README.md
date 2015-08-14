@@ -34,6 +34,13 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.6.3
+
+ * Fix a bug where the user defined listener (by calling
+   mMixpanel.getPeople().addOnMixpanelUpdatesReceivedListener())
+   is not called on new variants receiving
+
+
 #### v4.6.1
 
  * The Mixpanel library no longer uses the default SSLSocketFactory
