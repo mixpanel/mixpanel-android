@@ -70,7 +70,10 @@ import java.util.Set;
             }
         }
 
+        // the following logic checks if the variants have been applied by looking up their id's in the HashSet
+        // this is needed to make sure the user defined `mListener` will get called on new variants receiving
         int newVariantsLength = variants.length();
+        boolean hasNewVariants = false;
 
         for (int i = 0; i < newVariantsLength; i++) {
             try {
@@ -78,6 +81,7 @@ import java.util.Set;
                 if (!mLoadedVariants.contains(variant.getInt("id"))) {
                     mVariants = variants;
                     newContent = true;
+                    hasNewVariants = true;
                     break;
                 }
             } catch(JSONException e) {
@@ -85,7 +89,7 @@ import java.util.Set;
             }
         }
 
-        if (mVariants == variants) {
+        if (hasNewVariants) {
             mLoadedVariants.clear();
 
             for (int i = 0; i < newVariantsLength; i++) {
@@ -100,7 +104,7 @@ import java.util.Set;
 
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
-                    newSurveys.size() + " surveys and " +
+                    newSurveys.size() + " surveys, " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
         }
