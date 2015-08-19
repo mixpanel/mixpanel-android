@@ -11,6 +11,7 @@ import android.view.accessibility.AccessibilityEvent;
 import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
 
 import org.json.JSONArray;

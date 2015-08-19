@@ -13,8 +13,7 @@ import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.TestUtils;
-
-import junit.framework.Test;
+import com.mixpanel.android.util.ImageStore;
 
 import org.json.JSONArray;
 import org.json.JSONException;

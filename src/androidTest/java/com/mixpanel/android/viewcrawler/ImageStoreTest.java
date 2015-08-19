@@ -2,19 +2,15 @@ package com.mixpanel.android.viewcrawler;
 
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
 import android.test.AndroidTestCase;
 import android.util.Base64;
 
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
 
 import org.apache.http.NameValuePair;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 

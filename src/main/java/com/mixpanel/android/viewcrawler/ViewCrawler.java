@@ -25,6 +25,7 @@ import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
 
 import org.json.JSONArray;
@@ -34,8 +35,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -264,7 +263,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
 
-            mImageStore = new ImageStore(context);
+            mImageStore = new ImageStore(context, "viewCrawler");
             mProtocol = new EditProtocol(resourceIds, mImageStore, layoutErrorListener);
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorTweaks = new ArrayList<JSONObject>();

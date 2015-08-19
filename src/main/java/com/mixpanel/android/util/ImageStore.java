@@ -1,17 +1,12 @@
-package com.mixpanel.android.viewcrawler;
+package com.mixpanel.android.util;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.util.Base64;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
-import com.mixpanel.android.util.HttpService;
-import com.mixpanel.android.util.RemoteService;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,7 +22,7 @@ import javax.net.ssl.SSLSocketFactory;
  * ABSOLUTELY NOT thread, or even process safe.
  * Writes and reads files and directories at known paths, and uses a shared instance of MessageDigest.
  */
-/* package */ class ImageStore {
+public class ImageStore {
     public static class CantGetImageException extends Exception {
         public CantGetImageException(String message) {
             super(message);
@@ -38,8 +33,8 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    public ImageStore(Context context) {
-        this(context, DEFAULT_DIRECTORY_NAME, new HttpService());
+    public ImageStore(Context context, String moduleName) {
+        this(context, DEFAULT_DIRECTORY_PREFIX + moduleName, new HttpService());
     }
 
     public ImageStore(Context context, String directoryName, RemoteService poster) {
@@ -142,7 +137,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final MessageDigest mDigest;
     private final MPConfig mConfig;
 
-    private static final String DEFAULT_DIRECTORY_NAME = "MixpanelAPI.Images";
+    private static final String DEFAULT_DIRECTORY_PREFIX = "MixpanelAPI.Images.";
     private static final int MAX_BITMAP_SIZE = 10000000; // 10 MB
     private static final String FILE_PREFIX = "MP_IMG_";
 
