@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
@@ -49,6 +50,7 @@ import javax.net.ssl.SSLSocketFactory;
         mContext = context;
         mConfig = config;
         mChecks = new LinkedList<DecideMessages>();
+        mImageStore = new ImageStore(context, "DecideChecker");
     }
 
     public void addDecideCheck(final DecideMessages check) {
@@ -235,9 +237,8 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    private static Bitmap getNotificationImage(InAppNotification notification, Context context, RemoteService poster)
+    private Bitmap getNotificationImage(InAppNotification notification, Context context, RemoteService poster)
         throws RemoteService.ServiceUnavailableException {
-        Bitmap ret = null;
         String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 
         final WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -248,14 +249,15 @@ import javax.net.ssl.SSLSocketFactory;
             urls = new String[]{notification.getImage4xUrl(), notification.getImage2xUrl(), notification.getImageUrl()};
         }
 
-        final byte[] response = getUrls(poster, context, urls);
-        if (null != response) {
-            ret = BitmapFactory.decodeByteArray(response, 0, response.length);
-        } else {
-            Log.i(LOGTAG, "Failed to download images from " + Arrays.toString(urls));
+        for (String url : urls) {
+            try {
+                return mImageStore.getImage(url);
+            } catch (ImageStore.CantGetImageException e) {
+                Log.v(LOGTAG, "Can't load image " + url + " for a notification", e);
+            }
         }
 
-        return ret;
+        return null;
     }
 
     @SuppressWarnings("deprecation")
@@ -305,6 +307,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final MPConfig mConfig;
     private final Context mContext;
     private final List<DecideMessages> mChecks;
+    private final ImageStore mImageStore;
 
     private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
 
