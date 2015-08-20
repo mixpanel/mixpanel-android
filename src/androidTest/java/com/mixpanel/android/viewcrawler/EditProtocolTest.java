@@ -37,7 +37,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
         mLayoutErrorListener = new TestView.MockOnLayoutErrorListener();
         mResourceIds = new TestUtils.TestResourceIds(idMap);
-        mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext()) {
+        mProtocol = new EditProtocol(mResourceIds, new ImageStore(getContext(), "EditProtocolTest") {
             @Override
             public Bitmap getImage(String url) {
                 fail("Unexpected call to getImage");
@@ -332,7 +332,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testEditWithImage() throws JSONException, EditProtocol.BadInstructionsException,  EditProtocol.CantGetEditAssetsException {
         final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
-        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext(), "testEditWithImage") {
             @Override
             public Bitmap getImage(String url) {
                 assertEquals("TEST URL", url);
@@ -363,7 +363,7 @@ public class EditProtocolTest extends AndroidTestCase {
 
     public void testWithMissingImage() throws JSONException, EditProtocol.BadInstructionsException {
         final ResourceIds resourceIds = new TestUtils.TestResourceIds(new HashMap<String, Integer>());
-        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext()) {
+        final EditProtocol protocol = new EditProtocol(resourceIds, new ImageStore(getContext(), "testWithMissingImage") {
             @Override
             public Bitmap getImage(String url) throws CantGetImageException {
                 assertEquals("TEST URL", url);
