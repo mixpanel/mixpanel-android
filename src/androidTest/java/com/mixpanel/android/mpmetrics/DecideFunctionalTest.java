@@ -4,8 +4,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
@@ -14,6 +18,7 @@ import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 
 import java.io.ByteArrayOutputStream;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -81,6 +86,30 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
             @Override
             protected MPConfig getConfig(Context context) { return mMockConfig; }
+
+            // this is to pass the mock poster to image store
+            @Override
+            protected Worker createWorker() {
+                return new Worker() {
+                    @Override
+                    protected Handler restartWorkerThread() {
+                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+                        thread.start();
+                        final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
+                            @Override
+                            protected DecideChecker createDecideChecker() {
+                                return new DecideChecker(mContext, mConfig) {
+                                    @Override
+                                    protected ImageStore createImageStore(final Context context) {
+                                        return new ImageStore(context, "DecideChecker", mMockPoster);
+                                    }
+                                };
+                            }
+                        };
+                        return ret;
+                    }
+                };
+            }
         };
     }
 

@@ -47,7 +47,11 @@ import javax.net.ssl.SSLSocketFactory;
     /* package */ AnalyticsMessages(final Context context) {
         mContext = context;
         mConfig = getConfig(context);
-        mWorker = new Worker();
+        mWorker = createWorker();
+    }
+
+    protected Worker createWorker() {
+        return new Worker();
     }
 
     /**
@@ -180,7 +184,7 @@ import javax.net.ssl.SSLSocketFactory;
     // Worker will manage the (at most single) IO thread associated with
     // this AnalyticsMessages instance.
     // XXX: Worker class is unnecessary, should be just a subclass of HandlerThread
-    private class Worker {
+    class Worker {
         public Worker() {
             mHandler = restartWorkerThread();
         }
@@ -204,22 +208,26 @@ import javax.net.ssl.SSLSocketFactory;
 
         // NOTE that the returned worker will run FOREVER, unless you send a hard kill
         // (which you really shouldn't)
-        private Handler restartWorkerThread() {
+        protected Handler restartWorkerThread() {
             final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
             thread.start();
             final Handler ret = new AnalyticsMessageHandler(thread.getLooper());
             return ret;
         }
 
-        private class AnalyticsMessageHandler extends Handler {
+        class AnalyticsMessageHandler extends Handler {
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
-                mDecideChecker = new DecideChecker(mContext, mConfig);
+                mDecideChecker = createDecideChecker();
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval(mContext);
                 mSystemInformation = new SystemInformation(mContext);
                 mRetryAfter = -1;
+            }
+
+            protected DecideChecker createDecideChecker() {
+                return new DecideChecker(mContext, mConfig);
             }
 
             @Override
@@ -585,8 +593,8 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Used across thread boundaries
     private final Worker mWorker;
-    private final Context mContext;
-    private final MPConfig mConfig;
+    protected final Context mContext;
+    protected final MPConfig mConfig;
 
     // Messages for our thread
     private static final int ENQUEUE_PEOPLE = 0; // submit events and people data

@@ -50,7 +50,11 @@ import javax.net.ssl.SSLSocketFactory;
         mContext = context;
         mConfig = config;
         mChecks = new LinkedList<DecideMessages>();
-        mImageStore = new ImageStore(context, "DecideChecker");
+        mImageStore = createImageStore(context);
+    }
+
+    protected ImageStore createImageStore(final Context context) {
+        return new ImageStore(context, "DecideChecker");
     }
 
     public void addDecideCheck(final DecideMessages check) {
