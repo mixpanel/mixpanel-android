@@ -101,7 +101,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                                 return new DecideChecker(mContext, mConfig) {
                                     @Override
                                     protected ImageStore createImageStore(final Context context) {
-                                        return new ImageStore(context, "DecideChecker", mMockPoster);
+                                        return new ImageStore(context, "MixpanelAPI.Images.DecideChecker", mMockPoster);
                                     }
                                 };
                             }

@@ -35,11 +35,6 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
-    @Override
-    public void tearDown() {
-        mDecideChecker.clearImageStore();
-    }
-
     public void testReadEmptyLists() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
