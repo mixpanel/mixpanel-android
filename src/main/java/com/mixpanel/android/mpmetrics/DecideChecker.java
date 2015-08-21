@@ -75,10 +75,6 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    public void clearImageStore() {
-        mImageStore.clearStorage();
-    }
-
     /* package */ static class UnintelligibleMessageException extends Exception {
         private static final long serialVersionUID = -6501269367559104957L;
 
