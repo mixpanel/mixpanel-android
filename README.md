@@ -34,6 +34,11 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.6.4
+
+ * Add a feature where the images of in-app notifications will be
+ * cached locally after the first successful download
+
 #### v4.6.3
 
  * Fix a bug where the user defined listener (by calling
