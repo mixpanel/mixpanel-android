@@ -1,5 +1,6 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,6 +20,7 @@ import java.util.Set;
 
 
 public class TestView extends FrameLayout {
+    @SuppressLint("UseSparseArrays")
     public TestView(Context context) {
         super(context);
 
