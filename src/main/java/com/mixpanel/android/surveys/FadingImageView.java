@@ -15,6 +15,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import com.mixpanel.android.R;
 
@@ -42,6 +43,7 @@ public class FadingImageView extends ImageView {
         mHeight = getHeight();
         mWidth = getWidth();
         int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
+        LinearLayout container = (LinearLayout) getParent();
 
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
             // For Portrait takeover notifications, we have to fade out into the notification text
@@ -61,7 +63,7 @@ public class FadingImageView extends ImageView {
             // give it a few extra dp's of room.
             Resources r = getResources();
             float extraPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15, r.getDisplayMetrics());
-            mGradientMatrix.setScale(1, parentHeight - bottomWrapperHeight + extraPx);
+            mGradientMatrix.setScale(1, parentHeight + container.getPaddingBottom() - bottomWrapperHeight + extraPx);
         } else {
             mGradientMatrix.setScale(1, parentHeight);
         }
@@ -79,13 +81,9 @@ public class FadingImageView extends ImageView {
 
         super.draw(canvas);
 
+        // Only apply the gradient when we're in portrait view
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
             canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
-        } else {
-            canvas.drawRect(getPaddingLeft(), getPaddingTop(),
-                            mWidth - getPaddingRight(),
-                            mHeight - getPaddingBottom(),
-                            mDarkenGradientPaint);
         }
         canvas.restoreToCount(restoreTo);
     }

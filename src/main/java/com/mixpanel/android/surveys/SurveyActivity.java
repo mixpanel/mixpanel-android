@@ -131,12 +131,21 @@ public class SurveyActivity extends Activity {
         if (inAppImage.getWidth() < SHADOW_SIZE_THRESHOLD_PX || inAppImage.getHeight() < SHADOW_SIZE_THRESHOLD_PX) {
             inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
         } else {
-            final Bitmap scaledImage = Bitmap.createScaledBitmap(inAppImage, 1, 1, false);
-            final int averageColor = scaledImage.getPixel(0, 0);
-            final int averageAlpha = Color.alpha(averageColor);
-
-            if (averageAlpha < 0xFF) {
-                inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
+            int h = inAppImage.getHeight() / 100;
+            int w = inAppImage.getWidth() / 100;
+            final Bitmap scaledImage = Bitmap.createScaledBitmap(inAppImage, w, h, false);
+            int averageColor;
+            int averageAlpha;
+            outerloop:
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    averageColor = scaledImage.getPixel(x, y);
+                    averageAlpha = Color.alpha(averageColor);
+                    if (averageAlpha < 0xFF) {
+                        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
+                        break outerloop;
+                    }
+                }
             }
         }
         inAppImageView.setImageBitmap(inAppImage);
