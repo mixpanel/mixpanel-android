@@ -123,6 +123,7 @@ import android.view.WindowManager;
     }
 
 
+    @SuppressWarnings("deprecation")
     public Boolean isWifiConnected() {
         Boolean ret = null;
 

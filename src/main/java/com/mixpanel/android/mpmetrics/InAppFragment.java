@@ -48,6 +48,7 @@ public class InAppFragment extends Fragment {
         mDisplayState = displayState;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);

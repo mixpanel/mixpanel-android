@@ -29,6 +29,7 @@ public class MiniCircleImageView extends ImageView { // TODO move to surveys pac
         init();
     }
     
+    @SuppressWarnings("deprecation")
     private void init() {
         mWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mWhitePaint.setColor(getResources().getColor(android.R.color.white));

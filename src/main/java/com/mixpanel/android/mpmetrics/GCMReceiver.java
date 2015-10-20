@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Notification;
+import android.support.v4.app.NotificationCompat;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -256,9 +257,16 @@ public class GCMReceiver extends BroadcastReceiver {
     @SuppressWarnings("deprecation")
     @TargetApi(9)
     private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, NotificationData notificationData) {
-        final Notification n = new Notification(notificationData.icon, notificationData.message, System.currentTimeMillis());
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(context).
+                setSmallIcon(notificationData.icon).
+                setTicker(notificationData.message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(notificationData.title).
+                setContentText(notificationData.message).
+                setContentIntent(intent);
+
+        final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
-        n.setLatestEventInfo(context, notificationData.title, notificationData.message, intent);
         return n;
     }
 
