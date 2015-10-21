@@ -7,8 +7,8 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
+import cz.msebera.android.httpclient.NameValuePair;
+import cz.msebera.android.httpclient.client.entity.UrlEncodedFormEntity;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;

@@ -2,7 +2,7 @@ package com.mixpanel.android.util;
 
 import android.content.Context;
 
-import org.apache.http.NameValuePair;
+import cz.msebera.android.httpclient.NameValuePair;
 
 import java.io.IOException;
 import java.util.List;

@@ -14,7 +14,7 @@ import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
-import org.apache.http.NameValuePair;
+import cz.msebera.android.httpclient.NameValuePair;
 import org.json.JSONArray;
 
 import java.io.ByteArrayOutputStream;

@@ -9,7 +9,7 @@ import android.util.Base64;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
 
-import org.apache.http.NameValuePair;
+import cz.msebera.android.httpclient.NameValuePair;
 
 import java.io.IOException;
 import java.util.List;
