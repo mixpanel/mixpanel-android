@@ -39,8 +39,12 @@ android {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    compile 'com.google.android.gms:play-services:[3.1,)'
-    compile group: 'cz.msebera.android' , name: 'httpclient', version: '4.4.1.1'
+    compile ('com.google.android.gms:play-services:[3.1,)') {
+        ext.optional = true
+    }
+    compile (group: 'cz.msebera.android' , name: 'httpclient', version: '4.4.1.1') {
+        transitive = true
+    }
 }
 
 android.libraryVariants.all { variant ->
@@ -134,7 +138,11 @@ uploadArchives {
         }
 
         pom.whenConfigured { pom ->
-            pom.dependencies*.optional = true
+            pom.dependencies.findAll {
+                def dependencyMap = project.configurations.compile.dependencies.collectEntries { [it.name, it] }
+                def dep = dependencyMap[it.artifactId]
+                return dep?.hasProperty('optional') && dep.optional
+            }*.optional = true
         }
 
         if (isReleaseVersion() && project.hasProperty("sonatypeUsername")) {
