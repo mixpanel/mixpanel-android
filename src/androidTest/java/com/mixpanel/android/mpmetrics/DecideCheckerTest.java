@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
@@ -8,13 +7,13 @@ import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
-import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.net.ssl.SSLSocketFactory;
 
@@ -337,7 +336,7 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     private static class MockPoster extends HttpService {
         @Override
-        public byte[] performRequest(String url, List<NameValuePair> pairs, SSLSocketFactory socketFactory) throws IOException {
+        public byte[] performRequest(String url, Map<String, Object> pairs, SSLSocketFactory socketFactory) throws IOException {
             assertNull(pairs);
             requestedUrls.add(url);
 

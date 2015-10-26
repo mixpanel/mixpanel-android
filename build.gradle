@@ -12,14 +12,14 @@ buildscript {
 }
 
 android {
-    compileSdkVersion 21
+    compileSdkVersion 23
     buildToolsVersion "22.0.1"
 
     defaultConfig {
         // If you change minSdkVersion or targetSdkVersion below, you must also change
         // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
         minSdkVersion 9
-        targetSdkVersion 21
+        targetSdkVersion 23
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
 

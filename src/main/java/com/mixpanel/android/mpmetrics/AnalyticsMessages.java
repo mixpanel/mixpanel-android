@@ -17,18 +17,14 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import javax.net.ssl.SSLSocketFactory;
@@ -409,10 +405,10 @@ import javax.net.ssl.SSLSocketFactory;
                     final String rawMessage = eventsData[1];
 
                     final String encodedData = Base64Coder.encodeString(rawMessage);
-                    final List<NameValuePair> params = new ArrayList<NameValuePair>(1);
-                    params.add(new BasicNameValuePair("data", encodedData));
+                    final Map<String, Object> params = new HashMap<String, Object>();
+                    params.put("data", encodedData);
                     if (MPConfig.DEBUG) {
-                        params.add(new BasicNameValuePair("verbose", "1"));
+                        params.put("verbose", "1");
                     }
 
                     boolean deleteEvents = true;

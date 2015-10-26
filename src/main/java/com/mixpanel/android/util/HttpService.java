@@ -7,18 +7,18 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.json.JSONObject;
 
-import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.List;
+import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
@@ -48,7 +48,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public byte[] performRequest(String endpointUrl, List<NameValuePair> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+    public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "Attempting request to " + endpointUrl);
         }
@@ -63,7 +63,7 @@ public class HttpService implements RemoteService {
         while (retries < 3 && !succeeded) {
             InputStream in = null;
             OutputStream out = null;
-            BufferedOutputStream bout = null;
+            BufferedWriter bout = null;
             HttpURLConnection connection = null;
 
             try {
@@ -77,12 +77,13 @@ public class HttpService implements RemoteService {
                 connection.setReadTimeout(10000);
                 if (null != params) {
                     connection.setDoOutput(true);
-                    final UrlEncodedFormEntity form = new UrlEncodedFormEntity(params, "UTF-8");
+                    JSONObject query = new JSONObject(params);
                     connection.setRequestMethod("POST");
-                    connection.setFixedLengthStreamingMode((int)form.getContentLength());
+                    connection.setFixedLengthStreamingMode(query.toString().getBytes("UTF-8").length);
                     out = connection.getOutputStream();
-                    bout = new BufferedOutputStream(out);
-                    form.writeTo(bout);
+                    bout = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"));
+                    bout.write(query.toString());
+                    bout.flush();
                     bout.close();
                     bout = null;
                     out.close();

@@ -9,10 +9,8 @@ import android.util.Base64;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
 
-import org.apache.http.NameValuePair;
-
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 
 import javax.net.ssl.SSLSocketFactory;
 
@@ -79,7 +77,7 @@ public class ImageStoreTest extends AndroidTestCase {
         }
 
         @Override
-        public byte[] performRequest(final String endpointUrl, final List<NameValuePair> params, SSLSocketFactory socketFactory)
+        public byte[] performRequest(final String endpointUrl, final Map<String, Object> params, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
             queries++;
             return response;

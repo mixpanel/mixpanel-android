@@ -9,7 +9,6 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 
-import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -18,6 +17,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -39,7 +39,7 @@ public class HttpTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory)
+            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
                 try {
                     if (null == nameValuePairs) {
@@ -61,9 +61,9 @@ public class HttpTest extends AndroidTestCase {
                     }
                     // ELSE
 
-
-                    assertEquals(nameValuePairs.get(0).getName(), "data");
-                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
+                    assertEquals(jsonPairs.keys().next(), "data");
+                    final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
                     mPerformRequestCalls.put(event.getString("event"));

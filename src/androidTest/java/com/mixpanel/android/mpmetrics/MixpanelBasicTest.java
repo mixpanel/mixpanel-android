@@ -16,7 +16,6 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 
-import org.apache.http.NameValuePair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -410,7 +409,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory) {
                 final boolean isIdentified = isIdentifiedRef.get();
                 if (null == nameValuePairs) {
                     if (isIdentified) {
@@ -421,13 +420,15 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     return TestUtils.bytes("{}");
                 }
 
-                assertEquals(nameValuePairs.get(0).getName(), "data");
-                final String decoded = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
-
                 try {
+                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
+                    assertEquals(jsonPairs.keys().next(), "data");
+                    final String decoded = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(decoded);
                 } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
 
@@ -916,10 +917,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, List<NameValuePair> nameValuePairs, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory) {
                 try {
-                    assertEquals(nameValuePairs.get(0).getName(), "data");
-                    final String jsonData = Base64Coder.decodeString(nameValuePairs.get(0).getValue());
+                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
+                    assertEquals(jsonPairs.keys().next(), "data");
+                    final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
                     JSONObject properties = event.getJSONObject("properties");
