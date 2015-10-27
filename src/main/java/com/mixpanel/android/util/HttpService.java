@@ -3,6 +3,7 @@ package com.mixpanel.android.util;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -18,6 +19,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -76,13 +78,18 @@ public class HttpService implements RemoteService {
                 connection.setConnectTimeout(2000);
                 connection.setReadTimeout(10000);
                 if (null != params) {
+                    Uri.Builder builder = new Uri.Builder();
+                    for (Map.Entry<String, Object> param : params.entrySet()) {
+                        builder.appendQueryParameter(param.getKey(), param.getValue().toString());
+                    }
+                    String query = builder.build().getEncodedQuery();
+
+                    connection.setFixedLengthStreamingMode(query.getBytes().length);
                     connection.setDoOutput(true);
-                    JSONObject query = new JSONObject(params);
                     connection.setRequestMethod("POST");
-                    connection.setFixedLengthStreamingMode(query.toString().getBytes("UTF-8").length);
                     out = connection.getOutputStream();
                     bout = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"));
-                    bout.write(query.toString());
+                    bout.write(query);
                     bout.flush();
                     bout.close();
                     bout = null;
