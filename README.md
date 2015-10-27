@@ -34,6 +34,11 @@ We'd also love for you to come and work with us! Check out http://boards.greenho
 Changelog
 ---------
 
+#### v4.7.0
+
+ * Add the support for API 23
+ * Enhance the inapp notification rendering
+
 #### v4.6.4
 
  * Add a feature where the images of in-app notifications will be
