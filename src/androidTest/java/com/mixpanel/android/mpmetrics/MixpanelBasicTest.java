@@ -917,9 +917,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 try {
-                    JSONObject jsonPairs = new JSONObject(params);
-                    assertEquals(jsonPairs.keys().next(), "data");
-                    final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
+                    assertTrue(params.containsKey("data"));
+                    final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
                     JSONObject properties = event.getJSONObject("properties");

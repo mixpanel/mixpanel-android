@@ -336,8 +336,8 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     private static class MockPoster extends HttpService {
         @Override
-        public byte[] performRequest(String url, Map<String, Object> pairs, SSLSocketFactory socketFactory) throws IOException {
-            assertNull(pairs);
+        public byte[] performRequest(String url, Map<String, Object> params, SSLSocketFactory socketFactory) throws IOException {
+            assertNull(params);
             requestedUrls.add(url);
 
             if (null != exception) {

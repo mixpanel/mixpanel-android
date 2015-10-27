@@ -8,8 +8,7 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-import org.json.JSONObject;
-
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -64,7 +63,7 @@ public class HttpService implements RemoteService {
         while (retries < 3 && !succeeded) {
             InputStream in = null;
             OutputStream out = null;
-            BufferedWriter bout = null;
+            BufferedOutputStream bout = null;
             HttpURLConnection connection = null;
 
             try {
@@ -87,8 +86,8 @@ public class HttpService implements RemoteService {
                     connection.setDoOutput(true);
                     connection.setRequestMethod("POST");
                     out = connection.getOutputStream();
-                    bout = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"));
-                    bout.write(query);
+                    bout = new BufferedOutputStream(out);
+                    bout.write(query.getBytes("UTF-8"));
                     bout.flush();
                     bout.close();
                     bout = null;

@@ -61,9 +61,8 @@ public class HttpTest extends AndroidTestCase {
                     }
                     // ELSE
 
-                    JSONObject jsonPairs = new JSONObject(params);
-                    assertEquals(jsonPairs.keys().next(), "data");
-                    final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
+                    assertTrue(params.containsKey("data"));
+                    final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);
                     JSONObject event = msg.getJSONObject(0);
                     mPerformRequestCalls.put(event.getString("event"));
