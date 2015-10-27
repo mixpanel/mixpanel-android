@@ -39,10 +39,10 @@ public class HttpTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory)
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
                 try {
-                    if (null == nameValuePairs) {
+                    if (null == params) {
                         mDecideCalls.put(endpointUrl);
 
                         if (mDecideResults.isEmpty()) {
@@ -61,7 +61,7 @@ public class HttpTest extends AndroidTestCase {
                     }
                     // ELSE
 
-                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
+                    JSONObject jsonPairs = new JSONObject(params);
                     assertEquals(jsonPairs.keys().next(), "data");
                     final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);

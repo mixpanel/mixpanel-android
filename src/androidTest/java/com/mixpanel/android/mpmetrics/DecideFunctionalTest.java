@@ -64,8 +64,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
         mExpectations = new Expectations();
         mMockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory) {
-                return mExpectations.setExpectationsRequest(endpointUrl, nameValuePairs);
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
+                return mExpectations.setExpectationsRequest(endpointUrl, params);
             }
         };
 
@@ -271,7 +271,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
             mExpectUrl = url;
             mResponse = response;
             badUrl = null;
-            badNameValuePairs = null;
+            badParams = null;
             mResultsFound = false;
             resultsBad = false;
         }
@@ -285,7 +285,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                         if (mResultsFound) {
                             if (resultsBad) {
                                 fail("Unexpected URL " + badUrl + " in MixpanelAPI (expected " + mExpectUrl + ")\n" +
-                                        "Got params " + badNameValuePairs);
+                                        "Got params " + badParams);
                             }
 
                             break;
@@ -303,14 +303,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
         }
 
-        public synchronized byte[] setExpectationsRequest(final String endpointUrl, Map<String, Object> nameValuePairs) {
+        public synchronized byte[] setExpectationsRequest(final String endpointUrl, Map<String, Object> params) {
             if (endpointUrl.equals(mExpectUrl)) {
                 return TestUtils.bytes(mResponse);
             } else if (Pattern.matches("^http://mixpanel.com/Balok.{0,3}\\.jpg$", endpointUrl)) {
                 return imageBytes;
             } else {
                 badUrl = endpointUrl;
-                badNameValuePairs = nameValuePairs;
+                badParams = params;
                 resultsBad = true;
                 return "{}".getBytes();
             }
@@ -328,7 +328,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         private String mExpectUrl = null;
         private String mResponse = null;
         private String badUrl = null;
-        private Map<String, Object> badNameValuePairs = null;
+        private Map<String, Object> badParams = null;
         private boolean mResultsFound = false;
         private boolean resultsBad = false;
         private byte[] imageBytes;

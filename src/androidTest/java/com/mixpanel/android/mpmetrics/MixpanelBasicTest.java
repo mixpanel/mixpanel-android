@@ -409,9 +409,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 final boolean isIdentified = isIdentifiedRef.get();
-                if (null == nameValuePairs) {
+                if (null == params) {
                     if (isIdentified) {
                         assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=PEOPLE+ID", endpointUrl);
                     } else {
@@ -420,15 +420,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     return TestUtils.bytes("{}");
                 }
 
+                assertTrue(params.containsKey("data"));
+                final String decoded = Base64Coder.decodeString(params.get("data").toString());
+
                 try {
-                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
-                    assertEquals(jsonPairs.keys().next(), "data");
-                    final String decoded = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     messages.put("SENT FLUSH " + endpointUrl);
                     messages.put(decoded);
                 } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
 
@@ -917,9 +915,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> nameValuePairs, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 try {
-                    JSONObject jsonPairs = new JSONObject(nameValuePairs);
+                    JSONObject jsonPairs = new JSONObject(params);
                     assertEquals(jsonPairs.keys().next(), "data");
                     final String jsonData = Base64Coder.decodeString(jsonPairs.get("data").toString());
                     JSONArray msg = new JSONArray(jsonData);
