@@ -122,14 +122,13 @@ import android.view.WindowManager;
         return ret;
     }
 
-
     public Boolean isWifiConnected() {
         Boolean ret = null;
 
         if (PackageManager.PERMISSION_GRANTED == mContext.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE)) {
             ConnectivityManager connManager = (ConnectivityManager) this.mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo wifiInfo = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-            ret = wifiInfo.isConnected();
+            NetworkInfo networkInfo = connManager.getActiveNetworkInfo();
+            ret = (networkInfo != null && networkInfo.getType() == ConnectivityManager.TYPE_WIFI && networkInfo.isConnected());
         }
 
         return ret;

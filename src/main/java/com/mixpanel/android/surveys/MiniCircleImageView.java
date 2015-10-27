@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.widget.ImageView;
@@ -28,10 +29,15 @@ public class MiniCircleImageView extends ImageView { // TODO move to surveys pac
         super(context, attrs, defStyle);
         init();
     }
-    
+
+    @SuppressWarnings("deprecation")
     private void init() {
         mWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mWhitePaint.setColor(getResources().getColor(android.R.color.white));
+        if (Build.VERSION.SDK_INT >= 23) {
+            mWhitePaint.setColor(getResources().getColor(android.R.color.white, null));
+        } else {
+            mWhitePaint.setColor(getResources().getColor(android.R.color.white));
+        }
         mWhitePaint.setStyle(Paint.Style.STROKE);
 
         Resources r = getResources();

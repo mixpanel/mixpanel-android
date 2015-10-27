@@ -48,6 +48,9 @@ public class InAppFragment extends Fragment {
         mDisplayState = displayState;
     }
 
+    // It's safe to use onAttach(Activity) in API 23 as its implementation has not been changed.
+    // Bypass the Lint check for now.
+    @SuppressWarnings("deprecation")
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
