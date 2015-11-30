@@ -235,6 +235,11 @@ public class MixpanelAPI {
         registerMixpanelActivityLifecycleCallbacks();
 
         if (sendAppOpen()) {
+            try{
+                getSuperProperties().put("Platform", "Android");
+            } catch (JSONException e){
+                Log.e(LOGTAG, "Failed add in super properties", e);
+            }
             track("$app_open", null);
         }
 
