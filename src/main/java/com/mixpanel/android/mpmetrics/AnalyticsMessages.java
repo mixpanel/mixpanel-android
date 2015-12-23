@@ -507,8 +507,16 @@ import javax.net.ssl.SSLSocketFactory;
                 ret.put("$screen_width", displayMetrics.widthPixels);
 
                 final String applicationVersionName = mSystemInformation.getAppVersionName();
-                if (null != applicationVersionName)
+                if (null != applicationVersionName) {
                     ret.put("$app_version", applicationVersionName);
+                    ret.put("$app_version_string", applicationVersionName);
+                }
+
+                 final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
+                 if (null != applicationVersionCode) {
+                 	ret.put("$app_release", applicationVersionCode);
+                 	ret.put("$app_build_number", applicationVersionCode);
+                 }
 
                 final Boolean hasNFC = mSystemInformation.hasNFC();
                 if (null != hasNFC)
