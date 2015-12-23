@@ -514,9 +514,9 @@ import javax.net.ssl.SSLSocketFactory;
 
                  final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
                  if (null != applicationVersionCode) {
-                 	ret.put("$app_release", applicationVersionCode);
-                 	ret.put("$app_build_number", applicationVersionCode);
-                 }
+                    ret.put("$app_release", applicationVersionCode);
+                    ret.put("$app_build_number", applicationVersionCode);
+                }
 
                 final Boolean hasNFC = mSystemInformation.hasNFC();
                 if (null != hasNFC)
