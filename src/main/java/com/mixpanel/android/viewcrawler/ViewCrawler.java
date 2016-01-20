@@ -948,25 +948,28 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final JSONObject trackProps = new JSONObject();
                         trackProps.put("$experiment_id", experimentId);
                         trackProps.put("$variant_id", variantId);
-                        mMixpanel.track("$experiment_started", trackProps);
-
+                        
                         variantObject.put(Integer.toString(experimentId), variantId);
+
+                        mMixpanel.getPeople().merge("$experiments", variantObject);
+                        mMixpanel.updateSuperProperties(new SuperPropertyUpdate() {
+                            public JSONObject update(JSONObject in) {
+                                try {
+                                    in.put("$experiments", variantObject);
+                                } catch (JSONException e) {
+                                    Log.wtf(LOGTAG, "Can't write $experiments super property", e);
+                                }
+                                return in;
+                            }
+                        });
+
+                        mMixpanel.track("$experiment_started", trackProps);
                     }
                 } catch (JSONException e) {
                     Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
                 }
 
-                mMixpanel.getPeople().merge("$experiments", variantObject);
-                mMixpanel.updateSuperProperties(new SuperPropertyUpdate() {
-                    public JSONObject update(JSONObject in) {
-                        try {
-                            in.put("$experiments", variantObject);
-                        } catch (JSONException e) {
-                            Log.wtf(LOGTAG, "Can't write $experiments super property", e);
-                        }
-                        return in;
-                    }
-                });
+                
             }
         }
 
