@@ -43,7 +43,7 @@ public class FadingImageView extends ImageView {
         mHeight = getHeight();
         mWidth = getWidth();
         int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
-        LinearLayout container = (LinearLayout) getParent();
+        ViewGroup container = (ViewGroup) getParent();
 
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
             // For Portrait takeover notifications, we have to fade out into the notification text
