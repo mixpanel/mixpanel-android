@@ -1891,7 +1891,15 @@ public class MixpanelAPI {
                                 final FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
-                                transaction.commit();
+
+                                try {
+                                    transaction.commit();
+                                } catch (IllegalStateException e) {
+                                    // if the app is in the background or the current activity gets killed, rendering the
+                                    // notifiction will lead to a crash
+                                    Log.v(LOGTAG, "Unable to show notification.");
+                                    mDecideMessages.handleNotificationDisplayFailure(toShow);
+                                }
                             }
                             break;
                             case TAKEOVER: {

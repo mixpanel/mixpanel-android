@@ -175,6 +175,12 @@ import java.util.Set;
         return notif;
     }
 
+    // if a notification was failed to show, add it back to the unseen list so that we
+    // won't lose it
+    public synchronized void handleNotificationDisplayFailure(InAppNotification notif) {
+        mUnseenNotifications.add(notif);
+    }
+
     public synchronized boolean hasUpdatesAvailable() {
         return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty()) || mVariants != null;
     }
