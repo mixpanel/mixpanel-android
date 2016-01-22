@@ -39,9 +39,14 @@ import java.util.Set;
     // Called from other synchronized code. Do not call into other synchronized code or you'll
     // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
-        mUnseenSurveys.clear();
-        mUnseenNotifications.clear();
-        mDistinctId = distinctId;
+        if (mDistinctId == distinctId) {
+            return; // the user is the same, so no new response is needed
+        } else {
+            mUnseenSurveys.clear();
+            mUnseenNotifications.clear();
+            mVariants = new JSONArray();
+            mDistinctId = distinctId;
+        }
     }
 
     public synchronized String getDistinctId() {
