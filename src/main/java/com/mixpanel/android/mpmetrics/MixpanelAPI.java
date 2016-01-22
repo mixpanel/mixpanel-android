@@ -1897,8 +1897,10 @@ public class MixpanelAPI {
                                 } catch (IllegalStateException e) {
                                     // if the app is in the background or the current activity gets killed, rendering the
                                     // notifiction will lead to a crash
-                                    Log.v(LOGTAG, "Unable to show notification.");
-                                    mDecideMessages.handleNotificationDisplayFailure(toShow);
+                                    if (MPConfig.DEBUG) {
+                                        Log.v(LOGTAG, "Unable to show notification.");
+                                    }
+                                    mDecideMessages.markNotificationAsUnseen(toShow, MPConfig.DEBUG);
                                 }
                             }
                             break;
