@@ -298,7 +298,7 @@ import javax.net.ssl.SSLSocketFactory;
                     ///////////////////////////
 
                     if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) &&
-                            SystemClock.elapsedRealtime() >= mRetryAfter) {
+                            SystemClock.elapsedRealtime() >= mRetryAfter && mFailedRetries <= 0) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
@@ -454,7 +454,7 @@ import javax.net.ssl.SSLSocketFactory;
                     } else {
                         logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
-                            mBackOffTime = (long)Math.pow(2, mFailedRetries) * mFlushInterval;
+                            mBackOffTime = Math.min((long)Math.pow(2, mFailedRetries) * mFlushInterval, 30*60*1000); // max 30 min
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mBackOffTime);
                             mFailedRetries++;
                         }
