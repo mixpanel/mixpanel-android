@@ -11,5 +11,4 @@
     <string name="com_mixpanel_android_survey_prompt_dialog_message">Mind taking a quick survey?</string>
     <string name="com_mixpanel_android_sure">Sure</string>
     <string name="com_mixpanel_android_no_thanks">No, Thanks</string>
-    <color name="com_mixpanel_android_selected">#66ffffff</color>
 </resources>
