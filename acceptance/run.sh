@@ -1,7 +1,7 @@
 #!/bin/bash
 
 TEST_APP_DIR=test-application
-TESTS=(test_property.py test_layout.py)
+TESTS=(test_property.py)
 HTTP_SERVER_PID=NULL
 SELEDROID_PID=NULL
 ANDROID_SDK_DIR=~/Library/Android/sdk/

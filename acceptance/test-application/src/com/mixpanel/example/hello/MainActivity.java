@@ -16,6 +16,7 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.mpmetrics.OnMixpanelUpdatesReceivedListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -162,6 +163,13 @@ public class MainActivity extends Activity {
         // since they do nothing if a notification or survey is already showing.
         mMixpanel.getPeople().showNotificationIfAvailable(this);
         mMixpanel.getPeople().showSurveyIfAvailable(this);
+        OnMixpanelUpdatesReceivedListener listener = new OnMixpanelUpdatesReceivedListener() {
+            @Override
+            public void onMixpanelUpdatesReceived() {
+                mMixpanel.getPeople().joinExperimentIfAvailable();
+            }
+        };
+        mMixpanel.getPeople().addOnMixpanelUpdatesReceivedListener(listener);
     }
 
     // Associated with the "Send to Mixpanel" button in activity_main.xml
