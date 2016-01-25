@@ -39,7 +39,7 @@ import java.util.Set;
     // Called from other synchronized code. Do not call into other synchronized code or you'll
     // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
-        if (mDistinctId == distinctId) {
+        if (mDistinctId.equals(distinctId)) {
             return; // the user is the same, so no new response is needed
         } else {
             mUnseenSurveys.clear();
