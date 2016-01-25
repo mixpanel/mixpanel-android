@@ -427,6 +427,10 @@ import javax.net.ssl.SSLSocketFactory;
                                 } catch (UnsupportedEncodingException e) {
                                     throw new RuntimeException("UTF not supported on this platform?", e);
                                 }
+                                if (mFailedRetries > 0) {
+                                    mFailedRetries = 0;
+                                    removeMessages(FLUSH_QUEUE);
+                                }
 
                                 logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
                                 logAboutMessageToMixpanel("Response was " + parsedResponse);
@@ -450,7 +454,9 @@ import javax.net.ssl.SSLSocketFactory;
                     } else {
                         logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
-                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                            mBackOffTime = (long)Math.pow(2, mFailedRetries) * mFlushInterval;
+                            sendEmptyMessageDelayed(FLUSH_QUEUE, mBackOffTime);
+                            mFailedRetries++;
                         }
                     }
                 }
@@ -566,6 +572,8 @@ import javax.net.ssl.SSLSocketFactory;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
             private long mRetryAfter;
+            private long mBackOffTime;
+            private int mFailedRetries;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
