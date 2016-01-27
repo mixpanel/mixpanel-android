@@ -262,7 +262,7 @@ public class MPConfig {
     }
 
     public int getFlushInterval(Context context) {
-        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE ) );
+        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
         if (isDebuggable) {
             return mDebugFlushInterval;
         } else {
