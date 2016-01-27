@@ -1900,7 +1900,7 @@ public class MixpanelAPI {
                                     if (MPConfig.DEBUG) {
                                         Log.v(LOGTAG, "Unable to show notification.");
                                     }
-                                    mDecideMessages.markNotificationAsUnseen(toShow, MPConfig.DEBUG);
+                                    mDecideMessages.markNotificationAsUnseen(toShow);
                                 }
                             }
                             break;

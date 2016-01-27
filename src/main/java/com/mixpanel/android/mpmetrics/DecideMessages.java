@@ -177,8 +177,8 @@ import java.util.Set;
 
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
-    public synchronized void markNotificationAsUnseen(InAppNotification notif, boolean isDebugMode) {
-        if (!isDebugMode) {
+    public synchronized void markNotificationAsUnseen(InAppNotification notif) {
+        if (!MPConfig.DEBUG) {
             mUnseenNotifications.add(notif);
         }
     }
