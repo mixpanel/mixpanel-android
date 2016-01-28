@@ -230,7 +230,10 @@ public class MixpanelAPI {
         }
         mDecideMessages.setDistinctId(decideId);
         mMessages = getAnalyticsMessages();
-        mMessages.installDecideCheck(mDecideMessages);
+
+		if (!mConfig.getDisableSurveys() || !mConfig.getDisableNotifications()) {
+			mMessages.installDecideCheck(mDecideMessages);
+		}
 
         registerMixpanelActivityLifecycleCallbacks();
 

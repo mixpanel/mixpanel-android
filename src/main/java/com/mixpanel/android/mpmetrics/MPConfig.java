@@ -176,6 +176,8 @@ public class MPConfig {
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
         mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
+        mDisableNotifications = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableNotifications", false);
+        mDisableSurveys = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableSurveys", false);
 
          // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -246,7 +248,9 @@ public class MPConfig {
                 "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
-                "    EditorUrl " + getEditorUrl() + "\n"
+                "    EditorUrl " + getEditorUrl() + "\n" +
+                "    DisableNotifications " + getDisableNotifications() + "\n" +
+                "    DisableSurveys " + getDisableSurveys() + "\n"
             );
         }
     }
@@ -337,6 +341,14 @@ public class MPConfig {
         return mEditorUrl;
     }
 
+    public boolean getDisableSurveys() {
+        return mDisableSurveys;
+    }
+
+    public boolean getDisableNotifications() {
+        return mDisableNotifications;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -394,6 +406,8 @@ public class MPConfig {
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;
+    private final boolean mDisableNotifications;
+    private final boolean mDisableSurveys;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
