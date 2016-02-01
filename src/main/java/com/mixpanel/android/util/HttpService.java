@@ -28,20 +28,20 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class HttpService implements RemoteService {
 
-    private static boolean sAdBlockerEnabled;
+    private static boolean sIsMixpanelBlocked;
 
     @Override
-    public void checkAdBlockerEnabled() {
+    public void checkIsMixpanelBlocked() {
         Thread t = new Thread(new Runnable() {
             public void run() {
                 try {
                     InetAddress apiMixpanelInet = InetAddress.getByName("api.mixpanel.com");
                     InetAddress decideMixpanelInet = InetAddress.getByName("decide.mixpanel.com");
-                    sAdBlockerEnabled = apiMixpanelInet.isLoopbackAddress() ||
+                    sIsMixpanelBlocked = apiMixpanelInet.isLoopbackAddress() ||
                             apiMixpanelInet.isAnyLocalAddress() ||
                             decideMixpanelInet.isLoopbackAddress() ||
                             decideMixpanelInet.isAnyLocalAddress();
-                    if (sAdBlockerEnabled ) {
+                    if (sIsMixpanelBlocked) {
                         Log.i(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
                     }
                 } catch (UnknownHostException e) {
@@ -54,8 +54,7 @@ public class HttpService implements RemoteService {
 
     @Override
     public boolean isOnline(Context context) {
-        if (sAdBlockerEnabled)
-            return false;
+        if (sIsMixpanelBlocked) return false;
 
         boolean isOnline;
         try {

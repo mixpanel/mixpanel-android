@@ -12,7 +12,7 @@ import javax.net.ssl.SSLSocketFactory;
 public interface RemoteService {
     boolean isOnline(Context context);
 
-    void checkAdBlockerEnabled();
+    void checkIsMixpanelBlocked();
 
     byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException;
