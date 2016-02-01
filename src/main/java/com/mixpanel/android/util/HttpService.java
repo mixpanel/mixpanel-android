@@ -9,15 +9,15 @@ import android.util.Log;
 import com.mixpanel.android.mpmetrics.MPConfig;
 
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -27,8 +27,36 @@ import javax.net.ssl.SSLSocketFactory;
  * An HTTP utility class for internal use in the Mixpanel library. Not thread-safe.
  */
 public class HttpService implements RemoteService {
+
+    private static boolean sAdBlockerEnabled;
+
+    @Override
+    public void checkAdBlockerEnabled() {
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    InetAddress apiMixpanelInet = InetAddress.getByName("api.mixpanel.com");
+                    InetAddress decideMixpanelInet = InetAddress.getByName("decide.mixpanel.com");
+                    sAdBlockerEnabled = apiMixpanelInet.isLoopbackAddress() ||
+                            apiMixpanelInet.isAnyLocalAddress() ||
+                            decideMixpanelInet.isLoopbackAddress() ||
+                            decideMixpanelInet.isAnyLocalAddress();
+                    if (sAdBlockerEnabled ) {
+                        Log.i(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
+                    }
+                } catch (UnknownHostException e) {
+                }
+            }
+        });
+
+        t.start();
+    }
+
     @Override
     public boolean isOnline(Context context) {
+        if (sAdBlockerEnabled)
+            return false;
+
         boolean isOnline;
         try {
             final ConnectivityManager cm =

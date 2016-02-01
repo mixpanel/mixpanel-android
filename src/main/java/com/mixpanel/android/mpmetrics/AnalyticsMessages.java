@@ -44,6 +44,7 @@ import javax.net.ssl.SSLSocketFactory;
         mContext = context;
         mConfig = getConfig(context);
         mWorker = createWorker();
+        getPoster().checkAdBlockerEnabled();
     }
 
     protected Worker createWorker() {
