@@ -93,23 +93,16 @@ public class ImageStore {
                 throw new CantGetImageException("Downloaded data could not be interpreted as a bitmap");
             }
         } else {
-            Long freeMemory = Runtime.getRuntime().freeMemory();
             BitmapFactory.Options option = new BitmapFactory.Options();
             option.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(file.getAbsolutePath(), option);
             Long imageSize = new Long(option.outHeight * option.outWidth);
-
-            int inSampleSize = 1;
-            while(imageSize / inSampleSize > freeMemory) {
-                // it doesn't make sense to scale the image further as the image quality will be too bad to be recognized
-                if (inSampleSize > 8) {
-                    throw new CantGetImageException("Do not have enough memory for the image");
-                }
-                inSampleSize *= 2;
+            Long freeMemory = Runtime.getRuntime().freeMemory();
+            if (imageSize > freeMemory) {
+                throw new CantGetImageException("Do not have enough memory for the image");
             }
 
             option.inJustDecodeBounds = false;
-            option.inSampleSize = inSampleSize;
             bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), option);
 
             if (null == bitmap) {
