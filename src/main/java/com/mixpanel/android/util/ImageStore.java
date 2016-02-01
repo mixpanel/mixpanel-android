@@ -102,9 +102,7 @@ public class ImageStore {
                 throw new CantGetImageException("Do not have enough memory for the image");
             }
 
-            option.inJustDecodeBounds = false;
-            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), option);
-
+            bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
             if (null == bitmap) {
                 final boolean ignored = file.delete();
                 throw new CantGetImageException("Bitmap on disk can't be opened or was corrupt");
