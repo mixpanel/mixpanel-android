@@ -1328,9 +1328,11 @@ public class MixpanelAPI {
     }
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
-        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API
-            || mConfig.getDisableViewCrawler()) {
-            Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
+            Log.i(LOGTAG, "SDK version is lower than " + MPConfig.UI_FEATURES_MIN_API + ". Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+            return new NoOpUpdatesFromMixpanel(sSharedTweaks);
+        } else if (mConfig.getDisableViewCrawler()) {
+            Log.i(LOGTAG, "DisableViewCrawler is set to true. Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
             return new NoOpUpdatesFromMixpanel(sSharedTweaks);
         } else {
             return new ViewCrawler(mContext, mToken, this, sSharedTweaks);
