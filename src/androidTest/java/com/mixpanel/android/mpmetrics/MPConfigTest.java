@@ -7,7 +7,7 @@ import com.mixpanel.android.viewcrawler.ViewCrawler;
 
 public class MPConfigTest extends AndroidTestCase {
 
-    public static final String TOKEN                             = "TOKEN";
+    public static final String TOKEN = "TOKEN";
     public static final String DISABLE_VIEW_CRAWLER_METADATA_KEY = "com.mixpanel.android.MPConfig.DisableViewCrawler";
 
     public void testDisableViewCrawlerDefaultsToFalse() throws Exception {
