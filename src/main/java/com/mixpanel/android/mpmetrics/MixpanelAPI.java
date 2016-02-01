@@ -200,7 +200,7 @@ public class MixpanelAPI {
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, final MPConfig config) {
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config) {
         mContext = context;
         mToken = token;
         mEventTimings = new HashMap<String, Long>();
