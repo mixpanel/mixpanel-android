@@ -387,27 +387,27 @@ public class MPConfig {
         }
     }
 
-    private final int mBulkUploadLimit;
-    private final int mFlushInterval;
-    private final int mDebugFlushInterval;
-    private final int mDataExpiration;
-    private final int mMinimumDatabaseLimit;
-    private final boolean mDisableFallback;
-    private final boolean mTestMode;
-    private final boolean mDisableGestureBindingUI;
-    private final boolean mDisableEmulatorBindingUI;
+    private final boolean mAutoShowMixpanelUpdates;
     private final boolean mDisableAppOpenEvent;
+    private final boolean mDisableEmulatorBindingUI;
+    private final boolean mDisableFallback;
+    private final boolean mDisableGestureBindingUI;
+    private final boolean mDisableNotifications;
+    private final boolean mDisableSurveys;
+    private final boolean mTestMode;
+    private final int mBulkUploadLimit;
+    private final int mDataExpiration;
+    private final int mDebugFlushInterval;
+    private final int mFlushInterval;
+    private final int mMinimumDatabaseLimit;
+    private final String mDecideEndpoint;
+    private final String mDecideFallbackEndpoint;
+    private final String mEditorUrl;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;
     private final String mPeopleFallbackEndpoint;
-    private final String mDecideEndpoint;
-    private final String mDecideFallbackEndpoint;
-    private final boolean mAutoShowMixpanelUpdates;
-    private final String mEditorUrl;
     private final String mResourcePackageName;
-    private final boolean mDisableNotifications;
-    private final boolean mDisableSurveys;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
