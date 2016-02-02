@@ -42,7 +42,6 @@ import java.util.Set;
         if (mDistinctId == null || !mDistictId.equals(distinctId)){
             mUnseenSurveys.clear();
             mUnseenNotifications.clear();
-            mVariants = null;
         }
         mDistinctId = distinctId;
     }
