@@ -18,11 +18,11 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
-import com.mixpanel.android.viewcrawler.TrackingDebug;
-import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
+import com.mixpanel.android.viewcrawler.TrackingDebug;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
+import com.mixpanel.android.viewcrawler.ViewCrawler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -188,10 +188,13 @@ public class MixpanelAPI {
         return sSharedTweaks.byteTweak(tweakName, defaultValue);
     }
 
-    /**
-     * You shouldn't instantiate MixpanelAPI objects directly.
-     * Use MixpanelAPI.getInstance to get an instance.
-     */
+    public static void bindChangeCallback(String tweakName, Tweaks.TweakChangeCallback callback) {
+        sSharedTweaks.bindChangeCallback(tweakName, callback);
+    }
+        /**
+         * You shouldn't instantiate MixpanelAPI objects directly.
+         * Use MixpanelAPI.getInstance to get an instance.
+         */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
         this(context, referrerPreferences, token, MPConfig.getInstance(context));
     }
