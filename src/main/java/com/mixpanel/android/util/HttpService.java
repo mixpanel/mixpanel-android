@@ -41,8 +41,8 @@ public class HttpService implements RemoteService {
                             apiMixpanelInet.isAnyLocalAddress() ||
                             decideMixpanelInet.isLoopbackAddress() ||
                             decideMixpanelInet.isAnyLocalAddress();
-                    if (sIsMixpanelBlocked) {
-                        Log.i(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
+                    if (MPConfig.DEBUG && sIsMixpanelBlocked) {
+                        Log.v(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
                     }
                 } catch (UnknownHostException e) {
                 }
