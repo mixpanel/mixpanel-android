@@ -454,7 +454,7 @@ import javax.net.ssl.SSLSocketFactory;
                     } else {
                         logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
-                            mBackOffTime = Math.min((long)Math.pow(2, mFailedRetries) * mFlushInterval, 30*60*1000); // max 30 min
+                            mBackOffTime = Math.min((long)Math.pow(2, mFailedRetries) * mFlushInterval, 30 * 60 * 1000); // max 30 min
                             sendEmptyMessageDelayed(FLUSH_QUEUE, mBackOffTime);
                             mFailedRetries++;
                         }
