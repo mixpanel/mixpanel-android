@@ -238,7 +238,10 @@ public class MixpanelAPI {
         }
         mDecideMessages.setDistinctId(decideId);
         mMessages = getAnalyticsMessages();
-        mMessages.installDecideCheck(mDecideMessages);
+
+        if (!mConfig.getDisableDecideChecker()) {
+            mMessages.installDecideCheck(mDecideMessages);
+        }
 
         registerMixpanelActivityLifecycleCallbacks();
 
