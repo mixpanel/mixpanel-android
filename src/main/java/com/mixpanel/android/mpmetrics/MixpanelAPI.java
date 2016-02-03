@@ -193,11 +193,19 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
+        this(context, referrerPreferences, token, MPConfig.getInstance(context));
+    }
+
+    /**
+     * You shouldn't instantiate MixpanelAPI objects directly.
+     * Use MixpanelAPI.getInstance to get an instance.
+     */
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config) {
         mContext = context;
         mToken = token;
         mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
-        mConfig = getConfig();
+        mConfig = config;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
         deviceInfo.put("$android_lib_version", MPConfig.VERSION);
@@ -1293,10 +1301,6 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext);
     }
 
-    /* package */ MPConfig getConfig() {
-        return MPConfig.getInstance(mContext);
-    }
-
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
@@ -1328,8 +1332,11 @@ public class MixpanelAPI {
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-            Log.i(LOGTAG, "Web Configuration, A/B Testing, and Dynamic Tweaks are not supported on this Android OS Version");
-            return new UnsupportedUpdatesFromMixpanel(sSharedTweaks);
+            Log.i(LOGTAG, "SDK version is lower than " + MPConfig.UI_FEATURES_MIN_API + ". Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+            return new NoOpUpdatesFromMixpanel(sSharedTweaks);
+        } else if (mConfig.getDisableViewCrawler()) {
+            Log.i(LOGTAG, "DisableViewCrawler is set to true. Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+            return new NoOpUpdatesFromMixpanel(sSharedTweaks);
         } else {
             return new ViewCrawler(mContext, mToken, this, sSharedTweaks);
         }
@@ -1894,7 +1901,17 @@ public class MixpanelAPI {
                                 final FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
                                 transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
-                                transaction.commit();
+
+                                try {
+                                    transaction.commit();
+                                } catch (IllegalStateException e) {
+                                    // if the app is in the background or the current activity gets killed, rendering the
+                                    // notifiction will lead to a crash
+                                    if (MPConfig.DEBUG) {
+                                        Log.v(LOGTAG, "Unable to show notification.");
+                                    }
+                                    mDecideMessages.markNotificationAsUnseen(toShow);
+                                }
                             }
                             break;
                             case TAKEOVER: {
@@ -1979,8 +1996,8 @@ public class MixpanelAPI {
         private final Executor mExecutor = Executors.newSingleThreadExecutor();
     }
 
-    private class UnsupportedUpdatesFromMixpanel implements UpdatesFromMixpanel {
-        public UnsupportedUpdatesFromMixpanel(Tweaks tweaks) {
+    /* package */ class NoOpUpdatesFromMixpanel implements UpdatesFromMixpanel {
+        public NoOpUpdatesFromMixpanel(Tweaks tweaks) {
             mTweaks = tweaks;
         }
 

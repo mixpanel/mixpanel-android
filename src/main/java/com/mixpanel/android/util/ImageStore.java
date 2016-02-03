@@ -93,6 +93,15 @@ public class ImageStore {
                 throw new CantGetImageException("Downloaded data could not be interpreted as a bitmap");
             }
         } else {
+            BitmapFactory.Options option = new BitmapFactory.Options();
+            option.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(file.getAbsolutePath(), option);
+            Long imageSize = new Long(option.outHeight * option.outWidth);
+            Long freeMemory = Runtime.getRuntime().freeMemory();
+            if (imageSize > freeMemory) {
+                throw new CantGetImageException("Do not have enough memory for the image");
+            }
+
             bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
             if (null == bitmap) {
                 final boolean ignored = file.delete();

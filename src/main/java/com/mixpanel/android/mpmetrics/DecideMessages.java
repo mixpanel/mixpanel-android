@@ -39,8 +39,10 @@ import java.util.Set;
     // Called from other synchronized code. Do not call into other synchronized code or you'll
     // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
-        mUnseenSurveys.clear();
-        mUnseenNotifications.clear();
+        if (mDistinctId == null || !mDistinctId.equals(distinctId)){
+            mUnseenSurveys.clear();
+            mUnseenNotifications.clear();
+        }
         mDistinctId = distinctId;
     }
 
@@ -120,7 +122,7 @@ import java.util.Set;
         }
         Survey s = mUnseenSurveys.remove(0);
         if (replace) {
-            mUnseenSurveys.add(mUnseenSurveys.size(), s);
+            mUnseenSurveys.add(s);
         }
         return s;
     }
@@ -152,7 +154,7 @@ import java.util.Set;
         }
         InAppNotification n = mUnseenNotifications.remove(0);
         if (replace) {
-            mUnseenNotifications.add(mUnseenNotifications.size(), n);
+            mUnseenNotifications.add(n);
         } else {
             if (MPConfig.DEBUG) {
                 Log.v(LOGTAG, "Recording notification " + n + " as seen.");
@@ -173,6 +175,14 @@ import java.util.Set;
             }
         }
         return notif;
+    }
+
+    // if a notification was failed to show, add it back to the unseen list so that we
+    // won't lose it
+    public synchronized void markNotificationAsUnseen(InAppNotification notif) {
+        if (!MPConfig.DEBUG) {
+            mUnseenNotifications.add(notif);
+        }
     }
 
     public synchronized boolean hasUpdatesAvailable() {

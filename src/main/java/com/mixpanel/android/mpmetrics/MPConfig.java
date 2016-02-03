@@ -169,16 +169,17 @@ public class MPConfig {
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.DebugFlushInterval", 1 * 1000); // one second default
-        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
+        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
         mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
+        mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
 
-         // Disable if EITHER of these is present and false, otherwise enable
+        // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
         final boolean mixpanelUpdatesAutoShow = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
         mAutoShowMixpanelUpdates = surveysAutoCheck && mixpanelUpdatesAutoShow;
@@ -237,6 +238,7 @@ public class MPConfig {
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
+                "    DisableViewCrawler " + getDisableViewCrawler() + "\n" +
                 "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
                 "    DisableEmulatorUIBinding " + getDisableEmulatorBindingUI() + "\n" +
                 "    EnableDebugLogging " + DEBUG + "\n" +
@@ -264,7 +266,7 @@ public class MPConfig {
     }
 
     public int getFlushInterval(Context context) {
-        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags &= ApplicationInfo.FLAG_DEBUGGABLE ) );
+        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
         if (isDebuggable) {
             return mDebugFlushInterval;
         } else {
@@ -293,6 +295,10 @@ public class MPConfig {
 
     public boolean getDisableAppOpenEvent() {
         return mDisableAppOpenEvent;
+    }
+
+    public boolean getDisableViewCrawler() {
+        return mDisableViewCrawler;
     }
 
     public boolean getTestMode() {
@@ -391,6 +397,7 @@ public class MPConfig {
     private final boolean mDisableGestureBindingUI;
     private final boolean mDisableEmulatorBindingUI;
     private final boolean mDisableAppOpenEvent;
+    private final boolean mDisableViewCrawler;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;
