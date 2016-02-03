@@ -170,14 +170,13 @@ public class MPConfig {
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.DebugFlushInterval", 1 * 1000); // one second default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration",  1000 * 60 * 60 * 24 * 5); // 5 days default
-        mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit",  20 * 1024 * 1024); // 20 Mb
+        mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
         mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
-        mDisableNotifications = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableNotifications", false);
-        mDisableSurveys = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableSurveys", false);
+        mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
 
          // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -249,8 +248,7 @@ public class MPConfig {
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
                 "    EditorUrl " + getEditorUrl() + "\n" +
-                "    DisableNotifications " + getDisableNotifications() + "\n" +
-                "    DisableSurveys " + getDisableSurveys() + "\n"
+                "    DisableDecideChecker " + getDisableDecideChecker() + "\n"
             );
         }
     }
@@ -341,12 +339,8 @@ public class MPConfig {
         return mEditorUrl;
     }
 
-    public boolean getDisableSurveys() {
-        return mDisableSurveys;
-    }
-
-    public boolean getDisableNotifications() {
-        return mDisableNotifications;
+    public boolean getDisableDecideChecker() {
+        return mDisableDecideChecker;
     }
 
     // Pre-configured package name for resources, if they differ from the application package name
@@ -406,8 +400,7 @@ public class MPConfig {
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;
-    private final boolean mDisableNotifications;
-    private final boolean mDisableSurveys;
+    private final boolean mDisableDecideChecker;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
