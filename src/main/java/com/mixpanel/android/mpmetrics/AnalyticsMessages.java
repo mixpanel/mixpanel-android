@@ -299,7 +299,7 @@ import javax.net.ssl.SSLSocketFactory;
                     ///////////////////////////
 
                     if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) &&
-                            SystemClock.elapsedRealtime() >= mRetryAfter) {
+                            SystemClock.elapsedRealtime() >= mRetryAfter && mFailedRetries <= 0) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
                         try {
@@ -428,6 +428,10 @@ import javax.net.ssl.SSLSocketFactory;
                                 } catch (UnsupportedEncodingException e) {
                                     throw new RuntimeException("UTF not supported on this platform?", e);
                                 }
+                                if (mFailedRetries > 0) {
+                                    mFailedRetries = 0;
+                                    removeMessages(FLUSH_QUEUE);
+                                }
 
                                 logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
                                 logAboutMessageToMixpanel("Response was " + parsedResponse);
@@ -451,7 +455,9 @@ import javax.net.ssl.SSLSocketFactory;
                     } else {
                         logAboutMessageToMixpanel("Retrying this batch of events.");
                         if (!hasMessages(FLUSH_QUEUE)) {
-                            sendEmptyMessageDelayed(FLUSH_QUEUE, mFlushInterval);
+                            mBackOffTime = Math.min((long)Math.pow(2, mFailedRetries) * mFlushInterval, 30 * 60 * 1000); // max 30 min
+                            sendEmptyMessageDelayed(FLUSH_QUEUE, mBackOffTime);
+                            mFailedRetries++;
                         }
                     }
                 }
@@ -567,6 +573,8 @@ import javax.net.ssl.SSLSocketFactory;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
             private long mRetryAfter;
+            private long mBackOffTime;
+            private int mFailedRetries;
         }// AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
