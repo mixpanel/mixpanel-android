@@ -6,8 +6,7 @@
          minSdkVersion or targetSdkVersion here, you must also
          change the relevant properties in build.gradle -->
     <uses-sdk android:minSdkVersion="9"
-              android:targetSdkVersion="21"
-              tools:ignore="GradleOverrides"/>
+              android:targetSdkVersion="21"/>
 
     <!--
       This permission is required to allow the application to send events and properties to Mixpanel.
