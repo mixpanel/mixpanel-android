@@ -576,10 +576,8 @@ import javax.net.ssl.SSLSocketFactory;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
-//            private long mRetryAfter;
             private long mDecideRetryAfter;
             private long mTrackRetryAfter;
-//            private long mBackOffTime;
             private int mFailedRetries;
         }// AnalyticsMessageHandler
 
