@@ -60,6 +60,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     public ViewCrawler(Context context, String token, MixpanelAPI mixpanel, Tweaks tweaks) {
         mConfig = MPConfig.getInstance(context);
 
+        mContext = context;
         mEditState = new EditState();
         mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
@@ -177,7 +178,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         @Override
         public void onActivityResumed(Activity activity) {
-            installConnectionSensor(activity);
+            installConnectionSensor();
             mEditState.add(activity);
         }
 
@@ -201,11 +202,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         public void onActivityDestroyed(Activity activity) {
         }
 
-        private void installConnectionSensor(final Activity activity) {
+        private void installConnectionSensor() {
             if (isInEmulator() && !mConfig.getDisableEmulatorBindingUI()) {
                 mEmulatorConnector.start();
             } else if (!mConfig.getDisableGestureBindingUI()) {
-                final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
+                final SensorManager sensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
                 final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
                 sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             }
@@ -1069,6 +1070,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     private final MPConfig mConfig;
+    private final Context mContext;
     private final MixpanelAPI mMixpanel;
     private final DynamicEventTracker mDynamicEventTracker;
     private final EditState mEditState;
