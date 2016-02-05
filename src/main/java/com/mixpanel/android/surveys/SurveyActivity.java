@@ -359,11 +359,7 @@ public class SurveyActivity extends Activity {
                     surveyJson.put("survey_id", survey.getId());
                     surveyJson.put("collection_id", survey.getCollectionId());
                     surveyJson.put("$answer_count", answerCount);
-                    if (answerCount > 0) {
-                        surveyJson.put("$survey_shown", true);
-                    } else {
-                        surveyJson.put("$survey_shown", false);
-                    }
+                    surveyJson.put("$survey_shown", mSurveyBegun);
                     mMixpanel.track("$show_survey", surveyJson);
                 } catch (final JSONException e) {
                     Log.e(LOGTAG, "Couldn't record survey shown.", e);
