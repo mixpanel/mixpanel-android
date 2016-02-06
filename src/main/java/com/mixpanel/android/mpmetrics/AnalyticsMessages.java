@@ -445,7 +445,7 @@ import javax.net.ssl.SSLSocketFactory;
                         } catch (final RemoteService.ServiceUnavailableException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
-                            mTrackRetryAfter = e.getRetryAfter() * 1000;
+                            mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
                         } catch (final SocketTimeoutException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
@@ -460,11 +460,11 @@ import javax.net.ssl.SSLSocketFactory;
                         dbAdapter.cleanupEvents(lastId, table);
                     } else {
                         removeMessages(FLUSH_QUEUE);
-                        mTrackRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackRetryAfter);
-                        mTrackRetryAfter = Math.min(mTrackRetryAfter, 10 * 60 * 1000); // limit 10 min
-                        sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackRetryAfter);
+                        mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
+                        mTrackEngageRetryAfter = Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackEngageRetryAfter);
                         mFailedRetries++;
-                        logAboutMessageToMixpanel("Retrying this batch of events " + mTrackRetryAfter);
+                        logAboutMessageToMixpanel("Retrying this batch of events " + mTrackEngageRetryAfter);
                     }
                 }
             }
@@ -579,7 +579,7 @@ import javax.net.ssl.SSLSocketFactory;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
             private long mDecideRetryAfter;
-            private long mTrackRetryAfter;
+            private long mTrackEngageRetryAfter;
             private int mFailedRetries;
         }// AnalyticsMessageHandler
 
