@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -384,7 +385,6 @@ import javax.net.ssl.SSLSocketFactory;
                     return;
                 }
 
-                logAboutMessageToMixpanel("Sending records to Mixpanel");
                 if (mDisableFallback) {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
@@ -446,6 +446,9 @@ import javax.net.ssl.SSLSocketFactory;
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
                             mTrackRetryAfter = e.getRetryAfter() * 1000;
+                        } catch (final SocketTimeoutException e) {
+                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
                         } catch (final IOException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
@@ -456,13 +459,12 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
                         dbAdapter.cleanupEvents(lastId, table);
                     } else {
-                        logAboutMessageToMixpanel("Retrying this batch of events.");
-                        if (!hasMessages(FLUSH_QUEUE)) {
-                            mTrackRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * mFlushInterval, mTrackRetryAfter);
-                            mTrackRetryAfter = Math.min(mTrackRetryAfter, 10 * 60 * 1000); // limit 10 min
-                            sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackRetryAfter);
-                            mFailedRetries++;
-                        }
+                        removeMessages(FLUSH_QUEUE);
+                        mTrackRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackRetryAfter);
+                        mTrackRetryAfter = Math.min(mTrackRetryAfter, 10 * 60 * 1000); // limit 10 min
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackRetryAfter);
+                        mFailedRetries++;
+                        logAboutMessageToMixpanel("Retrying this batch of events " + mTrackRetryAfter);
                     }
                 }
             }
