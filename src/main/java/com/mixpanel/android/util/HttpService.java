@@ -132,7 +132,7 @@ public class HttpService implements RemoteService {
                 }
                 retries = retries + 1;
             } catch (final IOException e) {
-                if (503 == connection.getResponseCode()) {
+                if (connection.getResponseCode() >= 500 && connection.getResponseCode() <= 599) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
                     throw e;

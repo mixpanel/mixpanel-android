@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -220,7 +221,6 @@ import javax.net.ssl.SSLSocketFactory;
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval(mContext);
                 mSystemInformation = new SystemInformation(mContext);
-                mRetryAfter = -1;
             }
 
             protected DecideChecker createDecideChecker() {
@@ -260,12 +260,12 @@ import javax.net.ssl.SSLSocketFactory;
                     else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
+                        sendAllData(mDbAdapter);
+                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
-                                sendAllData(mDbAdapter);
                                 mDecideChecker.runDecideChecks(getPoster());
                             } catch (RemoteService.ServiceUnavailableException e) {
-                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
                     }
@@ -273,11 +273,11 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Installing a check for surveys and in-app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
-                        if (SystemClock.elapsedRealtime() >= mRetryAfter) {
+                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
                                 mDecideChecker.runDecideChecks(getPoster());
                             } catch (RemoteService.ServiceUnavailableException e) {
-                                mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
                     }
@@ -297,16 +297,16 @@ import javax.net.ssl.SSLSocketFactory;
                     }
 
                     ///////////////////////////
-
-                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) &&
-                            SystemClock.elapsedRealtime() >= mRetryAfter && mFailedRetries <= 0) {
+                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) && mFailedRetries <= 0) {
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
                         updateFlushFrequency();
-                        try {
-                            sendAllData(mDbAdapter);
-                            mDecideChecker.runDecideChecks(getPoster());
-                        } catch (RemoteService.ServiceUnavailableException e) {
-                            mRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                        sendAllData(mDbAdapter);
+                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
+                            try {
+                                mDecideChecker.runDecideChecks(getPoster());
+                            } catch (RemoteService.ServiceUnavailableException e) {
+                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
+                            }
                         }
                     } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE)) {
                         // The !hasMessages(FLUSH_QUEUE) check is a courtesy for the common case
@@ -378,14 +378,13 @@ import javax.net.ssl.SSLSocketFactory;
                 });
             }
 
-            private void sendAllData(MPDbAdapter dbAdapter) throws RemoteService.ServiceUnavailableException {
+            private void sendAllData(MPDbAdapter dbAdapter) {
                 final RemoteService poster = getPoster();
-                if (! poster.isOnline(mContext)) {
+                if (!poster.isOnline(mContext)) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
                     return;
                 }
 
-                logAboutMessageToMixpanel("Sending records to Mixpanel");
                 if (mDisableFallback) {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
@@ -397,7 +396,7 @@ import javax.net.ssl.SSLSocketFactory;
                 }
             }
 
-            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) throws RemoteService.ServiceUnavailableException {
+            private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
                 final RemoteService poster = getPoster();
                 final String[] eventsData = dbAdapter.generateDataString(table);
 
@@ -443,6 +442,13 @@ import javax.net.ssl.SSLSocketFactory;
                         } catch (final MalformedURLException e) {
                             Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
+                        } catch (final RemoteService.ServiceUnavailableException e) {
+                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
+                            mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
+                        } catch (final SocketTimeoutException e) {
+                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                            deleteEvents = false;
                         } catch (final IOException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
@@ -453,12 +459,12 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
                         dbAdapter.cleanupEvents(lastId, table);
                     } else {
-                        logAboutMessageToMixpanel("Retrying this batch of events.");
-                        if (!hasMessages(FLUSH_QUEUE)) {
-                            mBackOffTime = Math.min((long)Math.pow(2, mFailedRetries) * mFlushInterval, 30 * 60 * 1000); // max 30 min
-                            sendEmptyMessageDelayed(FLUSH_QUEUE, mBackOffTime);
-                            mFailedRetries++;
-                        }
+                        removeMessages(FLUSH_QUEUE);
+                        mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
+                        mTrackEngageRetryAfter = Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
+                        sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackEngageRetryAfter);
+                        mFailedRetries++;
+                        logAboutMessageToMixpanel("Retrying this batch of events in " + mTrackEngageRetryAfter + " ms");
                     }
                 }
             }
@@ -572,8 +578,8 @@ import javax.net.ssl.SSLSocketFactory;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
             private final boolean mDisableFallback;
-            private long mRetryAfter;
-            private long mBackOffTime;
+            private long mDecideRetryAfter;
+            private long mTrackEngageRetryAfter;
             private int mFailedRetries;
         }// AnalyticsMessageHandler
 
