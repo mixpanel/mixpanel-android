@@ -464,7 +464,7 @@ import javax.net.ssl.SSLSocketFactory;
                         mTrackEngageRetryAfter = Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
                         sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackEngageRetryAfter);
                         mFailedRetries++;
-                        logAboutMessageToMixpanel("Retrying this batch of events " + mTrackEngageRetryAfter);
+                        logAboutMessageToMixpanel("Retrying this batch of events in " + mTrackEngageRetryAfter + " ms");
                     }
                 }
             }
