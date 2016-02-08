@@ -77,6 +77,11 @@ public class ImageStoreTest extends AndroidTestCase {
         }
 
         @Override
+        public void checkIsMixpanelBlocked() {
+
+        }
+
+        @Override
         public byte[] performRequest(final String endpointUrl, final Map<String, Object> params, SSLSocketFactory socketFactory)
                 throws ServiceUnavailableException, IOException {
             queries++;
