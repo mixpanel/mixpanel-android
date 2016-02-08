@@ -277,26 +277,34 @@ public class SurveyActivity extends Activity {
             trackSurveyAttempted();
         }
 
-        final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-        alertBuilder.setTitle(R.string.com_mixpanel_android_survey_prompt_dialog_title);
-        alertBuilder.setMessage(R.string.com_mixpanel_android_survey_prompt_dialog_message);
-        alertBuilder.setPositiveButton(R.string.com_mixpanel_android_sure, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
-                mSurveyBegun = true;
-                showQuestion(mCurrentQuestion);
-            }
-        });
-        alertBuilder.setNegativeButton(R.string.com_mixpanel_android_no_thanks, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                SurveyActivity.this.finish();
-            }
-        });
-        alertBuilder.setCancelable(false);
-        mDialog = alertBuilder.create();
-        mDialog.show();
+        if (MPConfig.getInstance(this).getShouldPromptForSurvey()) {
+            final AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+            alertBuilder.setTitle(R.string.com_mixpanel_android_survey_prompt_dialog_title);
+            alertBuilder.setMessage(R.string.com_mixpanel_android_survey_prompt_dialog_message);
+            alertBuilder.setPositiveButton(R.string.com_mixpanel_android_sure, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    startSurvey();
+                }
+            });
+            alertBuilder.setNegativeButton(R.string.com_mixpanel_android_no_thanks, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    SurveyActivity.this.finish();
+                }
+            });
+            alertBuilder.setCancelable(false);
+            mDialog = alertBuilder.create();
+            mDialog.show();
+        } else {
+            startSurvey();
+        }
+    }
+
+    private void startSurvey() {
+        SurveyActivity.this.findViewById(R.id.com_mixpanel_android_activity_survey_id).setVisibility(View.VISIBLE);
+        mSurveyBegun = true;
+        showQuestion(mCurrentQuestion);
     }
 
     @Override
