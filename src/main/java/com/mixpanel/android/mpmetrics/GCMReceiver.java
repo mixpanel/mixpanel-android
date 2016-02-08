@@ -263,7 +263,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
         final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         return n;
@@ -278,7 +279,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
@@ -295,7 +297,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
