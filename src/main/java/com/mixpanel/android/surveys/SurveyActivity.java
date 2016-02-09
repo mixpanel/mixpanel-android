@@ -324,6 +324,7 @@ public class SurveyActivity extends Activity {
                 final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
                 final Survey survey = surveyState.getSurvey();
                 final List<Survey.Question> questionList = survey.getQuestions();
+                int answerCount = 0;
 
                 final String answerDistinctId = mUpdateDisplayState.getDistinctId();
                 final MixpanelAPI.People people = mMixpanel.getPeople().withIdentity(answerDistinctId);
@@ -346,11 +347,23 @@ public class SurveyActivity extends Activity {
                             answerJson.put("$value", answerString);
 
                             people.append("$answers", answerJson);
+
+                            answerCount = answerCount + 1;
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Couldn't record user's answer.", e);
                         }
                     } // if answer is present
                 } // For each question
+                try {
+                    final JSONObject surveyJson = new JSONObject();
+                    surveyJson.put("survey_id", survey.getId());
+                    surveyJson.put("collection_id", survey.getCollectionId());
+                    surveyJson.put("$answer_count", answerCount);
+                    surveyJson.put("$survey_shown", mSurveyBegun);
+                    mMixpanel.track("$show_survey", surveyJson);
+                } catch (final JSONException e) {
+                    Log.e(LOGTAG, "Couldn't record survey shown.", e);
+                } // track the survey as received
             } // if we have a survey state
             mMixpanel.flush();
         } // if we initialized property and we have a mixpanel
