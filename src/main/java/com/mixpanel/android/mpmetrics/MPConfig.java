@@ -233,7 +233,7 @@ public class MPConfig {
                 "Mixpanel configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
-                "    FlushInterval " + getFlushInterval(context) + "\n" +
+                "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
@@ -262,12 +262,7 @@ public class MPConfig {
 
     // Target max milliseconds between flushes. This is advisory.
     public int getFlushInterval() {
-        return getFlushInterval(null);
-    }
-
-    public int getFlushInterval(Context context) {
-        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
-        if (isDebuggable) {
+        if (MPConfig.DEBUG) {
             return mDebugFlushInterval;
         } else {
             return mFlushInterval;
