@@ -39,7 +39,6 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -706,7 +705,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     mEditorChanges.put(name, new Pair<String, JSONObject>(targetActivity, change));
                 }
 
-                applyVariantsAndEventBindings(Collections.EMPTY_LIST);
+                applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Bad change request received", e);
             }
@@ -729,7 +728,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 Log.e(LOGTAG, "Bad clear request received", e);
             }
 
-            applyVariantsAndEventBindings(Collections.EMPTY_LIST);
+            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
         }
 
         private void handleEditorTweaksReceived(JSONObject tweaksMessage) {
@@ -746,7 +745,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 Log.e(LOGTAG, "Bad tweaks received", e);
             }
 
-            applyVariantsAndEventBindings(Collections.EMPTY_LIST);
+            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
         }
 
         /**
@@ -798,7 +797,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 }
             }
 
-            applyVariantsAndEventBindings(Collections.EMPTY_LIST);
+            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
         }
 
         /**
@@ -815,7 +814,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 Log.v(LOGTAG, "Editor closed- freeing snapshot");
             }
 
-            applyVariantsAndEventBindings(Collections.EMPTY_LIST);
+            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
             for (final String assetUrl:mEditorAssetUrls) {
                 mImageStore.deleteStorage(assetUrl);
             }
