@@ -384,7 +384,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     final JSONArray variants = new JSONArray(storedChanges);
                     final int variantsLength = variants.length();
                     for (int variantIx = 0; variantIx < variantsLength; variantIx++) {
-                        Boolean isEmptyVariant = false;
                         final JSONObject nextVariant = variants.getJSONObject(variantIx);
                         final int variantIdPart = nextVariant.getInt("id");
                         final int experimentIdPart = nextVariant.getInt("experiment_id");
