@@ -392,29 +392,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
                         final JSONArray actions = nextVariant.getJSONArray("actions");
                         final int actionsLength = actions.length();
-                        if (actionsLength == 0) {
-                            isEmptyVariant = true;
-                        } else {
-                            for (int i = 0; i < actionsLength; i++) {
-                                final JSONObject change = actions.getJSONObject(i);
-                                final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
-                                final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
-                                mPersistentChanges.add(variantChange);
-                            }
+                        for (int i = 0; i < actionsLength; i++) {
+                            final JSONObject change = actions.getJSONObject(i);
+                            final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
+                            final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
+                            mPersistentChanges.add(variantChange);
                         }
 
                         final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
                         final int tweaksLength = tweaks.length();
-                        if (tweaksLength > 0) {
-                            isEmptyVariant = false;
-                        }
                         for (int i = 0; i < tweaksLength; i++) {
                             final JSONObject tweakDesc = tweaks.getJSONObject(i);
                             final VariantTweak variantTweak = new VariantTweak(tweakDesc, variantId);
                             mPersistentTweaks.add(variantTweak);
                         }
 
-                        if (isEmptyVariant) {
+                        if (actionsLength == 0 && tweaksLength == 0) {
                             final Pair<Integer, Integer> emptyVariantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
                             emptyVariantIds.add(emptyVariantId);
                         }
