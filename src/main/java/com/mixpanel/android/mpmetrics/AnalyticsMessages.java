@@ -439,9 +439,6 @@ import javax.net.ssl.SSLSocketFactory;
                         } catch (final OutOfMemoryError e) {
                             Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                             break;
-                        } catch (final MalformedURLException e) {
-                            Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-                            break;
                         } catch (final RemoteService.ServiceUnavailableException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                             deleteEvents = false;
