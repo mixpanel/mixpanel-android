@@ -165,10 +165,12 @@ public class MPConfig {
             Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
                           "com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates. Please update this key as soon as possible.");
         }
+        if (metaData.containsKey("com.mixpanel.android.MPConfig.DebugFlushInterval")) {
+            Log.w(LOGTAG, "We do not support com.mixpanel.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
+        }
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDebugFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.DebugFlushInterval", 1 * 1000); // one second default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
@@ -233,7 +235,7 @@ public class MPConfig {
                 "Mixpanel configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
-                "    FlushInterval " + getFlushInterval(context) + "\n" +
+                "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
                 "    DisableFallback " + getDisableFallback() + "\n" +
@@ -262,16 +264,7 @@ public class MPConfig {
 
     // Target max milliseconds between flushes. This is advisory.
     public int getFlushInterval() {
-        return getFlushInterval(null);
-    }
-
-    public int getFlushInterval(Context context) {
-        boolean isDebuggable = context != null && ( 0 != ( context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
-        if (isDebuggable) {
-            return mDebugFlushInterval;
-        } else {
-            return mFlushInterval;
-        }
+        return mFlushInterval;
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
@@ -389,7 +382,6 @@ public class MPConfig {
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
-    private final int mDebugFlushInterval;
     private final int mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mDisableFallback;

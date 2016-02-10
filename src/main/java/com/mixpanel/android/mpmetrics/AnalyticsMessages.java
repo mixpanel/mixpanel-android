@@ -219,7 +219,7 @@ import javax.net.ssl.SSLSocketFactory;
                 mDbAdapter = null;
                 mDecideChecker = createDecideChecker();
                 mDisableFallback = mConfig.getDisableFallback();
-                mFlushInterval = mConfig.getFlushInterval(mContext);
+                mFlushInterval = mConfig.getFlushInterval();
                 mSystemInformation = new SystemInformation(mContext);
             }
 
