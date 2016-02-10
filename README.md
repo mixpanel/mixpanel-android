@@ -1,3 +1,14 @@
+Latest Version 
+--------------
+##### _February 9th, 2016_ - [v4.8.0](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.8.0)
+Major release. Please, update :)
+```
+dependencies {
+    compile "com.mixpanel.android:mixpanel-android:4.8.0"
+}
+```
+[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.8.0).
+
 Getting Started
 ---------------
 Check out our [official documentation](https://mixpanel.com/help/reference/android) to learn how to install the library on Android Studio and Eclipse. You will also learn how to make use of all the features we currently support!
