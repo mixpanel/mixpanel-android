@@ -278,7 +278,7 @@ import javax.net.ssl.SSLSocketFactory;
 
     private static byte[] getUrls(RemoteService poster, Context context, String[] urls)
         throws RemoteService.ServiceUnavailableException {
-        if (! poster.isOnline(context)) {
+        if (!poster.isOnline(context)) {
             return null;
         }
 
