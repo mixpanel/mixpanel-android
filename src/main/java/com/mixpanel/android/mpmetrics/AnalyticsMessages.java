@@ -22,6 +22,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -431,6 +432,9 @@ import javax.net.ssl.SSLSocketFactory;
                             break;
                         } catch (final OutOfMemoryError e) {
                             Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                            break;
+                        } catch (final MalformedURLException e) {
+                            Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
                         } catch (final RemoteService.ServiceUnavailableException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
