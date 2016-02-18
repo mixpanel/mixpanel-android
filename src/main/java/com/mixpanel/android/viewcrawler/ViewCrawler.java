@@ -108,8 +108,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     public void setVariants(JSONArray variants) {
         final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_VARIANTS_RECEIVED);
         msg.obj = variants;
-        Log.d("Variants", "Setting variants");
-        Log.d("Variants", "variants are" + variants);
         mMessageThreadHandler.sendMessage(msg);
     }
 
@@ -313,7 +311,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         break;
                     case MESSAGE_VARIANTS_RECEIVED:
                         handleVariantsReceived((JSONArray) msg.obj);
-                        Log.d("Variants", "Running in handler");
                         break;
                     case MESSAGE_HANDLE_EDITOR_CHANGES_RECEIVED:
                         handleEditorChangeReceived((JSONObject) msg.obj);
@@ -377,12 +374,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
             final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
             List<Pair<Integer, Integer>> emptyVariantIds = new ArrayList<>();
-            Log.d("Variants", "Stored changes " + storedChanges);
 
             try {
+                mPersistentChanges.clear();
+                mPersistentTweaks.clear();
+
                 if (null != storedChanges) {
-                    mPersistentChanges.clear();
-                    mPersistentTweaks.clear();
+                    
 
                     final JSONArray variants = new JSONArray(storedChanges);
                     final int variantsLength = variants.length();
@@ -416,18 +414,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         }
                     }
                 } else {
-                    Log.d("Variants2", "Persistent tweaks: " + mPersistentTweaks);
-                    mPersistentChanges.clear();
-                    mPersistentTweaks.clear();
-
                     final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
-                    Log.d("Variants2", "Map is " + tweakDefaults);
                     for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
-                        final Tweaks.TweakValue value = tweak.getValue();
+                        final Tweaks.TweakValue tweakValue = tweak.getValue();
                         final String tweakName = tweak.getKey();
-                        Log.d("Variants2", "tweak name " + tweakName);
-                        Log.d("Variants2", "tweak value" + value);
-                        mTweaks.set(tweakName, value);
+                        mTweaks.set(tweakName, tweakValue);
                     }
                 }
 
@@ -773,7 +764,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private void handleVariantsReceived(JSONArray variants) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
-            Log.d("Variants", "Changes being applied");
             if(variants != null) {
                 editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
             } else {
@@ -860,9 +850,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             {
                 final int size = mPersistentChanges.size();
-                Log.d("Variants2", "Persistent changes " + mPersistentChanges);
                 for (int i = 0; i < size; i++) {
-                    Log.d("Variants2", "Editing persistent changes");
                     final VariantChange changeInfo = mPersistentChanges.get(i);
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.change);
@@ -882,15 +870,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             {
                 final int size = mPersistentTweaks.size();
-                Log.d("Variants2", "Persistent tweaks " + mPersistentTweaks);
                 for (int i = 0; i < size; i++) {
-                    Log.d("Variants2", "Editing persistent tweaks");
                     final VariantTweak tweakInfo = mPersistentTweaks.get(i);
                     try {
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
-                        Log.d("Variants2", "The tweaks info is: " + tweakInfo + tweakInfo.tweak);
-                        Log.d("Variants2", "The tweaks are: " + tweakValue.first + tweakValue.second);
-                        Log.d("Variants2", "mTweaks is: " + mTweaks);
                         mTweaks.set(tweakValue.first, tweakValue.second);
                         if (!mSeenExperiments.contains(tweakInfo.variantId)) {
                             toTrack.add(tweakInfo.variantId);
