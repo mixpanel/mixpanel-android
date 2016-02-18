@@ -410,13 +410,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                             emptyVariantIds.add(emptyVariantId);
                         }
                     }
-                } else {
-                    final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
-                    for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
-                        final Tweaks.TweakValue tweakValue = tweak.getValue();
-                        final String tweakName = tweak.getKey();
-                        mTweaks.set(tweakName, tweakValue);
-                    }
                 }
 
                 if (null != storedBindings) {
@@ -877,6 +870,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         }
                     } catch (EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
+                    }
+                }
+                if(size == 0) { // there are no new tweaks, so reset to default values
+                    final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
+                    for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
+                        final Tweaks.TweakValue tweakValue = tweak.getValue();
+                        final String tweakName = tweak.getKey();
+                        mTweaks.set(tweakName, tweakValue);
                     }
                 }
             }
