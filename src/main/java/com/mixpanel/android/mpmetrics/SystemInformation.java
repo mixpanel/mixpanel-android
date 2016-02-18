@@ -116,8 +116,9 @@ import android.view.WindowManager;
         String ret = null;
 
         TelephonyManager telephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        if (null != telephonyManager)
+        if (null != telephonyManager) {
             ret = telephonyManager.getNetworkOperatorName();
+        }
 
         return ret;
     }
