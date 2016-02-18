@@ -77,6 +77,8 @@ import java.util.Set;
         int newVariantsLength = variants.length();
         boolean hasNewVariants = false;
 
+        Log.d("Variants", "New variants length: " + newVariantsLength);
+
         for (int i = 0; i < newVariantsLength; i++) {
             try {
                 JSONObject variant = variants.getJSONObject(i);
@@ -91,6 +93,10 @@ import java.util.Set;
             }
         }
 
+        Log.d("Variants", "New variants? " + hasNewVariants);
+        Log.d("Variants", "Currently loaded variants: " + mLoadedVariants);
+        Log.d("Variants", "Current variants: " + mVariants);
+
         if (hasNewVariants) {
             mLoadedVariants.clear();
 
@@ -104,12 +110,25 @@ import java.util.Set;
             }
         }
 
+        // in case we do not receive a new variant, this means the A/B test should be turned off
+        if(!hasNewVariants && newVariantsLength == 0) {
+            Log.e("Variants", "Attempting to clear due to disabled experiment");
+            mLoadedVariants.clear();
+            mVariants = null;
+            newContent = true;
+        }
+
+        Log.d("Variants", "Currently loaded variants: " + mLoadedVariants);
+        Log.d("Variants", "Current variants: " + mVariants);
+
         if (MPConfig.DEBUG) {
             Log.v(LOGTAG, "New Decide content has become available. " +
                     newSurveys.size() + " surveys, " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
         }
+
+        Log.d("Variants", "Are we returning an update? " + hasUpdatesAvailable());
 
         if (newContent && hasUpdatesAvailable() && null != mListener) {
             mListener.onNewResults();

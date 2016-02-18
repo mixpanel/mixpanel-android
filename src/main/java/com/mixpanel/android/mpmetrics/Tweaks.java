@@ -57,6 +57,10 @@ public class Tweaks {
         return new HashMap<String, TweakValue>(mTweakValues);
     }
 
+    public synchronized Map<String, TweakValue> getDefaultValues() {
+        return new HashMap<String, TweakValue>(mTweakDefaultValues);
+    }
+
     @IntDef({
             BOOLEAN_TYPE,
             DOUBLE_TYPE,
@@ -197,6 +201,7 @@ public class Tweaks {
 
     /* package */ Tweaks() {
         mTweakValues = new HashMap<String, TweakValue>();
+        mTweakDefaultValues = new HashMap<String, TweakValue>();
         mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
     }
 
@@ -307,6 +312,7 @@ public class Tweaks {
 
         final TweakValue value = new TweakValue(tweakType, defaultValue, null, null, defaultValue);
         mTweakValues.put(tweakName, value);
+        mTweakDefaultValues.put(tweakName, value);
         final int listenerSize = mTweakDeclaredListeners.size();
         for (int i = 0; i < listenerSize; i++) {
             mTweakDeclaredListeners.get(i).onTweakDeclared();
@@ -315,6 +321,7 @@ public class Tweaks {
 
     // All access to mTweakValues must be synchronized
     private final Map<String, TweakValue> mTweakValues;
+    private final Map<String, TweakValue> mTweakDefaultValues;
     private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";

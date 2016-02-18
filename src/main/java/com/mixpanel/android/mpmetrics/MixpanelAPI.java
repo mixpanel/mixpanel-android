@@ -1605,9 +1605,11 @@ public class MixpanelAPI {
         @Override
         public void joinExperimentIfAvailable() {
             final JSONArray variants = mDecideMessages.getVariants();
-            if (null != variants) {
+            Log.d("Variants", "What is decide returning? " + variants);
+            //if (null != variants) {
+                Log.d("Variants", "It's still running");
                 mUpdatesFromMixpanel.setVariants(variants);
-            }
+            //}
         }
 
         @Override
@@ -1966,6 +1968,8 @@ public class MixpanelAPI {
     private class SupportedUpdatesListener implements UpdatesListener, Runnable {
         @Override
         public void onNewResults() {
+            Log.d("Variants", "onNewResults executing");
+            Log.d("Variants", "what is this?" + this);
             mExecutor.execute(this);
         }
 
@@ -1988,6 +1992,7 @@ public class MixpanelAPI {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
             for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
+                Log.d("Variants", "Running for each listener");
                 listener.onMixpanelUpdatesReceived();
             }
         }
