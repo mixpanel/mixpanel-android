@@ -20,7 +20,6 @@ public class ImageStoreTest extends AndroidTestCase {
         mService.online = true;
         mImageStore = new ImageStore(getContext(), "TEST_DIRECTORY", mService);
         mImageStore.clearStorage();
-
     }
 
     public void testFreshImageLoaded() throws ImageStore.CantGetImageException {

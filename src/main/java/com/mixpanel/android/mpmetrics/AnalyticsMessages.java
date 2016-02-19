@@ -66,8 +66,7 @@ import javax.net.ssl.SSLSocketFactory;
             if (! sInstances.containsKey(appContext)) {
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
-            }
-            else {
+            } else {
                 ret = sInstances.get(appContext);
             }
             return ret;
@@ -245,8 +244,7 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("    " + message.toString());
 
                         returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.PEOPLE);
-                    }
-                    else if (msg.what == ENQUEUE_EVENTS) {
+                    } else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
                             final JSONObject message = prepareEventObject(eventDescription);
@@ -256,8 +254,7 @@ import javax.net.ssl.SSLSocketFactory;
                         } catch (final JSONException e) {
                             Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
-                    }
-                    else if (msg.what == FLUSH_QUEUE) {
+                    } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
                         sendAllData(mDbAdapter);
@@ -268,8 +265,7 @@ import javax.net.ssl.SSLSocketFactory;
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
-                    }
-                    else if (msg.what == INSTALL_DECIDE_CHECK) {
+                    } else if (msg.what == INSTALL_DECIDE_CHECK) {
                         logAboutMessageToMixpanel("Installing a check for surveys and in-app notifications");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
@@ -280,12 +276,10 @@ import javax.net.ssl.SSLSocketFactory;
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
-                    }
-                    else if (msg.what == REGISTER_FOR_GCM) {
+                    } else if (msg.what == REGISTER_FOR_GCM) {
                         final String senderId = (String) msg.obj;
                         runGCMRegistration(senderId);
-                    }
-                    else if (msg.what == KILL_WORKER) {
+                    } else if (msg.what == KILL_WORKER) {
                         Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
                             mDbAdapter.deleteDB();

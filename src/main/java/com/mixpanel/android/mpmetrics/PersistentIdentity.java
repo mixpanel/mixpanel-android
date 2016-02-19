@@ -416,8 +416,7 @@ import android.util.Log;
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
-            }
-            else {
+            } else {
                 prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
             }
             writeEdits(prefsEditor);
@@ -428,13 +427,8 @@ import android.util.Log;
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
     private static void writeEdits(final SharedPreferences.Editor editor) {
-        if (Build.VERSION.SDK_INT >= 9) {
-            editor.apply();
-        } else {
-            editor.commit();
-        }
+        editor.apply();
     }
 
     private final Future<SharedPreferences> mLoadStoredPreferences;

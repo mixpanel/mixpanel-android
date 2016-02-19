@@ -595,7 +595,7 @@ public class MixpanelAPI {
         try {
             registerSuperProperties(new JSONObject(superProperties));
         } catch (NullPointerException e) {
-            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap!");
+            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap");
         }
     }
 
@@ -1777,7 +1777,7 @@ public class MixpanelAPI {
                 return;
             }
 
-            if (! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
+            if (!ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
                 if (MPConfig.DEBUG) {
                     Log.v(LOGTAG, "Will not show survey, application isn't configured appropriately.");
                 }
