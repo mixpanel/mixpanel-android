@@ -427,7 +427,6 @@ import android.util.Log;
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
     private static void writeEdits(final SharedPreferences.Editor editor) {
         editor.apply();
     }
