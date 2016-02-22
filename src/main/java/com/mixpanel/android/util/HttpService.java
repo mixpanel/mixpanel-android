@@ -29,6 +29,8 @@ import javax.net.ssl.SSLSocketFactory;
 public class HttpService implements RemoteService {
 
     private static boolean sIsMixpanelBlocked;
+    private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE = HttpURLConnection.HTTP_INTERNAL_ERROR;
+    private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
     @Override
     public void checkIsMixpanelBlocked() {
@@ -132,7 +134,7 @@ public class HttpService implements RemoteService {
                 }
                 retries = retries + 1;
             } catch (final IOException e) {
-                if (connection.getResponseCode() >= 500 && connection.getResponseCode() <= 599) {
+                if (connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
                     throw e;
