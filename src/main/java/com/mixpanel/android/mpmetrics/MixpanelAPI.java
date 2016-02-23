@@ -18,11 +18,11 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
-import com.mixpanel.android.viewcrawler.TrackingDebug;
-import com.mixpanel.android.viewcrawler.ViewCrawler;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
+import com.mixpanel.android.viewcrawler.TrackingDebug;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
+import com.mixpanel.android.viewcrawler.ViewCrawler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -1264,16 +1264,14 @@ public class MixpanelAPI {
      * This function is automatically called when the library is initialized unless you explicitly
      * set com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
      */
-    @TargetApi(MPConfig.UI_FEATURES_MIN_API)
+    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     /* package */ void registerMixpanelActivityLifecycleCallbacks() {
-        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API &&
-                mConfig.getAutoShowMixpanelUpdates()) {
-            if (mContext.getApplicationContext() instanceof Application) {
-                final Application app = (Application) mContext.getApplicationContext();
-                app.registerActivityLifecycleCallbacks((new MixpanelActivityLifecycleCallbacks(this)));
-            } else {
-                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments.");
-            }
+        if (mContext.getApplicationContext() instanceof Application) {
+            final Application app = (Application) mContext.getApplicationContext();
+            MixpanelActivityLifecycleCallbacks mixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
+            app.registerActivityLifecycleCallbacks(mixpanelActivityLifecycleCallbacks);
+        } else {
+            Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments. We won't be able to automatically flush on an app background.");
         }
     }
 

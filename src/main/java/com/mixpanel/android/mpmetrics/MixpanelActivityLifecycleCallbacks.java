@@ -3,30 +3,56 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 
-@TargetApi(MPConfig.UI_FEATURES_MIN_API)
+@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
+    private Handler mHandler = new Handler();
+    private Runnable check;
+    private boolean mIsForeground = false;
+    private boolean mPaused = true;
+    public static final int CHECK_DELAY = 500;
 
-    public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance) {
+    public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance, MPConfig config) {
         mMpInstance = mpInstance;
+        mConfig = config;
     }
 
     @Override
     public void onActivityStarted(Activity activity) {
-        if (!activity.isTaskRoot()) {
-            return; // No checks, no nothing.
-        }
+        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
+            if (!activity.isTaskRoot()) {
+                return; // No checks, no nothing.
+            }
 
-        mMpInstance.getPeople().showNotificationIfAvailable(activity);
-        mMpInstance.getPeople().showSurveyIfAvailable(activity);
+            mMpInstance.getPeople().showNotificationIfAvailable(activity);
+            mMpInstance.getPeople().showSurveyIfAvailable(activity);
+        }
     }
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) { }
 
     @Override
-    public void onActivityPaused(Activity activity) { }
+    public void onActivityPaused(Activity activity) {
+        mPaused = true;
+
+        if (check != null) {
+            mHandler.removeCallbacks(check);
+        }
+
+        mHandler.postDelayed(check = new Runnable(){
+            @Override
+            public void run() {
+                if (mIsForeground && mPaused) {
+                    mIsForeground = false;
+                    mMpInstance.flush();
+                }
+            }
+        }, CHECK_DELAY);
+    }
 
     @Override
     public void onActivityDestroyed(Activity activity) { }
@@ -36,11 +62,26 @@ import android.os.Bundle;
 
     @Override
     public void onActivityResumed(Activity activity) {
-        mMpInstance.getPeople().joinExperimentIfAvailable();
+        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
+            mMpInstance.getPeople().joinExperimentIfAvailable();
+        }
+
+        mPaused = true;
+        boolean wasBackground = !mIsForeground;
+        mIsForeground = true;
+
+        if (check != null) {
+            mHandler.removeCallbacks(check);
+        }
+
+        if (wasBackground) {
+            // App is in foreground now
+        }
     }
 
     @Override
     public void onActivityStopped(Activity activity) { }
 
     private final MixpanelAPI mMpInstance;
+    private final MPConfig mConfig;
 }
