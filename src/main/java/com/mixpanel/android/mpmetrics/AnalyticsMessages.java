@@ -411,10 +411,11 @@ import javax.net.ssl.SSLSocketFactory;
                         try {
                             final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
                             response = poster.performRequest(url, params, socketFactory);
-                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                             if (null == response) {
+                                deleteEvents = false;
                                 logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
                             } else {
+                                deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
                                 String parsedResponse;
                                 try {
                                     parsedResponse = new String(response, "UTF-8");
