@@ -392,9 +392,13 @@ import javax.net.ssl.SSLSocketFactory;
 
             private void sendData(MPDbAdapter dbAdapter, MPDbAdapter.Table table, String[] urls) {
                 final RemoteService poster = getPoster();
-                final String[] eventsData = dbAdapter.generateDataString(table);
+                String[] eventsData = dbAdapter.generateDataString(table);
+                Integer queueCount = 0;
+                if (queueCount != null) {
+                    queueCount = Integer.valueOf(eventsData[2]);
+                }
 
-                if (eventsData != null) {
+                while (eventsData != null && queueCount > 0) {
                     final String lastId = eventsData[0];
                     final String rawMessage = eventsData[1];
 
@@ -459,6 +463,12 @@ import javax.net.ssl.SSLSocketFactory;
                         sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackEngageRetryAfter);
                         mFailedRetries++;
                         logAboutMessageToMixpanel("Retrying this batch of events in " + mTrackEngageRetryAfter + " ms");
+                        break;
+                    }
+
+                    eventsData = dbAdapter.generateDataString(table);
+                    if (eventsData != null) {
+                        queueCount = Integer.valueOf(eventsData[2]);
                     }
                 }
             }
