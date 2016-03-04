@@ -328,6 +328,10 @@ import javax.net.ssl.SSLSocketFactory;
                 }
             }// handleMessage
 
+            protected long getTrackEngageRetryAfter() {
+                return mTrackEngageRetryAfter;
+            }
+
             private void runGCMRegistration(String senderID) {
                 final String registrationId;
                 try {
@@ -602,6 +606,9 @@ import javax.net.ssl.SSLSocketFactory;
         private SystemInformation mSystemInformation;
     }
 
+    public long getTrackEngageRetryAfter() {
+        return ((Worker.AnalyticsMessageHandler) mWorker.mHandler).getTrackEngageRetryAfter();
+    }
     /////////////////////////////////////////////////////////
 
     // Used across thread boundaries
