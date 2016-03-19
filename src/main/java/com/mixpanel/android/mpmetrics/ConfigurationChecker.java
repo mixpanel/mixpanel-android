@@ -70,7 +70,14 @@ import android.util.Log;
 
         final PackageManager packageManager = context.getPackageManager();
         final String packageName = context.getPackageName();
+
+        if (packageManager == null || packageName == null) {
+            Log.w(LOGTAG, "Can't check configuration when using a Context with null packageManager or packageName");
+            return false;
+        }
+
         final String permissionName = packageName + ".permission.C2D_MESSAGE";
+
         // check special permission
         try {
             packageManager.getPermissionInfo(permissionName, PackageManager.GET_PERMISSIONS);
