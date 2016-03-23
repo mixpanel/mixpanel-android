@@ -10,7 +10,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 
 public interface RemoteService {
-    boolean isOnline(Context context);
+    boolean isOnline(Context context, OfflineMode offlineMode);
 
     void checkIsMixpanelBlocked();
 

@@ -7,6 +7,8 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.mixpanel.android.util.OfflineMode;
+
 import java.security.GeneralSecurityException;
 
 import javax.net.ssl.SSLContext;
@@ -142,6 +144,31 @@ public class MPConfig {
      */
     public synchronized void setSSLSocketFactory(SSLSocketFactory factory) {
         mSSLSocketFactory = factory;
+    }
+
+    /**
+     * {@link OfflineMode} allows Mixpanel to be in-sync with client offline internal logic.
+     * If you want to integrate your own logic with Mixpanel you'll need to call
+     * {@link #setOfflineMode(OfflineMode)} early in your code, like this
+     *
+     * {@code
+     * <pre>
+     *     MPConfig.getInstance(context).setOfflineMode(OfflineModeImplementation);
+     * </pre>
+     * }
+     *
+     * Your settings will be globally available to all Mixpanel instances, and will be used across
+     * all the library. The call is thread safe, but should be done before
+     * your first call to MixpanelAPI.getInstance to insure that the library never uses it's
+     * default.
+     *
+     * The given {@link OfflineMode} may be used from multiple threads, you should ensure that
+     * your implementation is thread-safe before passing it to Mixpanel.
+     *
+     * @param offlineMode client offline implementation to use on Mixpanel
+     */
+    public synchronized void setOfflineMode(OfflineMode offlineMode) {
+        mOfflineMode = offlineMode;
     }
 
     /* package */ MPConfig(Bundle metaData, Context context) {
@@ -363,6 +390,11 @@ public class MPConfig {
         return mSSLSocketFactory;
     }
 
+    // This method is thread safe, and assumes that OfflineMode is also thread safe
+    public synchronized OfflineMode getOfflineMode() {
+        return mOfflineMode;
+    }
+
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
@@ -403,6 +435,7 @@ public class MPConfig {
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
+    private OfflineMode mOfflineMode;
 
     private static MPConfig sInstance;
     private static final Object sInstanceLock = new Object();

@@ -7,6 +7,7 @@ import android.test.AndroidTestCase;
 import android.util.Base64;
 
 import com.mixpanel.android.util.ImageStore;
+import com.mixpanel.android.util.OfflineMode;
 import com.mixpanel.android.util.RemoteService;
 
 import java.io.IOException;
@@ -71,7 +72,7 @@ public class ImageStoreTest extends AndroidTestCase {
         }
 
         @Override
-        public boolean isOnline(final Context context) {
+        public boolean isOnline(final Context context, OfflineMode offlineMode) {
             return online;
         }
 

@@ -3,7 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.os.Build;
 import android.util.Log;
@@ -23,7 +22,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -278,14 +276,15 @@ import javax.net.ssl.SSLSocketFactory;
 
     private static byte[] getUrls(RemoteService poster, Context context, String[] urls)
         throws RemoteService.ServiceUnavailableException {
-        if (!poster.isOnline(context)) {
+        final MPConfig config = MPConfig.getInstance(context);
+
+        if (!poster.isOnline(context, config.getOfflineMode())) {
             return null;
         }
 
         byte[] response = null;
         for (String url : urls) {
             try {
-                final MPConfig config = MPConfig.getInstance(context);
                 final SSLSocketFactory socketFactory = config.getSSLSocketFactory();
                 response = poster.performRequest(url, null, socketFactory);
                 break;

@@ -378,7 +378,7 @@ import javax.net.ssl.SSLSocketFactory;
 
             private void sendAllData(MPDbAdapter dbAdapter) {
                 final RemoteService poster = getPoster();
-                if (!poster.isOnline(mContext)) {
+                if (!poster.isOnline(mContext, mConfig.getOfflineMode())) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
                     return;
                 }
