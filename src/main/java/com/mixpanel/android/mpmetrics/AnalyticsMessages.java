@@ -394,7 +394,7 @@ import javax.net.ssl.SSLSocketFactory;
                 final RemoteService poster = getPoster();
                 String[] eventsData = dbAdapter.generateDataString(table);
                 Integer queueCount = 0;
-                if (queueCount != null) {
+                if (eventsData != null) {
                     queueCount = Integer.valueOf(eventsData[2]);
                 }
 
