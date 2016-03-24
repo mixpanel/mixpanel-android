@@ -179,16 +179,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         @Override
         public void onActivityResumed(Activity activity) {
-            installConnectionSensor();
+            installConnectionSensor(activity);
             mEditState.add(activity);
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
             mEditState.remove(activity);
-            if (mEditState.isEmpty()) {
-                uninstallConnectionSensor(activity);
-            }
+            uninstallConnectionSensor(activity);
         }
 
         @Override
@@ -203,11 +201,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         public void onActivityDestroyed(Activity activity) {
         }
 
-        private void installConnectionSensor() {
+        private void installConnectionSensor(final Activity activity) {
             if (isInEmulator() && !mConfig.getDisableEmulatorBindingUI()) {
                 mEmulatorConnector.start();
             } else if (!mConfig.getDisableGestureBindingUI()) {
-                final SensorManager sensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
+                final SensorManager sensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
                 final Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
                 sensorManager.registerListener(mFlipGesture, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             }
@@ -254,7 +252,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         public ViewCrawlerHandler(Context context, String token, Looper looper, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
             super(looper);
-            mContext = context;
             mToken = token;
             mSnapshot = null;
 
@@ -997,7 +994,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         private EditorConnection mEditorConnection;
         private ViewSnapshot mSnapshot;
-        private final Context mContext;
         private final String mToken;
         private final Lock mStartLock;
         private final EditProtocol mProtocol;
