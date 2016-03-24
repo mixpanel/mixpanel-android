@@ -236,19 +236,27 @@ import android.util.Log;
      * we're sending, so we know what rows to delete when a track request was successful.
      *
      * @param table the table to read the JSON from, either "events" or "people"
-     * @return String array containing the maximum ID and the data string
-     * representing the events, or null if none could be successfully retrieved.
+     * @return String array containing the maximum ID, the data string
+     * representing the events (or null if none could be successfully retrieved) and the total
+     * current number of events in the queue.
      */
     public String[] generateDataString(Table table) {
         Cursor c = null;
+        Cursor queueCountCursor = null;
         String data = null;
         String last_id = null;
+        String queueCount = null;
         final String tableName = table.getName();
+        final SQLiteDatabase db = mDb.getReadableDatabase();
 
         try {
-            final SQLiteDatabase db = mDb.getReadableDatabase();
             c = db.rawQuery("SELECT * FROM " + tableName  +
                     " ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50", null);
+
+            queueCountCursor = db.rawQuery("SELECT COUNT(*) FROM " + tableName, null);
+            queueCountCursor.moveToFirst();
+            queueCount = String.valueOf(queueCountCursor.getInt(0));
+
             final JSONArray arr = new JSONArray();
 
             while (c.moveToNext()) {
@@ -280,10 +288,13 @@ import android.util.Log;
             if (c != null) {
                 c.close();
             }
+            if (queueCountCursor != null) {
+                queueCountCursor.close();
+            }
         }
 
         if (last_id != null && data != null) {
-            final String[] ret = {last_id, data};
+            final String[] ret = {last_id, data, queueCount};
             return ret;
         }
         return null;
