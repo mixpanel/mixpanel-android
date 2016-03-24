@@ -46,7 +46,7 @@ public class HttpService implements RemoteService {
                     if (MPConfig.DEBUG && sIsMixpanelBlocked) {
                         Log.v(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
                     }
-                } catch (UnknownHostException e) {
+                } catch (Exception e) {
                 }
             }
         });
