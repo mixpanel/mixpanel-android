@@ -207,6 +207,9 @@ public class MixpanelAPI {
         mPeople = new PeopleImpl();
         mConfig = config;
 
+        mShowNotificationOnActive = true;
+        mShowSurveyOnActive = true;
+        
         final Map<String, String> deviceInfo = new HashMap<String, String>();
         deviceInfo.put("$android_lib_version", MPConfig.VERSION);
         deviceInfo.put("$android_os", "Android");
@@ -1228,6 +1231,30 @@ public class MixpanelAPI {
          */
         @Deprecated
         public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
+        
+        /**
+         * Gets whether an available notification will be shown when the app becomes active.
+         */
+        public boolean getShowNotificationOnActive();
+        
+        /**
+         * Sets whether an available notification will be shown when the app becomes active.
+         *
+         * @param showNotificationOnActive Whether the notification will be shown.
+         */
+        public void setShowNotificationOnActive(boolean showNotificationOnActive);
+        
+        /**
+         * Gets whether an available survey will be shown when the app becomes active.
+         */
+        public boolean getShowSurveyOnActive();
+        
+        /**
+         * Sets whether an available survey will be shown when the app becomes active.
+         *
+         * @param showSurveyOnActive Whether the survey will be shown.
+         */
+        public void setShowSurveyOnActive(boolean showSurveyOnActive);
     }
 
     /**
@@ -1731,7 +1758,27 @@ public class MixpanelAPI {
         public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
             mUpdatesListener.removeOnMixpanelUpdatesReceivedListener(listener);
         }
-
+        
+        @Override
+        public boolean getShowNotificationOnActive() {
+            return mShowNotificationOnActive;
+        }
+        
+        @Override
+        public void setShowNotificationOnActive(boolean showNotificationOnActive) {
+            mShowNotificationOnActive = showNotificationOnActive;
+        }
+        
+        @Override
+        public boolean getShowSurveyOnActive() {
+            return mShowSurveyOnActive;
+        }
+        
+        @Override
+        public void setShowSurveyOnActive(boolean showSurveyOnActive) {
+            mShowSurveyOnActive = showSurveyOnActive;
+        }
+        
         private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
@@ -2124,6 +2171,9 @@ public class MixpanelAPI {
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
 
+    private boolean mShowNotificationOnActive;
+    private boolean mShowSurveyOnActive;
+    
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();

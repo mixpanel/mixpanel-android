@@ -27,8 +27,15 @@ import android.os.Handler;
                 return; // No checks, no nothing.
             }
 
-            mMpInstance.getPeople().showNotificationIfAvailable(activity);
-            mMpInstance.getPeople().showSurveyIfAvailable(activity);
+            MixpanelAPI.People people = mMpInstance.getPeople();
+            
+            if (people.getShowNotificationOnActive()) {
+                people.showNotificationIfAvailable(activity);
+            }
+                
+            if (people.getShowSurveyOnActive()) {
+                mMpInstance.getPeople().showSurveyIfAvailable(activity);
+            }
         }
     }
 
