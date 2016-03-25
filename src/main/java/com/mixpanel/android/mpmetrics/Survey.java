@@ -18,7 +18,7 @@ import android.os.Parcelable;
  * display a custom interface for the survey yourself.
  */
 public class Survey implements Parcelable {
-    public static Creator<Survey> CREATOR = new Creator<Survey>() {
+    public static final Creator<Survey> CREATOR = new Creator<Survey>() {
         @Override
         public Survey createFromParcel(final Parcel source) {
             final String jsonString = source.readString();
