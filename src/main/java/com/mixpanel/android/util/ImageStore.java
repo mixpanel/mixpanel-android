@@ -96,8 +96,8 @@ public class ImageStore {
             BitmapFactory.Options option = new BitmapFactory.Options();
             option.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(file.getAbsolutePath(), option);
-            Long imageSize = new Long(option.outHeight * option.outWidth);
-            Long freeMemory = Runtime.getRuntime().freeMemory();
+            Float imageSize = new Float(option.outHeight * option.outWidth);
+            Float freeMemory = Runtime.getRuntime().freeMemory() * 0.85f;
             if (imageSize > freeMemory) {
                 throw new CantGetImageException("Do not have enough memory for the image");
             }
