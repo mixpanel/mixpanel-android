@@ -6,10 +6,11 @@ import android.app.Application;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
-    private Handler mHandler = new Handler();
+    private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable check;
     private boolean mIsForeground = false;
     private boolean mPaused = true;
