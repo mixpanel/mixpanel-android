@@ -169,6 +169,9 @@ public class GCMReceiver extends BroadcastReceiver {
 
         final Intent notificationIntent = buildNotificationIntent(context, uriString);
 
+        final String mpCampaignId = inboundIntent.getStringExtra("mp_campaign_id");
+        notificationIntent.putExtra("mp_campaign_id", mpCampaignId);
+
         return new NotificationData(notificationIcon, notificationTitle, message, notificationIntent);
     }
 
