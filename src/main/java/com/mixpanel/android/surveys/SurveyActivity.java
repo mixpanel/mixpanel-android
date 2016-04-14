@@ -12,6 +12,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -107,48 +108,10 @@ public class SurveyActivity extends Activity {
             closeButtonWrapper.setLayoutParams(params);
         }
 
-        final GradientDrawable gd = new GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
-            new int[]{ 0xE560607C, 0xE548485D, 0xE518181F, 0xE518181F }
-        );
-        gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            gd.setGradientCenter(0.25f, 0.5f);
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.8f);
-        } else {
-            gd.setGradientCenter(0.5f, 0.33f);
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.7f);
-        }
-
-        setViewBackground(backgroundImage, gd);
-
+        backgroundImage.setBackgroundColor(0xE6000000);
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());
-
-        final Bitmap inAppImage = inApp.getImage();
-        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_dropshadow);
-
-        if (inAppImage.getWidth() < SHADOW_SIZE_THRESHOLD_PX || inAppImage.getHeight() < SHADOW_SIZE_THRESHOLD_PX) {
-            inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
-        } else {
-            int h = inAppImage.getHeight() / 100;
-            int w = inAppImage.getWidth() / 100;
-            final Bitmap scaledImage = Bitmap.createScaledBitmap(inAppImage, w, h, false);
-            int averageColor;
-            int averageAlpha;
-            outerloop:
-            for (int x = 0; x < w; x++) {
-                for (int y = 0; y < h; y++) {
-                    averageColor = scaledImage.getPixel(x, y);
-                    averageAlpha = Color.alpha(averageColor);
-                    if (averageAlpha < 0xFF) {
-                        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
-                        break outerloop;
-                    }
-                }
-            }
-        }
-        inAppImageView.setImageBitmap(inAppImage);
+        inAppImageView.setImageBitmap(inApp.getImage());
 
         final String ctaUrl = inApp.getCallToActionUrl();
         if (ctaUrl != null && ctaUrl.length() > 0) {
@@ -220,6 +183,8 @@ public class SurveyActivity extends Activity {
 
         final Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
         closeButtonWrapper.startAnimation(fadeIn);
+
+        if (inApp.getStyle().equals("light")) showLightStyle();
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
@@ -501,6 +466,44 @@ public class SurveyActivity extends Activity {
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
+    }
+
+	@SuppressWarnings("deprecation")
+    private void showLightStyle() {
+        final ImageView backgroundImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageView closeButton = (ImageView) findViewById(R.id.com_mixpanel_android_image_close);
+
+        backgroundImage.setBackgroundColor(0xFFFFFFFF);
+        titleView.setTextColor(Color.rgb(92, 101, 120));
+        subtextView.setTextColor(Color.rgb(123, 146, 163));
+        ctaButton.setTextColor(Color.rgb(123, 146, 163));
+
+        GradientDrawable border = new GradientDrawable();
+        border.setColor(0xFFFFFFFF);
+        border.setStroke(2, Color.rgb(218, 223, 232));
+        border.setCornerRadius(6);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            ctaButton.setBackgroundDrawable(border);
+        } else {
+            ctaButton.setBackground(border);
+        }
+
+		Drawable myIcon = getResources().getDrawable(R.drawable.com_mixpanel_android_close_new);
+		if (myIcon != null) {
+			final int newColor = Color.rgb(217, 217, 217);
+			myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
+			closeButton.setImageDrawable(myIcon);
+		}
+
+		ctaButton.setOnTouchListener(new View.OnTouchListener() {
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				return false;
+			}
+		});
     }
 
     @SuppressWarnings("deprecation")

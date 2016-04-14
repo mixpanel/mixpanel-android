@@ -2,11 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="75dp"
+    android:layout_height="65dp"
     android:layout_gravity="bottom"
     android:orientation="horizontal"
-    android:visibility="gone">
-    
+    android:layout_marginLeft="10dp"
+    android:layout_marginRight="10dp"
+    android:layout_marginBottom="10dp"
+    android:visibility="gone"
+    android:background="@drawable/com_mixpanel_android_mini_inapp_rounded" >
+
     <com.mixpanel.android.surveys.MiniCircleImageView
         android:id="@+id/com_mixpanel_android_notification_image"
         android:layout_width="75dp"
@@ -18,10 +22,10 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="100"
-        android:paddingLeft="15dp"
+        android:paddingLeft="0dp"
         android:paddingRight="15dp"
         android:gravity="center_vertical"
-        android:textSize="20sp"
+        android:textSize="14sp"
         android:textColor="#ffffff" />
-    
+
 </LinearLayout>

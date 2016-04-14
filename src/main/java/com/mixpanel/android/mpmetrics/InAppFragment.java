@@ -8,7 +8,14 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -74,7 +81,6 @@ public class InAppFragment extends Fragment {
             @Override
             public void run() {
                 mInAppView.setVisibility(View.VISIBLE);
-                mInAppView.setBackgroundColor(mDisplayState.getHighlightColor());
                 mInAppView.setOnTouchListener(new OnTouchListener() {
                     @Override
                     public boolean onTouch(View view, MotionEvent event) {
@@ -84,7 +90,7 @@ public class InAppFragment extends Fragment {
 
                 final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-                final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, mParent.getResources().getDisplayMetrics());
+                final float heightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 65, mParent.getResources().getDisplayMetrics());
                 final TranslateAnimation translate = new TranslateAnimation(0, 0, heightPx, 0);
                 translate.setInterpolator(new DecelerateInterpolator());
                 translate.setDuration(200);
@@ -177,6 +183,8 @@ public class InAppFragment extends Fragment {
             notifImage.setImageBitmap(inApp.getImage());
 
             mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
+
+            if (inApp.getStyle().equals("light")) showLightStyle();
         }
 
         return mInAppView;
@@ -248,6 +256,28 @@ public class InAppFragment extends Fragment {
         public float getInterpolation(float t) {
             return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void showLightStyle() {
+        final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+        final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
+
+        GradientDrawable viewBackground = new GradientDrawable();
+        viewBackground.setColor(0xFFFFFFFF);
+        viewBackground.setStroke(2, Color.rgb(218, 223, 232));
+        viewBackground.setCornerRadius(6);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            mInAppView.setBackgroundDrawable(viewBackground);
+        } else {
+            mInAppView.setBackground(viewBackground);
+        }
+        titleView.setTextColor(Color.rgb(123, 146, 163));
+
+        Drawable myIcon = new BitmapDrawable(getResources(), mDisplayState.getInAppNotification().getImage());
+        final int newColor = Color.rgb(123, 146, 163);
+        myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
+        notifImage.setImageDrawable(myIcon);
     }
 
     private MixpanelAPI mMixpanel;

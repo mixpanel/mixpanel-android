@@ -18,11 +18,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
-        android:padding="20dp">
+        android:padding="10dp">
         <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:background="@drawable/com_mixpanel_android_close"
+            android:id="@+id/com_mixpanel_android_image_close"
+            android:layout_width="23dp"
+            android:layout_height="23dp"
+            android:background="@drawable/com_mixpanel_android_close_new"
             android:contentDescription="@string/com_mixpanel_android_close" />
     </LinearLayout>
 
@@ -39,10 +40,9 @@
             android:paddingLeft="20dp"
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
-            android:textSize="25sp"
+            android:textSize="22sp"
             android:textColor="#ffffff"
             android:textStyle="bold" />
-
         <TextView
             android:id="@+id/com_mixpanel_android_notification_subtext"
             android:layout_width="match_parent"
@@ -51,12 +51,13 @@
             android:paddingLeft="20dp"
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
-            android:textSize="20sp"
-            android:textColor="#a9b5c5" />
+            android:textSize="17sp"
+            android:textColor="#ffffff" />
 
         <Button
             android:id="@+id/com_mixpanel_android_notification_button"
             android:layout_width="wrap_content"
+            android:minWidth="150dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="40dp"
             android:layout_gravity="center"
@@ -66,7 +67,8 @@
             android:paddingRight="20dp"
             android:text="@string/com_mixpanel_android_done"
             android:textColor="@android:color/white"
-            android:textSize="20sp"
+            android:textSize="17sp"
+            android:textStyle="bold"
             android:background="@drawable/com_mixpanel_android_cta_button" />
     </LinearLayout>
 
@@ -77,7 +79,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="50dp"
-        android:paddingBottom="100dp"
+        android:paddingBottom="120dp"
         android:gravity="center"
         android:orientation="horizontal">
         <com.mixpanel.android.surveys.FadingImageView
