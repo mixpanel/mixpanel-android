@@ -75,10 +75,7 @@ public class FadingImageView extends ImageView {
 
         super.draw(canvas);
 
-        // Only apply the gradient when we're in portrait view
-//        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-            canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
-//        }
+        canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
         canvas.restoreToCount(restoreTo);
     }
 

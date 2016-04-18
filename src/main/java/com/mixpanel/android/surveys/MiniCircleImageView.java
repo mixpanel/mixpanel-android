@@ -46,11 +46,6 @@ public class MiniCircleImageView extends ImageView { // TODO move to surveys pac
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-    }
-
-    @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
 

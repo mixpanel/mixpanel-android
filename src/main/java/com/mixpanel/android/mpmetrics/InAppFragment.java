@@ -112,7 +112,7 @@ public class InAppFragment extends Fragment {
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2,
-                    float velocityX, float velocityY) {
+                                   float velocityX, float velocityY) {
                 if (velocityY > 0) {
                     remove();
                 }
@@ -124,7 +124,7 @@ public class InAppFragment extends Fragment {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2,
-                    float distanceX, float distanceY) {
+                                    float distanceX, float distanceY) {
                 return false;
             }
 
@@ -184,7 +184,9 @@ public class InAppFragment extends Fragment {
 
             mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
 
-            if (inApp.getStyle().equals("light")) showLightStyle();
+            if (InAppNotification.Style.LIGHT.equalsName(inApp.getStyle())) {
+                showLightStyle();
+            }
         }
 
         return mInAppView;
@@ -264,18 +266,30 @@ public class InAppFragment extends Fragment {
         final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
         GradientDrawable viewBackground = new GradientDrawable();
-        viewBackground.setColor(0xFFFFFFFF);
-        viewBackground.setStroke(2, Color.rgb(218, 223, 232));
+        viewBackground.setColor(Color.WHITE);
         viewBackground.setCornerRadius(6);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            viewBackground.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray));
+            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
+        } else {
+            viewBackground.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray, null));
+            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
+        }
+
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             mInAppView.setBackgroundDrawable(viewBackground);
         } else {
             mInAppView.setBackground(viewBackground);
         }
-        titleView.setTextColor(Color.rgb(123, 146, 163));
 
         Drawable myIcon = new BitmapDrawable(getResources(), mDisplayState.getInAppNotification().getImage());
-        final int newColor = Color.rgb(123, 146, 163);
+        final int newColor;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray);
+        } else {
+            newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null);
+        }
         myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
         notifImage.setImageDrawable(myIcon);
     }

@@ -45,6 +45,25 @@ public class InAppNotification implements Parcelable {
         };
     }
 
+    public enum Style {
+        LIGHT ("light"),
+        DARK  ("dark");
+
+        private final String style;
+
+        Style(String s) {
+            style = s;
+        }
+
+        public boolean equalsName(String otherName) {
+            return (otherName != null) && style.equals(otherName);
+        }
+
+        public String toString() {
+            return this.style;
+        }
+    }
+
     public InAppNotification(Parcel in) {
         JSONObject temp = new JSONObject();
         try {
