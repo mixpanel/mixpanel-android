@@ -496,6 +496,8 @@ public class CardCarouselLayout extends ViewGroup {
                 mEditAnswerView.setVisibility(View.VISIBLE);
                 if (null != answerOrNull) {
                     mEditAnswerView.setText(answerOrNull);
+                } else {
+                    mEditAnswerView.setText("");
                 }
                 if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
                     mEditAnswerView.requestFocus();
@@ -528,7 +530,7 @@ public class CardCarouselLayout extends ViewGroup {
         private Survey.Question mQuestion;
         private final View mCardView;
         private final TextView mPromptView;
-        private final TextView mEditAnswerView;
+        private final EditText mEditAnswerView;
         private final ListView mChoiceView;
     }
 
