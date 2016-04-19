@@ -30,6 +30,9 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
         mNotificationIds = new HashSet<Integer>();
+        if(mVariants == null) {
+            mVariants = new JSONArray();
+        }
     }
 
     public String getToken() {
@@ -105,9 +108,9 @@ import java.util.Set;
         }
 
         // in the case we do not receive a new variant, this means the A/B test should be turned off
-        if(!hasNewVariants && newVariantsLength == 0) {
+        if(newVariantsLength == 0) {
             mLoadedVariants.clear();
-            mVariants = null;
+            mVariants = new JSONArray();
             newContent = true;
         }
 

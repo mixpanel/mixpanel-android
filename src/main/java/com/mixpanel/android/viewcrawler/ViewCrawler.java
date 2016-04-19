@@ -754,7 +754,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private void handleVariantsReceived(JSONArray variants) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
-            if(variants != null) {
+            if(variants.length() > 0) {
                 editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
             } else {
                 editor.remove(SHARED_PREF_CHANGES_KEY);
