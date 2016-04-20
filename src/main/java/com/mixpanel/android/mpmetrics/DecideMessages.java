@@ -30,9 +30,7 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
         mNotificationIds = new HashSet<Integer>();
-        if(mVariants == null) {
-            mVariants = new JSONArray();
-        }
+        mVariants = new JSONArray();
     }
 
     public String getToken() {
