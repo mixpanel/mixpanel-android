@@ -373,10 +373,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             List<Pair<Integer, Integer>> emptyVariantIds = new ArrayList<>();
 
             try {
-                if (null != storedChanges) {
-                    mPersistentChanges.clear();
-                    mPersistentTweaks.clear();
+                mPersistentChanges.clear();
+                mPersistentTweaks.clear();
 
+                if (null != storedChanges) {
                     final JSONArray variants = new JSONArray(storedChanges);
                     final int variantsLength = variants.length();
                     for (int variantIx = 0; variantIx < variantsLength; variantIx++) {
@@ -751,7 +751,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private void handleVariantsReceived(JSONArray variants) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
+            if(variants.length() > 0) {
+                editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
+            } else {
+                editor.remove(SHARED_PREF_CHANGES_KEY);
+            }
             editor.apply();
 
             initializeChanges();
@@ -863,6 +867,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         }
                     } catch (EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
+                    }
+                }
+                if(size == 0) { // there are no new tweaks, so reset to default values
+                    final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
+                    for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
+                        final Tweaks.TweakValue tweakValue = tweak.getValue();
+                        final String tweakName = tweak.getKey();
+                        mTweaks.set(tweakName, tweakValue);
                     }
                 }
             }

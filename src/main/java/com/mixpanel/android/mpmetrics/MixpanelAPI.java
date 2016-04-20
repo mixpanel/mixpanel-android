@@ -1603,9 +1603,7 @@ public class MixpanelAPI {
         @Override
         public void joinExperimentIfAvailable() {
             final JSONArray variants = mDecideMessages.getVariants();
-            if (null != variants) {
-                mUpdatesFromMixpanel.setVariants(variants);
-            }
+            mUpdatesFromMixpanel.setVariants(variants);
         }
 
         @Override

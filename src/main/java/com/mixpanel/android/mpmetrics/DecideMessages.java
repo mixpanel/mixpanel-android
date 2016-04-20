@@ -30,6 +30,7 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mSurveyIds = new HashSet<Integer>();
         mNotificationIds = new HashSet<Integer>();
+        mVariants = new JSONArray();
     }
 
     public String getToken() {
@@ -102,6 +103,13 @@ import java.util.Set;
                     Log.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while updating the map", e);
                 }
             }
+        }
+
+        // in the case we do not receive a new variant, this means the A/B test should be turned off
+        if(newVariantsLength == 0) {
+            mLoadedVariants.clear();
+            mVariants = new JSONArray();
+            newContent = true;
         }
 
         if (MPConfig.DEBUG) {
