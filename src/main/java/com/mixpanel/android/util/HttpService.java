@@ -55,8 +55,9 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public boolean isOnline(Context context) {
+    public boolean isOnline(Context context, OfflineMode offlineMode) {
         if (sIsMixpanelBlocked) return false;
+        if (onOfflineMode(offlineMode)) return false;
 
         boolean isOnline;
         try {
@@ -74,6 +75,21 @@ public class HttpService implements RemoteService {
             }
         }
         return isOnline;
+    }
+
+    private boolean onOfflineMode(OfflineMode offlineMode) {
+        boolean onOfflineMode;
+
+        try {
+            onOfflineMode = offlineMode != null && offlineMode.isOffline();
+        } catch (Exception e) {
+            onOfflineMode = false;
+            if (MPConfig.DEBUG) {
+                Log.v(LOGTAG, "Client State should not throw exception, will assume is not on offline mode", e);
+            }
+        }
+
+        return onOfflineMode;
     }
 
     @Override
