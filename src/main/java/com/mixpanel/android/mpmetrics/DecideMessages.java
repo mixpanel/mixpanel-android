@@ -106,7 +106,7 @@ import java.util.Set;
         }
 
         // in the case we do not receive a new variant, this means the A/B test should be turned off
-        if(newVariantsLength == 0) {
+        if (newVariantsLength == 0 && mLoadedVariants.size() > 0) {
             mLoadedVariants.clear();
             mVariants = new JSONArray();
             newContent = true;
