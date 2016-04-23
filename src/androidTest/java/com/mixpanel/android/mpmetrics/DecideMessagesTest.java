@@ -63,10 +63,10 @@ public class DecideMessagesTest extends AndroidTestCase {
         mSomeSurveys.add(new Survey(surveyDesc2));
 
         JSONObject notifsDesc1 = new JSONObject(
-                "{\"body\":\"body1\",\"title\":\"title1\",\"message_id\":1,\"image_url\":\"http://x.com/image1\",\"cta\":\"cta1\",\"cta_url\":\"http://x.com/cta1\",\"id\":11,\"type\":\"takeover\"}"
+                "{\"body\":\"body1\",\"title\":\"title1\",\"message_id\":1,\"image_url\":\"http://x.com/image1\",\"cta\":\"cta1\",\"cta_url\":\"http://x.com/cta1\",\"id\":11,\"type\":\"takeover\",\"style\":\"dark\"}"
         );
         JSONObject notifsDesc2 = new JSONObject(
-                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22,\"type\":\"mini\"}"
+                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22,\"type\":\"mini\",\"style\":\"dark\"}"
         );
 
         mSomeNotifications.add(new InAppNotification(notifsDesc1));
@@ -106,7 +106,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         fakeSurveys.add(unseenSurvey);
 
         JSONObject notificationNewIdDesc = new JSONObject(
-                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22022,\"type\":\"mini\"}"
+                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22022,\"type\":\"mini\",\"style\":\"dark\"}"
         );
         final InAppNotification unseenNotification = new InAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
@@ -160,7 +160,7 @@ public class DecideMessagesTest extends AndroidTestCase {
 
         // New info means new calls
         JSONObject notificationNewIdDesc = new JSONObject(
-                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22022,\"type\":\"mini\"}"
+                "{\"body\":\"body2\",\"title\":\"title2\",\"message_id\":2,\"image_url\":\"http://x.com/image2\",\"cta\":\"cta2\",\"cta_url\":\"http://x.com/cta2\",\"id\":22022,\"type\":\"mini\",\"style\":\"dark\"}"
         );
         final InAppNotification unseenNotification = new InAppNotification(notificationNewIdDesc);
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();

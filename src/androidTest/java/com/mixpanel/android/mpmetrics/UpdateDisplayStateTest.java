@@ -26,7 +26,7 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         final Survey survey = new Survey(surveyJson);
 
         final JSONObject inAppJson = new JSONObject(
-            "{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}"
+            "{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\",\"style\":\"dark\"}"
         );
         final InAppNotification inApp = new InAppNotification(inAppJson);
         inApp.setImage(bitmap);

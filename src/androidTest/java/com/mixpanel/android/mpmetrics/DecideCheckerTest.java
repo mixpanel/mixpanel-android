@@ -252,7 +252,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         {
-            final String notificationOnly = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\"}]}";
+            final String notificationOnly = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\", \"style\":\"dark\"}]}";
             final DecideChecker.Result parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
             assertEquals(parseNotificationOnly.notifications.size(), 1);
 
@@ -289,11 +289,12 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         {
-            final String both = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\"}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
+            final String both = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\",\"style\":\"dark\"}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
             final DecideChecker.Result parseBoth = DecideChecker.parseDecideResponse(both);
 
             final InAppNotification parsedNotification = parseBoth.notifications.get(0);
             assertEquals(parsedNotification.getBody(), "Hook me up, yo!");
+            assertEquals(parsedNotification.getStyle(), "dark");
             assertEquals(parsedNotification.getTitle(), "Tranya?");
             assertEquals(parsedNotification.getMessageId(), 1781);
             assertEquals(parsedNotification.getImageUrl(), "http://mixpanel.com/Balok.jpg");
