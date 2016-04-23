@@ -26,7 +26,7 @@
             android:layout_weight="50"
             android:gravity="center"
             android:orientation="horizontal">
-    
+
             <com.mixpanel.android.surveys.FadingImageView
                 android:id="@+id/com_mixpanel_android_notification_image"
                 android:layout_width="wrap_content"
@@ -49,11 +49,12 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
                 android:layout_alignParentRight="true"
-                android:padding="20dp">
+                android:padding="10dp">
                 <ImageView
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:background="@drawable/com_mixpanel_android_close"
+                    android:id="@+id/com_mixpanel_android_image_close"
+                    android:layout_width="23dp"
+                    android:layout_height="23dp"
+                    android:background="@drawable/com_mixpanel_android_close_new"
                     android:contentDescription="@string/com_mixpanel_android_close" />
             </LinearLayout>
             <LinearLayout
@@ -81,8 +82,8 @@
                     android:paddingLeft="20dp"
                     android:paddingRight="20dp"
                     android:gravity="center_horizontal"
-                    android:textSize="18sp"
-                    android:textColor="#a9b5c5" />
+                    android:textSize="17sp"
+                    android:textColor="#ffffff" />
 
                 <Button
                     android:id="@+id/com_mixpanel_android_notification_button"
@@ -94,7 +95,8 @@
                     android:paddingRight="20dp"
                     android:text="@string/com_mixpanel_android_done"
                     android:textColor="@android:color/white"
-                    android:textSize="20sp"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
                     android:background="@drawable/com_mixpanel_android_cta_button" />
             </LinearLayout>
         </RelativeLayout>

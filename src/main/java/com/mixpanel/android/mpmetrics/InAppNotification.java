@@ -45,6 +45,25 @@ public class InAppNotification implements Parcelable {
         };
     }
 
+    public enum Style {
+        LIGHT ("light"),
+        DARK  ("dark");
+
+        private final String style;
+
+        Style(String s) {
+            style = s;
+        }
+
+        public boolean equalsName(String otherName) {
+            return (otherName != null) && style.equals(otherName);
+        }
+
+        public String toString() {
+            return this.style;
+        }
+    }
+
     public InAppNotification(Parcel in) {
         JSONObject temp = new JSONObject();
         try {
@@ -56,6 +75,7 @@ public class InAppNotification implements Parcelable {
         mId = in.readInt();
         mMessageId = in.readInt();
         mType = in.readString();
+        mStyle = in.readString();
         mTitle = in.readString();
         mBody = in.readString();
         mImageUrl = in.readString();
@@ -71,6 +91,7 @@ public class InAppNotification implements Parcelable {
             mId = description.getInt("id");
             mMessageId = description.getInt("message_id");
             mType = description.getString("type");
+            mStyle = description.getString("style");
             mTitle = description.getString("title");
             mBody = description.getString("body");
             mImageUrl = description.getString("image_url");
@@ -148,6 +169,8 @@ public class InAppNotification implements Parcelable {
         return mCallToActionUrl;
     }
 
+    public String getStyle() { return mStyle; }
+
     /* package */ void setImage(final Bitmap image) {
         mImage = image;
     }
@@ -167,6 +190,7 @@ public class InAppNotification implements Parcelable {
         dest.writeInt(mId);
         dest.writeInt(mMessageId);
         dest.writeString(mType);
+        dest.writeString(mStyle);
         dest.writeString(mTitle);
         dest.writeString(mBody);
         dest.writeString(mImageUrl);
@@ -203,6 +227,7 @@ public class InAppNotification implements Parcelable {
     private final int mId;
     private final int mMessageId;
     private final String mType;
+    private final String mStyle;
     private final String mTitle;
     private final String mBody;
     private final String mImageUrl;

@@ -45,28 +45,22 @@ public class FadingImageView extends ImageView {
         int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
         ViewGroup container = (ViewGroup) getParent();
 
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-            // For Portrait takeover notifications, we have to fade out into the notification text
-            // at the bottom of the screen.
+        final View root = (View) this.getRootView();
+        final View bottomWrapperView = (View) root.findViewById(R.id.com_mixpanel_android_notification_bottom_wrapper);
 
-            final View root = (View) this.getRootView();
-            final View bottomWrapperView = (View) root.findViewById(R.id.com_mixpanel_android_notification_bottom_wrapper);
-
-            // bottomWrapperView should have been measured already, so it's height should exist
-            // Still, guard against potential weird black magic rendering issues.
-            int bottomWrapperHeight = 0;
-            if (null != bottomWrapperView && bottomWrapperView.getHeight() != 0) {
-                bottomWrapperHeight = bottomWrapperView.getHeight();
-            }
-
-            // We don't want the fade out to end right at the beginning of the text, so we give it
-            // give it a few extra dp's of room.
-            Resources r = getResources();
-            float extraPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15, r.getDisplayMetrics());
-            mGradientMatrix.setScale(1, parentHeight + container.getPaddingBottom() - bottomWrapperHeight + extraPx);
-        } else {
-            mGradientMatrix.setScale(1, parentHeight);
+        // bottomWrapperView should have been measured already, so it's height should exist
+        // Still, guard against potential weird black magic rendering issues.
+        int bottomWrapperHeight = 0;
+        if (null != bottomWrapperView && bottomWrapperView.getHeight() != 0) {
+            bottomWrapperHeight = bottomWrapperView.getHeight();
         }
+
+        // We don't want the fade out to end right at the beginning of the text, so we give it
+        // give it a few extra dp's of room.
+        Resources r = getResources();
+        float extraPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15, r.getDisplayMetrics());
+        mGradientMatrix.setScale(1, parentHeight + container.getPaddingBottom() - bottomWrapperHeight + extraPx - 80);
+
         mAlphaGradientShader.setLocalMatrix(mGradientMatrix);
         mDarkenGradientShader.setLocalMatrix(mGradientMatrix);
     }
@@ -81,10 +75,7 @@ public class FadingImageView extends ImageView {
 
         super.draw(canvas);
 
-        // Only apply the gradient when we're in portrait view
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-            canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
-        }
+        canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
         canvas.restoreToCount(restoreTo);
     }
 
@@ -96,7 +87,7 @@ public class FadingImageView extends ImageView {
         mAlphaGradientShader = new LinearGradient(
             0, 0, 0, 1, // x0, y0, x1, y1
             new int[]  {0xFF000000, 0xFF000000, 0xE5000000, 0x00000000},
-            new float[]{0.0f,       0.7f,       0.8f,       1.0f},
+            new float[]{0.0f,       0.2f,       0.4f,       1.0f},
             Shader.TileMode.CLAMP
         );
         mAlphaGradientPaint.setShader(mAlphaGradientShader);

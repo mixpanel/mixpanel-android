@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="com_mixpanel_android_selected">#66ffffff</color>
+    <color name="com_mixpanel_android_inapp_light_softgray">#DADFE8</color>
+    <color name="com_mixpanel_android_inapp_light_gray">#7B92A3</color>
+    <color name="com_mixpanel_android_inapp_light_hardgray">#5C6578</color>
+    <color name="com_mixpanel_android_inapp_dark_translucent">#E6000000</color>
 </resources>

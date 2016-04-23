@@ -12,6 +12,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -82,6 +83,7 @@ public class SurveyActivity extends Activity {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void onCreateInAppNotification(Bundle savedInstanceState) {
         setContentView(R.layout.com_mixpanel_android_activity_notification_full);
 
@@ -107,48 +109,14 @@ public class SurveyActivity extends Activity {
             closeButtonWrapper.setLayoutParams(params);
         }
 
-        final GradientDrawable gd = new GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT, // Ignored in radial gradients
-            new int[]{ 0xE560607C, 0xE548485D, 0xE518181F, 0xE518181F }
-        );
-        gd.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            gd.setGradientCenter(0.25f, 0.5f);
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.8f);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            backgroundImage.setBackgroundColor(getResources().getColor(R.color.com_mixpanel_android_inapp_dark_translucent));
         } else {
-            gd.setGradientCenter(0.5f, 0.33f);
-            gd.setGradientRadius(Math.min(size.x, size.y) * 0.7f);
+            backgroundImage.setBackgroundColor(getResources().getColor(R.color.com_mixpanel_android_inapp_dark_translucent, null));
         }
-
-        setViewBackground(backgroundImage, gd);
-
         titleView.setText(inApp.getTitle());
         subtextView.setText(inApp.getBody());
-
-        final Bitmap inAppImage = inApp.getImage();
-        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_dropshadow);
-
-        if (inAppImage.getWidth() < SHADOW_SIZE_THRESHOLD_PX || inAppImage.getHeight() < SHADOW_SIZE_THRESHOLD_PX) {
-            inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
-        } else {
-            int h = inAppImage.getHeight() / 100;
-            int w = inAppImage.getWidth() / 100;
-            final Bitmap scaledImage = Bitmap.createScaledBitmap(inAppImage, w, h, false);
-            int averageColor;
-            int averageAlpha;
-            outerloop:
-            for (int x = 0; x < w; x++) {
-                for (int y = 0; y < h; y++) {
-                    averageColor = scaledImage.getPixel(x, y);
-                    averageAlpha = Color.alpha(averageColor);
-                    if (averageAlpha < 0xFF) {
-                        inAppImageView.setBackgroundResource(R.drawable.com_mixpanel_android_square_nodropshadow);
-                        break outerloop;
-                    }
-                }
-            }
-        }
-        inAppImageView.setImageBitmap(inAppImage);
+        inAppImageView.setImageBitmap(inApp.getImage());
 
         final String ctaUrl = inApp.getCallToActionUrl();
         if (ctaUrl != null && ctaUrl.length() > 0) {
@@ -183,7 +151,7 @@ public class SurveyActivity extends Activity {
         });
         ctaButton.setOnTouchListener(new View.OnTouchListener() {
             @Override
-			public boolean onTouch(View v, MotionEvent event) {
+            public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
                 } else {
@@ -202,15 +170,15 @@ public class SurveyActivity extends Activity {
 
         // Animations
         final ScaleAnimation scale = new ScaleAnimation(
-            .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+                .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
         scale.setDuration(200);
         inAppImageView.startAnimation(scale);
 
         final TranslateAnimation translate = new TranslateAnimation(
-             Animation.RELATIVE_TO_SELF, 0.0f,
-             Animation.RELATIVE_TO_SELF, 0.0f,
-             Animation.RELATIVE_TO_SELF, 0.5f,
-             Animation.RELATIVE_TO_SELF, 0.0f
+                Animation.RELATIVE_TO_SELF, 0.0f,
+                Animation.RELATIVE_TO_SELF, 0.0f,
+                Animation.RELATIVE_TO_SELF, 0.5f,
+                Animation.RELATIVE_TO_SELF, 0.0f
         );
         translate.setInterpolator(new DecelerateInterpolator());
         translate.setDuration(200);
@@ -220,6 +188,10 @@ public class SurveyActivity extends Activity {
 
         final Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
         closeButtonWrapper.startAnimation(fadeIn);
+
+        if (InAppNotification.Style.LIGHT.equalsName(inApp.getStyle())) {
+            showLightStyle();
+        }
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
@@ -420,7 +392,7 @@ public class SurveyActivity extends Activity {
             return false;
         }
         return UpdateDisplayState.DisplayState.SurveyState.TYPE.equals(
-            mUpdateDisplayState.getDisplayState().getType()
+                mUpdateDisplayState.getDisplayState().getType()
         );
     }
 
@@ -429,7 +401,7 @@ public class SurveyActivity extends Activity {
             return false;
         }
         return UpdateDisplayState.DisplayState.InAppNotificationState.TYPE.equals(
-            mUpdateDisplayState.getDisplayState().getType()
+                mUpdateDisplayState.getDisplayState().getType()
         );
     }
 
@@ -501,6 +473,51 @@ public class SurveyActivity extends Activity {
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
+    }
+
+    @SuppressWarnings("deprecation")
+    private void showLightStyle() {
+        final ImageView backgroundImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
+        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
+        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        final ImageView closeButton = (ImageView) findViewById(R.id.com_mixpanel_android_image_close);
+
+        backgroundImage.setBackgroundColor(Color.WHITE);
+
+        GradientDrawable border = new GradientDrawable();
+        border.setColor(Color.WHITE);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_hardgray));
+            subtextView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
+            ctaButton.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
+            border.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray));
+        } else {
+            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_hardgray, null));
+            subtextView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
+            ctaButton.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
+            border.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray, null));
+        }
+        border.setCornerRadius(6);
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            ctaButton.setBackgroundDrawable(border);
+        } else {
+            ctaButton.setBackground(border);
+        }
+
+        Drawable myIcon = getResources().getDrawable(R.drawable.com_mixpanel_android_close_new);
+        if (myIcon != null) {
+            final int newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray);
+            myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
+            closeButton.setImageDrawable(myIcon);
+        }
+
+        ctaButton.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return false;
+            }
+        });
     }
 
     @SuppressWarnings("deprecation")
