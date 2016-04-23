@@ -119,7 +119,7 @@ import java.util.Set;
                     variants.length() + " experiments have been added.");
         }
 
-        if (newContent && hasUpdatesAvailable() && null != mListener) {
+        if (newContent && null != mListener) {
             mListener.onNewResults();
         }
     }
@@ -194,7 +194,7 @@ import java.util.Set;
     }
 
     public synchronized boolean hasUpdatesAvailable() {
-        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty()) || mVariants != null;
+        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty()) || mVariants.length() > 0;
     }
 
     // Mutable, must be synchronized
