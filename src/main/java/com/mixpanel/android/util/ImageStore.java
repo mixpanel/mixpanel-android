@@ -96,9 +96,9 @@ public class ImageStore {
             BitmapFactory.Options option = new BitmapFactory.Options();
             option.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(file.getAbsolutePath(), option);
-            Float imageSize = new Float(option.outHeight * option.outWidth);
-            Float freeMemory = Runtime.getRuntime().freeMemory() * 0.85f;
-            if (imageSize > freeMemory) {
+            float imageSize = (float) option.outHeight * option.outWidth;
+            float availableMemory = getAvailableMemory() * 0.85f;
+            if (imageSize > availableMemory) {
                 throw new CantGetImageException("Do not have enough memory for the image");
             }
 
@@ -110,6 +110,12 @@ public class ImageStore {
         }
 
         return bitmap;
+    }
+
+    private float getAvailableMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        float used = runtime.totalMemory() - runtime.freeMemory();  // used      = heap - free
+        return runtime.maxMemory() - used;                          // available = max - used
     }
 
     public void clearStorage() {
