@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import com.mixpanel.android.viewcrawler.GestureTracker;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
@@ -31,7 +32,7 @@ import android.os.Looper;
             mMpInstance.getPeople().showNotificationIfAvailable(activity);
             mMpInstance.getPeople().showSurveyIfAvailable(activity);
         }
-        mMpInstance.trackGestures(activity);
+        new GestureTracker(mMpInstance, activity);
     }
 
     @Override
