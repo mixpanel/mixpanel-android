@@ -16,8 +16,6 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MotionEvent;
-import android.view.View;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.surveys.SurveyActivity;
