@@ -16,6 +16,8 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.surveys.SurveyActivity;
@@ -2107,6 +2109,84 @@ public class MixpanelAPI {
         } else {
             Log.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
         }
+    }
+
+    public void trackGestures(Activity parent) {
+        parent.getWindow().getDecorView().findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
+
+            private void resetGesture() {
+                mFirstToSecondFingerDifference = -1;
+                mSecondFingerTimeDown = System.currentTimeMillis();
+                mGestureSteps = 0;
+                mBetweenSteps = -1;
+            }
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if(event.getPointerCount() > 2) {
+                    resetGesture();
+                    return false;
+                }
+
+                if(event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    mFirstToSecondFingerDifference = System.currentTimeMillis();
+                }
+
+                if(event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN && (System.currentTimeMillis() - mFirstToSecondFingerDifference) < 100) {
+                    mSecondFingerTimeDown = System.currentTimeMillis();
+                    mFirstToSecondFingerDifference = 100;
+                    if (System.currentTimeMillis() - mBetweenSteps > 1000 && mBetweenSteps != -1) {
+                        resetGesture();
+                        return false;
+                    }
+
+                } else if (event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
+                    resetGesture();
+                    return false;
+                }
+
+                if(event.getActionMasked() == MotionEvent.ACTION_POINTER_UP && mFirstToSecondFingerDifference == 100) {
+                    mFirstToSecondFingerDifference = System.currentTimeMillis();
+                } else if (event.getActionMasked() == MotionEvent.ACTION_POINTER_UP) {
+                    resetGesture();
+                    return false;
+                }
+
+                if(event.getActionMasked() == MotionEvent.ACTION_UP && (System.currentTimeMillis() - mFirstToSecondFingerDifference) < 100 && mFirstToSecondFingerDifference > 0){
+                    if ((System.currentTimeMillis() - mSecondFingerTimeDown) >= 2500) {
+                        if (mGestureSteps == 3) {
+                            track("$ab_gesture1");
+                            resetGesture();
+                        }
+                        mGestureSteps = 0;
+                        //long double-press action
+                    } else {
+                        mBetweenSteps = System.currentTimeMillis();
+                        if (mGestureSteps < 4) {
+                            mGestureSteps += 1;
+                        } else if (mGestureSteps == 4) {
+                            track("$ab_gesture2");
+                            resetGesture();
+                        } else {
+                            resetGesture();
+                        }
+                    }
+
+                    mFirstToSecondFingerDifference = -1;
+                    mSecondFingerTimeDown = System.currentTimeMillis();
+                } else if(event.getActionMasked() == MotionEvent.ACTION_UP) {
+                    resetGesture();
+                    return false;
+                }
+
+                return true;
+            }
+
+            private long mSecondFingerTimeDown = System.currentTimeMillis();
+            private long mFirstToSecondFingerDifference = -1;
+            private int mGestureSteps = 0;
+            private long mBetweenSteps = -1;
+        });
     }
 
     private final Context mContext;

@@ -31,6 +31,7 @@ import android.os.Looper;
             mMpInstance.getPeople().showNotificationIfAvailable(activity);
             mMpInstance.getPeople().showSurveyIfAvailable(activity);
         }
+        mMpInstance.trackGestures(activity);
     }
 
     @Override
