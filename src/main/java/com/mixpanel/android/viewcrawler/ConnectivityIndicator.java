@@ -53,7 +53,7 @@ public class ConnectivityIndicator
 
             public boolean onTouch(View v,MotionEvent event)
             {
-                if((event == null)||(ConnectivityIndicator.this.params == null)||(ConnectivityIndicator.this.windowManager == null)){
+                if((event == null) || (ConnectivityIndicator.this.params == null) || (ConnectivityIndicator.this.windowManager == null)){
                     return false;
                 }
                 System.out.println(event.getAction() + " , " + event.getRawX() + " , " + event.getRawY());
@@ -91,7 +91,6 @@ public class ConnectivityIndicator
     private ConnectivityIndicator(Context context)
     {
         super(context);
-
         setOnTouchListener(getConnectivityIndicatorTouchListener());
         ImageView iconView = new ImageView(context);
         iconView.setImageResource(R.drawable.com_mixpanel_android_connectivityabtest);
