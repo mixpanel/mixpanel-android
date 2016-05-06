@@ -42,7 +42,7 @@ import java.nio.ByteBuffer;
         public void setTweaks(JSONObject message);
         public void sendDeviceInfo();
         public void cleanup();
-        public void updateWebSocketStatus(Boolean state);
+        public void updateWebSocketStatus(boolean state);
     }
 
     public EditorConnection(URI uri, Editor service, Socket sslSocket)

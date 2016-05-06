@@ -35,6 +35,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -175,23 +176,26 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         @Override
         public void onActivityStarted(Activity activity) {
-            ConnectivityIndicator.start(mContext);
-            mCurrentActivity = activity;
+            mCurrentActivity = new WeakReference<>(activity);
         }
 
         @Override
         public void onActivityResumed(Activity activity) {
             installConnectionSensor(activity);
             mEditState.add(activity);
-            mCurrentActivity = activity;
-            ConnectivityIndicator.show(activity);
+            mCurrentActivity = new WeakReference<>(activity);
+            if (ViewCrawler.mMixpanelInEditMode) {
+                ConnectivityIndicator.show(activity, mContext);
+            }
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
             mEditState.remove(activity);
             uninstallConnectionSensor(activity);
-            ConnectivityIndicator.hide(activity);
+            if (ViewCrawler.mMixpanelInEditMode) {
+                ConnectivityIndicator.hide(activity);
+            }
         }
 
         @Override
@@ -233,7 +237,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     || Build.MODEL.contains("Android SDK built for x86")
                     || Build.MANUFACTURER.contains("Genymotion")
                     || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
-                    || "google_sdk".equals(Build.PRODUCT);
+                    || Build.PRODUCT.equals("google_sdk");
         }
 
         private final FlipGesture mFlipGesture;
@@ -985,7 +989,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 } catch (JSONException e) {
                     Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
                 }
-
             }
         }
 
@@ -1061,14 +1064,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         @Override
-        public void updateWebSocketStatus(final Boolean state) {
-            mCurrentActivity.runOnUiThread(new Runnable() {
+        public void updateWebSocketStatus(final boolean state) {
+            mCurrentActivity.get().runOnUiThread(new Runnable() {
                 public void run() {
                     if (state) {
                         mMixpanelInEditMode = true;
-                        ConnectivityIndicator.show(mCurrentActivity);
+                        ConnectivityIndicator.show(mCurrentActivity.get(), mContext);
                     } else {
-                        ConnectivityIndicator.hide(mCurrentActivity);
+                        ConnectivityIndicator.hide(mCurrentActivity.get());
                         mMixpanelInEditMode = false;
                     }
                 }
@@ -1103,8 +1106,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final MixpanelAPI mMixpanel;
     private final DynamicEventTracker mDynamicEventTracker;
     private final EditState mEditState;
-    private Activity mCurrentActivity;
-    public static Boolean mMixpanelInEditMode = false;
+    private WeakReference<Activity> mCurrentActivity;
+    public static boolean mMixpanelInEditMode = false;
     private final Tweaks mTweaks;
     private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;
