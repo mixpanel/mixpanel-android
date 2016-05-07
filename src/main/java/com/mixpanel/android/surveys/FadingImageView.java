@@ -1,7 +1,6 @@
 package com.mixpanel.android.surveys;
 
 import android.content.Context;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
@@ -59,7 +58,7 @@ public class FadingImageView extends ImageView {
         // give it a few extra dp's of room.
         Resources r = getResources();
         float extraPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15, r.getDisplayMetrics());
-        mGradientMatrix.setScale(1, parentHeight + container.getPaddingBottom() - bottomWrapperHeight + extraPx - 80);
+        mGradientMatrix.setScale(1, parentHeight);
 
         mAlphaGradientShader.setLocalMatrix(mGradientMatrix);
         mDarkenGradientShader.setLocalMatrix(mGradientMatrix);
