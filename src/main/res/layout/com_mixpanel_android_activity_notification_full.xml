@@ -78,19 +78,19 @@
          being measured before itself. -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="50dp"
-        android:gravity="center_horizontal"
-        android:layout_centerInParent="true"
-        android:adjustViewBounds="true"
         android:orientation="horizontal"
+        android:gravity="center"
         android:layout_above="@id/com_mixpanel_android_notification_bottom_wrapper">
+
         <com.mixpanel.android.surveys.FadingImageView
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:contentDescription="@string/com_mixpanel_android_notification_image"
             android:src="@drawable/com_mixpanel_android_logo" />
+
     </LinearLayout>
 
 </RelativeLayout>
