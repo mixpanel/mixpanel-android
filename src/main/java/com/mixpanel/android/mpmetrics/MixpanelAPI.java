@@ -1266,12 +1266,14 @@ public class MixpanelAPI {
      */
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     /* package */ void registerMixpanelActivityLifecycleCallbacks() {
-        if (mContext.getApplicationContext() instanceof Application) {
-            final Application app = (Application) mContext.getApplicationContext();
-            MixpanelActivityLifecycleCallbacks mixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
-            app.registerActivityLifecycleCallbacks(mixpanelActivityLifecycleCallbacks);
-        } else {
-            Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments. We won't be able to automatically flush on an app background.");
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            if (mContext.getApplicationContext() instanceof Application) {
+                final Application app = (Application) mContext.getApplicationContext();
+                MixpanelActivityLifecycleCallbacks mixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
+                app.registerActivityLifecycleCallbacks(mixpanelActivityLifecycleCallbacks);
+            } else {
+                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments. We won't be able to automatically flush on an app background.");
+            }
         }
     }
 
