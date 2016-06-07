@@ -207,6 +207,7 @@ public class MPConfig {
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
         mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
+        mShouldPromptForSurvey = metaData.getBoolean("com.mixpanel.android.MPConfig.ShouldPromptForSurvey", true);
 
         // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -279,7 +280,8 @@ public class MPConfig {
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
                 "    EditorUrl " + getEditorUrl() + "\n" +
-                "    DisableDecideChecker " + getDisableDecideChecker() + "\n"
+                "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
+                "    ShouldPromptForSurvey " + getShouldPromptForSurvey() + "\n"
             );
         }
     }
@@ -369,6 +371,10 @@ public class MPConfig {
         return mDisableDecideChecker;
     }
 
+    public boolean getShouldPromptForSurvey() {
+        return mShouldPromptForSurvey;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -432,6 +438,7 @@ public class MPConfig {
     private final String mEditorUrl;
     private final String mResourcePackageName;
     private final boolean mDisableDecideChecker;
+    private final boolean mShouldPromptForSurvey;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
