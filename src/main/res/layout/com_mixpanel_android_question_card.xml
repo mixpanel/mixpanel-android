@@ -14,14 +14,14 @@ https://groups.google.com/forum/#!msg/android-developers/qcclW4oekVY/IeQtoAruCTg
     android:orientation="vertical"
     tools:targetApi="ICE_CREAM_SANDWICH">
 
-    <TextView
+    <com.mixpanel.android.surveys.AutoResizeTextView
         android:tag="com_mixpanel_android_TAG_prompt_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:ellipsize="end"
-        android:maxLines="3"
         android:minHeight="80dp"
+        android:lineSpacingExtra="2dp"
         android:paddingBottom="20dp"
         android:textColor="#ffffff"
         android:textSize="18sp" />
