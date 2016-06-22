@@ -10,8 +10,9 @@ import android.widget.TextView;
 
 
 public class AutoResizeTextView extends TextView {
-    private int mTextSizeSp = 18;
-    private int mMaxLines = 4;
+    private static final int TEXT_SIZE_SP = 18;
+    private static final int MAX_LINES = 4;
+    private static final float MIN_TEXT_SIZE_FACTOR = 1.3f;
     private float mMinTextSizePx;
 
     public AutoResizeTextView(Context context) {
@@ -36,9 +37,9 @@ public class AutoResizeTextView extends TextView {
     }
 
     private void init() {
-        setMaxLines(mMaxLines);
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, mTextSizeSp);
-        mMinTextSizePx = getTextSize() / 1.3f;
+        setMaxLines(MAX_LINES);
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP);
+        mMinTextSizePx = getTextSize() / MIN_TEXT_SIZE_FACTOR;
     }
 
     @Override
@@ -47,8 +48,7 @@ public class AutoResizeTextView extends TextView {
         final Layout layout = getLayout();
         if (layout != null) {
             final int lineCount = layout.getLineCount();
-            if (lineCount == mMaxLines) {
-                if (layout.getEllipsisCount(lineCount - 1) > 0 && getTextSize() > mMinTextSizePx) {
+            if (lineCount == MAX_LINES && layout.getEllipsisCount(lineCount - 1) > 0 && getTextSize() > mMinTextSizePx) {
                     final float textSize = getTextSize();
                     setTextSize(TypedValue.COMPLEX_UNIT_PX, (textSize - 2));
                     measure(widthMeasureSpec, heightMeasureSpec);
