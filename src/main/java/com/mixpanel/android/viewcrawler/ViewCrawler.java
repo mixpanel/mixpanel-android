@@ -35,6 +35,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -43,7 +44,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -84,6 +84,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 mMessageThreadHandler.sendMessage(msg);
             }
         });
+
     }
 
     @Override
@@ -175,18 +176,26 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         @Override
         public void onActivityStarted(Activity activity) {
+            mCurrentActivity = new WeakReference<>(activity);
         }
 
         @Override
         public void onActivityResumed(Activity activity) {
             installConnectionSensor(activity);
             mEditState.add(activity);
+            mCurrentActivity = new WeakReference<>(activity);
+            if (ViewCrawler.mMixpanelInEditMode) {
+                ConnectivityIndicator.show(activity, mContext);
+            }
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
             mEditState.remove(activity);
             uninstallConnectionSensor(activity);
+            if (ViewCrawler.mMixpanelInEditMode) {
+                ConnectivityIndicator.hide(activity);
+            }
         }
 
         @Override
@@ -221,27 +230,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private boolean isInEmulator() {
-            if (!Build.HARDWARE.equals("goldfish")) {
-                return false;
-            }
-
-            if (!Build.BRAND.startsWith("generic")) {
-                return false;
-            }
-
-            if (!Build.DEVICE.startsWith("generic")) {
-                return false;
-            }
-
-            if (!Build.PRODUCT.contains("sdk")) {
-                return false;
-            }
-
-            if (!Build.MODEL.toLowerCase(Locale.US).contains("sdk")) {
-                return false;
-            }
-
-            return true;
+            return Build.FINGERPRINT.startsWith("generic")
+                    || Build.FINGERPRINT.startsWith("unknown")
+                    || Build.MODEL.contains("google_sdk")
+                    || Build.MODEL.contains("Emulator")
+                    || Build.MODEL.contains("Android SDK built for x86")
+                    || Build.MANUFACTURER.contains("Genymotion")
+                    || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                    || Build.PRODUCT.equals("google_sdk");
         }
 
         private final FlipGesture mFlipGesture;
@@ -974,7 +970,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final JSONObject trackProps = new JSONObject();
                         trackProps.put("$experiment_id", experimentId);
                         trackProps.put("$variant_id", variantId);
-                        
                         variantObject.put(Integer.toString(experimentId), variantId);
 
                         mMixpanel.getPeople().merge("$experiments", variantObject);
@@ -994,8 +989,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 } catch (JSONException e) {
                     Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
                 }
-
-                
             }
         }
 
@@ -1069,6 +1062,21 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_HANDLE_EDITOR_CLOSED);
             mMessageThreadHandler.sendMessage(msg);
         }
+
+        @Override
+        public void updateWebSocketStatus(final boolean state) {
+            mCurrentActivity.get().runOnUiThread(new Runnable() {
+                public void run() {
+                    if (state) {
+                        mMixpanelInEditMode = true;
+                        ConnectivityIndicator.show(mCurrentActivity.get(), mContext);
+                    } else {
+                        ConnectivityIndicator.hide(mCurrentActivity.get());
+                        mMixpanelInEditMode = false;
+                    }
+                }
+            });
+        }
     }
 
     private static class VariantChange {
@@ -1098,6 +1106,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final MixpanelAPI mMixpanel;
     private final DynamicEventTracker mDynamicEventTracker;
     private final EditState mEditState;
+    private WeakReference<Activity> mCurrentActivity;
+    public static boolean mMixpanelInEditMode = false;
     private final Tweaks mTweaks;
     private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;

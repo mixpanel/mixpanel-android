@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
         public void setTweaks(JSONObject message);
         public void sendDeviceInfo();
         public void cleanup();
+        public void updateWebSocketStatus(boolean state);
     }
 
     public EditorConnection(URI uri, Editor service, Socket sslSocket)
@@ -72,6 +73,7 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onOpen(ServerHandshake handshakedata) {
+            mService.updateWebSocketStatus(true);
             if (MPConfig.DEBUG) {
                 Log.v(LOGTAG, "Websocket connected");
             }
@@ -105,6 +107,7 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
+            mService.updateWebSocketStatus(false);
             if (MPConfig.DEBUG) {
                 Log.v(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
             }
@@ -113,6 +116,7 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onError(Exception ex) {
+            mService.updateWebSocketStatus(false);
             if (ex != null && ex.getMessage() != null) {
                 Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
             } else {

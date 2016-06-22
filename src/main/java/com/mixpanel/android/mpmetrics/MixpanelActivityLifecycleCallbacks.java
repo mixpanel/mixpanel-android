@@ -46,7 +46,7 @@ import com.mixpanel.android.viewcrawler.GestureTracker;
             mHandler.removeCallbacks(check);
         }
 
-        mHandler.postDelayed(check = new Runnable(){
+        mHandler.postDelayed(check = new Runnable() {
             @Override
             public void run() {
                 if (mIsForeground && mPaused) {
