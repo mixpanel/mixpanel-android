@@ -435,14 +435,14 @@ public class SurveyActivity extends Activity {
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final List<Question> questions = surveyState.getSurvey().getQuestions();
         if (0 == idx || questions.size() == 0) {
-            mPreviousButton.setEnabled(false);
+            mPreviousButton.setVisibility(View.GONE);
         } else {
-            mPreviousButton.setEnabled(true);
+            mPreviousButton.setVisibility(View.VISIBLE);
         }
         if (idx >= questions.size() - 1) {
-            mNextButton.setEnabled(false);
+            mNextButton.setVisibility(View.GONE);
         } else {
-            mNextButton.setEnabled(true);
+            mNextButton.setVisibility(View.VISIBLE);
         }
         final int oldQuestion = mCurrentQuestion;
         mCurrentQuestion = idx;
