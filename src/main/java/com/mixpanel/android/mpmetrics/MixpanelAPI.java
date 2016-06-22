@@ -714,10 +714,12 @@ public class MixpanelAPI {
      * Will not clear referrer information.
      */
     public void reset() {
-        // Will clear distinct_ids, superProperties,
+        // Will clear distinct_ids, superProperties, notifications, surveys, experiments,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
+        identify(getDistinctId());
+        flush();
     }
 
     /**
