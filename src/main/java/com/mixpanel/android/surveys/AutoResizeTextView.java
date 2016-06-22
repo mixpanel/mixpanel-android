@@ -52,7 +52,6 @@ public class AutoResizeTextView extends TextView {
                     final float textSize = getTextSize();
                     setTextSize(TypedValue.COMPLEX_UNIT_PX, (textSize - 2));
                     measure(widthMeasureSpec, heightMeasureSpec);
-                }
             }
         }
     }
