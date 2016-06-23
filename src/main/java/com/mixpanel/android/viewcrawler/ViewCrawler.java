@@ -221,11 +221,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private boolean isInEmulator() {
-            if (!Build.HARDWARE.equals("goldfish")) {
+            if (!Build.HARDWARE.equals("goldfish") && !Build.HARDWARE.equals("ranchu")) {
                 return false;
             }
 
-            if (!Build.BRAND.startsWith("generic")) {
+            if (!Build.BRAND.startsWith("generic") && !Build.BRAND.equals("Android")) {
                 return false;
             }
 
