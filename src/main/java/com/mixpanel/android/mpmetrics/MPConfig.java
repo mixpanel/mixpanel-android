@@ -207,6 +207,7 @@ public class MPConfig {
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
         mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
+        mImageCacheMaxMemoryFactor = metaData.getInt("com.mixpanel.android.MPConfig.ImageCacheMaxMemoryFactor", 10);
 
         // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -395,6 +396,11 @@ public class MPConfig {
         return mOfflineMode;
     }
 
+    // ImageStore LRU Cache size will be availableMaxMemory() / mImageCacheMaxMemoryFactor
+    public int getImageCacheMaxMemoryFactor() {
+        return mImageCacheMaxMemoryFactor;
+    }
+
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
@@ -432,6 +438,7 @@ public class MPConfig {
     private final String mEditorUrl;
     private final String mResourcePackageName;
     private final boolean mDisableDecideChecker;
+    private final int mImageCacheMaxMemoryFactor;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
