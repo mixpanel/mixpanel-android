@@ -249,6 +249,22 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
+        if (!mPersistentIdentity.hasTrackedIntegration()) {
+            try {
+                final JSONObject messageProps = new JSONObject();
+
+                messageProps.put("mp_lib", "Android");
+                messageProps.put("lib", "Android");
+                messageProps.put("distinct_id", token);
+
+                final AnalyticsMessages.EventDescription eventDescription =
+                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17");
+                mMessages.eventsMessage(eventDescription);
+                flush();
+            } catch (JSONException e) {
+            }
+        }
+
         mUpdatesFromMixpanel.startUpdates();
     }
 

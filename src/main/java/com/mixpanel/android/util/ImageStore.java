@@ -53,7 +53,7 @@ public class ImageStore {
         mDigest = useDigest;
 
         if (sMemoryCache == null) {
-            synchronized (sMemoryCache) {
+            synchronized (ImageStore.class) {
                 if (sMemoryCache == null) {
                     int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
                     int cacheSize = maxMemory / mConfig.getImageCacheMaxMemoryFactor();
