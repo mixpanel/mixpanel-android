@@ -34,10 +34,10 @@ public class ImageStoreTest extends AndroidTestCase {
     }
 
     public void testWriteWhenRead() throws ImageStore.CantGetImageException {
-        final Bitmap image1 = mImageStore.getImage("HELLO");
+        final Bitmap image1 = mImageStore.getImage("HELLO_TWO");
         assertEquals(1, mService.queries);
 
-        final Bitmap image2 = mImageStore.getImage("HELLO");
+        final Bitmap image2 = mImageStore.getImage("HELLO_TWO");
         assertEquals(1, mService.queries);
     }
 
@@ -45,7 +45,7 @@ public class ImageStoreTest extends AndroidTestCase {
         final byte[] goodResponse = mService.response;
         mService.response = null;
         try {
-            final Bitmap image1 = mImageStore.getImage("HELLO");
+            final Bitmap image1 = mImageStore.getImage("HELLO_NO_CACHE");
             fail("Expected exception to be thrown");
         } catch (ImageStore.CantGetImageException e) {
             ; // OK

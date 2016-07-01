@@ -155,12 +155,15 @@ public class ImageStore {
                 final boolean ignored = file.delete();
             }
         }
+
+        clearMemCache();
     }
 
     public void deleteStorage(String url) {
         final File file = storedFile(url);
         if (null != file) {
             final boolean ignored = file.delete();
+            removeBitmapFromMemCache(url);
         }
     }
 
@@ -185,6 +188,18 @@ public class ImageStore {
     public static Bitmap getBitmapFromMemCache(String key) {
         synchronized (sMemoryCache) {
             return sMemoryCache.get(key);
+        }
+    }
+
+    public static void removeBitmapFromMemCache(String key) {
+        synchronized (sMemoryCache) {
+            sMemoryCache.remove(key);
+        }
+    }
+
+    public static void clearMemCache() {
+        synchronized (sMemoryCache) {
+            sMemoryCache.evictAll();
         }
     }
 

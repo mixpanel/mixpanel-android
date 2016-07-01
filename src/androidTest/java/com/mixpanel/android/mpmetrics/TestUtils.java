@@ -30,7 +30,7 @@ public class TestUtils {
         /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
             final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
-            ret.edit().clear().commit();
+            ret.edit().clear().putBoolean("tracked_integration", true).commit();
 
             return super.getPersistentIdentity(context, referrerPreferences, token);
         }

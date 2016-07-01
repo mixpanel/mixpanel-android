@@ -675,7 +675,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
-        assertEquals(1, messages.size());
+        assertEquals(2, messages.size()); // track integration
 
         AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
 
@@ -699,10 +699,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
-        assertEquals(2, messages.size());
+        assertEquals(3, messages.size());
 
-        eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
-        JSONObject peopleMessage = (JSONObject) messages.get(1);
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
+        JSONObject peopleMessage = (JSONObject) messages.get(2);
 
         try {
             JSONObject eventProps = eventMessage.getProperties();
