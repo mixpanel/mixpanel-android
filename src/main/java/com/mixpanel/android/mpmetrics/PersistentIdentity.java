@@ -164,6 +164,21 @@ import android.util.Log;
         writeIdentities();
     }
 
+    public synchronized boolean hasTrackedIntegration() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mTrackedIntegration;
+    }
+
+    public synchronized void setTrackedIntegration(boolean trackedIntegration) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mTrackedIntegration = trackedIntegration;
+        writeIdentities();
+    }
+
     public synchronized void storeWaitingPeopleRecord(JSONObject record) {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -387,6 +402,7 @@ import android.util.Log;
 
         mEventsDistinctId = prefs.getString("events_distinct_id", null);
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
+        mTrackedIntegration = prefs.getBoolean("tracked_integration", false);
         mWaitingPeopleRecords = null;
 
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
@@ -419,6 +435,7 @@ import android.util.Log;
             } else {
                 prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
             }
+            prefsEditor.putBoolean("tracked_integration", mTrackedIntegration);
             writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             Log.e(LOGTAG, "Can't write distinct ids to shared preferences.", e.getCause());
@@ -439,6 +456,7 @@ import android.util.Log;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
+    private boolean mTrackedIntegration;
     private JSONArray mWaitingPeopleRecords;
 
     private static boolean sReferrerPrefsDirty = true;
