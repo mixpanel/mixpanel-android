@@ -51,6 +51,22 @@ public class ImageStore {
         }
 
         mDigest = useDigest;
+
+        if (sMemoryCache == null) {
+            synchronized (sMemoryCache) {
+                if (sMemoryCache == null) {
+                    int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+                    int cacheSize = maxMemory / mConfig.getImageCacheMaxMemoryFactor();
+
+                    sMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
+                        @Override
+                        protected int sizeOf(String key, Bitmap bitmap) {
+                            return bitmap.getRowBytes() * bitmap.getHeight() / 1024;
+                        }
+                    };
+                }
+            }
+        }
     }
 
     public File getImageFile(String url) throws CantGetImageException {
@@ -91,15 +107,6 @@ public class ImageStore {
         }
 
         return file;
-    }
-
-    public static Bitmap getImageFromFilePath(String filePath) throws CantGetImageException {
-        final File file = new File(filePath);
-
-        if (file == null || !file.exists()) {
-            throw new CantGetImageException("Could not load image from disk. Was the file removed?");
-        }
-        return decodeImage(file);
     }
 
     public Bitmap getImage(String url) throws CantGetImageException {
@@ -181,21 +188,11 @@ public class ImageStore {
         }
     }
 
-
-    static final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-    static int cacheSize = maxMemory / 8;
-
-    private static final LruCache<String, Bitmap> sMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
-        @Override
-        protected int sizeOf(String key, Bitmap bitmap) {
-            return bitmap.getRowBytes() * bitmap.getHeight() / 1024;
-        }
-    };
-
     private final File mDirectory;
     private final RemoteService mPoster;
     private final MessageDigest mDigest;
     private final MPConfig mConfig;
+    private static LruCache<String, Bitmap> sMemoryCache;
 
     private static final String DEFAULT_DIRECTORY_PREFIX = "MixpanelAPI.Images.";
     private static final int MAX_BITMAP_SIZE = 10000000; // 10 MB
