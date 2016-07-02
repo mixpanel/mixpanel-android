@@ -260,7 +260,7 @@ public class MPConfig {
 
         if (DEBUG) {
             Log.v(LOGTAG,
-                "Mixpanel configured with:\n" +
+                "Mixpanel (" + VERSION + ") configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
