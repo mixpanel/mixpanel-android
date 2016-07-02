@@ -1,13 +1,13 @@
 Latest Version 
 --------------
-##### _May 11st, 2016_ - [v4.8.7](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.8.7)
+##### _July 1st, 2016_ - [v4.9.0](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.0)
 
 ```
 dependencies {
     compile "com.mixpanel.android:mixpanel-android:4.+"
 }
 ```
-[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.8.7).
+[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.0).
 
 Getting Started
 ---------------
