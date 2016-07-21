@@ -1728,15 +1728,8 @@ public class MixpanelAPI {
 
         @Override
         public void clearSinglePushRegistrationId(String registrationId) {
-            // Must be thread safe, will be called from a lot of different threads.
-            synchronized (mPersistentIdentity) {
-                if (mPersistentIdentity.getPeopleDistinctId() == null) {
-                    return;
-                }
-
-                mPersistentIdentity.clearPushId();
-                remove("$android_devices", registrationId);
-            }
+            remove("$android_devices", registrationId);
+            mPersistentIdentity.clearPushId();
         }
 
         @Override
