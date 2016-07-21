@@ -927,6 +927,15 @@ public class MixpanelAPI {
         void union(String name, JSONArray value);
 
         /**
+         * Remove value from a list-valued property only if they are already present in the list.
+         * If the property does not currently exist, the remove will be ignored.
+         * If the property exists and is not list-valued, the remove will be ignored.
+         * @param name the People Analytics property that should have it's value removed from
+         * @param value the value that will be removed from the property's list
+         */
+        public void remove(String name, Object value);
+
+        /**
          * permanently removes the property with the given name from the user's profile
          * @param name name of a property to unset
          */
@@ -1030,10 +1039,25 @@ public class MixpanelAPI {
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * removePushRegistrationId, and no applications that call {@link #initPushHandling(String)} should
-         * call removePushRegistrationId
+         * clearPushRegistrationId or clearSinglePushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearSinglePushRegistrationId
          */
         public void clearPushRegistrationId();
+
+        /**
+         * Manually clear a single Google Cloud Messaging registration id from Mixpanel.
+         *
+         * <p>If you are handling Google Cloud Messages in your own application, you should
+         * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
+         * with getStringExtra("unregistered") != null
+         *
+         * <p>{@link People#clearSinglePushRegistrationId} should only be called after {@link #identify(String)} has been called.
+         *
+         * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
+         * clearPushRegistrationId or clearSinglePushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearSinglePushRegistrationId
+         */
+        public void clearSinglePushRegistrationId(String registrationId);
 
         /**
          * Returns the string id currently being used to uniquely identify the user associated
@@ -1512,6 +1536,18 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void remove(String name, Object value) {
+            try {
+                final JSONObject properties = new JSONObject();
+                properties.put(name, value);
+                final JSONObject message = stdPeopleMessage("$remove", properties);
+                recordPeopleMessage(message);
+            } catch (final JSONException e) {
+                Log.e(LOGTAG, "Exception appending a property", e);
+            }
+        }
+
+        @Override
         public void unset(String name) {
             try {
                 final JSONArray names = new JSONArray();
@@ -1688,6 +1724,19 @@ public class MixpanelAPI {
         public void clearPushRegistrationId() {
             mPersistentIdentity.clearPushId();
             set("$android_devices", new JSONArray());
+        }
+
+        @Override
+        public void clearSinglePushRegistrationId(String registrationId) {
+            // Must be thread safe, will be called from a lot of different threads.
+            synchronized (mPersistentIdentity) {
+                if (mPersistentIdentity.getPeopleDistinctId() == null) {
+                    return;
+                }
+
+                mPersistentIdentity.clearPushId();
+                remove("$android_devices", registrationId);
+            }
         }
 
         @Override
