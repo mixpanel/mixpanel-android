@@ -144,6 +144,8 @@ import android.view.WindowManager;
             }
         } catch (SecurityException e) {
             // do nothing since we don't have permissions
+        } catch (NoClassDefFoundError e) {
+            // Some phones doesn't have this class. Just ignore it
         }
         return isBluetoothEnabled;
     }
