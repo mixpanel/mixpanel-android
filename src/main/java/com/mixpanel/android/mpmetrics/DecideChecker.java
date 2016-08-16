@@ -44,11 +44,12 @@ import javax.net.ssl.SSLSocketFactory;
         public JSONArray variants;
     }
 
-    public DecideChecker(final Context context, final MPConfig config) {
+    public DecideChecker(final Context context, final MPConfig config, final SystemInformation systemInformation) {
         mContext = context;
         mConfig = config;
         mChecks = new LinkedList<DecideMessages>();
         mImageStore = createImageStore(context);
+        mSystemInformation = systemInformation;
     }
 
     protected ImageStore createImageStore(final Context context) {
@@ -206,10 +207,29 @@ import javax.net.ssl.SSLSocketFactory;
 
         final StringBuilder queryBuilder = new StringBuilder()
                 .append("?version=1&lib=android&token=")
-                .append(escapedToken);
+                .append(escapedToken)
+                .append("&$android_lib_version=").append(MPConfig.VERSION);
 
         if (null != escapedId) {
             queryBuilder.append("&distinct_id=").append(escapedId);
+        }
+
+        if (null != Build.VERSION.RELEASE) {
+            queryBuilder.append("&$android_version=").append(Build.VERSION.RELEASE);
+        }
+
+        final String applicationVersionName = mSystemInformation.getAppVersionName();
+        if (null != applicationVersionName) {
+            queryBuilder.append("&$android_app_version=").append(applicationVersionName);
+        }
+
+        final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
+        if (null != applicationVersionCode) {
+            queryBuilder.append("&$android_app_release=").append(applicationVersionCode);
+        }
+
+        if (null != Build.MODEL) {
+            queryBuilder.append("&$android_device_model=").append(Build.MODEL);
         }
 
         final String checkQuery = queryBuilder.toString();
@@ -311,6 +331,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final Context mContext;
     private final List<DecideMessages> mChecks;
     private final ImageStore mImageStore;
+    private final SystemInformation mSystemInformation;
 
     private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
 

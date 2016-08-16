@@ -223,7 +223,7 @@ import javax.net.ssl.SSLSocketFactory;
             }
 
             protected DecideChecker createDecideChecker() {
-                return new DecideChecker(mContext, mConfig);
+                return new DecideChecker(mContext, mConfig, mSystemInformation);
             }
 
             @Override
