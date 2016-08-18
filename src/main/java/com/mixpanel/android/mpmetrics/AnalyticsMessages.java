@@ -216,10 +216,10 @@ import javax.net.ssl.SSLSocketFactory;
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
+                mSystemInformation = new SystemInformation(mContext);
                 mDecideChecker = createDecideChecker();
                 mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
-                mSystemInformation = new SystemInformation(mContext);
             }
 
             protected DecideChecker createDecideChecker() {

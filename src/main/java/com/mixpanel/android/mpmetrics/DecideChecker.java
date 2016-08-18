@@ -207,29 +207,24 @@ import javax.net.ssl.SSLSocketFactory;
 
         final StringBuilder queryBuilder = new StringBuilder()
                 .append("?version=1&lib=android&token=")
-                .append(escapedToken)
-                .append("&$android_lib_version=").append(MPConfig.VERSION);
+                .append(escapedToken);
 
         if (null != escapedId) {
             queryBuilder.append("&distinct_id=").append(escapedId);
         }
+        
+        queryBuilder.append("properties=");
 
-        if (null != Build.VERSION.RELEASE) {
-            queryBuilder.append("&$android_version=").append(Build.VERSION.RELEASE);
-        }
-
-        final String applicationVersionName = mSystemInformation.getAppVersionName();
-        if (null != applicationVersionName) {
-            queryBuilder.append("&$android_app_version=").append(applicationVersionName);
-        }
-
-        final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
-        if (null != applicationVersionCode) {
-            queryBuilder.append("&$android_app_release=").append(applicationVersionCode);
-        }
-
-        if (null != Build.MODEL) {
-            queryBuilder.append("&$android_device_model=").append(Build.MODEL);
+        JSONObject properties = new JSONObject();
+        try {
+            properties.putOpt("$android_lib_version", MPConfig.VERSION);
+            properties.putOpt("$android_app_version", mSystemInformation.getAppVersionName());
+            properties.putOpt("$android_version", Build.VERSION.RELEASE);
+            properties.putOpt("$android_app_release", mSystemInformation.getAppVersionCode());
+            properties.putOpt("$android_device_model", Build.MODEL);
+            queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
+        } catch (Exception e) {
+            Log.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
         }
 
         final String checkQuery = queryBuilder.toString();
