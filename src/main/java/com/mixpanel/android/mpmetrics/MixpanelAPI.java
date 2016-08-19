@@ -998,6 +998,18 @@ public class MixpanelAPI {
         public void initPushHandling(String senderID);
 
         /**
+         * Retrieves Google Cloud Messaging registration ID.
+         *
+         * <p>{@link People#getPushRegistrationId} should only be called after {@link #identify(String)} has been called.
+         *
+         * @return GCM push token or null if the user has not been registered in GCM.
+         *
+         * @see #initPushHandling(String)
+         * @see #setPushRegistrationId(String)
+         */
+        public String getPushRegistrationId();
+
+        /**
          * Manually send a Google Cloud Messaging registration id to Mixpanel.
          *
          * <p>If you are handling Google Cloud Messages in your own application, but would like to
@@ -1667,6 +1679,11 @@ public class MixpanelAPI {
             } catch (final JSONException e) {
                 Log.e(LOGTAG, "Exception deleting a user");
             }
+        }
+
+        @Override
+        public String getPushRegistrationId() {
+            return mPersistentIdentity.getPushId();
         }
 
         @Override
