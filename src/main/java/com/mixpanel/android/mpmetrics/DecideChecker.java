@@ -44,11 +44,12 @@ import javax.net.ssl.SSLSocketFactory;
         public JSONArray variants;
     }
 
-    public DecideChecker(final Context context, final MPConfig config) {
+    public DecideChecker(final Context context, final MPConfig config, final SystemInformation systemInformation) {
         mContext = context;
         mConfig = config;
         mChecks = new LinkedList<DecideMessages>();
         mImageStore = createImageStore(context);
+        mSystemInformation = systemInformation;
     }
 
     protected ImageStore createImageStore(final Context context) {
@@ -211,6 +212,20 @@ import javax.net.ssl.SSLSocketFactory;
         if (null != escapedId) {
             queryBuilder.append("&distinct_id=").append(escapedId);
         }
+        
+        queryBuilder.append("properties=");
+
+        JSONObject properties = new JSONObject();
+        try {
+            properties.putOpt("$android_lib_version", MPConfig.VERSION);
+            properties.putOpt("$android_app_version", mSystemInformation.getAppVersionName());
+            properties.putOpt("$android_version", Build.VERSION.RELEASE);
+            properties.putOpt("$android_app_release", mSystemInformation.getAppVersionCode());
+            properties.putOpt("$android_device_model", Build.MODEL);
+            queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
+        } catch (Exception e) {
+            Log.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
+        }
 
         final String checkQuery = queryBuilder.toString();
         final String[] urls;
@@ -311,6 +326,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final Context mContext;
     private final List<DecideMessages> mChecks;
     private final ImageStore mImageStore;
+    private final SystemInformation mSystemInformation;
 
     private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
 
