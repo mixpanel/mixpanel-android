@@ -43,6 +43,8 @@ public class Tweaks {
             this.declareTweak(tweakName, value, this.detectTweakType(value));
         }
 
+        Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + value);
+
         final TweakValue container = mTweakValues.get(tweakName);
         final TweakValue updated = container.updateValue(value);
         mTweakValues.put(tweakName, updated);
