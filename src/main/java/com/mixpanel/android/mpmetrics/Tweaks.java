@@ -34,6 +34,25 @@ public class Tweaks {
     }
 
     /**
+     * Registers a {@link OnTweakUpdatedListener} to get notified about tweak changes
+     * @param listener the {@link OnTweakUpdatedListener} to be notified
+     */
+    public synchronized void addOnTweakUpdatedListener(OnTweakUpdatedListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("listener cannot be null");
+        }
+        mTweakUpdatedListeners.add(listener);
+    }
+
+    /**
+     * Unregisters a {@link OnTweakUpdatedListener}
+     * @param listener the {@link OnTweakUpdatedListener} to be unregistered
+     */
+    public synchronized void removeOnTweakUpdatedListener(OnTweakUpdatedListener listener) {
+        mTweakUpdatedListeners.remove(listener);
+    }
+
+    /**
      * Manually set the value of a tweak. Most users of the library will not need to call this
      * directly - instead, the library will call set when new values of the tweak are published.
      */
@@ -48,6 +67,14 @@ public class Tweaks {
         final TweakValue container = mTweakValues.get(tweakName);
         final TweakValue updated = container.updateValue(value);
         mTweakValues.put(tweakName, updated);
+
+        for(OnTweakUpdatedListener listener : mTweakUpdatedListeners) {
+            try {
+                listener.onTweakUpdated(tweakName, updated);
+            } catch (Exception e) {
+                Log.e(LOGTAG, "Error while informing listener about tweak update", e);
+            }
+        }
     }
 
     /**
@@ -233,10 +260,18 @@ public class Tweaks {
         void onTweakDeclared();
     }
 
+    /**
+     * This interface can be used to get notified about changes of a tweak.
+     */
+    public interface OnTweakUpdatedListener {
+        void onTweakUpdated(String tweakName, TweakValue value);
+    }
+
     /* package */ Tweaks() {
         mTweakValues = new HashMap<String, TweakValue>();
         mTweakDefaultValues = new HashMap<String, TweakValue>();
         mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
+        mTweakUpdatedListeners = new ArrayList<OnTweakUpdatedListener>();
     }
 
 
@@ -357,6 +392,7 @@ public class Tweaks {
     private final Map<String, TweakValue> mTweakValues;
     private final Map<String, TweakValue> mTweakDefaultValues;
     private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
+    private final List<OnTweakUpdatedListener> mTweakUpdatedListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }
