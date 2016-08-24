@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.support.annotation.BoolRes;
 import android.support.annotation.IntDef;
 import android.util.Log;
 
@@ -38,13 +39,40 @@ public class Tweaks {
      */
     public synchronized void set(String tweakName, Object value) {
         if (!mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
-            return;
+            Log.i(LOGTAG, "Auto-declaring unknown tweak with name \"" + tweakName + "\"");
+            this.declareTweak(tweakName, value, this.detectTweakType(value));
         }
 
         final TweakValue container = mTweakValues.get(tweakName);
         final TweakValue updated = container.updateValue(value);
         mTweakValues.put(tweakName, updated);
+    }
+
+    /**
+     * Returns the type for the given value
+     * @param value the value which's type should be detected
+     * @return the type
+     */
+    @TweakType
+    private int detectTweakType(Object value) {
+        if(value instanceof String) {
+            return STRING_TYPE;
+        }
+
+        if(value instanceof Boolean) {
+            return BOOLEAN_TYPE;
+        }
+
+        if(value instanceof Double) {
+            return DOUBLE_TYPE;
+        }
+
+        if(value instanceof Long) {
+            return LONG_TYPE;
+        }
+
+        throw new IllegalArgumentException("Type " + value.getClass().getSimpleName() + " is not supported");
+
     }
 
     /**
