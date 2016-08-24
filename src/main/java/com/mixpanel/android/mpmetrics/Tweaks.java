@@ -55,6 +55,10 @@ public class Tweaks {
      */
     @TweakType
     private int detectTweakType(Object value) {
+        if(value instanceof TweakValue) {
+            return ((TweakValue) value).type;
+        }
+
         if(value instanceof String) {
             return STRING_TYPE;
         }
