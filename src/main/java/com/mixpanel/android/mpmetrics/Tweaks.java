@@ -62,11 +62,18 @@ public class Tweaks {
             this.declareTweak(tweakName, value, this.detectTweakType(value));
         }
 
-        Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + value);
 
         final TweakValue container = mTweakValues.get(tweakName);
+        Object oldValue = container.value;
         final TweakValue updated = container.updateValue(value);
+        Object newValue = updated.value;
         mTweakValues.put(tweakName, updated);
+
+        if(oldValue.equals(newValue)) {
+            return;
+        }
+
+        Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + updated.getStringValue());
 
         for(OnTweakUpdatedListener listener : mTweakUpdatedListeners) {
             try {
