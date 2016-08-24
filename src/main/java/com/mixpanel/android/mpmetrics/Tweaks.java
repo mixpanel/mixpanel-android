@@ -57,9 +57,13 @@ public class Tweaks {
      * directly - instead, the library will call set when new values of the tweak are published.
      */
     public synchronized void set(String tweakName, Object value) {
+        boolean autoDeclared = false;
+
         if (!mTweakValues.containsKey(tweakName)) {
             Log.i(LOGTAG, "Auto-declaring unknown tweak with name \"" + tweakName + "\"");
             this.declareTweak(tweakName, value, this.detectTweakType(value));
+            autoDeclared = true;
+
         }
 
 
@@ -69,17 +73,16 @@ public class Tweaks {
         Object newValue = updated.value;
         mTweakValues.put(tweakName, updated);
 
-        if(oldValue.equals(newValue)) {
-            return;
-        }
+        if(autoDeclared || !oldValue.equals(newValue)) {
 
-        Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + updated.getStringValue());
+            Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + updated.getStringValue());
 
-        for(OnTweakUpdatedListener listener : mTweakUpdatedListeners) {
-            try {
-                listener.onTweakUpdated(tweakName, updated);
-            } catch (Exception e) {
-                Log.e(LOGTAG, "Error while informing listener about tweak update", e);
+            for (OnTweakUpdatedListener listener : mTweakUpdatedListeners) {
+                try {
+                    listener.onTweakUpdated(tweakName, updated);
+                } catch (Exception e) {
+                    Log.e(LOGTAG, "Error while informing listener about tweak update", e);
+                }
             }
         }
     }
