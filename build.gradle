@@ -35,8 +35,8 @@ android {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    compile 'com.google.android.gms:play-services-base:[3.1,)'
-    compile 'com.google.android.gms:play-services-gcm:[3.1,)'
+    compile 'com.google.android.gms:play-services-base:[7.5.0,)'
+    compile 'com.google.android.gms:play-services-gcm:[7.5.0,)'
 }
 
 android.libraryVariants.all { variant ->
