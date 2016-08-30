@@ -2,6 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.support.v4.app.NotificationCompat;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -16,9 +18,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
+import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
 import java.util.HashMap;
+import java.util.IllegalFormatException;
 import java.util.Map;
 
 /**
@@ -107,17 +111,25 @@ public class GCMReceiver extends BroadcastReceiver {
      */
 
     /* package */ static class NotificationData {
-        private NotificationData(int anIcon, CharSequence aTitle, String aMessage, Intent anIntent) {
+        private NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, CharSequence aTitle, String aMessage, Intent anIntent, int aColor) {
             icon = anIcon;
+            largeIcon = aLargeIcon;
+            whiteIcon = aWhiteIcon;
             title = aTitle;
             message = aMessage;
             intent = anIntent;
+            color = aColor;
         }
 
         public final int icon;
+        public final int largeIcon;
+        public final int whiteIcon;
         public final CharSequence title;
         public final String message;
         public final Intent intent;
+        public final int color;
+
+        public static final int NOT_SET = -1;
     }
 
     /* package */ Intent getDefaultIntent(Context context) {
@@ -130,9 +142,19 @@ public class GCMReceiver extends BroadcastReceiver {
 
         final String message = inboundIntent.getStringExtra("mp_message");
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
+        final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
+        final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
+        final String colorName = inboundIntent.getStringExtra("mp_color");
+        int color = NotificationData.NOT_SET;
 
+        if (colorName != null) {
+            try {
+                color = Color.parseColor(colorName);
+            } catch (IllegalArgumentException e) {}
+        }
+        
         if (message == null) {
             return null;
         }
@@ -144,6 +166,20 @@ public class GCMReceiver extends BroadcastReceiver {
             }
         }
 
+        int largeNotificationIcon = NotificationData.NOT_SET;
+        if (null != largeIconName) {
+            if (iconIds.knownIdName(largeIconName)) {
+                largeNotificationIcon = iconIds.idFromName(largeIconName);
+            }
+        }
+
+        int whiteNotificationIcon = NotificationData.NOT_SET;
+        if (null != whiteIconName) {
+            if (iconIds.knownIdName(whiteIconName)) {
+                whiteNotificationIcon = iconIds.idFromName(whiteIconName);
+            }
+        }
+
         ApplicationInfo appInfo;
         try {
             appInfo = manager.getApplicationInfo(context.getPackageName(), 0);
@@ -151,11 +187,11 @@ public class GCMReceiver extends BroadcastReceiver {
             appInfo = null;
         }
 
-        if (notificationIcon == -1 && null != appInfo) {
+        if (notificationIcon == NotificationData.NOT_SET && null != appInfo) {
             notificationIcon = appInfo.icon;
         }
 
-        if (notificationIcon == -1) {
+        if (notificationIcon == NotificationData.NOT_SET) {
             notificationIcon = android.R.drawable.sym_def_app_icon;
         }
 
@@ -169,7 +205,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
         final Intent notificationIntent = buildNotificationIntent(context, uriString);
 
-        return new NotificationData(notificationIcon, notificationTitle, message, notificationIntent);
+        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
     }
 
     private Intent buildNotificationIntent(Context context, String uriString) {
@@ -203,9 +239,11 @@ public class GCMReceiver extends BroadcastReceiver {
         );
 
         final Notification notification;
-        if (Build.VERSION.SDK_INT >= 16) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            notification = makeNotificationSDK21OrHigher(context, contentIntent, notificationData);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationData);
-        } else if (Build.VERSION.SDK_INT >= 11) {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationData);
         } else {
             notification = makeNotificationSDKLessThan11(context, contentIntent, notificationData);
@@ -264,6 +302,11 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent);
+
+        if (notificationData.largeIcon != NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
+        }
+
         final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         return n;
@@ -279,6 +322,10 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent);
+
+        if (notificationData.largeIcon != NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
+        }
 
         final Notification n = builder.getNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
@@ -296,6 +343,40 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentText(notificationData.message).
                 setContentIntent(intent).
                 setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+
+        if (notificationData.largeIcon != NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
+        }
+
+        final Notification n = builder.build();
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        return n;
+    }
+
+    @SuppressLint("NewApi")
+    @TargetApi(21)
+    private Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
+        final Notification.Builder builder = new Notification.Builder(context).
+                setTicker(notificationData.message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(notificationData.title).
+                setContentText(notificationData.message).
+                setContentIntent(intent).
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+
+        if (notificationData.whiteIcon != NotificationData.NOT_SET) {
+            builder.setSmallIcon(notificationData.whiteIcon);
+        } else {
+            builder.setSmallIcon(notificationData.icon);
+        }
+
+        if (notificationData.largeIcon != NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
+        }
+
+        if (notificationData.color != NotificationData.NOT_SET) {
+            builder.setColor(notificationData.color);
+        }
 
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
