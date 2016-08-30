@@ -22,6 +22,7 @@ android {
         targetSdkVersion 23
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
+        consumerProguardFiles 'proguard.txt'
 
         lintOptions {
             abortOnError true
