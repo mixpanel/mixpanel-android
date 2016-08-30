@@ -18,12 +18,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
-import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 
-import java.util.HashMap;
-import java.util.IllegalFormatException;
-import java.util.Map;
 
 /**
 * BroadcastReceiver for handling Google Cloud Messaging intents.
@@ -154,7 +150,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 color = Color.parseColor(colorName);
             } catch (IllegalArgumentException e) {}
         }
-        
+
         if (message == null) {
             return null;
         }
