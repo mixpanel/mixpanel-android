@@ -290,7 +290,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressWarnings("deprecation")
     @TargetApi(9)
-    private Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, NotificationData notificationData) {
+    protected Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, NotificationData notificationData) {
         final NotificationCompat.Builder builder = new NotificationCompat.Builder(context).
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
@@ -310,7 +310,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressWarnings("deprecation")
     @TargetApi(11)
-    private Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
+    protected Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
@@ -330,7 +330,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressLint("NewApi")
     @TargetApi(16)
-    private Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
+    protected Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
@@ -351,7 +351,7 @@ public class GCMReceiver extends BroadcastReceiver {
 
     @SuppressLint("NewApi")
     @TargetApi(21)
-    private Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
+    protected Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
