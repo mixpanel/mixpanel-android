@@ -1039,8 +1039,8 @@ public class MixpanelAPI {
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId or clearSinglePushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearSinglePushRegistrationId
+         * clearPushRegistrationId or clearPushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearPushRegistrationId
          */
         public void clearPushRegistrationId();
 
@@ -1051,13 +1051,13 @@ public class MixpanelAPI {
          * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
          * with getStringExtra("unregistered") != null
          *
-         * <p>{@link People#clearSinglePushRegistrationId} should only be called after {@link #identify(String)} has been called.
+         * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId or clearSinglePushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearSinglePushRegistrationId
+         * clearPushRegistrationId or clearPushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearPushRegistrationId
          */
-        public void clearSinglePushRegistrationId(String registrationId);
+        public void clearPushRegistrationId(String registrationId);
 
         /**
          * Returns the string id currently being used to uniquely identify the user associated
@@ -1727,7 +1727,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void clearSinglePushRegistrationId(String registrationId) {
+        public void clearPushRegistrationId(String registrationId) {
             if(mPersistentIdentity.getPushId() == registrationId) {
                 mPersistentIdentity.clearPushId();
             }
