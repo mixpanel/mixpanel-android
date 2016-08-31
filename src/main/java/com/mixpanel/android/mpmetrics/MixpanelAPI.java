@@ -1728,8 +1728,10 @@ public class MixpanelAPI {
 
         @Override
         public void clearSinglePushRegistrationId(String registrationId) {
+            if(mPersistentIdentity.getPushId() == registrationId) {
+                mPersistentIdentity.clearPushId();
+            }
             remove("$android_devices", registrationId);
-            mPersistentIdentity.clearPushId();
         }
 
         @Override
