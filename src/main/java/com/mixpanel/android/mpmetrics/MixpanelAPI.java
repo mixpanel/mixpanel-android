@@ -1039,8 +1039,8 @@ public class MixpanelAPI {
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId or clearPushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearPushRegistrationId
+         * clearPushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId
          */
         public void clearPushRegistrationId();
 
@@ -1054,8 +1054,8 @@ public class MixpanelAPI {
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId or clearPushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId or clearPushRegistrationId
+         * clearPushRegistrationId, and no applications that call
+         * {@link #initPushHandling(String)} should call clearPushRegistrationId
          */
         public void clearPushRegistrationId(String registrationId);
 
