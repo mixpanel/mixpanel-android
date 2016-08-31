@@ -1030,7 +1030,7 @@ public class MixpanelAPI {
         public void setPushRegistrationId(String registrationId);
 
         /**
-         * Manually clear a current Google Cloud Messaging registration id from Mixpanel.
+         * Manually clear all current Google Cloud Messaging registration ids from Mixpanel.
          *
          * <p>If you are handling Google Cloud Messages in your own application, you should
          * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
