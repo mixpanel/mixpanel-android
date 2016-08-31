@@ -1348,10 +1348,10 @@ public class MixpanelAPI {
         final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
         final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
 
-        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimedEvents_" + token;
-        final Future<SharedPreferences> timedEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
+        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+        final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
 
-        return new PersistentIdentity(referrerPreferences, storedPreferences, timedEventsPrefs);
+        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs);
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
