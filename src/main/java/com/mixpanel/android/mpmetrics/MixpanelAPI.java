@@ -227,7 +227,6 @@ public class MixpanelAPI {
         mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
         mEventTimings = mPersistentIdentity.getTimeEvents();
-
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
 
