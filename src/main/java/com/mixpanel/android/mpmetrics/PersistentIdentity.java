@@ -67,9 +67,10 @@ import android.util.Log;
         }
     }
 
-    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences) {
+    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences, Future<SharedPreferences> timeEventsPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
+        mTimeEventsPreferences = timeEventsPreferences;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
@@ -284,6 +285,53 @@ import android.util.Log;
         storeSuperProperties();
     }
 
+    public Map<String, Long> getTimeEvents() {
+        Map<String, Long> timeEvents = new HashMap<>();
+
+        try {
+            final SharedPreferences prefs = mTimeEventsPreferences.get();
+
+            Map<String, ?> allEntries = prefs.getAll();
+            for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+                timeEvents.put(entry.getKey(), Long.valueOf(entry.getValue().toString()));
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+
+        return timeEvents;
+    }
+
+    // access is synchronized outside (mEventTimings)
+    public void removeTimeEvent(String timeEventName) {
+        try {
+            final SharedPreferences prefs = mTimeEventsPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.remove(timeEventName);
+            writeEdits(editor);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // access is synchronized outside (mEventTimings)
+    public void addTimeEvent(String timeEventName, Long timeEventTimestamp) {
+        try {
+            final SharedPreferences prefs = mTimeEventsPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.putLong(timeEventName, timeEventTimestamp);
+            writeEdits(editor);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
     public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
         final JSONObject propCache = getSuperPropertiesCache();
 
@@ -450,6 +498,7 @@ import android.util.Log;
 
     private final Future<SharedPreferences> mLoadStoredPreferences;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
+    private final Future<SharedPreferences> mTimeEventsPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
     private JSONObject mSuperPropertiesCache;
     private Map<String, String> mReferrerPropertiesCache;
