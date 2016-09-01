@@ -32,6 +32,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1389,7 +1390,7 @@ public class MixpanelAPI {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             Log.i(LOGTAG, "SDK version is lower than " + MPConfig.UI_FEATURES_MIN_API + ". Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
             return new NoOpUpdatesFromMixpanel(sSharedTweaks);
-        } else if (mConfig.getDisableViewCrawler()) {
+        } else if (mConfig.getDisableViewCrawler() || Arrays.asList(mConfig.getDisableViewCrawlerForProjects()).contains(token)) {
             Log.i(LOGTAG, "DisableViewCrawler is set to true. Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
             return new NoOpUpdatesFromMixpanel(sSharedTweaks);
         } else {
@@ -2213,4 +2214,6 @@ public class MixpanelAPI {
     private static final String LOGTAG = "MixpanelAPI.API";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
+
+    private boolean mDisableDecideChecker;
 }
