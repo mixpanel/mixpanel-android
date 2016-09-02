@@ -11,11 +11,12 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
+import com.google.android.gms.iid.InstanceID;
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -344,7 +345,7 @@ import javax.net.ssl.SSLSocketFactory;
                     // Google Play Services version and requiring Java 1.7
                     // in the next major library release.
                     try {
-                        final int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
+                        final int resultCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
                         if (resultCode != ConnectionResult.SUCCESS) {
                             Log.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
                             return;
@@ -354,9 +355,8 @@ import javax.net.ssl.SSLSocketFactory;
                         return;
                     }
 
-
-                    final GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(mContext);
-                    registrationId = gcm.register(senderID);
+                    InstanceID instanceID = InstanceID.getInstance(mContext);
+                    registrationId = instanceID.getToken(senderID, GoogleCloudMessaging.INSTANCE_ID_SCOPE, null);
                 } catch (IOException e) {
                     Log.i(LOGTAG, "Exception when trying to register for GCM", e);
                     return;
@@ -495,7 +495,7 @@ import javax.net.ssl.SSLSocketFactory;
 
                 try {
                     try {
-                        final int servicesAvailable = GooglePlayServicesUtil.isGooglePlayServicesAvailable(mContext);
+                        final int servicesAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
                         switch (servicesAvailable) {
                             case ConnectionResult.SUCCESS:
                                 ret.put("$google_play_services", "available");
