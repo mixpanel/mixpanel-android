@@ -21,6 +21,7 @@ import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.mpmetrics.OnMixpanelTweaksUpdatedListener;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
@@ -66,6 +67,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
+        mTweaksUpdatedListeners = new ArrayList<>();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -109,6 +111,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_VARIANTS_RECEIVED);
         msg.obj = variants;
         mMessageThreadHandler.sendMessage(msg);
+    }
+
+    @Override
+    public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("Listener cannot be null");
+        }
+
+        mTweaksUpdatedListeners.add(listener);
+    }
+
+    @Override
+    public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+        mTweaksUpdatedListeners.remove(listener);
     }
 
     @Override
@@ -857,19 +873,32 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
+                boolean isTweaksUpdated = false;
                 final int size = mPersistentTweaks.size();
                 for (int i = 0; i < size; i++) {
                     final VariantTweak tweakInfo = mPersistentTweaks.get(i);
                     try {
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
-                        mTweaks.set(tweakValue.first, tweakValue.second);
+
                         if (!mSeenExperiments.contains(tweakInfo.variantId)) {
                             toTrack.add(tweakInfo.variantId);
+                            isTweaksUpdated = true;
+                        } else if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
+                            isTweaksUpdated = true;
                         }
+
+                        mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (EditProtocol.BadInstructionsException e) {
                         Log.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
                     }
                 }
+
+                if (isTweaksUpdated) {
+                    for (OnMixpanelTweaksUpdatedListener listener : mTweaksUpdatedListeners) {
+                        listener.onMixpanelTweakUpdated();
+                    }
+                }
+
                 if(size == 0) { // there are no new tweaks, so reset to default values
                     final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
                     for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
@@ -995,8 +1024,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 } catch (JSONException e) {
                     Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
                 }
-
-                
             }
         }
 
@@ -1103,6 +1130,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final Map<String, String> mDeviceInfo;
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final float mScaledDensity;
+
+    private final List<OnMixpanelTweaksUpdatedListener> mTweaksUpdatedListeners;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";

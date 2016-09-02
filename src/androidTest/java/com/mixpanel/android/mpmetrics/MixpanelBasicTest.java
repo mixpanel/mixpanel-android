@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.test.AndroidTestCase;
@@ -13,13 +14,14 @@ import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +43,21 @@ public class MixpanelBasicTest extends AndroidTestCase {
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
         Thread.sleep(500);
+
+        try {
+            SystemInformation systemInformation = new SystemInformation(mContext);
+
+            final StringBuilder queryBuilder = new StringBuilder();
+            queryBuilder.append("&properties=");
+            JSONObject properties = new JSONObject();
+            properties.putOpt("$android_lib_version", MPConfig.VERSION);
+            properties.putOpt("$android_app_version", systemInformation.getAppVersionName());
+            properties.putOpt("$android_version", Build.VERSION.RELEASE);
+            properties.putOpt("$android_app_release", systemInformation.getAppVersionCode());
+            properties.putOpt("$android_device_model", Build.MODEL);
+            queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
+            mAppProperties = queryBuilder.toString();
+        } catch (Exception e) {}
     } // end of setUp() method definition
 
     public void testVersionsMatch() {
@@ -413,9 +430,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 final boolean isIdentified = isIdentifiedRef.get();
                 if (null == params) {
                     if (isIdentified) {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=PEOPLE+ID", endpointUrl);
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=PEOPLE+ID" + mAppProperties, endpointUrl);
                     } else {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID", endpointUrl);
+                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID" + mAppProperties, endpointUrl);
                     }
                     return TestUtils.bytes("{}");
                 }
@@ -955,4 +972,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
     private Future<SharedPreferences> mMockPreferences;
 
     private static final int POLL_WAIT_SECONDS = 10;
+
+    private String mAppProperties;
 }

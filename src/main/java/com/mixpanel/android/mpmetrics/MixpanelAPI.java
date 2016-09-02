@@ -1270,6 +1270,27 @@ public class MixpanelAPI {
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
         /**
+         * Sets the listener that will receive a callback when new Tweaks from Mixpanel are discovered. Most
+         * users of the library will not need this method, since Tweaks are applied automatically to your
+         * application by default.
+         *
+         * <p>The given listener will be called when a new batch of Tweaks is applied. Handlers
+         * should be prepared to handle the callback on an arbitrary thread.
+         *
+         * <p>The listener will be called when new Tweaks are detected as available. That means the listener
+         * will get called once {@link People#joinExperimentIfAvailable()} has successfully applied the changes.
+         *
+         * @param listener the listener to set
+         */
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
+
+        /**
+         * Removes the listener previously registered with addOnMixpanelTweaksUpdatedListener.
+         *
+         */
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
+
+        /**
          * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
          */
         @Deprecated
@@ -1819,6 +1840,20 @@ public class MixpanelAPI {
             mUpdatesListener.removeOnMixpanelUpdatesReceivedListener(listener);
         }
 
+        @Override
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+            if (null == listener) {
+                throw new NullPointerException("Listener cannot be null");
+            }
+
+            mUpdatesFromMixpanel.addOnMixpanelTweaksUpdatedListener(listener);
+        }
+
+        @Override
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+            mUpdatesFromMixpanel.removeOnMixpanelTweaksUpdatedListener(listener);
+        }
+
         private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
@@ -2104,6 +2139,16 @@ public class MixpanelAPI {
         @Override
         public Tweaks getTweaks() {
             return mTweaks;
+        }
+
+        @Override
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+            // No op
+        }
+
+        @Override
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+            // No op
         }
 
         private final Tweaks mTweaks;

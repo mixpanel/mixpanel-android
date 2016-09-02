@@ -46,6 +46,16 @@ public class DecideMessagesTest extends AndroidTestCase {
             public Tweaks getTweaks() {
                 return null;
             }
+
+            @Override
+            public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+            }
+
+            @Override
+            public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+            }
         };
 
         mDecideMessages = new DecideMessages("TEST TOKEN", mMockListener, mMockUpdates);

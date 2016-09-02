@@ -377,6 +377,16 @@ public class DecideCheckerTest extends AndroidTestCase {
             return null;
         }
 
+        @Override
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+        }
+
+        @Override
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+        }
+
         public List<JSONArray> bindingsSeen = new ArrayList<JSONArray>();
         public List<JSONArray> variantsSeen = new ArrayList<JSONArray>();
 

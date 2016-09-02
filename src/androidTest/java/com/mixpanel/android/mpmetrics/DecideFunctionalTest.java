@@ -3,19 +3,22 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.RemoteService;
-import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -109,6 +112,21 @@ public class DecideFunctionalTest extends AndroidTestCase {
                 };
             }
         };
+
+        try {
+            SystemInformation systemInformation = new SystemInformation(mContext);
+
+            final StringBuilder queryBuilder = new StringBuilder();
+            queryBuilder.append("&properties=");
+            JSONObject properties = new JSONObject();
+            properties.putOpt("$android_lib_version", MPConfig.VERSION);
+            properties.putOpt("$android_app_version", systemInformation.getAppVersionName());
+            properties.putOpt("$android_version", Build.VERSION.RELEASE);
+            properties.putOpt("$android_app_release", systemInformation.getAppVersionCode());
+            properties.putOpt("$android_device_model", Build.MODEL);
+            queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
+            mAppProperties = queryBuilder.toString();
+        } catch (Exception e) {}
     }
 
     public void testDecideChecks() {
@@ -139,7 +157,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // Should make a request on identify
         mExpectations.expect(
-            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1" + mAppProperties,
              "{" +
                   "\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\",\"style\":\"dark\"}]," +
                   "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]," +
@@ -162,7 +180,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // We should run a new check on every flush (right before the flush)
         mExpectations.expect(
-            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1" + mAppProperties,
             "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\",\"style\":\"dark\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
@@ -184,7 +202,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // We should check, but IGNORE repeated objects when we see them come through
         mExpectations.expect(
-            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1",
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1" + mAppProperties,
             "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\",\"style\":\"dark\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
@@ -198,7 +216,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // Seen never changes, even if we re-identify
         mExpectations.expect(
-            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2",
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+2" + mAppProperties,
             "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\",\"style\":\"dark\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
@@ -225,7 +243,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
         // We should run a check on construction if we are constructed with a people distinct id
         mExpectations.expect(
-            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+IDENTIFIED+ON+CONSTRUCTION&distinct_id=Present+Before+Construction",
+            "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+IDENTIFIED+ON+CONSTRUCTION&distinct_id=Present+Before+Construction" + mAppProperties,
             "{" +
                     "\"notifications\":[{\"body\":\"b\",\"title\":\"t\",\"message_id\":1111,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"c1\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":3333,\"type\":\"mini\",\"style\":\"dark\"}]," +
                     "\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"n\"}],\"id\":8888,\"questions\":[{\"prompt\":\"p\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"N2\"}]," +
@@ -366,6 +384,16 @@ public class DecideFunctionalTest extends AndroidTestCase {
         public Tweaks getTweaks() {
             return null;
         }
+
+        @Override
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+        }
+
+        @Override
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+
+        }
     }
 
     private MPConfig mMockConfig;
@@ -373,4 +401,5 @@ public class DecideFunctionalTest extends AndroidTestCase {
     private Expectations mExpectations;
     private RemoteService mMockPoster;
     private AnalyticsMessages mMockMessages;
+    private String mAppProperties;
 }
