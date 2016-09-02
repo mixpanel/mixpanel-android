@@ -36,11 +36,17 @@ public class PersistentIdentityTest extends AndroidTestCase {
         prefsEditor.putString("super_properties", "{\"thing\": \"superprops\"}");
         prefsEditor.commit();
 
+        SharedPreferences timeEventsPreferences = getContext().getSharedPreferences(TEST_TIME_EVENTS_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences.Editor timeEventsEditor = timeEventsPreferences.edit();
+        timeEventsEditor.clear();
+        timeEventsEditor.commit();
+
         SharedPreferencesLoader loader = new SharedPreferencesLoader();
         Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
         Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
+        Future<SharedPreferences> timeEventsLoader = loader.loadPreferences(getContext(), TEST_TIME_EVENTS_PREFERENCES, null);
 
-        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader);
+        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader);
     }
 
     public void testStaticWaitingPeopleRecordsWithId() throws JSONException {
@@ -185,4 +191,5 @@ public class PersistentIdentityTest extends AndroidTestCase {
     private PersistentIdentity mPersistentIdentity;
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
     private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
+    private static final String TEST_TIME_EVENTS_PREFERENCES  = "TEST TIME EVENTS PREFS";
 }
