@@ -213,7 +213,7 @@ import javax.net.ssl.SSLSocketFactory;
             queryBuilder.append("&distinct_id=").append(escapedId);
         }
         
-        queryBuilder.append("properties=");
+        queryBuilder.append("&properties=");
 
         JSONObject properties = new JSONObject();
         try {

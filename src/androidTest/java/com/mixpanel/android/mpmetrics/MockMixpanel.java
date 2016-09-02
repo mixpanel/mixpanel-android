@@ -86,6 +86,11 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public void remove(String name, Object value) {
+
+        }
+
+        @Override
         public void unset(final String name) {
             Assert.fail("Unexpected call");
         }
@@ -111,6 +116,11 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
+        public String getPushRegistrationId() {
+            return null;
+        }
+
+        @Override
         public void setPushRegistrationId(final String registrationId) {
             Assert.fail("Unexpected call");
         }
@@ -118,6 +128,11 @@ class MockMixpanel extends MixpanelAPI {
         @Override
         public void clearPushRegistrationId() {
             Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void clearPushRegistrationId(String registrationId) {
+
         }
 
         @Override
@@ -182,6 +197,16 @@ class MockMixpanel extends MixpanelAPI {
         @Override
         public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
             Assert.fail("Unexpected call");
+        }
+
+        @Override
+        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+
+        }
+
+        @Override
+        public void removeOnMixpanelTweakUpdatedListener() {
+
         }
 
         @Override
