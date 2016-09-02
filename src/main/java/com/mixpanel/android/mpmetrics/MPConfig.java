@@ -258,6 +258,13 @@ public class MPConfig {
         }
         mEditorUrl = editorUrl;
 
+        int resourceId = metaData.getInt("com.mixpanel.android.MPConfig.DisableViewCrawlerForProjects", -1);
+        if (resourceId != -1) {
+            mDisableViewCrawlerForProjects = context.getResources().getStringArray(resourceId);
+        } else {
+            mDisableViewCrawlerForProjects = new String[0];
+        }
+
         if (DEBUG) {
             Log.v(LOGTAG,
                 "Mixpanel (" + VERSION + ") configured with:\n" +
@@ -321,6 +328,8 @@ public class MPConfig {
     public boolean getDisableViewCrawler() {
         return mDisableViewCrawler;
     }
+
+    public String[] getDisableViewCrawlerForProjects() { return mDisableViewCrawlerForProjects; }
 
     public boolean getTestMode() {
         return mTestMode;
@@ -428,6 +437,7 @@ public class MPConfig {
     private final boolean mDisableEmulatorBindingUI;
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableViewCrawler;
+    private final String[] mDisableViewCrawlerForProjects;
     private final String mEventsEndpoint;
     private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;
