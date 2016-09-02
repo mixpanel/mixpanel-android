@@ -386,12 +386,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
 
         @Override
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
 
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
 
         }
     }

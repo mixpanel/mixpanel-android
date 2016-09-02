@@ -21,7 +21,7 @@ import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
-import com.mixpanel.android.mpmetrics.OnMixpanelTweakUpdatedListener;
+import com.mixpanel.android.mpmetrics.OnMixpanelTweaksUpdatedListener;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.mpmetrics.ResourceReader;
 import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
@@ -67,7 +67,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
-        mTweakUpdatedListeners = new ArrayList<>();
+        mTweaksUpdatedListeners = new ArrayList<>();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -114,17 +114,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     @Override
-    public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+    public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
         if (null == listener) {
             throw new NullPointerException("Listener cannot be null");
         }
 
-        mTweakUpdatedListeners.add(listener);
+        mTweaksUpdatedListeners.add(listener);
     }
 
     @Override
-    public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
-        mTweakUpdatedListeners.remove(listener);
+    public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+        mTweaksUpdatedListeners.remove(listener);
     }
 
     @Override
@@ -894,7 +894,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 }
 
                 if (isTweaksUpdated) {
-                    for (OnMixpanelTweakUpdatedListener listener : mTweakUpdatedListeners) {
+                    for (OnMixpanelTweaksUpdatedListener listener : mTweaksUpdatedListeners) {
                         listener.onMixpanelTweakUpdated();
                     }
                 }
@@ -1131,7 +1131,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final float mScaledDensity;
 
-    private final List<OnMixpanelTweakUpdatedListener> mTweakUpdatedListeners;
+    private final List<OnMixpanelTweaksUpdatedListener> mTweaksUpdatedListeners;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";

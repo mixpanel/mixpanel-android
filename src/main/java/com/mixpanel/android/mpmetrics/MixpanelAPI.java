@@ -1267,25 +1267,25 @@ public class MixpanelAPI {
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
         /**
-         * Sets the listener that will receive a callback when new Tweak's from Mixpanel are discovered. Most
-         * users of the library will not need this method, since Tweak's are applied automatically to your
+         * Sets the listener that will receive a callback when new Tweaks from Mixpanel are discovered. Most
+         * users of the library will not need this method, since Tweaks are applied automatically to your
          * application by default.
          *
-         * <p>The given listener will be called when a new batch of Tweak's is applied. Handlers
+         * <p>The given listener will be called when a new batch of Tweaks is applied. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>The listener will be called when new Tweak's are detected as available. That means the listener
+         * <p>The listener will be called when new Tweaks are detected as available. That means the listener
          * will get called once {@link People#joinExperimentIfAvailable()} has successfully applied the changes.
          *
          * @param listener the listener to set
          */
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
 
         /**
-         * Removes the listener previously registered with addOnMixpanelTweakUpdatedListener.
+         * Removes the listener previously registered with addOnMixpanelTweaksUpdatedListener.
          *
          */
-        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
 
         /**
          * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
@@ -1834,17 +1834,17 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
             if (null == listener) {
                 throw new NullPointerException("Listener cannot be null");
             }
 
-            mUpdatesFromMixpanel.addOnMixpanelTweakUpdatedListener(listener);
+            mUpdatesFromMixpanel.addOnMixpanelTweaksUpdatedListener(listener);
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
-            mUpdatesFromMixpanel.removeOnMixpanelTweakUpdatedListener(listener);
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
+            mUpdatesFromMixpanel.removeOnMixpanelTweaksUpdatedListener(listener);
         }
 
         private JSONObject stdPeopleMessage(String actionType, Object properties)
@@ -2135,12 +2135,12 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
             // No op
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
             // No op
         }
 
