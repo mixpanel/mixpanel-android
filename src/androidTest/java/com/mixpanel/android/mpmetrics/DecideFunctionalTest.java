@@ -155,7 +155,6 @@ public class DecideFunctionalTest extends AndroidTestCase {
         final Survey shouldBeNull = api.getPeople().getSurveyIfAvailable();
         assertNull(shouldBeNull);
 
-
         // Should make a request on identify
         mExpectations.expect(
             "https://decide.mixpanel.com/decide?version=1&lib=android&token=TEST+TOKEN+testSurveyChecks&distinct_id=DECIDE+CHECKS+ID+1" + mAppProperties,
@@ -387,12 +386,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
 
         @Override
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener() {
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
     }

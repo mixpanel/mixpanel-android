@@ -67,6 +67,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
+        mTweakUpdatedListeners = new ArrayList<>();
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -113,13 +114,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     @Override
-    public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
-        mOnMixpanelTweakUpdatedListener = listener;
+    public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("Listener cannot be null");
+        }
+
+        mTweakUpdatedListeners.add(listener);
     }
 
     @Override
-    public void removeOnMixpanelTweakUpdatedListener() {
-        mOnMixpanelTweakUpdatedListener = null;
+    public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        mTweakUpdatedListeners.remove(listener);
     }
 
     @Override
@@ -888,8 +893,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     }
                 }
 
-                if (isTweaksUpdated && mOnMixpanelTweakUpdatedListener != null) {
-                    mOnMixpanelTweakUpdatedListener.onMixpanelTweakUpdated();
+                if (isTweaksUpdated) {
+                    for (OnMixpanelTweakUpdatedListener listener : mTweakUpdatedListeners) {
+                        listener.onMixpanelTweakUpdated();
+                    }
                 }
 
                 if(size == 0) { // there are no new tweaks, so reset to default values
@@ -1124,7 +1131,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final float mScaledDensity;
 
-    private OnMixpanelTweakUpdatedListener mOnMixpanelTweakUpdatedListener;
+    private final List<OnMixpanelTweakUpdatedListener> mTweakUpdatedListeners;
 
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";

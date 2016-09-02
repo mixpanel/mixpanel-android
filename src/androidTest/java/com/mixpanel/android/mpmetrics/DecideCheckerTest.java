@@ -378,12 +378,12 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         @Override
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener() {
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
 

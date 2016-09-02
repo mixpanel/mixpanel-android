@@ -188,7 +188,6 @@ class MockMixpanel extends MixpanelAPI {
             Assert.fail("Unexpected call");
         }
 
-
         @Override
         public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
             Assert.fail("Unexpected call");
@@ -200,12 +199,12 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener() {
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
 
         }
 

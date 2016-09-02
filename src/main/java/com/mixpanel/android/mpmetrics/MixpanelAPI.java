@@ -1279,13 +1279,13 @@ public class MixpanelAPI {
          *
          * @param listener the listener to set
          */
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
 
         /**
-         * Removes the listener previously registered with setOnMixpanelTweakUpdatedListener.
+         * Removes the listener previously registered with addOnMixpanelTweakUpdatedListener.
          *
          */
-        public void removeOnMixpanelTweakUpdatedListener();
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
 
         /**
          * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
@@ -1834,13 +1834,17 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
-            mUpdatesFromMixpanel.setOnMixpanelTweakUpdatedListener(listener);
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+            if (null == listener) {
+                throw new NullPointerException("Listener cannot be null");
+            }
+
+            mUpdatesFromMixpanel.addOnMixpanelTweakUpdatedListener(listener);
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener() {
-            mUpdatesFromMixpanel.removeOnMixpanelTweakUpdatedListener();
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+            mUpdatesFromMixpanel.removeOnMixpanelTweakUpdatedListener(listener);
         }
 
         private JSONObject stdPeopleMessage(String actionType, Object properties)
@@ -2131,12 +2135,12 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
             // No op
         }
 
         @Override
-        public void removeOnMixpanelTweakUpdatedListener() {
+        public void removeOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
             // No op
         }
 

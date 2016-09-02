@@ -54,7 +54,7 @@ public class Tweaks {
         }
 
         final TweakValue container = mTweakValues.get(tweakName);
-        return !container.equals(value);
+        return !container.value.equals(value);
     }
 
     /**
@@ -200,7 +200,8 @@ public class Tweaks {
 
         public final @TweakType int type;
 
-        private final Object value;
+        protected final Object value;
+
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;
