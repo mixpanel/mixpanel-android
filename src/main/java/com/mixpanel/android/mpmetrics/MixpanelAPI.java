@@ -1266,8 +1266,25 @@ public class MixpanelAPI {
          */
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+        /**
+         * Sets the listener that will receive a callback when new Tweak's from Mixpanel are discovered. Most
+         * users of the library will not need this method, since Tweak's are applied automatically to your
+         * application by default.
+         *
+         * <p>The given listener will be called when a new batch of Tweak's is applied. Handlers
+         * should be prepared to handle the callback on an arbitrary thread.
+         *
+         * <p>The listener will be called when new Tweak's are detected as available. That means the listener
+         * will get called once {@link People#joinExperimentIfAvailable()} has successfully applied the changes.
+         *
+         * @param listener the listener to set
+         */
+        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
 
+        /**
+         * Removes the listener previously registered with setOnMixpanelTweakUpdatedListener.
+         *
+         */
         public void removeOnMixpanelTweakUpdatedListener();
 
         /**
@@ -1817,7 +1834,7 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
             mUpdatesFromMixpanel.setOnMixpanelTweakUpdatedListener(listener);
         }
 
