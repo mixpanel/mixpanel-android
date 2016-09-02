@@ -131,11 +131,6 @@ public class Tweaks {
             return new TweakValue(type, defaultValue, minimum, maximum, newValue);
         }
 
-        @Override
-        public boolean equals(Object value) {
-            return value.equals(this.value);
-        }
-
         public String getStringValue() {
             String ret = null;
 
@@ -201,7 +196,6 @@ public class Tweaks {
         public final @TweakType int type;
 
         protected final Object value;
-
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;
