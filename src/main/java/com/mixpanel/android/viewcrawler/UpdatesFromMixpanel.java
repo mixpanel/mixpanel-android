@@ -1,5 +1,6 @@
 package com.mixpanel.android.viewcrawler;
 
+import com.mixpanel.android.mpmetrics.OnMixpanelTweakUpdatedListener;
 import com.mixpanel.android.mpmetrics.Tweaks;
 
 import org.json.JSONArray;
@@ -11,4 +12,6 @@ public interface UpdatesFromMixpanel {
     public void setEventBindings(JSONArray bindings);
     public void setVariants(JSONArray variants);
     public Tweaks getTweaks();
+    public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+    public void removeOnMixpanelTweakUpdatedListener();
 }

@@ -1266,6 +1266,10 @@ public class MixpanelAPI {
          */
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener);
 
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener);
+
+        public void removeOnMixpanelTweakUpdatedListener();
+
         /**
          * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
          */
@@ -1812,6 +1816,16 @@ public class MixpanelAPI {
             mUpdatesListener.removeOnMixpanelUpdatesReceivedListener(listener);
         }
 
+        @Override
+        public void addOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+            mUpdatesFromMixpanel.setOnMixpanelTweakUpdatedListener(listener);
+        }
+
+        @Override
+        public void removeOnMixpanelTweakUpdatedListener() {
+            mUpdatesFromMixpanel.removeOnMixpanelTweakUpdatedListener();
+        }
+
         private JSONObject stdPeopleMessage(String actionType, Object properties)
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
@@ -2097,6 +2111,16 @@ public class MixpanelAPI {
         @Override
         public Tweaks getTweaks() {
             return mTweaks;
+        }
+
+        @Override
+        public void setOnMixpanelTweakUpdatedListener(OnMixpanelTweakUpdatedListener listener) {
+            // No op
+        }
+
+        @Override
+        public void removeOnMixpanelTweakUpdatedListener() {
+            // No op
         }
 
         private final Tweaks mTweaks;

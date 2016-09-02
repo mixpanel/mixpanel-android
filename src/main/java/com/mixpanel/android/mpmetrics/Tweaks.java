@@ -47,6 +47,16 @@ public class Tweaks {
         mTweakValues.put(tweakName, updated);
     }
 
+    public synchronized boolean isNewValue(String tweakName, Object value) {
+        if (!mTweakValues.containsKey(tweakName)) {
+            Log.w(LOGTAG, "Attempt to reference a tweak \"" + tweakName + "\" which has never been defined.");
+            return false;
+        }
+
+        final TweakValue container = mTweakValues.get(tweakName);
+        return !container.equals(value);
+    }
+
     /**
      * Returns the descriptions of all tweaks that currently exist.
      *
@@ -119,6 +129,11 @@ public class Tweaks {
 
         public TweakValue updateValue(Object newValue) {
             return new TweakValue(type, defaultValue, minimum, maximum, newValue);
+        }
+
+        @Override
+        public boolean equals(Object value) {
+            return value.equals(this.value);
         }
 
         public String getStringValue() {
