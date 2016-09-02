@@ -203,7 +203,6 @@ public class MixpanelAPI {
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config) {
         mContext = context;
         mToken = token;
-        mEventTimings = new HashMap<String, Long>();
         mPeople = new PeopleImpl();
         mConfig = config;
 
@@ -227,6 +226,7 @@ public class MixpanelAPI {
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
+        mEventTimings = mPersistentIdentity.getTimeEvents();
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
 
@@ -435,6 +435,7 @@ public class MixpanelAPI {
         final long writeTime = System.currentTimeMillis();
         synchronized (mEventTimings) {
             mEventTimings.put(eventName, writeTime);
+            mPersistentIdentity.addTimeEvent(eventName, writeTime);
         }
     }
 
@@ -485,6 +486,7 @@ public class MixpanelAPI {
         synchronized (mEventTimings) {
             eventBegin = mEventTimings.get(eventName);
             mEventTimings.remove(eventName);
+            mPersistentIdentity.removeTimeEvent(eventName);
         }
 
         try {
@@ -1369,7 +1371,11 @@ public class MixpanelAPI {
 
         final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
         final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
-        return new PersistentIdentity(referrerPreferences, storedPreferences);
+
+        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+        final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
+
+        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs);
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
