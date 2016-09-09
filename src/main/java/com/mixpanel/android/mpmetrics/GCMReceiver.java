@@ -102,11 +102,7 @@ public class GCMReceiver extends BroadcastReceiver {
         }
     }
 
-    /*
-     * Package scope for testing only, do not call outside of GCMReceiver.
-     */
-
-    /* package */ static class NotificationData {
+    protected static class NotificationData {
         private NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, CharSequence aTitle, String aMessage, Intent anIntent, int aColor) {
             icon = anIcon;
             largeIcon = aLargeIcon;
