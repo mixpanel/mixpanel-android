@@ -207,6 +207,7 @@ public class MPConfig {
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
         mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
+        mDisableStackingNotification = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableStackingNotification", true);
         mImageCacheMaxMemoryFactor = metaData.getInt("com.mixpanel.android.MPConfig.ImageCacheMaxMemoryFactor", 10);
 
         // Disable if EITHER of these is present and false, otherwise enable
@@ -379,6 +380,10 @@ public class MPConfig {
         return mDisableDecideChecker;
     }
 
+    public boolean getDisableStackingNotification() {
+        return mDisableStackingNotification;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -448,6 +453,7 @@ public class MPConfig {
     private final String mEditorUrl;
     private final String mResourcePackageName;
     private final boolean mDisableDecideChecker;
+    private final boolean mDisableStackingNotification;
     private final int mImageCacheMaxMemoryFactor;
 
     // Mutable, with synchronized accessor and mutator
