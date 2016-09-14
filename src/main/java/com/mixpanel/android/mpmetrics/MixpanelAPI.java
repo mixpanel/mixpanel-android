@@ -2090,25 +2090,31 @@ public class MixpanelAPI {
         }
 
         @Override
-        public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            if (mDecideMessages.hasUpdatesAvailable()) {
-                onNewResults();
+        public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            synchronized (mListeners) {
+                mListeners.add(listener);
+
+                if (mDecideMessages.hasUpdatesAvailable()) {
+                    onNewResults();
+                }
             }
-
-            mListeners.add(listener);
         }
 
         @Override
-        public synchronized void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            mListeners.remove(listener);
+        public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            synchronized (mListeners) {
+                mListeners.remove(listener);
+            }
         }
 
         @Override
-        public synchronized void run() {
+        public void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
-                listener.onMixpanelUpdatesReceived();
+            synchronized (mListeners) {
+                for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
+                    listener.onMixpanelUpdatesReceived();
+                }
             }
         }
 
