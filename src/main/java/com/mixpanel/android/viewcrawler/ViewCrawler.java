@@ -487,7 +487,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Send a string error message to the connected web UI.
          */
         private void sendError(String errorMessage) {
-            if (mEditorConnection == null) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
             }
 
@@ -519,7 +519,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report on device info to the connected web UI.
          */
         private void sendDeviceInfo() {
-            if (mEditorConnection == null) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
             }
 
@@ -648,7 +648,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report that a track has occurred to the connected web UI.
          */
         private void sendReportTrackToEditor(String eventName) {
-            if (mEditorConnection == null) {
+            if (mEditorConnection == null || !mEditorConnection.isValid()) {
                 return;
             }
 
