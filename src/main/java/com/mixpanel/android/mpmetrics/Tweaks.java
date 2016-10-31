@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.support.annotation.BoolRes;
 import android.support.annotation.IntDef;
 import android.util.Log;
 
@@ -33,18 +34,88 @@ public class Tweaks {
     }
 
     /**
+     * Registers a {@link OnTweakUpdatedListener} to get notified about tweak changes
+     * @param listener the {@link OnTweakUpdatedListener} to be notified
+     */
+    public synchronized void addOnTweakUpdatedListener(OnTweakUpdatedListener listener) {
+        if (null == listener) {
+            throw new NullPointerException("listener cannot be null");
+        }
+        mTweakUpdatedListeners.add(listener);
+    }
+
+    /**
+     * Unregisters a {@link OnTweakUpdatedListener}
+     * @param listener the {@link OnTweakUpdatedListener} to be unregistered
+     */
+    public synchronized void removeOnTweakUpdatedListener(OnTweakUpdatedListener listener) {
+        mTweakUpdatedListeners.remove(listener);
+    }
+
+    /**
      * Manually set the value of a tweak. Most users of the library will not need to call this
      * directly - instead, the library will call set when new values of the tweak are published.
      */
     public synchronized void set(String tweakName, Object value) {
+        boolean autoDeclared = false;
+
         if (!mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
-            return;
+            Log.i(LOGTAG, "Auto-declaring unknown tweak with name \"" + tweakName + "\"");
+            this.declareTweak(tweakName, value, this.detectTweakType(value));
+            autoDeclared = true;
+
         }
 
+
         final TweakValue container = mTweakValues.get(tweakName);
+        Object oldValue = container.value;
         final TweakValue updated = container.updateValue(value);
+        Object newValue = updated.value;
         mTweakValues.put(tweakName, updated);
+
+        if(autoDeclared || !oldValue.equals(newValue)) {
+
+            Log.i(LOGTAG, "Updated tweak with name \"" + tweakName + "\": " + updated.getStringValue());
+
+            for (OnTweakUpdatedListener listener : mTweakUpdatedListeners) {
+                try {
+                    listener.onTweakUpdated(tweakName, updated);
+                } catch (Exception e) {
+                    Log.e(LOGTAG, "Error while informing listener about tweak update", e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the type for the given value
+     * @param value the value which's type should be detected
+     * @return the type
+     */
+    @TweakType
+    private int detectTweakType(Object value) {
+        if(value instanceof TweakValue) {
+            return ((TweakValue) value).type;
+        }
+
+        if(value instanceof String) {
+            return STRING_TYPE;
+        }
+
+        if(value instanceof Boolean) {
+            return BOOLEAN_TYPE;
+        }
+
+        if(value instanceof Double) {
+            return DOUBLE_TYPE;
+        }
+
+        if(value instanceof Long) {
+            return LONG_TYPE;
+        }
+
+        throw new IllegalArgumentException("Type " + value.getClass().getSimpleName() + " is not supported");
+
     }
 
     public synchronized boolean isNewValue(String tweakName, Object value) {
@@ -209,10 +280,18 @@ public class Tweaks {
         void onTweakDeclared();
     }
 
+    /**
+     * This interface can be used to get notified about changes of a tweak.
+     */
+    public interface OnTweakUpdatedListener {
+        void onTweakUpdated(String tweakName, TweakValue value);
+    }
+
     /* package */ Tweaks() {
         mTweakValues = new HashMap<String, TweakValue>();
         mTweakDefaultValues = new HashMap<String, TweakValue>();
         mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
+        mTweakUpdatedListeners = new ArrayList<OnTweakUpdatedListener>();
     }
 
 
@@ -333,6 +412,7 @@ public class Tweaks {
     private final Map<String, TweakValue> mTweakValues;
     private final Map<String, TweakValue> mTweakDefaultValues;
     private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
+    private final List<OnTweakUpdatedListener> mTweakUpdatedListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
 }

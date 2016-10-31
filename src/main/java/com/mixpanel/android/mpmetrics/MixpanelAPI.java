@@ -190,6 +190,15 @@ public class MixpanelAPI {
     }
 
     /**
+     * Returns the globally shared {@link Tweaks}.
+     * @return the globally shared {@link Tweaks}
+     */
+    public static Tweaks getTweaks() {
+        return sSharedTweaks;
+
+    }
+
+    /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
