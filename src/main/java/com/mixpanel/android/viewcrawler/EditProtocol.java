@@ -1,5 +1,6 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -63,7 +64,8 @@ import java.util.List;
         public final List<String> imageUrls;
     }
 
-    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
+    public EditProtocol(Context context, ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
+        mContext = context;
         mResourceIds = resourceIds;
         mImageStore = imageStore;
         mLayoutErrorListener = layoutErrorListener;
@@ -209,7 +211,7 @@ import java.util.List;
                 }
             }
 
-            return new ViewSnapshot(properties, mResourceIds);
+            return new ViewSnapshot(mContext, properties, mResourceIds);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (final ClassNotFoundException e) {
@@ -420,6 +422,7 @@ import java.util.List;
         }
     }
 
+    private final Context mContext;
     private final ResourceIds mResourceIds;
     private final ImageStore mImageStore;
     private final ViewVisitor.OnLayoutErrorListener mLayoutErrorListener;

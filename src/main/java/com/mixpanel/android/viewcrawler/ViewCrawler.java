@@ -280,7 +280,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final ResourceIds resourceIds = new ResourceReader.Ids(resourcePackage, context);
 
             mImageStore = new ImageStore(context, "ViewCrawler");
-            mProtocol = new EditProtocol(resourceIds, mImageStore, layoutErrorListener);
+            mProtocol = new EditProtocol(context, resourceIds, mImageStore, layoutErrorListener);
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorTweaks = new ArrayList<JSONObject>();
             mEditorAssetUrls = new ArrayList<String>();
