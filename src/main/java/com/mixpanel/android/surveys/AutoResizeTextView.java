@@ -8,7 +8,6 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.widget.TextView;
 
-
 public class AutoResizeTextView extends TextView {
     private static final int TEXT_SIZE_SP = 18;
     private static final int MAX_LINES = 4;

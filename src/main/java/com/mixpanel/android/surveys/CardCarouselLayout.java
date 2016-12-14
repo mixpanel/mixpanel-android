@@ -35,7 +35,10 @@ import com.mixpanel.android.mpmetrics.Survey;
  * Part of the Mixpanel Surveys user interface.
  *
  * Users of the library should not instantiate this class directly.
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
  */
+@Deprecated
 public class CardCarouselLayout extends ViewGroup {
 
     public static class UnrecognizedAnswerTypeException extends Exception {

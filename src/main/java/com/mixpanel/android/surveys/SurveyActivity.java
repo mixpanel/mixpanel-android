@@ -58,7 +58,8 @@ import java.util.TimeZone;
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurveyIfAvailable(Activity)} and
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable(Activity)}
  *
- * @drepecate Surveys are deprecated and will be removed from the SDK soon.
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon. Use this
+ * activity carefully since some of its implementation will disappear.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 @SuppressLint("ClickableViewAccessibility")

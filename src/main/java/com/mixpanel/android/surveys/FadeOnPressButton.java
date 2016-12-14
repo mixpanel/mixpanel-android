@@ -14,7 +14,10 @@ import com.mixpanel.android.mpmetrics.MPConfig;
  * Part of the Mixpanel Surveys user interface.
  *
  * Users of the library should not instantiate this class directly.
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
  */
+@Deprecated
 public class FadeOnPressButton extends Button {
 
     public FadeOnPressButton(Context context) {
