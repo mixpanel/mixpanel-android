@@ -177,6 +177,7 @@ import android.util.Log;
         return canRegisterWithPlayServices || canRegisterWithRegistrationIntent;
     }
 
+    @Deprecated
     public static boolean checkSurveyActivityAvailable(Context context) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
             // No need to log, SurveyActivity doesn't work on this platform.

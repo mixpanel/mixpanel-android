@@ -38,6 +38,7 @@ import javax.net.ssl.SSLSocketFactory;
             variants = EMPTY_JSON_ARRAY;
         }
 
+        @Deprecated
         public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
