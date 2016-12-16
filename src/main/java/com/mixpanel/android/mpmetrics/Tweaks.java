@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * In general, you won't need to interact with this class directly -
@@ -210,9 +212,9 @@ public class Tweaks {
     }
 
     /* package */ Tweaks() {
-        mTweakValues = new HashMap<String, TweakValue>();
-        mTweakDefaultValues = new HashMap<String, TweakValue>();
-        mTweakDeclaredListeners = new ArrayList<OnTweakDeclaredListener>();
+        mTweakValues = new ConcurrentHashMap<>();
+        mTweakDefaultValues = new ConcurrentHashMap<>();
+        mTweakDeclaredListeners = new ArrayList<>();
     }
 
 
@@ -330,8 +332,8 @@ public class Tweaks {
     }
 
     // All access to mTweakValues must be synchronized
-    private final Map<String, TweakValue> mTweakValues;
-    private final Map<String, TweakValue> mTweakDefaultValues;
+    private final ConcurrentMap<String, TweakValue> mTweakValues;
+    private final ConcurrentMap<String, TweakValue> mTweakDefaultValues;
     private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
