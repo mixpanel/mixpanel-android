@@ -292,7 +292,7 @@ public class SurveyActivity extends Activity {
     @SuppressLint("SimpleDateFormat")
     private void onDestroySurvey() {
         if (null != mMixpanel) {
-            if (null != mUpdateDisplayState) {
+            if (mUpdateDisplayState != null && mUpdateDisplayState.getDistinctId() != null) {
                 final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
                 final Survey survey = surveyState.getSurvey();
                 final List<Survey.Question> questionList = survey.getQuestions();
