@@ -82,6 +82,9 @@ import javax.net.ssl.SSLSocketFactory;
  *
  *     <dt>com.mixpanel.android.MPConfig.EditorUrl</dt>
  *     <dd>A string URL. If present, the library will attempt to connect to this endpoint when in interactive editing mode, rather than to the default Mixpanel editor url.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor</dt>
+ *     <dd>A boolean value. If true, invisible views won't be shown on Mixpanel Visual Editor (AB Test and codeless events) . Defaults to false.</dd>
  * </dl>
  *
  */
@@ -208,6 +211,7 @@ public class MPConfig {
         mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
         mImageCacheMaxMemoryFactor = metaData.getInt("com.mixpanel.android.MPConfig.ImageCacheMaxMemoryFactor", 10);
+        mIgnoreInvisibleViewsEditor = metaData.getBoolean("com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor", false);
 
         // Disable if EITHER of these is present and false, otherwise enable
         final boolean surveysAutoCheck = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoCheckForSurveys", true);
@@ -287,7 +291,8 @@ public class MPConfig {
                 "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
                 "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
                 "    EditorUrl " + getEditorUrl() + "\n" +
-                "    DisableDecideChecker " + getDisableDecideChecker() + "\n"
+                "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
+                "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n"
             );
         }
     }
@@ -379,6 +384,10 @@ public class MPConfig {
         return mDisableDecideChecker;
     }
 
+    public boolean getIgnoreInvisibleViewsEditor() {
+        return mIgnoreInvisibleViewsEditor;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -449,6 +458,7 @@ public class MPConfig {
     private final String mResourcePackageName;
     private final boolean mDisableDecideChecker;
     private final int mImageCacheMaxMemoryFactor;
+    private final boolean mIgnoreInvisibleViewsEditor;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;

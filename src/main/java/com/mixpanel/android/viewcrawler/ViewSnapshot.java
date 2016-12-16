@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -48,7 +49,8 @@ import java.util.concurrent.TimeoutException;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ class ViewSnapshot {
 
-    public ViewSnapshot(List<PropertyDescription> properties, ResourceIds resourceIds) {
+    public ViewSnapshot(Context context, List<PropertyDescription> properties, ResourceIds resourceIds) {
+        mConfig = MPConfig.getInstance(context);
         mProperties = properties;
         mResourceIds = resourceIds;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
@@ -134,6 +136,10 @@ import java.util.concurrent.TimeoutException;
 
     private void snapshotView(JsonWriter j, View view)
             throws IOException {
+        if (view.getVisibility() == View.INVISIBLE && mConfig.getIgnoreInvisibleViewsEditor()) {
+            return;
+        }
+
         final int viewId = view.getId();
         final String viewIdName;
         if (-1 == viewId) {
@@ -448,6 +454,7 @@ import java.util.concurrent.TimeoutException;
         public float scale;
     }
 
+    private final MPConfig mConfig;
     private final RootViewFinder mRootViewFinder;
     private final List<PropertyDescription> mProperties;
     private final ClassNameCache mClassnameCache;
