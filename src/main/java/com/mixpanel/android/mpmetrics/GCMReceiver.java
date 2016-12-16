@@ -2,23 +2,28 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.support.v4.app.NotificationCompat;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.support.v4.app.NotificationCompat;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -91,6 +96,26 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
 */
 public class GCMReceiver extends BroadcastReceiver {
+
+    private static final String NOTIFICATION_DELETED_ACTION = "mixpanel_notificaitons_dismissed";
+    private static final String STACKING_NOTIFICATION_TITLE_POSTFIX = " new messages";
+    private final static ArrayList<NotificationData> mPendingNotificationData = new ArrayList<>();
+
+    static private final BroadcastReceiver mDismissNotificationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            synchronized (GCMReceiver.class) {
+                mPendingNotificationData.clear();
+                context.unregisterReceiver(mDismissNotificationReceiver);
+            }
+        }
+    };
+
+    private PendingIntent getNotificationDeletedIntent(Context context)
+    {
+        Intent intent = new Intent(NOTIFICATION_DELETED_ACTION);
+        return PendingIntent.getBroadcast(context, 0, intent, 0);
+    }
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -291,9 +316,16 @@ public class GCMReceiver extends BroadcastReceiver {
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
                 setContentIntent(intent);
+
+        if (!MPConfig.getInstance(context).getDisableStackingNotification()) {
+            synchronized (GCMReceiver.class) {
+                mPendingNotificationData.add(notificationData);
+                createStackingNotificationBuilder(context, builder);
+            }
+        } else {
+            builder.setContentTitle(notificationData.title).setContentText(notificationData.message);
+        }
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -311,9 +343,16 @@ public class GCMReceiver extends BroadcastReceiver {
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
                 setContentIntent(intent);
+
+        if (!MPConfig.getInstance(context).getDisableStackingNotification()) {
+            synchronized (GCMReceiver.class) {
+                mPendingNotificationData.add(notificationData);
+                createStackingNotificationBuilder(context, builder);
+            }
+        } else {
+            builder.setContentTitle(notificationData.title).setContentText(notificationData.message);
+        }
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -331,10 +370,18 @@ public class GCMReceiver extends BroadcastReceiver {
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
                 setContentIntent(intent).
                 setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+
+        if (!MPConfig.getInstance(context).getDisableStackingNotification()) {
+            synchronized (GCMReceiver.class) {
+                mPendingNotificationData.add(notificationData);
+
+                createStackingNotificationBuilder(context, builder);
+            }
+        } else {
+            builder.setContentTitle(notificationData.title).setContentText(notificationData.message);
+        }
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -351,10 +398,17 @@ public class GCMReceiver extends BroadcastReceiver {
         final Notification.Builder builder = new Notification.Builder(context).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
                 setContentIntent(intent).
                 setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+
+        if (!MPConfig.getInstance(context).getDisableStackingNotification()) {
+            synchronized (GCMReceiver.class) {
+                mPendingNotificationData.add(notificationData);
+                createStackingNotificationBuilder(context, builder);
+            }
+        } else {
+            builder.setContentTitle(notificationData.title).setContentText(notificationData.message);
+        }
 
         if (notificationData.whiteIcon != NotificationData.NOT_SET) {
             builder.setSmallIcon(notificationData.whiteIcon);
@@ -373,6 +427,41 @@ public class GCMReceiver extends BroadcastReceiver {
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         return n;
+    }
+
+    @TargetApi(11)
+    protected void createStackingNotificationBuilder(Context context, Notification.Builder builder) {
+        builder.setDeleteIntent(getNotificationDeletedIntent(context)).setContentIntent(getNotificationDeletedIntent(context));
+
+        if (mPendingNotificationData.size() > 1) {
+            List<String> titles = new ArrayList<>();
+            for (NotificationData data : mPendingNotificationData) {
+                titles.add(data.title.toString());
+            }
+            String contentText = TextUtils.join(", ", titles);
+            builder.setContentTitle(mPendingNotificationData.size() + STACKING_NOTIFICATION_TITLE_POSTFIX).setContentText(contentText);
+        } else {
+            builder.setContentTitle(mPendingNotificationData.get(0).title).setContentText(mPendingNotificationData.get(0).message);
+        }
+
+        context.registerReceiver(mDismissNotificationReceiver, new IntentFilter(NOTIFICATION_DELETED_ACTION));
+    }
+
+    protected void createStackingNotificationBuilder(Context context, NotificationCompat.Builder builder) {
+        builder.setDeleteIntent(getNotificationDeletedIntent(context)).setContentIntent(getNotificationDeletedIntent(context));
+
+        if (mPendingNotificationData.size() > 1) {
+            List<String> titles = new ArrayList<>();
+            for (NotificationData data : mPendingNotificationData) {
+                titles.add(data.title.toString());
+            }
+            String contentText = TextUtils.join(", ", titles);
+            builder.setContentTitle(mPendingNotificationData.size() + STACKING_NOTIFICATION_TITLE_POSTFIX).setContentText(contentText);
+        } else {
+            builder.setContentTitle(mPendingNotificationData.get(0).title).setContentText(mPendingNotificationData.get(0).message);
+        }
+
+        context.registerReceiver(mDismissNotificationReceiver, new IntentFilter(NOTIFICATION_DELETED_ACTION));
     }
 
     @SuppressWarnings("unused")
