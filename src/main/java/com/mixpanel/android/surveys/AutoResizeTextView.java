@@ -8,6 +8,14 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.widget.TextView;
 
+/**
+ * View used by the default Mixpanel Survey Display.
+ *
+ * Users of the library should not instantiate this class directly.
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
+ */
+@Deprecated
 public class AutoResizeTextView extends TextView {
     private static final int TEXT_SIZE_SP = 18;
     private static final int MAX_LINES = 4;
