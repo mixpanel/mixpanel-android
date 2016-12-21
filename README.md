@@ -1,13 +1,9 @@
 Latest Version 
 --------------
-##### _September 2nd, 2016_ - [v4.9.2](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.2)
+##### _December 21, 2016_ - [v4.9.3](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3)
+* Deprecating Survey
 
-```
-dependencies {
-    compile "com.mixpanel.android:mixpanel-android:4.+"
-}
-```
-[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.2).
+[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3).
 
 Getting Started
 ---------------
