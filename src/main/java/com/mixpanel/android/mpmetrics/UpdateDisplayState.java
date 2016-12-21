@@ -103,7 +103,10 @@ public class UpdateDisplayState implements Parcelable {
         /**
          * This class is intended for internal use by the Mixpanel library.
          * Users of the library should not interact directly with this class.
+         *
+         * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
          */
+        @Deprecated
         public static final class SurveyState extends DisplayState {
             public static final String TYPE = "SurveyState";
 

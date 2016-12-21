@@ -124,6 +124,7 @@ import java.util.Set;
         }
     }
 
+    @Deprecated
     public synchronized Survey getSurvey(boolean replace) {
         if (mUnseenSurveys.isEmpty()) {
             return null;
@@ -135,6 +136,7 @@ import java.util.Set;
         return s;
     }
 
+    @Deprecated
     public synchronized Survey getSurvey(int id, boolean replace) {
         Survey survey = null;
         for (int i = 0; i < mUnseenSurveys.size(); i++) {
@@ -201,9 +203,7 @@ import java.util.Set;
     private String mDistinctId;
 
     private final String mToken;
-    private final Set<Integer> mSurveyIds;
     private final Set<Integer> mNotificationIds;
-    private final List<Survey> mUnseenSurveys;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
@@ -212,4 +212,9 @@ import java.util.Set;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
+
+    @Deprecated
+    private final List<Survey> mUnseenSurveys;
+    @Deprecated
+    private final Set<Integer> mSurveyIds;
 }

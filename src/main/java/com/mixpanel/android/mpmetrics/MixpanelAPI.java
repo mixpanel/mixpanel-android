@@ -1108,7 +1108,10 @@ public class MixpanelAPI {
          *
          * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
          * taken of parent to be used as a blurred background.
+         *
+         * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
          */
+        @Deprecated
         public void showSurveyIfAvailable(Activity parent);
 
         /**
@@ -1183,7 +1186,10 @@ public class MixpanelAPI {
          * Mixpanel's servers, so it is safe to call this from the UI thread.
          *
          * @return a Survey object if one is available, null otherwise.
+         *
+         * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
          */
+        @Deprecated
         public Survey getSurveyIfAvailable();
 
         /**
@@ -1222,7 +1228,10 @@ public class MixpanelAPI {
          * @param id the id of the Survey you wish to show.
          * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
          * taken of parent to be used as a blurred background.
+         *
+         * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
          */
+        @Deprecated
         public void showSurveyById(int id, final Activity parent);
 
         /**
@@ -1643,6 +1652,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        @Deprecated
         public Survey getSurveyIfAvailable() {
             return mDecideMessages.getSurvey(mConfig.getTestMode());
         }
@@ -1654,6 +1664,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        @Deprecated
         public void showSurveyIfAvailable(final Activity parent) {
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 return;
@@ -1663,6 +1674,7 @@ public class MixpanelAPI {
         }
 
         @Override
+        @Deprecated
         public void showSurveyById(int id, final Activity parent) {
             final Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
             if (s != null) {
@@ -1888,6 +1900,7 @@ public class MixpanelAPI {
             }
         }
 
+        @Deprecated
         private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
             // Showing surveys is not supported before Jelly Bean
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {

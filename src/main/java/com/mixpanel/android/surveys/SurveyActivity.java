@@ -57,9 +57,13 @@ import java.util.TimeZone;
  * You should not send Intent's directly to display this activity. Instead use
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showSurveyIfAvailable(Activity)} and
  * {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable(Activity)}
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon. Use this
+ * activity carefully since some of its implementation will disappear.
  */
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 @SuppressLint("ClickableViewAccessibility")
+@Deprecated
 public class SurveyActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

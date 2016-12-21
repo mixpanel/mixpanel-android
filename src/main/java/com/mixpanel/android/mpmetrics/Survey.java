@@ -16,7 +16,10 @@ import android.os.Parcelable;
  *
  * You only need to work with this class if you call getSurveyIfAvailable() and want to
  * display a custom interface for the survey yourself.
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
  */
+@Deprecated
 public class Survey implements Parcelable {
     public static final Creator<Survey> CREATOR = new Creator<Survey>() {
         @Override

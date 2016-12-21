@@ -10,7 +10,10 @@ import android.widget.EditText;
  * View used by the default Mixpanel Survey Display.
  *
  * Users of the library should not instantiate this class directly.
+ *
+ * @deprecated Surveys are deprecated in 4.9.3 and will be removed from the SDK soon.
  */
+@Deprecated
 public class AlwaysSubmittableEditText extends EditText {
 
     public AlwaysSubmittableEditText(Context context) {
