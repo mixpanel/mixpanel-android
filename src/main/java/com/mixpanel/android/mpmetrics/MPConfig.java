@@ -5,8 +5,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
-import android.util.Log;
 
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode;
 
 import java.security.GeneralSecurityException;
@@ -181,7 +181,7 @@ public class MPConfig {
             sslContext.init(null, null, null);
             foundSSLFactory = sslContext.getSocketFactory();
         } catch (final GeneralSecurityException e) {
-            Log.i("MixpanelAPI.Conf", "System has no SSL support. Built-in events editor will not be available", e);
+            MPLog.i("MixpanelAPI.Conf", "System has no SSL support. Built-in events editor will not be available", e);
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
@@ -189,11 +189,11 @@ public class MPConfig {
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.AutoCheckForSurveys")) {
-            Log.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
+            MPLog.w(LOGTAG, "com.mixpanel.android.MPConfig.AutoCheckForSurveys has been deprecated in favor of " +
                           "com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates. Please update this key as soon as possible.");
         }
         if (metaData.containsKey("com.mixpanel.android.MPConfig.DebugFlushInterval")) {
-            Log.w(LOGTAG, "We do not support com.mixpanel.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
+            MPLog.w(LOGTAG, "We do not support com.mixpanel.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
         }
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
@@ -265,8 +265,7 @@ public class MPConfig {
             mDisableViewCrawlerForProjects = new String[0];
         }
 
-        if (DEBUG) {
-            Log.v(LOGTAG,
+        MPLog.v(LOGTAG,
                 "Mixpanel (" + VERSION + ") configured with:\n" +
                 "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
@@ -289,7 +288,6 @@ public class MPConfig {
                 "    EditorUrl " + getEditorUrl() + "\n" +
                 "    DisableDecideChecker " + getDisableDecideChecker() + "\n"
             );
-        }
     }
 
     // Max size of queue before we require a flush. Must be below the limit the service will accept.

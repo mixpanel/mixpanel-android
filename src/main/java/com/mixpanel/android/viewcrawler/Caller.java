@@ -1,7 +1,8 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.util.Log;
 import android.view.View;
+
+import com.mixpanel.android.util.MPLog;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -43,11 +44,11 @@ import java.lang.reflect.Method;
             try {
                 return mTargetMethod.invoke(target, arguments);
             } catch (final IllegalAccessException e) {
-                Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " appears not to be public", e);
+                MPLog.e(LOGTAG, "Method " + mTargetMethod.getName() + " appears not to be public", e);
             } catch (final IllegalArgumentException e) {
-                Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " called with arguments of the wrong type", e);
+                MPLog.e(LOGTAG, "Method " + mTargetMethod.getName() + " called with arguments of the wrong type", e);
             } catch (final InvocationTargetException e) {
-                Log.e(LOGTAG, "Method " + mTargetMethod.getName() + " threw an exception", e);
+                MPLog.e(LOGTAG, "Method " + mTargetMethod.getName() + " threw an exception", e);
             }
         }
 

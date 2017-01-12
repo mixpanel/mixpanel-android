@@ -19,7 +19,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,6 +40,7 @@ import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,7 +68,7 @@ public class SurveyActivity extends Activity {
         mIntentId = getIntent().getIntExtra(INTENT_ID_KEY, Integer.MAX_VALUE);
         mUpdateDisplayState = UpdateDisplayState.claimDisplayState(mIntentId);
         if (null == mUpdateDisplayState) {
-            Log.e(LOGTAG, "SurveyActivity intent received, but nothing was found to show.");
+            MPLog.e(LOGTAG, "SurveyActivity intent received, but nothing was found to show.");
             finish();
             return;
         }
@@ -133,7 +133,7 @@ public class SurveyActivity extends Activity {
                     try {
                         uri = Uri.parse(uriString);
                     } catch (final IllegalArgumentException e) {
-                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        MPLog.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
                         return;
                     }
 
@@ -142,7 +142,7 @@ public class SurveyActivity extends Activity {
                         SurveyActivity.this.startActivity(viewIntent);
                         mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (final ActivityNotFoundException e) {
-                        Log.i(LOGTAG, "User doesn't have an activity for notification URI");
+                        MPLog.i(LOGTAG, "User doesn't have an activity for notification URI");
                     }
                 }
                 finish();
@@ -204,7 +204,7 @@ public class SurveyActivity extends Activity {
 
         final String answerDistinctId = mUpdateDisplayState.getDistinctId();
         if (null == answerDistinctId) {
-            Log.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
+            MPLog.i(LOGTAG, "Can't show a survey to a user with no distinct id set");
             finish();
             return;
         }
@@ -322,7 +322,7 @@ public class SurveyActivity extends Activity {
 
                             answerCount = answerCount + 1;
                         } catch (final JSONException e) {
-                            Log.e(LOGTAG, "Couldn't record user's answer.", e);
+                            MPLog.e(LOGTAG, "Couldn't record user's answer.", e);
                         }
                     } // if answer is present
                 } // For each question
@@ -334,7 +334,7 @@ public class SurveyActivity extends Activity {
                     surveyJson.put("$survey_shown", mSurveyBegun);
                     mMixpanel.track("$show_survey", surveyJson);
                 } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Couldn't record survey shown.", e);
+                    MPLog.e(LOGTAG, "Couldn't record survey shown.", e);
                 } // track the survey as received
             } // if we have a survey state
             mMixpanel.flush();

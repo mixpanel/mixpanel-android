@@ -8,7 +8,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
-import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -16,6 +15,7 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.google.android.gms.iid.InstanceID;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONException;
@@ -168,15 +168,11 @@ import javax.net.ssl.SSLSocketFactory;
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
-        }
+        MPLog.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")");
     }
 
     private void logAboutMessageToMixpanel(String message, Throwable e) {
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")", e);
-        }
+        MPLog.v(LOGTAG, message + " (Thread " + Thread.currentThread().getId() + ")", e);
     }
 
     // Worker will manage the (at most single) IO thread associated with
@@ -253,7 +249,7 @@ import javax.net.ssl.SSLSocketFactory;
                             logAboutMessageToMixpanel("    " + message.toString());
                             returnCode = mDbAdapter.addJSON(message, MPDbAdapter.Table.EVENTS);
                         } catch (final JSONException e) {
-                            Log.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
+                            MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
@@ -281,14 +277,14 @@ import javax.net.ssl.SSLSocketFactory;
                         final String senderId = (String) msg.obj;
                         runGCMRegistration(senderId);
                     } else if (msg.what == KILL_WORKER) {
-                        Log.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
+                        MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
                             mDbAdapter.deleteDB();
                             mHandler = null;
                             Looper.myLooper().quit();
                         }
                     } else {
-                        Log.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
+                        MPLog.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
                     }
 
                     ///////////////////////////
@@ -316,14 +312,14 @@ import javax.net.ssl.SSLSocketFactory;
                         }
                     }
                 } catch (final RuntimeException e) {
-                    Log.e(LOGTAG, "Worker threw an unhandled exception", e);
+                    MPLog.e(LOGTAG, "Worker threw an unhandled exception", e);
                     synchronized (mHandlerLock) {
                         mHandler = null;
                         try {
                             Looper.myLooper().quit();
-                            Log.e(LOGTAG, "Mixpanel will not process any more analytics messages", e);
+                            MPLog.e(LOGTAG, "Mixpanel will not process any more analytics messages", e);
                         } catch (final Exception tooLate) {
-                            Log.e(LOGTAG, "Could not halt looper", tooLate);
+                            MPLog.e(LOGTAG, "Could not halt looper", tooLate);
                         }
                     }
                 }
@@ -347,30 +343,28 @@ import javax.net.ssl.SSLSocketFactory;
                     try {
                         final int resultCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
                         if (resultCode != ConnectionResult.SUCCESS) {
-                            Log.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
+                            MPLog.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
                             return;
                         }
                     } catch (RuntimeException e) {
-                        Log.i(LOGTAG, "Can't register for push notifications, Google Play services are not configured.");
+                        MPLog.i(LOGTAG, "Can't register for push notifications, Google Play services are not configured.");
                         return;
                     }
 
                     InstanceID instanceID = InstanceID.getInstance(mContext);
                     registrationId = instanceID.getToken(senderID, GoogleCloudMessaging.INSTANCE_ID_SCOPE, null);
                 } catch (IOException e) {
-                    Log.i(LOGTAG, "Exception when trying to register for GCM", e);
+                    MPLog.i(LOGTAG, "Exception when trying to register for GCM", e);
                     return;
                 } catch (NoClassDefFoundError e) {
-                    Log.w(LOGTAG, "Google play services were not part of this build, push notifications cannot be registered or delivered");
+                    MPLog.w(LOGTAG, "Google play services were not part of this build, push notifications cannot be registered or delivered");
                     return;
                 }
 
                 MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                     @Override
                     public void process(MixpanelAPI api) {
-                        if (MPConfig.DEBUG) {
-                            Log.v(LOGTAG, "Using existing pushId " + registrationId);
-                        }
+                        MPLog.v(LOGTAG, "Using existing pushId " + registrationId);
                         api.getPeople().setPushRegistrationId(registrationId);
                     }
                 });
@@ -440,10 +434,10 @@ import javax.net.ssl.SSLSocketFactory;
                             }
                             break;
                         } catch (final OutOfMemoryError e) {
-                            Log.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                            MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                             break;
                         } catch (final MalformedURLException e) {
-                            Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                            MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                             break;
                         } catch (final RemoteService.ServiceUnavailableException e) {
                             logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);

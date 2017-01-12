@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;

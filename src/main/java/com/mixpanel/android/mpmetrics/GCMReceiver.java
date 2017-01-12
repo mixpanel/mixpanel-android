@@ -16,9 +16,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
+import com.mixpanel.android.util.MPLog;
 
 
 /**
@@ -222,7 +222,7 @@ public class GCMReceiver extends BroadcastReceiver {
             return null;
         }
 
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + notificationData.message);
+        MPLog.d(LOGTAG, "MP GCM notification received: " + notificationData.message);
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
                 0,
@@ -247,9 +247,9 @@ public class GCMReceiver extends BroadcastReceiver {
     private void handleRegistrationIntent(Intent intent) {
         final String registration = intent.getStringExtra("registration_id");
         if (intent.getStringExtra("error") != null) {
-            Log.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
+            MPLog.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
         } else if (registration != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering GCM ID: " + registration);
+            MPLog.d(LOGTAG, "Registering GCM ID: " + registration);
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
@@ -257,7 +257,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 }
             });
         } else if (intent.getStringExtra("unregistered") != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Unregistering from GCM");
+            MPLog.d(LOGTAG, "Unregistering from GCM");
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {

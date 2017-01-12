@@ -2,7 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 public class ResourceReaderTest extends AndroidTestCase {
     public void setUp() {

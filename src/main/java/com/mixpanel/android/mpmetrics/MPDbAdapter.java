@@ -12,7 +12,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
+
+import com.mixpanel.android.util.MPLog;
 
 /**
  * SQLite database adapter for MixpanelAPI.
@@ -83,9 +84,7 @@ import android.util.Log;
 
         @Override
         public void onCreate(SQLiteDatabase db) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Creating a new Mixpanel events DB");
-            }
+            MPLog.v(LOGTAG, "Creating a new Mixpanel events DB");
 
             db.execSQL(CREATE_EVENTS_TABLE);
             db.execSQL(CREATE_PEOPLE_TABLE);
@@ -95,9 +94,7 @@ import android.util.Log;
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
-            }
+            MPLog.v(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
 
             db.execSQL("DROP TABLE IF EXISTS " + Table.EVENTS.getName());
             db.execSQL("DROP TABLE IF EXISTS " + Table.PEOPLE.getName());
@@ -137,7 +134,7 @@ import android.util.Log;
     public int addJSON(JSONObject j, Table table) {
         // we are aware of the race condition here, but what can we do..?
         if (!this.belowMemThreshold()) {
-            Log.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
             return DB_OUT_OF_MEMORY_ERROR;
         }
 
@@ -158,7 +155,7 @@ import android.util.Log;
             c.moveToFirst();
             count = c.getInt(0);
         } catch (final SQLiteException e) {
-            Log.e(LOGTAG, "Could not add Mixpanel data to table " + tableName + ". Re-initializing database.", e);
+            MPLog.e(LOGTAG, "Could not add Mixpanel data to table " + tableName + ". Re-initializing database.", e);
 
             // We assume that in general, the results of a SQL exception are
             // unrecoverable, and could be associated with an oversized or
@@ -190,7 +187,7 @@ import android.util.Log;
             final SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, "_id <= " + last_id, null);
         } catch (final SQLiteException e) {
-            Log.e(LOGTAG, "Could not clean sent Mixpanel records from " + tableName + ". Re-initializing database.", e);
+            MPLog.e(LOGTAG, "Could not clean sent Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
             // We assume that in general, the results of a SQL exception are
             // unrecoverable, and could be associated with an oversized or
@@ -214,7 +211,7 @@ import android.util.Log;
             final SQLiteDatabase db = mDb.getWritableDatabase();
             db.delete(tableName, KEY_CREATED_AT + " <= " + time, null);
         } catch (final SQLiteException e) {
-            Log.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
+            MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
             // We assume that in general, the results of a SQL exception are
             // unrecoverable, and could be associated with an oversized or
@@ -275,7 +272,7 @@ import android.util.Log;
                 data = arr.toString();
             }
         } catch (final SQLiteException e) {
-            Log.e(LOGTAG, "Could not pull records for Mixpanel out of database " + tableName + ". Waiting to send.", e);
+            MPLog.e(LOGTAG, "Could not pull records for Mixpanel out of database " + tableName + ". Waiting to send.", e);
 
             // We'll dump the DB on write failures, but with reads we can
             // let things ride in hopes the issue clears up.

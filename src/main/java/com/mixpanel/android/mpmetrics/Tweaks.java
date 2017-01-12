@@ -1,7 +1,8 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.support.annotation.IntDef;
-import android.util.Log;
+
+import com.mixpanel.android.util.MPLog;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,7 +39,7 @@ public class Tweaks {
      */
     public synchronized void set(String tweakName, Object value) {
         if (!mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
+            MPLog.w(LOGTAG, "Attempt to set a tweak \"" + tweakName + "\" which has never been defined.");
             return;
         }
 
@@ -49,7 +50,7 @@ public class Tweaks {
 
     public synchronized boolean isNewValue(String tweakName, Object value) {
         if (!mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to reference a tweak \"" + tweakName + "\" which has never been defined.");
+            MPLog.w(LOGTAG, "Attempt to reference a tweak \"" + tweakName + "\" which has never been defined.");
             return false;
         }
 
@@ -316,7 +317,7 @@ public class Tweaks {
 
     private void declareTweak(String tweakName, Object defaultValue, @TweakType int tweakType) {
         if (mTweakValues.containsKey(tweakName)) {
-            Log.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
+            MPLog.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;
         }
 

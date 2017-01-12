@@ -1,8 +1,9 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -114,7 +115,7 @@ import java.util.List;
         }
 
         if (mIndexStack.full()) {
-            Log.w(LOGTAG, "There appears to be a concurrency issue in the pathfinding code. Path will not be matched.");
+            MPLog.w(LOGTAG, "There appears to be a concurrency issue in the pathfinding code. Path will not be matched.");
             return; // No memory to perform the find.
         }
 
@@ -146,7 +147,7 @@ import java.util.List;
         }
 
         if (mIndexStack.full()) {
-            Log.v(LOGTAG, "Path is too deep, will not match");
+            MPLog.v(LOGTAG, "Path is too deep, will not match");
             // Can't match anyhow, stack is too deep
             return;
         }

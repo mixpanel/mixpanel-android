@@ -1,7 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.util.Log;
-
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
@@ -88,7 +87,7 @@ import java.util.Set;
                     break;
                 }
             } catch(JSONException e) {
-                Log.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while comparing the new variants", e);
+                MPLog.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while comparing the new variants", e);
             }
         }
 
@@ -100,7 +99,7 @@ import java.util.Set;
                     JSONObject variant = mVariants.getJSONObject(i);
                     mLoadedVariants.add(variant.getInt("id"));
                 } catch(JSONException e) {
-                    Log.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while updating the map", e);
+                    MPLog.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while updating the map", e);
                 }
             }
         }
@@ -112,12 +111,10 @@ import java.util.Set;
             newContent = true;
         }
 
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "New Decide content has become available. " +
+        MPLog.v(LOGTAG, "New Decide content has become available. " +
                     newSurveys.size() + " surveys, " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
-        }
 
         if (newContent && null != mListener) {
             mListener.onNewResults();
@@ -155,18 +152,14 @@ import java.util.Set;
 
     public synchronized InAppNotification getNotification(boolean replace) {
         if (mUnseenNotifications.isEmpty()) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "No unseen notifications exist, none will be returned.");
-            }
+            MPLog.v(LOGTAG, "No unseen notifications exist, none will be returned.");
             return null;
         }
         InAppNotification n = mUnseenNotifications.remove(0);
         if (replace) {
             mUnseenNotifications.add(n);
         } else {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Recording notification " + n + " as seen.");
-            }
+            MPLog.v(LOGTAG, "Recording notification " + n + " as seen.");
         }
         return n;
     }
