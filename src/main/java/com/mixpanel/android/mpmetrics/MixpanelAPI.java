@@ -1785,6 +1785,10 @@ public class MixpanelAPI {
 
         @Override
         public void clearPushRegistrationId(String registrationId) {
+            if (registrationId == null) {
+                return;
+            }
+
             if (registrationId.equals(mPersistentIdentity.getPushId())) {
                 mPersistentIdentity.clearPushId();
             }
