@@ -16,7 +16,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.JsonWriter;
-import android.util.Log;
 import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -28,6 +27,7 @@ import com.mixpanel.android.mpmetrics.SuperPropertyUpdate;
 import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -370,7 +370,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         mSeenExperiments.add(sight);
                     }
                 } catch (JSONException e) {
-                    Log.e(LOGTAG, "Malformed variants found in persistent storage, clearing all variants", e);
+                    MPLog.e(LOGTAG, "Malformed variants found in persistent storage, clearing all variants", e);
                     final SharedPreferences.Editor editor = preferences.edit();
                     editor.remove(SHARED_PREF_CHANGES_KEY);
                     editor.remove(SHARED_PREF_BINDINGS_KEY);
@@ -437,7 +437,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     }
                 }
             } catch (final JSONException e) {
-                Log.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
+                MPLog.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
                 final SharedPreferences.Editor editor = preferences.edit();
                 editor.remove(SHARED_PREF_CHANGES_KEY);
                 editor.remove(SHARED_PREF_BINDINGS_KEY);
@@ -451,22 +451,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Try to connect to the remote interactive editor, if a connection does not already exist.
          */
         private void connectToEditor() {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "connecting to editor");
-            }
-
+            MPLog.v(LOGTAG, "connecting to editor");
             if (mEditorConnection != null && mEditorConnection.isValid()) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "There is already a valid connection to an events editor.");
-                }
+                MPLog.v(LOGTAG, "There is already a valid connection to an events editor.");
                 return;
             }
 
             final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
             if (null == socketFactory) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
-                }
+                MPLog.v(LOGTAG, "SSL is not available on this device, no connection will be attempted to the events editor.");
                 return;
             }
 
@@ -475,11 +468,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 final Socket sslSocket = socketFactory.createSocket();
                 mEditorConnection = new EditorConnection(new URI(url), new Editor(), sslSocket);
             } catch (final URISyntaxException e) {
-                Log.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
+                MPLog.e(LOGTAG, "Error parsing URI " + url + " for editor websocket", e);
             } catch (final EditorConnection.EditorConnectionException e) {
-                Log.e(LOGTAG, "Error connecting to URI " + url, e);
+                MPLog.e(LOGTAG, "Error connecting to URI " + url, e);
             } catch (final IOException e) {
-                Log.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
+                MPLog.i(LOGTAG, "Can't create SSL Socket to connect to editor service", e);
             }
         }
 
@@ -495,7 +488,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             try {
                 errorObject.put("error_message", errorMessage);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Apparently impossible JSONException", e);
+                MPLog.e(LOGTAG, "Apparently impossible JSONException", e);
             }
 
             final OutputStreamWriter writer = new OutputStreamWriter(mEditorConnection.getBufferedOutputStream());
@@ -505,12 +498,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 writer.write(errorObject.toString());
                 writer.write("}");
             } catch (final IOException e) {
-                Log.e(LOGTAG, "Can't write error message to editor", e);
+                MPLog.e(LOGTAG, "Can't write error message to editor", e);
             } finally {
                 try {
                     writer.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Could not close output writer to editor", e);
+                    MPLog.e(LOGTAG, "Could not close output writer to editor", e);
                 }
             }
         }
@@ -566,7 +559,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                                 j.name("value").value(desc.getStringValue());
                                 break;
                             default:
-                                Log.wtf(LOGTAG, "Unrecognized Tweak Type " + desc.type + " encountered.");
+                                MPLog.wtf(LOGTAG, "Unrecognized Tweak Type " + desc.type + " encountered.");
                         }
                         j.endObject();
                     }
@@ -574,12 +567,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 j.endObject(); // payload
                 j.endObject();
             } catch (final IOException e) {
-                Log.e(LOGTAG, "Can't write device_info to server", e);
+                MPLog.e(LOGTAG, "Can't write device_info to server", e);
             } finally {
                 try {
                     j.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Can't close websocket writer", e);
+                    MPLog.e(LOGTAG, "Can't close websocket writer", e);
                 }
             }
         }
@@ -593,23 +586,21 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 final JSONObject payload = message.getJSONObject("payload");
                 if (payload.has("config")) {
                     mSnapshot = mProtocol.readSnapshotConfig(payload);
-                    if (MPConfig.DEBUG) {
-                        Log.v(LOGTAG, "Initializing snapshot with configuration");
-                    }
+                    MPLog.v(LOGTAG, "Initializing snapshot with configuration");
                 }
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
+                MPLog.e(LOGTAG, "Payload with snapshot config required with snapshot request", e);
                 sendError("Payload with snapshot config required with snapshot request");
                 return;
             } catch (final EditProtocol.BadInstructionsException e) {
-                Log.e(LOGTAG, "Editor sent malformed message with snapshot request", e);
+                MPLog.e(LOGTAG, "Editor sent malformed message with snapshot request", e);
                 sendError(e.getMessage());
                 return;
             }
 
             if (null == mSnapshot) {
                 sendError("No snapshot configuration (or a malformed snapshot configuration) was sent.");
-                Log.w(LOGTAG, "Mixpanel editor is misconfigured, sent a snapshot request without a valid configuration.");
+                MPLog.w(LOGTAG, "Mixpanel editor is misconfigured, sent a snapshot request without a valid configuration.");
                 return;
             }
             // ELSE config is valid:
@@ -634,12 +625,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 writer.write("}"); // } payload
                 writer.write("}"); // } whole message
             } catch (final IOException e) {
-                Log.e(LOGTAG, "Can't write snapshot request to server", e);
+                MPLog.e(LOGTAG, "Can't write snapshot request to server", e);
             } finally {
                 try {
                     writer.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Can't close writer.", e);
+                    MPLog.e(LOGTAG, "Can't close writer.", e);
                 }
             }
         }
@@ -668,12 +659,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 j.endObject();
                 j.flush();
             } catch (final IOException e) {
-                Log.e(LOGTAG, "Can't write track_message to server", e);
+                MPLog.e(LOGTAG, "Can't write track_message to server", e);
             } finally {
                 try {
                     j.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Can't close writer.", e);
+                    MPLog.e(LOGTAG, "Can't close writer.", e);
                 }
             }
         }
@@ -694,12 +685,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 j.name("cid").value(exception.getName());
                 j.endObject();
             } catch (final IOException e) {
-                Log.e(LOGTAG, "Can't write track_message to server", e);
+                MPLog.e(LOGTAG, "Can't write track_message to server", e);
             } finally {
                 try {
                     j.close();
                 } catch (final IOException e) {
-                    Log.e(LOGTAG, "Can't close writer.", e);
+                    MPLog.e(LOGTAG, "Can't close writer.", e);
                 }
             }
         }
@@ -721,7 +712,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
                 applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Bad change request received", e);
+                MPLog.e(LOGTAG, "Bad change request received", e);
             }
         }
 
@@ -739,7 +730,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     mEditorChanges.remove(changeId);
                 }
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Bad clear request received", e);
+                MPLog.e(LOGTAG, "Bad clear request received", e);
             }
 
             applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
@@ -756,7 +747,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     mEditorTweaks.add(tweakDesc);
                 }
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Bad tweaks received", e);
+                MPLog.e(LOGTAG, "Bad tweaks received", e);
             }
 
             applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
@@ -798,7 +789,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 final JSONObject payload = message.getJSONObject("payload");
                 eventBindings = payload.getJSONArray("events");
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Bad event bindings received", e);
+                MPLog.e(LOGTAG, "Bad event bindings received", e);
                 return;
             }
 
@@ -811,7 +802,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
                     mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
                 } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
+                    MPLog.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                 }
             }
 
@@ -828,9 +819,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             // Free (or make available) snapshot memory
             mSnapshot = null;
 
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Editor closed- freeing snapshot");
-            }
+            MPLog.v(LOGTAG, "Editor closed- freeing snapshot");
 
             applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
             for (final String assetUrl:mEditorAssetUrls) {
@@ -863,11 +852,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                             toTrack.add(changeInfo.variantId);
                         }
                     } catch (final EditProtocol.CantGetEditAssetsException e) {
-                        Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
+                        MPLog.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
-                        Log.i(LOGTAG, e.getMessage());
+                        MPLog.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad persistent change request cannot be applied.", e);
+                        MPLog.e(LOGTAG, "Bad persistent change request cannot be applied.", e);
                     }
                 }
             }
@@ -889,7 +878,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
                         mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
+                        MPLog.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
                     }
                 }
 
@@ -916,11 +905,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, edit.visitor));
                         mEditorAssetUrls.addAll(edit.imageUrls);
                     } catch (final EditProtocol.CantGetEditAssetsException e) {
-                        Log.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
+                        MPLog.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
-                        Log.i(LOGTAG, e.getMessage());
+                        MPLog.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad editor change request cannot be applied.", e);
+                        MPLog.e(LOGTAG, "Bad editor change request cannot be applied.", e);
                     }
                 }
             }
@@ -934,7 +923,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
                         mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (final EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Strange tweaks received", e);
+                        MPLog.e(LOGTAG, "Strange tweaks received", e);
                     }
                 }
             }
@@ -947,9 +936,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
-                        Log.i(LOGTAG, e.getMessage());
+                        MPLog.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
+                        MPLog.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
                     }
                 }
             }
@@ -962,9 +951,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
-                        Log.i(LOGTAG, e.getMessage());
+                        MPLog.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
-                        Log.e(LOGTAG, "Bad editor event binding cannot be applied.", e);
+                        MPLog.e(LOGTAG, "Bad editor event binding cannot be applied.", e);
                     }
                 }
             }
@@ -1013,7 +1002,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                                 try {
                                     in.put("$experiments", variantObject);
                                 } catch (JSONException e) {
-                                    Log.wtf(LOGTAG, "Can't write $experiments super property", e);
+                                    MPLog.wtf(LOGTAG, "Can't write $experiments super property", e);
                                 }
                                 return in;
                             }
@@ -1022,7 +1011,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         mMixpanel.track("$experiment_started", trackProps);
                     }
                 } catch (JSONException e) {
-                    Log.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
+                    MPLog.wtf(LOGTAG, "Could not build JSON for reporting experiment start", e);
                 }
             }
         }

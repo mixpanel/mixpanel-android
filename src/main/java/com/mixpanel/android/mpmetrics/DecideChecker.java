@@ -5,11 +5,11 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.os.Build;
-import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
 import com.mixpanel.android.util.ImageStore;
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
@@ -70,7 +70,7 @@ import javax.net.ssl.SSLSocketFactory;
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
                 updates.reportResults(result.surveys, result.notifications, result.eventBindings, result.variants);
             } catch (final UnintelligibleMessageException e) {
-                Log.e(LOGTAG, e.getMessage(), e);
+                MPLog.e(LOGTAG, e.getMessage(), e);
             }
         }
     }
@@ -86,9 +86,8 @@ import javax.net.ssl.SSLSocketFactory;
     private Result runDecideCheck(final String token, final String distinctId, final RemoteService poster)
         throws RemoteService.ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
-        }
+
+        MPLog.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
 
         Result parsed = new Result();
         if (null != responseString) {
@@ -100,7 +99,7 @@ import javax.net.ssl.SSLSocketFactory;
             final InAppNotification notification = notificationIterator.next();
             final Bitmap image = getNotificationImage(notification, mContext, poster);
             if (null == image) {
-                Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
                         ", will not show the notification.");
                 notificationIterator.remove();
             } else {
@@ -128,7 +127,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 surveys = response.getJSONArray("surveys");
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for surveys: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for surveys: " + response);
             }
         }
 
@@ -139,9 +138,9 @@ import javax.net.ssl.SSLSocketFactory;
                     final Survey survey = new Survey(surveyJson);
                     ret.surveys.add(survey);
                 } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
+                    MPLog.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
                 } catch (final BadDecideObjectException e) {
-                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
+                    MPLog.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
                 }
             }
         }
@@ -151,7 +150,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 notifications = response.getJSONArray("notifications");
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
             }
         }
 
@@ -163,11 +162,11 @@ import javax.net.ssl.SSLSocketFactory;
                     final InAppNotification notification = new InAppNotification(notificationJson);
                     ret.notifications.add(notification);
                 } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final BadDecideObjectException e) {
-                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final OutOfMemoryError e) {
-                    Log.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
                 }
             }
         }
@@ -176,7 +175,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 ret.eventBindings = response.getJSONArray("event_bindings");
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
             }
         }
 
@@ -184,7 +183,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 ret.variants = response.getJSONArray("variants");
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
             }
         }
 
@@ -225,7 +224,7 @@ import javax.net.ssl.SSLSocketFactory;
             properties.putOpt("$android_device_model", Build.MODEL);
             queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
         } catch (Exception e) {
-            Log.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
+            MPLog.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
         }
 
         final String checkQuery = queryBuilder.toString();
@@ -237,11 +236,9 @@ import javax.net.ssl.SSLSocketFactory;
                     mConfig.getDecideFallbackEndpoint() + checkQuery};
         }
 
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Querying decide server, urls:");
-            for (int i = 0; i < urls.length; i++) {
-                Log.v(LOGTAG, "    >> " + urls[i]);
-            }
+        MPLog.v(LOGTAG, "Querying decide server, urls:");
+        for (int i = 0; i < urls.length; i++) {
+            MPLog.v(LOGTAG, "    >> " + urls[i]);
         }
 
         final byte[] response = getUrls(poster, mContext, urls);
@@ -271,7 +268,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 return mImageStore.getImage(url);
             } catch (ImageStore.CantGetImageException e) {
-                Log.v(LOGTAG, "Can't load image " + url + " for a notification", e);
+                MPLog.v(LOGTAG, "Can't load image " + url + " for a notification", e);
             }
         }
 
@@ -305,17 +302,13 @@ import javax.net.ssl.SSLSocketFactory;
                 response = poster.performRequest(url, null, socketFactory);
                 break;
             } catch (final MalformedURLException e) {
-                Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final FileNotFoundException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
-                }
+                MPLog.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
             } catch (final IOException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
-                }
+                MPLog.v(LOGTAG, "Cannot get " + url + ".", e);
             } catch (final OutOfMemoryError e) {
-                Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
+                MPLog.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
                 break;
             }
         }

@@ -4,7 +4,8 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
+
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -69,7 +70,7 @@ public class InAppNotification implements Parcelable {
         try {
             temp = new JSONObject(in.readString());
         } catch (JSONException e) {
-            Log.e(LOGTAG, "Error reading JSON when creating InAppNotification from Parcel");
+            MPLog.e(LOGTAG, "Error reading JSON when creating InAppNotification from Parcel");
         }
         mDescription = temp; // mDescription is final
         mId = in.readInt();
@@ -117,7 +118,7 @@ public class InAppNotification implements Parcelable {
             ret.put("message_type", "inapp");
             ret.put("message_subtype", mType);
         } catch (JSONException e) {
-            Log.e(LOGTAG, "Impossible JSON Exception", e);
+            MPLog.e(LOGTAG, "Impossible JSON Exception", e);
         }
 
         return ret;

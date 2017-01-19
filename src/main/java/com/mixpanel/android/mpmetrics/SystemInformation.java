@@ -13,9 +13,10 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
+
+import com.mixpanel.android.util.MPLog;
 
 /**
  * Abstracts away possibly non-present system information classes,
@@ -35,7 +36,7 @@ import android.view.WindowManager;
             foundAppVersionName = packageInfo.versionName;
             foundAppVersionCode = packageInfo.versionCode;
         } catch (NameNotFoundException e) {
-            Log.w(LOGTAG, "System information constructed with a context that apparently doesn't exist.");
+            MPLog.w(LOGTAG, "System information constructed with a context that apparently doesn't exist.");
         }
 
         mAppVersionName = foundAppVersionName;
@@ -59,9 +60,9 @@ import android.view.WindowManager;
                 foundNFC = (Boolean) hasSystemFeatureMethod.invoke(packageManager, "android.hardware.nfc");
                 foundTelephony = (Boolean) hasSystemFeatureMethod.invoke(packageManager, "android.hardware.telephony");
             } catch (InvocationTargetException e) {
-                Log.w(LOGTAG, "System version appeared to support PackageManager.hasSystemFeature, but we were unable to call it.");
+                MPLog.w(LOGTAG, "System version appeared to support PackageManager.hasSystemFeature, but we were unable to call it.");
             } catch (IllegalAccessException e) {
-                Log.w(LOGTAG, "System version appeared to support PackageManager.hasSystemFeature, but we were unable to call it.");
+                MPLog.w(LOGTAG, "System version appeared to support PackageManager.hasSystemFeature, but we were unable to call it.");
             }
         }
 

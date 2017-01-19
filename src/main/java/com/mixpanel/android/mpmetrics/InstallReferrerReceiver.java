@@ -11,7 +11,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+
+import com.mixpanel.android.util.MPLog;
 
 /**
  * BroadcastReceiver for automatically storing Google Play Store referrer information as Mixpanel Super Properties.
@@ -105,7 +106,7 @@ public class InstallReferrerReceiver extends BroadcastReceiver {
                 try {
                     return URLDecoder.decode(encoded, "UTF-8");
                 } catch (final UnsupportedEncodingException e) {
-                    Log.e(LOGTAG, "Could not decode a parameter into UTF-8");
+                    MPLog.e(LOGTAG, "Could not decode a parameter into UTF-8");
                 }
             }
         }

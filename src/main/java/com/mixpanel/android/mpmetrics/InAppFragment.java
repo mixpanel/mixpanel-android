@@ -13,12 +13,10 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
@@ -34,6 +32,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.util.MPLog;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
@@ -141,7 +140,7 @@ public class InAppFragment extends Fragment {
                     try {
                         uri = Uri.parse(uriString);
                     } catch (IllegalArgumentException e) {
-                        Log.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                        MPLog.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
                         return true;
                     }
 
@@ -150,7 +149,7 @@ public class InAppFragment extends Fragment {
                         mParent.startActivity(viewIntent);
                         mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (ActivityNotFoundException e) {
-                        Log.i(LOGTAG, "User doesn't have an activity for notification URI " + uri);
+                        MPLog.i(LOGTAG, "User doesn't have an activity for notification URI " + uri);
                     }
                 }
 

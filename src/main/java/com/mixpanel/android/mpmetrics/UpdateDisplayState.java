@@ -13,7 +13,8 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
+
+import com.mixpanel.android.util.MPLog;
 
 /**
  * This is a class intended for internal use by the library.
@@ -311,7 +312,7 @@ public class UpdateDisplayState implements Parcelable {
         final long deltaTime = currentTime - sUpdateDisplayLockMillis;
 
         if (sNextIntentId > 0 && deltaTime > MAX_LOCK_TIME_MILLIS) {
-            Log.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing. Update state will be cleared.");
+            MPLog.i(LOGTAG, "UpdateDisplayState set long, long ago, without showing. Update state will be cleared.");
             sUpdateDisplayState = null;
         }
 
@@ -329,9 +330,7 @@ public class UpdateDisplayState implements Parcelable {
             sNextIntentId++;
             ret = sNextIntentId;
         } else {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
-            }
+            MPLog.v(LOGTAG, "Already showing (or cooking) a Mixpanel update, declining to show another.");
         }
 
         return ret;

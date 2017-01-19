@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +12,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.util.MPLog;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -412,7 +412,7 @@ import java.util.WeakHashMap;
             } catch (IllegalAccessException e) {
                 // In this case, we just overwrite the original.
             } catch (InvocationTargetException e) {
-                Log.w(LOGTAG, "getAccessibilityDelegate threw an exception when called.", e);
+                MPLog.w(LOGTAG, "getAccessibilityDelegate threw an exception when called.", e);
             }
 
             return ret;
