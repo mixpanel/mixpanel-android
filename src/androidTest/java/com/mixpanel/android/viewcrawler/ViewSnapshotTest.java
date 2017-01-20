@@ -66,7 +66,7 @@ public class ViewSnapshotTest extends AndroidTestCase {
         // NO BUTTON_ID in the table
 
         final ResourceIds resourceIds = new TestUtils.TestResourceIds(idNamesToIds);
-        mSnapshot = new ViewSnapshot(props, resourceIds);
+        mSnapshot = new ViewSnapshot(getContext(), props, resourceIds);
 
         int width = View.MeasureSpec.makeMeasureSpec(768, View.MeasureSpec.EXACTLY);
         int height = View.MeasureSpec.makeMeasureSpec(1280, View.MeasureSpec.EXACTLY);

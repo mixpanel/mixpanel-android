@@ -85,19 +85,42 @@
                     android:textSize="17sp"
                     android:textColor="#ffffff" />
 
-                <Button
-                    android:id="@+id/com_mixpanel_android_notification_button"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:paddingLeft="20dp"
-                    android:paddingRight="20dp"
-                    android:text="@string/com_mixpanel_android_done"
-                    android:textColor="@android:color/white"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:background="@drawable/com_mixpanel_android_cta_button" />
+                    android:gravity="center_horizontal"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/com_mixpanel_android_notification_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
+                        android:paddingLeft="20dp"
+                        android:paddingRight="20dp"
+                        android:text="@string/com_mixpanel_android_done"
+                        android:textColor="@android:color/white"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/com_mixpanel_android_cta_button" />
+
+                    <Button
+                        android:id="@+id/com_mixpanel_android_notification_second_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
+                        android:paddingLeft="20dp"
+                        android:paddingRight="20dp"
+                        android:text="@string/com_mixpanel_android_done"
+                        android:textColor="@android:color/white"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:layout_marginLeft="40dp"
+                        android:background="@drawable/com_mixpanel_android_cta_button" />
+                </LinearLayout>
+
             </LinearLayout>
         </RelativeLayout>
     </LinearLayout>

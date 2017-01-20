@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
 
@@ -8,6 +9,7 @@ import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -252,18 +254,31 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         {
-            final String notificationOnly = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"takeover\", \"style\":\"dark\"}]}";
+            final String notificationOnly = "{\"notifications\":[{\"id\": 1234, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}],\"surveys\":[]}";
+
             final DecideChecker.Result parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
             assertEquals(parseNotificationOnly.notifications.size(), 1);
 
-            final InAppNotification parsed = parseNotificationOnly.notifications.get(0);
+            final TakeoverInAppNotification parsed = (TakeoverInAppNotification) parseNotificationOnly.notifications.get(0);
+            assertEquals(parsed.getId(), 1234);
+            assertEquals(parsed.getMessageId(), 4321);
+
             assertEquals(parsed.getBody(), "Hook me up, yo!");
-            assertEquals(parsed.getTitle(), "Tranya?");
-            assertEquals(parsed.getMessageId(), 1781);
+            assertNull(parsed.getTitle());
+            assertEquals(parsed.hasTitle(), false);
+            assertEquals(parsed.hasBody(), true);
+            assertEquals(parsed.getBackgroundColor(), Color.argb(233, 0, 0, 0));
+            assertEquals(parsed.getBodyColor(), Color.parseColor("#FFFF0000"));
+            assertEquals(parsed.getTitleColor(), Color.parseColor("#FF00FF00"));
             assertEquals(parsed.getImageUrl(), "http://mixpanel.com/Balok.jpg");
-            assertEquals(parsed.getCallToAction(), "I'm Down!");
-            assertEquals(parsed.getCallToActionUrl(), "http://www.mixpanel.com");
-            assertEquals(parsed.getId(), 119911);
+            assertEquals(parsed.getCloseColor(), Color.WHITE);
+            assertEquals(parsed.shouldFadeImage(), true);
+            assertEquals(parsed.getButton(0).getText(), "Button!");
+            assertEquals(parsed.getButton(0).getTextColor(), Color.BLUE);
+            assertEquals(parsed.getButton(0).getCtaUrl(), "hellomixpanel://deeplink/howareyou");
+            assertEquals(parsed.getButton(0).getBorderColor(), Color.parseColor("#FF00FFFF"));
+            assertEquals(parsed.getButton(0).getBackgroundColor(), Color.parseColor("#FFFFFF00"));
+            assertEquals(parsed.getButton(1).getText(), "Button 2!");
             assertEquals(parsed.getType(), InAppNotification.Type.TAKEOVER);
 
             assertTrue(parseNotificationOnly.surveys.isEmpty());
@@ -289,20 +304,21 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         {
-            final String both = "{\"notifications\":[{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\",\"style\":\"dark\"}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
+            final String both = "{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
             final DecideChecker.Result parseBoth = DecideChecker.parseDecideResponse(both);
 
-            final InAppNotification parsedNotification = parseBoth.notifications.get(0);
-            assertEquals(parsedNotification.getBody(), "Hook me up, yo!");
-            assertEquals(parsedNotification.getStyle(), "dark");
-            assertEquals(parsedNotification.getTitle(), "Tranya?");
-            assertEquals(parsedNotification.getMessageId(), 1781);
-            assertEquals(parsedNotification.getImageUrl(), "http://mixpanel.com/Balok.jpg");
-            assertEquals(parsedNotification.getCallToAction(), "I'm Down!");
-            assertEquals(parsedNotification.getCallToActionUrl(), "http://www.mixpanel.com");
-            assertEquals(parsedNotification.getId(), 119911);
+            final MiniInAppNotification parsedNotification = (MiniInAppNotification) parseBoth.notifications.get(0);
+            assertEquals(parsedNotification.getBody(), "A");
+            assertEquals(parsedNotification.getBodyColor(), Color.WHITE);
+            assertEquals(parsedNotification.getImageTintColor(), Color.WHITE);
+            assertEquals(parsedNotification.getBorderColor(), Color.WHITE);
+            assertEquals(parsedNotification.getBackgroundColor(), Color.parseColor("#E6000000"));
+            assertEquals(parsedNotification.getExtras().length(), 0);
+            assertEquals(parsedNotification.getMessageId(), 85151);
+            assertEquals(parsedNotification.getImageUrl(), "https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png");
+            assertEquals(parsedNotification.getCtaUrl(), null);
+            assertEquals(parsedNotification.getId(), 1191793);
             assertEquals(parsedNotification.getType(), InAppNotification.Type.MINI);
-
 
             assertEquals(parseBoth.surveys.size(), 1);
             final Survey parsedSurvey = parseBoth.surveys.get(0);
