@@ -86,7 +86,7 @@ import javax.net.ssl.SSLSocketFactory;
 
     private Result runDecideCheck(final String token, final String distinctId, final RemoteService poster)
         throws RemoteService.ServiceUnavailableException, UnintelligibleMessageException {
-        String responseString = getDecideResponseFromServer(token, distinctId, poster);
+        final String responseString = getDecideResponseFromServer(token, distinctId, poster);
 
         MPLog.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
 

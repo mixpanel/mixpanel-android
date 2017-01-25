@@ -9,7 +9,6 @@ import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -272,7 +271,7 @@ public class DecideCheckerTest extends AndroidTestCase {
             assertEquals(parsed.getTitleColor(), Color.parseColor("#FF00FF00"));
             assertEquals(parsed.getImageUrl(), "http://mixpanel.com/Balok.jpg");
             assertEquals(parsed.getCloseColor(), Color.WHITE);
-            assertEquals(parsed.shouldFadeImage(), true);
+            assertEquals(parsed.setShouldShowShadow(), true);
             assertEquals(parsed.getButton(0).getText(), "Button!");
             assertEquals(parsed.getButton(0).getTextColor(), Color.BLUE);
             assertEquals(parsed.getButton(0).getCtaUrl(), "hellomixpanel://deeplink/howareyou");

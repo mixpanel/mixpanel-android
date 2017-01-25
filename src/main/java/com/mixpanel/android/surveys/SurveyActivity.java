@@ -12,14 +12,11 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -120,7 +117,7 @@ public class SurveyActivity extends Activity {
             closeButtonWrapper.setLayoutParams(params);
         }
 
-        inAppImageView.showShadow(inApp.shouldFadeImage());
+        inAppImageView.showShadow(inApp.setShouldShowShadow());
 
         backgroundImage.setBackgroundColor(inApp.getBackgroundColor());
 

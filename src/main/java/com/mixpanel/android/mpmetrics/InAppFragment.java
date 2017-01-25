@@ -197,8 +197,7 @@ public class InAppFragment extends Fragment {
             }
 
             Drawable myIcon = new BitmapDrawable(getResources(), mDisplayState.getInAppNotification().getImage());
-            final int newColor = inApp.getImageTintColor();
-            myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
+            myIcon.setColorFilter(inApp.getImageTintColor(), PorterDuff.Mode.SRC_ATOP);
             notifImage.setImageDrawable(myIcon);
         }
 

@@ -39,12 +39,11 @@ public class TakeoverInAppNotification extends InAppNotification {
 
         try {
             JSONArray buttonsArray = description.getJSONArray("buttons");
-            ArrayList<InAppButton> tempButtons = new ArrayList<>();
+            mButtons = new ArrayList<>();
             for (int i = 0; i < buttonsArray.length(); i++) {
                 JSONObject buttonJson = (JSONObject) buttonsArray.get(i);
-                tempButtons.add(new InAppButton(buttonJson));
+                mButtons.add(new InAppButton(buttonJson));
             }
-            mButtons = tempButtons;
             mCloseButtonColor = description.getInt("close_color");
             mTitle = JSONUtils.optionalStringKey(description, "title");
             mTitleColor = description.optInt("title_color");
@@ -74,7 +73,7 @@ public class TakeoverInAppNotification extends InAppNotification {
         return mButtons.size() > index ? mButtons.get(index) : null;
     }
 
-    public boolean shouldFadeImage() {
+    public boolean setShouldShowShadow() {
         return mShouldFadeImage;
     }
 

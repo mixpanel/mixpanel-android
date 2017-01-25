@@ -2,13 +2,11 @@ package com.mixpanel.android.mpmetrics;
 
 import android.graphics.Bitmap;
 import android.os.Parcel;
-import android.os.Parcelable;
 import android.test.AndroidTestCase;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 public class UpdateDisplayStateTest extends AndroidTestCase {
@@ -150,7 +148,7 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         assertEquals(originalInApp.getButton(1).getBorderColor(), reconstructedInApp.getButton(1).getBorderColor());
         assertEquals(originalInApp.getCloseColor(), reconstructedInApp.getCloseColor());
         assertEquals(originalInApp.getExtras().toString(), reconstructedInApp.getExtras().toString());
-        assertEquals(originalInApp.shouldFadeImage(), reconstructedInApp.shouldFadeImage());
+        assertEquals(originalInApp.setShouldShowShadow(), reconstructedInApp.setShouldShowShadow());
         assertEquals(originalInApp.getImageUrl(), reconstructedInApp.getImageUrl());
         assertEquals(originalInApp.getTitle(), reconstructedInApp.getTitle());
         assertEquals(originalInApp.getType(), reconstructedInApp.getType());
