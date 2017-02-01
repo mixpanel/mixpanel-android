@@ -146,6 +146,13 @@ public class SurveyActivity extends Activity {
             setUpInAppButton(inAppButton, inAppButtonModel, inApp);
         }
 
+        if (inApp.getNumButtons() == 1) {
+            LinearLayout.LayoutParams oneButtonLayoutParams = (LinearLayout.LayoutParams) ctaButton.getLayoutParams();
+            oneButtonLayoutParams.weight = 0;
+            oneButtonLayoutParams.width = LinearLayout.LayoutParams.WRAP_CONTENT;
+            ctaButton.setLayoutParams(oneButtonLayoutParams);
+        }
+
         closeButtonImageView.setColorFilter(inApp.getCloseColor());
         closeButtonWrapper.setOnClickListener(new View.OnClickListener() {
             @Override

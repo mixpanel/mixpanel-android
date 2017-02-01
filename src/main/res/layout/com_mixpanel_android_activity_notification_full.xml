@@ -62,12 +62,16 @@
             android:orientation="horizontal"
             android:layout_marginBottom="40dp"
             android:layout_marginTop="18dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:weightSum="2"
             android:gravity="center_horizontal">
 
             <Button
                 android:id="@+id/com_mixpanel_android_notification_button"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:minWidth="150dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:paddingTop="10dp"
@@ -75,15 +79,18 @@
                 android:paddingLeft="20dp"
                 android:paddingRight="20dp"
                 android:text="@string/com_mixpanel_android_done"
+                android:maxLines="1"
                 android:textColor="@android:color/white"
                 android:textSize="17sp"
                 android:textStyle="bold"
+                android:ellipsize="end"
                 android:background="@drawable/com_mixpanel_android_cta_button" />
 
             <Button
                 android:id="@+id/com_mixpanel_android_notification_second_button"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:minWidth="150dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:paddingTop="10dp"
@@ -91,10 +98,12 @@
                 android:paddingLeft="20dp"
                 android:paddingRight="20dp"
                 android:text="@string/com_mixpanel_android_done"
+                android:maxLines="1"
                 android:textColor="@android:color/white"
                 android:textSize="17sp"
+                android:ellipsize="end"
                 android:textStyle="bold"
-                android:layout_marginLeft="30dp"
+                android:layout_marginLeft="15dp"
                 android:background="@drawable/com_mixpanel_android_cta_button" />
 
         </LinearLayout>

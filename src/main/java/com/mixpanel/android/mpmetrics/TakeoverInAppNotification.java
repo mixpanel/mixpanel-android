@@ -73,6 +73,10 @@ public class TakeoverInAppNotification extends InAppNotification {
         return mButtons.size() > index ? mButtons.get(index) : null;
     }
 
+    public int getNumButtons() {
+        return mButtons.size();
+    }
+
     public boolean setShouldShowShadow() {
         return mShouldFadeImage;
     }
