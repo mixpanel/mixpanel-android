@@ -180,7 +180,7 @@ public class InAppFragment extends Fragment {
             MiniInAppNotification inApp = (MiniInAppNotification) mDisplayState.getInAppNotification();
 
             bodyTextView.setText(inApp.getBody());
-            bodyTextView.setTextColor(inApp.getBorderColor());
+            bodyTextView.setTextColor(inApp.getBodyColor());
             notifImage.setImageBitmap(inApp.getImage());
 
             mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
