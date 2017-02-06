@@ -170,13 +170,14 @@ public class SurveyActivity extends Activity {
             inAppButton.setVisibility(View.VISIBLE);
             inAppButton.setText(inAppButtonModel.getText());
             inAppButton.setTextColor(inAppButtonModel.getTextColor());
+            inAppButton.setTransformationMethod(null);
 
             GradientDrawable buttonBackground = new GradientDrawable();
             buttonBackground.setColor(inAppButtonModel.getBackgroundColor());
-            buttonBackground.setStroke(2, inAppButtonModel.getBorderColor());
+            buttonBackground.setStroke(4, inAppButtonModel.getBorderColor());
             buttonBackground.setCornerRadius(6);
 
-            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                 inAppButton.setBackgroundDrawable(buttonBackground);
             } else {
                 inAppButton.setBackground(buttonBackground);
