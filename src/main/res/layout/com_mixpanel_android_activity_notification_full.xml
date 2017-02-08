@@ -23,7 +23,7 @@
             android:id="@+id/com_mixpanel_android_image_close"
             android:layout_width="23dp"
             android:layout_height="23dp"
-            android:background="@drawable/com_mixpanel_android_close_new"
+            android:src="@drawable/com_mixpanel_android_close_new"
             android:contentDescription="@string/com_mixpanel_android_close" />
     </LinearLayout>
 
