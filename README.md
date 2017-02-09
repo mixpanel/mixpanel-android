@@ -1,23 +1,32 @@
-Latest Version 
---------------
+
+<p align="center">
+  <img src="https://github.com/mixpanel/mixpanel-android/blob/assets/mixpanel.png?raw=true" alt="Mixpanel Swift Library" height="150"/>
+</p>
+
+Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.svg)](https://travis-ci.org/mixpanel/mixpanel-android)
+--------------------------
 ##### _December 21, 2016_ - [v4.9.3](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3)
 * Deprecating Survey
 
 [See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3).
 
-Getting Started
----------------
-Check out our [official documentation](https://mixpanel.com/help/reference/android) to learn how to install the library on Android Studio and Eclipse. You will also learn how to make use of all the features we currently support!
+Quick Installation
+------------------
+Check out our **[official documentation](https://mixpanel.com/help/reference/android)** to learn how to install the library on Android Studio and Eclipse. It takes less than 2 minutes!
 
-Other links:
-* Full API Reference: http://mixpanel.github.io/mixpanel-android/index.html
-* Full featured sample application: https://github.com/mixpanel/sample-android-mixpanel-integration
-* Android integration video tutorial: https://www.youtube.com/watch?v=KcpOa93eSVs
+I want to know more!
+--------------------
+No worries, here are some links that you will find useful:
+* **[Sample app](https://github.com/mixpanel/sample-android-mixpanel-integration)**
+* **[Android integration video tutorial](https://www.youtube.com/watch?v=KcpOa93eSVs)**
+* **[Full API Reference](http://mixpanel.github.io/mixpanel-android/index.html)**
+
+Have any questions? Reach out to [support@mixpanel.com](mailto:support@mixpanel.com) to speak to someone smart, quickly.
 
 Want to Contribute?
 -------------------
 The Mixpanel library for Android is an open source project, and we'd love to see your contributions!
-We'd also love for you to come and work with us! Check out http://boards.greenhouse.io/mixpanel/jobs/25078#.U_4BBEhORKU for details.
+We'd also love for you to come and work with us! Check out our **[opening positions](http://boards.greenhouse.io/mixpanel/)** for details.
 
 Changelog
 ---------
