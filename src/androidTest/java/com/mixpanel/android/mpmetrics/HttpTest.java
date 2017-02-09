@@ -35,7 +35,7 @@ public class HttpTest extends AndroidTestCase {
     private volatile boolean mDisableFallback;
     private volatile int mFlushInterval;
     private volatile boolean mForceOverMemThreshold;
-    private static final long POLL_WAIT_MAX_MILLISECONDS = 1000;
+    private static final long POLL_WAIT_MAX_MILLISECONDS = 3500;
     private static final TimeUnit DEFAULT_TIMEUNIT = TimeUnit.MILLISECONDS;
     private static final String SUCCEED_TEXT = "Should Succeed";
     private static final String FAIL_TEXT = "Should Fail";
@@ -54,7 +54,7 @@ public class HttpTest extends AndroidTestCase {
         final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
-                throws ServiceUnavailableException, IOException {
+                    throws ServiceUnavailableException, IOException {
                 try {
                     if (null == params) {
                         mDecideCalls.put(endpointUrl);
