@@ -14,6 +14,17 @@ Quick Installation
 ------------------
 Check out our **[official documentation](https://mixpanel.com/help/reference/android)** to learn how to install the library on Android Studio and Eclipse. It takes less than 2 minutes!
 
+**TLDR;**
+
+`
+compile "com.mixpanel.android:mixpanel-android:4.+" 
+`
+
+```
+String projectToken = YOUR_PROJECT_TOKEN; // e.g.: "1ef7e30d2a58d27f4b90c42e31d6d7ad" 
+MixpanelAPI mixpanel = MixpanelAPI.getInstance(this, projectToken);
+mixpanel.track("My first event!");
+```
 I want to know more!
 --------------------
 No worries, here are some links that you will find useful:
