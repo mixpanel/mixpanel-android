@@ -1,12 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.mixpanel.android">
-    <!-- To support customers who build from source with Eclipse, we have to
-         include this redundant versioning here. If you change
-         minSdkVersion or targetSdkVersion here, you must also
-         change the relevant properties in build.gradle -->
-    <uses-sdk android:minSdkVersion="9"
-              android:targetSdkVersion="23"/>
 
     <!--
       This permission is required to allow the application to send events and properties to Mixpanel.
