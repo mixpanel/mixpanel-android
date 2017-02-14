@@ -62,8 +62,8 @@
             android:orientation="horizontal"
             android:layout_marginBottom="40dp"
             android:layout_marginTop="18dp"
-            android:layout_marginLeft="10dp"
-            android:layout_marginRight="10dp"
+            android:layout_marginLeft="30dp"
+            android:layout_marginRight="30dp"
             android:weightSum="2"
             android:gravity="center_horizontal">
 
@@ -123,8 +123,8 @@
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
+            android:layout_marginLeft="35dp"
+            android:layout_marginRight="35dp"
             android:contentDescription="@string/com_mixpanel_android_notification_image"
             android:src="@drawable/com_mixpanel_android_logo" />
 
