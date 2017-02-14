@@ -8,6 +8,7 @@ import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -18,7 +19,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -41,6 +41,7 @@ import com.mixpanel.android.mpmetrics.Survey.Question;
 import com.mixpanel.android.mpmetrics.TakeoverInAppNotification;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.ViewUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -173,9 +174,18 @@ public class SurveyActivity extends Activity {
             inAppButton.setTransformationMethod(null);
 
             GradientDrawable buttonBackground = new GradientDrawable();
-            buttonBackground.setColor(inAppButtonModel.getBackgroundColor());
-            buttonBackground.setStroke(4, inAppButtonModel.getBorderColor());
-            buttonBackground.setCornerRadius(6);
+            int[][] states = new int[][] {
+                    new int[] {android.R.attr.state_pressed},
+                    new int[] {android.R.attr.state_enabled},
+            };
+            int highlightColor = 0x33868686;
+            if (inAppButtonModel.getBackgroundColor() != 0) {
+                highlightColor = ViewUtils.mixColors(inAppButtonModel.getBackgroundColor(), highlightColor);
+            }
+            int[] colors = new int[] {highlightColor, inAppButtonModel.getBackgroundColor()};
+            buttonBackground.setColor(new ColorStateList(states, colors));
+            buttonBackground.setStroke((int) ViewUtils.dpToPx(2, this), inAppButtonModel.getBorderColor());
+            buttonBackground.setCornerRadius((int) ViewUtils.dpToPx(5, this));
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                 inAppButton.setBackgroundDrawable(buttonBackground);
@@ -208,18 +218,6 @@ public class SurveyActivity extends Activity {
                     UpdateDisplayState.releaseDisplayState(mIntentId);
                 }
             });
-            inAppButton.setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
-                    } else {
-                        v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
-                    }
-                    return false;
-                }
-            });
-
         } else {
             inAppButton.setVisibility(View.GONE);
         }

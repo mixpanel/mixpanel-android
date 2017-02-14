@@ -83,8 +83,7 @@
                 android:textColor="@android:color/white"
                 android:textSize="17sp"
                 android:textStyle="bold"
-                android:ellipsize="end"
-                android:background="@drawable/com_mixpanel_android_cta_button" />
+                android:ellipsize="end" />
 
             <Button
                 android:id="@+id/com_mixpanel_android_notification_second_button"
@@ -103,8 +102,7 @@
                 android:textSize="17sp"
                 android:ellipsize="end"
                 android:textStyle="bold"
-                android:layout_marginLeft="15dp"
-                android:background="@drawable/com_mixpanel_android_cta_button" />
+                android:layout_marginLeft="15dp" />
 
         </LinearLayout>
 
