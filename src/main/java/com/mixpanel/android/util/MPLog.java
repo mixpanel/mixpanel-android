@@ -4,9 +4,6 @@ import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
-/**
- * Created by sergioalonso on 1/12/17.
- */
 public class MPLog {
 
     public static final int VERBOSE = 2;

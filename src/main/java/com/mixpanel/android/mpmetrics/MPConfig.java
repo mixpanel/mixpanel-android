@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 
+import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode;
 
@@ -90,10 +91,7 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class MPConfig {
 
-    // Unfortunately, as long as we support building from source in Eclipse,
-    // we can't rely on BuildConfig.MIXPANEL_VERSION existing, so this must
-    // be hard-coded both in our gradle files and here in code.
-    public static final String VERSION = "4.9.3";
+    public static final String VERSION = BuildConfig.MIXPANEL_VERSION;
 
     public static boolean DEBUG = false;
 

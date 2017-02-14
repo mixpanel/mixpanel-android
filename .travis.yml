@@ -28,3 +28,4 @@ before_script:
 script:
   - android list target
   - ./gradlew --info connectedAndroidTest
+  - ./gradlew --info androidJavadocs
