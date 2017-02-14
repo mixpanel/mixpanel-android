@@ -12,7 +12,7 @@ Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.
 
 Quick Installation
 ------------------
-Check out our **[official documentation](https://mixpanel.com/help/reference/android)** to learn how to install the library on Android Studio and Eclipse. It takes less than 2 minutes!
+Check out our **[official documentation](https://mixpanel.com/help/reference/android)** to learn how to install the library on Android Studio. It takes less than 2 minutes!
 
 **TLDR;**
 
@@ -20,7 +20,7 @@ Check out our **[official documentation](https://mixpanel.com/help/reference/and
 compile "com.mixpanel.android:mixpanel-android:4.+" 
 `
 
-```
+```java
 String projectToken = YOUR_PROJECT_TOKEN; // e.g.: "1ef7e30d2a58d27f4b90c42e31d6d7ad" 
 MixpanelAPI mixpanel = MixpanelAPI.getInstance(this, projectToken);
 mixpanel.track("My first event!");
