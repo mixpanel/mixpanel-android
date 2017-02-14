@@ -1,14 +1,11 @@
 
 <p align="center">
-  <img src="https://github.com/mixpanel/mixpanel-android/blob/assets/mixpanel.png?raw=true" alt="Mixpanel Swift Library" height="150"/>
+  <img src="https://github.com/mixpanel/mixpanel-android/blob/assets/mixpanel.png?raw=true" alt="Mixpanel Android Library" height="150"/>
 </p>
 
 Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.svg)](https://travis-ci.org/mixpanel/mixpanel-android)
 --------------------------
 ##### _December 21, 2016_ - [v4.9.3](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3)
-* Deprecating Survey
-
-[See the changes](https://github.com/mixpanel/mixpanel-android/releases/tag/v4.9.3).
 
 Quick Installation
 ------------------
