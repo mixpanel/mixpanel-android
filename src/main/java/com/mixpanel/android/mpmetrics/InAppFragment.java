@@ -132,9 +132,9 @@ public class InAppFragment extends Fragment {
 
             @Override
             public boolean onSingleTapUp(MotionEvent event) {
-                final InAppNotification inApp = mDisplayState.getInAppNotification();
+                final MiniInAppNotification inApp = (MiniInAppNotification) mDisplayState.getInAppNotification();
 
-                final String uriString = inApp.getCallToActionUrl();
+                final String uriString = inApp.getCtaUrl();
                 if (uriString != null && uriString.length() > 0) {
                     Uri uri;
                     try {
@@ -165,6 +165,7 @@ public class InAppFragment extends Fragment {
         mCleanedUp = false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
@@ -173,19 +174,31 @@ public class InAppFragment extends Fragment {
             cleanUp();
         } else {
             mInAppView = inflater.inflate(R.layout.com_mixpanel_android_activity_notification_mini, container, false);
-            final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
+            final TextView bodyTextView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
             final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
 
-            InAppNotification inApp = mDisplayState.getInAppNotification();
+            MiniInAppNotification inApp = (MiniInAppNotification) mDisplayState.getInAppNotification();
 
-            titleView.setText(inApp.getTitle());
+            bodyTextView.setText(inApp.getBody());
+            bodyTextView.setTextColor(inApp.getBodyColor());
             notifImage.setImageBitmap(inApp.getImage());
 
             mHandler.postDelayed(mRemover, MINI_REMOVE_TIME);
 
-            if (InAppNotification.Style.LIGHT.equalsName(inApp.getStyle())) {
-                showLightStyle();
+            GradientDrawable viewBackground = new GradientDrawable();
+            viewBackground.setColor(inApp.getBackgroundColor());
+            viewBackground.setCornerRadius(6);
+            viewBackground.setStroke(2, inApp.getBorderColor());
+
+            if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                mInAppView.setBackgroundDrawable(viewBackground);
+            } else {
+                mInAppView.setBackground(viewBackground);
             }
+
+            Drawable myIcon = new BitmapDrawable(getResources(), mDisplayState.getInAppNotification().getImage());
+            myIcon.setColorFilter(inApp.getImageTintColor(), PorterDuff.Mode.SRC_ATOP);
+            notifImage.setImageDrawable(myIcon);
         }
 
         return mInAppView;
@@ -257,40 +270,6 @@ public class InAppFragment extends Fragment {
         public float getInterpolation(float t) {
             return (float) -(Math.pow(Math.E, -8*t) * Math.cos(12*t)) + 1;
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void showLightStyle() {
-        final TextView titleView = (TextView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_title);
-        final ImageView notifImage = (ImageView) mInAppView.findViewById(R.id.com_mixpanel_android_notification_image);
-
-        GradientDrawable viewBackground = new GradientDrawable();
-        viewBackground.setColor(Color.WHITE);
-        viewBackground.setCornerRadius(6);
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            viewBackground.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray));
-            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
-        } else {
-            viewBackground.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray, null));
-            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
-        }
-
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-            mInAppView.setBackgroundDrawable(viewBackground);
-        } else {
-            mInAppView.setBackground(viewBackground);
-        }
-
-        Drawable myIcon = new BitmapDrawable(getResources(), mDisplayState.getInAppNotification().getImage());
-        final int newColor;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray);
-        } else {
-            newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null);
-        }
-        myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
-        notifImage.setImageDrawable(myIcon);
     }
 
     private MixpanelAPI mMixpanel;
