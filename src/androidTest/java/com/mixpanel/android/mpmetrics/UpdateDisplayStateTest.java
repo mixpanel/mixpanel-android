@@ -2,13 +2,11 @@ package com.mixpanel.android.mpmetrics;
 
 import android.graphics.Bitmap;
 import android.os.Parcel;
-import android.os.Parcelable;
 import android.test.AndroidTestCase;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 public class UpdateDisplayStateTest extends AndroidTestCase {
@@ -26,9 +24,9 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
         final Survey survey = new Survey(surveyJson);
 
         final JSONObject inAppJson = new JSONObject(
-            "{\"body\":\"Hook me up, yo!\",\"title\":\"Tranya?\",\"message_id\":1781,\"image_url\":\"http://mixpanel.com/Balok.jpg\",\"cta\":\"I'm Down!\",\"cta_url\":\"http://www.mixpanel.com\",\"id\":119911,\"type\":\"mini\",\"style\":\"dark\"}"
+                "{\"id\": 1234, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}"
         );
-        final InAppNotification inApp = new InAppNotification(inAppJson);
+        final TakeoverInAppNotification inApp = new TakeoverInAppNotification(inAppJson);
         inApp.setImage(bitmap);
 
         mSurveyState = new UpdateDisplayState.DisplayState.SurveyState(survey);
@@ -129,13 +127,28 @@ public class UpdateDisplayStateTest extends AndroidTestCase {
                                       UpdateDisplayState.DisplayState.InAppNotificationState reconstructed) {
         assertEquals(original.getHighlightColor(), reconstructed.getHighlightColor());
 
-        final InAppNotification originalInApp = original.getInAppNotification();
-        final InAppNotification reconstructedInApp = reconstructed.getInAppNotification();
+        final TakeoverInAppNotification originalInApp = (TakeoverInAppNotification) original.getInAppNotification();
+        final TakeoverInAppNotification reconstructedInApp = (TakeoverInAppNotification) reconstructed.getInAppNotification();
         assertEquals(originalInApp.getId(), reconstructedInApp.getId());
         assertEquals(originalInApp.getMessageId(), reconstructedInApp.getMessageId());
         assertEquals(originalInApp.getBody(), reconstructedInApp.getBody());
-        assertEquals(originalInApp.getCallToAction(), reconstructedInApp.getCallToAction());
-        assertEquals(originalInApp.getCallToActionUrl(), reconstructedInApp.getCallToActionUrl());
+        assertEquals(originalInApp.getBodyColor(), reconstructedInApp.getBodyColor());
+        assertEquals(originalInApp.getTitle(), reconstructedInApp.getTitle());
+        assertEquals(originalInApp.getTitleColor(), reconstructedInApp.getTitleColor());
+        assertEquals(originalInApp.getImageUrl(), reconstructedInApp.getImageUrl());
+        assertEquals(originalInApp.getButton(0).getBackgroundColor(), reconstructedInApp.getButton(0).getBackgroundColor());
+        assertEquals(originalInApp.getButton(0).getText(), reconstructedInApp.getButton(0).getText());
+        assertEquals(originalInApp.getButton(0).getCtaUrl(), reconstructedInApp.getButton(0).getCtaUrl());
+        assertEquals(originalInApp.getButton(0).getTextColor(), reconstructedInApp.getButton(0).getTextColor());
+        assertEquals(originalInApp.getButton(0).getBorderColor(), reconstructedInApp.getButton(0).getBorderColor());
+        assertEquals(originalInApp.getButton(1).getBackgroundColor(), reconstructedInApp.getButton(1).getBackgroundColor());
+        assertEquals(originalInApp.getButton(1).getText(), reconstructedInApp.getButton(1).getText());
+        assertEquals(originalInApp.getButton(1).getCtaUrl(), reconstructedInApp.getButton(1).getCtaUrl());
+        assertEquals(originalInApp.getButton(1).getTextColor(), reconstructedInApp.getButton(1).getTextColor());
+        assertEquals(originalInApp.getButton(1).getBorderColor(), reconstructedInApp.getButton(1).getBorderColor());
+        assertEquals(originalInApp.getCloseColor(), reconstructedInApp.getCloseColor());
+        assertEquals(originalInApp.getExtras().toString(), reconstructedInApp.getExtras().toString());
+        assertEquals(originalInApp.setShouldShowShadow(), reconstructedInApp.setShouldShowShadow());
         assertEquals(originalInApp.getImageUrl(), reconstructedInApp.getImageUrl());
         assertEquals(originalInApp.getTitle(), reconstructedInApp.getTitle());
         assertEquals(originalInApp.getType(), reconstructedInApp.getType());

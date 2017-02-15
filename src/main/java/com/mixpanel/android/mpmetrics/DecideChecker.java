@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Build;
 import android.view.Display;
@@ -32,8 +33,8 @@ import javax.net.ssl.SSLSocketFactory;
 
     /* package */ static class Result {
         public Result() {
-            surveys = new ArrayList<Survey>();
-            notifications = new ArrayList<InAppNotification>();
+            surveys = new ArrayList<>();
+            notifications = new ArrayList<>();
             eventBindings = EMPTY_JSON_ARRAY;
             variants = EMPTY_JSON_ARRAY;
         }
@@ -97,7 +98,7 @@ import javax.net.ssl.SSLSocketFactory;
         final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
         while (notificationIterator.hasNext()) {
             final InAppNotification notification = notificationIterator.next();
-            final Bitmap image = getNotificationImage(notification, mContext, poster);
+            final Bitmap image = getNotificationImage(notification, mContext);
             if (null == image) {
                 MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
                         ", will not show the notification.");
@@ -159,8 +160,15 @@ import javax.net.ssl.SSLSocketFactory;
             for (int i = 0; i < notificationsToRead; i++) {
                 try {
                     final JSONObject notificationJson = notifications.getJSONObject(i);
-                    final InAppNotification notification = new InAppNotification(notificationJson);
-                    ret.notifications.add(notification);
+                    final String notificationType = notificationJson.getString("type");
+
+                    if (notificationType.equalsIgnoreCase("takeover")) {
+                        final TakeoverInAppNotification notification = new TakeoverInAppNotification(notificationJson);
+                        ret.notifications.add(notification);
+                    } else if (notificationType.equalsIgnoreCase("mini")) {
+                        final MiniInAppNotification notification = new MiniInAppNotification(notificationJson);
+                        ret.notifications.add(notification);
+                    }
                 } catch (final JSONException e) {
                     MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final BadDecideObjectException e) {
@@ -252,7 +260,7 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    private Bitmap getNotificationImage(InAppNotification notification, Context context, RemoteService poster)
+    private Bitmap getNotificationImage(InAppNotification notification, Context context)
         throws RemoteService.ServiceUnavailableException {
         String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 

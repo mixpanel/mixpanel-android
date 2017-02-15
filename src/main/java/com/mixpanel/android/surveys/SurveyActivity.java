@@ -8,19 +8,17 @@ import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -34,19 +32,23 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.mixpanel.android.R;
+import com.mixpanel.android.mpmetrics.InAppButton;
 import com.mixpanel.android.mpmetrics.InAppNotification;
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.mpmetrics.Survey;
 import com.mixpanel.android.mpmetrics.Survey.Question;
+import com.mixpanel.android.mpmetrics.TakeoverInAppNotification;
 import com.mixpanel.android.mpmetrics.UpdateDisplayState;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.ViewUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
@@ -79,7 +81,7 @@ public class SurveyActivity extends Activity {
         mMixpanel = MixpanelAPI.getInstance(SurveyActivity.this, mUpdateDisplayState.getToken());
 
         if (isShowingInApp()) {
-            onCreateInAppNotification(savedInstanceState);
+            onCreateInAppNotification();
         } else if (isShowingSurvey()) {
             onCreateSurvey(savedInstanceState);
         } else {
@@ -87,22 +89,25 @@ public class SurveyActivity extends Activity {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private void onCreateInAppNotification(Bundle savedInstanceState) {
+    private void onCreateInAppNotification() {
         setContentView(R.layout.com_mixpanel_android_activity_notification_full);
 
         final ImageView backgroundImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
         final FadingImageView inAppImageView = (FadingImageView) findViewById(R.id.com_mixpanel_android_notification_image);
         final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
         final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
+        ArrayList<Button> ctaButtons = new ArrayList<>();
         final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
+        ctaButtons.add(ctaButton);
+        final Button secondCtaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_second_button);
+        ctaButtons.add(secondCtaButton);
         final LinearLayout closeButtonWrapper = (LinearLayout) findViewById(R.id.com_mixpanel_android_button_exit_wrapper);
+        final ImageView closeButtonImageView = (ImageView) findViewById(R.id.com_mixpanel_android_image_close);
 
         final UpdateDisplayState.DisplayState.InAppNotificationState notificationState =
                 (UpdateDisplayState.DisplayState.InAppNotificationState) mUpdateDisplayState.getDisplayState();
-        final InAppNotification inApp = notificationState.getInAppNotification();
+        final TakeoverInAppNotification inApp = (TakeoverInAppNotification) notificationState.getInAppNotification();
 
-        // Layout
         final Display display = getWindowManager().getDefaultDisplay();
         final Point size = new Point();
         display.getSize(size);
@@ -113,57 +118,43 @@ public class SurveyActivity extends Activity {
             closeButtonWrapper.setLayoutParams(params);
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            backgroundImage.setBackgroundColor(getResources().getColor(R.color.com_mixpanel_android_inapp_dark_translucent));
+        inAppImageView.showShadow(inApp.setShouldShowShadow());
+
+        backgroundImage.setBackgroundColor(inApp.getBackgroundColor());
+
+        if (inApp.hasTitle()) {
+            titleView.setVisibility(View.VISIBLE);
+            titleView.setText(inApp.getTitle());
+            titleView.setTextColor(inApp.getTitleColor());
         } else {
-            backgroundImage.setBackgroundColor(getResources().getColor(R.color.com_mixpanel_android_inapp_dark_translucent, null));
+            titleView.setVisibility(View.GONE);
         }
-        titleView.setText(inApp.getTitle());
-        subtextView.setText(inApp.getBody());
+
+        if (inApp.hasBody()) {
+            subtextView.setVisibility(View.VISIBLE);
+            subtextView.setText(inApp.getBody());
+            subtextView.setTextColor(inApp.getBodyColor());
+        } else {
+            subtextView.setVisibility(View.GONE);
+        }
+
         inAppImageView.setImageBitmap(inApp.getImage());
 
-        final String ctaUrl = inApp.getCallToActionUrl();
-        if (ctaUrl != null && ctaUrl.length() > 0) {
-            ctaButton.setText(inApp.getCallToAction());
+        for (int i = 0; i < ctaButtons.size(); i++) {
+            InAppButton inAppButtonModel = inApp.getButton(i);
+            Button inAppButton = ctaButtons.get(i);
+
+            setUpInAppButton(inAppButton, inAppButtonModel, inApp);
         }
 
-        // Listeners
-        ctaButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final String uriString = inApp.getCallToActionUrl();
-                if (uriString != null && uriString.length() > 0) {
-                    Uri uri;
-                    try {
-                        uri = Uri.parse(uriString);
-                    } catch (final IllegalArgumentException e) {
-                        MPLog.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
-                        return;
-                    }
+        if (inApp.getNumButtons() == 1) {
+            LinearLayout.LayoutParams oneButtonLayoutParams = (LinearLayout.LayoutParams) ctaButton.getLayoutParams();
+            oneButtonLayoutParams.weight = 0;
+            oneButtonLayoutParams.width = LinearLayout.LayoutParams.WRAP_CONTENT;
+            ctaButton.setLayoutParams(oneButtonLayoutParams);
+        }
 
-                    try {
-                        final Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
-                        SurveyActivity.this.startActivity(viewIntent);
-                        mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
-                    } catch (final ActivityNotFoundException e) {
-                        MPLog.i(LOGTAG, "User doesn't have an activity for notification URI");
-                    }
-                }
-                finish();
-                UpdateDisplayState.releaseDisplayState(mIntentId);
-            }
-        });
-        ctaButton.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button_highlight);
-                } else {
-                    v.setBackgroundResource(R.drawable.com_mixpanel_android_cta_button);
-                }
-                return false;
-            }
-        });
+        closeButtonImageView.setColorFilter(inApp.getCloseColor());
         closeButtonWrapper.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -172,11 +163,71 @@ public class SurveyActivity extends Activity {
             }
         });
 
-        // Animations
+        setUpNotificationAnimations(inAppImageView, titleView, subtextView, ctaButtons, closeButtonWrapper);
+    }
+
+    private void setUpInAppButton(Button inAppButton, final InAppButton inAppButtonModel, final InAppNotification inApp) {
+        if (inAppButtonModel != null) {
+            inAppButton.setVisibility(View.VISIBLE);
+            inAppButton.setText(inAppButtonModel.getText());
+            inAppButton.setTextColor(inAppButtonModel.getTextColor());
+            inAppButton.setTransformationMethod(null);
+
+            GradientDrawable buttonBackground = new GradientDrawable();
+            int[][] states = new int[][] {
+                    new int[] {android.R.attr.state_pressed},
+                    new int[] {android.R.attr.state_enabled},
+            };
+            int highlightColor = 0x33868686;
+            if (inAppButtonModel.getBackgroundColor() != 0) {
+                highlightColor = ViewUtils.mixColors(inAppButtonModel.getBackgroundColor(), highlightColor);
+            }
+            int[] colors = new int[] {highlightColor, inAppButtonModel.getBackgroundColor()};
+            buttonBackground.setColor(new ColorStateList(states, colors));
+            buttonBackground.setStroke((int) ViewUtils.dpToPx(2, this), inAppButtonModel.getBorderColor());
+            buttonBackground.setCornerRadius((int) ViewUtils.dpToPx(5, this));
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                inAppButton.setBackgroundDrawable(buttonBackground);
+            } else {
+                inAppButton.setBackground(buttonBackground);
+            }
+
+            inAppButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    final String uriString = inAppButtonModel.getCtaUrl();
+                    if (uriString != null && uriString.length() > 0) {
+                        Uri uri;
+                        try {
+                            uri = Uri.parse(uriString);
+                        } catch (final IllegalArgumentException e) {
+                            MPLog.i(LOGTAG, "Can't parse notification URI, will not take any action", e);
+                            return;
+                        }
+
+                        try {
+                            final Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
+                            SurveyActivity.this.startActivity(viewIntent);
+                            mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
+                        } catch (final ActivityNotFoundException e) {
+                            MPLog.i(LOGTAG, "User doesn't have an activity for notification URI");
+                        }
+                    }
+                    finish();
+                    UpdateDisplayState.releaseDisplayState(mIntentId);
+                }
+            });
+        } else {
+            inAppButton.setVisibility(View.GONE);
+        }
+    }
+
+    private void setUpNotificationAnimations(ImageView notificationImage, TextView notificationTitle, TextView notificationBody, ArrayList<Button> ctaButtons, LinearLayout closeButtonWrapper) {
         final ScaleAnimation scale = new ScaleAnimation(
                 .95f, 1.0f, .95f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
         scale.setDuration(200);
-        inAppImageView.startAnimation(scale);
+        notificationImage.startAnimation(scale);
 
         final TranslateAnimation translate = new TranslateAnimation(
                 Animation.RELATIVE_TO_SELF, 0.0f,
@@ -186,16 +237,14 @@ public class SurveyActivity extends Activity {
         );
         translate.setInterpolator(new DecelerateInterpolator());
         translate.setDuration(200);
-        titleView.startAnimation(translate);
-        subtextView.startAnimation(translate);
-        ctaButton.startAnimation(translate);
+        notificationTitle.startAnimation(translate);
+        notificationBody.startAnimation(translate);
+        for (Button ctaButton : ctaButtons) {
+            ctaButton.startAnimation(translate);
+        }
 
         final Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.com_mixpanel_android_fade_in);
         closeButtonWrapper.startAnimation(fadeIn);
-
-        if (InAppNotification.Style.LIGHT.equalsName(inApp.getStyle())) {
-            showLightStyle();
-        }
     }
 
     private void onCreateSurvey(Bundle savedInstanceState) {
@@ -477,61 +526,6 @@ public class SurveyActivity extends Activity {
         final UpdateDisplayState.DisplayState.SurveyState surveyState = getSurveyState();
         final UpdateDisplayState.AnswerMap answers = surveyState.getAnswers();
         answers.put(question.getId(), answer.toString());
-    }
-
-    @SuppressWarnings("deprecation")
-    private void showLightStyle() {
-        final ImageView backgroundImage = (ImageView) findViewById(R.id.com_mixpanel_android_notification_gradient);
-        final TextView titleView = (TextView) findViewById(R.id.com_mixpanel_android_notification_title);
-        final TextView subtextView = (TextView) findViewById(R.id.com_mixpanel_android_notification_subtext);
-        final Button ctaButton = (Button) findViewById(R.id.com_mixpanel_android_notification_button);
-        final ImageView closeButton = (ImageView) findViewById(R.id.com_mixpanel_android_image_close);
-
-        backgroundImage.setBackgroundColor(Color.WHITE);
-
-        GradientDrawable border = new GradientDrawable();
-        border.setColor(Color.WHITE);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_hardgray));
-            subtextView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
-            ctaButton.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray));
-            border.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray));
-        } else {
-            titleView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_hardgray, null));
-            subtextView.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
-            ctaButton.setTextColor(getResources().getColor(R.color.com_mixpanel_android_inapp_light_gray, null));
-            border.setStroke(2, getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray, null));
-        }
-        border.setCornerRadius(6);
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-            ctaButton.setBackgroundDrawable(border);
-        } else {
-            ctaButton.setBackground(border);
-        }
-
-        Drawable myIcon = getResources().getDrawable(R.drawable.com_mixpanel_android_close_new);
-        if (myIcon != null) {
-            final int newColor = getResources().getColor(R.color.com_mixpanel_android_inapp_light_softgray);
-            myIcon.setColorFilter(newColor, PorterDuff.Mode.SRC_ATOP);
-            closeButton.setImageDrawable(myIcon);
-        }
-
-        ctaButton.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return false;
-            }
-        });
-    }
-
-    @SuppressWarnings("deprecation")
-    @SuppressLint("NewApi")
-    private void setViewBackground(View v, Drawable d) {
-        if (Build.VERSION.SDK_INT < 16) {
-            v.setBackgroundDrawable(d);
-        } else {
-            v.setBackground(d);
-        }
     }
 
     @SuppressLint("NewApi")
