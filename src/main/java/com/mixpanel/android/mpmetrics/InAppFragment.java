@@ -33,6 +33,7 @@ import android.widget.TextView;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.ViewUtils;
 
 /**
  * Attached to an Activity when you display a mini in-app notification.
@@ -187,8 +188,8 @@ public class InAppFragment extends Fragment {
 
             GradientDrawable viewBackground = new GradientDrawable();
             viewBackground.setColor(inApp.getBackgroundColor());
-            viewBackground.setCornerRadius(6);
-            viewBackground.setStroke(2, inApp.getBorderColor());
+            viewBackground.setCornerRadius(ViewUtils.dpToPx(7, getContext()));
+            viewBackground.setStroke((int)ViewUtils.dpToPx(2, getContext()), inApp.getBorderColor());
 
             if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                 mInAppView.setBackgroundDrawable(viewBackground);
