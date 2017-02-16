@@ -11,6 +11,7 @@ public class MPLog {
     public static final int INFO = 4;
     public static final int WARN = 5;
     public static final int ERROR = 6;
+    public static final int NONE = Integer.MAX_VALUE;
 
     private static int sMinLevel = MPConfig.DEBUG ? VERBOSE : WARN;
 
