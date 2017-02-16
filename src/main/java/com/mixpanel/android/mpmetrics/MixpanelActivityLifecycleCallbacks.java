@@ -7,7 +7,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+
 import com.mixpanel.android.viewcrawler.GestureTracker;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
@@ -24,6 +28,19 @@ import com.mixpanel.android.viewcrawler.GestureTracker;
 
     @Override
     public void onActivityStarted(Activity activity) {
+        if (activity.getIntent().hasExtra("mp_campaign_id") && activity.getIntent().hasExtra("mp_message_id")) {
+            String campaignId = activity.getIntent().getStringExtra("mp_campaign_id");
+            String messageId = activity.getIntent().getStringExtra("mp_message_id");
+
+            JSONObject pushProps = new JSONObject();
+            try {
+                pushProps.put("campaign_id", campaignId);
+                pushProps.put("message_id", messageId);
+                pushProps.put("message_type", "push");
+                mMpInstance.track("$campaign_received", pushProps);
+            } catch (JSONException e) {}
+        }
+
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
             if (!activity.isTaskRoot()) {
                 return; // No checks, no nothing.
