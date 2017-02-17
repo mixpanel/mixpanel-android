@@ -1357,12 +1357,32 @@ public class MixpanelAPI {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
-                MixpanelActivityLifecycleCallbacks mixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
-                app.registerActivityLifecycleCallbacks(mixpanelActivityLifecycleCallbacks);
+                mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
+                app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
             } else {
                 MPLog.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments. We won't be able to automatically flush on an app background.");
             }
         }
+    }
+
+    /**
+     * Based on the application's event lifecycle this method will determine whether the app
+     * is running in the foreground or not.
+     *
+     * If your build version is below 14 this method will always return false.
+     *
+     * @return True if the app is running in the foreground.
+     */
+    public boolean isAppInForeground() {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            if (mMixpanelActivityLifecycleCallbacks != null) {
+                return mMixpanelActivityLifecycleCallbacks.isInForeground();
+            }
+        } else {
+            MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
+        }
+
+        return false;
     }
 
     // Package-level access. Used (at least) by GCMReceiver
@@ -2256,6 +2276,7 @@ public class MixpanelAPI {
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
+    private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
@@ -2266,6 +2287,4 @@ public class MixpanelAPI {
     private static final String LOGTAG = "MixpanelAPI.API";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
-    private boolean mDisableDecideChecker;
 }

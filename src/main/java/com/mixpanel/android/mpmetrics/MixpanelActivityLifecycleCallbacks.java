@@ -17,7 +17,7 @@ import org.json.JSONObject;
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
     private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable check;
-    private boolean mIsForeground = false;
+    private boolean mIsForeground = true;
     private boolean mPaused = true;
     public static final int CHECK_DELAY = 500;
 
@@ -37,8 +37,11 @@ import org.json.JSONObject;
                 pushProps.put("campaign_id", campaignId);
                 pushProps.put("message_id", messageId);
                 pushProps.put("message_type", "push");
-                mMpInstance.track("$campaign_received", pushProps);
+                mMpInstance.track("$app_open", pushProps);
             } catch (JSONException e) {}
+
+            activity.getIntent().removeExtra("mp_campaign_id");
+            activity.getIntent().removeExtra("mp_message_id");
         }
 
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
@@ -101,6 +104,10 @@ import org.json.JSONObject;
 
     @Override
     public void onActivityStopped(Activity activity) { }
+
+    protected boolean isInForeground() {
+        return mIsForeground;
+    }
 
     private final MixpanelAPI mMpInstance;
     private final MPConfig mConfig;
