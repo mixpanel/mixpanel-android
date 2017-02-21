@@ -20,6 +20,9 @@ import android.os.Build;
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 import com.mixpanel.android.util.MPLog;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 /**
 * BroadcastReceiver for handling Google Cloud Messaging intents.
@@ -139,7 +142,11 @@ public class GCMReceiver extends BroadcastReceiver {
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
         final String colorName = inboundIntent.getStringExtra("mp_color");
+        final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
+        final String messageId = inboundIntent.getStringExtra("mp_message_id");
         int color = NotificationData.NOT_SET;
+
+        trackCampaignReceived(campaignId, messageId);
 
         if (colorName != null) {
             try {
@@ -195,12 +202,12 @@ public class GCMReceiver extends BroadcastReceiver {
             notificationTitle = "A message for you";
         }
 
-        final Intent notificationIntent = buildNotificationIntent(context, uriString);
+        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId);
 
         return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
     }
 
-    private Intent buildNotificationIntent(Context context, String uriString) {
+    private Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId) {
         Uri uri = null;
         if (null != uriString) {
             uri = Uri.parse(uriString);
@@ -211,6 +218,14 @@ public class GCMReceiver extends BroadcastReceiver {
             ret = getDefaultIntent(context);
         } else {
             ret = new Intent(Intent.ACTION_VIEW, uri);
+        }
+
+        if (campaignId != null) {
+            ret.putExtra("mp_campaign_id", campaignId);
+        }
+
+        if (messageId != null) {
+            ret.putExtra("mp_message_id", messageId);
         }
 
         return ret;
@@ -373,6 +388,25 @@ public class GCMReceiver extends BroadcastReceiver {
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         return n;
+    }
+
+    private void trackCampaignReceived(final String campaignId, final String messageId) {
+        if (campaignId != null && messageId != null) {
+            MixpanelAPI.allInstances(new InstanceProcessor() {
+                @Override
+                public void process(MixpanelAPI api) {
+                    if(api.isAppInForeground()) {
+                        JSONObject pushProps = new JSONObject();
+                        try {
+                            pushProps.put("campaign_id", campaignId);
+                            pushProps.put("message_id", messageId);
+                            pushProps.put("message_type", "push");
+                            api.track("$campaign_received", pushProps);
+                        } catch (JSONException e) {}
+                    }
+                }
+            });
+        }
     }
 
     @SuppressWarnings("unused")
