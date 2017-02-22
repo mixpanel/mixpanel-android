@@ -81,6 +81,23 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    public void saveEventsMessage(final EventDescription eventDescription) throws JSONException {
+        final JSONObject eventObj = new JSONObject();
+        final JSONObject eventProperties = eventDescription.getProperties();
+        final JSONObject sendProperties = new JSONObject();
+        sendProperties.put("token", eventDescription.getToken());
+        if (eventProperties != null) {
+            for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext();) {
+                final String key = (String) iter.next();
+                sendProperties.put(key, eventProperties.get(key));
+            }
+        }
+        eventObj.put("event", eventDescription.getEventName());
+        eventObj.put("properties", sendProperties);
+        MPDbAdapter mDbAdapter = makeDbAdapter(mContext);
+        mDbAdapter.addJSON(eventObj, MPDbAdapter.Table.EVENTS);
+    }
+
     // Must be thread safe.
     public void peopleMessage(final JSONObject peopleJson) {
         final Message m = Message.obtain();
@@ -225,6 +242,7 @@ import javax.net.ssl.SSLSocketFactory;
 
             @Override
             public void handleMessage(Message msg) {
+
                 if (mDbAdapter == null) {
                     mDbAdapter = makeDbAdapter(mContext);
                     mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.EVENTS);

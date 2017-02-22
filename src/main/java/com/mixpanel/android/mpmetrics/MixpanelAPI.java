@@ -19,6 +19,7 @@ import android.os.Bundle;
 import com.mixpanel.android.R;
 import com.mixpanel.android.surveys.SurveyActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
+import com.mixpanel.android.util.ExceptionHandler;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.TrackingDebug;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
@@ -245,6 +246,7 @@ public class MixpanelAPI {
         }
 
         registerMixpanelActivityLifecycleCallbacks();
+        new ExceptionHandler(MixpanelAPI.this, context);
 
         if (sendAppOpen()) {
             track("$app_open", null);
@@ -483,45 +485,8 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
-        final Long eventBegin;
-        synchronized (mEventTimings) {
-            eventBegin = mEventTimings.get(eventName);
-            mEventTimings.remove(eventName);
-            mPersistentIdentity.removeTimeEvent(eventName);
-        }
-
         try {
-            final JSONObject messageProps = new JSONObject();
-
-            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
-                final String key = entry.getKey();
-                final String value = entry.getValue();
-                messageProps.put(key, value);
-            }
-
-            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
-
-            // Don't allow super properties or referral properties to override these fields,
-            // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final long timeSeconds = (long) timeSecondsDouble;
-            messageProps.put("time", timeSeconds);
-            messageProps.put("distinct_id", getDistinctId());
-
-            if (null != eventBegin) {
-                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
-                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
-                messageProps.put("$duration", secondsElapsed);
-            }
-
-            if (null != properties) {
-                final Iterator<?> propIter = properties.keys();
-                while (propIter.hasNext()) {
-                    final String key = (String) propIter.next();
-                    messageProps.put(key, properties.get(key));
-                }
-            }
+            final JSONObject messageProps = prepareTrack(eventName, properties);
 
             final AnalyticsMessages.EventDescription eventDescription =
                     new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
@@ -530,9 +495,64 @@ public class MixpanelAPI {
             if (null != mTrackingDebug) {
                 mTrackingDebug.reportTrack(eventName);
             }
+
+		} catch (final JSONException e) {
+            MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
+        }
+    }
+
+    public void saveCrashTrack(String eventName, JSONObject properties) {
+        try {
+            final JSONObject messageProps = prepareTrack(eventName, properties);
+
+            final AnalyticsMessages.EventDescription eventDescription =
+                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
+            mMessages.saveEventsMessage(eventDescription);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
+    }
+
+    private JSONObject prepareTrack(String eventName, JSONObject properties) throws JSONException {
+        final Long eventBegin;
+        synchronized (mEventTimings) {
+            eventBegin = mEventTimings.get(eventName);
+            mEventTimings.remove(eventName);
+            mPersistentIdentity.removeTimeEvent(eventName);
+        }
+
+        final JSONObject messageProps = new JSONObject();
+
+        final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
+        for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
+            final String key = entry.getKey();
+            final String value = entry.getValue();
+            messageProps.put(key, value);
+        }
+
+        mPersistentIdentity.addSuperPropertiesToObject(messageProps);
+
+        // Don't allow super properties or referral properties to override these fields,
+        // but DO allow the caller to override them in their given properties.
+        final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
+        final long timeSeconds = (long) timeSecondsDouble;
+        messageProps.put("time", timeSeconds);
+        messageProps.put("distinct_id", getDistinctId());
+
+        if (null != eventBegin) {
+            final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+            final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+            messageProps.put("$duration", secondsElapsed);
+        }
+
+        if (null != properties) {
+            final Iterator<?> propIter = properties.keys();
+            while (propIter.hasNext()) {
+                final String key = (String) propIter.next();
+                messageProps.put(key, properties.get(key));
+            }
+        }
+        return messageProps;
     }
 
     /**

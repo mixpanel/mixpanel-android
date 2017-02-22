@@ -117,6 +117,7 @@ task androidJavadocs(type: Javadoc, dependsOn: ':generateReleaseBuildConfig') {
             '**/util/HttpService.java',
             '**/util/ImageStore.java',
             '**/util/JSONUtils.java',
+            '**/util/ExceptionHandler.java',
             '**/util/RemoteService.java',
             '**/util/StackBlurManager.java',
             '**/util/StringUtils.java',
