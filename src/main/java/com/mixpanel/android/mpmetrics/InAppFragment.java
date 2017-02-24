@@ -188,8 +188,8 @@ public class InAppFragment extends Fragment {
 
             GradientDrawable viewBackground = new GradientDrawable();
             viewBackground.setColor(inApp.getBackgroundColor());
-            viewBackground.setCornerRadius(ViewUtils.dpToPx(7, getContext()));
-            viewBackground.setStroke((int)ViewUtils.dpToPx(2, getContext()), inApp.getBorderColor());
+            viewBackground.setCornerRadius(ViewUtils.dpToPx(7, getActivity()));
+            viewBackground.setStroke((int)ViewUtils.dpToPx(2, getActivity()), inApp.getBorderColor());
 
             if(Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                 mInAppView.setBackgroundDrawable(viewBackground);
