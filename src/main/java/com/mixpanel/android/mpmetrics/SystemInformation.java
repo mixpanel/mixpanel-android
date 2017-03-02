@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -136,6 +137,7 @@ import com.mixpanel.android.util.MPLog;
         return ret;
     }
 
+    @SuppressLint("MissingPermission")
     public Boolean isBluetoothEnabled() {
         Boolean isBluetoothEnabled = null;
         try {
