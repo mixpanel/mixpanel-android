@@ -102,6 +102,7 @@ fi
 
 printf "\n"
 git --no-pager diff
+printf "\n\n\n"
 
 read -r -p "Does this look right to you? [y/n]: " key
 
