@@ -2038,7 +2038,7 @@ public class MixpanelAPI {
 
                                 MPLog.v(LOGTAG, "Attempting to show mini notification.");
                                 final FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
+                                transaction.setCustomAnimations(0, R.animator.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
 
                                 try {

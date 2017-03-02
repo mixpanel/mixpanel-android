@@ -80,7 +80,7 @@ import android.os.Build;
 
         // check special permission
         try {
-            packageManager.getPermissionInfo(permissionName, PackageManager.GET_PERMISSIONS);
+            packageManager.getPermissionInfo(permissionName, PackageManager.GET_META_DATA);
         } catch (final NameNotFoundException e) {
             MPLog.w(LOGTAG, "Application does not define permission " + permissionName);
             MPLog.i(LOGTAG, "You will need to add the following lines to your application manifest:\n" +

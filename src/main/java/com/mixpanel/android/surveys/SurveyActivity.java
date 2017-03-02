@@ -19,6 +19,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -173,17 +174,22 @@ public class SurveyActivity extends Activity {
             inAppButton.setTextColor(inAppButtonModel.getTextColor());
             inAppButton.setTransformationMethod(null);
 
-            GradientDrawable buttonBackground = new GradientDrawable();
-            int[][] states = new int[][] {
-                    new int[] {android.R.attr.state_pressed},
-                    new int[] {android.R.attr.state_enabled},
-            };
-            int highlightColor = 0x33868686;
-            if (inAppButtonModel.getBackgroundColor() != 0) {
-                highlightColor = ViewUtils.mixColors(inAppButtonModel.getBackgroundColor(), highlightColor);
-            }
-            int[] colors = new int[] {highlightColor, inAppButtonModel.getBackgroundColor()};
-            buttonBackground.setColor(new ColorStateList(states, colors));
+            final GradientDrawable buttonBackground = new GradientDrawable();
+            final int highlightColor = inAppButtonModel.getBackgroundColor() != 0 ? ViewUtils.mixColors(inAppButtonModel.getBackgroundColor(), 0x33868686) : 0x33868686;
+            inAppButton.setOnTouchListener(new View.OnTouchListener() {
+
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        int highLight = highlightColor;
+                        buttonBackground.setColor(highLight);
+                    } else {
+                        buttonBackground.setColor(inAppButtonModel.getBackgroundColor());
+                    }
+                    return false;
+                }
+            });
+            buttonBackground.setColor(inAppButtonModel.getBackgroundColor());
             buttonBackground.setStroke((int) ViewUtils.dpToPx(2, this), inAppButtonModel.getBorderColor());
             buttonBackground.setCornerRadius((int) ViewUtils.dpToPx(5, this));
 
