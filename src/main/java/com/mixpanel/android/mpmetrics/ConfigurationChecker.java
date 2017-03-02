@@ -216,7 +216,7 @@ import android.os.Build;
         final String packageName = context.getPackageName();
         final Intent intent = new Intent(action);
         intent.setPackage(packageName);
-        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_INTENT_FILTERS);
+        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_META_DATA);
 
         if (receivers.isEmpty()) {
             MPLog.w(LOGTAG, "No receivers for action " + action);
