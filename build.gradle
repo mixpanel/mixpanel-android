@@ -33,9 +33,11 @@ android {
         buildConfigField "String", "MIXPANEL_VERSION", "\"${version}\""
 
         lintOptions {
-            abortOnError false
-            warningsAsErrors true
+            abortOnError true
+            warningsAsErrors false
             disable "UnusedResources"
+            textOutput "stdout"
+            textReport true
         }
     }
 }

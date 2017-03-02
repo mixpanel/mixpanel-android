@@ -80,7 +80,7 @@ import android.os.Build;
 
         // check special permission
         try {
-            packageManager.getPermissionInfo(permissionName, PackageManager.GET_PERMISSIONS);
+            packageManager.getPermissionInfo(permissionName, PackageManager.GET_META_DATA);
         } catch (final NameNotFoundException e) {
             MPLog.w(LOGTAG, "Application does not define permission " + permissionName);
             MPLog.i(LOGTAG, "You will need to add the following lines to your application manifest:\n" +
@@ -216,7 +216,7 @@ import android.os.Build;
         final String packageName = context.getPackageName();
         final Intent intent = new Intent(action);
         intent.setPackage(packageName);
-        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_INTENT_FILTERS);
+        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_META_DATA);
 
         if (receivers.isEmpty()) {
             MPLog.w(LOGTAG, "No receivers for action " + action);
