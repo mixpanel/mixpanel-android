@@ -141,9 +141,8 @@ git push origin $newTag
 # update next snapshot version
 printf "\n${YELLOW}Updating next snapshot version...${NC}\n"
 sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
-printf "${GREEN}New gradle.properties:${NC}\n"
-head -n 1 gradle.properties
-printf '[....]\n\n\n'
+git --no-pager diff
+printf '\n\n\n'
 
 read -r -p "Does this look right to you? [y/n]: " key
 if [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
