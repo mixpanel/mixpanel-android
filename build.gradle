@@ -36,6 +36,8 @@ android {
             abortOnError true
             warningsAsErrors false
             disable "UnusedResources"
+            textOutput "stdout"
+            textReport true
         }
     }
 }
