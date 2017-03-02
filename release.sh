@@ -101,13 +101,7 @@ if [ ! -s changes.txt ]; then
 fi
 
 printf "\n"
-printf "${GREEN}New gradle.properties:${NC}\n"
-head -n 1 gradle.properties
-printf '[....]\n\n\n'
-
-printf "${GREEN}New README.md:${NC}\n"
-head -n 9 README.md
-printf '[....]\n\n\n'
+git --no-pager diff
 
 read -r -p "Does this look right to you? [y/n]: " key
 
