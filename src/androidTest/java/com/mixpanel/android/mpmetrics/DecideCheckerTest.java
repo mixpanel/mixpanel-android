@@ -40,95 +40,18 @@ public class DecideCheckerTest extends AndroidTestCase {
 
         mPoster.response = bytes("{}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
         });
         mEventBinder.bindingsSeen.clear();
 
-        mPoster.response = bytes("{\"surveys\":[], \"notifications\":[]}");
+        mPoster.response = bytes("{\"notifications\":[]}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
         });
-    }
-
-    public void testReadSurvey1() throws RemoteService.ServiceUnavailableException {
-        mDecideChecker.addDecideCheck(mDecideMessages1);
-
-        mPoster.response = bytes(
-            "{\"surveys\":[ {" +
-                    "   \"id\":291," +
-                    "   \"questions\":[" +
-                    "       {\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[\"Option 1\",\"Option 2\"]},\"prompt\":\"Multiple Choice Prompt\"}," +
-                    "       {\"id\":277,\"type\":\"text\",\"extra_data\":{},\"prompt\":\"Text Field Prompt\"}]," +
-                    "   \"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}]}" +
-                    "]}"
-        );
-
-        mDecideChecker.runDecideChecks(mPoster);
-        final Survey found = mDecideMessages1.getSurvey(false);
-        assertNull(mDecideMessages1.getSurvey(false));
-        assertNull(mDecideMessages1.getNotification(false));
-        assertUpdatesSeen(new JSONArray[]{
-                new JSONArray()
-        });
-
-        assertEquals(found.getId(), 291);
-        assertEquals(found.getCollectionId(), 141);
-
-        List<Survey.Question> questions = found.getQuestions();
-        assertEquals(questions.size(), 2);
-
-        Survey.Question mcQuestion = questions.get(0);
-        assertEquals(mcQuestion.getId(), 275);
-        assertEquals(mcQuestion.getPrompt(), "Multiple Choice Prompt");
-        assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-        List<String> mcChoices = mcQuestion.getChoices();
-        assertEquals(mcChoices.size(), 2);
-        assertEquals(mcChoices.get(0), "Option 1");
-        assertEquals(mcChoices.get(1), "Option 2");
-
-        Survey.Question textQuestion = questions.get(1);
-        assertEquals(textQuestion.getId(), 277);
-        assertEquals(textQuestion.getPrompt(), "Text Field Prompt");
-        assertEquals(textQuestion.getType(), Survey.QuestionType.TEXT);
-        List<String> textChoices = textQuestion.getChoices();
-        assertEquals(textChoices.size(), 0);
-    }
-
-    public void testReadSurvey2() throws RemoteService.ServiceUnavailableException {
-        mDecideChecker.addDecideCheck(mDecideMessages1);
-        mPoster.response = bytes(
-                "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287},{\"prompt\":\"How has the demo affected you?\",\"extra_data\":{\"$choices\":[\"I laughed, I cried, it was better than \\\"Cats\\\"\",\"I want to see it again, and again, and again.\"]},\"type\":\"multiple_choice\",\"id\":289}]}]}"
-        );
-
-        mDecideChecker.runDecideChecks(mPoster);
-        final Survey found = mDecideMessages1.getSurvey(false);
-        assertNull(mDecideMessages1.getSurvey(false));
-        assertNull(mDecideMessages1.getNotification(false));
-        assertUpdatesSeen(new JSONArray[]{
-                new JSONArray()
-        });
-
-        assertEquals(found.getId(), 299);
-        assertEquals(found.getCollectionId(), 151);
-
-        List<Survey.Question> questions = found.getQuestions();
-        assertEquals(questions.size(), 2);
-
-        Survey.Question mcQuestion = questions.get(0);
-        assertEquals(mcQuestion.getId(), 287);
-        assertEquals(mcQuestion.getPrompt(), "PROMPT1");
-        assertEquals(mcQuestion.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-        List<String> mcChoices = mcQuestion.getChoices();
-        assertEquals(mcChoices.size(), 3);
-        assertEquals(mcChoices.get(0), "Answer1,1");
-        assertEquals(mcChoices.get(1), "Answer1,2");
-        assertEquals(mcChoices.get(2), "Answer1,3");
     }
 
     public void testBadDecideResponses() throws RemoteService.ServiceUnavailableException {
@@ -137,27 +60,13 @@ public class DecideCheckerTest extends AndroidTestCase {
         // Corrupted or crazy responses.
         mPoster.response = bytes("{ WONT PARSE");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {}); // No updates at all on parsing failure
-        mEventBinder.bindingsSeen.clear();
-
-        // Valid JSON but bad (no name)
-        mPoster.response = bytes(
-            "{\"surveys\":{\"id\":3,\"collections\":[{\"id\": 9}],\"questions\":[{\"id\":12,\"type\":\"text\",\"prompt\":\"P\",\"extra_data\":{}}]}}"
-        );
-        mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
-        assertNull(mDecideMessages1.getNotification(false));
-        assertUpdatesSeen(new JSONArray[]{
-                new JSONArray()
-        });
         mEventBinder.bindingsSeen.clear();
 
         // Just pure (but legal) JSON craziness
         mPoster.response = bytes("null");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{});
         mEventBinder.bindingsSeen.clear();
@@ -165,34 +74,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
         mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
                 new JSONArray()
-        });
-        mEventBinder.bindingsSeen.clear();
-
-        // Valid survey with no questions
-        mPoster.response = bytes(
-            "{\"surveys\":[{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}],\"id\":299,\"questions\":[]}]}"
-        );
-        mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
-        assertNull(mDecideMessages1.getNotification(false));
-        assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
-        });
-        mEventBinder.bindingsSeen.clear();
-
-        // Valid survey with a question with no choices
-        mPoster.response = bytes(
-            "{\"surveys\":[{\"id\":291,\"collections\":[{\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\",\"id\":141}],\"questions\":[{\"id\":275,\"type\":\"multiple_choice\",\"extra_data\":{\"$choices\":[]},\"prompt\":\"Multiple Choice Prompt\"}]}]}"
-        );
-        mDecideChecker.runDecideChecks(mPoster);
-        assertNull(mDecideMessages1.getSurvey(false));
-        assertNull(mDecideMessages1.getNotification(false));
-        assertUpdatesSeen(new JSONArray[]{
-            new JSONArray()
         });
         mEventBinder.bindingsSeen.clear();
     }
@@ -239,21 +123,19 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         {
-            final String elementsNull = "{\"surveys\": null, \"notifications\": null}";
+            final String elementsNull = "{\"notifications\": null}";
             final DecideChecker.Result parseElementsNull = DecideChecker.parseDecideResponse(elementsNull);
             assertTrue(parseElementsNull.notifications.isEmpty());
-            assertTrue(parseElementsNull.surveys.isEmpty());
         }
 
         {
-            final String elementsEmpty = "{\"surveys\": [], \"notifications\": []}";
+            final String elementsEmpty = "{\"notifications\": []}";
             final DecideChecker.Result parseElementsEmpty = DecideChecker.parseDecideResponse(elementsEmpty);
             assertTrue(parseElementsEmpty.notifications.isEmpty());
-            assertTrue(parseElementsEmpty.surveys.isEmpty());
         }
 
         {
-            final String notificationOnly = "{\"notifications\":[{\"id\": 1234, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}],\"surveys\":[]}";
+            final String notificationOnly = "{\"notifications\":[{\"id\": 1234, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}]}";
 
             final DecideChecker.Result parseNotificationOnly = DecideChecker.parseDecideResponse(notificationOnly);
             assertEquals(parseNotificationOnly.notifications.size(), 1);
@@ -280,30 +162,10 @@ public class DecideCheckerTest extends AndroidTestCase {
             assertEquals(parsed.getButton(1).getText(), "Button 2!");
             assertEquals(parsed.getType(), InAppNotification.Type.TAKEOVER);
 
-            assertTrue(parseNotificationOnly.surveys.isEmpty());
         }
 
         {
-            final String surveyOnly = "{\"notifications\":[],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
-            final DecideChecker.Result parseSurveyOnly = DecideChecker.parseDecideResponse(surveyOnly);
-            assertTrue(parseSurveyOnly.notifications.isEmpty());
-
-            assertEquals(parseSurveyOnly.surveys.size(), 1);
-            final Survey parsed = parseSurveyOnly.surveys.get(0);
-            assertEquals(parsed.getId(), 397);
-            assertTrue(parsed.getCollectionId() == 3319 || parsed.getCollectionId() == 3329);
-            final List<Survey.Question> questions = parsed.getQuestions();
-            assertEquals(questions.size(), 1);
-            final Survey.Question question = questions.get(0);
-            assertEquals(question.getType(), Survey.QuestionType.TEXT);
-            assertEquals(question.getPrompt(), "prompt text");
-            assertEquals(question.getId(), 457);
-            assertTrue(question.getChoices().isEmpty());
-
-        }
-
-        {
-            final String both = "{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295}],\"surveys\":[{\"collections\":[{\"id\":3319,\"name\":\"All users 2\"},{\"id\":3329,\"name\":\"all 2\"}],\"id\":397,\"questions\":[{\"prompt\":\"prompt text\",\"extra_data\":{},\"type\":\"text\",\"id\":457}],\"name\":\"Demo survey\"}]}";
+            final String both = "{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295}]}";
             final DecideChecker.Result parseBoth = DecideChecker.parseDecideResponse(both);
 
             final MiniInAppNotification parsedNotification = (MiniInAppNotification) parseBoth.notifications.get(0);
@@ -319,17 +181,6 @@ public class DecideCheckerTest extends AndroidTestCase {
             assertEquals(parsedNotification.getId(), 1191793);
             assertEquals(parsedNotification.getType(), InAppNotification.Type.MINI);
 
-            assertEquals(parseBoth.surveys.size(), 1);
-            final Survey parsedSurvey = parseBoth.surveys.get(0);
-            assertEquals(parsedSurvey.getId(), 397);
-            assertTrue(parsedSurvey.getCollectionId() == 3319 || parsedSurvey.getCollectionId() == 3329);
-            final List<Survey.Question> questions = parsedSurvey.getQuestions();
-            assertEquals(questions.size(), 1);
-            final Survey.Question question = questions.get(0);
-            assertEquals(question.getType(), Survey.QuestionType.TEXT);
-            assertEquals(question.getPrompt(), "prompt text");
-            assertEquals(question.getId(), 457);
-            assertTrue(question.getChoices().isEmpty());
         }
     }
 

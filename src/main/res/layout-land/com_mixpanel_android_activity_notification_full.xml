@@ -30,7 +30,7 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <com.mixpanel.android.surveys.FadingImageView
+            <com.mixpanel.android.takeoverinapp.FadingImageView
                 android:id="@+id/com_mixpanel_android_notification_image"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

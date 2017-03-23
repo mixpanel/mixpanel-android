@@ -25,9 +25,7 @@ import java.util.Set;
         mUpdatesFromMixpanel = updatesFromMixpanel;
 
         mDistinctId = null;
-        mUnseenSurveys = new LinkedList<Survey>();
         mUnseenNotifications = new LinkedList<InAppNotification>();
-        mSurveyIds = new HashSet<Integer>();
         mNotificationIds = new HashSet<Integer>();
         mVariants = new JSONArray();
     }
@@ -40,7 +38,6 @@ import java.util.Set;
     // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
         if (mDistinctId == null || !mDistinctId.equals(distinctId)){
-            mUnseenSurveys.clear();
             mUnseenNotifications.clear();
         }
         mDistinctId = distinctId;
@@ -50,18 +47,9 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(List<Survey> newSurveys, List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
+    public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
-
-        for (final Survey s : newSurveys) {
-            final int id = s.getId();
-            if (! mSurveyIds.contains(id)) {
-                mSurveyIds.add(id);
-                mUnseenSurveys.add(s);
-                newContent = true;
-            }
-        }
 
         for (final InAppNotification n : newNotifications) {
             final int id = n.getId();
@@ -112,40 +100,12 @@ import java.util.Set;
         }
 
         MPLog.v(LOGTAG, "New Decide content has become available. " +
-                    newSurveys.size() + " surveys, " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
 
         if (newContent && null != mListener) {
             mListener.onNewResults();
         }
-    }
-
-    @Deprecated
-    public synchronized Survey getSurvey(boolean replace) {
-        if (mUnseenSurveys.isEmpty()) {
-            return null;
-        }
-        Survey s = mUnseenSurveys.remove(0);
-        if (replace) {
-            mUnseenSurveys.add(s);
-        }
-        return s;
-    }
-
-    @Deprecated
-    public synchronized Survey getSurvey(int id, boolean replace) {
-        Survey survey = null;
-        for (int i = 0; i < mUnseenSurveys.size(); i++) {
-            if (mUnseenSurveys.get(i).getId() == id) {
-                survey = mUnseenSurveys.get(i);
-                if (!replace) {
-                    mUnseenSurveys.remove(i);
-                }
-                break;
-            }
-        }
-        return survey;
     }
 
     public synchronized JSONArray getVariants() {
@@ -189,7 +149,7 @@ import java.util.Set;
     }
 
     public synchronized boolean hasUpdatesAvailable() {
-        return (! mUnseenNotifications.isEmpty()) || (! mUnseenSurveys.isEmpty()) || mVariants.length() > 0;
+        return (! mUnseenNotifications.isEmpty()) || mVariants.length() > 0;
     }
 
     // Mutable, must be synchronized
@@ -205,9 +165,4 @@ import java.util.Set;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
-
-    @Deprecated
-    private final List<Survey> mUnseenSurveys;
-    @Deprecated
-    private final Set<Integer> mSurveyIds;
 }

@@ -50,7 +50,7 @@
             android:value="false" />
         -->
 
-        <!-- The Mixpanel library will automatically attempt to show available surveys or in
+        <!-- The Mixpanel library will automatically attempt to show available in
              app notifications every time a new Activity is displayed. To disable this behavior,
              add the following line. The default value for this option is set to true. -->
         <!--
@@ -58,7 +58,7 @@
             android:value="false" />
         -->
 
-        <!-- Set this option to true if you wish for in-app notifications and surveys to be displayed without
+        <!-- Set this option to true if you wish for in-app notifications to be displayed without
              being tracked by Mixpanel. This is useful for testing the integration with your Android app.
              The default value is false. -->
         <!--
@@ -67,19 +67,19 @@
         -->
 
         <!-- Set the following option to true if you wish to see the debug output from the Mixpanel Android
-             library. This may be useful in determining when track calls go out or in-app notifications or
-             surveys are fetched. The default value is false. -->
+             library. This may be useful in determining when track calls go out or in-app notifications
+             are fetched. The default value is false. -->
         <!--
         <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging"
             android:value="true" />
         -->
 
-        <!-- This activity allows your application to show Mixpanel surveys and takeover in-app notifications.
+        <!-- This activity allows your application to show Mixpanel takeover in-app notifications.
              If you only wish to show mini in-app notifications, you do not need to declare this Activity.
              You may also specify a different theme to better fit the look and feel of your application. -->
         <!--
-        <activity android:name="com.mixpanel.android.surveys.SurveyActivity"
-                  android:theme="@style/com_mixpanel_android_SurveyActivityTheme" />
+        <activity android:name="com.mixpanel.android.takeoverinapp.TakeoverInAppActivity"
+                  android:theme="@style/com_mixpanel_android_TakeoverInAppActivityTheme" />
         -->
 
         <!-- This receiver will allow your application to register for and receive Mixpanel push notifications.

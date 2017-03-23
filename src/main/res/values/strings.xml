@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="com_mixpanel_android_next">Next question</string>
-    <string name="com_mixpanel_android_previous">Previous question</string>
     <string name="com_mixpanel_android_logo">By Mixpanel</string>
     <string name="com_mixpanel_android_exit">Exit</string>
     <string name="com_mixpanel_android_close">Close</string>
     <string name="com_mixpanel_android_done">Done</string>
     <string name="com_mixpanel_android_notification_image">Image not displayed</string>
-    <string name="com_mixpanel_android_survey_prompt_dialog_title">We\'d love your feedback!</string>
-    <string name="com_mixpanel_android_survey_prompt_dialog_message">Mind taking a quick survey?</string>
-    <string name="com_mixpanel_android_sure">Sure</string>
-    <string name="com_mixpanel_android_no_thanks">No, Thanks</string>
 </resources>
