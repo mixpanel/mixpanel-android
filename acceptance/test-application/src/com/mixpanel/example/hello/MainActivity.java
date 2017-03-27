@@ -159,8 +159,7 @@ public class MainActivity extends Activity {
 
         // If you have notifications and you have set AutoShowMixpanelUpdates set to false,
         // the onResume function is a good place to call the functions to display
-        // in app notifications. It is safe to call both these methods right after each other,
-        // since they do nothing if a survey is already showing.
+        // in app notifications. It is safe to call both these methods right after each other.
         mMixpanel.getPeople().showNotificationIfAvailable(this);
         OnMixpanelUpdatesReceivedListener listener = new OnMixpanelUpdatesReceivedListener() {
             @Override

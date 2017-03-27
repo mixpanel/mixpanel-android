@@ -179,7 +179,7 @@ import java.util.Set;
 
     public static boolean checkTakeoverInAppActivityAvailable(Context context) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-            // No need to log, SurveyActivity doesn't work on this platform.
+            // No need to log, TakeoverInAppActivity doesn't work on this platform.
             return false;
         }
 
@@ -191,7 +191,7 @@ import java.util.Set;
         final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(takeoverInAppIntent, 0);
         if (intentActivities.size() == 0) {
             MPLog.w(LOGTAG, TakeoverInAppActivity.class.getName() + " is not registered as an activity in your application, so takeover in-apps can't be shown.");
-            MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.surveys.TakeoverInAppActivity\" /> to your <application> tag.");
+            MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.takeoverinapp.TakeoverInAppActivity\" /> to your <application> tag.");
             return false;
         }
 
