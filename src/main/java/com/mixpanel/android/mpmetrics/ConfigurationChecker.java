@@ -9,6 +9,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
 
+import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
 import com.mixpanel.android.util.MPLog;
 
 import java.util.HashSet;
@@ -174,6 +175,27 @@ import java.util.Set;
         }
 
         return canRegisterWithPlayServices || canRegisterWithRegistrationIntent;
+    }
+
+    public static boolean checkTakeoverInAppActivityAvailable(Context context) {
+        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
+            // No need to log, SurveyActivity doesn't work on this platform.
+            return false;
+        }
+
+        final Intent takeoverInAppIntent = new Intent(context, TakeoverInAppActivity.class);
+        takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+        final PackageManager packageManager = context.getPackageManager();
+        final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(takeoverInAppIntent, 0);
+        if (intentActivities.size() == 0) {
+            MPLog.w(LOGTAG, TakeoverInAppActivity.class.getName() + " is not registered as an activity in your application, so takeover in-apps can't be shown.");
+            MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.surveys.TakeoverInAppActivity\" /> to your <application> tag.");
+            return false;
+        }
+
+        return true;
     }
 
     private static String samplePushConfigurationMessage(String packageName) {
