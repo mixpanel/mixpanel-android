@@ -1,4 +1,4 @@
-package com.mixpanel.android.surveys;
+package com.mixpanel.android.takeoverinapp;
 
 import android.content.Context;
 import android.graphics.Canvas;

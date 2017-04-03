@@ -33,14 +33,11 @@ import javax.net.ssl.SSLSocketFactory;
 
     /* package */ static class Result {
         public Result() {
-            surveys = new ArrayList<>();
             notifications = new ArrayList<>();
             eventBindings = EMPTY_JSON_ARRAY;
             variants = EMPTY_JSON_ARRAY;
         }
 
-        @Deprecated
-        public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
         public JSONArray variants;
@@ -69,7 +66,7 @@ import javax.net.ssl.SSLSocketFactory;
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
-                updates.reportResults(result.surveys, result.notifications, result.eventBindings, result.variants);
+                updates.reportResults(result.notifications, result.eventBindings, result.variants);
             } catch (final UnintelligibleMessageException e) {
                 MPLog.e(LOGTAG, e.getMessage(), e);
             }
@@ -121,29 +118,6 @@ import javax.net.ssl.SSLSocketFactory;
         } catch (final JSONException e) {
             final String message = "Mixpanel endpoint returned unparsable result:\n" + responseString;
             throw new UnintelligibleMessageException(message, e);
-        }
-
-        JSONArray surveys = null;
-        if (response.has("surveys")) {
-            try {
-                surveys = response.getJSONArray("surveys");
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for surveys: " + response);
-            }
-        }
-
-        if (null != surveys) {
-            for (int i = 0; i < surveys.length(); i++) {
-                try {
-                    final JSONObject surveyJson = surveys.getJSONObject(i);
-                    final Survey survey = new Survey(surveyJson);
-                    ret.surveys.add(survey);
-                } catch (final JSONException e) {
-                    MPLog.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                } catch (final BadDecideObjectException e) {
-                    MPLog.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                }
-            }
         }
 
         JSONArray notifications = null;

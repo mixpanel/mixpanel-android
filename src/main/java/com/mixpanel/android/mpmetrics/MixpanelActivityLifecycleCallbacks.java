@@ -50,7 +50,6 @@ import org.json.JSONObject;
             }
 
             mMpInstance.getPeople().showNotificationIfAvailable(activity);
-            mMpInstance.getPeople().showSurveyIfAvailable(activity);
         }
         new GestureTracker(mMpInstance, activity);
     }

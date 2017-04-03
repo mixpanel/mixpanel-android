@@ -1,8 +1,7 @@
-package com.mixpanel.android.surveys;
+package com.mixpanel.android.takeoverinapp;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Build;
 import android.util.AttributeSet;
@@ -14,7 +13,7 @@ import android.widget.ImageView;
  *
  * Users of the library should not instantiate this class directly.
  */
-public class MiniCircleImageView extends ImageView { // TODO move to surveys package
+public class MiniCircleImageView extends ImageView {
     public MiniCircleImageView(Context context) {
         super(context);
         init();
