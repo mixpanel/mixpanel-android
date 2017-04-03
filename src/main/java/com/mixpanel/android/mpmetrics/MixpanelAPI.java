@@ -1823,7 +1823,7 @@ public class MixpanelAPI {
                         }
 
                         final InAppNotification.Type inAppType = toShow.getType();
-                        if (inAppType == InAppNotification.Type.TAKEOVER  && ! ConfigurationChecker.checkTakeoverInAppActivityAvailable(parent.getApplicationContext())) {
+                        if (inAppType == InAppNotification.Type.TAKEOVER && !ConfigurationChecker.checkTakeoverInAppActivityAvailable(parent.getApplicationContext())) {
                             MPLog.v(LOGTAG, "Application is not configured to show takeover notifications, none will be shown.");
                             return; // Can't show due to config.
                         }

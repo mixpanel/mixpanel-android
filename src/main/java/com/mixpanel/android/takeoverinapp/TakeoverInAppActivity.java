@@ -59,11 +59,7 @@ public class TakeoverInAppActivity extends Activity {
         }
         mMixpanel = MixpanelAPI.getInstance(TakeoverInAppActivity.this, mUpdateDisplayState.getToken());
 
-        if (isShowingInApp()) {
-            onCreateInAppNotification();
-        } else {
-            finish();
-        }
+        onCreateInAppNotification();
     }
 
     private void onCreateInAppNotification() {
@@ -231,19 +227,8 @@ public class TakeoverInAppActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (isShowingInApp()) {
-            UpdateDisplayState.releaseDisplayState(mIntentId);
-        }
+        UpdateDisplayState.releaseDisplayState(mIntentId);
         super.onBackPressed();
-    }
-
-    private boolean isShowingInApp() {
-        if (null == mUpdateDisplayState) {
-            return false;
-        }
-        return UpdateDisplayState.DisplayState.InAppNotificationState.TYPE.equals(
-                mUpdateDisplayState.getDisplayState().getType()
-        );
     }
 
     private MixpanelAPI mMixpanel;
