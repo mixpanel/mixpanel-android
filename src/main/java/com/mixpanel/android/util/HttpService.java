@@ -62,7 +62,7 @@ public class HttpService implements RemoteService {
             final ConnectivityManager cm =
                     (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             final NetworkInfo netInfo = cm.getActiveNetworkInfo();
-            if(netInfo == null) {
+            if (netInfo == null) {
                 isOnline = true;
                 MPLog.v(LOGTAG, "A default network has not been set so we cannot be certain whether we are offline");
             } else {
