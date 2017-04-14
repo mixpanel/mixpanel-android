@@ -62,8 +62,13 @@ public class HttpService implements RemoteService {
             final ConnectivityManager cm =
                     (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             final NetworkInfo netInfo = cm.getActiveNetworkInfo();
-            isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-            MPLog.v(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+            if (netInfo == null) {
+                isOnline = true;
+                MPLog.v(LOGTAG, "A default network has not been set so we cannot be certain whether we are offline");
+            } else {
+                isOnline = netInfo.isConnectedOrConnecting();
+                MPLog.v(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+            }
         } catch (final SecurityException e) {
             isOnline = true;
             MPLog.v(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
