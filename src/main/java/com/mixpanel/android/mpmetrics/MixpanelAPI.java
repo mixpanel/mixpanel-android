@@ -41,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -1922,34 +1923,28 @@ public class MixpanelAPI {
 
         @Override
         public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            synchronized (mListeners) {
-                mListeners.add(listener);
+            mListeners.add(listener);
 
-                if (mDecideMessages.hasUpdatesAvailable()) {
-                    onNewResults();
-                }
+            if (mDecideMessages.hasUpdatesAvailable()) {
+                onNewResults();
             }
         }
 
         @Override
         public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
-            synchronized (mListeners) {
-                mListeners.remove(listener);
-            }
+            mListeners.remove(listener);
         }
 
         @Override
         public void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
-            synchronized (mListeners) {
-                for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
-                    listener.onMixpanelUpdatesReceived();
-                }
+            for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
+                listener.onMixpanelUpdatesReceived();
             }
         }
 
-        private final Set<OnMixpanelUpdatesReceivedListener> mListeners = new HashSet<OnMixpanelUpdatesReceivedListener>();
+        private final Set<OnMixpanelUpdatesReceivedListener> mListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelUpdatesReceivedListener, Boolean>());
         private final Executor mExecutor = Executors.newSingleThreadExecutor();
     }
 
