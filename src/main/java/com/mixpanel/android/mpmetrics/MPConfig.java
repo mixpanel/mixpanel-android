@@ -269,8 +269,8 @@ public class MPConfig {
                 "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableViewCrawler " + getDisableViewCrawler() + "\n" +
-                "    DisableDeviceUIBinding " + getDisableGestureBindingUI() + "\n" +
-                "    DisableEmulatorUIBinding " + getDisableEmulatorBindingUI() + "\n" +
+                "    DisableGestureBindingUI " + getDisableGestureBindingUI() + "\n" +
+                "    DisableEmulatorBindingUI " + getDisableEmulatorBindingUI() + "\n" +
                 "    EnableDebugLogging " + DEBUG + "\n" +
                 "    TestMode " + getTestMode() + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
