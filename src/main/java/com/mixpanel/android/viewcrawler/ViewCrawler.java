@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -67,7 +68,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         mTweaks = tweaks;
         mDeviceInfo = mixpanel.getDeviceInfo();
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
-        mTweaksUpdatedListeners = new ArrayList<>();
+        mTweaksUpdatedListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelTweaksUpdatedListener, Boolean>());
 
         final Application app = (Application) context.getApplicationContext();
         app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
@@ -1120,8 +1121,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final ViewCrawlerHandler mMessageThreadHandler;
     private final float mScaledDensity;
 
-    private final List<OnMixpanelTweaksUpdatedListener> mTweaksUpdatedListeners;
-
+    private final Set<OnMixpanelTweaksUpdatedListener> mTweaksUpdatedListeners;
+    
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
