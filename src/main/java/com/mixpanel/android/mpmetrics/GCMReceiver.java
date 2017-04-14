@@ -308,7 +308,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -328,7 +329,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -349,7 +351,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -369,7 +372,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.whiteIcon != NotificationData.NOT_SET) {
             builder.setSmallIcon(notificationData.whiteIcon);
