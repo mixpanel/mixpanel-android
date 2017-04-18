@@ -13,7 +13,7 @@ Check out our **[official documentation](https://mixpanel.com/help/reference/and
 **TLDR;**
 
 `
-compile "com.mixpanel.android:mixpanel-android:4.+" 
+compile "com.mixpanel.android:mixpanel-android:5.+" 
 `
 
 ```java
