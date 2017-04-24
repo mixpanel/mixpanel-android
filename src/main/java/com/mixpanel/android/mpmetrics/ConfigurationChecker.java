@@ -184,6 +184,7 @@ import java.util.Set;
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
                 // No need to log, TakeoverInAppActivity doesn't work on this platform.
                 mTakeoverActivityAvailable = false;
+                return mTakeoverActivityAvailable;
             }
 
             final Intent takeoverInAppIntent = new Intent(context, TakeoverInAppActivity.class);
@@ -196,6 +197,7 @@ import java.util.Set;
                 MPLog.w(LOGTAG, TakeoverInAppActivity.class.getName() + " is not registered as an activity in your application, so takeover in-apps can't be shown.");
                 MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.takeoverinapp.TakeoverInAppActivity\" /> to your <application> tag.");
                 mTakeoverActivityAvailable = false;
+                return mTakeoverActivityAvailable;
             }
 
             mTakeoverActivityAvailable = true;
