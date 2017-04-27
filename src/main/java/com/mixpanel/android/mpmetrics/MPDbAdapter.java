@@ -106,7 +106,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.v(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
 
             if (newVersion == 5) {
-                migrateTableTo5(db);
+                migrateTableFrom4To5(db);
             } else {
                 db.execSQL("DROP TABLE IF EXISTS " + Table.EVENTS.getName());
                 db.execSQL("DROP TABLE IF EXISTS " + Table.PEOPLE.getName());
@@ -124,7 +124,7 @@ import com.mixpanel.android.util.MPLog;
             return true;
         }
 
-        private void migrateTableTo5(SQLiteDatabase db) {
+        private void migrateTableFrom4To5(SQLiteDatabase db) {
             db.execSQL("ALTER TABLE " + Table.EVENTS.getName() + " ADD COLUMN " + KEY_AUTOMATIC_DATA + " INTEGER DEFAULT 0");
             db.execSQL("ALTER TABLE " + Table.PEOPLE.getName() + " ADD COLUMN " + KEY_AUTOMATIC_DATA + " INTEGER DEFAULT 0");
             db.execSQL("ALTER TABLE " + Table.EVENTS.getName() + " ADD COLUMN " + KEY_TOKEN + " STRING NOT NULL DEFAULT ''");
@@ -215,7 +215,7 @@ import com.mixpanel.android.util.MPLog;
             cv.put(KEY_TOKEN, token);
             db.insert(tableName, null, cv);
 
-            c = db.rawQuery("SELECT COUNT(*) FROM " + tableName, null);
+            c = db.rawQuery("SELECT COUNT(*) FROM " + tableName + " WHERE token='" + token + "'", null);
             c.moveToFirst();
             count = c.getInt(0);
         } catch (final SQLiteException e) {

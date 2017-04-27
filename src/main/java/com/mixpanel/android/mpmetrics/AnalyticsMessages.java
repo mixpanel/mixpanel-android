@@ -317,7 +317,7 @@ import javax.net.ssl.SSLSocketFactory;
 
                     ///////////////////////////
                     if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) && mFailedRetries <= 0 && token != null) {
-                        logAboutMessageToMixpanel("Flushing queue due to bulk upload limit");
+                        logAboutMessageToMixpanel("Flushing queue due to bulk upload limit (" + returnCode + ") for project " + token);
                         updateFlushFrequency();
                         sendAllData(mDbAdapter, token);
                         if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
