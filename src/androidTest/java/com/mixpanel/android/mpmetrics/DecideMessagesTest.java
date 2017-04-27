@@ -58,7 +58,7 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
         };
 
-        mDecideMessages = new DecideMessages("TEST TOKEN", mMockListener, mMockUpdates);
+        mDecideMessages = new DecideMessages(getContext(), "TEST TOKEN", mMockListener, mMockUpdates);
         mSomeNotifications = new ArrayList<>();
 
         JSONObject notifsDesc1 = new JSONObject(
@@ -76,7 +76,7 @@ public class DecideMessagesTest extends AndroidTestCase {
     }
 
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
@@ -90,7 +90,7 @@ public class DecideMessagesTest extends AndroidTestCase {
 
         assertNull(mDecideMessages.getNotification(false));
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         assertNull(mDecideMessages.getNotification(false));
 
@@ -100,7 +100,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification unseenNotification = new MiniInAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         assertEquals(mDecideMessages.getNotification(false), unseenNotification);
 
@@ -111,7 +111,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         final InAppNotification n1 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
@@ -125,12 +125,12 @@ public class DecideMessagesTest extends AndroidTestCase {
 
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -141,7 +141,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(newNotifications, mSomeBindings, mSomeVariants);
+        mDecideMessages.reportResults(newNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }
@@ -153,4 +153,5 @@ public class DecideMessagesTest extends AndroidTestCase {
     private JSONArray mSomeBindings;
     private JSONArray mSomeVariants;
     private List<InAppNotification> mSomeNotifications;
+    private boolean mIsAutomaticEventsEnabled;
 }

@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
@@ -259,7 +258,7 @@ public class MixpanelAPI {
                 messageProps.put("distinct_id", token);
 
                 final AnalyticsMessages.EventDescription eventDescription =
-                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17");
+                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
                 mMessages.eventsMessage(eventDescription);
                 flush();
                 mPersistentIdentity.setTrackedIntegration(true);
@@ -483,56 +482,7 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
-        final Long eventBegin;
-        synchronized (mEventTimings) {
-            eventBegin = mEventTimings.get(eventName);
-            mEventTimings.remove(eventName);
-            mPersistentIdentity.removeTimeEvent(eventName);
-        }
-
-        try {
-            final JSONObject messageProps = new JSONObject();
-
-            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
-                final String key = entry.getKey();
-                final String value = entry.getValue();
-                messageProps.put(key, value);
-            }
-
-            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
-
-            // Don't allow super properties or referral properties to override these fields,
-            // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final long timeSeconds = (long) timeSecondsDouble;
-            messageProps.put("time", timeSeconds);
-            messageProps.put("distinct_id", getDistinctId());
-
-            if (null != eventBegin) {
-                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
-                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
-                messageProps.put("$duration", secondsElapsed);
-            }
-
-            if (null != properties) {
-                final Iterator<?> propIter = properties.keys();
-                while (propIter.hasNext()) {
-                    final String key = (String) propIter.next();
-                    messageProps.put(key, properties.get(key));
-                }
-            }
-
-            final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
-            mMessages.eventsMessage(eventDescription);
-
-            if (null != mTrackingDebug) {
-                mTrackingDebug.reportTrack(eventName);
-            }
-        } catch (final JSONException e) {
-            MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
-        }
+        track(eventName, properties, false);
     }
 
     /**
@@ -556,7 +506,7 @@ public class MixpanelAPI {
      * your main application activity.
      */
     public void flush() {
-        mMessages.postToServer();
+        mMessages.postToServer(mToken);
     }
 
     /**
@@ -1356,7 +1306,7 @@ public class MixpanelAPI {
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-        return new DecideMessages(token, listener, updatesFromMixpanel);
+        return new DecideMessages(mContext, token, listener, updatesFromMixpanel);
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {
@@ -1988,9 +1938,66 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
+    private void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
+        if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {
+            return;
+        }
+
+        final Long eventBegin;
+        synchronized (mEventTimings) {
+            eventBegin = mEventTimings.get(eventName);
+            mEventTimings.remove(eventName);
+            mPersistentIdentity.removeTimeEvent(eventName);
+        }
+
+        try {
+            final JSONObject messageProps = new JSONObject();
+
+            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
+            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
+                final String key = entry.getKey();
+                final String value = entry.getValue();
+                messageProps.put(key, value);
+            }
+
+            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
+
+            // Don't allow super properties or referral properties to override these fields,
+            // but DO allow the caller to override them in their given properties.
+            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
+            final long timeSeconds = (long) timeSecondsDouble;
+            messageProps.put("time", timeSeconds);
+            messageProps.put("distinct_id", getDistinctId());
+
+            if (null != eventBegin) {
+                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+                messageProps.put("$duration", secondsElapsed);
+            }
+
+            if (null != properties) {
+                final Iterator<?> propIter = properties.keys();
+                while (propIter.hasNext()) {
+                    final String key = (String) propIter.next();
+                    messageProps.put(key, properties.get(key));
+                }
+            }
+
+            final AnalyticsMessages.EventDescription eventDescription =
+                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
+            mMessages.eventsMessage(eventDescription);
+
+            if (null != mTrackingDebug) {
+                mTrackingDebug.reportTrack(eventName);
+            }
+        } catch (final JSONException e) {
+            MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
+        }
+    }
+
     private void recordPeopleMessage(JSONObject message) {
         if (message.has("$distinct_id")) {
-           mMessages.peopleMessage(message);
+           mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
         } else {
            mPersistentIdentity.storeWaitingPeopleRecord(message);
         }
@@ -2009,7 +2016,7 @@ public class MixpanelAPI {
         for (int i = 0; i < records.length(); i++) {
             try {
                 final JSONObject message = records.getJSONObject(i);
-                mMessages.peopleMessage(message);
+                mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
             } catch (final JSONException e) {
                 MPLog.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
             }

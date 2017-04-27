@@ -83,25 +83,25 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject after = new JSONObject(afterMap);
 
         MPDbAdapter adapter = new MPDbAdapter(getContext(), "DeleteTestDB");
-        adapter.addJSON(before, MPDbAdapter.Table.EVENTS);
-        adapter.addJSON(before, MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
         adapter.deleteDB();
 
-        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
+        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
         assertEquals(emptyEventsData, null);
-        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
+        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
         assertEquals(emptyPeopleData, null);
 
-        adapter.addJSON(after, MPDbAdapter.Table.EVENTS);
-        adapter.addJSON(after, MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
 
         try {
-            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
+            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
             JSONArray someEvents = new JSONArray(someEventsData[1]);
             assertEquals(someEvents.length(), 1);
             assertEquals(someEvents.getJSONObject(0).get("added"), "after");
 
-            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
+            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
             JSONArray somePeople = new JSONArray(somePeopleData[1]);
             assertEquals(somePeople.length(), 1);
             assertEquals(somePeople.getJSONObject(0).get("added"), "after");
@@ -116,7 +116,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                 messages.add(message);
                 throw new RuntimeException("BANG!");
             }
@@ -160,7 +160,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                 messages.add(message);
                 return 1;
             }
@@ -259,11 +259,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testPeopleOperations() throws JSONException {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -294,50 +294,50 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.getPeople().clearCharges();
         mixpanel.getPeople().deleteUser();
 
-        JSONObject setMessage = messages.get(0).getJSONObject("$set");
+        JSONObject setMessage = messages.get(0).getMessage().getJSONObject("$set");
         assertEquals("SET VALUE", setMessage.getString("SET NAME"));
 
-        JSONObject setMapMessage = messages.get(1).getJSONObject("$set");
+        JSONObject setMapMessage = messages.get(1).getMessage().getJSONObject("$set");
         assertEquals(mapObj1.get("SET MAP INT"), setMapMessage.getInt("SET MAP INT"));
 
-        JSONObject addMessage = messages.get(2).getJSONObject("$add");
+        JSONObject addMessage = messages.get(2).getMessage().getJSONObject("$add");
         assertEquals(1, addMessage.getInt("INCREMENT NAME"));
 
-        JSONObject appendMessage = messages.get(3).getJSONObject("$append");
+        JSONObject appendMessage = messages.get(3).getMessage().getJSONObject("$append");
         assertEquals("APPEND VALUE", appendMessage.get("APPEND NAME"));
 
-        JSONObject setOnceMessage = messages.get(4).getJSONObject("$set_once");
+        JSONObject setOnceMessage = messages.get(4).getMessage().getJSONObject("$set_once");
         assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
 
-        JSONObject setOnceMapMessage = messages.get(5).getJSONObject("$set_once");
+        JSONObject setOnceMapMessage = messages.get(5).getMessage().getJSONObject("$set_once");
         assertEquals(mapObj2.get("SET ONCE MAP STR"), setOnceMapMessage.getString("SET ONCE MAP STR"));
 
-        JSONObject unionMessage = messages.get(6).getJSONObject("$union");
+        JSONObject unionMessage = messages.get(6).getMessage().getJSONObject("$union");
         JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
         assertEquals(1, unionValues.length());
         assertEquals(100, unionValues.getInt(0));
 
-        JSONArray unsetMessage = messages.get(7).getJSONArray("$unset");
+        JSONArray unsetMessage = messages.get(7).getMessage().getJSONArray("$unset");
         assertEquals(1, unsetMessage.length());
         assertEquals("UNSET NAME", unsetMessage.get(0));
 
-        JSONObject trackChargeMessage = messages.get(8).getJSONObject("$append");
+        JSONObject trackChargeMessage = messages.get(8).getMessage().getJSONObject("$append");
         JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
         assertEquals(100.0d, transaction.getDouble("$amount"));
 
-        JSONArray clearChargesMessage = messages.get(9).getJSONArray("$unset");
+        JSONArray clearChargesMessage = messages.get(9).getMessage().getJSONArray("$unset");
         assertEquals(1, clearChargesMessage.length());
         assertEquals("$transactions", clearChargesMessage.getString(0));
 
-        assertTrue(messages.get(10).has("$delete"));
+        assertTrue(messages.get(10).getMessage().has("$delete"));
     }
 
     public void testIdentifyAfterSet() {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -361,16 +361,16 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         assertEquals(messages.size(), 7);
         try {
-            for (JSONObject message: messages) {
-                String distinctId = message.getString("$distinct_id");
+            for (AnalyticsMessages.PeopleDescription message: messages) {
+                String distinctId = message.getMessage().getString("$distinct_id");
                 assertEquals(distinctId, "Personal Identity");
             }
 
-            assertTrue(messages.get(0).has("$add"));
-            assertTrue(messages.get(1).has("$append"));
-            assertTrue(messages.get(2).has("$set"));
-            assertTrue(messages.get(3).has("$add"));
-            assertTrue(messages.get(4).has("$add"));
+            assertTrue(messages.get(0).getMessage().has("$add"));
+            assertTrue(messages.get(1).getMessage().has("$append"));
+            assertTrue(messages.get(2).getMessage().has("$set"));
+            assertTrue(messages.get(3).getMessage().has("$add"));
+            assertTrue(messages.get(4).getMessage().has("$add"));
         } catch (JSONException e) {
             fail("Unexpected JSON error in stored messages.");
         }
@@ -407,7 +407,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
                 try {
                     messages.put("TABLE " + table.getName());
                     messages.put(message.toString());
@@ -415,7 +415,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     throw new RuntimeException(e);
                 }
 
-                return super.addJSON(message, table);
+                return super.addJSON(message, token, table, isAutomaticEvent);
             }
         };
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
@@ -586,7 +586,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testTrackCharge() {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
@@ -594,7 +594,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -623,7 +623,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         api.getPeople().trackCharge(2.13, props);
         assertEquals(messages.size(), 1);
 
-        JSONObject message = messages.get(0);
+        JSONObject message = messages.get(0).getMessage();
 
         try {
             JSONObject append = message.getJSONObject("$append");
@@ -663,7 +663,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -716,7 +716,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(3, messages.size());
 
         eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
-        JSONObject peopleMessage = (JSONObject) messages.get(2);
+        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(2)).getMessage();
 
         try {
             JSONObject eventProps = eventMessage.getProperties();
@@ -752,7 +752,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
                 final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
                     @Override
-                    public int addJSON(JSONObject message, MPDbAdapter.Table table) {
+                    public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                         mMessages.add(message);
                         return 1;
                     }
