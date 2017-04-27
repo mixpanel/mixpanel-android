@@ -261,6 +261,9 @@ public class MixpanelAPI {
                         new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
                 mMessages.eventsMessage(eventDescription);
                 flush();
+
+                track(AutomaticEvents.FIRST_OPEN, null, true);
+
                 mPersistentIdentity.setTrackedIntegration(true);
             } catch (JSONException e) {
             }
