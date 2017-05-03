@@ -404,6 +404,10 @@ import com.mixpanel.android.util.MPLog;
         return null;
     }
 
+    public File getDatabaseFile() {
+        return mDb.mDatabaseFile;
+    }
+
     /* For testing use only, do not call from in production code */
     protected boolean belowMemThreshold() {
         return mDb.belowMemThreshold();

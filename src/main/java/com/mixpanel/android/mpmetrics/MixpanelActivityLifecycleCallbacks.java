@@ -13,17 +13,23 @@ import com.mixpanel.android.viewcrawler.GestureTracker;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.DecimalFormat;
+
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
     private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable check;
     private boolean mIsForeground = true;
     private boolean mPaused = true;
+    private static Double sStartSessionTime;
     public static final int CHECK_DELAY = 500;
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance, MPConfig config) {
         mMpInstance = mpInstance;
         mConfig = config;
+        if (sStartSessionTime == null) {
+            sStartSessionTime = (double) System.currentTimeMillis();
+        }
     }
 
     @Override
@@ -58,7 +64,7 @@ import org.json.JSONObject;
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) { }
 
     @Override
-    public void onActivityPaused(Activity activity) {
+    public void onActivityPaused(final Activity activity) {
         mPaused = true;
 
         if (check != null) {
@@ -70,6 +76,20 @@ import org.json.JSONObject;
             public void run() {
                 if (mIsForeground && mPaused) {
                     mIsForeground = false;
+                    try {
+                        double sessionLength = System.currentTimeMillis() - sStartSessionTime;
+                        if (sessionLength >= MPConfig.getInstance(activity.getApplicationContext()).getMinimumSessionDuration() && sessionLength < MPConfig.getInstance(activity.getApplicationContext()).getSessionTimeoutDuration()) {
+                            DecimalFormat df = new DecimalFormat("#.0");
+                            String sessionLengthString = df.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
+                            JSONObject sessionProperties = new JSONObject();
+                            sessionProperties.put(AutomaticEvents.SESSION_LENGTH, sessionLengthString);
+                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
+                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, Double.valueOf(sessionLengthString));
+                            mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                     mMpInstance.flush();
                 }
             }
@@ -98,6 +118,7 @@ import org.json.JSONObject;
 
         if (wasBackground) {
             // App is in foreground now
+            sStartSessionTime = (double) System.currentTimeMillis();
         }
     }
 

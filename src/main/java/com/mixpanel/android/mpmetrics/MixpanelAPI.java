@@ -14,6 +14,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
@@ -27,6 +28,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
@@ -237,7 +239,19 @@ public class MixpanelAPI {
             decideId = mPersistentIdentity.getEventsDistinctId();
         }
         mDecideMessages.setDistinctId(decideId);
+
         mMessages = getAnalyticsMessages();
+
+        if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
+            track(AutomaticEvents.FIRST_OPEN, null, true);
+            TimeZone tz = TimeZone.getTimeZone("UTC");
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+            df.setTimeZone(tz);
+            String firstOpenDate = df.format(new Date());
+            getPeople().setOnce(AutomaticEvents.FIRST_OPEN_DATE, firstOpenDate);
+
+            mPersistentIdentity.setHasLaunched();
+        }
 
         if (!mConfig.getDisableDecideChecker()) {
             mMessages.installDecideCheck(mDecideMessages);
@@ -249,7 +263,7 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
-        if (!mPersistentIdentity.hasTrackedIntegration()) {
+        if (!mPersistentIdentity.isFirstIntegration(mToken)) {
             try {
                 final JSONObject messageProps = new JSONObject();
 
@@ -260,13 +274,15 @@ public class MixpanelAPI {
                 final AnalyticsMessages.EventDescription eventDescription =
                         new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
                 mMessages.eventsMessage(eventDescription);
-                flush();
+                mMessages.postToServer("85053bf24bba75239b16a601d9387e17");
 
-                track(AutomaticEvents.FIRST_OPEN, null, true);
-
-                mPersistentIdentity.setTrackedIntegration(true);
+                mPersistentIdentity.setIsIntegrated(mToken);
             } catch (JSONException e) {
             }
+        }
+
+        if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code"))) {
+            track(AutomaticEvents.APP_UPDATED, null, true);
         }
 
         mUpdatesFromMixpanel.startUpdates();
@@ -1305,7 +1321,10 @@ public class MixpanelAPI {
         final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
         final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
 
-        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs);
+        final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+        final Future<SharedPreferences> mixpanelPrefs = sPrefsLoader.loadPreferences(context, mixpanelPrefsName, null);
+
+        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
@@ -1941,7 +1960,7 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
 
-    private void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
+    protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
         if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {
             return;
         }
