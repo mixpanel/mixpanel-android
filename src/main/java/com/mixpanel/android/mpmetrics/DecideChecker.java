@@ -77,10 +77,9 @@ import javax.net.ssl.SSLSocketFactory;
         mChecks.put(check.getToken(), check);
     }
 
-    public void runDecideChecks(final RemoteService poster) throws RemoteService.ServiceUnavailableException {
-        final Iterator<DecideMessages> itr = mChecks.values().iterator();
-        while (itr.hasNext()) {
-            final DecideMessages updates = itr.next();
+    public void runDecideCheck(final String token, final RemoteService poster) throws RemoteService.ServiceUnavailableException {
+        DecideMessages updates = mChecks.get(token);
+        if (updates != null) {
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);

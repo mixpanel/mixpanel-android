@@ -39,7 +39,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes("{}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
@@ -47,7 +47,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.bindingsSeen.clear();
 
         mPoster.response = bytes("{\"notifications\":[]}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
@@ -59,21 +59,21 @@ public class DecideCheckerTest extends AndroidTestCase {
 
         // Corrupted or crazy responses.
         mPoster.response = bytes("{ WONT PARSE");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {}); // No updates at all on parsing failure
         mEventBinder.bindingsSeen.clear();
 
         // Just pure (but legal) JSON craziness
         mPoster.response = bytes("null");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{});
         mEventBinder.bindingsSeen.clear();
 
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
                 new JSONArray()
@@ -87,7 +87,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster.response = null;
         mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertEquals(2, mPoster.requestedUrls.size());
     }
 
@@ -97,7 +97,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster.response =  null;
         mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertEquals(1, mPoster.requestedUrls.size());
     }
 

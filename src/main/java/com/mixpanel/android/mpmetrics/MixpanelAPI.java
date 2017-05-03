@@ -274,7 +274,7 @@ public class MixpanelAPI {
                 final AnalyticsMessages.EventDescription eventDescription =
                         new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
                 mMessages.eventsMessage(eventDescription);
-                mMessages.postToServer("85053bf24bba75239b16a601d9387e17");
+                mMessages.postToServer(new AnalyticsMessages.FlushDescription("85053bf24bba75239b16a601d9387e17", false));
 
                 mPersistentIdentity.setIsIntegrated(mToken);
             } catch (JSONException e) {
@@ -286,6 +286,8 @@ public class MixpanelAPI {
         }
 
         mUpdatesFromMixpanel.startUpdates();
+
+        ExceptionHandler.init();
     }
 
     /**
@@ -525,7 +527,7 @@ public class MixpanelAPI {
      * your main application activity.
      */
     public void flush() {
-        mMessages.postToServer(mToken);
+        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken));
     }
 
     /**
@@ -1959,6 +1961,9 @@ public class MixpanelAPI {
     }
 
     ////////////////////////////////////////////////////
+    protected void flushNoDecideCheck() {
+        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken, false));
+    }
 
     protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
         if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {

@@ -188,6 +188,9 @@ public class MPConfig {
         mSSLSocketFactory = foundSSLFactory;
 
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
+        if (DEBUG) {
+            MPLog.setLevel(MPLog.VERBOSE);
+        }
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.DebugFlushInterval")) {
             MPLog.w(LOGTAG, "We do not support com.mixpanel.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");

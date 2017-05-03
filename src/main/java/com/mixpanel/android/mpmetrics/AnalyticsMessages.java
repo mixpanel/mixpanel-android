@@ -90,10 +90,11 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
-    public void postToServer(String token) {
+    public void postToServer(final FlushDescription flushDescription) {
         final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
-        m.obj = token;
+        m.obj = flushDescription.getToken();
+        m.arg1 = flushDescription.shouldCheckDecide() ? 1 : 0;
 
         mWorker.runMessage(m);
     }
@@ -190,6 +191,28 @@ import javax.net.ssl.SSLSocketFactory;
         private final String token;
     }
 
+    static class FlushDescription {
+        public FlushDescription(String token) {
+            this(token, true);
+        }
+
+        protected FlushDescription(String token, boolean checkDecide) {
+            this.token = token;
+            this.checkDecide = checkDecide;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        public boolean shouldCheckDecide() {
+            return checkDecide;
+        }
+
+        private final String token;
+        private final boolean checkDecide;
+    }
+
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
@@ -282,10 +305,11 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
                         token = (String) msg.obj;
+                        boolean shouldCheckDecide = msg.arg1 == 1 ? true : false;
                         sendAllData(mDbAdapter, token);
-                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
+                        if (shouldCheckDecide && SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
-                                mDecideChecker.runDecideChecks(getPoster());
+                                mDecideChecker.runDecideCheck(token, getPoster());
                             } catch (RemoteService.ServiceUnavailableException e) {
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
@@ -296,7 +320,7 @@ import javax.net.ssl.SSLSocketFactory;
                         mDecideChecker.addDecideCheck(check);
                         if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
-                                mDecideChecker.runDecideChecks(getPoster());
+                                mDecideChecker.runDecideCheck(check.getToken(), getPoster());
                             } catch (RemoteService.ServiceUnavailableException e) {
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
@@ -322,7 +346,7 @@ import javax.net.ssl.SSLSocketFactory;
                         sendAllData(mDbAdapter, token);
                         if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
-                                mDecideChecker.runDecideChecks(getPoster());
+                                mDecideChecker.runDecideCheck(token, getPoster());
                             } catch (RemoteService.ServiceUnavailableException e) {
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
@@ -339,6 +363,7 @@ import javax.net.ssl.SSLSocketFactory;
                             final Message flushMessage = Message.obtain();
                             flushMessage.what = FLUSH_QUEUE;
                             flushMessage.obj = token;
+                            flushMessage.arg1 = 1;
                             sendMessageDelayed(flushMessage, mFlushInterval);
                         }
                     }

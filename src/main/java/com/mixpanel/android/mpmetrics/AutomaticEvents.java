@@ -9,4 +9,5 @@ package com.mixpanel.android.mpmetrics;
     public static final String TOTAL_SESSIONS = "Total App Sessions";
     public static final String TOTAL_SESSIONS_LENGTH = "Total App Sessions Length";
     public static final String APP_UPDATED = "App Updated";
+    public static final String APP_CRASHED = "App Crashed";
 }

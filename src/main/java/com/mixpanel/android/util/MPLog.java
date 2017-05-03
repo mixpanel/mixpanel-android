@@ -13,7 +13,7 @@ public class MPLog {
     public static final int ERROR = 6;
     public static final int NONE = Integer.MAX_VALUE;
 
-    private static int sMinLevel = MPConfig.DEBUG ? VERBOSE : WARN;
+    private static int sMinLevel = WARN;
 
     public static void setLevel(int minLevel) {
         sMinLevel = minLevel;
