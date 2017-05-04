@@ -122,16 +122,46 @@ public class Tweaks {
      * and will likely not be directly useful to code that imports the Mixpanel library.
      */
     public static class TweakValue {
-        private TweakValue(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax, Object value) {
+        private TweakValue(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax, Object value, String aName) {
             type = aType;
-            defaultValue = aDefaultValue;
+            name = aName;
             minimum = aMin;
             maximum = aMax;
+            if(minimum != null && maximum != null) {
+                try {
+                    if (((Number) aDefaultValue).longValue() < minimum.longValue()) {
+                        MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with default value " + aDefaultValue + " which is below the minimum. " +
+                                "Tweak \"" + name + "\" will be set to the minimum value " + minimum + ".");
+                        aDefaultValue = minimum;
+                    } else if (((Number) aDefaultValue).longValue() > maximum.longValue()) {
+                        MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with default value " + aDefaultValue + " which is above the maximum. " +
+                                "Tweak \"" + name + "\" will be set to the maximum value " + maximum + ".");
+                        aDefaultValue = maximum;
+                    }
+                } catch(ClassCastException e) {
+                    ; // ok
+                }
+                try {
+                    if (((Number) value).longValue() < minimum.longValue()) {
+                        MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with value " + value + " which is below the minimum. " +
+                                "Tweak \"" + name + "\" will be set to the minimum value " + minimum);
+                        value = minimum;
+                    } else if (((Number) value).longValue() > maximum.longValue()) {
+                        MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with value " + value + " which is above the maximum. " +
+                                "Tweak \"" + name + "\" will be set to the maximum value " + maximum);
+                        value = maximum;
+                    }
+                } catch(ClassCastException e) {
+                    ; // ok
+                }
+            }
+            defaultValue = aDefaultValue;
             this.value = value;
+
         }
 
         public TweakValue updateValue(Object newValue) {
-            return new TweakValue(type, defaultValue, minimum, maximum, newValue);
+            return new TweakValue(type, defaultValue, minimum, maximum, newValue, name);
         }
 
         public String getStringValue() {
@@ -210,6 +240,7 @@ public class Tweaks {
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;
+        private final String name;
     }
 
     /**
@@ -379,7 +410,7 @@ public class Tweaks {
             return;
         }
 
-        final TweakValue value = new TweakValue(tweakType, defaultValue, minimumValue, maximumValue, defaultValue);
+        final TweakValue value = new TweakValue(tweakType, defaultValue, minimumValue, maximumValue, defaultValue, tweakName);
         mTweakValues.put(tweakName, value);
         mTweakDefaultValues.put(tweakName, value);
         final int listenerSize = mTweakDeclaredListeners.size();
