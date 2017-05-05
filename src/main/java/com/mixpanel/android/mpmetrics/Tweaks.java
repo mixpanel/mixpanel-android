@@ -127,37 +127,34 @@ public class Tweaks {
             name = aName;
             minimum = aMin;
             maximum = aMax;
-            if(minimum != null && maximum != null) {
+            if (minimum != null && maximum != null) {
                 try {
-                    if (((Number) aDefaultValue).longValue() < minimum.longValue()) {
+                    if (Math.min(Math.max(((Number) aDefaultValue).longValue(), minimum.longValue()), maximum.longValue()) == minimum.longValue()) {
                         MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with default value " + aDefaultValue + " which is below the minimum. " +
                                 "Tweak \"" + name + "\" will be set to the minimum value " + minimum + ".");
-                        aDefaultValue = minimum;
-                    } else if (((Number) aDefaultValue).longValue() > maximum.longValue()) {
+                    } else if (Math.min(Math.max(((Number) aDefaultValue).longValue(), minimum.longValue()), maximum.longValue()) == maximum.longValue()) {
                         MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with default value " + aDefaultValue + " which is above the maximum. " +
                                 "Tweak \"" + name + "\" will be set to the maximum value " + maximum + ".");
-                        aDefaultValue = maximum;
                     }
-                } catch(ClassCastException e) {
+                    aDefaultValue = Math.min(Math.max(((Number) aDefaultValue).longValue(), minimum.longValue()), maximum.longValue());
+                } catch (ClassCastException e) {
                     ; // ok
                 }
                 try {
-                    if (((Number) value).longValue() < minimum.longValue()) {
+                    if (Math.min(Math.max(((Number) value).longValue(), minimum.longValue()), maximum.longValue()) == minimum.longValue()) {
                         MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with value " + value + " which is below the minimum. " +
                                 "Tweak \"" + name + "\" will be set to the minimum value " + minimum);
-                        value = minimum;
-                    } else if (((Number) value).longValue() > maximum.longValue()) {
+                    } else if (Math.min(Math.max(((Number) value).longValue(), minimum.longValue()), maximum.longValue()) == maximum.longValue()) {
                         MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with value " + value + " which is above the maximum. " +
                                 "Tweak \"" + name + "\" will be set to the maximum value " + maximum);
-                        value = maximum;
                     }
-                } catch(ClassCastException e) {
+                    value = Math.min(Math.max(((Number) value).longValue(), minimum.longValue()), maximum.longValue());
+                } catch (ClassCastException e) {
                     ; // ok
                 }
             }
             defaultValue = aDefaultValue;
             this.value = value;
-
         }
 
         public TweakValue updateValue(Object newValue) {
