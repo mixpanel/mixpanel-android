@@ -45,8 +45,9 @@ public class PersistentIdentityTest extends AndroidTestCase {
         Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
         Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
         Future<SharedPreferences> timeEventsLoader = loader.loadPreferences(getContext(), TEST_TIME_EVENTS_PREFERENCES, null);
+        Future<SharedPreferences> mixpanelLoader = loader.loadPreferences(getContext(), TEST_MIXPANEL_PREFERENCES, null);
 
-        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader);
+        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader, mixpanelLoader);
     }
 
     public void testStaticWaitingPeopleRecordsWithId() throws JSONException {
@@ -192,4 +193,5 @@ public class PersistentIdentityTest extends AndroidTestCase {
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
     private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
     private static final String TEST_TIME_EVENTS_PREFERENCES  = "TEST TIME EVENTS PREFS";
+    private static final String TEST_MIXPANEL_PREFERENCES  = "TEST MIXPANELPREFS";
 }
