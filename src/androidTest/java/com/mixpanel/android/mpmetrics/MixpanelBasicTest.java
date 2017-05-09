@@ -119,7 +119,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                messages.add(message);
+                if (!isAutomatic) {
+                    messages.add(message);
+                }
+
                 throw new RuntimeException("BANG!");
             }
         };
@@ -163,7 +166,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                messages.add(message);
+                if (!isAutomatic) {
+                    messages.add(message);
+                }
+
                 return 1;
             }
         };
@@ -207,8 +213,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject properties;
 
             mixpanel.track("event1", null);
-            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
-            assertEquals("Integration", message.getString("event"));
             message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("event1", message.getString("event"));
 
@@ -412,11 +416,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
-                try {
-                    messages.put("TABLE " + table.getName());
-                    messages.put(message.toString());
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                if (!isAutomaticEvent) {
+                    try {
+                        messages.put("TABLE " + table.getName());
+                        messages.put(message.toString());
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
                 return super.addJSON(message, token, table, isAutomaticEvent);
@@ -757,7 +763,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
                     @Override
                     public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                        mMessages.add(message);
+                        if (!isAutomatic) {
+                            mMessages.add(message);
+                        }
+
                         return 1;
                     }
                 };
