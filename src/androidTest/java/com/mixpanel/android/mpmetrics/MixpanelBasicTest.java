@@ -61,6 +61,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(BuildConfig.MIXPANEL_VERSION, MPConfig.VERSION);
     }
 
+
+
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();
         MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, fakeToken);
@@ -205,6 +207,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject properties;
 
             mixpanel.track("event1", null);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("Integration", message.getString("event"));
             message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("event1", message.getString("event"));
 
