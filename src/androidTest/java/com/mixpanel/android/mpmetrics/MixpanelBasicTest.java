@@ -37,7 +37,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
         mMockPreferences = new TestUtils.EmptyPreferences(getContext());
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
@@ -62,8 +61,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
     public void testVersionsMatch() {
         assertEquals(BuildConfig.MIXPANEL_VERSION, MPConfig.VERSION);
     }
-
-
 
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();

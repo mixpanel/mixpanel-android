@@ -316,8 +316,6 @@ public class HttpTest extends AndroidTestCase {
 
         waitForBackOffTimeInterval();
 
-        Thread.sleep(5000);
-
         assertEquals(3, mCleanupCalls.size());
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -344,9 +342,11 @@ public class HttpTest extends AndroidTestCase {
     private void waitForBackOffTimeInterval() throws InterruptedException {
         long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
         Thread.sleep(waitForMs + 500);
+        Thread.sleep(1000);
     }
 
     private void waitForFlushInternval() throws InterruptedException {
         Thread.sleep(mFlushInterval + 500);
+        Thread.sleep(1000);
     }
 }
