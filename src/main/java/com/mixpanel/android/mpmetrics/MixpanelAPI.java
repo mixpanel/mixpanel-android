@@ -282,7 +282,12 @@ public class MixpanelAPI {
         }
 
         if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code"))) {
-            track(AutomaticEvents.APP_UPDATED, null, true);
+            try {
+                final JSONObject messageProps = new JSONObject();
+                messageProps.put(AutomaticEvents.VERSION_UPDATED, deviceInfo.get("$android_app_version"));
+                track(AutomaticEvents.APP_UPDATED, messageProps, true);
+            } catch (JSONException e) {}
+
         }
 
         mUpdatesFromMixpanel.startUpdates();
