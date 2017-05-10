@@ -156,11 +156,35 @@ import com.mixpanel.android.util.MPLog;
         return mPeopleDistinctId;
     }
 
+
     public synchronized void setPeopleDistinctId(String peopleDistinctId) {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
         mPeopleDistinctId = peopleDistinctId;
+        writeIdentities();
+    }
+
+    public synchronized String getAliasId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mAliasId;
+    }
+
+    public synchronized void setAliasId(String aliasId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mAliasId = aliasId;
+        writeIdentities();
+    }
+
+    public synchronized void resetAliasId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mAliasId = null;
         writeIdentities();
     }
 
@@ -445,6 +469,7 @@ import com.mixpanel.android.util.MPLog;
 
         mEventsDistinctId = prefs.getString("events_distinct_id", null);
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
+        mAliasId = prefs.getString("alias_id_key", null);
         mTrackedIntegration = prefs.getBoolean("tracked_integration", false);
         mWaitingPeopleRecords = null;
 
@@ -473,6 +498,7 @@ import com.mixpanel.android.util.MPLog;
 
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
+            prefsEditor.putString("alias_id_key", mAliasId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             } else {
@@ -500,6 +526,7 @@ import com.mixpanel.android.util.MPLog;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
+    private String mAliasId;
     private boolean mTrackedIntegration;
     private JSONArray mWaitingPeopleRecords;
 
