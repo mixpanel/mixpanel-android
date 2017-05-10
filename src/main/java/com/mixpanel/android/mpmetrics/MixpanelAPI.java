@@ -376,6 +376,15 @@ public class MixpanelAPI {
         if (alias.equals(original)) {
             MPLog.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ". Alias message will not be sent.");
             return;
+        }else{
+            synchronized (mPersistentIdentity) {
+                if(alias.equals(mPersistentIdentity.getAliasId())){
+                    Log.w(LOGTAG, "Alias " + alias + " has already been sent. Alias message will not be sent.");
+                    return;
+                }else{
+                    mPersistentIdentity.setAliasId(alias);
+                }
+            }
         }
 
         try {
@@ -416,12 +425,14 @@ public class MixpanelAPI {
      */
     public void identify(String distinctId) {
         synchronized (mPersistentIdentity) {
-            mPersistentIdentity.setEventsDistinctId(distinctId);
-            String decideId = mPersistentIdentity.getPeopleDistinctId();
-            if (null == decideId) {
-                decideId = mPersistentIdentity.getEventsDistinctId();
+            // identify only changes the distinct id if it doesn't match either the existing or the alias;
+            // if it's new, blow away the alias as well.
+            if(!distinctId.equals(mPersistentIdentity.getEventsDistinctId()) && !distinctId.equals(mPersistentIdentity.getAliasId())){
+                mPersistentIdentity.setEventsDistinctId(distinctId);
+                mPersistentIdentity.setPeopleDistinctId(distinctId);
+                mDecideMessages.setDistinctId(distinctId);
+                mPersistentIdentity.resetAliasId();
             }
-            mDecideMessages.setDistinctId(decideId);
         }
     }
 
@@ -1398,11 +1409,22 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             synchronized (mPersistentIdentity) {
-                mPersistentIdentity.setPeopleDistinctId(distinctId);
-                mDecideMessages.setDistinctId(distinctId);
+                // identify only changes the distinct id if it doesn't match either the existing or the alias;
+                // if it's new, blow away the alias as well.
+                if(!distinctId.equals(mPersistentIdentity.getPeopleDistinctId()) && !distinctId.equals(mPersistentIdentity.getAliasId())){
+                    mPersistentIdentity.setEventsDistinctId(distinctId);
+                    mPersistentIdentity.setPeopleDistinctId(distinctId);
+                    mDecideMessages.setDistinctId(distinctId);
+                    mPersistentIdentity.resetAliasId();
+                }else{
+                    if(mPersistentIdentity.getPeopleDistinctId() == null){
+                        mDecideMessages.setDistinctId(mPersistentIdentity.getEventsDistinctId());
+                        mPersistentIdentity.setPeopleDistinctId(mPersistentIdentity.getEventsDistinctId());
+                    }
+                }
             }
             pushWaitingPeopleRecord();
-         }
+        }
 
         @Override
         public void setMap(Map<String, Object> properties) {
