@@ -341,12 +341,12 @@ public class HttpTest extends AndroidTestCase {
 
     private void waitForBackOffTimeInterval() throws InterruptedException {
         long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
-        Thread.sleep(waitForMs + 500);
-        Thread.sleep(1000);
+        Thread.sleep(waitForMs);
+        Thread.sleep(1500);
     }
 
     private void waitForFlushInternval() throws InterruptedException {
-        Thread.sleep(mFlushInterval + 500);
-        Thread.sleep(1000);
+        Thread.sleep(mFlushInterval);
+        Thread.sleep(1500);
     }
 }
