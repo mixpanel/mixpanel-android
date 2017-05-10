@@ -196,7 +196,7 @@ public class HttpTest extends AndroidTestCase {
     public void runBasicSucceed() throws InterruptedException {
         mCleanupCalls.clear();
         mMetrics.track(SUCCEED_TEXT, null);
-        Thread.sleep(mFlushInterval + POLL_WAIT_MAX_MILLISECONDS);
+        waitForFlushInternval();
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(null, mPerformRequestCalls.poll());
         assertEquals(1, mCleanupCalls.size());
