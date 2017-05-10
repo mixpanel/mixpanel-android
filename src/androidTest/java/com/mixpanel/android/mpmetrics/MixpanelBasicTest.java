@@ -9,10 +9,12 @@ import android.os.Bundle;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
+import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -121,9 +123,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                 if (!isAutomatic) {
                     messages.add(message);
+                    throw new RuntimeException("BANG!");
                 }
 
-                throw new RuntimeException("BANG!");
+                return 0;
             }
         };
 
@@ -355,6 +358,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
+
+            @Override
+            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+                return super.constructDecideUpdates(token, listener, updatesFromMixpanel);
+            }
         };
 
         MixpanelAPI.People people = mixpanel.getPeople();
@@ -372,6 +380,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             for (AnalyticsMessages.PeopleDescription message: messages) {
                 String distinctId = message.getMessage().getString("$distinct_id");
                 assertEquals(distinctId, "Personal Identity");
+                Log.d("SERGIO", "Message " + message.getMessage().toString());
             }
 
             assertTrue(messages.get(0).getMessage().has("$add"));
@@ -684,6 +693,15 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+                final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+                mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
+
+                return super.getPersistentIdentity(context, referrerPreferences, token);
+            }
+
+            @Override
             /* package */ boolean sendAppOpen() {
                 return false;
             }
@@ -699,7 +717,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
-        assertEquals(2, messages.size()); // track integration
+        assertEquals(1, messages.size());
 
         AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
 
@@ -723,10 +741,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
-        assertEquals(3, messages.size());
+        assertEquals(2, messages.size());
 
-        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
-        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(2)).getMessage();
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
+        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(1)).getMessage();
 
         try {
             JSONObject eventProps = eventMessage.getProperties();

@@ -28,9 +28,17 @@ public class TestUtils {
 
         @Override
         /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            final String prefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+            final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
-            ret.edit().clear().putBoolean(token, true).commit();
+            ret.edit().clear().commit();
+
+            final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+            final SharedPreferences timeSharedPrefs = context.getSharedPreferences(timeEventsPrefsName, Context.MODE_PRIVATE);
+            timeSharedPrefs.edit().clear().commit();
+
+            final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+            final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+            mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
 
             return super.getPersistentIdentity(context, referrerPreferences, token);
         }
