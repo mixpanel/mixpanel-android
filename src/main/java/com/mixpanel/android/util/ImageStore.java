@@ -146,12 +146,12 @@ public class ImageStore {
 
     public void clearStorage() {
         File[] files = mDirectory.listFiles();
-        int length = files.length;
-        for (int i = 0; i < length; i++) {
-            final File file = files[i];
-            final String filename = file.getName();
-            if (filename.startsWith(FILE_PREFIX)) {
-                final boolean ignored = file.delete();
+        if (null != files) {
+            for (final File file : files) {
+                final String filename = file.getName();
+                if (filename.startsWith(FILE_PREFIX)) {
+                    final boolean ignored = file.delete();
+                }
             }
         }
 
