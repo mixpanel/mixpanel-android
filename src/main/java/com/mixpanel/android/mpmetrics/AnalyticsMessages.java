@@ -33,7 +33,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
- *
+ * <p>
  * <p>This class straddles the thread boundary between user threads and
  * a logical Mixpanel thread.
  */
@@ -58,13 +58,13 @@ import javax.net.ssl.SSLSocketFactory;
      * for yourself.
      *
      * @param messageContext should be the Main Activity of the application
-     *     associated with these messages.
+     *                       associated with these messages.
      */
     public static AnalyticsMessages getInstance(final Context messageContext) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
-            if (! sInstances.containsKey(appContext)) {
+            if (!sInstances.containsKey(appContext)) {
                 ret = new AnalyticsMessages(appContext);
                 sInstances.put(appContext, ret);
             } else {
@@ -184,13 +184,13 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         public boolean isDead() {
-            synchronized(mHandlerLock) {
+            synchronized (mHandlerLock) {
                 return mHandler == null;
             }
         }
 
         public void runMessage(Message msg) {
-            synchronized(mHandlerLock) {
+            synchronized (mHandlerLock) {
                 if (mHandler == null) {
                     // We died under suspicious circumstances. Don't try to send any more events.
                     logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
@@ -278,7 +278,7 @@ import javax.net.ssl.SSLSocketFactory;
                         runGCMRegistration(senderId);
                     } else if (msg.what == KILL_WORKER) {
                         MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
-                        synchronized(mHandlerLock) {
+                        synchronized (mHandlerLock) {
                             mDbAdapter.deleteDB();
                             mHandler = null;
                             Looper.myLooper().quit();
@@ -318,6 +318,22 @@ import javax.net.ssl.SSLSocketFactory;
                         try {
                             Looper.myLooper().quit();
                             MPLog.e(LOGTAG, "Mixpanel will not process any more analytics messages", e);
+                        } catch (final Exception tooLate) {
+                            MPLog.e(LOGTAG, "Could not halt looper", tooLate);
+                        }
+                    }
+                } catch (final Throwable t) {
+
+                    // Catching Throwable for Fatal Exception: java.lang.InternalError 
+                    // Thread starting during runtime shutdown 
+                    // For INSTALL_DECIDE_CHECK 
+
+                    MPLog.e(LOGTAG, "Worker threw an unhandled exception", t);
+                    synchronized (mHandlerLock) {
+                        mHandler = null;
+                        try {
+                            Looper.myLooper().quit();
+                            MPLog.e(LOGTAG, "Mixpanel will not process any more analytics messages", t);
                         } catch (final Exception tooLate) {
                             MPLog.e(LOGTAG, "Could not halt looper", tooLate);
                         }
@@ -378,13 +394,13 @@ import javax.net.ssl.SSLSocketFactory;
                 }
 
                 if (mDisableFallback) {
-                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
-                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
+                    sendData(dbAdapter, MPDbAdapter.Table.EVENTS, new String[]{mConfig.getEventsEndpoint()});
+                    sendData(dbAdapter, MPDbAdapter.Table.PEOPLE, new String[]{mConfig.getPeopleEndpoint()});
                 } else {
                     sendData(dbAdapter, MPDbAdapter.Table.EVENTS,
-                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
+                            new String[]{mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint()});
                     sendData(dbAdapter, MPDbAdapter.Table.PEOPLE,
-                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
+                            new String[]{mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint()});
                 }
             }
 
@@ -457,7 +473,7 @@ import javax.net.ssl.SSLSocketFactory;
                         dbAdapter.cleanupEvents(lastId, table);
                     } else {
                         removeMessages(FLUSH_QUEUE);
-                        mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
+                        mTrackEngageRetryAfter = Math.max((long) Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
                         mTrackEngageRetryAfter = Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
                         sendEmptyMessageDelayed(FLUSH_QUEUE, mTrackEngageRetryAfter);
                         mFailedRetries++;
@@ -528,8 +544,8 @@ import javax.net.ssl.SSLSocketFactory;
                     ret.put("$app_version_string", applicationVersionName);
                 }
 
-                 final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
-                 if (null != applicationVersionCode) {
+                final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
+                if (null != applicationVersionCode) {
                     ret.put("$app_release", applicationVersionCode);
                     ret.put("$app_build_number", applicationVersionCode);
                 }
@@ -567,7 +583,7 @@ import javax.net.ssl.SSLSocketFactory;
                 final JSONObject sendProperties = getDefaultEventProperties();
                 sendProperties.put("token", eventDescription.getToken());
                 if (eventProperties != null) {
-                    for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext();) {
+                    for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext(); ) {
                         final String key = (String) iter.next();
                         sendProperties.put(key, eventProperties.get(key));
                     }
