@@ -12,7 +12,6 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     private static ExceptionHandler sInstance;
     private final Thread.UncaughtExceptionHandler mDefaultExceptionHandler;
-    private static final String DEFAULT_HANDLER_PACKAGE_NAME = "com.android.internal.os";
 
     public ExceptionHandler() {
         mDefaultExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
@@ -21,7 +20,11 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     public static void init() {
         if (sInstance == null) {
-            sInstance = new ExceptionHandler();
+            synchronized (ExceptionHandler.class) {
+                if (sInstance == null) {
+                    sInstance = new ExceptionHandler();
+                }
+            }
         }
     }
 
