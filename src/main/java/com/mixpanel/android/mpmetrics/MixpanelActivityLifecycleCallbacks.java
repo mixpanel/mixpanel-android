@@ -83,8 +83,6 @@ import java.text.DecimalFormat;
                             String sessionLengthString = df.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
                             JSONObject sessionProperties = new JSONObject();
                             sessionProperties.put(AutomaticEvents.SESSION_LENGTH, sessionLengthString);
-                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
-                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, Double.valueOf(sessionLengthString));
                             mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
                         }
                     } catch (JSONException e) {

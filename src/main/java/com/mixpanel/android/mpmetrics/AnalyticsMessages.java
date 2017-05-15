@@ -143,11 +143,11 @@ import javax.net.ssl.SSLSocketFactory;
 
     ////////////////////////////////////////////////////
 
-    static class EventDescription {
+    static class EventDescription extends MixpanelDescription {
         public EventDescription(String eventName, JSONObject properties, String token, boolean isAutomatic) {
+            super(token);
             mEventName = eventName;
             mProperties = properties;
-            mToken = token;
             mIsAutomatic = isAutomatic;
         }
 
@@ -159,58 +159,56 @@ import javax.net.ssl.SSLSocketFactory;
             return mProperties;
         }
 
-        public String getToken() {
-            return mToken;
-        }
-
         public boolean isAutomatic() {
             return mIsAutomatic;
         }
 
         private final String mEventName;
         private final JSONObject mProperties;
-        private final String mToken;
         private final boolean mIsAutomatic;
     }
 
-    static class PeopleDescription {
+    static class PeopleDescription extends MixpanelDescription {
         public PeopleDescription(JSONObject message, String token) {
+            super(token);
             this.message = message;
-            this.token = token;
         }
 
         public JSONObject getMessage() {
             return message;
         }
 
-        public String getToken() {
-            return token;
-        }
 
         private final JSONObject message;
-        private final String token;
     }
 
-    static class FlushDescription {
+    static class FlushDescription extends MixpanelDescription {
         public FlushDescription(String token) {
             this(token, true);
         }
 
         protected FlushDescription(String token, boolean checkDecide) {
-            this.token = token;
+            super(token);
             this.checkDecide = checkDecide;
-        }
-
-        public String getToken() {
-            return token;
         }
 
         public boolean shouldCheckDecide() {
             return checkDecide;
         }
 
-        private final String token;
         private final boolean checkDecide;
+    }
+
+    static class MixpanelDescription {
+        public MixpanelDescription(String token) {
+            this.mToken = token;
+        }
+
+        public String getToken() {
+            return mToken;
+        }
+
+        private final String mToken;
     }
 
     // Sends a message if and only if we are running with Mixpanel Message log enabled.

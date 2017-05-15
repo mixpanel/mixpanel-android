@@ -244,11 +244,6 @@ public class MixpanelAPI {
 
         if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
             track(AutomaticEvents.FIRST_OPEN, null, true);
-            TimeZone tz = TimeZone.getTimeZone("UTC");
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
-            df.setTimeZone(tz);
-            String firstOpenDate = df.format(new Date());
-            getPeople().setOnce(AutomaticEvents.FIRST_OPEN_DATE, firstOpenDate);
 
             mPersistentIdentity.setHasLaunched();
         }

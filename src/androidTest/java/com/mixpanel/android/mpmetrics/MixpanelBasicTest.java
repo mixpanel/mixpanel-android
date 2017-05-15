@@ -377,7 +377,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             for (AnalyticsMessages.PeopleDescription message: messages) {
                 String distinctId = message.getMessage().getString("$distinct_id");
                 assertEquals(distinctId, "Personal Identity");
-                Log.d("SERGIO", "Message " + message.getMessage().toString());
             }
 
             assertTrue(messages.get(0).getMessage().has("$add"));
