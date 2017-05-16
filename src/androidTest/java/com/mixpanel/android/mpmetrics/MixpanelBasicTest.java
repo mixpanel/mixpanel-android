@@ -40,7 +40,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mMockPreferences = new TestUtils.EmptyPreferences(getContext());
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         try {
             SystemInformation systemInformation = new SystemInformation(mContext);

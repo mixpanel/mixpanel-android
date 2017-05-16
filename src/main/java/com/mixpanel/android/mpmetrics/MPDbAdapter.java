@@ -297,7 +297,7 @@ import com.mixpanel.android.util.MPLog;
      * Removes automatic events.
      * @param token token of the project you want to remove automatic events from
      */
-    public void cleanupAutomaticEvents(String token) {
+    public synchronized void cleanupAutomaticEvents(String token) {
         cleanupAutomaticEvents(Table.EVENTS, token);
         cleanupAutomaticEvents(Table.PEOPLE, token);
     }
