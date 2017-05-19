@@ -184,6 +184,32 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
     }
 
+    public void testAutomaticResponse() throws DecideChecker.UnintelligibleMessageException, RemoteService.ServiceUnavailableException {
+        final String automaticEventsTrue = "{\"notifications\": null, \"automatic_events\": true}";
+        DecideChecker.Result parseElements;
+        parseElements = DecideChecker.parseDecideResponse(automaticEventsTrue);
+        assertTrue(parseElements.automaticEvents);
+
+        final String automaticEventsFalse = "{\"notifications\": null, \"automatic_events\": false}";
+        parseElements = DecideChecker.parseDecideResponse(automaticEventsFalse);
+        assertFalse(parseElements.automaticEvents);
+
+        mDecideChecker.addDecideCheck(mDecideMessages1);
+
+        assertNull(mDecideMessages1.isAutomaticEventsEnabled());
+        assertTrue(mDecideMessages1.shouldTrackAutomaticEvent());
+
+        mPoster.response = bytes("{\"notifications\": null, \"automatic_events\": true}");
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
+        assertTrue(mDecideMessages1.isAutomaticEventsEnabled());
+        assertTrue(mDecideMessages1.shouldTrackAutomaticEvent());
+
+        mPoster.response = bytes("{\"notifications\": null, \"automatic_events\": false}");
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
+        assertFalse(mDecideMessages1.isAutomaticEventsEnabled());
+        assertFalse(mDecideMessages1.shouldTrackAutomaticEvent());
+    }
+
     private void assertUpdatesSeen(JSONArray[] expected) {
         assertEquals(expected.length, mEventBinder.bindingsSeen.size());
         for (int bindingCallIx = 0; bindingCallIx < expected.length; bindingCallIx++) {

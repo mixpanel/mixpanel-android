@@ -295,6 +295,11 @@ import javax.net.ssl.SSLSocketFactory;
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
                             token = eventDescription.getToken();
+
+                            DecideMessages decide = mDecideChecker.getDecideMessages(token);
+                            if (decide != null && eventDescription.isAutomatic() && !decide.shouldTrackAutomaticEvent()) {
+                                return;
+                            }
                             returnCode = mDbAdapter.addJSON(message, token, MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);

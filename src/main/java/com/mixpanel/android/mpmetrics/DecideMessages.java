@@ -164,7 +164,7 @@ import java.util.Set;
     }
 
     public boolean shouldTrackAutomaticEvent() {
-        return mAutomaticEventsEnabled == null ? true : mAutomaticEventsEnabled;
+        return isAutomaticEventsEnabled() == null ? true : isAutomaticEventsEnabled();
     }
 
     // Mutable, must be synchronized
