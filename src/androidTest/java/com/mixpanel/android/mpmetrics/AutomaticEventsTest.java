@@ -39,6 +39,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private int mTrackedEvents;
     private CountDownLatch mLatch = new CountDownLatch(1);
     private boolean mCanRunDecide;
+    private boolean mCanRunSecondDecideInstance;
     private MPDbAdapter mockAdapter;
 
     @Override
@@ -235,4 +236,131 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
+    public void testMultipleInstances() throws InterruptedException {
+        final String SECOND_TOKEN = "Automatic Events Token Two";
+        mCanRunDecide = true;
+        int initialCalls = 2;
+        mLatch = new CountDownLatch(initialCalls);
+        final CountDownLatch secondLatch = new CountDownLatch(initialCalls);
+        final BlockingQueue<String> secondPerformedRequests =  new LinkedBlockingQueue<>();
+
+        final HttpService mpSecondPoster = new HttpService() {
+            @Override
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+                if (null == params) {
+                    return TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
+                }
+
+                final String jsonData = Base64Coder.decodeString(params.get("data").toString());
+                assertTrue(params.containsKey("data"));
+                try {
+                    JSONArray jsonArray = new JSONArray(jsonData);
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        secondPerformedRequests.put(jsonArray.getJSONObject(i).getString("event"));
+                    }
+                    return TestUtils.bytes("1\n");
+                } catch (JSONException e) {
+                    throw new RuntimeException("Malformed data passed to test mock", e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Could not write message to reporting queue for tests.", e);
+                }
+            }
+        };
+
+        final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+                if (token.equalsIgnoreCase(SECOND_TOKEN)) {
+                    super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                }
+            }
+
+            @Override
+            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+                if (token.equalsIgnoreCase(SECOND_TOKEN)) {
+                    secondLatch.countDown();
+                    return super.addJSON(j, token, table, isAutomaticRecord);
+                }
+
+                return 1;
+            }
+        };
+
+        final AnalyticsMessages mpSecondAnalyticsMessages = new AnalyticsMessages(getContext()) {
+            @Override
+            protected RemoteService getPoster() {
+                return mpSecondPoster;
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mpSecondDbAdapter;
+            }
+
+            @Override
+            protected Worker createWorker() {
+                return new Worker() {
+                    @Override
+                    protected Handler restartWorkerThread() {
+                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+                        thread.start();
+                        final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
+                            @Override
+                            protected DecideChecker createDecideChecker() {
+                                return new DecideChecker(mContext, mConfig, new SystemInformation(mContext)) {
+                                    @Override
+                                    public void runDecideCheck(String token, RemoteService poster) throws RemoteService.ServiceUnavailableException {
+                                        if (mCanRunSecondDecideInstance) {
+                                            super.runDecideCheck(token, poster);
+                                        }
+                                    }
+                                };
+                            }
+                        };
+                        return ret;
+                    }
+                };
+            }
+        };
+
+        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(getContext(), new TestUtils.EmptyPreferences(getContext()), SECOND_TOKEN) {
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return mpSecondAnalyticsMessages;
+            }
+        };
+
+        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertEquals(initialCalls, mTrackedEvents);
+
+        assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+
+
+        for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
+            mCleanMixpanelAPI.track("Track event " + i);
+        }
+
+        assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
+            assertEquals("Track event " + i, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        }
+
+        assertNull(mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+
+        assertNull(secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+
+        mCanRunSecondDecideInstance = true;
+        mpSecondInstance.flush();
+        mCleanMixpanelAPI.track("First Instance Event One");
+        mpSecondInstance.track("Second Instance Event One");
+        mpSecondInstance.track("Second Instance Event Two");
+        mpSecondInstance.flush();
+
+        assertEquals("Second Instance Event One", secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        assertEquals("Second Instance Event Two", secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        assertNull(secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+
+        assertNull(mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+    }
 }
