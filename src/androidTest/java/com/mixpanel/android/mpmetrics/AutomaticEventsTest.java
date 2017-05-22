@@ -40,9 +40,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private byte[] mDecideResponse;
     private int mTrackedEvents;
     private CountDownLatch mLatch = new CountDownLatch(1);
-    private CountDownLatch mCleanUpLatch = new CountDownLatch(1);
     private boolean mCanRunDecide;
-    private boolean mCleanUpAutomaticEventsCalled;
     private MPDbAdapter mockAdapter;
 
     @Override
@@ -52,7 +50,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
         mTrackedEvents = 0;
         mCanRunDecide = true;
-        mCleanUpAutomaticEventsCalled = false;
         final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
@@ -206,7 +203,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals("Automatic Event", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        mCleanUpLatch = new CountDownLatch(1);
         mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
         mCleanMixpanelAPI.flush();
 
@@ -222,7 +218,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
     public void testDisableAutomaticEvents() throws InterruptedException {
         mCanRunDecide = false;
 
-        mCleanUpLatch = new CountDownLatch(1);
         mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
 
         int calls = 3; // First Time Open, App Update, An Event Three
