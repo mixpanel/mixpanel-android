@@ -2,11 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
@@ -78,8 +76,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        final MPDbAdapter removeDb = new MPDbAdapter(getContext());
-        removeDb.deleteDB();
+        getContext().deleteDatabase("mixpanel");
 
         mockAdapter = new MPDbAdapter(getContext()) {
             @Override
