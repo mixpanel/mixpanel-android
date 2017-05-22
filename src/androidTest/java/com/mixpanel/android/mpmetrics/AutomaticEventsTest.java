@@ -41,6 +41,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private boolean mCanRunDecide;
     private boolean mCanRunSecondDecideInstance;
     private MPDbAdapter mockAdapter;
+    private CountDownLatch mMinRequestsLatch;
 
     @Override
     protected void setUp() throws Exception {
@@ -49,6 +50,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
         mTrackedEvents = 0;
         mCanRunDecide = true;
+        mMinRequestsLatch = new CountDownLatch(2); // First Time Open and Update
         final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
@@ -67,6 +69,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                     JSONArray jsonArray = new JSONArray(jsonData);
                     for (int i = 0; i < jsonArray.length(); i++) {
                         mPerformRequestEvents.put(jsonArray.getJSONObject(i).getString("event"));
+                        mMinRequestsLatch.countDown();
                     }
                     return TestUtils.bytes("1\n");
                 } catch (JSONException e) {
@@ -163,12 +166,18 @@ public class AutomaticEventsTest extends AndroidTestCase {
         };
     }
 
+    @Override
+    protected void tearDown() throws Exception {
+        mMinRequestsLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        super.tearDown();
+    }
+
     public void testAutomaticEvents() throws InterruptedException {
         int calls = 3; // First Time Open, App Update, An Event One
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An event One");
         mCleanMixpanelAPI.flush();
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(calls, mTrackedEvents);
         assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
@@ -335,7 +344,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
 
         assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-
+        Thread.sleep(500);
         for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
