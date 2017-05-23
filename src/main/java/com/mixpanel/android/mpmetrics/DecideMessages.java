@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
+
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
@@ -19,7 +21,8 @@ import java.util.Set;
         void onNewResults();
     }
 
-    public DecideMessages(String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+    public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+        mContext = context;
         mToken = token;
         mListener = listener;
         mUpdatesFromMixpanel = updatesFromMixpanel;
@@ -47,7 +50,7 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants) {
+    public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants, boolean automaticEvents) {
         boolean newContent = false;
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
 
@@ -91,6 +94,10 @@ import java.util.Set;
                 }
             }
         }
+        if (mAutomaticEventsEnabled == null && !automaticEvents) {
+            MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
+        }
+        mAutomaticEventsEnabled = automaticEvents;
 
         // in the case we do not receive a new variant, this means the A/B test should be turned off
         if (newVariantsLength == 0 && mLoadedVariants.size() > 0) {
@@ -152,6 +159,14 @@ import java.util.Set;
         return (! mUnseenNotifications.isEmpty()) || mVariants.length() > 0;
     }
 
+    public Boolean isAutomaticEventsEnabled() {
+        return mAutomaticEventsEnabled;
+    }
+
+    public boolean shouldTrackAutomaticEvent() {
+        return isAutomaticEventsEnabled() == null ? true : isAutomaticEventsEnabled();
+    }
+
     // Mutable, must be synchronized
     private String mDistinctId;
 
@@ -162,6 +177,8 @@ import java.util.Set;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private JSONArray mVariants;
     private static final Set<Integer> mLoadedVariants = new HashSet<>();
+    private Boolean mAutomaticEventsEnabled;
+    private Context mContext;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";

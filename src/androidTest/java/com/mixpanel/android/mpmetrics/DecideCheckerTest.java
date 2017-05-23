@@ -27,11 +27,11 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
         mEventBinder.startUpdates();
-        mDecideMessages1 = new DecideMessages("TOKEN 1", null, mEventBinder);
+        mDecideMessages1 = new DecideMessages(getContext(), "TOKEN 1", null, mEventBinder);
         mDecideMessages1.setDistinctId("DISTINCT ID 1");
-        mDecideMessages2 = new DecideMessages("TOKEN 2", null, mEventBinder);
+        mDecideMessages2 = new DecideMessages(getContext(), "TOKEN 2", null, mEventBinder);
         mDecideMessages2.setDistinctId("DISTINCT ID 2");
-        mDecideMessages3 = new DecideMessages("TOKEN 3", null, mEventBinder);
+        mDecideMessages3 = new DecideMessages(getContext(), "TOKEN 3", null, mEventBinder);
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
@@ -39,7 +39,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
         mPoster.response = bytes("{}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
@@ -47,7 +47,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.bindingsSeen.clear();
 
         mPoster.response = bytes("{\"notifications\":[]}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {
                 new JSONArray()
@@ -59,21 +59,21 @@ public class DecideCheckerTest extends AndroidTestCase {
 
         // Corrupted or crazy responses.
         mPoster.response = bytes("{ WONT PARSE");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[] {}); // No updates at all on parsing failure
         mEventBinder.bindingsSeen.clear();
 
         // Just pure (but legal) JSON craziness
         mPoster.response = bytes("null");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{});
         mEventBinder.bindingsSeen.clear();
 
         // Valid JSON that isn't relevant
         mPoster.response = bytes("{\"Ziggy Startdust and the Spiders from Mars\":\"The Best Ever Number One\"}");
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertNull(mDecideMessages1.getNotification(false));
         assertUpdatesSeen(new JSONArray[]{
                 new JSONArray()
@@ -87,7 +87,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster.response = null;
         mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertEquals(2, mPoster.requestedUrls.size());
     }
 
@@ -97,7 +97,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster.response =  null;
         mPoster.exception = new IOException("Bang!");
         mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideChecks(mPoster);
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
         assertEquals(1, mPoster.requestedUrls.size());
     }
 
@@ -182,6 +182,32 @@ public class DecideCheckerTest extends AndroidTestCase {
             assertEquals(parsedNotification.getType(), InAppNotification.Type.MINI);
 
         }
+    }
+
+    public void testAutomaticResponse() throws DecideChecker.UnintelligibleMessageException, RemoteService.ServiceUnavailableException {
+        final String automaticEventsTrue = "{\"notifications\": null, \"automatic_events\": true}";
+        DecideChecker.Result parseElements;
+        parseElements = DecideChecker.parseDecideResponse(automaticEventsTrue);
+        assertTrue(parseElements.automaticEvents);
+
+        final String automaticEventsFalse = "{\"notifications\": null, \"automatic_events\": false}";
+        parseElements = DecideChecker.parseDecideResponse(automaticEventsFalse);
+        assertFalse(parseElements.automaticEvents);
+
+        mDecideChecker.addDecideCheck(mDecideMessages1);
+
+        assertNull(mDecideMessages1.isAutomaticEventsEnabled());
+        assertTrue(mDecideMessages1.shouldTrackAutomaticEvent());
+
+        mPoster.response = bytes("{\"notifications\": null, \"automatic_events\": true}");
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
+        assertTrue(mDecideMessages1.isAutomaticEventsEnabled());
+        assertTrue(mDecideMessages1.shouldTrackAutomaticEvent());
+
+        mPoster.response = bytes("{\"notifications\": null, \"automatic_events\": false}");
+        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
+        assertFalse(mDecideMessages1.isAutomaticEventsEnabled());
+        assertFalse(mDecideMessages1.shouldTrackAutomaticEvent());
     }
 
     private void assertUpdatesSeen(JSONArray[] expected) {

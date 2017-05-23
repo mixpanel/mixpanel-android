@@ -137,9 +137,9 @@ public class HttpTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table) {
+            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
                 mCleanupCalls.add("called");
-                super.cleanupEvents(last_id, table);
+                super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
             }
 
             @Override
@@ -196,7 +196,7 @@ public class HttpTest extends AndroidTestCase {
     public void runBasicSucceed() throws InterruptedException {
         mCleanupCalls.clear();
         mMetrics.track(SUCCEED_TEXT, null);
-        Thread.sleep(mFlushInterval + POLL_WAIT_MAX_MILLISECONDS);
+        waitForFlushInternval();
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(null, mPerformRequestCalls.poll());
         assertEquals(1, mCleanupCalls.size());
@@ -316,8 +316,6 @@ public class HttpTest extends AndroidTestCase {
 
         waitForBackOffTimeInterval();
 
-        Thread.sleep(5000);
-
         assertEquals(3, mCleanupCalls.size());
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -343,10 +341,12 @@ public class HttpTest extends AndroidTestCase {
 
     private void waitForBackOffTimeInterval() throws InterruptedException {
         long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
-        Thread.sleep(waitForMs + 500);
+        Thread.sleep(waitForMs);
+        Thread.sleep(1500);
     }
 
     private void waitForFlushInternval() throws InterruptedException {
-        Thread.sleep(mFlushInterval + 500);
+        Thread.sleep(mFlushInterval);
+        Thread.sleep(1500);
     }
 }

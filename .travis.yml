@@ -17,6 +17,9 @@ env:
    # install timeout in minutes (2 minutes by default)
     - ADB_INSTALL_TIMEOUT=8
 
+before_install:
+  - adb logcat > logcat.log &
+
 # Emulator Management: Create, Start and Wait
 before_script:
   - echo no | android create avd --force -n mp --target android-19 --abi armeabi-v7a
@@ -30,3 +33,6 @@ script:
   - ./gradlew lint
   - ./gradlew --info connectedAndroidTest
   - ./gradlew --info androidJavadocs
+
+after_failure:
+  - cat logcat.log

@@ -334,12 +334,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
     private class MockMessages extends DecideMessages {
         public MockMessages(final String token, final OnNewResultsListener listener, final UpdatesFromMixpanel binder) {
-            super(token, listener, binder);
+            super(getContext(), token, listener, binder);
         }
 
         @Override
-        public void reportResults(List<InAppNotification> newNotifications, JSONArray newBindings, JSONArray variants) {
-            super.reportResults(newNotifications, newBindings, variants);
+        public void reportResults(List<InAppNotification> newNotifications, JSONArray newBindings, JSONArray variants, boolean isAutomaticEvents) {
+            super.reportResults(newNotifications, newBindings, variants, isAutomaticEvents);
             mExpectations.resolve();
         }
     }

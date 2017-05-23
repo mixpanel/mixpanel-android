@@ -188,6 +188,9 @@ public class MPConfig {
         mSSLSocketFactory = foundSSLFactory;
 
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
+        if (DEBUG) {
+            MPLog.setLevel(MPLog.VERBOSE);
+        }
 
         if (metaData.containsKey("com.mixpanel.android.MPConfig.DebugFlushInterval")) {
             MPLog.w(LOGTAG, "We do not support com.mixpanel.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
@@ -208,6 +211,8 @@ public class MPConfig {
         mIgnoreInvisibleViewsEditor = metaData.getBoolean("com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor", false);
         mAutoShowMixpanelUpdates = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
         mNotificationDefaults = metaData.getInt("com.mixpanel.android.MPConfig.NotificationDefaults", 0);
+        mMinSessionDuration = metaData.getLong("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
+        mSessionTimeoutDuration = metaData.getLong("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Long.MAX_VALUE); // no timeout by default
 
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
 
@@ -283,7 +288,9 @@ public class MPConfig {
                 "    EditorUrl " + getEditorUrl() + "\n" +
                 "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
                 "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
-                "    NotificationDefaults " + getNotificationDefaults() + "\n"
+                "    NotificationDefaults " + getNotificationDefaults() + "\n" +
+                "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
+                "    SessionTimeoutDuration: " + getSessionTimeoutDuration()
             );
     }
 
@@ -382,6 +389,14 @@ public class MPConfig {
         return mNotificationDefaults;
     }
 
+    public long getMinimumSessionDuration() {
+        return mMinSessionDuration;
+    }
+
+    public long getSessionTimeoutDuration() {
+        return mSessionTimeoutDuration;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -454,6 +469,8 @@ public class MPConfig {
     private final int mImageCacheMaxMemoryFactor;
     private final boolean mIgnoreInvisibleViewsEditor;
     private final int mNotificationDefaults;
+    private final long mMinSessionDuration;
+    private final long mSessionTimeoutDuration;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
