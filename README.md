@@ -4,7 +4,7 @@
 
 # Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.svg)](https://travis-ci.org/mixpanel/mixpanel-android)
 
-##### _April 24, 2017_ - [v5.0.2](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.0.2)
+##### _May 22, 2017_ - [v5.1.0](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.1.0)
 
 # Table of Contents
 
