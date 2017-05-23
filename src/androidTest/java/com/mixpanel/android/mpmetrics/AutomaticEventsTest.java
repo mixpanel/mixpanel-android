@@ -187,6 +187,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
 
     public void testNoDecideResponse() throws InterruptedException {
         mCanRunDecide = false;
+        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
 
         int calls = 3; // First Time Open, App Update, An Event Two
         mLatch = new CountDownLatch(calls);
@@ -200,10 +201,12 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
         mCanRunDecide = true;
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
         mCleanMixpanelAPI.track("Automatic Event", null, true);
         mCleanMixpanelAPI.flush();
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+
+        Thread.sleep(2000);
+        mCleanMixpanelAPI.flush();
 
         assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
