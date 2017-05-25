@@ -33,7 +33,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private MixpanelAPI mCleanMixpanelAPI;
     private static final String TOKEN = "Automatic Events Token";
     private static final int MAX_TIMEOUT_POLL = 6500;
-    private BlockingQueue<String> mPerformRequestEvents;
+    final private BlockingQueue<String> mPerformRequestEvents = new LinkedBlockingQueue<>();
     private Future<SharedPreferences> mMockReferrerPreferences;
     private byte[] mDecideResponse;
     private int mTrackedEvents;
@@ -46,7 +46,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mPerformRequestEvents = new LinkedBlockingQueue<>();
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
         mTrackedEvents = 0;
         mCanRunDecide = true;
@@ -342,12 +341,12 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(initialCalls, mTrackedEvents);
 
         assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        Thread.sleep(1000);
+        Thread.sleep(500);
         for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
