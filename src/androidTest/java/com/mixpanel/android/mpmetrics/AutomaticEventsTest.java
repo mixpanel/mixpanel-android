@@ -33,7 +33,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private MixpanelAPI mCleanMixpanelAPI;
     private static final String TOKEN = "Automatic Events Token";
     private static final int MAX_TIMEOUT_POLL = 6500;
-    private BlockingQueue<String> mPerformRequestEvents;
+    final private BlockingQueue<String> mPerformRequestEvents = new LinkedBlockingQueue<>();
     private Future<SharedPreferences> mMockReferrerPreferences;
     private byte[] mDecideResponse;
     private int mTrackedEvents;
@@ -46,7 +46,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mPerformRequestEvents = new LinkedBlockingQueue<>();
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
         mTrackedEvents = 0;
         mCanRunDecide = true;
@@ -172,7 +171,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         super.tearDown();
     }
 
-    public void testAutomaticEvents() throws InterruptedException {
+    public void testAutomaticOneInstance() throws InterruptedException {
         int calls = 3; // First Time Open, App Update, An Event One
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An event One");
@@ -185,45 +184,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
-    public void testNoDecideResponse() throws InterruptedException {
-        mCanRunDecide = false;
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
-
-        int calls = 3; // First Time Open, App Update, An Event Two
-        mLatch = new CountDownLatch(calls);
-        mCleanMixpanelAPI.track("An event Two");
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
-        assertEquals(calls, mTrackedEvents);
-
-        mCleanMixpanelAPI.flush();
-
-        assertEquals("An event Two", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        mCanRunDecide = true;
-        mCleanMixpanelAPI.track("Automatic Event", null, true);
-        mCleanMixpanelAPI.flush();
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        Thread.sleep(2000);
-        mCleanMixpanelAPI.flush();
-
-        assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals("Automatic Event", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
-        mCleanMixpanelAPI.flush();
-
-        mCleanMixpanelAPI.track("Automatic Event Two", null, true); // dropped
-        mCleanMixpanelAPI.track("Automatic Event Three", null, true); // dropped
-        mCleanMixpanelAPI.track("Automatic Event Four", null, true); // dropped
-
-        assertEquals(calls + 1, mTrackedEvents); // Automatic Event
-
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-    }
-
     public void testDisableAutomaticEvents() throws InterruptedException {
         mCanRunDecide = false;
 
@@ -232,10 +192,13 @@ public class AutomaticEventsTest extends AndroidTestCase {
         int calls = 3; // First Time Open, App Update, An Event Three
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An Event Three");
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(calls, mTrackedEvents);
 
         mCanRunDecide = true;
+        mCleanMixpanelAPI.track("Automatic Event Two", null, true); // dropped
+        mCleanMixpanelAPI.track("Automatic Event Three", null, true); // dropped
+        mCleanMixpanelAPI.track("Automatic Event Four", null, true); // dropped
         mCleanMixpanelAPI.flush();
         assertEquals("An Event Three", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
@@ -247,7 +210,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
-    public void testMultipleInstances() throws InterruptedException {
+    public void testAutomaticMultipleInstances() throws InterruptedException {
         final String SECOND_TOKEN = "Automatic Events Token Two";
         mCanRunDecide = true;
         mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
@@ -342,12 +305,12 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(initialCalls, mTrackedEvents);
 
         assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        Thread.sleep(1000);
+        Thread.sleep(500);
         for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
