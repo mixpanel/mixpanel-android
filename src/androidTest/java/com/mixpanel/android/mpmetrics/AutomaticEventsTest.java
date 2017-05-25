@@ -196,6 +196,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(calls, mTrackedEvents);
 
         mCleanMixpanelAPI.flush();
+        Thread.sleep(500);
 
         assertEquals("An event Two", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
