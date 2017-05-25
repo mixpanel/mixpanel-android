@@ -184,46 +184,6 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
-    public void testNoDecideResponse() throws InterruptedException {
-        mCanRunDecide = false;
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
-
-        int calls = 3; // First Time Open, App Update, An Event Two
-        mLatch = new CountDownLatch(calls);
-        mCleanMixpanelAPI.track("An event Two");
-        mMinRequestsLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
-        assertEquals(calls, mTrackedEvents);
-
-        mCleanMixpanelAPI.flush();
-        Thread.sleep(500);
-
-        assertEquals("An event Two", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        mCanRunDecide = true;
-        mCleanMixpanelAPI.track("Automatic Event", null, true);
-        mCleanMixpanelAPI.flush();
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        mCleanMixpanelAPI.flush();
-
-        assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertEquals("Automatic Event", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
-        mCleanMixpanelAPI.flush();
-
-        mCleanMixpanelAPI.track("Automatic Event Two", null, true); // dropped
-        mCleanMixpanelAPI.track("Automatic Event Three", null, true); // dropped
-        mCleanMixpanelAPI.track("Automatic Event Four", null, true); // dropped
-
-        assertEquals(calls + 1, mTrackedEvents); // Automatic Event
-
-        assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-    }
-
     public void testDisableAutomaticEvents() throws InterruptedException {
         mCanRunDecide = false;
 
@@ -232,10 +192,13 @@ public class AutomaticEventsTest extends AndroidTestCase {
         int calls = 3; // First Time Open, App Update, An Event Three
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An Event Three");
-        mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(calls, mTrackedEvents);
 
         mCanRunDecide = true;
+        mCleanMixpanelAPI.track("Automatic Event Two", null, true); // dropped
+        mCleanMixpanelAPI.track("Automatic Event Three", null, true); // dropped
+        mCleanMixpanelAPI.track("Automatic Event Four", null, true); // dropped
         mCleanMixpanelAPI.flush();
         assertEquals("An Event Three", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
