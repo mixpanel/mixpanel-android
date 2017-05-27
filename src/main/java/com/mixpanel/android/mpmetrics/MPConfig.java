@@ -211,8 +211,8 @@ public class MPConfig {
         mIgnoreInvisibleViewsEditor = metaData.getBoolean("com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor", false);
         mAutoShowMixpanelUpdates = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
         mNotificationDefaults = metaData.getInt("com.mixpanel.android.MPConfig.NotificationDefaults", 0);
-        mMinSessionDuration = metaData.getLong("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
-        mSessionTimeoutDuration = metaData.getLong("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Long.MAX_VALUE); // no timeout by default
+        mMinSessionDuration = metaData.getInt("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
+        mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
 
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
 
@@ -389,11 +389,11 @@ public class MPConfig {
         return mNotificationDefaults;
     }
 
-    public long getMinimumSessionDuration() {
+    public int getMinimumSessionDuration() {
         return mMinSessionDuration;
     }
 
-    public long getSessionTimeoutDuration() {
+    public int getSessionTimeoutDuration() {
         return mSessionTimeoutDuration;
     }
 
@@ -469,8 +469,8 @@ public class MPConfig {
     private final int mImageCacheMaxMemoryFactor;
     private final boolean mIgnoreInvisibleViewsEditor;
     private final int mNotificationDefaults;
-    private final long mMinSessionDuration;
-    private final long mSessionTimeoutDuration;
+    private final int mMinSessionDuration;
+    private final int mSessionTimeoutDuration;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
