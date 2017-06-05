@@ -78,7 +78,7 @@ import java.text.DecimalFormat;
                     mIsForeground = false;
                     try {
                         double sessionLength = System.currentTimeMillis() - sStartSessionTime;
-                        if (sessionLength >= MPConfig.getInstance(activity.getApplicationContext()).getMinimumSessionDuration() && sessionLength < MPConfig.getInstance(activity.getApplicationContext()).getSessionTimeoutDuration()) {
+                        if (sessionLength >= mConfig.getMinimumSessionDuration() && sessionLength < mConfig.getSessionTimeoutDuration()) {
                             DecimalFormat df = new DecimalFormat("#.0");
                             String sessionLengthString = df.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
                             JSONObject sessionProperties = new JSONObject();
