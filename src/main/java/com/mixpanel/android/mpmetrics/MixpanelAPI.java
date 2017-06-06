@@ -461,6 +461,20 @@ public class MixpanelAPI {
     }
 
     /**
+     * Retrieves the time elapsed for the named event since timeEvent() was called.
+     *
+     * @param eventName the name of the event to be tracked that was previously called with timeEvent()
+     */
+    public double eventElapsedTime(final String eventName) {
+        final long currentTime = System.currentTimeMillis();
+        Long startTime;
+        synchronized (mEventTimings) {
+            startTime = mEventTimings.get(eventName);
+        }
+        return startTime == null ? 0 : (double)((currentTime - startTime) / 1000);
+    }
+
+    /**
      * Track an event.
      *
      * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
