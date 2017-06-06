@@ -467,11 +467,11 @@ public class MixpanelAPI {
      */
     public double eventElapsedTime(final String eventName) {
         final long currentTime = System.currentTimeMillis();
-        long startTime;
+        Long startTime;
         synchronized (mEventTimings) {
             startTime = mEventTimings.get(eventName);
         }
-        return (double)((currentTime - startTime) / 1000);
+        return startTime == null ? 0 : (double)((currentTime - startTime) / 1000);
     }
 
     /**
