@@ -144,9 +144,10 @@ public class GCMReceiver extends BroadcastReceiver {
         final String colorName = inboundIntent.getStringExtra("mp_color");
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
         final String messageId = inboundIntent.getStringExtra("mp_message_id");
+        final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = NotificationData.NOT_SET;
 
-        trackCampaignReceived(campaignId, messageId);
+        trackCampaignReceived(campaignId, messageId, extraLogData);
 
         if (colorName != null) {
             try {
@@ -202,12 +203,12 @@ public class GCMReceiver extends BroadcastReceiver {
             notificationTitle = "A message for you";
         }
 
-        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId);
+        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId, extraLogData);
 
         return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
     }
 
-    private Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId) {
+    private Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId, String extraLogData) {
         Uri uri = null;
         if (null != uriString) {
             uri = Uri.parse(uriString);
@@ -226,6 +227,10 @@ public class GCMReceiver extends BroadcastReceiver {
 
         if (messageId != null) {
             ret.putExtra("mp_message_id", messageId);
+        }
+
+        if (extraLogData != null) {
+            ret.putExtra("mp", extraLogData);
         }
 
         return ret;
@@ -394,13 +399,19 @@ public class GCMReceiver extends BroadcastReceiver {
         return n;
     }
 
-    private void trackCampaignReceived(final String campaignId, final String messageId) {
+    private void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
         if (campaignId != null && messageId != null) {
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
                     if(api.isAppInForeground()) {
                         JSONObject pushProps = new JSONObject();
+                        try {
+                            if (extraLogData != null) {
+                                pushProps = new JSONObject(extraLogData);
+                            }
+                        } catch (JSONException e) {}
+
                         try {
                             pushProps.put("campaign_id", campaignId);
                             pushProps.put("message_id", messageId);

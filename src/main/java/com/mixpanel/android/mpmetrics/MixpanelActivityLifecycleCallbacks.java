@@ -37,8 +37,14 @@ import java.text.DecimalFormat;
         if (activity.getIntent().hasExtra("mp_campaign_id") && activity.getIntent().hasExtra("mp_message_id")) {
             String campaignId = activity.getIntent().getStringExtra("mp_campaign_id");
             String messageId = activity.getIntent().getStringExtra("mp_message_id");
+            String extraLogData = activity.getIntent().getStringExtra("mp");
 
             JSONObject pushProps = new JSONObject();
+            try {
+                if (extraLogData != null) {
+                    pushProps = new JSONObject(extraLogData);
+                }
+            } catch (JSONException e) {}
             try {
                 pushProps.put("campaign_id", campaignId);
                 pushProps.put("message_id", messageId);
@@ -48,6 +54,7 @@ import java.text.DecimalFormat;
 
             activity.getIntent().removeExtra("mp_campaign_id");
             activity.getIntent().removeExtra("mp_message_id");
+            activity.getIntent().removeExtra("mp");
         }
 
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
