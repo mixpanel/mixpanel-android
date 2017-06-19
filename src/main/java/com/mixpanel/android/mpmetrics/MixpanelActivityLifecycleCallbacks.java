@@ -39,13 +39,13 @@ import java.text.DecimalFormat;
             String messageId = activity.getIntent().getStringExtra("mp_message_id");
             String extraLogData = activity.getIntent().getStringExtra("mp");
 
-            JSONObject pushProps = new JSONObject();
             try {
+                JSONObject pushProps;
                 if (extraLogData != null) {
                     pushProps = new JSONObject(extraLogData);
+                } else {
+                    pushProps = new JSONObject();
                 }
-            } catch (JSONException e) {}
-            try {
                 pushProps.put("campaign_id", campaignId);
                 pushProps.put("message_id", messageId);
                 pushProps.put("message_type", "push");
