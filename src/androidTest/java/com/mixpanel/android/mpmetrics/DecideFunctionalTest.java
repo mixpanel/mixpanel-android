@@ -19,6 +19,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URLEncoder;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -146,7 +147,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
             @Override
             DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
-                return new MockMessages(token, listener, binder);
+                return new MockMessages(token, listener, binder, new HashSet<Integer>());
             }
         };
 
@@ -241,7 +242,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
             @Override
             DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel binder) {
-                return new MockMessages(token, listener, binder);
+                return new MockMessages(token, listener, binder, new HashSet<Integer>());
             }
 
             @Override
@@ -333,8 +334,8 @@ public class DecideFunctionalTest extends AndroidTestCase {
     }
 
     private class MockMessages extends DecideMessages {
-        public MockMessages(final String token, final OnNewResultsListener listener, final UpdatesFromMixpanel binder) {
-            super(getContext(), token, listener, binder);
+        public MockMessages(final String token, final OnNewResultsListener listener, final UpdatesFromMixpanel binder, HashSet<Integer> seenNotificationIds) {
+            super(getContext(), token, listener, binder, seenNotificationIds);
         }
 
         @Override

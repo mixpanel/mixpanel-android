@@ -9,6 +9,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -58,7 +59,7 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
         };
 
-        mDecideMessages = new DecideMessages(getContext(), "TEST TOKEN", mMockListener, mMockUpdates);
+        mDecideMessages = new DecideMessages(getContext(), "TEST TOKEN", mMockListener, mMockUpdates, new HashSet<Integer>());
         mSomeNotifications = new ArrayList<>();
 
         JSONObject notifsDesc1 = new JSONObject(

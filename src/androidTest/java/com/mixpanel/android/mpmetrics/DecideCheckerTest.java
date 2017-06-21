@@ -13,6 +13,7 @@ import org.json.JSONArray;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -27,11 +28,11 @@ public class DecideCheckerTest extends AndroidTestCase {
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
         mEventBinder.startUpdates();
-        mDecideMessages1 = new DecideMessages(getContext(), "TOKEN 1", null, mEventBinder);
+        mDecideMessages1 = new DecideMessages(getContext(), "TOKEN 1", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages1.setDistinctId("DISTINCT ID 1");
-        mDecideMessages2 = new DecideMessages(getContext(), "TOKEN 2", null, mEventBinder);
+        mDecideMessages2 = new DecideMessages(getContext(), "TOKEN 2", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages2.setDistinctId("DISTINCT ID 2");
-        mDecideMessages3 = new DecideMessages(getContext(), "TOKEN 3", null, mEventBinder);
+        mDecideMessages3 = new DecideMessages(getContext(), "TOKEN 3", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 

@@ -21,7 +21,7 @@ import java.util.Set;
         void onNewResults();
     }
 
-    public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+    public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
         mContext = context;
         mToken = token;
         mListener = listener;
@@ -29,7 +29,7 @@ import java.util.Set;
 
         mDistinctId = null;
         mUnseenNotifications = new LinkedList<InAppNotification>();
-        mNotificationIds = new HashSet<Integer>();
+        mNotificationIds = new HashSet<Integer>(notificationIds);
         mVariants = new JSONArray();
     }
 
