@@ -14,7 +14,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
@@ -28,7 +27,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
@@ -1344,7 +1342,7 @@ public class MixpanelAPI {
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-        return new DecideMessages(mContext, token, listener, updatesFromMixpanel);
+        return new DecideMessages(mContext, token, listener, updatesFromMixpanel, mPersistentIdentity.getSeenCampaignIds());
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {
@@ -1551,6 +1549,7 @@ public class MixpanelAPI {
         public void trackNotificationSeen(InAppNotification notif) {
             if(notif == null) return;
 
+            mPersistentIdentity.saveCampaignAsSeen(notif.getId());
             trackNotification("$campaign_delivery", notif);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);

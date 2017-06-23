@@ -2,8 +2,10 @@ package com.mixpanel.android.mpmetrics;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -430,6 +432,37 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    public synchronized HashSet<Integer> getSeenCampaignIds() {
+        HashSet<Integer> campaignIds = new HashSet<>();
+        try {
+            SharedPreferences mpPrefs = mLoadStoredPreferences.get();
+            String seenIds = mpPrefs.getString("seen_campaign_ids", "");
+            StringTokenizer stTokenizer = new StringTokenizer(seenIds, DELIMITER);
+            while (stTokenizer.hasMoreTokens()) {
+                campaignIds.add(Integer.valueOf(stTokenizer.nextToken()));
+            }
+        } catch (ExecutionException e) {
+            MPLog.e(LOGTAG, "Couldn't read Mixpanel shared preferences.", e.getCause());
+        } catch (InterruptedException e) {
+            MPLog.e(LOGTAG, "Couldn't read Mixpanel shared preferences.", e);
+        }
+        return campaignIds;
+    }
+
+    public synchronized void saveCampaignAsSeen(Integer notificationId) {
+        try {
+            final SharedPreferences prefs = mLoadStoredPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            String campaignIds = prefs.getString("seen_campaign_ids", "");
+            editor.putString("seen_campaign_ids", campaignIds + notificationId + DELIMITER);
+            writeEdits(editor);
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Can't write campaign d to shared preferences", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Can't write campaign id to shared preferences", e);
+        }
+    }
+
     //////////////////////////////////////////////////
 
     // Must be called from a synchronized setting
@@ -582,5 +615,6 @@ import com.mixpanel.android.util.MPLog;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
+    private static final String DELIMITER = ",";
     private static final String LOGTAG = "MixpanelAPI.PIdentity";
 }
