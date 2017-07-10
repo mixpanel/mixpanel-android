@@ -46,8 +46,8 @@ import java.text.DecimalFormat;
                 } else {
                     pushProps = new JSONObject();
                 }
-                pushProps.put("campaign_id", campaignId);
-                pushProps.put("message_id", messageId);
+                pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
+                pushProps.put("message_id", Integer.valueOf(messageId).intValue());
                 pushProps.put("message_type", "push");
                 mMpInstance.track("$app_open", pushProps);
             } catch (JSONException e) {}

@@ -413,8 +413,8 @@ public class GCMReceiver extends BroadcastReceiver {
                         } catch (JSONException e) {}
 
                         try {
-                            pushProps.put("campaign_id", campaignId);
-                            pushProps.put("message_id", messageId);
+                            pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
+                            pushProps.put("message_id", Integer.valueOf(messageId).intValue());
                             pushProps.put("message_type", "push");
                             api.track("$campaign_received", pushProps);
                         } catch (JSONException e) {}
