@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;
@@ -36,7 +35,7 @@ public class HttpTest extends AndroidTestCase {
     private volatile boolean mDisableFallback;
     private volatile int mFlushInterval;
     private volatile boolean mForceOverMemThreshold;
-    private static final long POLL_WAIT_MAX_MILLISECONDS = 1000;
+    private static final long POLL_WAIT_MAX_MILLISECONDS = 3500;
     private static final TimeUnit DEFAULT_TIMEUNIT = TimeUnit.MILLISECONDS;
     private static final String SUCCEED_TEXT = "Should Succeed";
     private static final String FAIL_TEXT = "Should Fail";
@@ -55,7 +54,7 @@ public class HttpTest extends AndroidTestCase {
         final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
-                throws ServiceUnavailableException, IOException {
+                    throws ServiceUnavailableException, IOException {
                 try {
                     if (null == params) {
                         mDecideCalls.put(endpointUrl);
@@ -138,9 +137,9 @@ public class HttpTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table) {
+            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
                 mCleanupCalls.add("called");
-                super.cleanupEvents(last_id, table);
+                super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
             }
 
             @Override
@@ -197,7 +196,7 @@ public class HttpTest extends AndroidTestCase {
     public void runBasicSucceed() throws InterruptedException {
         mCleanupCalls.clear();
         mMetrics.track(SUCCEED_TEXT, null);
-        Thread.sleep(mFlushInterval + POLL_WAIT_MAX_MILLISECONDS);
+        waitForFlushInternval();
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(null, mPerformRequestCalls.poll());
         assertEquals(1, mCleanupCalls.size());
@@ -317,8 +316,6 @@ public class HttpTest extends AndroidTestCase {
 
         waitForBackOffTimeInterval();
 
-        Thread.sleep(5000);
-
         assertEquals(3, mCleanupCalls.size());
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
         assertEquals(SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -344,10 +341,12 @@ public class HttpTest extends AndroidTestCase {
 
     private void waitForBackOffTimeInterval() throws InterruptedException {
         long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
-        Thread.sleep(waitForMs + 500);
+        Thread.sleep(waitForMs);
+        Thread.sleep(1500);
     }
 
     private void waitForFlushInternval() throws InterruptedException {
-        Thread.sleep(mFlushInterval + 500);
+        Thread.sleep(mFlushInterval);
+        Thread.sleep(1500);
     }
 }

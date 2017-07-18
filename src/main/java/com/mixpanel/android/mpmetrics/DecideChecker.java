@@ -3,13 +3,14 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Build;
-import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
 import com.mixpanel.android.util.ImageStore;
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
@@ -22,32 +23,48 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import javax.net.ssl.SSLSocketFactory;
 
 /* package */ class DecideChecker {
+    private static final String LOGTAG = "MixpanelAPI.DChecker";
+
+    private final MPConfig mConfig;
+    private final Context mContext;
+    private final Map<String, DecideMessages> mChecks;
+    private final ImageStore mImageStore;
+    private final SystemInformation mSystemInformation;
+
+    private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
+
+    private static final String NOTIFICATIONS = "notifications";
+    private static final String EVENT_BINDINGS = "event_bindings";
+    private static final String VARIANTS = "variants";
+    private static final String AUTOMATIC_EVENTS = "automatic_events";
 
     /* package */ static class Result {
         public Result() {
-            surveys = new ArrayList<Survey>();
-            notifications = new ArrayList<InAppNotification>();
+            notifications = new ArrayList<>();
             eventBindings = EMPTY_JSON_ARRAY;
             variants = EMPTY_JSON_ARRAY;
+            automaticEvents = false;
         }
 
-        public final List<Survey> surveys;
         public final List<InAppNotification> notifications;
         public JSONArray eventBindings;
         public JSONArray variants;
+        public boolean automaticEvents;
     }
 
     public DecideChecker(final Context context, final MPConfig config, final SystemInformation systemInformation) {
         mContext = context;
         mConfig = config;
-        mChecks = new LinkedList<DecideMessages>();
+        mChecks = new HashMap<String, DecideMessages>();
         mImageStore = createImageStore(context);
         mSystemInformation = systemInformation;
     }
@@ -57,19 +74,18 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     public void addDecideCheck(final DecideMessages check) {
-        mChecks.add(check);
+        mChecks.put(check.getToken(), check);
     }
 
-    public void runDecideChecks(final RemoteService poster) throws RemoteService.ServiceUnavailableException {
-        final Iterator<DecideMessages> itr = mChecks.iterator();
-        while (itr.hasNext()) {
-            final DecideMessages updates = itr.next();
+    public void runDecideCheck(final String token, final RemoteService poster) throws RemoteService.ServiceUnavailableException {
+        DecideMessages updates = mChecks.get(token);
+        if (updates != null) {
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
-                updates.reportResults(result.surveys, result.notifications, result.eventBindings, result.variants);
+                updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents);
             } catch (final UnintelligibleMessageException e) {
-                Log.e(LOGTAG, e.getMessage(), e);
+                MPLog.e(LOGTAG, e.getMessage(), e);
             }
         }
     }
@@ -85,9 +101,8 @@ import javax.net.ssl.SSLSocketFactory;
     private Result runDecideCheck(final String token, final String distinctId, final RemoteService poster)
         throws RemoteService.ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
-        }
+
+        MPLog.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
 
         Result parsed = new Result();
         if (null != responseString) {
@@ -97,9 +112,9 @@ import javax.net.ssl.SSLSocketFactory;
         final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
         while (notificationIterator.hasNext()) {
             final InAppNotification notification = notificationIterator.next();
-            final Bitmap image = getNotificationImage(notification, mContext, poster);
+            final Bitmap image = getNotificationImage(notification, mContext);
             if (null == image) {
-                Log.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
                         ", will not show the notification.");
                 notificationIterator.remove();
             } else {
@@ -122,35 +137,12 @@ import javax.net.ssl.SSLSocketFactory;
             throw new UnintelligibleMessageException(message, e);
         }
 
-        JSONArray surveys = null;
-        if (response.has("surveys")) {
-            try {
-                surveys = response.getJSONArray("surveys");
-            } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for surveys: " + response);
-            }
-        }
-
-        if (null != surveys) {
-            for (int i = 0; i < surveys.length(); i++) {
-                try {
-                    final JSONObject surveyJson = surveys.getJSONObject(i);
-                    final Survey survey = new Survey(surveyJson);
-                    ret.surveys.add(survey);
-                } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                } catch (final BadDecideObjectException e) {
-                    Log.e(LOGTAG, "Received a strange response from surveys service: " + surveys.toString());
-                }
-            }
-        }
-
         JSONArray notifications = null;
-        if (response.has("notifications")) {
+        if (response.has(NOTIFICATIONS)) {
             try {
-                notifications = response.getJSONArray("notifications");
+                notifications = response.getJSONArray(NOTIFICATIONS);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
             }
         }
 
@@ -159,31 +151,46 @@ import javax.net.ssl.SSLSocketFactory;
             for (int i = 0; i < notificationsToRead; i++) {
                 try {
                     final JSONObject notificationJson = notifications.getJSONObject(i);
-                    final InAppNotification notification = new InAppNotification(notificationJson);
-                    ret.notifications.add(notification);
+                    final String notificationType = notificationJson.getString("type");
+
+                    if (notificationType.equalsIgnoreCase("takeover")) {
+                        final TakeoverInAppNotification notification = new TakeoverInAppNotification(notificationJson);
+                        ret.notifications.add(notification);
+                    } else if (notificationType.equalsIgnoreCase("mini")) {
+                        final MiniInAppNotification notification = new MiniInAppNotification(notificationJson);
+                        ret.notifications.add(notification);
+                    }
                 } catch (final JSONException e) {
-                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final BadDecideObjectException e) {
-                    Log.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
                 } catch (final OutOfMemoryError e) {
-                    Log.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
+                    MPLog.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
                 }
             }
         }
 
-        if (response.has("event_bindings")) {
+        if (response.has(EVENT_BINDINGS)) {
             try {
-                ret.eventBindings = response.getJSONArray("event_bindings");
+                ret.eventBindings = response.getJSONArray(EVENT_BINDINGS);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for event bindings: " + response);
             }
         }
 
-        if (response.has("variants")) {
+        if (response.has(VARIANTS)) {
             try {
-                ret.variants = response.getJSONArray("variants");
+                ret.variants = response.getJSONArray(VARIANTS);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for variants: " + response);
+            }
+        }
+
+        if (response.has(AUTOMATIC_EVENTS)) {
+            try {
+                ret.automaticEvents = response.getBoolean(AUTOMATIC_EVENTS);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned a non boolean value for automatic events: " + response);
             }
         }
 
@@ -224,7 +231,7 @@ import javax.net.ssl.SSLSocketFactory;
             properties.putOpt("$android_device_model", Build.MODEL);
             queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
         } catch (Exception e) {
-            Log.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
+            MPLog.e(LOGTAG, "Exception constructing properties JSON", e.getCause());
         }
 
         final String checkQuery = queryBuilder.toString();
@@ -236,11 +243,9 @@ import javax.net.ssl.SSLSocketFactory;
                     mConfig.getDecideFallbackEndpoint() + checkQuery};
         }
 
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Querying decide server, urls:");
-            for (int i = 0; i < urls.length; i++) {
-                Log.v(LOGTAG, "    >> " + urls[i]);
-            }
+        MPLog.v(LOGTAG, "Querying decide server, urls:");
+        for (int i = 0; i < urls.length; i++) {
+            MPLog.v(LOGTAG, "    >> " + urls[i]);
         }
 
         final byte[] response = getUrls(poster, mContext, urls);
@@ -254,7 +259,7 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    private Bitmap getNotificationImage(InAppNotification notification, Context context, RemoteService poster)
+    private Bitmap getNotificationImage(InAppNotification notification, Context context)
         throws RemoteService.ServiceUnavailableException {
         String[] urls = {notification.getImage2xUrl(), notification.getImageUrl()};
 
@@ -270,7 +275,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 return mImageStore.getImage(url);
             } catch (ImageStore.CantGetImageException e) {
-                Log.v(LOGTAG, "Can't load image " + url + " for a notification", e);
+                MPLog.v(LOGTAG, "Can't load image " + url + " for a notification", e);
             }
         }
 
@@ -304,17 +309,13 @@ import javax.net.ssl.SSLSocketFactory;
                 response = poster.performRequest(url, null, socketFactory);
                 break;
             } catch (final MalformedURLException e) {
-                Log.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
             } catch (final FileNotFoundException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
-                }
+                MPLog.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
             } catch (final IOException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Cannot get " + url + ".", e);
-                }
+                MPLog.v(LOGTAG, "Cannot get " + url + ".", e);
             } catch (final OutOfMemoryError e) {
-                Log.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
+                MPLog.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
                 break;
             }
         }
@@ -322,13 +323,7 @@ import javax.net.ssl.SSLSocketFactory;
         return response;
     }
 
-    private final MPConfig mConfig;
-    private final Context mContext;
-    private final List<DecideMessages> mChecks;
-    private final ImageStore mImageStore;
-    private final SystemInformation mSystemInformation;
-
-    private static final JSONArray EMPTY_JSON_ARRAY = new JSONArray();
-
-    private static final String LOGTAG = "MixpanelAPI.DChecker";
+    public DecideMessages getDecideMessages(String token) {
+        return mChecks.get(token);
+    }
 }

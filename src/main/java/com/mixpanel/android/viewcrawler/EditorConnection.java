@@ -1,14 +1,12 @@
 package com.mixpanel.android.viewcrawler;
 
-import android.util.Log;
-
 import com.mixpanel.android.java_websocket.client.WebSocketClient;
 import com.mixpanel.android.java_websocket.drafts.Draft_17;
 import com.mixpanel.android.java_websocket.exceptions.NotSendableException;
 import com.mixpanel.android.java_websocket.exceptions.WebsocketNotConnectedException;
 import com.mixpanel.android.java_websocket.framing.Framedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
-import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -72,16 +70,12 @@ import java.nio.ByteBuffer;
 
         @Override
         public void onOpen(ServerHandshake handshakedata) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Websocket connected");
-            }
+            MPLog.v(LOGTAG, "Websocket connected");
         }
 
         @Override
         public void onMessage(String message) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Received message from editor:\n" + message);
-            }
+            MPLog.v(LOGTAG, "Received message from editor:\n" + message);
             try {
                 final JSONObject messageJson = new JSONObject(message);
                 final String type = messageJson.getString("type");
@@ -99,24 +93,22 @@ import java.nio.ByteBuffer;
                     mService.setTweaks(messageJson);
                 }
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Bad JSON received:" + message, e);
+                MPLog.e(LOGTAG, "Bad JSON received:" + message, e);
             }
         }
 
         @Override
         public void onClose(int code, String reason, boolean remote) {
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
-            }
+            MPLog.v(LOGTAG, "WebSocket closed. Code: " + code + ", reason: " + reason + "\nURI: " + mURI);
             mService.cleanup();
         }
 
         @Override
         public void onError(Exception ex) {
             if (ex != null && ex.getMessage() != null) {
-                Log.e(LOGTAG, "Websocket Error: " + ex.getMessage());
+                MPLog.e(LOGTAG, "Websocket Error: " + ex.getMessage());
             } else {
-                Log.e(LOGTAG, "Unknown websocket error occurred");
+                MPLog.e(LOGTAG, "Unknown websocket error occurred");
             }
         }
     }

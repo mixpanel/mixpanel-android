@@ -1,7 +1,6 @@
-package com.mixpanel.android.surveys;
+package com.mixpanel.android.takeoverinapp;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
@@ -11,12 +10,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.util.AttributeSet;
-import android.util.TypedValue;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
-
-import com.mixpanel.android.R;
 
 
 public class FadingImageView extends ImageView {
@@ -39,43 +33,33 @@ public class FadingImageView extends ImageView {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-        mHeight = getHeight();
-        mWidth = getWidth();
-        int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
-        ViewGroup container = (ViewGroup) getParent();
+        if (mShouldShowShadow) {
+            mHeight = getHeight();
+            mWidth = getWidth();
 
-        final View root = (View) this.getRootView();
-        final View bottomWrapperView = (View) root.findViewById(R.id.com_mixpanel_android_notification_bottom_wrapper);
-
-        // bottomWrapperView should have been measured already, so it's height should exist
-        // Still, guard against potential weird black magic rendering issues.
-        int bottomWrapperHeight = 0;
-        if (null != bottomWrapperView && bottomWrapperView.getHeight() != 0) {
-            bottomWrapperHeight = bottomWrapperView.getHeight();
+            int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
+            mGradientMatrix.setScale(1, parentHeight);
+            mAlphaGradientShader.setLocalMatrix(mGradientMatrix);
+            mDarkenGradientShader.setLocalMatrix(mGradientMatrix);
         }
-
-        // We don't want the fade out to end right at the beginning of the text, so we give it
-        // give it a few extra dp's of room.
-        Resources r = getResources();
-        float extraPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15, r.getDisplayMetrics());
-        mGradientMatrix.setScale(1, parentHeight);
-
-        mAlphaGradientShader.setLocalMatrix(mGradientMatrix);
-        mDarkenGradientShader.setLocalMatrix(mGradientMatrix);
     }
 
     @Override
     public void draw(Canvas canvas) {
-        // We have to override this low level draw method instead of onDraw, because by the time
-        // onDraw is called, the Canvas with the background has already been saved, so we can't
-        // actually clear it with our opacity gradient.
-        final Rect clip = canvas.getClipBounds();
-        final int restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
+        if (mShouldShowShadow) {
+            // We have to override this low level draw method instead of onDraw, because by the time
+            // onDraw is called, the Canvas with the background has already been saved, so we can't
+            // actually clear it with our opacity gradient.
+            final Rect clip = canvas.getClipBounds();
+            final int restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
 
-        super.draw(canvas);
+            super.draw(canvas);
 
-        canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
-        canvas.restoreToCount(restoreTo);
+            canvas.drawRect(0, 0, mWidth, mHeight, mAlphaGradientPaint);
+            canvas.restoreToCount(restoreTo);
+        } else {
+            super.draw(canvas);
+        }
     }
 
     private void initFadingImageView() {
@@ -103,6 +87,10 @@ public class FadingImageView extends ImageView {
         mAlphaGradientPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
     }
 
+    public void showShadow(boolean shouldShowShadow) {
+        mShouldShowShadow = shouldShowShadow;
+    }
+
     private Matrix mGradientMatrix;
     private Paint mAlphaGradientPaint;
     private Shader mAlphaGradientShader;
@@ -110,4 +98,5 @@ public class FadingImageView extends ImageView {
     private Shader mDarkenGradientShader;
     private int mHeight;
     private int mWidth;
+    private boolean mShouldShowShadow;
 }

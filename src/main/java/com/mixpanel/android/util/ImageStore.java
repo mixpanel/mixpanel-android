@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v4.util.LruCache;
 import android.util.Base64;
-import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
@@ -46,7 +45,7 @@ public class ImageStore {
         try {
             useDigest = MessageDigest.getInstance("SHA1");
         } catch (NoSuchAlgorithmException e) {
-            Log.w(LOGTAG, "Images won't be stored because this platform doesn't supply a SHA1 hash function");
+            MPLog.w(LOGTAG, "Images won't be stored because this platform doesn't supply a SHA1 hash function");
             useDigest = null;
         }
 
@@ -98,7 +97,7 @@ public class ImageStore {
                             try {
                                 out.close();
                             } catch (IOException e) {
-                                Log.w(LOGTAG, "Problem closing output file", e);
+                                MPLog.w(LOGTAG, "Problem closing output file", e);
                             }
                         }
                     }

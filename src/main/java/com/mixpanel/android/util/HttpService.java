@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 
@@ -17,7 +16,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Map;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -43,8 +41,8 @@ public class HttpService implements RemoteService {
                             apiMixpanelInet.isAnyLocalAddress() ||
                             decideMixpanelInet.isLoopbackAddress() ||
                             decideMixpanelInet.isAnyLocalAddress();
-                    if (MPConfig.DEBUG && sIsMixpanelBlocked) {
-                        Log.v(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
+                    if (sIsMixpanelBlocked) {
+                        MPLog.v(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
                     }
                 } catch (Exception e) {
                 }
@@ -64,15 +62,16 @@ public class HttpService implements RemoteService {
             final ConnectivityManager cm =
                     (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             final NetworkInfo netInfo = cm.getActiveNetworkInfo();
-            isOnline = netInfo != null && netInfo.isConnectedOrConnecting();
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
+            if (netInfo == null) {
+                isOnline = true;
+                MPLog.v(LOGTAG, "A default network has not been set so we cannot be certain whether we are offline");
+            } else {
+                isOnline = netInfo.isConnectedOrConnecting();
+                MPLog.v(LOGTAG, "ConnectivityManager says we " + (isOnline ? "are" : "are not") + " online");
             }
         } catch (final SecurityException e) {
             isOnline = true;
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
-            }
+            MPLog.v(LOGTAG, "Don't have permission to check connectivity, will assume we are online");
         }
         return isOnline;
     }
@@ -84,9 +83,7 @@ public class HttpService implements RemoteService {
             onOfflineMode = offlineMode != null && offlineMode.isOffline();
         } catch (Exception e) {
             onOfflineMode = false;
-            if (MPConfig.DEBUG) {
-                Log.v(LOGTAG, "Client State should not throw exception, will assume is not on offline mode", e);
-            }
+            MPLog.v(LOGTAG, "Client State should not throw exception, will assume is not on offline mode", e);
         }
 
         return onOfflineMode;
@@ -94,9 +91,8 @@ public class HttpService implements RemoteService {
 
     @Override
     public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
-        if (MPConfig.DEBUG) {
-            Log.v(LOGTAG, "Attempting request to " + endpointUrl);
-        }
+        MPLog.v(LOGTAG, "Attempting request to " + endpointUrl);
+
         byte[] response = null;
 
         // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
@@ -145,9 +141,7 @@ public class HttpService implements RemoteService {
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                if (MPConfig.DEBUG) {
-                    Log.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
-                }
+                MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 retries = retries + 1;
             } catch (final IOException e) {
                 if (connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
@@ -167,10 +161,8 @@ public class HttpService implements RemoteService {
                     connection.disconnect();
             }
         }
-        if (MPConfig.DEBUG) {
-            if (retries >= 3) {
-                Log.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
-            }
+        if (retries >= 3) {
+            MPLog.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
         }
         return response;
     }

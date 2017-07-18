@@ -1,10 +1,11 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
+
+import com.mixpanel.android.util.JSONUtils;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -12,13 +13,70 @@ import org.json.JSONObject;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Represents a in-app notification delivered from Mixpanel. Under ordinary circumstances,
- * most code won't have to interact with this class directly, but rather will display
- * InAppNotifications using {@link com.mixpanel.android.mpmetrics.MixpanelAPI.People#showNotificationIfAvailable(Activity)}
- * This class is public to
- */
-public class InAppNotification implements Parcelable {
+public abstract class InAppNotification implements Parcelable {
+
+    private static final String LOGTAG = "MixpanelAPI.InAppNotif";
+    private static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("(\\.[^./]+$)");
+
+    protected final JSONObject mDescription;
+    protected final JSONObject mExtras;
+
+    protected final int mId;
+    protected final int mMessageId;
+    private final int mBackgroundColor;
+    private final String mBody;
+    private final int mBodyColor;
+    private final String mImageUrl;
+
+    private Bitmap mImage;
+
+    public InAppNotification() {
+        mDescription = null;
+        mExtras = null;
+        mId = 0;
+        mMessageId = 0;
+        mBackgroundColor = 0;
+        mBody = null;
+        mBodyColor = 0;
+        mImageUrl = null;
+    }
+
+    public InAppNotification(Parcel in) {
+        JSONObject tempDescription = new JSONObject();
+        JSONObject tempExtras = new JSONObject();
+        try {
+            tempDescription = new JSONObject(in.readString());
+            tempExtras = new JSONObject(in.readString());
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Error reading JSON when creating InAppNotification from Parcel");
+        }
+        mDescription = tempDescription;
+        mExtras = tempExtras;
+
+        mId = in.readInt();
+        mMessageId = in.readInt();
+        mBackgroundColor = in.readInt();
+        mBody = in.readString();
+        mBodyColor = in.readInt();
+        mImageUrl = in.readString();
+        mImage = in.readParcelable(Bitmap.class.getClassLoader());
+    }
+
+    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
+        try {
+            mDescription = description;
+            mExtras = description.getJSONObject("extras");
+            mId = description.getInt("id");
+            mMessageId = description.getInt("message_id");
+            mBackgroundColor = description.getInt("bg_color");
+            mBody = JSONUtils.optionalStringKey(description, "body");
+            mBodyColor = description.optInt("body_color");
+            mImageUrl = description.getString("image_url");
+            mImage = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888);
+        } catch (final JSONException e) {
+            throw new BadDecideObjectException("Notification JSON was unexpected or bad", e);
+        }
+    }
 
     /**
      * InApp Notifications in Mixpanel are either TAKEOVERs, that display full screen,
@@ -42,66 +100,6 @@ public class InAppNotification implements Parcelable {
             public String toString() {
                 return "takeover";
             }
-        };
-    }
-
-    public enum Style {
-        LIGHT ("light"),
-        DARK  ("dark");
-
-        private final String style;
-
-        Style(String s) {
-            style = s;
-        }
-
-        public boolean equalsName(String otherName) {
-            return (otherName != null) && style.equals(otherName);
-        }
-
-        public String toString() {
-            return this.style;
-        }
-    }
-
-    public InAppNotification(Parcel in) {
-        JSONObject temp = new JSONObject();
-        try {
-            temp = new JSONObject(in.readString());
-        } catch (JSONException e) {
-            Log.e(LOGTAG, "Error reading JSON when creating InAppNotification from Parcel");
-        }
-        mDescription = temp; // mDescription is final
-        mId = in.readInt();
-        mMessageId = in.readInt();
-        mType = in.readString();
-        mStyle = in.readString();
-        mTitle = in.readString();
-        mBody = in.readString();
-        mImageUrl = in.readString();
-        mCallToAction = in.readString();
-        mCallToActionUrl = in.readString();
-
-        mImage = in.readParcelable(Bitmap.class.getClassLoader());
-    }
-
-    /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
-        try {
-            mDescription = description;
-            mId = description.getInt("id");
-            mMessageId = description.getInt("message_id");
-            mType = description.getString("type");
-            mStyle = description.getString("style");
-            mTitle = description.getString("title");
-            mBody = description.getString("body");
-            mImageUrl = description.getString("image_url");
-            mImage = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888);
-
-            // "cta" here is an unfortunate abbreviation of "Call To Action"
-            mCallToAction = description.getString("cta");
-            mCallToActionUrl = description.getString("cta_url");
-        } catch (final JSONException e) {
-            throw new BadDecideObjectException("Notification JSON was unexpected or bad", e);
         }
     }
 
@@ -115,9 +113,9 @@ public class InAppNotification implements Parcelable {
             ret.put("campaign_id", getId());
             ret.put("message_id", getMessageId());
             ret.put("message_type", "inapp");
-            ret.put("message_subtype", mType);
+            ret.put("message_subtype", getType().toString());
         } catch (JSONException e) {
-            Log.e(LOGTAG, "Impossible JSON Exception", e);
+            MPLog.e(LOGTAG, "Impossible JSON Exception", e);
         }
 
         return ret;
@@ -131,22 +129,22 @@ public class InAppNotification implements Parcelable {
         return mMessageId;
     }
 
-    public Type getType() {
-        if (Type.MINI.toString().equals(mType)) {
-            return Type.MINI;
-        }
-        if (Type.TAKEOVER.toString().equals(mType)) {
-            return Type.TAKEOVER;
-        }
-        return Type.UNKNOWN;
+    public abstract Type getType();
+
+    public int getBackgroundColor() {
+        return mBackgroundColor;
     }
 
-    public String getTitle() {
-        return mTitle;
+    public boolean hasBody() {
+        return mBody != null;
     }
 
     public String getBody() {
         return mBody;
+    }
+
+    public int getBodyColor() {
+        return mBodyColor;
     }
 
     public String getImageUrl() {
@@ -161,16 +159,6 @@ public class InAppNotification implements Parcelable {
         return sizeSuffixUrl(mImageUrl, "@4x");
     }
 
-    public String getCallToAction() {
-        return mCallToAction;
-    }
-
-    public String getCallToActionUrl() {
-        return mCallToActionUrl;
-    }
-
-    public String getStyle() { return mStyle; }
-
     /* package */ void setImage(final Bitmap image) {
         mImage = image;
     }
@@ -178,39 +166,6 @@ public class InAppNotification implements Parcelable {
     public Bitmap getImage() {
         return mImage;
     }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(mDescription.toString());
-        dest.writeInt(mId);
-        dest.writeInt(mMessageId);
-        dest.writeString(mType);
-        dest.writeString(mStyle);
-        dest.writeString(mTitle);
-        dest.writeString(mBody);
-        dest.writeString(mImageUrl);
-        dest.writeString(mCallToAction);
-        dest.writeString(mCallToActionUrl);
-        dest.writeParcelable(mImage, flags);
-    }
-
-    public static final Parcelable.Creator<InAppNotification> CREATOR = new Parcelable.Creator<InAppNotification>() {
-
-        @Override
-        public InAppNotification createFromParcel(Parcel source) {
-            return new InAppNotification(source);
-        }
-
-        @Override
-        public InAppNotification[] newArray(int size) {
-            return new InAppNotification[size];
-        }
-    };
 
     /* package */ static String sizeSuffixUrl(String url, String sizeSuffix) {
         final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(url);
@@ -221,19 +176,30 @@ public class InAppNotification implements Parcelable {
         }
     }
 
-    private Bitmap mImage;
+    protected JSONObject getExtras() {
+        return mExtras;
+    }
 
-    private final JSONObject mDescription;
-    private final int mId;
-    private final int mMessageId;
-    private final String mType;
-    private final String mStyle;
-    private final String mTitle;
-    private final String mBody;
-    private final String mImageUrl;
-    private final String mCallToAction;
-    private final String mCallToActionUrl;
+    @Override
+    public int describeContents() {
+        return 0;
+    }
 
-    private static final String LOGTAG = "MixpanelAPI.InAppNotif";
-    private static final Pattern FILE_EXTENSION_PATTERN = Pattern.compile("(\\.[^./]+$)");
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(mDescription.toString());
+        dest.writeString(mExtras.toString());
+        dest.writeInt(mId);
+        dest.writeInt(mMessageId);
+        dest.writeInt(mBackgroundColor);
+        dest.writeString(mBody);
+        dest.writeInt(mBodyColor);
+        dest.writeString(mImageUrl);
+        dest.writeParcelable(mImage, flags);
+    }
+
+    @Override
+    public String toString() {
+        return mDescription.toString();
+    }
 }

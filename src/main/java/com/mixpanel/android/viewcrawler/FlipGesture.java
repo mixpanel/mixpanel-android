@@ -4,9 +4,8 @@ package com.mixpanel.android.viewcrawler;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.util.Log;
 
-import com.mixpanel.android.mpmetrics.MPConfig;
+import com.mixpanel.android.util.MPLog;
 
 /* package */ class FlipGesture implements SensorEventListener {
 
@@ -59,26 +58,20 @@ import com.mixpanel.android.mpmetrics.MPConfig;
         switch (mFlipState) {
             case FLIP_STATE_DOWN:
                 if (flipDurationNanos > MINIMUM_UP_DOWN_DURATION && mTriggerState == TRIGGER_STATE_NONE) {
-                    if (MPConfig.DEBUG) {
-                        Log.v(LOGTAG, "Flip gesture begun");
-                    }
+                    MPLog.v(LOGTAG, "Flip gesture begun");
                     mTriggerState = TRIGGER_STATE_BEGIN;
                 }
                 break;
             case FLIP_STATE_UP:
                 if (flipDurationNanos > MINIMUM_UP_DOWN_DURATION && mTriggerState == TRIGGER_STATE_BEGIN) {
-                    if (MPConfig.DEBUG) {
-                        Log.v(LOGTAG, "Flip gesture completed");
-                    }
+                    MPLog.v(LOGTAG, "Flip gesture completed");
                     mTriggerState = TRIGGER_STATE_NONE;
                     mListener.onFlipGesture();
                 }
                 break;
             case FLIP_STATE_NONE:
                 if (flipDurationNanos > MINIMUM_CANCEL_DURATION && mTriggerState != TRIGGER_STATE_NONE) {
-                    if (MPConfig.DEBUG) {
-                        Log.v(LOGTAG, "Flip gesture abandoned");
-                    }
+                    MPLog.v(LOGTAG, "Flip gesture abandoned");
                     mTriggerState = TRIGGER_STATE_NONE;
                 }
                 break;

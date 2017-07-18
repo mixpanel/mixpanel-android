@@ -1,11 +1,11 @@
 package com.mixpanel.android.viewcrawler;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.util.Log;
 import android.util.Pair;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.RelativeLayout;
@@ -13,6 +13,7 @@ import android.widget.RelativeLayout;
 import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -63,7 +64,8 @@ import java.util.List;
         public final List<String> imageUrls;
     }
 
-    public EditProtocol(ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
+    public EditProtocol(Context context, ResourceIds resourceIds, ImageStore imageStore, ViewVisitor.OnLayoutErrorListener layoutErrorListener) {
+        mContext = context;
         mResourceIds = resourceIds;
         mImageStore = imageStore;
         mLayoutErrorListener = layoutErrorListener;
@@ -170,7 +172,7 @@ import java.util.List;
                     }
 
                     if (view_id == null || anchor_id == null) {
-                        Log.w(LOGTAG, "View (" + view_id_name + ") or anchor (" + anchor_id_name + ") not found.");
+                        MPLog.w(LOGTAG, "View (" + view_id_name + ") or anchor (" + anchor_id_name + ") not found.");
                         continue;
                     }
 
@@ -209,7 +211,7 @@ import java.util.List;
                 }
             }
 
-            return new ViewSnapshot(properties, mResourceIds);
+            return new ViewSnapshot(mContext, properties, mResourceIds);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't read snapshot configuration", e);
         } catch (final ClassNotFoundException e) {
@@ -266,7 +268,7 @@ import java.util.List;
             } else if (null == prefixCode) {
                 prefix = Pathfinder.PathElement.ZERO_LENGTH_PREFIX;
             } else {
-                Log.w(LOGTAG, "Unrecognized prefix type \"" + prefixCode + "\". No views will be matched");
+                MPLog.w(LOGTAG, "Unrecognized prefix type \"" + prefixCode + "\". No views will be matched");
                 return NEVER_MATCH_PATH;
             }
 
@@ -292,7 +294,7 @@ import java.util.List;
             if (idNameToId.knownIdName(idName)) {
                 idFromName = idNameToId.idFromName(idName);
             } else {
-                Log.w(LOGTAG,
+                MPLog.w(LOGTAG,
                         "Path element contains an id name not known to the system. No views will be matched.\n" +
                                 "Make sure that you're not stripping your packages R class out with proguard.\n" +
                                 "id name was \"" + idName + "\""
@@ -304,7 +306,7 @@ import java.util.List;
         }
 
         if (-1 != idFromName && -1 != explicitId && idFromName != explicitId) {
-            Log.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
+            MPLog.e(LOGTAG, "Path contains both a named and an explicit id, and they don't match. No views will be matched.");
             return null;
         }
 
@@ -420,6 +422,7 @@ import java.util.List;
         }
     }
 
+    private final Context mContext;
     private final ResourceIds mResourceIds;
     private final ImageStore mImageStore;
     private final ViewVisitor.OnLayoutErrorListener mLayoutErrorListener;

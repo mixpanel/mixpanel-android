@@ -3,6 +3,7 @@ package com.mixpanel.android.viewcrawler;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -18,15 +19,14 @@ import android.util.Base64;
 import android.util.Base64OutputStream;
 import android.util.DisplayMetrics;
 import android.util.JsonWriter;
-import android.util.Log;
 import android.util.LruCache;
-import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.ResourceIds;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONObject;
 
@@ -48,7 +48,8 @@ import java.util.concurrent.TimeoutException;
 @TargetApi(MPConfig.UI_FEATURES_MIN_API)
 /* package */ class ViewSnapshot {
 
-    public ViewSnapshot(List<PropertyDescription> properties, ResourceIds resourceIds) {
+    public ViewSnapshot(Context context, List<PropertyDescription> properties, ResourceIds resourceIds) {
+        mConfig = MPConfig.getInstance(context);
         mProperties = properties;
         mResourceIds = resourceIds;
         mMainThreadHandler = new Handler(Looper.getMainLooper());
@@ -73,17 +74,11 @@ import java.util.concurrent.TimeoutException;
         try {
             infoList = infoFuture.get(1, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
-            if (MPConfig.DEBUG) {
-                Log.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
-            }
+            MPLog.d(LOGTAG, "Screenshot interrupted, no screenshot will be sent.", e);
         } catch (final TimeoutException e) {
-            if (MPConfig.DEBUG) {
-                Log.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
-            }
+            MPLog.i(LOGTAG, "Screenshot took more than 1 second to be scheduled and executed. No screenshot will be sent.", e);
         } catch (final ExecutionException e) {
-            if (MPConfig.DEBUG) {
-                Log.e(LOGTAG, "Exception thrown during screenshot attempt", e);
-            }
+            MPLog.e(LOGTAG, "Exception thrown during screenshot attempt", e);
         }
 
         final int infoCount = infoList.size();
@@ -134,6 +129,10 @@ import java.util.concurrent.TimeoutException;
 
     private void snapshotView(JsonWriter j, View view)
             throws IOException {
+        if (view.getVisibility() == View.INVISIBLE && mConfig.getIgnoreInvisibleViewsEditor()) {
+            return;
+        }
+
         final int viewId = view.getId();
         final String viewIdName;
         if (-1 == viewId) {
@@ -331,17 +330,15 @@ import java.util.concurrent.TimeoutException;
                 createSnapshot.setAccessible(true);
                 rawBitmap = (Bitmap) createSnapshot.invoke(rootView, Bitmap.Config.RGB_565, Color.WHITE, false);
             } catch (final NoSuchMethodException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Can't call createSnapshot, will use drawCache", e);
-                }
+                MPLog.v(LOGTAG, "Can't call createSnapshot, will use drawCache", e);
             } catch (final IllegalArgumentException e) {
-                Log.d(LOGTAG, "Can't call createSnapshot with arguments", e);
+                MPLog.d(LOGTAG, "Can't call createSnapshot with arguments", e);
             } catch (final InvocationTargetException e) {
-                Log.e(LOGTAG, "Exception when calling createSnapshot", e);
+                MPLog.e(LOGTAG, "Exception when calling createSnapshot", e);
             } catch (final IllegalAccessException e) {
-                Log.e(LOGTAG, "Can't access createSnapshot, using drawCache", e);
+                MPLog.e(LOGTAG, "Can't access createSnapshot, using drawCache", e);
             } catch (final ClassCastException e) {
-                Log.e(LOGTAG, "createSnapshot didn't return a bitmap?", e);
+                MPLog.e(LOGTAG, "createSnapshot didn't return a bitmap?", e);
             }
 
             Boolean originalCacheState = null;
@@ -353,9 +350,7 @@ import java.util.concurrent.TimeoutException;
                     rawBitmap = rootView.getDrawingCache();
                 }
             } catch (final RuntimeException e) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
-                }
+                MPLog.v(LOGTAG, "Can't take a bitmap snapshot of view " + rootView + ", skipping for now.", e);
             }
 
             float scale = 1.0f;
@@ -448,6 +443,7 @@ import java.util.concurrent.TimeoutException;
         public float scale;
     }
 
+    private final MPConfig mConfig;
     private final RootViewFinder mRootViewFinder;
     private final List<PropertyDescription> mProperties;
     private final ClassNameCache mClassnameCache;

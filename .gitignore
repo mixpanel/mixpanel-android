@@ -8,4 +8,3 @@ docs
 .idea
 build/
 .gradle/
-gradle/

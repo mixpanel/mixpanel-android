@@ -12,14 +12,13 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 
 import com.mixpanel.android.R;
-import com.mixpanel.android.surveys.SurveyActivity;
+import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
 import com.mixpanel.android.util.ActivityImageUtils;
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.TrackingDebug;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 import com.mixpanel.android.viewcrawler.ViewCrawler;
@@ -36,12 +35,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -220,7 +219,7 @@ public class MixpanelAPI {
             deviceInfo.put("$android_app_version", info.versionName);
             deviceInfo.put("$android_app_version_code", Integer.toString(info.versionCode));
         } catch (final PackageManager.NameNotFoundException e) {
-            Log.e(LOGTAG, "Exception getting app version name", e);
+            MPLog.e(LOGTAG, "Exception getting app version name", e);
         }
         mDeviceInfo = Collections.unmodifiableMap(deviceInfo);
 
@@ -238,7 +237,14 @@ public class MixpanelAPI {
             decideId = mPersistentIdentity.getEventsDistinctId();
         }
         mDecideMessages.setDistinctId(decideId);
+
         mMessages = getAnalyticsMessages();
+
+        if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
+            track(AutomaticEvents.FIRST_OPEN, null, true);
+
+            mPersistentIdentity.setHasLaunched();
+        }
 
         if (!mConfig.getDisableDecideChecker()) {
             mMessages.installDecideCheck(mDecideMessages);
@@ -250,7 +256,7 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
-        if (!mPersistentIdentity.hasTrackedIntegration()) {
+        if (!mPersistentIdentity.isFirstIntegration(mToken)) {
             try {
                 final JSONObject messageProps = new JSONObject();
 
@@ -259,15 +265,27 @@ public class MixpanelAPI {
                 messageProps.put("distinct_id", token);
 
                 final AnalyticsMessages.EventDescription eventDescription =
-                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17");
+                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
                 mMessages.eventsMessage(eventDescription);
-                flush();
-                mPersistentIdentity.setTrackedIntegration(true);
+                mMessages.postToServer(new AnalyticsMessages.FlushDescription("85053bf24bba75239b16a601d9387e17", false));
+
+                mPersistentIdentity.setIsIntegrated(mToken);
             } catch (JSONException e) {
             }
         }
 
+        if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code"))) {
+            try {
+                final JSONObject messageProps = new JSONObject();
+                messageProps.put(AutomaticEvents.VERSION_UPDATED, deviceInfo.get("$android_app_version"));
+                track(AutomaticEvents.APP_UPDATED, messageProps, true);
+            } catch (JSONException e) {}
+
+        }
+
         mUpdatesFromMixpanel.startUpdates();
+
+        ExceptionHandler.init();
     }
 
     /**
@@ -333,7 +351,7 @@ public class MixpanelAPI {
      */
     @Deprecated
     public static void setFlushInterval(Context context, long milliseconds) {
-        Log.i(
+        MPLog.i(
             LOGTAG,
             "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
             "    To set a custom Mixpanel flush interval for your application, add\n" +
@@ -349,7 +367,7 @@ public class MixpanelAPI {
      */
     @Deprecated
     public static void enableFallbackServer(Context context, boolean enableIfTrue) {
-        Log.i(
+        MPLog.i(
             LOGTAG,
             "MixpanelAPI.enableFallbackServer is deprecated. This call is a no-op.\n" +
             "    To enable fallback in your application, add\n" +
@@ -374,7 +392,7 @@ public class MixpanelAPI {
             original = getDistinctId();
         }
         if (alias.equals(original)) {
-            Log.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ". Alias message will not be sent.");
+            MPLog.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ". Alias message will not be sent.");
             return;
         }
 
@@ -384,7 +402,7 @@ public class MixpanelAPI {
             j.put("original", original);
             track("$create_alias", j);
         } catch (final JSONException e) {
-            Log.e(LOGTAG, "Failed to alias", e);
+            MPLog.e(LOGTAG, "Failed to alias", e);
         }
         flush();
     }
@@ -441,6 +459,20 @@ public class MixpanelAPI {
     }
 
     /**
+     * Retrieves the time elapsed for the named event since timeEvent() was called.
+     *
+     * @param eventName the name of the event to be tracked that was previously called with timeEvent()
+     */
+    public double eventElapsedTime(final String eventName) {
+        final long currentTime = System.currentTimeMillis();
+        Long startTime;
+        synchronized (mEventTimings) {
+            startTime = mEventTimings.get(eventName);
+        }
+        return startTime == null ? 0 : (double)((currentTime - startTime) / 1000);
+    }
+
+    /**
      * Track an event.
      *
      * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
@@ -461,7 +493,7 @@ public class MixpanelAPI {
             try {
                 track(eventName, new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties of trackMap!");
+                MPLog.w(LOGTAG, "Can't have null keys in the properties of trackMap!");
             }
         }
     }
@@ -483,56 +515,7 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
-        final Long eventBegin;
-        synchronized (mEventTimings) {
-            eventBegin = mEventTimings.get(eventName);
-            mEventTimings.remove(eventName);
-            mPersistentIdentity.removeTimeEvent(eventName);
-        }
-
-        try {
-            final JSONObject messageProps = new JSONObject();
-
-            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
-                final String key = entry.getKey();
-                final String value = entry.getValue();
-                messageProps.put(key, value);
-            }
-
-            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
-
-            // Don't allow super properties or referral properties to override these fields,
-            // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final long timeSeconds = (long) timeSecondsDouble;
-            messageProps.put("time", timeSeconds);
-            messageProps.put("distinct_id", getDistinctId());
-
-            if (null != eventBegin) {
-                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
-                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
-                messageProps.put("$duration", secondsElapsed);
-            }
-
-            if (null != properties) {
-                final Iterator<?> propIter = properties.keys();
-                while (propIter.hasNext()) {
-                    final String key = (String) propIter.next();
-                    messageProps.put(key, properties.get(key));
-                }
-            }
-
-            final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken);
-            mMessages.eventsMessage(eventDescription);
-
-            if (null != mTrackingDebug) {
-                mTrackingDebug.reportTrack(eventName);
-            }
-        } catch (final JSONException e) {
-            Log.e(LOGTAG, "Exception tracking event " + eventName, e);
-        }
+        track(eventName, properties, false);
     }
 
     /**
@@ -556,7 +539,7 @@ public class MixpanelAPI {
      * your main application activity.
      */
     public void flush() {
-        mMessages.postToServer();
+        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken));
     }
 
     /**
@@ -608,14 +591,14 @@ public class MixpanelAPI {
      */
     public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
-            Log.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
+            MPLog.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
             return;
         }
 
         try {
             registerSuperProperties(new JSONObject(superProperties));
         } catch (NullPointerException e) {
-            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap");
+            MPLog.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesMap");
         }
     }
 
@@ -667,14 +650,14 @@ public class MixpanelAPI {
      */
     public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
         if (null == superProperties) {
-            Log.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
+            MPLog.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
             return;
         }
 
         try {
             registerSuperPropertiesOnce(new JSONObject(superProperties));
         } catch (NullPointerException e) {
-            Log.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesOnce!");
+            MPLog.w(LOGTAG, "Can't have null keys in the properties of registerSuperPropertiesOnce!");
         }
     }
 
@@ -734,7 +717,7 @@ public class MixpanelAPI {
      * Will not clear referrer information.
      */
     public void reset() {
-        // Will clear distinct_ids, superProperties, notifications, surveys, experiments,
+        // Will clear distinct_ids, superProperties, notifications, experiments,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
@@ -1091,45 +1074,21 @@ public class MixpanelAPI {
         public String getDistinctId();
 
         /**
-         * If a survey is currently available, this method will launch an activity that shows a
-         * survey to the user and then send the responses to Mixpanel.
-         *
-         * <p>The survey activity will use the root of the given view to take a screenshot
-         * for its background.
-         *
-         * <p>It is safe to call this method any time you want to potentially display an in-app notification.
-         * This method will be a no-op if there is already a survey or in-app notification being displayed.
-         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
-         * both this and {@link People#showNotificationIfAvailable(Activity)} right after each other, and
-         * only one of them will be displayed.
-         *
-         * <p>This method is a no-op in environments with
-         * Android API before JellyBean/API level 16.
-         *
-         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
-         * taken of parent to be used as a blurred background.
-         */
-        public void showSurveyIfAvailable(Activity parent);
-
-        /**
          * Shows an in-app notification to the user if one is available. If the notification
          * is a mini notification, this method will attach and remove a Fragment to parent.
          * The lifecycle of the Fragment will be handled entirely by the Mixpanel library.
          *
-         * <p>If the notification is a takeover notification, a SurveyActivity will be launched to
+         * <p>If the notification is a takeover notification, a TakeoverInAppActivity will be launched to
          * display the Takeover notification.
          *
          * <p>It is safe to call this method any time you want to potentially display an in-app notification.
-         * This method will be a no-op if there is already a survey or in-app notification being displayed.
-         * Thus, if you have both surveys and in-app notification campaigns built in Mixpanel, you may call
-         * both this and {@link People#showSurveyIfAvailable(Activity)} right after each other, and
-         * only one of them will be displayed.
+         * This method will be a no-op if there is already an in-app notification being displayed.
          *
          * <p>This method is a no-op in environments with
          * Android API before JellyBean/API level 16.
          *
          * @param parent the Activity that the mini notification will be displayed in, or the Activity
-         * that will be used to launch SurveyActivity for the takeover notification.
+         * that will be used to launch TakeoverInAppActivity for the takeover notification.
          */
         public void showNotificationIfAvailable(Activity parent);
 
@@ -1158,7 +1117,7 @@ public class MixpanelAPI {
          * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} to show
          *
          * @param parent the Activity that the mini notification will be displayed in, or the Activity
-         * that will be used to launch SurveyActivity for the takeover notification.
+         * that will be used to launch TakeoverInAppActivity for the takeover notification.
          */
         public void showGivenNotification(InAppNotification notif, Activity parent);
 
@@ -1174,21 +1133,8 @@ public class MixpanelAPI {
         public void trackNotification(String eventName, InAppNotification notif);
 
         /**
-         * Returns a Survey object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display surveys with their own UI
-         * should call this method to get the Survey data. A given survey will be returned only once
-         * from this method, so callers should be ready to consume any non-null return value.
-         *
-         * <p>This function will always return quickly, and will not cause any communication with
-         * Mixpanel's servers, so it is safe to call this from the UI thread.
-         *
-         * @return a Survey object if one is available, null otherwise.
-         */
-        public Survey getSurveyIfAvailable();
-
-        /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
-         * no survey is currently available. Callers who want to display in-app notifications should call this
+         * no notification is currently available. Callers who want to display in-app notifications should call this
          * method periodically. A given InAppNotification will be returned only once from this method, so callers
          * should be ready to consume any non-null return value.
          *
@@ -1216,43 +1162,32 @@ public class MixpanelAPI {
         void trackNotificationSeen(InAppNotification notif);
 
         /**
-         * Shows a survey identified by id. The behavior of this is otherwise identical to
-         * {@link People#showSurveyIfAvailable(Activity)}.
-         *
-         * @param id the id of the Survey you wish to show.
-         * @param parent the Activity that this Survey will be displayed on top of. A snapshot will be
-         * taken of parent to be used as a blurred background.
-         */
-        public void showSurveyById(int id, final Activity parent);
-
-        /**
          * Shows an in-app notification identified by id. The behavior of this is otherwise identical to
          * {@link People#showNotificationIfAvailable(Activity)}.
          *
          * @param id the id of the InAppNotification you wish to show.
          * @param parent  the Activity that the mini notification will be displayed in, or the Activity
-         * that will be used to launch SurveyActivity for the takeover notification.
+         * that will be used to launch TakeoverInAppActivity for the takeover notification.
          */
         public void showNotificationById(int id, final Activity parent);
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
-         * This is used by Mixpanel Surveys but is likely not needed in your code.
          * Instances returned by withIdentity will not check decide with the given distinctId.
          */
         public People withIdentity(String distinctId);
 
         /**
          * Adds a new listener that will receive a callback when new updates from Mixpanel
-         * (like surveys, in-app notifications, or A/B test experiments) are discovered. Most users of the library
-         * will not need this method, since surveys, in-app notifications, and experiments are
+         * (like in-app notifications or A/B test experiments) are discovered. Most users of the library
+         * will not need this method since in-app notifications and experiments are
          * applied automatically to your application by default.
          *
          * <p>The given listener will be called when a new batch of updates is detected. Handlers
          * should be prepared to handle the callback on an arbitrary thread.
          *
-         * <p>The listener will be called when new surveys, in-app notifications, or experiments
-         * are detected as available. That means you wait to call {@link People#showSurveyIfAvailable(Activity)},
+         * <p>The listener will be called when new in-app notifications or experiments
+         * are detected as available. That means you wait to call
          * {@link People#showNotificationIfAvailable(Activity)}, and {@link People#joinExperimentIfAvailable()}
          * to show content and updates that have been delivered to your app. (You can also call these
          * functions whenever else you would like, they're inexpensive and will do nothing if no
@@ -1290,23 +1225,6 @@ public class MixpanelAPI {
          */
         public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
 
-        /**
-         * @deprecated in 4.1.0, Use showSurveyIfAvailable() instead.
-         */
-        @Deprecated
-        public void showSurvey(Survey s, Activity parent);
-
-        /**
-         * @deprecated in 4.1.0, Use getSurveyIfAvailable() instead.
-         */
-        @Deprecated
-        public void checkForSurvey(SurveyCallbacks callbacks);
-
-        /**
-         * @deprecated in 4.1.0, Use getSurveyIfAvailable() instead.
-         */
-        @Deprecated
-        public void checkForSurvey(SurveyCallbacks callbacks, Activity parent);
     }
 
     /**
@@ -1323,7 +1241,7 @@ public class MixpanelAPI {
      */
     @Deprecated
     public void logPosts() {
-        Log.i(
+        MPLog.i(
                 LOGTAG,
                 "MixpanelAPI.logPosts() is deprecated.\n" +
                         "    To get verbose debug level logging, add\n" +
@@ -1334,7 +1252,7 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show surveys and in-app notifications
+     * Once registered, we can automatically check for and show in-app notifications
      * when any Activity is opened.
      *
      * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
@@ -1348,12 +1266,32 @@ public class MixpanelAPI {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             if (mContext.getApplicationContext() instanceof Application) {
                 final Application app = (Application) mContext.getApplicationContext();
-                MixpanelActivityLifecycleCallbacks mixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
-                app.registerActivityLifecycleCallbacks(mixpanelActivityLifecycleCallbacks);
+                mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
+                app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
             } else {
-                Log.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show surveys, in-app notifications, or A/B test experiments. We won't be able to automatically flush on an app background.");
+                MPLog.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show in-app notifications or A/B test experiments. We won't be able to automatically flush on an app background.");
             }
         }
+    }
+
+    /**
+     * Based on the application's event lifecycle this method will determine whether the app
+     * is running in the foreground or not.
+     *
+     * If your build version is below 14 this method will always return false.
+     *
+     * @return True if the app is running in the foreground.
+     */
+    public boolean isAppInForeground() {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            if (mMixpanelActivityLifecycleCallbacks != null) {
+                return mMixpanelActivityLifecycleCallbacks.isInForeground();
+            }
+        } else {
+            MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
+        }
+
+        return false;
     }
 
     // Package-level access. Used (at least) by GCMReceiver
@@ -1397,16 +1335,19 @@ public class MixpanelAPI {
         final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
         final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
 
-        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs);
+        final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+        final Future<SharedPreferences> mixpanelPrefs = sPrefsLoader.loadPreferences(context, mixpanelPrefsName, null);
+
+        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-        return new DecideMessages(token, listener, updatesFromMixpanel);
+        return new DecideMessages(mContext, token, listener, updatesFromMixpanel, mPersistentIdentity.getSeenCampaignIds());
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-            Log.i(LOGTAG, "Surveys and Notifications are not supported on this Android OS Version");
+            MPLog.i(LOGTAG, "Notifications are not supported on this Android OS Version");
             return new UnsupportedUpdatesListener();
         } else {
             return new SupportedUpdatesListener();
@@ -1415,10 +1356,10 @@ public class MixpanelAPI {
 
     /* package */ UpdatesFromMixpanel constructUpdatesFromMixpanel(final Context context, final String token) {
         if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-            Log.i(LOGTAG, "SDK version is lower than " + MPConfig.UI_FEATURES_MIN_API + ". Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+            MPLog.i(LOGTAG, "SDK version is lower than " + MPConfig.UI_FEATURES_MIN_API + ". Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
             return new NoOpUpdatesFromMixpanel(sSharedTweaks);
         } else if (mConfig.getDisableViewCrawler() || Arrays.asList(mConfig.getDisableViewCrawlerForProjects()).contains(token)) {
-            Log.i(LOGTAG, "DisableViewCrawler is set to true. Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
+            MPLog.i(LOGTAG, "DisableViewCrawler is set to true. Web Configuration, A/B Testing, and Dynamic Tweaks are disabled.");
             return new NoOpUpdatesFromMixpanel(sSharedTweaks);
         } else {
             return new ViewCrawler(mContext, mToken, this, sSharedTweaks);
@@ -1452,14 +1393,14 @@ public class MixpanelAPI {
         @Override
         public void setMap(Map<String, Object> properties) {
             if (null == properties) {
-                Log.e(LOGTAG, "setMap does not accept null properties");
+                MPLog.e(LOGTAG, "setMap does not accept null properties");
                 return;
             }
 
             try {
                 set(new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties of setMap!");
+                MPLog.w(LOGTAG, "Can't have null keys in the properties of setMap!");
             }
         }
 
@@ -1475,7 +1416,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$set", sendProperties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception setting people properties", e);
+                MPLog.e(LOGTAG, "Exception setting people properties", e);
             }
         }
 
@@ -1484,20 +1425,20 @@ public class MixpanelAPI {
             try {
                 set(new JSONObject().put(property, value));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "set", e);
+                MPLog.e(LOGTAG, "set", e);
             }
         }
 
         @Override
         public void setOnceMap(Map<String, Object> properties) {
             if (null == properties) {
-                Log.e(LOGTAG, "setOnceMap does not accept null properties");
+                MPLog.e(LOGTAG, "setOnceMap does not accept null properties");
                 return;
             }
             try {
                 setOnce(new JSONObject(properties));
             } catch (NullPointerException e) {
-                Log.w(LOGTAG, "Can't have null keys in the properties setOnceMap!");
+                MPLog.w(LOGTAG, "Can't have null keys in the properties setOnceMap!");
             }
         }
 
@@ -1507,7 +1448,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$set_once", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception setting people properties");
+                MPLog.e(LOGTAG, "Exception setting people properties");
             }
         }
 
@@ -1516,7 +1457,7 @@ public class MixpanelAPI {
             try {
                 setOnce(new JSONObject().put(property, value));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "set", e);
+                MPLog.e(LOGTAG, "set", e);
             }
         }
 
@@ -1527,7 +1468,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$add", json);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception incrementing properties", e);
+                MPLog.e(LOGTAG, "Exception incrementing properties", e);
             }
         }
 
@@ -1540,7 +1481,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$merge", mergeMessage);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception merging a property", e);
+                MPLog.e(LOGTAG, "Exception merging a property", e);
             }
         }
 
@@ -1559,7 +1500,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$append", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception appending a property", e);
+                MPLog.e(LOGTAG, "Exception appending a property", e);
             }
         }
 
@@ -1571,7 +1512,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$union", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception unioning a property");
+                MPLog.e(LOGTAG, "Exception unioning a property");
             }
         }
 
@@ -1583,7 +1524,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$remove", properties);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception appending a property", e);
+                MPLog.e(LOGTAG, "Exception appending a property", e);
             }
         }
 
@@ -1595,29 +1536,8 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$unset", names);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception unsetting a property", e);
+                MPLog.e(LOGTAG, "Exception unsetting a property", e);
             }
-        }
-
-        @Override
-        @Deprecated
-        public void checkForSurvey(final SurveyCallbacks callbacks) {
-            Log.i(
-                    LOGTAG,
-                    "MixpanelAPI.checkForSurvey is deprecated. Calling is now a no-op.\n" +
-                     "    to query surveys, call MixpanelAPI.getPeople().getSurveyIfAvailable()"
-            );
-        }
-
-        @Override
-        @Deprecated
-        public void checkForSurvey(final SurveyCallbacks callbacks,
-                final Activity parentActivity) {
-            Log.i(
-                    LOGTAG,
-                    "MixpanelAPI.checkForSurvey is deprecated. Calling is now a no-op.\n" +
-                            "    to query surveys, call MixpanelAPI.getPeople().getSurveyIfAvailable()"
-            );
         }
 
         @Override
@@ -1629,6 +1549,7 @@ public class MixpanelAPI {
         public void trackNotificationSeen(InAppNotification notif) {
             if(notif == null) return;
 
+            mPersistentIdentity.saveCampaignAsSeen(notif.getId());
             trackNotification("$campaign_delivery", notif);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
@@ -1636,38 +1557,10 @@ public class MixpanelAPI {
             try {
                 notifProperties.put("$time", dateFormat.format(new Date()));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
+                MPLog.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
             }
             people.append("$campaigns", notif.getId());
             people.append("$notifications", notifProperties);
-        }
-
-        @Override
-        public Survey getSurveyIfAvailable() {
-            return mDecideMessages.getSurvey(mConfig.getTestMode());
-        }
-
-        @Override
-        @Deprecated
-        public void showSurvey(final Survey survey, final Activity parent) {
-            showGivenOrAvailableSurvey(survey, parent);
-        }
-
-        @Override
-        public void showSurveyIfAvailable(final Activity parent) {
-            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-                return;
-            }
-
-            showGivenOrAvailableSurvey(null, parent);
-        }
-
-        @Override
-        public void showSurveyById(int id, final Activity parent) {
-            final Survey s = mDecideMessages.getSurvey(id, mConfig.getTestMode());
-            if (s != null) {
-                showGivenOrAvailableSurvey(s, parent);
-            }
         }
 
         @Override
@@ -1723,7 +1616,7 @@ public class MixpanelAPI {
 
                 this.append("$transactions", transactionValue);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception creating new charge", e);
+                MPLog.e(LOGTAG, "Exception creating new charge", e);
             }
         }
 
@@ -1741,7 +1634,7 @@ public class MixpanelAPI {
                 final JSONObject message = stdPeopleMessage("$delete", JSONObject.NULL);
                 recordPeopleMessage(message);
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Exception deleting a user");
+                MPLog.e(LOGTAG, "Exception deleting a user");
             }
         }
 
@@ -1773,6 +1666,10 @@ public class MixpanelAPI {
 
         @Override
         public void clearPushRegistrationId(String registrationId) {
+            if (registrationId == null) {
+                return;
+            }
+
             if (registrationId.equals(mPersistentIdentity.getPushId())) {
                 mPersistentIdentity.clearPushId();
             }
@@ -1782,8 +1679,8 @@ public class MixpanelAPI {
         @Override
         public void initPushHandling(String senderID) {
             if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
-                Log.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
-                Log.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
+                MPLog.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
+                MPLog.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
             }
             else { // Configuration is good for at least some push notifications
                 final String pushId = mPersistentIdentity.getPushId();
@@ -1797,9 +1694,7 @@ public class MixpanelAPI {
                     MixpanelAPI.allInstances(new InstanceProcessor() {
                         @Override
                         public void process(MixpanelAPI api) {
-                            if (MPConfig.DEBUG) {
-                                Log.v(LOGTAG, "Using existing pushId " + pushId);
-                            }
+                            MPLog.v(LOGTAG, "Using existing pushId " + pushId);
                             api.getPeople().setPushRegistrationId(pushId);
                         }
                     });
@@ -1878,81 +1773,19 @@ public class MixpanelAPI {
         @TargetApi(19)
         private void registerForPushIdAPI19AndOlder(String senderID) {
             try {
-                if (MPConfig.DEBUG) Log.v(LOGTAG, "Registering a new push id");
+                MPLog.v(LOGTAG, "Registering a new push id");
                 final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
                 registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
                 registrationIntent.putExtra("sender", senderID);
                 mContext.startService(registrationIntent);
             } catch (final SecurityException e) {
-                Log.w(LOGTAG, e);
+                MPLog.w(LOGTAG, "Error registering for push notifications", e);
             }
-        }
-
-        private void showGivenOrAvailableSurvey(final Survey surveyOrNull, final Activity parent) {
-            // Showing surveys is not supported before Jelly Bean
-            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Will not show survey, os version is too low.");
-                }
-                return;
-            }
-
-            if (!ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Will not show survey, application isn't configured appropriately.");
-                }
-                return;
-            }
-
-            BackgroundCapture.OnBackgroundCapturedListener listener = null;
-            final ReentrantLock lock = UpdateDisplayState.getLockObject();
-            lock.lock();
-            try {
-                if (UpdateDisplayState.hasCurrentProposal()) {
-                    return; // Already being used.
-                }
-                Survey toShow = surveyOrNull;
-                if (null == toShow) {
-                    toShow = getSurveyIfAvailable();
-                }
-                if (null == toShow) {
-                    return; // Nothing to show
-                }
-
-                final UpdateDisplayState.DisplayState.SurveyState surveyDisplay =
-                        new UpdateDisplayState.DisplayState.SurveyState(toShow);
-
-                final int intentId = UpdateDisplayState.proposeDisplay(surveyDisplay, getDistinctId(), mToken);
-                if (intentId <= 0) {
-                    Log.e(LOGTAG, "DisplayState Lock is in an inconsistent state! Please report this issue to Mixpanel");
-                    return;
-                }
-
-                listener = new BackgroundCapture.OnBackgroundCapturedListener() {
-                    @Override
-                    public void onBackgroundCaptured(Bitmap bitmapCaptured, int highlightColorCaptured) {
-                        surveyDisplay.setBackground(bitmapCaptured);
-                        surveyDisplay.setHighlightColor(highlightColorCaptured);
-
-                        final Intent surveyIntent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                        surveyIntent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
-                        parent.startActivity(surveyIntent);
-                    }
-                };
-            } finally {
-                lock.unlock();
-            }
-
-            BackgroundCapture.captureBackground(parent, listener);
         }
 
         private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
             if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-                if (MPConfig.DEBUG) {
-                    Log.v(LOGTAG, "Will not show notifications, os version is too low.");
-                }
+                MPLog.v(LOGTAG, "Will not show notifications, os version is too low.");
                 return;
             }
 
@@ -1964,9 +1797,7 @@ public class MixpanelAPI {
                     lock.lock();
                     try {
                         if (UpdateDisplayState.hasCurrentProposal()) {
-                            if (MPConfig.DEBUG) {
-                                Log.v(LOGTAG, "DisplayState is locked, will not show notifications.");
-                            }
+                            MPLog.v(LOGTAG, "DisplayState is locked, will not show notifications.");
                             return; // Already being used.
                         }
 
@@ -1975,17 +1806,13 @@ public class MixpanelAPI {
                             toShow = getNotificationIfAvailable();
                         }
                         if (null == toShow) {
-                            if (MPConfig.DEBUG) {
-                                Log.v(LOGTAG, "No notification available, will not show.");
-                            }
+                            MPLog.v(LOGTAG, "No notification available, will not show.");
                             return; // Nothing to show
                         }
 
                         final InAppNotification.Type inAppType = toShow.getType();
-                        if (inAppType == InAppNotification.Type.TAKEOVER && ! ConfigurationChecker.checkSurveyActivityAvailable(parent.getApplicationContext())) {
-                            if (MPConfig.DEBUG) {
-                                Log.v(LOGTAG, "Application is not configured to show takeover notifications, none will be shown.");
-                            }
+                        if (inAppType == InAppNotification.Type.TAKEOVER && !ConfigurationChecker.checkTakeoverInAppActivityAvailable(parent.getApplicationContext())) {
+                            MPLog.v(LOGTAG, "Application is not configured to show takeover notifications, none will be shown.");
                             return; // Can't show due to config.
                         }
 
@@ -1994,7 +1821,7 @@ public class MixpanelAPI {
                                 new UpdateDisplayState.DisplayState.InAppNotificationState(toShow, highlightColor);
                         final int intentId = UpdateDisplayState.proposeDisplay(proposal, getDistinctId(), mToken);
                         if (intentId <= 0) {
-                            Log.e(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
+                            MPLog.e(LOGTAG, "DisplayState Lock in inconsistent state! Please report this issue to Mixpanel");
                             return;
                         }
 
@@ -2002,9 +1829,7 @@ public class MixpanelAPI {
                             case MINI: {
                                 final UpdateDisplayState claimed = UpdateDisplayState.claimDisplayState(intentId);
                                 if (null == claimed) {
-                                    if (MPConfig.DEBUG) {
-                                        Log.v(LOGTAG, "Notification's display proposal was already consumed, no notification will be shown.");
-                                    }
+                                    MPLog.v(LOGTAG, "Notification's display proposal was already consumed, no notification will be shown.");
                                     return; // Can't claim the display state
                                 }
                                 final InAppFragment inapp = new InAppFragment();
@@ -2015,11 +1840,9 @@ public class MixpanelAPI {
                                 );
                                 inapp.setRetainInstance(true);
 
-                                if (MPConfig.DEBUG) {
-                                    Log.v(LOGTAG, "Attempting to show mini notification.");
-                                }
+                                MPLog.v(LOGTAG, "Attempting to show mini notification.");
                                 final FragmentTransaction transaction = parent.getFragmentManager().beginTransaction();
-                                transaction.setCustomAnimations(0, R.anim.com_mixpanel_android_slide_down);
+                                transaction.setCustomAnimations(0, R.animator.com_mixpanel_android_slide_down);
                                 transaction.add(android.R.id.content, inapp);
 
                                 try {
@@ -2027,27 +1850,23 @@ public class MixpanelAPI {
                                 } catch (IllegalStateException e) {
                                     // if the app is in the background or the current activity gets killed, rendering the
                                     // notifiction will lead to a crash
-                                    if (MPConfig.DEBUG) {
-                                        Log.v(LOGTAG, "Unable to show notification.");
-                                    }
+                                    MPLog.v(LOGTAG, "Unable to show notification.");
                                     mDecideMessages.markNotificationAsUnseen(toShow);
                                 }
                             }
                             break;
                             case TAKEOVER: {
-                                if (MPConfig.DEBUG) {
-                                    Log.v(LOGTAG, "Sending intent for takeover notification.");
-                                }
+                                MPLog.v(LOGTAG, "Sending intent for takeover notification.");
 
-                                final Intent intent = new Intent(parent.getApplicationContext(), SurveyActivity.class);
+                                final Intent intent = new Intent(parent.getApplicationContext(), TakeoverInAppActivity.class);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                                intent.putExtra(SurveyActivity.INTENT_ID_KEY, intentId);
+                                intent.putExtra(TakeoverInAppActivity.INTENT_ID_KEY, intentId);
                                 parent.startActivity(intent);
                             }
                             break;
                             default:
-                                Log.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
+                                MPLog.e(LOGTAG, "Unrecognized notification type " + inAppType + " can't be shown");
                         }
                         if (!mConfig.getTestMode()) {
                             trackNotificationSeen(toShow);
@@ -2090,21 +1909,21 @@ public class MixpanelAPI {
         }
 
         @Override
-        public synchronized void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+        public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+            mListeners.add(listener);
+
             if (mDecideMessages.hasUpdatesAvailable()) {
                 onNewResults();
             }
-
-            mListeners.add(listener);
         }
 
         @Override
-        public synchronized void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
+        public void removeOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
             mListeners.remove(listener);
         }
 
         @Override
-        public synchronized void run() {
+        public void run() {
             // It's possible that by the time this has run the updates we detected are no longer
             // present, which is ok.
             for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
@@ -2112,7 +1931,7 @@ public class MixpanelAPI {
             }
         }
 
-        private final Set<OnMixpanelUpdatesReceivedListener> mListeners = new HashSet<OnMixpanelUpdatesReceivedListener>();
+        private final Set<OnMixpanelUpdatesReceivedListener> mListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelUpdatesReceivedListener, Boolean>());
         private final Executor mExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -2155,10 +1974,70 @@ public class MixpanelAPI {
     }
 
     ////////////////////////////////////////////////////
+    protected void flushNoDecideCheck() {
+        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken, false));
+    }
+
+    protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
+        if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {
+            return;
+        }
+
+        final Long eventBegin;
+        synchronized (mEventTimings) {
+            eventBegin = mEventTimings.get(eventName);
+            mEventTimings.remove(eventName);
+            mPersistentIdentity.removeTimeEvent(eventName);
+        }
+
+        try {
+            final JSONObject messageProps = new JSONObject();
+
+            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
+            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
+                final String key = entry.getKey();
+                final String value = entry.getValue();
+                messageProps.put(key, value);
+            }
+
+            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
+
+            // Don't allow super properties or referral properties to override these fields,
+            // but DO allow the caller to override them in their given properties.
+            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
+            final long timeSeconds = (long) timeSecondsDouble;
+            messageProps.put("time", timeSeconds);
+            messageProps.put("distinct_id", getDistinctId());
+
+            if (null != eventBegin) {
+                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+                messageProps.put("$duration", secondsElapsed);
+            }
+
+            if (null != properties) {
+                final Iterator<?> propIter = properties.keys();
+                while (propIter.hasNext()) {
+                    final String key = (String) propIter.next();
+                    messageProps.put(key, properties.get(key));
+                }
+            }
+
+            final AnalyticsMessages.EventDescription eventDescription =
+                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
+            mMessages.eventsMessage(eventDescription);
+
+            if (null != mTrackingDebug) {
+                mTrackingDebug.reportTrack(eventName);
+            }
+        } catch (final JSONException e) {
+            MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
+        }
+    }
 
     private void recordPeopleMessage(JSONObject message) {
         if (message.has("$distinct_id")) {
-           mMessages.peopleMessage(message);
+           mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
         } else {
            mPersistentIdentity.storeWaitingPeopleRecord(message);
         }
@@ -2177,9 +2056,9 @@ public class MixpanelAPI {
         for (int i = 0; i < records.length(); i++) {
             try {
                 final JSONObject message = records.getJSONObject(i);
-                mMessages.peopleMessage(message);
+                mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
             } catch (final JSONException e) {
-                Log.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
+                MPLog.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
             }
         }
     }
@@ -2201,7 +2080,7 @@ public class MixpanelAPI {
                             try {
                                 properties.put(key, args.get(key));
                             } catch (final JSONException e) {
-                                Log.e(APP_LINKS_LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
+                                MPLog.e(APP_LINKS_LOGTAG, "failed to add key \"" + key + "\" to properties for tracking bolts event", e);
                             }
                         }
                     }
@@ -2209,13 +2088,13 @@ public class MixpanelAPI {
                 }
             }, new IntentFilter("com.parse.bolts.measurement_event"));
         } catch (final InvocationTargetException e) {
-            Log.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
+            MPLog.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
         } catch (final ClassNotFoundException e) {
-            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
         } catch (final NoSuchMethodException e) {
-            Log.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
         } catch (final IllegalAccessException e) {
-            Log.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
+            MPLog.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
         }
     }
 
@@ -2230,16 +2109,16 @@ public class MixpanelAPI {
                 final Method getTargetUrlFromInboundIntent = clazz.getMethod("getTargetUrlFromInboundIntent", Context.class, Intent.class);
                 getTargetUrlFromInboundIntent.invoke(null, context, intent);
             } catch (final InvocationTargetException e) {
-                Log.d(APP_LINKS_LOGTAG, "Failed to invoke bolts.AppLinks.getTargetUrlFromInboundIntent() -- Unable to detect inbound App Links", e);
+                MPLog.d(APP_LINKS_LOGTAG, "Failed to invoke bolts.AppLinks.getTargetUrlFromInboundIntent() -- Unable to detect inbound App Links", e);
             } catch (final ClassNotFoundException e) {
-                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+                MPLog.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
             } catch (final NoSuchMethodException e) {
-                Log.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
+                MPLog.d(APP_LINKS_LOGTAG, "Please install the Bolts library >= 1.1.2 to track App Links: " + e.getMessage());
             } catch (final IllegalAccessException e) {
-                Log.d(APP_LINKS_LOGTAG, "Unable to detect inbound App Links: " + e.getMessage());
+                MPLog.d(APP_LINKS_LOGTAG, "Unable to detect inbound App Links: " + e.getMessage());
             }
         } else {
-            Log.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
+            MPLog.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
         }
     }
 
@@ -2255,6 +2134,7 @@ public class MixpanelAPI {
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
+    private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
@@ -2265,6 +2145,4 @@ public class MixpanelAPI {
     private static final String LOGTAG = "MixpanelAPI.API";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
-
-    private boolean mDisableDecideChecker;
 }

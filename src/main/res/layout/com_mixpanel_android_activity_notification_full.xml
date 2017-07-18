@@ -23,7 +23,7 @@
             android:id="@+id/com_mixpanel_android_image_close"
             android:layout_width="23dp"
             android:layout_height="23dp"
-            android:background="@drawable/com_mixpanel_android_close_new"
+            android:src="@drawable/com_mixpanel_android_close_new"
             android:contentDescription="@string/com_mixpanel_android_close" />
     </LinearLayout>
 
@@ -34,6 +34,7 @@
         android:layout_alignParentBottom="true"
         android:layout_marginTop="0dp"
         android:orientation="vertical">
+
         <TextView
             android:id="@+id/com_mixpanel_android_notification_title"
             android:layout_width="match_parent"
@@ -44,33 +45,67 @@
             android:textSize="22sp"
             android:textColor="#ffffff"
             android:textStyle="bold" />
+
         <TextView
             android:id="@+id/com_mixpanel_android_notification_subtext"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="20dp"
             android:paddingLeft="20dp"
             android:paddingRight="20dp"
             android:gravity="center_horizontal"
             android:textSize="17sp"
             android:textColor="#ffffff" />
 
-        <Button
-            android:id="@+id/com_mixpanel_android_notification_button"
-            android:layout_width="wrap_content"
-            android:minWidth="150dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_marginBottom="40dp"
-            android:layout_gravity="center"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:paddingLeft="20dp"
-            android:paddingRight="20dp"
-            android:text="@string/com_mixpanel_android_done"
-            android:textColor="@android:color/white"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:background="@drawable/com_mixpanel_android_cta_button" />
+            android:layout_marginTop="18dp"
+            android:layout_marginLeft="30dp"
+            android:layout_marginRight="30dp"
+            android:weightSum="2"
+            android:gravity="center_horizontal">
+
+            <Button
+                android:id="@+id/com_mixpanel_android_notification_button"
+                android:layout_width="0dp"
+                android:minWidth="150dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                android:text="@string/com_mixpanel_android_done"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:ellipsize="end" />
+
+            <Button
+                android:id="@+id/com_mixpanel_android_notification_second_button"
+                android:layout_width="0dp"
+                android:minWidth="150dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                android:text="@string/com_mixpanel_android_done"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textSize="17sp"
+                android:ellipsize="end"
+                android:textStyle="bold"
+                android:layout_marginLeft="15dp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
     <!-- This LinearLayout must follow com_mixpanel_android_notification_bottom_wrapper
@@ -84,10 +119,12 @@
         android:gravity="center"
         android:layout_above="@id/com_mixpanel_android_notification_bottom_wrapper">
 
-        <com.mixpanel.android.surveys.FadingImageView
+        <com.mixpanel.android.takeoverinapp.FadingImageView
             android:id="@+id/com_mixpanel_android_notification_image"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="35dp"
+            android:layout_marginRight="35dp"
             android:contentDescription="@string/com_mixpanel_android_notification_image"
             android:src="@drawable/com_mixpanel_android_logo" />
 

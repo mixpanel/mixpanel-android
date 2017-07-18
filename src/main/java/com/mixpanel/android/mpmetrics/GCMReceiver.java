@@ -16,9 +16,12 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
+import com.mixpanel.android.util.MPLog;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 /**
@@ -139,7 +142,12 @@ public class GCMReceiver extends BroadcastReceiver {
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
         final String colorName = inboundIntent.getStringExtra("mp_color");
+        final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
+        final String messageId = inboundIntent.getStringExtra("mp_message_id");
+        final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = NotificationData.NOT_SET;
+
+        trackCampaignReceived(campaignId, messageId, extraLogData);
 
         if (colorName != null) {
             try {
@@ -195,12 +203,12 @@ public class GCMReceiver extends BroadcastReceiver {
             notificationTitle = "A message for you";
         }
 
-        final Intent notificationIntent = buildNotificationIntent(context, uriString);
+        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId, extraLogData);
 
         return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
     }
 
-    private Intent buildNotificationIntent(Context context, String uriString) {
+    private Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId, String extraLogData) {
         Uri uri = null;
         if (null != uriString) {
             uri = Uri.parse(uriString);
@@ -213,6 +221,18 @@ public class GCMReceiver extends BroadcastReceiver {
             ret = new Intent(Intent.ACTION_VIEW, uri);
         }
 
+        if (campaignId != null) {
+            ret.putExtra("mp_campaign_id", campaignId);
+        }
+
+        if (messageId != null) {
+            ret.putExtra("mp_message_id", messageId);
+        }
+
+        if (extraLogData != null) {
+            ret.putExtra("mp", extraLogData);
+        }
+
         return ret;
     }
 
@@ -222,7 +242,7 @@ public class GCMReceiver extends BroadcastReceiver {
             return null;
         }
 
-        if (MPConfig.DEBUG) Log.d(LOGTAG, "MP GCM notification received: " + notificationData.message);
+        MPLog.d(LOGTAG, "MP GCM notification received: " + notificationData.message);
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
                 0,
@@ -247,9 +267,9 @@ public class GCMReceiver extends BroadcastReceiver {
     private void handleRegistrationIntent(Intent intent) {
         final String registration = intent.getStringExtra("registration_id");
         if (intent.getStringExtra("error") != null) {
-            Log.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
+            MPLog.e(LOGTAG, "Error when registering for GCM: " + intent.getStringExtra("error"));
         } else if (registration != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Registering GCM ID: " + registration);
+            MPLog.d(LOGTAG, "Registering GCM ID: " + registration);
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
@@ -257,7 +277,7 @@ public class GCMReceiver extends BroadcastReceiver {
                 }
             });
         } else if (intent.getStringExtra("unregistered") != null) {
-            if (MPConfig.DEBUG) Log.d(LOGTAG, "Unregistering from GCM");
+            MPLog.d(LOGTAG, "Unregistering from GCM");
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
@@ -293,7 +313,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -313,7 +334,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setWhen(System.currentTimeMillis()).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
-                setContentIntent(intent);
+                setContentIntent(intent).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -334,7 +356,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
@@ -354,7 +377,8 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message));
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
 
         if (notificationData.whiteIcon != NotificationData.NOT_SET) {
             builder.setSmallIcon(notificationData.whiteIcon);
@@ -373,6 +397,31 @@ public class GCMReceiver extends BroadcastReceiver {
         final Notification n = builder.build();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
         return n;
+    }
+
+    private void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
+        if (campaignId != null && messageId != null) {
+            MixpanelAPI.allInstances(new InstanceProcessor() {
+                @Override
+                public void process(MixpanelAPI api) {
+                    if(api.isAppInForeground()) {
+                        JSONObject pushProps = new JSONObject();
+                        try {
+                            if (extraLogData != null) {
+                                pushProps = new JSONObject(extraLogData);
+                            }
+                        } catch (JSONException e) {}
+
+                        try {
+                            pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
+                            pushProps.put("message_id", Integer.valueOf(messageId).intValue());
+                            pushProps.put("message_type", "push");
+                            api.track("$campaign_received", pushProps);
+                        } catch (JSONException e) {}
+                    }
+                }
+            });
+        }
     }
 
     @SuppressWarnings("unused")

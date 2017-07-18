@@ -1,83 +1,45 @@
-apply plugin: 'android-library'
-apply plugin: 'maven'
-apply plugin: 'signing'
-
 buildscript {
     repositories {
-        mavenCentral()
+        jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.3.0'
+        classpath 'com.android.tools.build:gradle:2.2.3'
     }
 }
 
+apply plugin: 'com.android.library'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = GROUP
+version = VERSION_NAME
+
 android {
-    compileSdkVersion 23
-    buildToolsVersion "22.0.1"
+    compileSdkVersion 24
+    buildToolsVersion '24.0.3'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
 
     defaultConfig {
-        // If you change minSdkVersion or targetSdkVersion below, you must also change
-        // the relevant attributes of the <uses-sdk> tag in AndroidManifest.xml
         minSdkVersion 9
         targetSdkVersion 23
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
         consumerProguardFiles 'proguard.txt'
 
+        buildConfigField "String", "MIXPANEL_VERSION", "\"${version}\""
+
         lintOptions {
             abortOnError true
-            warningsAsErrors true
+            warningsAsErrors false
             disable "UnusedResources"
+            textOutput "stdout"
+            textReport true
         }
     }
-}
-
-// Note- *all* dependencies are marked as optional in our final
-// pom! If you need a transitive dependency in the library, you'll
-// have to change the bit in uploadArchives that marks all dependencies as optional.
-dependencies {
-    compile 'com.google.android.gms:play-services-base:[7.5.0,)'
-    compile 'com.google.android.gms:play-services-gcm:[7.5.0,)'
-}
-
-android.libraryVariants.all { variant ->
-    task("generate${variant.name}Javadoc", type: Javadoc) {
-        description "Generates Javadoc for $variant.name."
-        source = variant.javaCompile.source
-        ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
-        classpath = files(variant.javaCompile.classpath.files) + files(ext.androidJar)
-        exclude(
-            '**/R.*',
-            '**/java_websocket/**',
-            '**/util/**',
-            '**/AlwaysSubmittableEditText.java',
-            '**/BuildConfig.java',
-            '**/CardCarouselLayout.java',
-            '**/FadeOnPressButton.java',
-            '**/FadingImageView.java',
-            '**/InAppFragment.java',
-            '**/MiniCircleImageView.java',
-            '**/ResourceIds.java',
-            '**/ResourceReader.java',
-            '**/SurveyActivity.java',
-            '**/SurveyChoiceView.java',
-            '**/SurveyCallbacks.java',
-            '**/TrackingDebug.java',
-            '**/Tweaks.java',
-            '**/UpdateDisplayState.java',
-            '**/UpdatesFromMixpanel.java',
-            '**/ViewCrawler.java'
-        )
-        options {
-            encoding = 'UTF-8'
-            docEncoding = 'UTF-8'
-            charSet = 'UTF-8'
-        }
-    }
-}
-
-android.buildTypes.all { buildType ->
-    buildType.buildConfigField "String", "MIXPANEL_VERSION", "\"${project.properties.version}\""
 }
 
 allprojects {
@@ -88,76 +50,15 @@ allprojects {
     }
 }
 
-def isReleaseVersion() {
-    return !version.endsWith("SNAPSHOT");
+// Note- *all* dependencies are marked as optional in our final
+// pom! If you need a transitive dependency in the library, you'll
+// have to change the bit in uploadArchives that marks all dependencies as optional.
+dependencies {
+    compile 'com.google.android.gms:play-services-gcm:10.0.1'
 }
 
-if (isReleaseVersion()) {
-    signing {
-        required { gradle.taskGraph.hasTask("uploadArchives") }
-        sign configurations.archives
-    }
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.14.1'
 }
 
-uploadArchives {
-    configuration = configurations.archives
-
-    repositories.mavenDeployer {
-        pom.project {
-            name project.name
-            packaging 'aar'
-            description 'An Android library for Mixpanel Analytics \n' +
-                    'http://mixpanel.com/android-analytics/'
-            url 'https://github.com/mixpanel/mixpanel-android'
-            scm {
-                url 'http://github.com/mixpanel/mixpanel-android'
-                connection 'scm:git:http://github.com/mixpanel/mixpanel-android'
-                developerConnection 'scm:git:git@github.com:mixpanel/mixpanel-android.git'
-            }
-            licenses {
-                license {
-                    name 'The Apache Software License, Version 2.0'
-                    url 'http://www.apache.org/license/LICENSE-2.0.txt'
-                    distribution 'repo'
-                }
-            }
-            developers {
-                developer {
-                    id 'mixpanel_dev'
-                    name 'Mixpanel Developers'
-                    email 'dev+android@mixpanel.com'
-                }
-            }
-        }
-
-        pom.whenConfigured { pom ->
-            pom.dependencies*.optional = true
-        }
-
-        if (isReleaseVersion() && project.hasProperty("sonatypeUsername")) {
-            /**
-             * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
-             * with the following properties. You'll need the mixpanel.key file and then import it using GnuPG
-             * which will provide you with the keyId and the secring.gpg file
-             * signing.keyId=
-             * signing.password=
-             * signing.secretKeyRingFile=
-             *
-             * sonatypeRepo=https://oss.sonatype.org/service/local/staging/deploy/maven2/
-             * sonatypeUsername=
-             * sonatypePassword=
-             */
-
-            beforeDeployment {
-                MavenDeployment deployment -> signing.signPom(deployment)
-            }
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: sonatypeUsername, password: sonatypePassword)
-            }
-        } else {
-            repository(url:'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath)
-        }
-
-    }
-}
-
+apply from: rootProject.file('maven.gradle')

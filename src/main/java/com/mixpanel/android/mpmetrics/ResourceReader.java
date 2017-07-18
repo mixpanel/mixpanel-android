@@ -1,8 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
-import android.util.Log;
 import android.util.SparseArray;
+
+import com.mixpanel.android.util.MPLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -99,7 +100,7 @@ public abstract class ResourceReader implements ResourceIds {
                 }
             }
         } catch (IllegalAccessException e) {
-            Log.e(LOGTAG, "Can't read built-in id names from " + platformIdClass.getName(), e);
+            MPLog.e(LOGTAG, "Can't read built-in id names from " + platformIdClass.getName(), e);
         }
     }
 
@@ -118,8 +119,8 @@ public abstract class ResourceReader implements ResourceIds {
             final Class<?> rIdClass = Class.forName(localClassName);
             readClassIds(rIdClass, null, mIdNameToId);
         } catch (ClassNotFoundException e) {
-            Log.w(LOGTAG, "Can't load names for Android view ids from '" + localClassName + "', ids by name will not be available in the events editor.");
-            Log.i(LOGTAG,
+            MPLog.w(LOGTAG, "Can't load names for Android view ids from '" + localClassName + "', ids by name will not be available in the events editor.");
+            MPLog.i(LOGTAG,
                     "You may be missing a Resources class for your package due to your proguard configuration, " +
                             "or you may be using an applicationId in your build that isn't the same as the package declared in your AndroidManifest.xml file.\n" +
                             "If you're using proguard, you can fix this issue by adding the following to your proguard configuration:\n\n" +

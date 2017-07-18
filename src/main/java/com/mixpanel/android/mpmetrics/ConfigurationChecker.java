@@ -1,11 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import com.mixpanel.android.surveys.SurveyActivity;
-
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -14,7 +8,13 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
-import android.util.Log;
+
+import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
+import com.mixpanel.android.util.MPLog;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /*
  * Copyright 2012 Google Inc.
@@ -42,17 +42,19 @@ import android.util.Log;
 
     public static String LOGTAG = "MixpanelAPI.ConfigurationChecker";
 
+    private static Boolean mTakeoverActivityAvailable;
+
     public static boolean checkBasicConfiguration(Context context) {
         final PackageManager packageManager = context.getPackageManager();
         final String packageName = context.getPackageName();
 
         if (packageManager == null || packageName == null) {
-            Log.w(LOGTAG, "Can't check configuration when using a Context with null packageManager or packageName");
+            MPLog.w(LOGTAG, "Can't check configuration when using a Context with null packageManager or packageName");
             return false;
         }
         if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
-            Log.w(LOGTAG, "Package does not have permission android.permission.INTERNET - Mixpanel will not work at all!");
-            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+            MPLog.w(LOGTAG, "Package does not have permission android.permission.INTERNET - Mixpanel will not work at all!");
+            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.INTERNET\" />");
             return false;
         }
@@ -64,7 +66,7 @@ import android.util.Log;
 
         if (Build.VERSION.SDK_INT < 8) {
             // Not a warning, may be expected behavior
-            Log.i(LOGTAG, "Mixpanel push notifications not supported in SDK " + Build.VERSION.SDK_INT);
+            MPLog.i(LOGTAG, "Mixpanel push notifications not supported in SDK " + Build.VERSION.SDK_INT);
             return false;
         }
 
@@ -72,7 +74,7 @@ import android.util.Log;
         final String packageName = context.getPackageName();
 
         if (packageManager == null || packageName == null) {
-            Log.w(LOGTAG, "Can't check configuration when using a Context with null packageManager or packageName");
+            MPLog.w(LOGTAG, "Can't check configuration when using a Context with null packageManager or packageName");
             return false;
         }
 
@@ -80,10 +82,10 @@ import android.util.Log;
 
         // check special permission
         try {
-            packageManager.getPermissionInfo(permissionName, PackageManager.GET_PERMISSIONS);
+            packageManager.getPermissionInfo(permissionName, PackageManager.GET_META_DATA);
         } catch (final NameNotFoundException e) {
-            Log.w(LOGTAG, "Application does not define permission " + permissionName);
-            Log.i(LOGTAG, "You will need to add the following lines to your application manifest:\n" +
+            MPLog.w(LOGTAG, "Application does not define permission " + permissionName);
+            MPLog.i(LOGTAG, "You will need to add the following lines to your application manifest:\n" +
                     "<permission android:name=\"" + packageName + ".permission.C2D_MESSAGE\" android:protectionLevel=\"signature\" />\n" +
                     "<uses-permission android:name=\"" + packageName + ".permission.C2D_MESSAGE\" />");
             return false;
@@ -91,30 +93,30 @@ import android.util.Log;
         // check regular permissions
 
         if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("com.google.android.c2dm.permission.RECEIVE", packageName)) {
-            Log.w(LOGTAG, "Package does not have permission com.google.android.c2dm.permission.RECEIVE");
-            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+            MPLog.w(LOGTAG, "Package does not have permission com.google.android.c2dm.permission.RECEIVE");
+            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"com.google.android.c2dm.permission.RECEIVE\" />");
             return false;
         }
 
         if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
-            Log.w(LOGTAG, "Package does not have permission android.permission.INTERNET");
-            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+            MPLog.w(LOGTAG, "Package does not have permission android.permission.INTERNET");
+            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.INTERNET\" />");
             return false;
         }
 
         if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.WAKE_LOCK", packageName)) {
-            Log.w(LOGTAG, "Package does not have permission android.permission.WAKE_LOCK");
-            Log.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+            MPLog.w(LOGTAG, "Package does not have permission android.permission.WAKE_LOCK");
+            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.WAKE_LOCK\" />");
             return false;
         }
 
         // This permission is only required on older devices
         if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
-            Log.i(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
-            Log.i(LOGTAG, "Android versions below 4.1 require GET_ACCOUNTS to receive Mixpanel push notifications.\n" +
+            MPLog.i(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
+            MPLog.i(LOGTAG, "Android versions below 4.1 require GET_ACCOUNTS to receive Mixpanel push notifications.\n" +
                     "Devices with later OS versions will still be able to receive messages, but if you'd like to support " +
                     "older devices, you'll need to add the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
@@ -129,14 +131,14 @@ import android.util.Log;
         try {
             receiversInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_RECEIVERS);
         } catch (final NameNotFoundException e) {
-            Log.w(LOGTAG, "Could not get receivers for package " + packageName);
+            MPLog.w(LOGTAG, "Could not get receivers for package " + packageName);
             return false;
         }
 
         final ActivityInfo[] receivers = receiversInfo.receivers;
         if (receivers == null || receivers.length == 0) {
-            Log.w(LOGTAG, "No receiver for package " + packageName);
-            Log.i(LOGTAG, "You can fix this with the following into your <application> tag:\n" +
+            MPLog.w(LOGTAG, "No receiver for package " + packageName);
+            MPLog.i(LOGTAG, "You can fix this with the following into your <application> tag:\n" +
                             samplePushConfigurationMessage(packageName));
             return false;
         }
@@ -149,8 +151,8 @@ import android.util.Log;
         }
 
         if (allowedReceivers.isEmpty()) {
-            Log.w(LOGTAG, "No receiver allowed to receive com.google.android.c2dm.permission.SEND");
-            Log.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
+            MPLog.w(LOGTAG, "No receiver allowed to receive com.google.android.c2dm.permission.SEND");
+            MPLog.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
                     samplePushConfigurationMessage(packageName));
             return false;
         }
@@ -164,38 +166,44 @@ import android.util.Log;
             Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
             canRegisterWithPlayServices = true;
         } catch(final ClassNotFoundException e) {
-            Log.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
-            Log.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
+            MPLog.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
+            MPLog.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
         }
 
         boolean canRegisterWithRegistrationIntent = true;
         if (!checkReceiver(context, allowedReceivers, "com.google.android.c2dm.intent.REGISTRATION")) {
-            Log.i(LOGTAG, "(You can still receive push notifications on Lollipop/API 21 or greater with this configuration)");
+            MPLog.i(LOGTAG, "(You can still receive push notifications on Lollipop/API 21 or greater with this configuration)");
             canRegisterWithRegistrationIntent = false;
         }
 
         return canRegisterWithPlayServices || canRegisterWithRegistrationIntent;
     }
 
-    public static boolean checkSurveyActivityAvailable(Context context) {
-        if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-            // No need to log, SurveyActivity doesn't work on this platform.
-            return false;
+    public static boolean checkTakeoverInAppActivityAvailable(Context context) {
+        if (mTakeoverActivityAvailable == null) {
+            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
+                // No need to log, TakeoverInAppActivity doesn't work on this platform.
+                mTakeoverActivityAvailable = false;
+                return mTakeoverActivityAvailable;
+            }
+
+            final Intent takeoverInAppIntent = new Intent(context, TakeoverInAppActivity.class);
+            takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+            final PackageManager packageManager = context.getPackageManager();
+            final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(takeoverInAppIntent, 0);
+            if (intentActivities.size() == 0) {
+                MPLog.w(LOGTAG, TakeoverInAppActivity.class.getName() + " is not registered as an activity in your application, so takeover in-apps can't be shown.");
+                MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.takeoverinapp.TakeoverInAppActivity\" /> to your <application> tag.");
+                mTakeoverActivityAvailable = false;
+                return mTakeoverActivityAvailable;
+            }
+
+            mTakeoverActivityAvailable = true;
         }
 
-        final Intent surveyIntent = new Intent(context, SurveyActivity.class);
-        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        surveyIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-        final PackageManager packageManager = context.getPackageManager();
-        final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(surveyIntent, 0);
-        if (intentActivities.size() == 0) {
-            Log.w(LOGTAG, SurveyActivity.class.getName() + " is not registered as an activity in your application, so surveys can't be shown.");
-            Log.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.surveys.SurveyActivity\" /> to your <application> tag.");
-            return false;
-        }
-
-        return true;
+        return mTakeoverActivityAvailable;
     }
 
     private static String samplePushConfigurationMessage(String packageName) {
@@ -215,11 +223,11 @@ import android.util.Log;
         final String packageName = context.getPackageName();
         final Intent intent = new Intent(action);
         intent.setPackage(packageName);
-        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_INTENT_FILTERS);
+        final List<ResolveInfo> receivers = pm.queryBroadcastReceivers(intent, PackageManager.GET_META_DATA);
 
         if (receivers.isEmpty()) {
-            Log.w(LOGTAG, "No receivers for action " + action);
-            Log.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
+            MPLog.w(LOGTAG, "No receivers for action " + action);
+            MPLog.i(LOGTAG, "You can fix by pasting the following into the <application> tag in your AndroidManifest.xml:\n" +
                     samplePushConfigurationMessage(packageName));
             return false;
         }
@@ -227,8 +235,8 @@ import android.util.Log;
         for (final ResolveInfo receiver : receivers) {
             final String name = receiver.activityInfo.name;
             if (!allowedReceivers.contains(name)) {
-                Log.w(LOGTAG, "Receiver " + name + " is not set with permission com.google.android.c2dm.permission.SEND");
-                Log.i(LOGTAG, "Please add the attribute 'android:permission=\"com.google.android.c2dm.permission.SEND\"' to your <receiver> tag");
+                MPLog.w(LOGTAG, "Receiver " + name + " is not set with permission com.google.android.c2dm.permission.SEND");
+                MPLog.i(LOGTAG, "Please add the attribute 'android:permission=\"com.google.android.c2dm.permission.SEND\"' to your <receiver> tag");
                 return false;
             }
         }

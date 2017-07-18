@@ -1,12 +1,12 @@
 package com.mixpanel.android.viewcrawler;
 
 import android.os.Handler;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
+import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -47,7 +47,7 @@ import java.util.Map;
             // that happened right at moment.
             properties.put("time", moment / 1000);
         } catch (JSONException e) {
-            Log.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
+            MPLog.e(LOGTAG, "Can't format properties from view due to JSON issue", e);
         }
 
         if (debounce) {

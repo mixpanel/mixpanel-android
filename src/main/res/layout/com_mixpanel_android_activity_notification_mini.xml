@@ -11,7 +11,7 @@
     android:visibility="gone"
     android:background="@drawable/com_mixpanel_android_mini_inapp_rounded" >
 
-    <com.mixpanel.android.surveys.MiniCircleImageView
+    <com.mixpanel.android.takeoverinapp.MiniCircleImageView
         android:id="@+id/com_mixpanel_android_notification_image"
         android:layout_width="75dp"
         android:layout_height="match_parent"

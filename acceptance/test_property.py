@@ -18,7 +18,7 @@ class AndroidTest(unittest.TestCase):
         self.driver.quit()
 
     def test_change_text_size(self):
-        decide_message = '{"notifications":[],"surveys":[],"variants":[{"tweaks":[],"actions":[{"property":{"classname":"android.widget.TextView","set":{"parameters":[{"type":"java.lang.Integer"},{"type":"java.lang.Float"}],"selector":"setTextSize"},"name":"fontSize","get":{"result":{"type":"java.lang.Float"},"parameters":[],"selector":"getTextSize"}},"path":[{"index":0,"prefix":"shortest","id":16908290},{"index":0,"view_class":"android.widget.RelativeLayout"},{"index":0,"mp_id_name":"edit_first_name"}],"args":[[2,"java.lang.Integer"],[36,"java.lang.Float"]],"change_type":"property","name":"c150"}],"id":24219,"experiment_id":12207}]}'
+        decide_message = '{"notifications":[],"variants":[{"tweaks":[],"actions":[{"property":{"classname":"android.widget.TextView","set":{"parameters":[{"type":"java.lang.Integer"},{"type":"java.lang.Float"}],"selector":"setTextSize"},"name":"fontSize","get":{"result":{"type":"java.lang.Float"},"parameters":[],"selector":"getTextSize"}},"path":[{"index":0,"prefix":"shortest","id":16908290},{"index":0,"view_class":"android.widget.RelativeLayout"},{"index":0,"mp_id_name":"edit_first_name"}],"args":[[2,"java.lang.Integer"],[36,"java.lang.Float"]],"change_type":"property","name":"c150"}],"id":24219,"experiment_id":12207}]}'
         self._launch_app(decide_message)
 
         self.assertEquals(self.driver.find_element_by_id('edit_first_name').get_attribute('textSize'), '108.0')

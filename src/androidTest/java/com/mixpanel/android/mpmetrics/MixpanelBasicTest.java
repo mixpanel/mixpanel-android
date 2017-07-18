@@ -4,18 +4,17 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Parcel;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
+import android.util.Log;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -38,11 +37,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
         mMockPreferences = new TestUtils.EmptyPreferences(getContext());
         AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
         messages.hardKill();
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         try {
             SystemInformation systemInformation = new SystemInformation(mContext);
@@ -86,25 +84,25 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject after = new JSONObject(afterMap);
 
         MPDbAdapter adapter = new MPDbAdapter(getContext(), "DeleteTestDB");
-        adapter.addJSON(before, MPDbAdapter.Table.EVENTS);
-        adapter.addJSON(before, MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
         adapter.deleteDB();
 
-        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
+        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
         assertEquals(emptyEventsData, null);
-        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
+        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
         assertEquals(emptyPeopleData, null);
 
-        adapter.addJSON(after, MPDbAdapter.Table.EVENTS);
-        adapter.addJSON(after, MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
 
         try {
-            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS);
+            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
             JSONArray someEvents = new JSONArray(someEventsData[1]);
             assertEquals(someEvents.length(), 1);
             assertEquals(someEvents.getJSONObject(0).get("added"), "after");
 
-            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE);
+            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
             JSONArray somePeople = new JSONArray(somePeopleData[1]);
             assertEquals(somePeople.length(), 1);
             assertEquals(somePeople.getJSONObject(0).get("added"), "after");
@@ -119,9 +117,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
-                messages.add(message);
-                throw new RuntimeException("BANG!");
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+                if (!isAutomatic) {
+                    messages.add(message);
+                    throw new RuntimeException("BANG!");
+                }
+
+                return 0;
             }
         };
 
@@ -163,8 +165,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
-                messages.add(message);
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+                if (!isAutomatic) {
+                    messages.add(message);
+                }
+
                 return 1;
             }
         };
@@ -262,11 +267,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testPeopleOperations() throws JSONException {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -297,50 +302,50 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.getPeople().clearCharges();
         mixpanel.getPeople().deleteUser();
 
-        JSONObject setMessage = messages.get(0).getJSONObject("$set");
+        JSONObject setMessage = messages.get(0).getMessage().getJSONObject("$set");
         assertEquals("SET VALUE", setMessage.getString("SET NAME"));
 
-        JSONObject setMapMessage = messages.get(1).getJSONObject("$set");
+        JSONObject setMapMessage = messages.get(1).getMessage().getJSONObject("$set");
         assertEquals(mapObj1.get("SET MAP INT"), setMapMessage.getInt("SET MAP INT"));
 
-        JSONObject addMessage = messages.get(2).getJSONObject("$add");
+        JSONObject addMessage = messages.get(2).getMessage().getJSONObject("$add");
         assertEquals(1, addMessage.getInt("INCREMENT NAME"));
 
-        JSONObject appendMessage = messages.get(3).getJSONObject("$append");
+        JSONObject appendMessage = messages.get(3).getMessage().getJSONObject("$append");
         assertEquals("APPEND VALUE", appendMessage.get("APPEND NAME"));
 
-        JSONObject setOnceMessage = messages.get(4).getJSONObject("$set_once");
+        JSONObject setOnceMessage = messages.get(4).getMessage().getJSONObject("$set_once");
         assertEquals("SET ONCE VALUE", setOnceMessage.getString("SET ONCE NAME"));
 
-        JSONObject setOnceMapMessage = messages.get(5).getJSONObject("$set_once");
+        JSONObject setOnceMapMessage = messages.get(5).getMessage().getJSONObject("$set_once");
         assertEquals(mapObj2.get("SET ONCE MAP STR"), setOnceMapMessage.getString("SET ONCE MAP STR"));
 
-        JSONObject unionMessage = messages.get(6).getJSONObject("$union");
+        JSONObject unionMessage = messages.get(6).getMessage().getJSONObject("$union");
         JSONArray unionValues = unionMessage.getJSONArray("UNION NAME");
         assertEquals(1, unionValues.length());
         assertEquals(100, unionValues.getInt(0));
 
-        JSONArray unsetMessage = messages.get(7).getJSONArray("$unset");
+        JSONArray unsetMessage = messages.get(7).getMessage().getJSONArray("$unset");
         assertEquals(1, unsetMessage.length());
         assertEquals("UNSET NAME", unsetMessage.get(0));
 
-        JSONObject trackChargeMessage = messages.get(8).getJSONObject("$append");
+        JSONObject trackChargeMessage = messages.get(8).getMessage().getJSONObject("$append");
         JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
         assertEquals(100.0d, transaction.getDouble("$amount"));
 
-        JSONArray clearChargesMessage = messages.get(9).getJSONArray("$unset");
+        JSONArray clearChargesMessage = messages.get(9).getMessage().getJSONArray("$unset");
         assertEquals(1, clearChargesMessage.length());
         assertEquals("$transactions", clearChargesMessage.getString(0));
 
-        assertTrue(messages.get(10).has("$delete"));
+        assertTrue(messages.get(10).getMessage().has("$delete"));
     }
 
     public void testIdentifyAfterSet() {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -349,6 +354,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
+            }
+
+            @Override
+            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+                return super.constructDecideUpdates(token, listener, updatesFromMixpanel);
             }
         };
 
@@ -364,16 +374,16 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         assertEquals(messages.size(), 7);
         try {
-            for (JSONObject message: messages) {
-                String distinctId = message.getString("$distinct_id");
+            for (AnalyticsMessages.PeopleDescription message: messages) {
+                String distinctId = message.getMessage().getString("$distinct_id");
                 assertEquals(distinctId, "Personal Identity");
             }
 
-            assertTrue(messages.get(0).has("$add"));
-            assertTrue(messages.get(1).has("$append"));
-            assertTrue(messages.get(2).has("$set"));
-            assertTrue(messages.get(3).has("$add"));
-            assertTrue(messages.get(4).has("$add"));
+            assertTrue(messages.get(0).getMessage().has("$add"));
+            assertTrue(messages.get(1).getMessage().has("$append"));
+            assertTrue(messages.get(2).getMessage().has("$set"));
+            assertTrue(messages.get(3).getMessage().has("$add"));
+            assertTrue(messages.get(4).getMessage().has("$add"));
         } catch (JSONException e) {
             fail("Unexpected JSON error in stored messages.");
         }
@@ -410,15 +420,17 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, MPDbAdapter.Table table) {
-                try {
-                    messages.put("TABLE " + table.getName());
-                    messages.put(message.toString());
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
+                if (!isAutomaticEvent) {
+                    try {
+                        messages.put("TABLE " + table.getName());
+                        messages.put(message.toString());
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
-                return super.addJSON(message, table);
+                return super.addJSON(message, token, table, isAutomaticEvent);
             }
         };
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
@@ -589,15 +601,17 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testTrackCharge() {
-        final List<JSONObject> messages = new ArrayList<JSONObject>();
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<>();
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
-                throw new RuntimeException("Should not be called during this test");
+                if (!heard.isAutomatic()) {
+                    throw new RuntimeException("Should not be called during this test");
+                }
             }
 
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -626,7 +640,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         api.getPeople().trackCharge(2.13, props);
         assertEquals(messages.size(), 1);
 
-        JSONObject message = messages.get(0);
+        JSONObject message = messages.get(0).getMessage();
 
         try {
             JSONObject append = message.getJSONObject("$append");
@@ -662,11 +676,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
-                messages.add(heard);
+                if (!heard.isAutomatic()) {
+                    messages.add(heard);
+                }
             }
 
             @Override
-            public void peopleMessage(JSONObject heard) {
+            public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
@@ -674,6 +690,15 @@ public class MixpanelBasicTest extends AndroidTestCase {
         class ListeningAPI extends MixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> prefs, String token) {
                 super(c, prefs, token);
+            }
+
+            @Override
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+                final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+                mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
+
+                return super.getPersistentIdentity(context, referrerPreferences, token);
             }
 
             @Override
@@ -692,7 +717,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
-        assertEquals(2, messages.size()); // track integration
+        assertEquals(1, messages.size());
 
         AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
 
@@ -716,10 +741,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
 
-        assertEquals(3, messages.size());
+        assertEquals(2, messages.size());
 
-        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
-        JSONObject peopleMessage = (JSONObject) messages.get(2);
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
+        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(1)).getMessage();
 
         try {
             JSONObject eventProps = eventMessage.getProperties();
@@ -755,8 +780,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
                 final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
                     @Override
-                    public int addJSON(JSONObject message, MPDbAdapter.Table table) {
-                        mMessages.add(message);
+                    public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+                        if (!isAutomatic) {
+                            mMessages.add(message);
+                        }
+
                         return 1;
                     }
                 };
@@ -845,74 +873,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals("PEOPLE FALLBACK ENDPOINT", testConfig.getPeopleFallbackEndpoint());
         assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
         assertEquals("DECIDE FALLBACK ENDPOINT", testConfig.getDecideFallbackEndpoint());
-    }
-
-    public void testSurveyStateSaving() {
-        final String surveyJsonString =
-            "{\"collections\":[{\"id\":151,\"selector\":\"\\\"@mixpanel\\\" in properties[\\\"$email\\\"]\"}]," +
-             "\"id\":299," +
-             "\"questions\":[" +
-                 "{\"prompt\":\"PROMPT1\",\"extra_data\":{\"$choices\":[\"Answer1,1\",\"Answer1,2\",\"Answer1,3\"]},\"type\":\"multiple_choice\",\"id\":287}," +
-                 "{\"prompt\":\"PROMPT2\",\"extra_data\":{},\"type\":\"text\",\"id\":289}]}";
-
-        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        Bitmap testBitmap = Bitmap.createBitmap(100, 100, conf);
-
-        UpdateDisplayState originalUpdateDisplayState;
-        try {
-            final JSONObject surveyJson = new JSONObject(surveyJsonString);
-            final Survey s = new Survey(surveyJson);
-            final UpdateDisplayState.DisplayState.SurveyState surveyState =
-                new UpdateDisplayState.DisplayState.SurveyState(s);
-            surveyState.setHighlightColor(Color.WHITE);
-            surveyState.setBackground(testBitmap);
-            originalUpdateDisplayState = new UpdateDisplayState(surveyState, "DistinctId", "Token");
-        } catch (JSONException e) {
-            throw new RuntimeException("Survey string in test doesn't parse");
-        } catch (BadDecideObjectException e) {
-            throw new RuntimeException("Test survey string couldn't be made into a survey");
-        }
-
-        final Bundle inBundle = new Bundle();
-        inBundle.putParcelable("TEST SURVEY PARCEL", originalUpdateDisplayState);
-        final Parcel outerParcel = Parcel.obtain();
-        inBundle.writeToParcel(outerParcel, 0);
-        outerParcel.setDataPosition(0);
-        final Bundle outBundle = outerParcel.readBundle();
-        outBundle.setClassLoader(UpdateDisplayState.class.getClassLoader());
-        final UpdateDisplayState inUpdateDisplayState = outBundle.getParcelable("TEST SURVEY PARCEL");
-
-        final UpdateDisplayState.DisplayState.SurveyState surveyState =
-                (UpdateDisplayState.DisplayState.SurveyState) inUpdateDisplayState.getDisplayState();
-        final Survey inSurvey = surveyState.getSurvey();
-        final String inDistinctId = inUpdateDisplayState.getDistinctId();
-        final String inToken = inUpdateDisplayState.getToken();
-
-        assertEquals("DistinctId", inDistinctId);
-        assertEquals("Token", inToken);
-        assertEquals(inSurvey.getId(), 299);
-
-        List<Survey.Question> inQuestions = inSurvey.getQuestions();
-        assertEquals(2, inQuestions.size());
-
-        final Survey.Question q1 = inQuestions.get(0);
-        assertEquals(q1.getId(), 287);
-        assertEquals(q1.getPrompt(), "PROMPT1");
-        assertEquals(q1.getType(), Survey.QuestionType.MULTIPLE_CHOICE);
-
-        final List<String> q1Choices = q1.getChoices();
-        assertEquals(q1Choices.size(), 3);
-        assertEquals(q1Choices.get(0), "Answer1,1");
-        assertEquals(q1Choices.get(1), "Answer1,2");
-        assertEquals(q1Choices.get(2), "Answer1,3");
-
-        final Survey.Question q2 = inQuestions.get(1);
-        assertEquals(q2.getId(), 289);
-        assertEquals(q2.getPrompt(), "PROMPT2");
-        assertEquals(q2.getType(), Survey.QuestionType.TEXT);
-
-        assertNotNull(surveyState.getBackground());
-        assertNotNull(surveyState.getAnswers());
     }
 
     public void test2XUrls() {

@@ -1,0 +1,174 @@
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = GROUP
+version = VERSION_NAME
+
+uploadArchives {
+    repositories.mavenDeployer {
+        beforeDeployment {
+            MavenDeployment deployment -> signing.signPom(deployment)
+        }
+
+        pom.groupId = GROUP
+        pom.version = VERSION_NAME
+
+        pom.project {
+            name project.name
+            version VERSION_NAME
+            packaging POM_PACKAGING
+            description POM_DESCRIPTION
+            url POM_URL
+
+            scm {
+                url POM_SCM_URL
+                connection POM_SCM_CONNECTION
+                developerConnection POM_SCM_DEV_CONNECTION
+            }
+
+            licenses {
+                license {
+                    name POM_LICENCE_NAME
+                    url POM_LICENCE_URL
+                    distribution POM_LICENCE_DIST
+                }
+            }
+            developers {
+                developer {
+                    id POM_DEVELOPER_ID
+                    name POM_DEVELOPER_NAME
+                    email POM_DEVELOPER_EMAIL
+                }
+            }
+        }
+
+        pom.whenConfigured { pom ->
+            pom.dependencies*.optional = true
+        }
+
+        /**
+         * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
+         * with the following properties. You'll need the mixpanel.key file and then import it using GnuPG
+         * which will provide you with the keyId and the secring.gpg file
+         * signing.keyId=
+         * signing.password=
+         * signing.secretKeyRingFile=
+         *
+         * sonatypeRepo=https://oss.sonatype.org/service/local/staging/deploy/maven2/
+         * sonatypeUsername=
+         * sonatypePassword=
+         */
+        repository(url: RELEASE_REPOSITORY_URL) {
+            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+        }
+        snapshotRepository(url: SNAPSHOT_REPOSITORY_URL) {
+            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+        }
+    }
+}
+
+task install(type: Upload, dependsOn: assemble) {
+    repositories.mavenInstaller {
+        configuration = configurations.archives
+
+        pom.groupId = GROUP
+        pom.version = VERSION_NAME
+
+        pom.project {
+            name project.name
+            version VERSION_NAME
+            packaging POM_PACKAGING
+            description POM_DESCRIPTION
+            url POM_URL
+
+            scm {
+                url POM_SCM_URL
+                connection POM_SCM_CONNECTION
+                developerConnection POM_SCM_DEV_CONNECTION
+            }
+
+            licenses {
+                license {
+                    name POM_LICENCE_NAME
+                    url POM_LICENCE_URL
+                    distribution POM_LICENCE_DIST
+                }
+            }
+            developers {
+                developer {
+                    id POM_DEVELOPER_ID
+                    name POM_DEVELOPER_NAME
+                    email POM_DEVELOPER_EMAIL
+                }
+            }
+        }
+    }
+}
+
+task androidJavadocs(type: Javadoc, dependsOn: ':generateReleaseBuildConfig') {
+    source = android.sourceSets.main.java.source
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += project.files('build/generated/source/buildConfig/release')
+    exclude(
+            '**/R.*',
+            '**/java_websocket/**',
+            '**/util/ActivityImageUtils.java',
+            '**/util/Base64Coder.java',
+            '**/util/HttpService.java',
+            '**/util/ImageStore.java',
+            '**/util/JSONUtils.java',
+            '**/util/RemoteService.java',
+            '**/util/StackBlurManager.java',
+            '**/util/StringUtils.java',
+            '**/CardCarouselLayout.java',
+            '**/FadeOnPressButton.java',
+            '**/FadingImageView.java',
+            '**/InAppFragment.java',
+            '**/MiniCircleImageView.java',
+            '**/ResourceIds.java',
+            '**/ResourceReader.java',
+            '**/TakeoverInAppActivity.java',
+            '**/TrackingDebug.java',
+            '**/Tweaks.java',
+            '**/UpdateDisplayState.java',
+            '**/UpdatesFromMixpanel.java',
+            '**/ViewCrawler.java'
+    )
+    options {
+        encoding = 'UTF-8'
+        docEncoding = 'UTF-8'
+        charSet = 'UTF-8'
+    }
+}
+
+task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
+    classifier = 'javadoc'
+    from androidJavadocs.destinationDir
+}
+
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.source
+}
+
+signing {
+    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
+
+artifacts {
+    archives androidSourcesJar
+    archives androidJavadocsJar
+}
+
+def isReleaseBuild() {
+    return version.contains("SNAPSHOT") == false
+}
+
+def getRepositoryUsername() {
+    return hasProperty('sonatypeUsername') ? sonatypeUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('sonatypePassword') ? sonatypePassword : ""
+}
