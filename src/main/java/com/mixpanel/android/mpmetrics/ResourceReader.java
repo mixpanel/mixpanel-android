@@ -1,6 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
+import android.os.Build;
 import android.util.SparseArray;
 
 import com.mixpanel.android.util.MPLog;
@@ -56,6 +57,34 @@ public abstract class ResourceReader implements ResourceIds {
         private final String mResourcePackageName;
     }
 
+    public static class Mipmaps extends ResourceReader {
+        protected Mipmaps(String resourcePackageName, Context context) {
+            super(context);
+            mResourcePackageName = resourcePackageName;
+            initialize();
+        }
+
+        @Override
+        protected Class<?> getSystemClass() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                return android.R.mipmap.class;
+            }
+
+            return android.R.drawable.class;
+        }
+
+        @Override
+        protected String getLocalClassName(Context context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                return mResourcePackageName + ".R$mipmap";
+            }
+
+            return mResourcePackageName + ".R$drawable";
+        }
+
+        private final String mResourcePackageName;
+    }
+
     protected ResourceReader(Context context) {
         mContext = context;
         mIdNameToId = new HashMap<String, Integer>();
@@ -105,6 +134,7 @@ public abstract class ResourceReader implements ResourceIds {
     }
 
     protected abstract Class<?> getSystemClass();
+
     protected abstract String getLocalClassName(Context context);
 
     protected void initialize() {
