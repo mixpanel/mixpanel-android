@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
 import android.util.SparseArray;
@@ -64,15 +65,17 @@ public abstract class ResourceReader implements ResourceIds {
             initialize();
         }
 
+        @SuppressLint("NewApi")
         @Override
         protected Class<?> getSystemClass() {
-            if (Build.VERSION.SDK == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
                 return android.R.mipmap.class;
-            } else {
-                return android.R.drawable.class;
             }
+
+            return android.R.drawable.class;
         }
 
+        @SuppressLint("NewApi")
         @Override
         protected String getLocalClassName(Context context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
