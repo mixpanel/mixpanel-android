@@ -66,11 +66,11 @@ public abstract class ResourceReader implements ResourceIds {
 
         @Override
         protected Class<?> getSystemClass() {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            if (Build.VERSION.SDK == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
                 return android.R.mipmap.class;
+            } else {
+                return android.R.drawable.class;
             }
-
-            return android.R.drawable.class;
         }
 
         @Override
