@@ -113,7 +113,7 @@ import java.text.DecimalFormat;
             mMpInstance.getPeople().joinExperimentIfAvailable();
         }
 
-        mPaused = true;
+        mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;
 
