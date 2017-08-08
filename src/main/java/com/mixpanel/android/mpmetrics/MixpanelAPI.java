@@ -14,6 +14,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
@@ -253,6 +255,7 @@ public class MixpanelAPI {
         registerMixpanelActivityLifecycleCallbacks();
 
         if (sendAppOpen()) {
+            track("$app_open", null);
             track("$app_open", null);
         }
 
@@ -1338,7 +1341,7 @@ public class MixpanelAPI {
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final Future<SharedPreferences> mixpanelPrefs = sPrefsLoader.loadPreferences(context, mixpanelPrefsName, null);
 
-        return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
+        return new PersistentIdentity(context, referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
@@ -1978,7 +1981,7 @@ public class MixpanelAPI {
         mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken, false));
     }
 
-    protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
+    protected void track(final String eventName, final JSONObject properties, final boolean isAutomaticEvent) {
         if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {
             return;
         }
@@ -1990,49 +1993,61 @@ public class MixpanelAPI {
             mPersistentIdentity.removeTimeEvent(eventName);
         }
 
-        try {
-            final JSONObject messageProps = new JSONObject();
+        int timeWait = 0;
+        if(getDistinctId() == null) {
+            timeWait = 500;
+        }
+        Handler h = new Handler();
+        h.postDelayed(new Runnable() {
+            @Override
+            public void run() {
 
-            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
-                final String key = entry.getKey();
-                final String value = entry.getValue();
-                messageProps.put(key, value);
-            }
+            try {
+                final JSONObject messageProps = new JSONObject();
 
-            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
+                final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
+                for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
+                    final String key = entry.getKey();
+                    final String value = entry.getValue();
+                    messageProps.put(key, value);
+                }
 
-            // Don't allow super properties or referral properties to override these fields,
-            // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final long timeSeconds = (long) timeSecondsDouble;
-            messageProps.put("time", timeSeconds);
-            messageProps.put("distinct_id", getDistinctId());
+                mPersistentIdentity.addSuperPropertiesToObject(messageProps);
 
-            if (null != eventBegin) {
-                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
-                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
-                messageProps.put("$duration", secondsElapsed);
-            }
+                // Don't allow super properties or referral properties to override these fields,
+                // but DO allow the caller to override them in their given properties.
+                final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
+                final long timeSeconds = (long) timeSecondsDouble;
+                messageProps.put("time", timeSeconds);
+                messageProps.put("distinct_id", getDistinctId());
 
-            if (null != properties) {
-                final Iterator<?> propIter = properties.keys();
-                while (propIter.hasNext()) {
-                    final String key = (String) propIter.next();
-                    messageProps.put(key, properties.get(key));
+                if (null != eventBegin) {
+                    final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+                    final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+                    messageProps.put("$duration", secondsElapsed);
+                }
+
+                if (null != properties) {
+                    final Iterator<?> propIter = properties.keys();
+                    while (propIter.hasNext()) {
+                        final String key = (String) propIter.next();
+                        messageProps.put(key, properties.get(key));
+                    }
+                }
+
+                final AnalyticsMessages.EventDescription eventDescription =
+                        new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
+                mMessages.eventsMessage(eventDescription);
+
+                if (null != mTrackingDebug) {
+                    mTrackingDebug.reportTrack(eventName);
+                }
+
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
                 }
             }
-
-            final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
-            mMessages.eventsMessage(eventDescription);
-
-            if (null != mTrackingDebug) {
-                mTrackingDebug.reportTrack(eventName);
-            }
-        } catch (final JSONException e) {
-            MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
-        }
+        }, timeWait);
     }
 
     private void recordPeopleMessage(JSONObject message) {

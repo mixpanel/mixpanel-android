@@ -9,15 +9,20 @@ import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.lang.reflect.Method;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 
+import com.google.android.gms.ads.identifier.AdvertisingIdClient;
 import com.mixpanel.android.util.MPLog;
 
 // In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
@@ -34,7 +39,7 @@ import com.mixpanel.android.util.MPLog;
             try {
                 waitingObjects = new JSONArray(waitingPeopleRecords);
             } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Waiting people records were unreadable.");
+                MPLog.e(LOGTAG, "Waiting people records we  re unreadable.");
                 return null;
             }
 
@@ -69,11 +74,12 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences, Future<SharedPreferences> timeEventsPreferences, Future<SharedPreferences> mixpanelPreferences) {
+    public PersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences, Future<SharedPreferences> timeEventsPreferences, Future<SharedPreferences> mixpanelPreferences) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mTimeEventsPreferences = timeEventsPreferences;
         mMixpanelPreferences = mixpanelPreferences;
+        mContext = context;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
@@ -343,6 +349,7 @@ import com.mixpanel.android.util.MPLog;
     }
 
     public synchronized boolean isFirstIntegration(String token) {
+        mToken = token;
         boolean firstLaunch = false;
         try {
             SharedPreferences prefs = mMixpanelPreferences.get();
@@ -540,6 +547,7 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void readIdentities() {
+        MPLog.e(LOGTAG, "readIdentities");
         SharedPreferences prefs = null;
         try {
             prefs = mLoadStoredPreferences.get();
@@ -567,21 +575,60 @@ import com.mixpanel.android.util.MPLog;
         }
 
         if (null == mEventsDistinctId) {
-            mEventsDistinctId = UUID.randomUUID().toString();
-            writeIdentities();
-        }
+            AsyncTask<Void, Void, String> task = new AsyncTask<Void, Void, String>() {
+                @Override
+                protected String doInBackground(Void... params) {
+                    AdvertisingIdClient.Info idInfo = null;
+                    try {
+                        idInfo = AdvertisingIdClient.getAdvertisingIdInfo(mContext.getApplicationContext());
+                        mEventsDistinctId = idInfo.getId().toUpperCase();
+                        gaid = idInfo.getId().toUpperCase();
+                        MPLog.e(LOGTAG, "Google Advertising ID available, using GAID " + mEventsDistinctId + " as distinct ID.");
+                    } catch (Exception e) {
+                        MPLog.e(LOGTAG, "Google Advertising ID unavailable, using random ID as distinct ID instead.", e.getCause());
+                    }
+                    return mEventsDistinctId;
+                }
 
-        mIdentitiesLoaded = true;
+                @Override
+                protected void onPostExecute(String advertId) {
+                    if (mEventsDistinctId == null) {
+                        mEventsDistinctId = UUID.randomUUID().toString();
+                    }
+                    if (gaid != null) {
+                        JSONObject props = new JSONObject();
+                        try {
+                            props.put("$android_advertising_id", gaid);
+                            registerSuperProperties(props);
+                            final JSONObject dataObj = new JSONObject();
+                            dataObj.put("$set", props);
+                            dataObj.put("$token", mToken);
+                            dataObj.put("$time", System.currentTimeMillis());
+                            dataObj.put("$distinct_id", mPeopleDistinctId);
+                            storeWaitingPeopleRecord(dataObj);
+                        } catch (JSONException e) {
+                            MPLog.e(LOGTAG, "Unable to add Google Advertising ID as a super or people property.", e.getCause());
+                        }
+                    }
+                    writeIdentities();
+                    mIdentitiesLoaded = true;
+                }
+
+            };
+            task.execute();
+        }
     }
 
     // All access should be synchronized on this
     private void writeIdentities() {
+        MPLog.e(LOGTAG, "writeIdentities");
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
 
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
+            MPLog.e(LOGTAG, "Distinct ID: " + mEventsDistinctId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             } else {
@@ -603,6 +650,7 @@ import com.mixpanel.android.util.MPLog;
     private final Future<SharedPreferences> mLoadReferrerPreferences;
     private final Future<SharedPreferences> mTimeEventsPreferences;
     private final Future<SharedPreferences> mMixpanelPreferences;
+    private final Context mContext;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
     private JSONObject mSuperPropertiesCache;
     private Map<String, String> mReferrerPropertiesCache;
@@ -612,6 +660,8 @@ import com.mixpanel.android.util.MPLog;
     private JSONArray mWaitingPeopleRecords;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
+    private static String mToken;
+    private static String gaid;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
