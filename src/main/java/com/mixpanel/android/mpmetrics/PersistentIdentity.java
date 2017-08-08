@@ -547,7 +547,6 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void readIdentities() {
-        MPLog.e(LOGTAG, "readIdentities");
         SharedPreferences prefs = null;
         try {
             prefs = mLoadStoredPreferences.get();
@@ -621,14 +620,12 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void writeIdentities() {
-        MPLog.e(LOGTAG, "writeIdentities");
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
 
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
-            MPLog.e(LOGTAG, "Distinct ID: " + mEventsDistinctId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             } else {

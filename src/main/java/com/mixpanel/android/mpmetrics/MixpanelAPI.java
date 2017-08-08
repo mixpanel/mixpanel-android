@@ -15,7 +15,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 
 import com.mixpanel.android.R;
 import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
@@ -255,7 +254,6 @@ public class MixpanelAPI {
         registerMixpanelActivityLifecycleCallbacks();
 
         if (sendAppOpen()) {
-            track("$app_open", null);
             track("$app_open", null);
         }
 
