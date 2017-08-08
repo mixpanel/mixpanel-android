@@ -9,15 +9,12 @@ import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.lang.reflect.Method;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -39,7 +36,7 @@ import com.mixpanel.android.util.MPLog;
             try {
                 waitingObjects = new JSONArray(waitingPeopleRecords);
             } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Waiting people records we  re unreadable.");
+                MPLog.e(LOGTAG, "Waiting people records were unreadable.");
                 return null;
             }
 
