@@ -144,12 +144,30 @@ public class MixpanelAPI {
     }
 
     /**
+     * Declare a double-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Double> doubleTweak(String tweakName, double defaultValue, double minimumValue, double maximumValue) {
+        return sSharedTweaks.doubleTweak(tweakName, defaultValue, minimumValue, maximumValue);
+    }
+
+    /**
      * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
         return sSharedTweaks.floatTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Float> floatTweak(String tweakName, float defaultValue, float minimumValue, float maximumValue) {
+        return sSharedTweaks.floatTweak(tweakName, defaultValue, minimumValue, maximumValue);
     }
 
     /**
@@ -162,12 +180,30 @@ public class MixpanelAPI {
     }
 
     /**
+     * Declare a long-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Long> longTweak(String tweakName, long defaultValue, long minimumValue, long maximumValue) {
+        return sSharedTweaks.longTweak(tweakName, defaultValue, minimumValue, maximumValue);
+    }
+
+    /**
      * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
      */
     public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
         return sSharedTweaks.intTweak(tweakName, defaultValue);
+    }
+
+    /**
+     * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
+     * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
+     * in your app without re-deploying your application through the app store.
+     */
+    public static Tweak<Integer> intTweak(String tweakName, int defaultValue, int minimumValue, int maximumValue) {
+        return sSharedTweaks.intTweak(tweakName, defaultValue, minimumValue, maximumValue);
     }
 
     /**

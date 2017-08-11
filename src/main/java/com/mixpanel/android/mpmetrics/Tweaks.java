@@ -122,16 +122,42 @@ public class Tweaks {
      * and will likely not be directly useful to code that imports the Mixpanel library.
      */
     public static class TweakValue {
-        private TweakValue(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax, Object value) {
+        private TweakValue(@TweakType int aType, Object aDefaultValue, Number aMin, Number aMax, Object value, String aName) {
             type = aType;
-            defaultValue = aDefaultValue;
+            name = aName;
             minimum = aMin;
             maximum = aMax;
+            if (minimum != null && maximum != null) {
+                if (!isBetweenBounds(aDefaultValue)) {
+                    aDefaultValue = Math.min(Math.max(((Number) aDefaultValue).longValue(), minimum.longValue()), maximum.longValue());
+                    MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with default value " + aDefaultValue + " out of its bounds [" + minimum + ", " + maximum + "]" +
+                            "Tweak \"" + name + "\" new default value: " + aDefaultValue + ".");
+                }
+                if (!isBetweenBounds(value)) {
+                    value = Math.min(Math.max(((Number) value).longValue(), minimum.longValue()), maximum.longValue());
+                    MPLog.w(LOGTAG, "Attempt to define a tweak \"" + name + "\" with value " + aDefaultValue + " out of its bounds [" + minimum + ", " + maximum + "]" +
+                            "Tweak \"" + name + "\" new value: " + value + ".");
+                }
+            }
+            defaultValue = aDefaultValue;
             this.value = value;
         }
 
+        private boolean isBetweenBounds(Object aValue) {
+            try {
+                Number aNumberValue = (Number) aValue;
+                if (Math.min(Math.max(aNumberValue.longValue(), minimum.longValue()), maximum.longValue()) == minimum.longValue() ||
+                        Math.min(Math.max(aNumberValue.longValue(), minimum.longValue()), maximum.longValue()) == maximum.longValue()) {
+                    return false;
+                }
+
+            } catch (ClassCastException e) {}
+
+            return true;
+        }
+
         public TweakValue updateValue(Object newValue) {
-            return new TweakValue(type, defaultValue, minimum, maximum, newValue);
+            return new TweakValue(type, defaultValue, minimum, maximum, newValue, name);
         }
 
         public String getStringValue() {
@@ -196,12 +222,21 @@ public class Tweaks {
             return ret;
         }
 
+        public Number getMinimum() {
+            return minimum;
+        }
+
+        public Number getMaximum() {
+            return maximum;
+        }
+
         public final @TweakType int type;
 
         protected final Object value;
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;
+        private final String name;
     }
 
     /**
@@ -220,7 +255,7 @@ public class Tweaks {
 
 
     /* package */ Tweak<String> stringTweak(final String tweakName, final String defaultValue) {
-        declareTweak(tweakName, defaultValue, STRING_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, STRING_TYPE);
         return new Tweak<String>() {
             @Override
             public String get() {
@@ -231,7 +266,19 @@ public class Tweaks {
     }
 
     /* package */ Tweak<Double> doubleTweak(final String tweakName, final double defaultValue) {
-        declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, DOUBLE_TYPE);
+        return new Tweak<Double>() {
+            @Override
+            public Double get() {
+                final TweakValue tweakValue = getValue(tweakName);
+                final Number result = tweakValue.getNumberValue();
+                return result.doubleValue();
+            }
+        };
+    }
+
+    /* package */ Tweak<Double> doubleTweak(final String tweakName, final double defaultValue, final double minimumValue, final double maximumValue) {
+        declareTweak(tweakName, defaultValue, minimumValue, maximumValue, DOUBLE_TYPE);
         return new Tweak<Double>() {
             @Override
             public Double get() {
@@ -243,7 +290,19 @@ public class Tweaks {
     }
 
     /* package */  Tweak<Float> floatTweak(final String tweakName, final float defaultValue) {
-        declareTweak(tweakName, defaultValue, DOUBLE_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, DOUBLE_TYPE);
+        return new Tweak<Float>() {
+            @Override
+            public Float get() {
+                final TweakValue tweakValue = getValue(tweakName);
+                final Number result = tweakValue.getNumberValue();
+                return result.floatValue();
+            }
+        };
+    }
+
+    /* package */  Tweak<Float> floatTweak(final String tweakName, final float defaultValue, final float minimumValue, final float maximumValue) {
+        declareTweak(tweakName, defaultValue, minimumValue, maximumValue, DOUBLE_TYPE);
         return new Tweak<Float>() {
             @Override
             public Float get() {
@@ -255,7 +314,19 @@ public class Tweaks {
     }
 
     /* package */  Tweak<Long> longTweak(final String tweakName, final long defaultValue) {
-        declareTweak(tweakName, defaultValue, LONG_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, LONG_TYPE);
+        return new Tweak<Long>() {
+            @Override
+            public Long get() {
+                final TweakValue tweakValue = getValue(tweakName);
+                final Number result = tweakValue.getNumberValue();
+                return result.longValue();
+            }
+        };
+    }
+
+    /* package */  Tweak<Long> longTweak(final String tweakName, final long defaultValue, final long minimumValue, final long maximumValue) {
+        declareTweak(tweakName, defaultValue, minimumValue, maximumValue, LONG_TYPE);
         return new Tweak<Long>() {
             @Override
             public Long get() {
@@ -267,7 +338,19 @@ public class Tweaks {
     }
 
     /* package */ Tweak<Integer> intTweak(final String tweakName, final int defaultValue) {
-        declareTweak(tweakName, defaultValue, LONG_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, LONG_TYPE);
+        return new Tweak<Integer>() {
+            @Override
+            public Integer get() {
+                final TweakValue tweakValue = getValue(tweakName);
+                final Number result = tweakValue.getNumberValue();
+                return result.intValue();
+            }
+        };
+    }
+
+    /* package */ Tweak<Integer> intTweak(final String tweakName, final int defaultValue, final int minimumValue, final int maximumValue) {
+        declareTweak(tweakName, defaultValue, minimumValue, maximumValue, LONG_TYPE);
         return new Tweak<Integer>() {
             @Override
             public Integer get() {
@@ -279,7 +362,7 @@ public class Tweaks {
     }
 
     /* package */ Tweak<Byte> byteTweak(final String tweakName, final byte defaultValue) {
-        declareTweak(tweakName, defaultValue, LONG_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, LONG_TYPE);
         return new Tweak<Byte>() {
             @Override
             public Byte get() {
@@ -291,7 +374,7 @@ public class Tweaks {
     }
 
     /* package */ Tweak<Short> shortTweak(final String tweakName, final short defaultValue) {
-        declareTweak(tweakName, defaultValue, LONG_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, LONG_TYPE);
         return new Tweak<Short>() {
             @Override
             public Short get() {
@@ -303,7 +386,7 @@ public class Tweaks {
     }
 
     /* package */ Tweak<Boolean> booleanTweak(final String tweakName, final boolean defaultValue) {
-        declareTweak(tweakName, defaultValue, BOOLEAN_TYPE);
+        declareTweak(tweakName, defaultValue, null, null, BOOLEAN_TYPE);
         return new Tweak<Boolean>() {
             @Override
             public Boolean get() {
@@ -317,13 +400,13 @@ public class Tweaks {
         return mTweakValues.get(tweakName);
     }
 
-    private void declareTweak(String tweakName, Object defaultValue, @TweakType int tweakType) {
+    private void declareTweak(String tweakName, Object defaultValue, Number minimumValue, Number maximumValue, @TweakType int tweakType) {
         if (mTweakValues.containsKey(tweakName)) {
             MPLog.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;
         }
 
-        final TweakValue value = new TweakValue(tweakType, defaultValue, null, null, defaultValue);
+        final TweakValue value = new TweakValue(tweakType, defaultValue, minimumValue, maximumValue, defaultValue, tweakName);
         mTweakValues.put(tweakName, value);
         mTweakDefaultValues.put(tweakName, value);
         final int listenerSize = mTweakDeclaredListeners.size();
