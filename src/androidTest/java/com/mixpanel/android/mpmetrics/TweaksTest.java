@@ -248,6 +248,18 @@ public class TweaksTest extends AndroidTestCase {
         assertEquals(1.0f, floatTweak.get());
     }
 
+    public void testNumberOutOfBounds() {
+        final double defaultValue = 3.0d;
+        final Tweak<Double> tweak = mTweaks.doubleTweak("subject", defaultValue, 2.0d, 4.0d);
+        assertEquals(defaultValue, tweak.get());
+
+        mTweaks.set("subject", 5.0d);
+        assertEquals(4.0d, tweak.get());
+
+        mTweaks.set("subject", 1.0d);
+        assertEquals(2.0d, tweak.get());
+    }
+
     public void testDuplicateTweakDeclared() {
 
         // First tweak wins for default values. Since strings can't be coerced into numbers
