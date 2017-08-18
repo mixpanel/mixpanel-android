@@ -35,6 +35,9 @@ import com.mixpanel.android.R;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ViewUtils;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * Attached to an Activity when you display a mini in-app notification.
  *
@@ -135,6 +138,7 @@ public class InAppFragment extends Fragment {
             public boolean onSingleTapUp(MotionEvent event) {
                 final MiniInAppNotification inApp = (MiniInAppNotification) mDisplayState.getInAppNotification();
 
+                JSONObject trackingProperties = null;
                 final String uriString = inApp.getCtaUrl();
                 if (uriString != null && uriString.length() > 0) {
                     Uri uri;
@@ -148,11 +152,18 @@ public class InAppFragment extends Fragment {
                     try {
                         Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                         mParent.startActivity(viewIntent);
-                        mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                     } catch (ActivityNotFoundException e) {
                         MPLog.i(LOGTAG, "User doesn't have an activity for notification URI " + uri);
                     }
+
+                    try {
+                        trackingProperties = new JSONObject();
+                        trackingProperties.put("url", uriString);
+                    } catch (final JSONException e) {
+                        MPLog.e(LOGTAG, "Can't put url into json properties");
+                    }
                 }
+                mMixpanel.getPeople().trackNotification("$campaign_open", inApp, trackingProperties);
 
                 remove();
                 return true;
