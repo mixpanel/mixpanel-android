@@ -35,6 +35,9 @@ import com.mixpanel.android.mpmetrics.UpdateDisplayState;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ViewUtils;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 /**
@@ -117,7 +120,7 @@ public class TakeoverInAppActivity extends Activity {
             InAppButton inAppButtonModel = inApp.getButton(i);
             Button inAppButton = ctaButtons.get(i);
 
-            setUpInAppButton(inAppButton, inAppButtonModel, inApp);
+            setUpInAppButton(inAppButton, inAppButtonModel, inApp, i);
         }
 
         if (inApp.getNumButtons() == 1) {
@@ -139,7 +142,7 @@ public class TakeoverInAppActivity extends Activity {
         setUpNotificationAnimations(inAppImageView, titleView, subtextView, ctaButtons, closeButtonWrapper);
     }
 
-    private void setUpInAppButton(Button inAppButton, final InAppButton inAppButtonModel, final InAppNotification inApp) {
+    private void setUpInAppButton(Button inAppButton, final InAppButton inAppButtonModel, final InAppNotification inApp, final int buttonIndex) {
         if (inAppButtonModel != null) {
             inAppButton.setVisibility(View.VISIBLE);
             inAppButton.setText(inAppButtonModel.getText());
@@ -174,6 +177,7 @@ public class TakeoverInAppActivity extends Activity {
             inAppButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    JSONObject trackingProperties = null;
                     final String uriString = inAppButtonModel.getCtaUrl();
                     if (uriString != null && uriString.length() > 0) {
                         Uri uri;
@@ -187,11 +191,31 @@ public class TakeoverInAppActivity extends Activity {
                         try {
                             final Intent viewIntent = new Intent(Intent.ACTION_VIEW, uri);
                             TakeoverInAppActivity.this.startActivity(viewIntent);
-                            mMixpanel.getPeople().trackNotification("$campaign_open", inApp);
                         } catch (final ActivityNotFoundException e) {
                             MPLog.i(LOGTAG, "User doesn't have an activity for notification URI");
                         }
+
+                        try {
+                            trackingProperties = new JSONObject();
+                            trackingProperties.put("url", uriString);
+                        } catch (final JSONException e) {
+                            MPLog.e(LOGTAG, "Can't put url into json properties");
+                        }
                     }
+                    String whichButton = "primary";
+                    final TakeoverInAppNotification takeoverInApp = (TakeoverInAppNotification)inApp;
+                    if (takeoverInApp.getNumButtons() == 2) {
+                        whichButton = (buttonIndex == 0) ? "primary" : "secondary";
+                    }
+                    try {
+                        if (trackingProperties == null) {
+                            trackingProperties = new JSONObject();
+                        }
+                        trackingProperties.put("button", whichButton);
+                    } catch (final JSONException e) {
+                        MPLog.e(LOGTAG, "Can't put button type into json properties");
+                    }
+                    mMixpanel.getPeople().trackNotification("$campaign_open", inApp, trackingProperties);
                     finish();
                     UpdateDisplayState.releaseDisplayState(mIntentId);
                 }
