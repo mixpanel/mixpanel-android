@@ -22,6 +22,7 @@ before_install:
 
 # Emulator Management: Create, Start and Wait
 before_script:
+  - android list targets
   - echo no | android create avd --force -n mp --target android-19 --abi armeabi-v7a
   - emulator -avd mp -noskin -no-boot-anim -no-window &
   - android-wait-for-emulator
