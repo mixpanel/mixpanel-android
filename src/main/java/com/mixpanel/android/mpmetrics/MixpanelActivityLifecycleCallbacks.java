@@ -14,6 +14,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
@@ -86,8 +88,9 @@ import java.text.DecimalFormat;
                     try {
                         double sessionLength = System.currentTimeMillis() - sStartSessionTime;
                         if (sessionLength >= mConfig.getMinimumSessionDuration() && sessionLength < mConfig.getSessionTimeoutDuration()) {
-                            DecimalFormat df = new DecimalFormat("#.0");
-                            String sessionLengthString = df.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
+                            NumberFormat nf = NumberFormat.getNumberInstance(Locale.ENGLISH);
+                            nf.setMaximumFractionDigits(1);
+                            String sessionLengthString = nf.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
                             JSONObject sessionProperties = new JSONObject();
                             sessionProperties.put(AutomaticEvents.SESSION_LENGTH, sessionLengthString);
                             mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
