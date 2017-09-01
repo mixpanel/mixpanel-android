@@ -95,7 +95,7 @@ import java.text.DecimalFormat;
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    mMpInstance.flush();
+                    mMpInstance.onBackground();
                 }
             }
         }, CHECK_DELAY);

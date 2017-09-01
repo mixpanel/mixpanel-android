@@ -30,7 +30,7 @@ import java.util.Set;
         mDistinctId = null;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mNotificationIds = new HashSet<Integer>(notificationIds);
-        mVariants = new JSONArray();
+        mVariants = null;
     }
 
     public String getToken() {
@@ -82,7 +82,7 @@ import java.util.Set;
             }
         }
 
-        if (hasNewVariants) {
+        if (hasNewVariants && mVariants != null) {
             mLoadedVariants.clear();
 
             for (int i = 0; i < newVariantsLength; i++) {
@@ -94,16 +94,19 @@ import java.util.Set;
                 }
             }
         }
+
         if (mAutomaticEventsEnabled == null && !automaticEvents) {
             MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
         }
         mAutomaticEventsEnabled = automaticEvents;
 
         // in the case we do not receive a new variant, this means the A/B test should be turned off
-        if (newVariantsLength == 0 && mLoadedVariants.size() > 0) {
-            mLoadedVariants.clear();
+        if (newVariantsLength == 0) {
             mVariants = new JSONArray();
-            newContent = true;
+            if (mLoadedVariants.size() > 0) {
+                mLoadedVariants.clear();
+                newContent = true;
+            }
         }
 
         MPLog.v(LOGTAG, "New Decide content has become available. " +
@@ -156,7 +159,7 @@ import java.util.Set;
     }
 
     public synchronized boolean hasUpdatesAvailable() {
-        return (! mUnseenNotifications.isEmpty()) || mVariants.length() > 0;
+        return (! mUnseenNotifications.isEmpty()) || (mVariants != null && mVariants.length() > 0);
     }
 
     public Boolean isAutomaticEventsEnabled() {

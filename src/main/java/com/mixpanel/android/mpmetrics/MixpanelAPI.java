@@ -1330,6 +1330,12 @@ public class MixpanelAPI {
         return false;
     }
 
+
+    /* package */ void onBackground() {
+        flush();
+        mUpdatesFromMixpanel.applyPersistedUpdates();
+    }
+
     // Package-level access. Used (at least) by GCMReceiver
     // when OS-level events occur.
     /* package */ interface InstanceProcessor {
@@ -1978,6 +1984,11 @@ public class MixpanelAPI {
 
         @Override
         public void startUpdates() {
+            // No op
+        }
+
+        @Override
+        public void applyPersistedUpdates() {
             // No op
         }
 

@@ -16,6 +16,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.JsonWriter;
+import android.util.Log;
 import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -92,6 +93,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     @Override
     public void startUpdates() {
         mMessageThreadHandler.start();
+        applyPersistedUpdates();
+    }
+
+    public void applyPersistedUpdates() {
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
     }
 
@@ -102,16 +107,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
     @Override
     public void setEventBindings(JSONArray bindings) {
-        final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
-        msg.obj = bindings;
-        mMessageThreadHandler.sendMessage(msg);
+        if (bindings != null) {
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_EVENT_BINDINGS_RECEIVED);
+            msg.obj = bindings;
+            mMessageThreadHandler.sendMessage(msg);
+        }
     }
 
     @Override
     public void setVariants(JSONArray variants) {
-        final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_VARIANTS_RECEIVED);
-        msg.obj = variants;
-        mMessageThreadHandler.sendMessage(msg);
+        if (variants != null) {
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_VARIANTS_RECEIVED);
+            msg.obj = variants;
+            mMessageThreadHandler.sendMessage(msg);
+        }
     }
 
     @Override
@@ -286,9 +295,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             mEditorTweaks = new ArrayList<JSONObject>();
             mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
-            mPersistentChanges = new ArrayList<VariantChange>();
-            mPersistentTweaks = new ArrayList<VariantTweak>();
-            mPersistentEventBindings = new ArrayList<Pair<String, JSONObject>>();
+            mAppliedVisualChanges = new HashSet<VariantChange>();
+            mAppliedTweaks = new HashSet<VariantTweak>();
+            mEmptyExperiments = new HashSet<Pair<Integer, Integer>>();
+            mPersistentEventBindings = new HashSet<Pair<String, JSONObject>>();
             mSeenExperiments = new HashSet<Pair<Integer, Integer>>();
             mStartLock = new ReentrantLock();
             mStartLock.lock();
@@ -307,7 +317,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 switch (what) {
                     case MESSAGE_INITIALIZE_CHANGES:
                         loadKnownChanges();
-                        initializeChanges();
                         break;
                     case MESSAGE_CONNECT_TO_EDITOR:
                         connectToEditor();
@@ -354,45 +363,105 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         /**
          * Load the experiment ids and variants already in persistent storage into
          * into our set of seen experiments, so we don't double track them.
+         *
+         * Load stored changes (AB, tweaks and event bindings) from persistent storage.
          */
         private void loadKnownChanges() {
             final SharedPreferences preferences = getSharedPreferences();
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
+            final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
 
-            if (null != storedChanges) {
+            mAppliedVisualChanges.clear();
+            mAppliedTweaks.clear();
+            mSeenExperiments.clear();
+            loadVariants(storedChanges, false);
+
+            mPersistentEventBindings.clear();
+            loadEventBindings(storedBindings);
+
+            applyVariantsAndEventBindings();
+        }
+
+
+        private void loadVariants(String variants, boolean newVariants) {
+            if (null != variants) {
                 try {
-                    final JSONArray variants = new JSONArray(storedChanges);
-                    final int variantsLength = variants.length();
-                    for (int i = 0; i < variantsLength; i++) {
-                        final JSONObject variant = variants.getJSONObject(i);
-                        final int variantId = variant.getInt("id");
-                        final int experimentId = variant.getInt("experiment_id");
-                        final Pair<Integer,Integer> sight = new Pair<Integer,Integer>(experimentId, variantId);
-                        mSeenExperiments.add(sight);
+                    final JSONArray variantsJson = new JSONArray(variants);
+
+                    final int variantsLength = variantsJson.length();
+                    for (int variantIx = 0; variantIx < variantsLength; variantIx++) {
+                        final JSONObject nextVariant = variantsJson.getJSONObject(variantIx);
+                        final int variantIdPart = nextVariant.getInt("id");
+                        final int experimentIdPart = nextVariant.getInt("experiment_id");
+                        final Pair<Integer, Integer> variantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
+
+                        final JSONArray actions = nextVariant.getJSONArray("actions");
+                        final int actionsLength = actions.length();
+                        for (int i = 0; i < actionsLength; i++) {
+                            final JSONObject change = actions.getJSONObject(i);
+                            final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
+                            final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
+                            mAppliedVisualChanges.add(variantChange);
+                        }
+
+                        final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
+                        final int tweaksLength = tweaks.length();
+                        for (int i = 0; i < tweaksLength; i++) {
+                            final JSONObject tweakDesc = tweaks.getJSONObject(i);
+                            final VariantTweak variantTweak = new VariantTweak(tweakDesc, variantId);
+                            mAppliedTweaks.add(variantTweak);
+                        }
+
+                        if (!newVariants) {
+                            mSeenExperiments.add(variantId);
+                        }
+
+                        if (tweaksLength == 0 && actionsLength == 0) {
+                            mEmptyExperiments.add(variantId);
+                        }
                     }
                 } catch (JSONException e) {
-                    MPLog.e(LOGTAG, "Malformed variants found in persistent storage, clearing all variants", e);
+                    MPLog.i(LOGTAG, "JSON error when loading ab tests / tweaks, clearing persistent memory", e);
+                    final SharedPreferences preferences = getSharedPreferences();
                     final SharedPreferences.Editor editor = preferences.edit();
                     editor.remove(SHARED_PREF_CHANGES_KEY);
+                    editor.apply();
+                }
+            }
+        }
+
+        private void loadEventBindings(String eventBindings) {
+            if (null != eventBindings) {
+                try {
+                    final JSONArray bindings = new JSONArray(eventBindings);
+                    mPersistentEventBindings.clear();
+                    for (int i = 0; i < bindings.length(); i++) {
+                        final JSONObject event = bindings.getJSONObject(i);
+                        final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
+                        mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
+                    }
+                } catch (final JSONException e) {
+                    MPLog.i(LOGTAG, "JSON error when loading event bindings, clearing persistent memory", e);
+                    final SharedPreferences preferences = getSharedPreferences();
+                    final SharedPreferences.Editor editor = preferences.edit();
                     editor.remove(SHARED_PREF_BINDINGS_KEY);
                     editor.apply();
                 }
             }
-
         }
 
         /**
          * Load stored changes from persistent storage and apply them to the application.
          */
-        private void initializeChanges() {
+        private void initializeChanges222() {
             final SharedPreferences preferences = getSharedPreferences();
             final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
             final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
             List<Pair<Integer, Integer>> emptyVariantIds = new ArrayList<>();
 
             try {
-                mPersistentChanges.clear();
-                mPersistentTweaks.clear();
+                mAppliedVisualChanges.clear();
+                mAppliedTweaks.clear();
 
                 if (null != storedChanges) {
                     final JSONArray variants = new JSONArray(storedChanges);
@@ -409,7 +478,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                             final JSONObject change = actions.getJSONObject(i);
                             final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
                             final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
-                            mPersistentChanges.add(variantChange);
+                            mAppliedVisualChanges.add(variantChange);
                         }
 
                         final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
@@ -417,7 +486,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         for (int i = 0; i < tweaksLength; i++) {
                             final JSONObject tweakDesc = tweaks.getJSONObject(i);
                             final VariantTweak variantTweak = new VariantTweak(tweakDesc, variantId);
-                            mPersistentTweaks.add(variantTweak);
+                            mAppliedTweaks.add(variantTweak);
                         }
 
                         if (actionsLength == 0 && tweaksLength == 0) {
@@ -445,7 +514,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 editor.apply();
             }
 
-            applyVariantsAndEventBindings(emptyVariantIds);
+            applyVariantsAndEventBindings();
         }
 
         /**
@@ -481,7 +550,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Send a string error message to the connected web UI.
          */
         private void sendError(String errorMessage) {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+            if (mEditorConnection == null || !mEditorConnection.isValid() || !mEditorConnection.isConnected()) {
                 return;
             }
 
@@ -513,7 +582,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report on device info to the connected web UI.
          */
         private void sendDeviceInfo() {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+            if (mEditorConnection == null || !mEditorConnection.isValid() || !mEditorConnection.isConnected()) {
                 return;
             }
 
@@ -640,7 +709,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Report that a track has occurred to the connected web UI.
          */
         private void sendReportTrackToEditor(String eventName) {
-            if (mEditorConnection == null || !mEditorConnection.isValid()) {
+            if (mEditorConnection == null || !mEditorConnection.isValid() || !mEditorConnection.isConnected()) {
                 return;
             }
 
@@ -671,7 +740,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private void sendLayoutError(ViewVisitor.LayoutErrorMessage exception) {
-            if (mEditorConnection == null ) {
+            if (mEditorConnection == null || !mEditorConnection.isValid() || !mEditorConnection.isConnected()) {
                 return;
             }
 
@@ -711,7 +780,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     mEditorChanges.put(name, new Pair<String, JSONObject>(targetActivity, change));
                 }
 
-                applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
+                applyVariantsAndEventBindings();
             } catch (final JSONException e) {
                 MPLog.e(LOGTAG, "Bad change request received", e);
             }
@@ -734,7 +803,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 MPLog.e(LOGTAG, "Bad clear request received", e);
             }
 
-            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
+            applyVariantsAndEventBindings();
         }
 
         private void handleEditorTweaksReceived(JSONObject tweaksMessage) {
@@ -751,7 +820,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 MPLog.e(LOGTAG, "Bad tweaks received", e);
             }
 
-            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
+            applyVariantsAndEventBindings();
         }
 
         /**
@@ -760,14 +829,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private void handleVariantsReceived(JSONArray variants) {
             final SharedPreferences preferences = getSharedPreferences();
             final SharedPreferences.Editor editor = preferences.edit();
-            if(variants.length() > 0) {
-                editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
-            } else {
-                editor.remove(SHARED_PREF_CHANGES_KEY);
-            }
+            editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
             editor.apply();
 
-            initializeChanges();
+            loadVariants(variants.toString(), true);
+
+            applyVariantsAndEventBindings();
         }
 
         /**
@@ -778,7 +845,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final SharedPreferences.Editor editor = preferences.edit();
             editor.putString(SHARED_PREF_BINDINGS_KEY, eventBindings.toString());
             editor.apply();
-            initializeChanges();
+
+            loadEventBindings(eventBindings.toString());
+
+            applyVariantsAndEventBindings();
         }
 
         /**
@@ -807,7 +877,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 }
             }
 
-            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
+            applyVariantsAndEventBindings();
         }
 
         /**
@@ -816,13 +886,14 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private void handleEditorClosed() {
             mEditorChanges.clear();
             mEditorEventBindings.clear();
+            mEditorTweaks.clear();
 
             // Free (or make available) snapshot memory
             mSnapshot = null;
 
             MPLog.v(LOGTAG, "Editor closed- freeing snapshot");
 
-            applyVariantsAndEventBindings(Collections.<Pair<Integer, Integer>>emptyList());
+            applyVariantsAndEventBindings();
             for (final String assetUrl:mEditorAssetUrls) {
                 mImageStore.deleteStorage(assetUrl);
             }
@@ -838,14 +909,13 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * received from interactive editing will all be submitted to our EditState, tweaks
          * will be updated, and experiment statuses will be tracked.
          */
-        private void applyVariantsAndEventBindings(List<Pair<Integer, Integer>> emptyVariantIds) {
+        private void applyVariantsAndEventBindings() {
             final List<Pair<String, ViewVisitor>> newVisitors = new ArrayList<Pair<String, ViewVisitor>>();
             final Set<Pair<Integer, Integer>> toTrack = new HashSet<Pair<Integer, Integer>>();
+            Set<String> updatedTweaks = new HashSet<>();
 
             {
-                final int size = mPersistentChanges.size();
-                for (int i = 0; i < size; i++) {
-                    final VariantChange changeInfo = mPersistentChanges.get(i);
+                for (VariantChange changeInfo : mAppliedVisualChanges) {
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.change);
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
@@ -863,18 +933,19 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                boolean isTweaksUpdated = false;
-                final int size = mPersistentTweaks.size();
-                for (int i = 0; i < size; i++) {
-                    final VariantTweak tweakInfo = mPersistentTweaks.get(i);
+                for (VariantTweak tweakInfo : mAppliedTweaks) {
                     try {
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
 
+                        Map<String, Tweaks.TweakValue> tweaks = mTweaks.getAllValues();
+                        Tweaks.TweakValue value = tweaks.get(tweakValue.first);
                         if (!mSeenExperiments.contains(tweakInfo.variantId)) {
                             toTrack.add(tweakInfo.variantId);
-                            isTweaksUpdated = true;
+                            updatedTweaks.add(tweakValue.first);
                         } else if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
-                            isTweaksUpdated = true;
+                            Map<String, Tweaks.TweakValue> tweaks2 = mTweaks.getAllValues();
+                            Tweaks.TweakValue value2 = tweaks2.get(tweakValue.first);
+                            updatedTweaks.add(tweakValue.first);
                         }
 
                         mTweaks.set(tweakValue.first, tweakValue.second);
@@ -883,18 +954,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     }
                 }
 
-                if (isTweaksUpdated) {
-                    for (OnMixpanelTweaksUpdatedListener listener : mTweaksUpdatedListeners) {
-                        listener.onMixpanelTweakUpdated();
-                    }
-                }
-
-                if(size == 0) { // there are no new tweaks, so reset to default values
+                if (mAppliedTweaks.size() == 0) { // there are no new tweaks, so reset to default values
                     final Map<String, Tweaks.TweakValue> tweakDefaults = mTweaks.getDefaultValues();
                     for (Map.Entry<String, Tweaks.TweakValue> tweak:tweakDefaults.entrySet()) {
                         final Tweaks.TweakValue tweakValue = tweak.getValue();
                         final String tweakName = tweak.getKey();
-                        mTweaks.set(tweakName, tweakValue);
+                        if (mTweaks.isNewValue(tweakName, tweakValue.getValue())) {
+                            mTweaks.set(tweakName, tweakValue.getValue());
+                            updatedTweaks.add(tweakName);
+                        }
                     }
                 }
             }
@@ -922,6 +990,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
                     try {
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
+                        if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
+                            updatedTweaks.add(tweakValue.first);
+                        }
                         mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (final EditProtocol.BadInstructionsException e) {
                         MPLog.e(LOGTAG, "Strange tweaks received", e);
@@ -930,9 +1001,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                final int size = mPersistentEventBindings.size();
-                for (int i = 0; i < size; i++) {
-                    final Pair<String, JSONObject> changeInfo = mPersistentEventBindings.get(i);
+                for (Pair<String, JSONObject> changeInfo : mPersistentEventBindings) {
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
@@ -974,16 +1043,19 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             mEditState.setEdits(editMap);
-
-            for (Pair<Integer, Integer> id : emptyVariantIds) {
-                if (!mSeenExperiments.contains(id)) {
-                    toTrack.add(id);
+            mSeenExperiments.addAll(toTrack);
+            toTrack.addAll(mEmptyExperiments);
+            trackSeenExperiments(toTrack);
+            mEmptyExperiments.clear();
+            if (updatedTweaks.size() > 0) {
+                for (OnMixpanelTweaksUpdatedListener listener : mTweaksUpdatedListeners) {
+                    listener.onMixpanelTweakUpdated(updatedTweaks);
                 }
             }
+        }
 
-            mSeenExperiments.addAll(toTrack);
-
-            if (toTrack.size() > 0) {
+        private void trackSeenExperiments(Set<Pair<Integer, Integer>> toTrack) {
+            if (toTrack != null && toTrack.size() > 0) {
                 final JSONObject variantObject = new JSONObject();
 
                 try {
@@ -994,7 +1066,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final JSONObject trackProps = new JSONObject();
                         trackProps.put("$experiment_id", experimentId);
                         trackProps.put("$variant_id", variantId);
-                        
+
                         variantObject.put(Integer.toString(experimentId), variantId);
 
                         mMixpanel.getPeople().merge("$experiments", variantObject);
@@ -1033,9 +1105,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private final List<JSONObject> mEditorTweaks;
         private final List<String> mEditorAssetUrls;
         private final List<Pair<String,JSONObject>> mEditorEventBindings;
-        private final List<VariantChange> mPersistentChanges;
-        private final List<VariantTweak> mPersistentTweaks;
-        private final List<Pair<String,JSONObject>> mPersistentEventBindings;
+        private final Set<VariantChange> mAppliedVisualChanges;
+        private final Set<VariantTweak> mAppliedTweaks;
+        private final Set<Pair<Integer, Integer>> mEmptyExperiments;
+        private final Set<Pair<String,JSONObject>> mPersistentEventBindings;
         private final Set<Pair<Integer, Integer>> mSeenExperiments;
     }
 
@@ -1096,6 +1169,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             variantId = aVariantId;
         }
 
+        @Override
+        public int hashCode() {
+            return variantId.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof VariantChange) {
+                return obj.hashCode() == hashCode();
+            }
+
+            return false;
+        }
+
         public final String activityName;
         public final JSONObject change;
         public final Pair<Integer, Integer> variantId;
@@ -1105,6 +1192,20 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         public VariantTweak(JSONObject aTweak, Pair<Integer, Integer> aVariantId) {
             tweak = aTweak;
             variantId = aVariantId;
+        }
+
+        @Override
+        public int hashCode() {
+            return variantId.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof VariantTweak) {
+                return obj.hashCode() == hashCode();
+            }
+
+            return false;
         }
 
         public final JSONObject tweak;
