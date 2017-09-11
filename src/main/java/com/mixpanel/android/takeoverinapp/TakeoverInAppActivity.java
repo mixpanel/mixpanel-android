@@ -205,7 +205,7 @@ public class TakeoverInAppActivity extends Activity {
                     String whichButton = "primary";
                     final TakeoverInAppNotification takeoverInApp = (TakeoverInAppNotification)inApp;
                     if (takeoverInApp.getNumButtons() == 2) {
-                        whichButton = (buttonIndex == 0) ? "primary" : "secondary";
+                        whichButton = (buttonIndex == 0) ? "secondary" : "primary";
                     }
                     try {
                         if (trackingProperties == null) {
