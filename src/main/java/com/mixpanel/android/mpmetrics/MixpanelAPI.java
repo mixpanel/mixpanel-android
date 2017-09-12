@@ -1590,15 +1590,19 @@ public class MixpanelAPI {
             mPersistentIdentity.saveCampaignAsSeen(notif.getId());
             trackNotification("$campaign_delivery", notif, null);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
-            final JSONObject notifProperties = notif.getCampaignProperties();
-            try {
-                notifProperties.put("$time", dateFormat.format(new Date()));
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
+            if (people != null) {
+                final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
+                final JSONObject notifProperties = notif.getCampaignProperties();
+                try {
+                    notifProperties.put("$time", dateFormat.format(new Date()));
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
+                }
+                people.append("$campaigns", notif.getId());
+                people.append("$notifications", notifProperties);
+            } else {
+                MPLog.e(LOGTAG, "No identity found. Make sure to call getPeople().identify() before showing in-app notifications.");
             }
-            people.append("$campaigns", notif.getId());
-            people.append("$notifications", notifProperties);
         }
 
         @Override
