@@ -262,7 +262,8 @@ public class InAppFragment extends Fragment {
     }
 
     private void remove() {
-        if (mParent != null && !mCleanedUp) {
+        boolean isDestroyed = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ? mParent.isDestroyed() : false;
+        if (mParent != null && !mParent.isFinishing() && !isDestroyed && !mCleanedUp) {
             mHandler.removeCallbacks(mRemover);
             mHandler.removeCallbacks(mDisplayMini);
 
