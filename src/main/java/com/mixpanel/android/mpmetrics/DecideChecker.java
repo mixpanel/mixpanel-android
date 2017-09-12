@@ -235,20 +235,11 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         final String checkQuery = queryBuilder.toString();
-        final String[] urls;
-        if (mConfig.getDisableFallback()) {
-            urls = new String[]{mConfig.getDecideEndpoint() + checkQuery};
-        } else {
-            urls = new String[]{mConfig.getDecideEndpoint() + checkQuery,
-                    mConfig.getDecideFallbackEndpoint() + checkQuery};
-        }
+        final String url = mConfig.getDecideEndpoint() + checkQuery;
 
-        MPLog.v(LOGTAG, "Querying decide server, urls:");
-        for (int i = 0; i < urls.length; i++) {
-            MPLog.v(LOGTAG, "    >> " + urls[i]);
-        }
+        MPLog.v(LOGTAG, "Querying decide server, url: " + url);
 
-        final byte[] response = getUrls(poster, mContext, urls);
+        final byte[] response = checkDecide(poster, mContext, url);
         if (null == response) {
             return null;
         }
@@ -294,7 +285,7 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    private static byte[] getUrls(RemoteService poster, Context context, String[] urls)
+    private static byte[] checkDecide(RemoteService poster, Context context, String url)
         throws RemoteService.ServiceUnavailableException {
         final MPConfig config = MPConfig.getInstance(context);
 
@@ -303,21 +294,17 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         byte[] response = null;
-        for (String url : urls) {
-            try {
-                final SSLSocketFactory socketFactory = config.getSSLSocketFactory();
-                response = poster.performRequest(url, null, socketFactory);
-                break;
-            } catch (final MalformedURLException e) {
-                MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-            } catch (final FileNotFoundException e) {
-                MPLog.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
-            } catch (final IOException e) {
-                MPLog.v(LOGTAG, "Cannot get " + url + ".", e);
-            } catch (final OutOfMemoryError e) {
-                MPLog.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
-                break;
-            }
+        try {
+            final SSLSocketFactory socketFactory = config.getSSLSocketFactory();
+            response = poster.performRequest(url, null, socketFactory);
+        } catch (final MalformedURLException e) {
+            MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+        } catch (final FileNotFoundException e) {
+            MPLog.v(LOGTAG, "Cannot get " + url + ", file not found.", e);
+        } catch (final IOException e) {
+            MPLog.v(LOGTAG, "Cannot get " + url + ".", e);
+        } catch (final OutOfMemoryError e) {
+            MPLog.e(LOGTAG, "Out of memory when getting to " + url + ".", e);
         }
 
         return response;

@@ -261,7 +261,6 @@ import javax.net.ssl.SSLSocketFactory;
                 mDbAdapter = null;
                 mSystemInformation = new SystemInformation(mContext);
                 mDecideChecker = createDecideChecker();
-                mDisableFallback = mConfig.getDisableFallback();
                 mFlushInterval = mConfig.getFlushInterval();
             }
 
@@ -436,18 +435,11 @@ import javax.net.ssl.SSLSocketFactory;
                     return;
                 }
 
-                if (mDisableFallback) {
-                    sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, new String[]{ mConfig.getEventsEndpoint() });
-                    sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, new String[]{ mConfig.getPeopleEndpoint() });
-                } else {
-                    sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS,
-                             new String[]{ mConfig.getEventsEndpoint(), mConfig.getEventsFallbackEndpoint() });
-                    sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE,
-                             new String[]{ mConfig.getPeopleEndpoint(), mConfig.getPeopleFallbackEndpoint() });
-                }
+                sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
             }
 
-            private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String[] urls) {
+            private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
                 final RemoteService poster = getPoster();
                 DecideMessages decideMessages = mDecideChecker.getDecideMessages(token);
                 boolean includeAutomaticEvents = true;
@@ -473,47 +465,43 @@ import javax.net.ssl.SSLSocketFactory;
 
                     boolean deleteEvents = true;
                     byte[] response;
-                    for (String url : urls) {
-                        try {
-                            final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
-                            response = poster.performRequest(url, params, socketFactory);
-                            if (null == response) {
-                                deleteEvents = false;
-                                logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
-                            } else {
-                                deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
-                                String parsedResponse;
-                                try {
-                                    parsedResponse = new String(response, "UTF-8");
-                                } catch (UnsupportedEncodingException e) {
-                                    throw new RuntimeException("UTF not supported on this platform?", e);
-                                }
-                                if (mFailedRetries > 0) {
-                                    mFailedRetries = 0;
-                                    removeMessages(FLUSH_QUEUE, token);
-                                }
-
-                                logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
-                                logAboutMessageToMixpanel("Response was " + parsedResponse);
+                    try {
+                        final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
+                        response = poster.performRequest(url, params, socketFactory);
+                        if (null == response) {
+                            deleteEvents = false;
+                            logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
+                        } else {
+                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
+                            String parsedResponse;
+                            try {
+                                parsedResponse = new String(response, "UTF-8");
+                            } catch (UnsupportedEncodingException e) {
+                                throw new RuntimeException("UTF not supported on this platform?", e);
                             }
-                            break;
-                        } catch (final OutOfMemoryError e) {
-                            MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
-                            break;
-                        } catch (final MalformedURLException e) {
-                            MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
-                            break;
-                        } catch (final RemoteService.ServiceUnavailableException e) {
-                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                            deleteEvents = false;
-                            mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
-                        } catch (final SocketTimeoutException e) {
-                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                            deleteEvents = false;
-                        } catch (final IOException e) {
-                            logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                            deleteEvents = false;
+                            if (mFailedRetries > 0) {
+                                mFailedRetries = 0;
+                                removeMessages(FLUSH_QUEUE, token);
+                            }
+
+                            logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                            logAboutMessageToMixpanel("Response was " + parsedResponse);
                         }
+                        break;
+                    } catch (final OutOfMemoryError e) {
+                        MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
+                    } catch (final MalformedURLException e) {
+                        MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
+                    } catch (final RemoteService.ServiceUnavailableException e) {
+                        logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                        deleteEvents = false;
+                        mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
+                    } catch (final SocketTimeoutException e) {
+                        logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                        deleteEvents = false;
+                    } catch (final IOException e) {
+                        logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
+                        deleteEvents = false;
                     }
 
                     if (deleteEvents) {
@@ -647,7 +635,6 @@ import javax.net.ssl.SSLSocketFactory;
             private MPDbAdapter mDbAdapter;
             private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
-            private final boolean mDisableFallback;
             private long mDecideRetryAfter;
             private long mTrackEngageRetryAfter;
             private int mFailedRetries;
