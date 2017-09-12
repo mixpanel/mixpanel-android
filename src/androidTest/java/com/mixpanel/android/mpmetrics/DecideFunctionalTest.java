@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Process;
 import android.test.AndroidTestCase;
 
 import com.mixpanel.android.util.HttpService;
@@ -95,7 +96,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                 return new Worker() {
                     @Override
                     protected Handler restartWorkerThread() {
-                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
                         thread.start();
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override
