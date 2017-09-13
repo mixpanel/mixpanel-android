@@ -487,7 +487,6 @@ import javax.net.ssl.SSLSocketFactory;
                             logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
                             logAboutMessageToMixpanel("Response was " + parsedResponse);
                         }
-                        break;
                     } catch (final OutOfMemoryError e) {
                         MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                     } catch (final MalformedURLException e) {
