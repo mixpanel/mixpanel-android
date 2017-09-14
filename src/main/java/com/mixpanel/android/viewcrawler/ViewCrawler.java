@@ -16,7 +16,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.JsonWriter;
-import android.util.Log;
 import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
@@ -291,10 +290,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             mImageStore = new ImageStore(context, "ViewCrawler");
             mProtocol = new EditProtocol(context, resourceIds, mImageStore, layoutErrorListener);
+            mOriginalEventBindings = new HashSet<Pair<String, JSONObject>>();
             mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
             mEditorTweaks = new ArrayList<JSONObject>();
             mEditorAssetUrls = new ArrayList<String>();
-            mEditorEventBindings = new ArrayList<Pair<String, JSONObject>>();
+            mEditorEventBindings = new HashMap<String, Pair<String, JSONObject>>();
             mAppliedVisualChanges = new HashSet<VariantChange>();
             mAppliedTweaks = new HashSet<VariantTweak>();
             mEmptyExperiments = new HashSet<Pair<Integer, Integer>>();
@@ -867,11 +867,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final int eventCount = eventBindings.length();
 
             mEditorEventBindings.clear();
+            if (!mPersistentEventBindings.isEmpty() && mOriginalEventBindings.isEmpty()) {
+                mOriginalEventBindings.addAll(mPersistentEventBindings);
+                for (Pair<String, JSONObject> eventBinding : mPersistentEventBindings) {
+                    try {
+                        mEditorEventBindings.put(eventBinding.second.get("path").toString(), eventBinding);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+                mPersistentEventBindings.clear();
+            }
             for (int i = 0; i < eventCount; i++) {
                 try {
                     final JSONObject event = eventBindings.getJSONObject(i);
                     final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                    mEditorEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
+                    mEditorEventBindings.put(event.get("path").toString(), new Pair<String, JSONObject>(targetActivity, event));
                 } catch (final JSONException e) {
                     MPLog.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                 }
@@ -887,6 +898,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             mEditorChanges.clear();
             mEditorEventBindings.clear();
             mEditorTweaks.clear();
+            mPersistentEventBindings.addAll(mOriginalEventBindings);
+            mOriginalEventBindings.clear();
 
             // Free (or make available) snapshot memory
             mSnapshot = null;
@@ -1001,22 +1014,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                for (Pair<String, JSONObject> changeInfo : mPersistentEventBindings) {
-                    try {
-                        final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
-                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
-                    } catch (final EditProtocol.InapplicableInstructionsException e) {
-                        MPLog.i(LOGTAG, e.getMessage());
-                    } catch (final EditProtocol.BadInstructionsException e) {
-                        MPLog.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
+                if (mEditorEventBindings.size() == 0 && mOriginalEventBindings.size() == 0) {
+                    for (Pair<String, JSONObject> changeInfo : mPersistentEventBindings) {
+                        try {
+                            final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
+                            newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        } catch (final EditProtocol.InapplicableInstructionsException e) {
+                            MPLog.i(LOGTAG, e.getMessage());
+                        } catch (final EditProtocol.BadInstructionsException e) {
+                            MPLog.e(LOGTAG, "Bad persistent event binding cannot be applied.", e);
+                        }
                     }
                 }
             }
 
             {
-                final int size = mEditorEventBindings.size();
-                for (int i = 0; i < size; i++) {
-                    final Pair<String, JSONObject> changeInfo = mEditorEventBindings.get(i);
+                for (Pair<String, JSONObject> changeInfo : mEditorEventBindings.values()) {
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
                         newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
@@ -1104,11 +1117,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private final Map<String, Pair<String,JSONObject>> mEditorChanges;
         private final List<JSONObject> mEditorTweaks;
         private final List<String> mEditorAssetUrls;
-        private final List<Pair<String,JSONObject>> mEditorEventBindings;
+        private final Map<String, Pair<String,JSONObject>> mEditorEventBindings;
         private final Set<VariantChange> mAppliedVisualChanges;
         private final Set<VariantTweak> mAppliedTweaks;
         private final Set<Pair<Integer, Integer>> mEmptyExperiments;
         private final Set<Pair<String,JSONObject>> mPersistentEventBindings;
+        private final Set<Pair<String,JSONObject>> mOriginalEventBindings;
         private final Set<Pair<Integer, Integer>> mSeenExperiments;
     }
 
@@ -1223,7 +1237,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private final float mScaledDensity;
 
     private final Set<OnMixpanelTweaksUpdatedListener> mTweaksUpdatedListeners;
-    
+
     private static final String SHARED_PREF_EDITS_FILE = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_CHANGES_KEY = "mixpanel.viewcrawler.changes";
     private static final String SHARED_PREF_BINDINGS_KEY = "mixpanel.viewcrawler.bindings";
