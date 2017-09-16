@@ -52,6 +52,9 @@ import java.util.Set;
 
     public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants, boolean automaticEvents) {
         boolean newContent = false;
+        int newVariantsLength = variants.length();
+        boolean hasNewVariants = false;
+
         mUpdatesFromMixpanel.setEventBindings(eventBindings);
 
         for (final InAppNotification n : newNotifications) {
@@ -65,14 +68,12 @@ import java.util.Set;
 
         // the following logic checks if the variants have been applied by looking up their id's in the HashSet
         // this is needed to make sure the user defined `mListener` will get called on new variants receiving
-        int newVariantsLength = variants.length();
-        boolean hasNewVariants = false;
+        mVariants = variants;
 
         for (int i = 0; i < newVariantsLength; i++) {
             try {
                 JSONObject variant = variants.getJSONObject(i);
                 if (!mLoadedVariants.contains(variant.getInt("id"))) {
-                    mVariants = variants;
                     newContent = true;
                     hasNewVariants = true;
                     break;
@@ -95,11 +96,6 @@ import java.util.Set;
             }
         }
 
-        if (mAutomaticEventsEnabled == null && !automaticEvents) {
-            MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
-        }
-        mAutomaticEventsEnabled = automaticEvents;
-
         // in the case we do not receive a new variant, this means the A/B test should be turned off
         if (newVariantsLength == 0) {
             mVariants = new JSONArray();
@@ -108,6 +104,11 @@ import java.util.Set;
                 newContent = true;
             }
         }
+
+        if (mAutomaticEventsEnabled == null && !automaticEvents) {
+            MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
+        }
+        mAutomaticEventsEnabled = automaticEvents;
 
         MPLog.v(LOGTAG, "New Decide content has become available. " +
                     newNotifications.size() + " notifications and " +
