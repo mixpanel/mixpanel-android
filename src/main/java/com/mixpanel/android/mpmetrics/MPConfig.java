@@ -45,9 +45,6 @@ import javax.net.ssl.SSLSocketFactory;
  *          queue based on the storage capacity of the device, but will always allow queing below this limit. Higher values
  *          will take up more storage even when user storage is very full.</dd>
  *
- *     <dt>com.mixpanel.android.MPConfig.DisableFallback</dt>
- *     <dd>A boolean value. If true, do not send data over HTTP, even if HTTPS is unavailable. Defaults to true - by default, Mixpanel will only attempt to communicate over HTTPS.</dd>
- *
  *     <dt>com.mixpanel.android.MPConfig.ResourcePackageName</dt>
  *     <dd>A string java package name. Defaults to the package name of the Application. Users should set if the package name of their R class is different from the application package name due to application id settings.</dd>
  *
@@ -66,20 +63,11 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.EventsEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send events to this endpoint rather than to the default Mixpanel endpoint.</dd>
  *
- *     <dt>com.mixpanel.android.MPConfig.EventsFallbackEndpoint</dt>
- *     <dd>A string URL. If present, AND if DisableFallback is false, events will be sent to this endpoint if the EventsEndpoint cannot be reached.</dd>
- *
  *     <dt>com.mixpanel.android.MPConfig.PeopleEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send people updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
  *
- *     <dt>com.mixpanel.android.MPConfig.PeopleFallbackEndpoint</dt>
- *     <dd>A string URL. If present, AND if DisableFallback is false, people updates will be sent to this endpoint if the EventsEndpoint cannot be reached.</dd>
- *
  *     <dt>com.mixpanel.android.MPConfig.DecideEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to get notification, codeless event tracking, and A/B test variant information from this url rather than the default Mixpanel endpoint.</dd>
- *
- *     <dt>com.mixpanel.android.MPConfig.DecideFallbackEndpoint</dt>
- *     <dd>A string URL. If present, AND if DisableFallback is false, the library will query this url if the DecideEndpoint url cannot be reached.</dd>
  *
  *     <dt>com.mixpanel.android.MPConfig.EditorUrl</dt>
  *     <dd>A string URL. If present, the library will attempt to connect to this endpoint when in interactive editing mode, rather than to the default Mixpanel editor url.</dd>
@@ -200,7 +188,6 @@ public class MPConfig {
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
-        mDisableFallback = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
         mDisableEmulatorBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", false);
@@ -222,35 +209,17 @@ public class MPConfig {
         }
         mEventsEndpoint = eventsEndpoint;
 
-        String eventsFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint");
-        if (null == eventsFallbackEndpoint) {
-            eventsFallbackEndpoint = "http://api.mixpanel.com/track?ip=1";
-        }
-        mEventsFallbackEndpoint = eventsFallbackEndpoint;
-
         String peopleEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleEndpoint");
         if (null == peopleEndpoint) {
             peopleEndpoint = "https://api.mixpanel.com/engage";
         }
         mPeopleEndpoint = peopleEndpoint;
 
-        String peopleFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleFallbackEndpoint");
-        if (null == peopleFallbackEndpoint) {
-            peopleFallbackEndpoint = "http://api.mixpanel.com/engage";
-        }
-        mPeopleFallbackEndpoint = peopleFallbackEndpoint;
-
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
         if (null == decideEndpoint) {
             decideEndpoint = "https://decide.mixpanel.com/decide";
         }
         mDecideEndpoint = decideEndpoint;
-
-        String decideFallbackEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint");
-        if (null == decideFallbackEndpoint) {
-            decideFallbackEndpoint = "http://decide.mixpanel.com/decide";
-        }
-        mDecideFallbackEndpoint = decideFallbackEndpoint;
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
         if (null == editorUrl) {
@@ -272,7 +241,6 @@ public class MPConfig {
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
-                "    DisableFallback " + getDisableFallback() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    DisableViewCrawler " + getDisableViewCrawler() + "\n" +
                 "    DisableGestureBindingUI " + getDisableGestureBindingUI() + "\n" +
@@ -282,9 +250,6 @@ public class MPConfig {
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
                 "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
                 "    DecideEndpoint " + getDecideEndpoint() + "\n" +
-                "    EventsFallbackEndpoint " + getEventsFallbackEndpoint() + "\n" +
-                "    PeopleFallbackEndpoint " + getPeopleFallbackEndpoint() + "\n" +
-                "    DecideFallbackEndpoint " + getDecideFallbackEndpoint() + "\n" +
                 "    EditorUrl " + getEditorUrl() + "\n" +
                 "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
                 "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
@@ -310,10 +275,6 @@ public class MPConfig {
     }
 
     public int getMinimumDatabaseLimit() { return mMinimumDatabaseLimit; }
-
-    public boolean getDisableFallback() {
-        return mDisableFallback;
-    }
 
     public boolean getDisableGestureBindingUI() {
         return mDisableGestureBindingUI;
@@ -350,21 +311,6 @@ public class MPConfig {
     // Preferred URL for pulling decide data
     public String getDecideEndpoint() {
         return mDecideEndpoint;
-    }
-
-    // Fallback URL for tracking events if post to preferred URL fails
-    public String getEventsFallbackEndpoint() {
-        return mEventsFallbackEndpoint;
-    }
-
-    // Fallback URL for tracking people if post to preferred URL fails
-    public String getPeopleFallbackEndpoint() {
-        return mPeopleFallbackEndpoint;
-    }
-
-    // Fallback URL for pulling decide data if preferred URL fails
-    public String getDecideFallbackEndpoint() {
-        return mDecideFallbackEndpoint;
     }
 
     // Check for and show eligible in app notifications on Activity changes
@@ -449,7 +395,6 @@ public class MPConfig {
     private final int mFlushInterval;
     private final int mDataExpiration;
     private final int mMinimumDatabaseLimit;
-    private final boolean mDisableFallback;
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;
     private final boolean mDisableEmulatorBindingUI;
@@ -457,11 +402,8 @@ public class MPConfig {
     private final boolean mDisableViewCrawler;
     private final String[] mDisableViewCrawlerForProjects;
     private final String mEventsEndpoint;
-    private final String mEventsFallbackEndpoint;
     private final String mPeopleEndpoint;
-    private final String mPeopleFallbackEndpoint;
     private final String mDecideEndpoint;
-    private final String mDecideFallbackEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;

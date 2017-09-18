@@ -32,7 +32,6 @@ public class HttpTest extends AndroidTestCase {
     private BlockingQueue<String> mPerformRequestCalls, mDecideCalls;
     private List<String> mCleanupCalls;
     private MixpanelAPI mMetrics;
-    private volatile boolean mDisableFallback;
     private volatile int mFlushInterval;
     private volatile boolean mForceOverMemThreshold;
     private static final long POLL_WAIT_MAX_MILLISECONDS = 3500;
@@ -41,7 +40,6 @@ public class HttpTest extends AndroidTestCase {
     private static final String FAIL_TEXT = "Should Fail";
 
     public void setUp() {
-        mDisableFallback = true;
         mFlushInterval = 2 * 1000;
         mMockPreferences = new TestUtils.EmptyPreferences(getContext());
         mFlushResults = new ArrayList<Object>();
@@ -110,23 +108,8 @@ public class HttpTest extends AndroidTestCase {
             }
 
             @Override
-            public String getDecideFallbackEndpoint() {
-                return "DECIDE FALLBACK";
-            }
-
-            @Override
             public String getEventsEndpoint() {
                 return "EVENTS ENDPOINT";
-            }
-
-            @Override
-            public String getEventsFallbackEndpoint() {
-                return "EVENTS FALLBACK";
-            }
-
-            @Override
-            public boolean getDisableFallback() {
-                return mDisableFallback;
             }
 
             @Override

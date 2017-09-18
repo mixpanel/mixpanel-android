@@ -23,7 +23,7 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     @Override
     public void setUp() {
-        mConfig = new MockConfig(new Bundle());
+        mConfig = new MPConfig(new Bundle(), null);
         mDecideChecker = new DecideChecker(getContext(), mConfig, new SystemInformation(getContext()));
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
@@ -80,26 +80,6 @@ public class DecideCheckerTest extends AndroidTestCase {
                 new JSONArray()
         });
         mEventBinder.bindingsSeen.clear();
-    }
-
-    public void testDecideHonorsFallbackEnabled() throws RemoteService.ServiceUnavailableException {
-        mConfig.fallbackDisabled = false;
-        mPoster.requestedUrls.clear();
-        mPoster.response = null;
-        mPoster.exception = new IOException("Bang!");
-        mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
-        assertEquals(2, mPoster.requestedUrls.size());
-    }
-
-    public void testDecideHonorsFallbackDisabled() throws RemoteService.ServiceUnavailableException {
-        mConfig.fallbackDisabled = true;
-        mPoster.requestedUrls.clear();
-        mPoster.response =  null;
-        mPoster.exception = new IOException("Bang!");
-        mDecideChecker.addDecideCheck(mDecideMessages1);
-        mDecideChecker.runDecideCheck(mDecideMessages1.getToken(), mPoster);
-        assertEquals(1, mPoster.requestedUrls.size());
     }
 
     public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException {
@@ -286,22 +266,9 @@ public class DecideCheckerTest extends AndroidTestCase {
         private volatile boolean mStarted = false;
     }
 
-    private static class MockConfig extends MPConfig {
-        MockConfig(Bundle metaData) {
-            super(metaData, null);
-        }
-
-        @Override
-        public boolean getDisableFallback() {
-            return fallbackDisabled;
-        }
-
-        public boolean fallbackDisabled = false;
-    }
-
     private DecideChecker mDecideChecker;
     private MockPoster mPoster;
-    private MockConfig mConfig;
+    private MPConfig mConfig;
     private MockUpdatesFromMixpanel mEventBinder;
     private DecideMessages mDecideMessages1, mDecideMessages2, mDecideMessages3;
 }

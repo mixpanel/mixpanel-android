@@ -824,18 +824,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 1);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableFallback", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
 
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsFallbackEndpoint", "EVENTS FALLBACK ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PEOPLE ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleFallbackEndpoint", "PEOPLE FALLBACK ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DECIDE ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideFallbackEndpoint", "DECIDE FALLBACK ENDPOINT");
 
         final PackageManager packageManager = new MockPackageManager() {
             @Override
@@ -862,17 +858,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(1, testConfig.getBulkUploadLimit());
         assertEquals(2, testConfig.getFlushInterval());
         assertEquals(3, testConfig.getDataExpiration());
-        assertEquals(true, testConfig.getDisableFallback());
         assertEquals(true, testConfig.getDisableEmulatorBindingUI());
         assertEquals(true, testConfig.getDisableGestureBindingUI());
         assertEquals(true, testConfig.getDisableAppOpenEvent());
         assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
-        assertEquals("EVENTS FALLBACK ENDPOINT", testConfig.getEventsFallbackEndpoint());
         assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
-        assertEquals("PEOPLE FALLBACK ENDPOINT", testConfig.getPeopleFallbackEndpoint());
         assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
-        assertEquals("DECIDE FALLBACK ENDPOINT", testConfig.getDecideFallbackEndpoint());
     }
 
     public void test2XUrls() {
