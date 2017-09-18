@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Process;
 import android.test.AndroidTestCase;
 
 import com.mixpanel.android.util.Base64Coder;
@@ -118,7 +119,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                 return new Worker() {
                     @Override
                     protected Handler restartWorkerThread() {
-                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
                         thread.start();
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override
@@ -277,7 +278,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                 return new Worker() {
                     @Override
                     protected Handler restartWorkerThread() {
-                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+                        final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
                         thread.start();
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override

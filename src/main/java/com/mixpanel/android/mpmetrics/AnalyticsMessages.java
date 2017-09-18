@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 
@@ -249,7 +250,7 @@ import javax.net.ssl.SSLSocketFactory;
         // NOTE that the returned worker will run FOREVER, unless you send a hard kill
         // (which you really shouldn't)
         protected Handler restartWorkerThread() {
-            final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Thread.MIN_PRIORITY);
+            final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
             thread.start();
             final Handler ret = new AnalyticsMessageHandler(thread.getLooper());
             return ret;
