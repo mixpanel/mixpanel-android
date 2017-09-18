@@ -95,6 +95,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         applyPersistedUpdates();
     }
 
+    @Override
     public void applyPersistedUpdates() {
         mMessageThreadHandler.sendMessage(mMessageThreadHandler.obtainMessage(MESSAGE_INITIALIZE_CHANGES));
     }
@@ -448,73 +449,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     editor.apply();
                 }
             }
-        }
-
-        /**
-         * Load stored changes from persistent storage and apply them to the application.
-         */
-        private void initializeChanges222() {
-            final SharedPreferences preferences = getSharedPreferences();
-            final String storedChanges = preferences.getString(SHARED_PREF_CHANGES_KEY, null);
-            final String storedBindings = preferences.getString(SHARED_PREF_BINDINGS_KEY, null);
-            List<Pair<Integer, Integer>> emptyVariantIds = new ArrayList<>();
-
-            try {
-                mAppliedVisualChanges.clear();
-                mAppliedTweaks.clear();
-
-                if (null != storedChanges) {
-                    final JSONArray variants = new JSONArray(storedChanges);
-                    final int variantsLength = variants.length();
-                    for (int variantIx = 0; variantIx < variantsLength; variantIx++) {
-                        final JSONObject nextVariant = variants.getJSONObject(variantIx);
-                        final int variantIdPart = nextVariant.getInt("id");
-                        final int experimentIdPart = nextVariant.getInt("experiment_id");
-                        final Pair<Integer, Integer> variantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
-
-                        final JSONArray actions = nextVariant.getJSONArray("actions");
-                        final int actionsLength = actions.length();
-                        for (int i = 0; i < actionsLength; i++) {
-                            final JSONObject change = actions.getJSONObject(i);
-                            final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
-                            final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
-                            mAppliedVisualChanges.add(variantChange);
-                        }
-
-                        final JSONArray tweaks = nextVariant.getJSONArray("tweaks");
-                        final int tweaksLength = tweaks.length();
-                        for (int i = 0; i < tweaksLength; i++) {
-                            final JSONObject tweakDesc = tweaks.getJSONObject(i);
-                            final VariantTweak variantTweak = new VariantTweak(tweakDesc, variantId);
-                            mAppliedTweaks.add(variantTweak);
-                        }
-
-                        if (actionsLength == 0 && tweaksLength == 0) {
-                            final Pair<Integer, Integer> emptyVariantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
-                            emptyVariantIds.add(emptyVariantId);
-                        }
-                    }
-                }
-
-                if (null != storedBindings) {
-                    final JSONArray bindings = new JSONArray(storedBindings);
-
-                    mPersistentEventBindings.clear();
-                    for (int i = 0; i < bindings.length(); i++) {
-                        final JSONObject event = bindings.getJSONObject(i);
-                        final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                        mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
-                    }
-                }
-            } catch (final JSONException e) {
-                MPLog.i(LOGTAG, "JSON error when initializing saved changes, clearing persistent memory", e);
-                final SharedPreferences.Editor editor = preferences.edit();
-                editor.remove(SHARED_PREF_CHANGES_KEY);
-                editor.remove(SHARED_PREF_BINDINGS_KEY);
-                editor.apply();
-            }
-
-            applyVariantsAndEventBindings();
         }
 
         /**
