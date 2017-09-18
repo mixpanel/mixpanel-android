@@ -1165,8 +1165,10 @@ public class MixpanelAPI {
          * @param eventName the name to use when the event is tracked.
          *
          * @param notif the {@link com.mixpanel.android.mpmetrics.InAppNotification} associated with the event you'd like to track.
+         *
+         * @param properties additional properties to be tracked with the event.
          */
-        public void trackNotification(String eventName, InAppNotification notif);
+        public void trackNotification(String eventName, InAppNotification notif, JSONObject properties);
 
         /**
          * Returns an InAppNotification object if one is available and being held by the library, or null if
@@ -1592,17 +1594,21 @@ public class MixpanelAPI {
             if(notif == null) return;
 
             mPersistentIdentity.saveCampaignAsSeen(notif.getId());
-            trackNotification("$campaign_delivery", notif);
+            trackNotification("$campaign_delivery", notif, null);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
-            final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
-            final JSONObject notifProperties = notif.getCampaignProperties();
-            try {
-                notifProperties.put("$time", dateFormat.format(new Date()));
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
+            if (people != null) {
+                final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
+                final JSONObject notifProperties = notif.getCampaignProperties();
+                try {
+                    notifProperties.put("$time", dateFormat.format(new Date()));
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Exception trying to track an in-app notification seen", e);
+                }
+                people.append("$campaigns", notif.getId());
+                people.append("$notifications", notifProperties);
+            } else {
+                MPLog.e(LOGTAG, "No identity found. Make sure to call getPeople().identify() before showing in-app notifications.");
             }
-            people.append("$campaigns", notif.getId());
-            people.append("$notifications", notifProperties);
         }
 
         @Override
@@ -1628,8 +1634,20 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void trackNotification(final String eventName, final InAppNotification notif) {
-            track(eventName, notif.getCampaignProperties());
+        public void trackNotification(final String eventName, final InAppNotification notif, final JSONObject properties) {
+            JSONObject notificationProperties = notif.getCampaignProperties();
+            if (properties != null) {
+                try {
+                    Iterator<String> keyIterator = properties.keys();
+                    while (keyIterator.hasNext()) {
+                        String key = keyIterator.next();
+                        notificationProperties.put(key, properties.get(key));
+                    }
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Exception merging provided properties with notification properties", e);
+                }
+            }
+            track(eventName, notificationProperties);
         }
 
         @Override

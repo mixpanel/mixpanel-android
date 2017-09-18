@@ -168,7 +168,7 @@ class MockMixpanel extends MixpanelAPI {
         }
 
         @Override
-        public void trackNotification(String eventName, InAppNotification notif) {
+        public void trackNotification(String eventName, InAppNotification notif, JSONObject properties) {
             Assert.fail("Unexpected call");
         }
 
