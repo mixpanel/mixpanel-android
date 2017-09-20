@@ -41,10 +41,6 @@ import java.util.Locale;
         trackCampaignOpenedIfNeeded(activity.getIntent());
 
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
-            if (!activity.isTaskRoot()) {
-                return; // No checks, no nothing.
-            }
-
             mMpInstance.getPeople().showNotificationIfAvailable(activity);
         }
         new GestureTracker(mMpInstance, activity);
