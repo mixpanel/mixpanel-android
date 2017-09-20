@@ -15,7 +15,7 @@ group = GROUP
 version = VERSION_NAME
 
 android {
-    compileSdkVersion 24
+    compileSdkVersion 26
     buildToolsVersion '24.0.3'
 
     compileOptions {
