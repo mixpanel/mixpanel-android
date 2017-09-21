@@ -2,9 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.support.v4.app.NotificationCompat;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -14,8 +11,11 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.support.v4.app.NotificationCompat;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI.InstanceProcessor;
 import com.mixpanel.android.util.MPLog;
@@ -25,74 +25,74 @@ import org.json.JSONObject;
 
 
 /**
-* BroadcastReceiver for handling Google Cloud Messaging intents.
-*
-* <p>You can use GCMReceiver to report Google Cloud Messaging registration identifiers
-* to Mixpanel, and to display incoming notifications from Mixpanel to
-* the device status bar. Together with {@link MixpanelAPI.People#initPushHandling(String) }
-* this is the simplest way to get up and running with notifications from Mixpanel.
-*
-* <p>To enable GCMReceiver in your application, add a clause like the following
-* to the &lt;application&gt; tag of your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
-* in the snippet with the actual package name of your app.)
-*
-*<pre>
-*{@code
-*
-* <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
-* android:permission="com.google.android.c2dm.permission.SEND" >
-* <intent-filter>
-* <action android:name="com.google.android.c2dm.intent.RECEIVE" />
-* <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
-* <category android:name="YOUR APPLICATION PACKAGE NAME" />
-* </intent-filter>
-* </receiver>
-*
-*}
-*</pre>
-*
-* <p>In addition, GCMReceiver will also need the following permissions configured
-* in your AndroidManifest.xml file:
-*
-* <pre>
-* {@code
-*
-* <!-- Be sure to change YOUR_PACKAGE_NAME to the real name of your application package -->
-* <permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" android:protectionLevel="signature" />
-* <uses-permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" />
-*
-* <uses-permission android:name="android.permission.INTERNET" />
-* <uses-permission android:name="android.permission.GET_ACCOUNTS" />
-* <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
-* <uses-permission android:name="android.permission.WAKE_LOCK" />
-*
-* }
-* </pre>
-*
-* <p>Once the GCMReceiver is configured, the only thing you have to do to
-* get set up Mixpanel messages is call {@link MixpanelAPI.People#identify(String) }
-* with a distinct id for your user, and call {@link MixpanelAPI.People#initPushHandling(String) }
-* with the your Google API project identifier.
-* <pre>
-* {@code
-*
-* MixpanelAPI.People people = mMixpanelAPI.getPeople();
-* people.identify("A USER DISTINCT ID");
-* people.initPushHandling("123456789123");
-*
-* }
-* </pre>
-*
-* <p>If you would prefer to handle either sending a registration id to Mixpanel yourself
-* but allow GCMReceiver to handle displaying Mixpanel messages, remove the
-* REGISTRATION intent from the GCMReceiver {@code <receiver> } tag, and call
-* {@link MixpanelAPI.People#setPushRegistrationId(String)}
-* in your own REGISTRATION handler.
-*
-* @see MixpanelAPI#getPeople()
-* @see MixpanelAPI.People#initPushHandling(String)
-* @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
-*/
+ * BroadcastReceiver for handling Google Cloud Messaging intents.
+ * <p>
+ * <p>You can use GCMReceiver to report Google Cloud Messaging registration identifiers
+ * to Mixpanel, and to display incoming notifications from Mixpanel to
+ * the device status bar. Together with {@link MixpanelAPI.People#initPushHandling(String) }
+ * this is the simplest way to get up and running with notifications from Mixpanel.
+ * <p>
+ * <p>To enable GCMReceiver in your application, add a clause like the following
+ * to the &lt;application&gt; tag of your AndroidManifest.xml. (Be sure to replace "YOUR APPLICATION PACKAGE NAME"
+ * in the snippet with the actual package name of your app.)
+ * <p>
+ * <pre>
+ * {@code
+ *
+ * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
+ * android:permission="com.google.android.c2dm.permission.SEND" >
+ * <intent-filter>
+ * <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+ * <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+ * <category android:name="YOUR APPLICATION PACKAGE NAME" />
+ * </intent-filter>
+ * </receiver>
+ *
+ * }
+ * </pre>
+ * <p>
+ * <p>In addition, GCMReceiver will also need the following permissions configured
+ * in your AndroidManifest.xml file:
+ * <p>
+ * <pre>
+ * {@code
+ *
+ * <!-- Be sure to change YOUR_PACKAGE_NAME to the real name of your application package -->
+ * <permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" android:protectionLevel="signature" />
+ * <uses-permission android:name="YOUR_PACKAGE_NAME.permission.C2D_MESSAGE" />
+ *
+ * <uses-permission android:name="android.permission.INTERNET" />
+ * <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+ * <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+ * <uses-permission android:name="android.permission.WAKE_LOCK" />
+ *
+ * }
+ * </pre>
+ * <p>
+ * <p>Once the GCMReceiver is configured, the only thing you have to do to
+ * get set up Mixpanel messages is call {@link MixpanelAPI.People#identify(String) }
+ * with a distinct id for your user, and call {@link MixpanelAPI.People#initPushHandling(String) }
+ * with the your Google API project identifier.
+ * <pre>
+ * {@code
+ *
+ * MixpanelAPI.People people = mMixpanelAPI.getPeople();
+ * people.identify("A USER DISTINCT ID");
+ * people.initPushHandling("123456789123");
+ *
+ * }
+ * </pre>
+ * <p>
+ * <p>If you would prefer to handle either sending a registration id to Mixpanel yourself
+ * but allow GCMReceiver to handle displaying Mixpanel messages, remove the
+ * REGISTRATION intent from the GCMReceiver {@code <receiver> } tag, and call
+ * {@link MixpanelAPI.People#setPushRegistrationId(String)}
+ * in your own REGISTRATION handler.
+ *
+ * @see MixpanelAPI#getPeople()
+ * @see MixpanelAPI.People#initPushHandling(String)
+ * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
+ */
 public class GCMReceiver extends BroadcastReceiver {
 
     @Override
@@ -132,7 +132,7 @@ public class GCMReceiver extends BroadcastReceiver {
         return manager.getLaunchIntentForPackage(context.getPackageName());
     }
 
-    /* package */ NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds) {
+    /* package */ NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds mipmapIds, ResourceIds iconIds) {
         final PackageManager manager = context.getPackageManager();
 
         final String message = inboundIntent.getStringExtra("mp_message");
@@ -152,7 +152,8 @@ public class GCMReceiver extends BroadcastReceiver {
         if (colorName != null) {
             try {
                 color = Color.parseColor(colorName);
-            } catch (IllegalArgumentException e) {}
+            } catch (IllegalArgumentException e) {
+            }
         }
 
         if (message == null) {
@@ -161,21 +162,27 @@ public class GCMReceiver extends BroadcastReceiver {
 
         int notificationIcon = -1;
         if (null != iconName) {
-            if (iconIds.knownIdName(iconName)) {
+            if (mipmapIds.knownIdName(iconName)) {
+                notificationIcon = mipmapIds.idFromName(iconName);
+            } else {
                 notificationIcon = iconIds.idFromName(iconName);
             }
         }
 
         int largeNotificationIcon = NotificationData.NOT_SET;
         if (null != largeIconName) {
-            if (iconIds.knownIdName(largeIconName)) {
+            if (mipmapIds.knownIdName(iconName)) {
+                largeNotificationIcon = mipmapIds.idFromName(largeIconName);
+            } else {
                 largeNotificationIcon = iconIds.idFromName(largeIconName);
             }
         }
 
         int whiteNotificationIcon = NotificationData.NOT_SET;
         if (null != whiteIconName) {
-            if (iconIds.knownIdName(whiteIconName)) {
+            if (mipmapIds.knownIdName(whiteIconName)) {
+                whiteNotificationIcon = mipmapIds.idFromName(whiteIconName);
+            } else {
                 whiteNotificationIcon = iconIds.idFromName(whiteIconName);
             }
         }
@@ -236,8 +243,8 @@ public class GCMReceiver extends BroadcastReceiver {
         return ret;
     }
 
-    private Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
-        final NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds);
+    private Notification buildNotification(Context context, Intent inboundIntent, ResourceIds mipmapIds, ResourceIds iconIds) {
+        final NotificationData notificationData = readInboundIntent(context, inboundIntent, mipmapIds, iconIds);
         if (null == notificationData) {
             return null;
         }
@@ -294,9 +301,10 @@ public class GCMReceiver extends BroadcastReceiver {
             resourcePackage = context.getPackageName();
         }
 
+        final ResourceIds mipmapIds = new ResourceReader.Mipmaps(resourcePackage, context);
         final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
         final Context applicationContext = context.getApplicationContext();
-        final Notification notification = buildNotification(applicationContext, intent, drawableIds);
+        final Notification notification = buildNotification(applicationContext, intent, mipmapIds, drawableIds);
 
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -404,20 +412,22 @@ public class GCMReceiver extends BroadcastReceiver {
             MixpanelAPI.allInstances(new InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
-                    if(api.isAppInForeground()) {
+                    if (api.isAppInForeground()) {
                         JSONObject pushProps = new JSONObject();
                         try {
                             if (extraLogData != null) {
                                 pushProps = new JSONObject(extraLogData);
                             }
-                        } catch (JSONException e) {}
+                        } catch (JSONException e) {
+                        }
 
                         try {
                             pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
                             pushProps.put("message_id", Integer.valueOf(messageId).intValue());
                             pushProps.put("message_type", "push");
                             api.track("$campaign_received", pushProps);
-                        } catch (JSONException e) {}
+                        } catch (JSONException e) {
+                        }
                     }
                 }
             });
