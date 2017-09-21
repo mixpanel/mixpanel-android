@@ -70,9 +70,6 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         mScaledDensity = Resources.getSystem().getDisplayMetrics().scaledDensity;
         mTweaksUpdatedListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelTweaksUpdatedListener, Boolean>());
 
-        final Application app = (Application) context.getApplicationContext();
-        app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
-
         final HandlerThread thread = new HandlerThread(ViewCrawler.class.getCanonicalName());
         thread.setPriority(Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
@@ -80,6 +77,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         mDynamicEventTracker = new DynamicEventTracker(mixpanel, mMessageThreadHandler);
         mMixpanel = mixpanel;
+
+        final Application app = (Application) context.getApplicationContext();
+        app.registerActivityLifecycleCallbacks(new LifecycleCallbacks());
+
         mTweaks.addOnTweakDeclaredListener(new Tweaks.OnTweakDeclaredListener() {
             @Override
             public void onTweakDeclared() {
