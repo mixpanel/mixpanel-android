@@ -74,6 +74,15 @@ import javax.net.ssl.SSLSocketFactory;
  *
  *     <dt>com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor</dt>
  *     <dd>A boolean value. If true, invisible views won't be shown on Mixpanel Visual Editor (AB Test and codeless events) . Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.NotificationChannelId</dt>
+ *     <dd>An string value. If present, the library will use this id when creating a notification channel. Applicable only for Android 26 and above.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.NotificationChannelName</dt>
+ *     <dd>An string value. If present, the library will use this user-visible name for our notification channel. Applicable only for Android 26 and above. Defaults to the application name.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.NotificationChannelImportance</dt>
+ *     <dd>An integer number. If present, the library will use this user-visible name for our notification channel. Applicable only for Android 26 and above.</dd>
  * </dl>
  *
  */
@@ -200,8 +209,20 @@ public class MPConfig {
         mNotificationDefaults = metaData.getInt("com.mixpanel.android.MPConfig.NotificationDefaults", 0);
         mMinSessionDuration = metaData.getInt("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
         mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
-
+        mNotificationChannelImportance = metaData.getInt("com.mixpanel.android.MPConfig.NotificationChannelImportance", 3); // NotificationManger.IMPORTANCE_DEFAULT
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
+
+        String notificationChannelId = metaData.getString("com.mixpanel.android.MPConfig.NotificationChannelId");
+        if (notificationChannelId == null) {
+            notificationChannelId = "mp";
+        }
+        mNotificationChannelId = notificationChannelId;
+
+        String notificationChannelName = metaData.getString("com.mixpanel.android.MPConfig.NotificationChannelName");
+        if (notificationChannelName == null) {
+            notificationChannelName = SystemInformation.getInstance(context).getAppName();
+        }
+        mNotificationChannelName = notificationChannelName;
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
@@ -255,8 +276,11 @@ public class MPConfig {
                 "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
                 "    NotificationDefaults " + getNotificationDefaults() + "\n" +
                 "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
-                "    SessionTimeoutDuration: " + getSessionTimeoutDuration()
-            );
+                "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
+                "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
+                "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
+                "    NotificationChannelImportance: " + getNotificationChannelImportance()
+        );
     }
 
     // Max size of queue before we require a flush. Must be below the limit the service will accept.
@@ -343,6 +367,18 @@ public class MPConfig {
         return mSessionTimeoutDuration;
     }
 
+    public String getNotificationChannelId() {
+        return mNotificationChannelId;
+    }
+
+    public String getNotificationChannelName() {
+        return mNotificationChannelName;
+    }
+
+    public int getNotificationChannelImportance() {
+        return mNotificationChannelImportance;
+    }
+
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -413,6 +449,9 @@ public class MPConfig {
     private final int mNotificationDefaults;
     private final int mMinSessionDuration;
     private final int mSessionTimeoutDuration;
+    private final int mNotificationChannelImportance;
+    private final String mNotificationChannelId;
+    private final String mNotificationChannelName;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;

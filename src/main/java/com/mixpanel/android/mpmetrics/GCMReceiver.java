@@ -407,13 +407,12 @@ public class GCMReceiver extends BroadcastReceiver {
     protected Notification makeNotificationSDK26OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
         NotificationManager mNotificationManager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        String channelId = "mp";
-        int importance = NotificationManager.IMPORTANCE_DEFAULT;
-        ApplicationInfo applicationInfo = context.getApplicationInfo();
-        int stringId = applicationInfo.labelRes;
-        String appName = stringId == 0 ? applicationInfo.nonLocalizedLabel.toString() : context.getString(stringId);
 
-        NotificationChannel channel = new NotificationChannel(channelId, appName, importance);
+        String channelId = MPConfig.getInstance(context).getNotificationChannelId();
+        String channelName = MPConfig.getInstance(context).getNotificationChannelName();
+        int importance = MPConfig.getInstance(context).getNotificationChannelImportance();
+
+        NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
         int notificationDefaults = MPConfig.getInstance(context).getNotificationDefaults();
         if (notificationDefaults == Notification.DEFAULT_VIBRATE || notificationDefaults == Notification.DEFAULT_ALL) {
             channel.enableVibration(true);

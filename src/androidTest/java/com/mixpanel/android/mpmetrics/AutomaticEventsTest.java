@@ -124,7 +124,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override
                             protected DecideChecker createDecideChecker() {
-                                return new DecideChecker(mContext, mConfig, new SystemInformation(mContext)) {
+                                return new DecideChecker(mContext, mConfig) {
                                     @Override
                                     public void runDecideCheck(String token, RemoteService poster) throws RemoteService.ServiceUnavailableException {
                                         if (mCanRunDecide) {
@@ -283,7 +283,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override
                             protected DecideChecker createDecideChecker() {
-                                return new DecideChecker(mContext, mConfig, new SystemInformation(mContext)) {
+                                return new DecideChecker(mContext, mConfig) {
                                     @Override
                                     public void runDecideCheck(String token, RemoteService poster) throws RemoteService.ServiceUnavailableException {
                                         if (mCanRunSecondDecideInstance) {

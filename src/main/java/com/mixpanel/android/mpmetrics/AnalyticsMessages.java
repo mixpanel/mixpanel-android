@@ -260,13 +260,13 @@ import javax.net.ssl.SSLSocketFactory;
             public AnalyticsMessageHandler(Looper looper) {
                 super(looper);
                 mDbAdapter = null;
-                mSystemInformation = new SystemInformation(mContext);
+                mSystemInformation = SystemInformation.getInstance(mContext);
                 mDecideChecker = createDecideChecker();
                 mFlushInterval = mConfig.getFlushInterval();
             }
 
             protected DecideChecker createDecideChecker() {
-                return new DecideChecker(mContext, mConfig, mSystemInformation);
+                return new DecideChecker(mContext, mConfig);
             }
 
             @Override
