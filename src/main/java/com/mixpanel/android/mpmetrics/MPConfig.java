@@ -75,6 +75,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor</dt>
  *     <dd>A boolean value. If true, invisible views won't be shown on Mixpanel Visual Editor (AB Test and codeless events) . Defaults to false.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.UseIpAddressForGeolocation</dt>
+ *     <dd>A boolean value. If true, Mixpanel will automatically determine city, region and country data using the IP address of the client.Defaults to true.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.NotificationChannelId</dt>
  *     <dd>An string value. If present, the library will use this id when creating a notification channel. Applicable only for Android 26 and above.</dd>
  *
@@ -209,8 +212,9 @@ public class MPConfig {
         mNotificationDefaults = metaData.getInt("com.mixpanel.android.MPConfig.NotificationDefaults", 0);
         mMinSessionDuration = metaData.getInt("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
         mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
-        mNotificationChannelImportance = metaData.getInt("com.mixpanel.android.MPConfig.NotificationChannelImportance", 3); // NotificationManger.IMPORTANCE_DEFAULT
+        mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
+        mNotificationChannelImportance = metaData.getInt("com.mixpanel.android.MPConfig.NotificationChannelImportance", 3); // NotificationManger.IMPORTANCE_DEFAULT
 
         String notificationChannelId = metaData.getString("com.mixpanel.android.MPConfig.NotificationChannelId");
         if (notificationChannelId == null) {
@@ -226,7 +230,7 @@ public class MPConfig {
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (null == eventsEndpoint) {
-            eventsEndpoint = "https://api.mixpanel.com/track?ip=1";
+            eventsEndpoint = "https://api.mixpanel.com/track?ip=" + (mUseIpAddressForGeolocation ? "1" : "0");
         }
         mEventsEndpoint = eventsEndpoint;
 
@@ -449,6 +453,7 @@ public class MPConfig {
     private final int mNotificationDefaults;
     private final int mMinSessionDuration;
     private final int mSessionTimeoutDuration;
+    private final boolean mUseIpAddressForGeolocation;
     private final int mNotificationChannelImportance;
     private final String mNotificationChannelId;
     private final String mNotificationChannelName;
