@@ -24,7 +24,7 @@ public class DecideCheckerTest extends AndroidTestCase {
     @Override
     public void setUp() {
         mConfig = new MPConfig(new Bundle(), null);
-        mDecideChecker = new DecideChecker(getContext(), mConfig, new SystemInformation(getContext()));
+        mDecideChecker = new DecideChecker(getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
         mEventBinder.startUpdates();

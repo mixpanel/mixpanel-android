@@ -7,6 +7,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -25,7 +26,18 @@ import com.mixpanel.android.util.MPLog;
  */
 /* package */ class SystemInformation {
 
-    public SystemInformation(Context context) {
+    /* package */ static SystemInformation getInstance(Context context) {
+        synchronized (sInstanceLock) {
+            if (null == sInstance) {
+                final Context appContext = context.getApplicationContext();
+                sInstance = new SystemInformation(appContext);
+            }
+        }
+
+        return sInstance;
+    }
+
+    private SystemInformation(Context context) {
         mContext = context;
 
         PackageManager packageManager = mContext.getPackageManager();
@@ -40,8 +52,12 @@ import com.mixpanel.android.util.MPLog;
             MPLog.w(LOGTAG, "System information constructed with a context that apparently doesn't exist.");
         }
 
+        ApplicationInfo applicationInfo = context.getApplicationInfo();
+        int appNameStringId = applicationInfo.labelRes;
+
         mAppVersionName = foundAppVersionName;
         mAppVersionCode = foundAppVersionCode;
+        mAppName = appNameStringId == 0 ? applicationInfo.nonLocalizedLabel == null ? "Misc" : applicationInfo.nonLocalizedLabel.toString() : context.getString(appNameStringId);
 
         // We can't count on these features being available, since we need to
         // run on old devices. Thus, the reflection fandango below...
@@ -78,6 +94,8 @@ import com.mixpanel.android.util.MPLog;
     public String getAppVersionName() { return mAppVersionName; }
 
     public Integer getAppVersionCode() { return mAppVersionCode; }
+
+    public String getAppName() { return mAppName; }
 
     public boolean hasNFC() { return mHasNFC; }
 
@@ -175,6 +193,10 @@ import com.mixpanel.android.util.MPLog;
     private final DisplayMetrics mDisplayMetrics;
     private final String mAppVersionName;
     private final Integer mAppVersionCode;
+    private final String mAppName;
+
+    private static SystemInformation sInstance;
+    private static final Object sInstanceLock = new Object();
 
     private static final String LOGTAG = "MixpanelAPI.SysInfo";
 }

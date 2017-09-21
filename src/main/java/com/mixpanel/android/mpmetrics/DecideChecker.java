@@ -61,12 +61,12 @@ import javax.net.ssl.SSLSocketFactory;
         public boolean automaticEvents;
     }
 
-    public DecideChecker(final Context context, final MPConfig config, final SystemInformation systemInformation) {
+    public DecideChecker(final Context context, final MPConfig config) {
         mContext = context;
         mConfig = config;
         mChecks = new HashMap<String, DecideMessages>();
         mImageStore = createImageStore(context);
-        mSystemInformation = systemInformation;
+        mSystemInformation = SystemInformation.getInstance(context);
     }
 
     protected ImageStore createImageStore(final Context context) {

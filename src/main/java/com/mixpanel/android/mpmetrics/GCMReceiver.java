@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.NotificationChannel;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.support.v4.app.NotificationCompat;
@@ -251,7 +252,9 @@ public class GCMReceiver extends BroadcastReceiver {
         );
 
         final Notification notification;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notification = makeNotificationSDK26OrHigher(context, contentIntent, notificationData);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             notification = makeNotificationSDK21OrHigher(context, contentIntent, notificationData);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationData);
@@ -379,6 +382,55 @@ public class GCMReceiver extends BroadcastReceiver {
                 setContentIntent(intent).
                 setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
                 setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
+
+        if (notificationData.whiteIcon != NotificationData.NOT_SET) {
+            builder.setSmallIcon(notificationData.whiteIcon);
+        } else {
+            builder.setSmallIcon(notificationData.icon);
+        }
+
+        if (notificationData.largeIcon != NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
+        }
+
+        if (notificationData.color != NotificationData.NOT_SET) {
+            builder.setColor(notificationData.color);
+        }
+
+        final Notification n = builder.build();
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        return n;
+    }
+
+    @SuppressLint("NewApi")
+    @TargetApi(26)
+    protected Notification makeNotificationSDK26OrHigher(Context context, PendingIntent intent, NotificationData notificationData) {
+        NotificationManager mNotificationManager =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        String channelId = MPConfig.getInstance(context).getNotificationChannelId();
+        String channelName = MPConfig.getInstance(context).getNotificationChannelName();
+        int importance = MPConfig.getInstance(context).getNotificationChannelImportance();
+
+        NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
+        int notificationDefaults = MPConfig.getInstance(context).getNotificationDefaults();
+        if (notificationDefaults == Notification.DEFAULT_VIBRATE || notificationDefaults == Notification.DEFAULT_ALL) {
+            channel.enableVibration(true);
+        }
+        if (notificationDefaults == Notification.DEFAULT_LIGHTS || notificationDefaults == Notification.DEFAULT_ALL) {
+            channel.enableLights(true);
+            channel.setLightColor(Color.WHITE);
+        }
+        mNotificationManager.createNotificationChannel(channel);
+
+        final Notification.Builder builder = new Notification.Builder(context).
+                setTicker(notificationData.message).
+                setWhen(System.currentTimeMillis()).
+                setContentTitle(notificationData.title).
+                setContentText(notificationData.message).
+                setContentIntent(intent).
+                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
+                setChannelId(channelId);
 
         if (notificationData.whiteIcon != NotificationData.NOT_SET) {
             builder.setSmallIcon(notificationData.whiteIcon);

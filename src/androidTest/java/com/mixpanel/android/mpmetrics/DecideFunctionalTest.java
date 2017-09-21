@@ -101,7 +101,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
                             @Override
                             protected DecideChecker createDecideChecker() {
-                                return new DecideChecker(mContext, mConfig, new SystemInformation(mContext)) {
+                                return new DecideChecker(mContext, mConfig) {
                                     @Override
                                     protected ImageStore createImageStore(final Context context) {
                                         return new ImageStore(context, "MixpanelAPI.Images.DecideChecker", mMockPoster);
@@ -116,7 +116,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         };
 
         try {
-            SystemInformation systemInformation = new SystemInformation(mContext);
+            SystemInformation systemInformation = SystemInformation.getInstance(mContext);
 
             final StringBuilder queryBuilder = new StringBuilder();
             queryBuilder.append("&properties=");

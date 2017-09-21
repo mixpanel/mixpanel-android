@@ -240,19 +240,19 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         }
 
         private boolean isInEmulator() {
-            if (!Build.HARDWARE.equals("goldfish") && !Build.HARDWARE.equals("ranchu")) {
+            if (!Build.HARDWARE.toLowerCase().equals("goldfish") && !Build.HARDWARE.toLowerCase().equals("ranchu")) {
                 return false;
             }
 
-            if (!Build.BRAND.startsWith("generic") && !Build.BRAND.equals("Android")) {
+            if (!Build.BRAND.toLowerCase().startsWith("generic") && !Build.BRAND.toLowerCase().equals("android") && !Build.BRAND.toLowerCase().equals("google")) {
                 return false;
             }
 
-            if (!Build.DEVICE.startsWith("generic")) {
+            if (!Build.DEVICE.toLowerCase().startsWith("generic")) {
                 return false;
             }
 
-            if (!Build.PRODUCT.contains("sdk")) {
+            if (!Build.PRODUCT.toLowerCase().contains("sdk")) {
                 return false;
             }
 

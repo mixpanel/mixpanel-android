@@ -43,7 +43,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         Thread.sleep(2000);
 
         try {
-            SystemInformation systemInformation = new SystemInformation(mContext);
+            SystemInformation systemInformation = SystemInformation.getInstance(mContext);
 
             final StringBuilder queryBuilder = new StringBuilder();
             queryBuilder.append("&properties=");
