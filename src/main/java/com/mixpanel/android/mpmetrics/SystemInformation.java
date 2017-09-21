@@ -57,7 +57,7 @@ import com.mixpanel.android.util.MPLog;
 
         mAppVersionName = foundAppVersionName;
         mAppVersionCode = foundAppVersionCode;
-        mAppName = appNameStringId == 0 ? applicationInfo.nonLocalizedLabel.toString() : context.getString(appNameStringId);
+        mAppName = appNameStringId == 0 ? applicationInfo.nonLocalizedLabel == null ? "Misc" : applicationInfo.nonLocalizedLabel.toString() : context.getString(appNameStringId);
 
         // We can't count on these features being available, since we need to
         // run on old devices. Thus, the reflection fandango below...

@@ -1,36 +1,39 @@
 language: android
 jdk: oraclejdk8
 sudo: false
+
+env:
+  global:
+    - ANDROID_API_LEVEL=26
+    - EMULATOR_API_LEVEL=24
+    - ANDROID_BUILD_TOOLS_VERSION=26.0.1
+    - ANDROID_ABI=armeabi-v7a # x86 requires HAXM and it's not supported by travis (https://github.com/travis-ci/travis-ci/issues/1419)
+    - ADB_INSTALL_TIMEOUT=8 # in minutes (2 minutes by default)
+
 android:
   components:
     - tools
     - platform-tools
-    - build-tools-24.0.3
-    - android-24
+    - build-tools-$ANDROID_BUILD_TOOLS_VERSION
+    - android-$ANDROID_API_LEVEL
+    - android-$EMULATOR_API_LEVEL
     - extra-google-google_play_services
     - extra-android-m2repository
     - extra-google-m2repository
-    - sys-img-armeabi-v7a-android-24
-
-env:
-  global:
-   # install timeout in minutes (2 minutes by default)
-    - ADB_INSTALL_TIMEOUT=8
+    - sys-img-armeabi-v7a-android-$EMULATOR_API_LEVEL
 
 before_install:
   - adb logcat > logcat.log &
 
 # Emulator Management: Create, Start and Wait
 before_script:
-  - android list targets
-  - echo no | android create avd --force -n mp --target android-24 --abi armeabi-v7a
+  - echo no | android create avd --force -n mp --target "android-"$EMULATOR_API_LEVEL --abi $ANDROID_ABI
   - emulator -avd mp -noskin -no-boot-anim -no-window &
   - android-wait-for-emulator
   - adb shell input keyevent 82 &
   - adb shell input keyevent 1 &
 
 script:
-  - android list target
   - ./gradlew lint
   - ./gradlew --info connectedAndroidTest
   - ./gradlew --info androidJavadocs

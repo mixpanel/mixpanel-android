@@ -16,7 +16,7 @@ version = VERSION_NAME
 
 android {
     compileSdkVersion 26
-    buildToolsVersion '24.0.3'
+    buildToolsVersion '26.0.1'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
