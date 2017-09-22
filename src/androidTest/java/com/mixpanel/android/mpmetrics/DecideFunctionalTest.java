@@ -346,6 +346,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
     }
 
     private class MockUpdates implements UpdatesFromMixpanel {
+
+        @Override
+        public void applyPersistedUpdates() {
+
+        }
+
         @Override
         public void startUpdates() {
             ;
