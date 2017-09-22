@@ -75,7 +75,7 @@ import java.util.Locale;
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    mMpInstance.flush();
+                    mMpInstance.onBackground();
                 }
             }
         }, CHECK_DELAY);

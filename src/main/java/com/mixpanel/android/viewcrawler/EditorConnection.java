@@ -58,6 +58,10 @@ import java.nio.ByteBuffer;
         return !mClient.isClosed() && !mClient.isClosing() && !mClient.isFlushAndClose();
     }
 
+    public boolean isConnected() {
+        return mClient.isOpen();
+    }
+
     public BufferedOutputStream getBufferedOutputStream() {
         return new BufferedOutputStream(new WebSocketOutputStream());
     }

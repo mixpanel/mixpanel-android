@@ -83,7 +83,9 @@ import javax.net.ssl.SSLSocketFactory;
             final String distinctId = updates.getDistinctId();
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
-                updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents);
+                if (result != null) {
+                    updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents);
+                }
             } catch (final UnintelligibleMessageException e) {
                 MPLog.e(LOGTAG, e.getMessage(), e);
             }
@@ -104,25 +106,25 @@ import javax.net.ssl.SSLSocketFactory;
 
         MPLog.v(LOGTAG, "Mixpanel decide server response was:\n" + responseString);
 
-        Result parsed = new Result();
-        if (null != responseString) {
-            parsed = parseDecideResponse(responseString);
-        }
+        Result parsedResult = null;
+        if (responseString != null) {
+            parsedResult = parseDecideResponse(responseString);
 
-        final Iterator<InAppNotification> notificationIterator = parsed.notifications.iterator();
-        while (notificationIterator.hasNext()) {
-            final InAppNotification notification = notificationIterator.next();
-            final Bitmap image = getNotificationImage(notification, mContext);
-            if (null == image) {
-                MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
-                        ", will not show the notification.");
-                notificationIterator.remove();
-            } else {
-                notification.setImage(image);
+            final Iterator<InAppNotification> notificationIterator = parsedResult.notifications.iterator();
+            while (notificationIterator.hasNext()) {
+                final InAppNotification notification = notificationIterator.next();
+                final Bitmap image = getNotificationImage(notification, mContext);
+                if (null == image) {
+                    MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                            ", will not show the notification.");
+                    notificationIterator.remove();
+                } else {
+                    notification.setImage(image);
+                }
             }
         }
 
-        return parsed;
+        return parsedResult;
     }// runDecideCheck
 
     /* package */ static Result parseDecideResponse(String responseString)

@@ -233,6 +233,11 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
 
         @Override
+        public void applyPersistedUpdates() {
+
+        }
+
+        @Override
         public void setEventBindings(JSONArray bindings) {
             assertTrue(mStarted);
             bindingsSeen.add(bindings);

@@ -230,9 +230,13 @@ public class Tweaks {
             return maximum;
         }
 
+        public Object getValue() {
+            return value;
+        }
+
         public final @TweakType int type;
 
-        protected final Object value;
+        private final Object value;
         private final Object defaultValue;
         private final Number minimum;
         private final Number maximum;

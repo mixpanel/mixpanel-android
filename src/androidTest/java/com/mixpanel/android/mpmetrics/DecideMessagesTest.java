@@ -34,6 +34,10 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
 
             @Override
+            public void applyPersistedUpdates() {
+            }
+
+            @Override
             public void setEventBindings(JSONArray bindings) {
                 ; // TODO should observe bindings here
             }

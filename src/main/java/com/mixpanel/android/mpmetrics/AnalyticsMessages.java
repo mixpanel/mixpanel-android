@@ -175,10 +175,14 @@ import javax.net.ssl.SSLSocketFactory;
             this.message = message;
         }
 
+        @Override
+        public String toString() {
+            return message.toString();
+        }
+
         public JSONObject getMessage() {
             return message;
         }
-
 
         private final JSONObject message;
     }
@@ -192,6 +196,7 @@ import javax.net.ssl.SSLSocketFactory;
             super(token);
             this.checkDecide = checkDecide;
         }
+
 
         public boolean shouldCheckDecide() {
             return checkDecide;
