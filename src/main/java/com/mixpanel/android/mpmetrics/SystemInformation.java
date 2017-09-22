@@ -157,12 +157,19 @@ import com.mixpanel.android.util.MPLog;
     }
 
     @SuppressLint("MissingPermission")
+    @SuppressWarnings("MissingPermission")
     public Boolean isBluetoothEnabled() {
         Boolean isBluetoothEnabled = null;
         try {
-            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null) {
-                isBluetoothEnabled = bluetoothAdapter.isEnabled();
+            PackageManager pm = mContext.getPackageManager();
+            int hasBluetoothPermission = pm.checkPermission(
+                    Manifest.permission.BLUETOOTH,
+                    mContext.getPackageName());
+            if (hasBluetoothPermission == PackageManager.PERMISSION_GRANTED) {
+                BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (bluetoothAdapter != null) {
+                    isBluetoothEnabled = bluetoothAdapter.isEnabled();
+                }
             }
         } catch (SecurityException e) {
             // do nothing since we don't have permissions
