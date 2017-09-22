@@ -32,7 +32,7 @@ public class MiniCircleImageView extends ImageView {
     @SuppressWarnings("deprecation")
     private void init() {
         mWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        if (Build.VERSION.SDK_INT >= 23) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             mWhitePaint.setColor(getResources().getColor(android.R.color.white, null));
         } else {
             mWhitePaint.setColor(getResources().getColor(android.R.color.white));

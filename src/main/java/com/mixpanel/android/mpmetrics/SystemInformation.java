@@ -13,6 +13,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
 import android.view.Display;
@@ -172,15 +173,12 @@ import com.mixpanel.android.util.MPLog;
     }
 
     public String getBluetoothVersion() {
-        String bluetoothVersion = null;
-        if (android.os.Build.VERSION.SDK_INT >= 8) {
-            bluetoothVersion = "none";
-            if(android.os.Build.VERSION.SDK_INT >= 18 &&
-                    mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-                bluetoothVersion = "ble";
-            } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
-                bluetoothVersion = "classic";
-            }
+        String bluetoothVersion = "none";
+        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2 &&
+                mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            bluetoothVersion = "ble";
+        } else if(mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)) {
+            bluetoothVersion = "classic";
         }
         return bluetoothVersion;
     }

@@ -276,7 +276,7 @@ import javax.net.ssl.SSLSocketFactory;
     @SuppressWarnings("deprecation")
     @SuppressLint("NewApi")
     private static int getDisplayWidth(final Display display) {
-        if (Build.VERSION.SDK_INT < 13) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR2) {
             return display.getWidth();
         } else {
             final Point displaySize = new Point();

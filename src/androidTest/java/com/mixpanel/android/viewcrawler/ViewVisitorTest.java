@@ -280,7 +280,7 @@ public class ViewVisitorTest extends AndroidTestCase {
     }
 
     public void testMultipleEventsOnClick() {
-        if (Build.VERSION.SDK_INT <= 16) {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN) {
             return; // We don't actually support multiple handlers on Jellybean.
         }
 

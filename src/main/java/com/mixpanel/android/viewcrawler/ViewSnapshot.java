@@ -170,7 +170,7 @@ import java.util.concurrent.TimeoutException;
 
         float translationX = 0;
         float translationY = 0;
-        if (Build.VERSION.SDK_INT >= 11) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             translationX = view.getTranslationX();
             translationY = view.getTranslationY();
         }

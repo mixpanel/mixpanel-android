@@ -1723,7 +1723,7 @@ public class MixpanelAPI {
             else { // Configuration is good for at least some push notifications
                 final String pushId = mPersistentIdentity.getPushId();
                 if (pushId == null) {
-                    if (Build.VERSION.SDK_INT >= 21) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         registerForPushIdAPI21AndUp(senderID);
                     } else {
                         registerForPushIdAPI19AndOlder(senderID);

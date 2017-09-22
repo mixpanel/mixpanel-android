@@ -64,12 +64,6 @@ import java.util.Set;
 
     public static boolean checkPushConfiguration(Context context) {
 
-        if (Build.VERSION.SDK_INT < 8) {
-            // Not a warning, may be expected behavior
-            MPLog.i(LOGTAG, "Mixpanel push notifications not supported in SDK " + Build.VERSION.SDK_INT);
-            return false;
-        }
-
         final PackageManager packageManager = context.getPackageManager();
         final String packageName = context.getPackageName();
 
@@ -121,7 +115,7 @@ import java.util.Set;
                     "older devices, you'll need to add the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
 
-            if (Build.VERSION.SDK_INT < 16) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
                 return false;
             }
         }
