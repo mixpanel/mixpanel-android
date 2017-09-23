@@ -75,6 +75,30 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor</dt>
  *     <dd>A boolean value. If true, invisible views won't be shown on Mixpanel Visual Editor (AB Test and codeless events) . Defaults to false.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.DisableViewCrawler</dt>
+ *     <dd>A boolean value. If true, AB tests, tweaks and codeless events will be disabled. Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableDecideChecker</dt>
+ *     <dd>A boolean value. If true, the library will not query our decide endpoint and won't retrieve in-app notifications, codeless events, Ab Tests or tweaks. Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.NotificationDefaults</dt>
+ *     <dd>An integer number. This value is used to create a notification before API 26 (https://developer.android.com/reference/android/app/Notification.Builder.html#setDefaults(int)). Defaults to 0.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.MinimumSessionDuration</dt>
+ *     <dd>An integer number. The minimum session duration (ms) that is tracked in automatic events. Defaults to 10000 (10 seconds).</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.SessionTimeoutDuration</dt>
+ *     <dd>An integer number. The maximum session duration (ms) that is tracked in automatic events. Defaults to Integer.MAX_VALUE (no maximum session duration).</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.TestMode</dt>
+ *     <dd>A boolean value. If true, in-app notifications won't be marked as seen. Defaults to false.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.ImageCacheMaxMemoryFactor</dt>
+ *     <dd>An integer value. The LRU cache size that Mixpanel uses to store images is calculated by the available memory divided by this factor. Defaults to 10.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.DisableViewCrawlerForProjects</dt>
+ *     <dd>A resource array list (e.g. @array/my_project_list). AB tests, tweaks and codeless events will be disabled for the projects from that list. Defaults to null.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.UseIpAddressForGeolocation</dt>
  *     <dd>A boolean value. If true, Mixpanel will automatically determine city, region and country data using the IP address of the client.Defaults to true.</dd>
  *
@@ -276,6 +300,7 @@ public class MPConfig {
                 "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
                 "    DecideEndpoint " + getDecideEndpoint() + "\n" +
                 "    EditorUrl " + getEditorUrl() + "\n" +
+                "    ImageCacheMaxMemoryFactor " + getImageCacheMaxMemoryFactor() + "\n" +
                 "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
                 "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
                 "    NotificationDefaults " + getNotificationDefaults() + "\n" +
