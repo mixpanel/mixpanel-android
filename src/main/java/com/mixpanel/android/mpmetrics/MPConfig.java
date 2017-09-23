@@ -109,7 +109,7 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dd>An string value. If present, the library will use this user-visible name for our notification channel. Applicable only for Android 26 and above. Defaults to the application name.</dd>
  *
  *     <dt>com.mixpanel.android.MPConfig.NotificationChannelImportance</dt>
- *     <dd>An integer number. If present, the library will use this user-visible name for our notification channel. Applicable only for Android 26 and above.</dd>
+ *     <dd>An integer number. Importance of the notification channel (see https://developer.android.com/reference/android/app/NotificationManager.html). Defaults to 3 (IMPORTANCE_DEFAULT). Applicable only for Android 26 and above.</dd>
  * </dl>
  *
  */
