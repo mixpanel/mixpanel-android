@@ -102,6 +102,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     @Override
+    public void storeVariants(JSONArray variants) {
+        if (variants != null) {
+            final Message msg = mMessageThreadHandler.obtainMessage(ViewCrawler.MESSAGE_PERSIST_VARIANTS_RECEIVED);
+            msg.obj = variants;
+            mMessageThreadHandler.sendMessage(msg);
+        }
+    }
+
+    @Override
     public Tweaks getTweaks() {
         return mTweaks;
     }
@@ -356,6 +365,9 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     case MESSAGE_HANDLE_EDITOR_CLOSED:
                         handleEditorClosed();
                         break;
+                    case MESSAGE_PERSIST_VARIANTS_RECEIVED:
+                        persistVariants((JSONArray) msg.obj);
+                        break;
                 }
             } finally {
                 mStartLock.unlock();
@@ -384,6 +396,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             applyVariantsAndEventBindings();
         }
 
+        private void persistVariants(JSONArray variants) {
+            final SharedPreferences preferences = getSharedPreferences();
+            final SharedPreferences.Editor editor = preferences.edit();
+            editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
+            editor.apply();
+        }
 
         private void loadVariants(String variants, boolean newVariants) {
             if (null != variants) {
@@ -762,13 +780,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * Accept and apply variant changes from a non-interactive source.
          */
         private void handleVariantsReceived(JSONArray variants) {
-            final SharedPreferences preferences = getSharedPreferences();
-            final SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(SHARED_PREF_CHANGES_KEY, variants.toString());
-            editor.apply();
-
+            persistVariants(variants);
             loadVariants(variants.toString(), true);
-
             applyVariantsAndEventBindings();
         }
 
@@ -1190,6 +1203,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     private static final int MESSAGE_HANDLE_EDITOR_CHANGES_CLEARED = 10;
     private static final int MESSAGE_HANDLE_EDITOR_TWEAKS_RECEIVED = 11;
     private static final int MESSAGE_SEND_LAYOUT_ERROR = 12;
+    private static final int MESSAGE_PERSIST_VARIANTS_RECEIVED = 13;
 
     private static final int EMULATOR_CONNECT_ATTEMPT_INTERVAL_MILLIS = 1000 * 30;
 

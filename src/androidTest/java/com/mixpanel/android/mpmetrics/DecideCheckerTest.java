@@ -234,7 +234,10 @@ public class DecideCheckerTest extends AndroidTestCase {
 
         @Override
         public void applyPersistedUpdates() {
+        }
 
+        @Override
+        public void storeVariants(JSONArray variants) {
         }
 
         @Override

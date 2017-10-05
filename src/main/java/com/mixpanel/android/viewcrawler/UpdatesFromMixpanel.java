@@ -11,6 +11,7 @@ public interface UpdatesFromMixpanel {
     public void startUpdates();
     public void applyPersistedUpdates();
     public void setEventBindings(JSONArray bindings);
+    public void storeVariants(JSONArray variants);
     public void setVariants(JSONArray variants);
     public Tweaks getTweaks();
     public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
