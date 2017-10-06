@@ -38,6 +38,10 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
 
             @Override
+            public void storeVariants(JSONArray variants) {
+            }
+
+            @Override
             public void setEventBindings(JSONArray bindings) {
                 ; // TODO should observe bindings here
             }

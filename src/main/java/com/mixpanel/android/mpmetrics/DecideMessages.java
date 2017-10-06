@@ -104,6 +104,7 @@ import java.util.Set;
                 newContent = true;
             }
         }
+        mUpdatesFromMixpanel.storeVariants(mVariants);
 
         if (mAutomaticEventsEnabled == null && !automaticEvents) {
             MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);

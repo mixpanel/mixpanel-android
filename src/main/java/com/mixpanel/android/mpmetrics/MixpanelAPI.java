@@ -1990,6 +1990,11 @@ public class MixpanelAPI {
         }
 
         @Override
+        public void storeVariants(JSONArray variants) {
+            // No op
+        }
+
+        @Override
         public void applyPersistedUpdates() {
             // No op
         }
