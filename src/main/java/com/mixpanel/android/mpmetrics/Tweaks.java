@@ -4,6 +4,9 @@ import android.support.annotation.IntDef;
 
 import com.mixpanel.android.util.MPLog;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -230,11 +233,65 @@ public class Tweaks {
             return maximum;
         }
 
+        public Object getDefaultValue() {
+            return defaultValue;
+        }
+
         public Object getValue() {
             return value;
         }
 
         public final @TweakType int type;
+
+        public static TweakValue fromJson(JSONObject tweakDesc) {
+            try {
+                final String tweakName = tweakDesc.getString("name");
+                final String type = tweakDesc.getString("type");
+                Object value, defaultValue;
+                Number minimum = null, maximum = null;
+                @TweakType int tweakType;
+                if ("number".equals(type)) {
+                    final String encoding = tweakDesc.getString("encoding");
+                    if ("d".equals(encoding)) {
+                        tweakType = DOUBLE_TYPE;
+                        value = tweakDesc.getDouble("value");
+                        defaultValue = tweakDesc.getDouble("default");
+                        if (!tweakDesc.isNull("minimum")) {
+                            minimum = tweakDesc.getDouble("minimum");
+                        }
+                        if (!tweakDesc.isNull("maximum")) {
+                            maximum = tweakDesc.getDouble("maximum");
+                        }
+                    } else if ("l".equals(encoding)) {
+                        value = tweakDesc.getLong("value");
+                        tweakType = LONG_TYPE;
+                        defaultValue = tweakDesc.getLong("default");
+                        if (!tweakDesc.isNull("minimum")) {
+                            minimum = tweakDesc.getLong("minimum");
+                        }
+                        if (!tweakDesc.isNull("maximum")) {
+                            maximum = tweakDesc.getLong("maximum");
+                        }
+                    } else {
+                        return null;
+                    }
+                } else if ("boolean".equals(type)) {
+                    tweakType = BOOLEAN_TYPE;
+                    value = tweakDesc.getBoolean("value");
+                    defaultValue = tweakDesc.getBoolean("default");
+                } else if ("string".equals(type)) {
+                    tweakType = STRING_TYPE;
+                    value = tweakDesc.getString("value");
+                    defaultValue = tweakDesc.getString("default");
+                } else {
+                    return null;
+                }
+
+                return new TweakValue(tweakType, defaultValue, minimum, maximum, value, tweakName);
+            } catch (JSONException e) {}
+
+            return null;
+        }
 
         private final Object value;
         private final Object defaultValue;
@@ -404,7 +461,7 @@ public class Tweaks {
         return mTweakValues.get(tweakName);
     }
 
-    private void declareTweak(String tweakName, Object defaultValue, Number minimumValue, Number maximumValue, @TweakType int tweakType) {
+    public void declareTweak(String tweakName, Object defaultValue, Number minimumValue, Number maximumValue, @TweakType int tweakType) {
         if (mTweakValues.containsKey(tweakName)) {
             MPLog.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;

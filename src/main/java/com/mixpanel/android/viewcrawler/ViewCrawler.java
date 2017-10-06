@@ -568,20 +568,24 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                             case Tweaks.BOOLEAN_TYPE:
                                 j.name("type").value("boolean");
                                 j.name("value").value(desc.getBooleanValue());
+                                j.name("default").value((Boolean) desc.getDefaultValue());
                                 break;
                             case Tweaks.DOUBLE_TYPE:
                                 j.name("type").value("number");
                                 j.name("encoding").value("d");
                                 j.name("value").value(desc.getNumberValue().doubleValue());
+                                j.name("default").value(((Number) desc.getDefaultValue()).doubleValue());
                                 break;
                             case Tweaks.LONG_TYPE:
                                 j.name("type").value("number");
                                 j.name("encoding").value("l");
                                 j.name("value").value(desc.getNumberValue().longValue());
+                                j.name("default").value(((Number) desc.getDefaultValue()).longValue());
                                 break;
                             case Tweaks.STRING_TYPE:
                                 j.name("type").value("string");
                                 j.name("value").value(desc.getStringValue());
+                                j.name("default").value((String) desc.getDefaultValue());
                                 break;
                             default:
                                 MPLog.wtf(LOGTAG, "Unrecognized Tweak Type " + desc.type + " encountered.");
@@ -900,17 +904,19 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     try {
                         final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
 
-                        Map<String, Tweaks.TweakValue> tweaks = mTweaks.getAllValues();
-                        Tweaks.TweakValue value = tweaks.get(tweakValue.first);
                         if (!mSeenExperiments.contains(tweakInfo.variantId)) {
                             toTrack.add(tweakInfo.variantId);
                             updatedTweaks.add(tweakValue.first);
                         } else if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
-                            Map<String, Tweaks.TweakValue> tweaks2 = mTweaks.getAllValues();
-                            Tweaks.TweakValue value2 = tweaks2.get(tweakValue.first);
                             updatedTweaks.add(tweakValue.first);
                         }
 
+                        if (!mTweaks.getAllValues().containsKey(tweakValue.first)) {
+                            Tweaks.TweakValue persistedTweak = Tweaks.TweakValue.fromJson(tweakInfo.tweak);
+                            if (persistedTweak != null) {
+                                mTweaks.declareTweak(tweakValue.first, persistedTweak.getDefaultValue(), persistedTweak.getMinimum(), persistedTweak.getMaximum(), persistedTweak.type);
+                            }
+                        }
                         mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (EditProtocol.BadInstructionsException e) {
                         MPLog.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
