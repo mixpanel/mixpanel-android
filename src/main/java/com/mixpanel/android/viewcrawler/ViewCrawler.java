@@ -402,7 +402,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         for (int i = 0; i < actionsLength; i++) {
                             final JSONObject change = actions.getJSONObject(i);
                             final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
-                            final VariantChange variantChange = new VariantChange(targetActivity, change, variantId);
+                            final String name = change.getString("name");
+                            final VariantChange variantChange = new VariantChange(name, targetActivity, change, variantId);
                             mAppliedVisualChanges.add(variantChange);
                         }
 
@@ -410,7 +411,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final int tweaksLength = tweaks.length();
                         for (int i = 0; i < tweaksLength; i++) {
                             final JSONObject tweakDesc = tweaks.getJSONObject(i);
-                            final VariantTweak variantTweak = new VariantTweak(tweakDesc, variantId);
+                            final String tweakName = tweakDesc.getString("name");
+                            final VariantTweak variantTweak = new VariantTweak(tweakName, tweakDesc, variantId);
                             mAppliedTweaks.add(variantTweak);
                         }
 
@@ -1112,7 +1114,8 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     private static class VariantChange {
-        public VariantChange(String anActivityName, JSONObject someChange, Pair<Integer, Integer> aVariantId) {
+        public VariantChange(String aName, String anActivityName, JSONObject someChange, Pair<Integer, Integer> aVariantId) {
+            name = aName;
             activityName = anActivityName;
             change = someChange;
             variantId = aVariantId;
@@ -1120,7 +1123,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         @Override
         public int hashCode() {
-            return variantId.hashCode();
+            return name.hashCode();
         }
 
         @Override
@@ -1132,20 +1135,22 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             return false;
         }
 
+        public final String name;
         public final String activityName;
         public final JSONObject change;
         public final Pair<Integer, Integer> variantId;
     }
 
     private static class VariantTweak {
-        public VariantTweak(JSONObject aTweak, Pair<Integer, Integer> aVariantId) {
+        public VariantTweak(String aTweakName, JSONObject aTweak, Pair<Integer, Integer> aVariantId) {
+            tweakName = aTweakName;
             tweak = aTweak;
             variantId = aVariantId;
         }
 
         @Override
         public int hashCode() {
-            return variantId.hashCode();
+            return tweakName.hashCode();
         }
 
         @Override
@@ -1157,6 +1162,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             return false;
         }
 
+        public final String tweakName;
         public final JSONObject tweak;
         public final Pair<Integer, Integer> variantId;
     }
