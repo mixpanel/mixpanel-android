@@ -265,6 +265,8 @@ public class MixpanelAPI {
         mEventTimings = mPersistentIdentity.getTimeEvents();
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
+        mConnectIntegrations = new ConnectIntegrations(this);
+        mPeople.addOnMixpanelUpdatesReceivedListener(mConnectIntegrations);
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
@@ -1129,6 +1131,8 @@ public class MixpanelAPI {
          */
         public void joinExperimentIfAvailable();
 
+        public Set<Integer> getConnectIntegrationIds();
+
         /**
          * Shows the given in-app notification to the user. Display will occur just as if the
          * notification was shown via showNotificationIfAvailable. In most cases, it is
@@ -1638,6 +1642,11 @@ public class MixpanelAPI {
         public void joinExperimentIfAvailable() {
             final JSONArray variants = mDecideMessages.getVariants();
             mUpdatesFromMixpanel.setVariants(variants);
+        }
+
+        @Override
+        public Set<Integer> getConnectIntegrationIds() {
+            return mDecideMessages.getIntegrationIds();
         }
 
         @Override
@@ -2185,6 +2194,7 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
     private final TrackingDebug mTrackingDebug;
+    private final ConnectIntegrations mConnectIntegrations;
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;

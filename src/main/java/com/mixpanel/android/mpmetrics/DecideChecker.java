@@ -46,6 +46,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final String EVENT_BINDINGS = "event_bindings";
     private static final String VARIANTS = "variants";
     private static final String AUTOMATIC_EVENTS = "automatic_events";
+    private static final String INTEGRATIONS = "integrations";
 
     /* package */ static class Result {
         public Result() {
@@ -59,6 +60,7 @@ import javax.net.ssl.SSLSocketFactory;
         public JSONArray eventBindings;
         public JSONArray variants;
         public boolean automaticEvents;
+        public JSONArray integrations;
     }
 
     public DecideChecker(final Context context, final MPConfig config) {
@@ -84,7 +86,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
                 if (result != null) {
-                    updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents);
+                    updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents, result.integrations);
                 }
             } catch (final UnintelligibleMessageException e) {
                 MPLog.e(LOGTAG, e.getMessage(), e);
@@ -193,6 +195,14 @@ import javax.net.ssl.SSLSocketFactory;
                 ret.automaticEvents = response.getBoolean(AUTOMATIC_EVENTS);
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Mixpanel endpoint returned a non boolean value for automatic events: " + response);
+            }
+        }
+
+        if (response.has(INTEGRATIONS)) {
+            try {
+                ret.integrations = response.getJSONArray(INTEGRATIONS);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned a non-array JSON for integrations: " + response);
             }
         }
 

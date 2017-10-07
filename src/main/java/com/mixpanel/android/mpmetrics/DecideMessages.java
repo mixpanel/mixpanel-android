@@ -31,6 +31,7 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mNotificationIds = new HashSet<Integer>(notificationIds);
         mVariants = null;
+        mIntegrationIds = new HashSet<Integer>();
     }
 
     public String getToken() {
@@ -50,7 +51,11 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants, boolean automaticEvents) {
+    public synchronized void reportResults(List<InAppNotification> newNotifications,
+                                           JSONArray eventBindings,
+                                           JSONArray variants,
+                                           boolean automaticEvents,
+                                           JSONArray integrations) {
         boolean newContent = false;
         int newVariantsLength = variants.length();
         boolean hasNewVariants = false;
@@ -111,6 +116,17 @@ import java.util.Set;
         }
         mAutomaticEventsEnabled = automaticEvents;
 
+        if (integrations != null) {
+            HashSet<Integer> integrationsSet = new HashSet<Integer>();
+            for (int i = 0; i < integrations.length(); i++) {
+                integrationsSet.add(integrations.optInt(i, -1));
+            }
+            if (!mIntegrationIds.equals(integrationsSet)) {
+                mIntegrationIds = integrationsSet;
+                newContent = true;
+            }
+        }
+
         MPLog.v(LOGTAG, "New Decide content has become available. " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
@@ -152,6 +168,8 @@ import java.util.Set;
         return notif;
     }
 
+    public synchronized Set<Integer> getIntegrationIds() { return mIntegrationIds; }
+
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
     public synchronized void markNotificationAsUnseen(InAppNotification notif) {
@@ -184,6 +202,7 @@ import java.util.Set;
     private static final Set<Integer> mLoadedVariants = new HashSet<>();
     private Boolean mAutomaticEventsEnabled;
     private Context mContext;
+    private Set<Integer> mIntegrationIds;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
