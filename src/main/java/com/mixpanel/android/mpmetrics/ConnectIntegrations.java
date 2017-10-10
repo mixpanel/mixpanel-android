@@ -13,6 +13,7 @@ class ConnectIntegrations implements OnMixpanelUpdatesReceivedListener {
     public ConnectIntegrations(MixpanelAPI mixpanel) {
         mMixpanel = mixpanel;
         mSavedUrbanAirshipChannelID = null;
+        mUrbanAirshipRetries = 0;
     }
 
     public void onMixpanelUpdatesReceived() {
@@ -33,18 +34,22 @@ class ConnectIntegrations implements OnMixpanelUpdatesReceivedListener {
             Object pushManager = sharedUAirship.getClass().getMethod("getPushManager", null).invoke(sharedUAirship);
             String channelID = (String)pushManager.getClass().getMethod("getChannelId", null).invoke(pushManager);
             if (channelID != null && !channelID.isEmpty()) {
+                mUrbanAirshipRetries = 0;
                 if (mSavedUrbanAirshipChannelID == null || !mSavedUrbanAirshipChannelID.equals(channelID)) {
                     mMixpanel.getPeople().set("$urban_airship_channel_id", channelID);
                     mSavedUrbanAirshipChannelID = channelID;
                 }
             } else {
-                final Handler delayedHandler = new Handler();
-                delayedHandler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        setUrbanAirshipPeopleProp();
-                    }
-                }, 2000);
+                mUrbanAirshipRetries++;
+                if (mUrbanAirshipRetries <= MAX_RETRIES) {
+                    final Handler delayedHandler = new Handler();
+                    delayedHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            setUrbanAirshipPeopleProp();
+                        }
+                    }, 2000);
+                }
             }
         } catch (ClassNotFoundException e) {
             MPLog.w(LOGTAG, "Urban Airship SDK not found but Urban Airship is integrated on Mixpanel");
@@ -59,6 +64,8 @@ class ConnectIntegrations implements OnMixpanelUpdatesReceivedListener {
 
     private final MixpanelAPI mMixpanel;
     private String mSavedUrbanAirshipChannelID;
+    private int mUrbanAirshipRetries;
 
     private static final String LOGTAG = "MixpanelAPI.ConnectIntegrations";
+    private static final int MAX_RETRIES = 3;
 }
