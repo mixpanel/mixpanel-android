@@ -118,13 +118,17 @@ import java.util.Set;
         mAutomaticEventsEnabled = automaticEvents;
 
         if (integrations != null) {
-            HashSet<Integer> integrationsSet = new HashSet<Integer>();
-            for (int i = 0; i < integrations.length(); i++) {
-                integrationsSet.add(integrations.optInt(i, -1));
-            }
-            if (!mIntegrationIds.equals(integrationsSet)) {
-                mIntegrationIds = integrationsSet;
-                mListener.onNewConnectIntegrations();
+            try {
+                HashSet<Integer> integrationsSet = new HashSet<Integer>();
+                for (int i = 0; i < integrations.length(); i++) {
+                    integrationsSet.add(integrations.getInt(i));
+                }
+                if (!mIntegrationIds.equals(integrationsSet)) {
+                    mIntegrationIds = integrationsSet;
+                    mListener.onNewConnectIntegrations();
+                }
+            } catch(JSONException e) {
+                MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);
             }
         }
 
