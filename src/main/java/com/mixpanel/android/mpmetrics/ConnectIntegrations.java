@@ -4,23 +4,17 @@ import android.os.Handler;
 
 import com.mixpanel.android.util.MPLog;
 
-import org.json.JSONArray;
-
 import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
 
-class ConnectIntegrations implements OnMixpanelUpdatesReceivedListener {
+/* package */ class ConnectIntegrations {
     public ConnectIntegrations(MixpanelAPI mixpanel) {
         mMixpanel = mixpanel;
         mSavedUrbanAirshipChannelID = null;
         mUrbanAirshipRetries = 0;
     }
 
-    public void onMixpanelUpdatesReceived() {
-        setupIntegrations(mMixpanel.getPeople().getConnectIntegrationIds());
-    }
-
-    private synchronized void setupIntegrations(Set<Integer> integrationIds) {
+    public synchronized void setupIntegrations(Set<Integer> integrationIds) {
         if (integrationIds.contains(4)) {
             setUrbanAirshipPeopleProp();
         }

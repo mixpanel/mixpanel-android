@@ -19,6 +19,7 @@ import java.util.Set;
 
     public interface OnNewResultsListener {
         void onNewResults();
+        void onNewConnectIntegrations();
     }
 
     public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
@@ -123,7 +124,7 @@ import java.util.Set;
             }
             if (!mIntegrationIds.equals(integrationsSet)) {
                 mIntegrationIds = integrationsSet;
-                newContent = true;
+                mListener.onNewConnectIntegrations();
             }
         }
 
