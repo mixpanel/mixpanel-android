@@ -743,6 +743,7 @@ public class MixpanelAPI {
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
         identify(getDistinctId());
+        mConnectIntegrations.reset();
         flush();
     }
 

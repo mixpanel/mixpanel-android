@@ -19,6 +19,11 @@ import java.util.Set;
         mMixpanel = mixpanel;
     }
 
+    public void reset() {
+        mSavedUrbanAirshipChannelID = null;
+        mUrbanAirshipRetries = 0;
+    }
+
     public synchronized void setupIntegrations(Set<Integer> integrationIds) {
         if (integrationIds.contains(4)) {
             setUrbanAirshipPeopleProp();
