@@ -40,7 +40,7 @@ import java.util.Set;
             if (channelID != null && !channelID.isEmpty()) {
                 mUrbanAirshipRetries = 0;
                 if (mSavedUrbanAirshipChannelID == null || !mSavedUrbanAirshipChannelID.equals(channelID)) {
-                    mMixpanel.getPeople().set("$urban_airship_channel_id", channelID);
+                    mMixpanel.getPeople().set("$android_urban_airship_channel_id", channelID);
                     mSavedUrbanAirshipChannelID = channelID;
                 }
             } else {
