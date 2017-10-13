@@ -24,8 +24,8 @@ import java.util.Set;
         mUrbanAirshipRetries = 0;
     }
 
-    public synchronized void setupIntegrations(Set<Integer> integrationIds) {
-        if (integrationIds.contains(4)) {
+    public synchronized void setupIntegrations(Set<String> integrations) {
+        if (integrations.contains("urban_airship")) {
             setUrbanAirshipPeopleProp();
         }
     }

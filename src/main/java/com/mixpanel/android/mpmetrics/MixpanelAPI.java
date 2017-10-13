@@ -1961,7 +1961,7 @@ public class MixpanelAPI {
 
         @Override
         public void onNewConnectIntegrations() {
-            mConnectIntegrations.setupIntegrations(mDecideMessages.getIntegrationIds());
+            mConnectIntegrations.setupIntegrations(mDecideMessages.getIntegrations());
         }
 
         @Override

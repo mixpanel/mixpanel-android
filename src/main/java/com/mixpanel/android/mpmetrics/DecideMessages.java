@@ -32,7 +32,7 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mNotificationIds = new HashSet<Integer>(notificationIds);
         mVariants = null;
-        mIntegrationIds = new HashSet<Integer>();
+        mIntegrations = new HashSet<String>();
     }
 
     public String getToken() {
@@ -119,12 +119,12 @@ import java.util.Set;
 
         if (integrations != null) {
             try {
-                HashSet<Integer> integrationsSet = new HashSet<Integer>();
+                HashSet<String> integrationsSet = new HashSet<String>();
                 for (int i = 0; i < integrations.length(); i++) {
-                    integrationsSet.add(integrations.getInt(i));
+                    integrationsSet.add(integrations.getString(i));
                 }
-                if (!mIntegrationIds.equals(integrationsSet)) {
-                    mIntegrationIds = integrationsSet;
+                if (!mIntegrations.equals(integrationsSet)) {
+                    mIntegrations = integrationsSet;
                     mListener.onNewConnectIntegrations();
                 }
             } catch(JSONException e) {
@@ -173,7 +173,7 @@ import java.util.Set;
         return notif;
     }
 
-    public synchronized Set<Integer> getIntegrationIds() { return mIntegrationIds; }
+    public synchronized Set<String> getIntegrations() { return mIntegrations; }
 
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
@@ -207,7 +207,7 @@ import java.util.Set;
     private static final Set<Integer> mLoadedVariants = new HashSet<>();
     private Boolean mAutomaticEventsEnabled;
     private Context mContext;
-    private Set<Integer> mIntegrationIds;
+    private Set<String> mIntegrations;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";
