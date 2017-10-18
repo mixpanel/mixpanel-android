@@ -14,6 +14,7 @@ import com.mixpanel.android.mpmetrics.ResourceIds;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MPPair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -219,7 +220,7 @@ import java.util.List;
         }
     }
 
-    public Pair<String, Object> readTweak(JSONObject tweakDesc) throws BadInstructionsException {
+    public MPPair<String, Object> readTweak(JSONObject tweakDesc) throws BadInstructionsException {
         try {
             final String tweakName = tweakDesc.getString("name");
             final String type = tweakDesc.getString("type");
@@ -241,7 +242,7 @@ import java.util.List;
                 throw new BadInstructionsException("Unrecognized tweak type " + type + " in: " + tweakDesc);
             }
 
-            return new Pair<String, Object>(tweakName, value);
+            return new MPPair<String, Object>(tweakName, value);
         } catch (JSONException e) {
             throw new BadInstructionsException("Can't read tweak update", e);
         }
