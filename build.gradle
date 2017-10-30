@@ -45,7 +45,7 @@ android {
 allprojects {
     gradle.projectsEvaluated {
         tasks.withType(JavaCompile) {
-            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+            options.compilerArgs doLast "-Xlint:unchecked" doLast "-Xlint:deprecation"
         }
     }
 }
