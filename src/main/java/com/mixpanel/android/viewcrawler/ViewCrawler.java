@@ -28,6 +28,7 @@ import com.mixpanel.android.mpmetrics.Tweaks;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MPPair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -301,16 +302,16 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             mImageStore = new ImageStore(context, "ViewCrawler");
             mProtocol = new EditProtocol(context, resourceIds, mImageStore, layoutErrorListener);
-            mOriginalEventBindings = new HashSet<Pair<String, JSONObject>>();
-            mEditorChanges = new HashMap<String, Pair<String, JSONObject>>();
+            mOriginalEventBindings = new HashSet<MPPair<String, JSONObject>>();
+            mEditorChanges = new HashMap<String, MPPair<String, JSONObject>>();
             mEditorTweaks = new ArrayList<JSONObject>();
             mEditorAssetUrls = new ArrayList<String>();
-            mEditorEventBindings = new HashMap<String, Pair<String, JSONObject>>();
+            mEditorEventBindings = new HashMap<String, MPPair<String, JSONObject>>();
             mAppliedVisualChanges = new HashSet<VariantChange>();
             mAppliedTweaks = new HashSet<VariantTweak>();
-            mEmptyExperiments = new HashSet<Pair<Integer, Integer>>();
-            mPersistentEventBindings = new HashSet<Pair<String, JSONObject>>();
-            mSeenExperiments = new HashSet<Pair<Integer, Integer>>();
+            mEmptyExperiments = new HashSet<MPPair<Integer, Integer>>();
+            mPersistentEventBindings = new HashSet<MPPair<String, JSONObject>>();
+            mSeenExperiments = new HashSet<MPPair<Integer, Integer>>();
             mStartLock = new ReentrantLock();
             mStartLock.lock();
         }
@@ -413,7 +414,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         final JSONObject nextVariant = variantsJson.getJSONObject(variantIx);
                         final int variantIdPart = nextVariant.getInt("id");
                         final int experimentIdPart = nextVariant.getInt("experiment_id");
-                        final Pair<Integer, Integer> variantId = new Pair<Integer, Integer>(experimentIdPart, variantIdPart);
+                        final MPPair<Integer, Integer> variantId = new MPPair<Integer, Integer>(experimentIdPart, variantIdPart);
 
                         final JSONArray actions = nextVariant.getJSONArray("actions");
                         final int actionsLength = actions.length();
@@ -460,7 +461,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     for (int i = 0; i < bindings.length(); i++) {
                         final JSONObject event = bindings.getJSONObject(i);
                         final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                        mPersistentEventBindings.add(new Pair<String, JSONObject>(targetActivity, event));
+                        mPersistentEventBindings.add(new MPPair<String, JSONObject>(targetActivity, event));
                     }
                 } catch (final JSONException e) {
                     MPLog.i(LOGTAG, "JSON error when loading event bindings, clearing persistent memory", e);
@@ -736,7 +737,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     final JSONObject change = actions.getJSONObject(i);
                     final String targetActivity = JSONUtils.optionalStringKey(change, "target_activity");
                     final String name = change.getString("name");
-                    mEditorChanges.put(name, new Pair<String, JSONObject>(targetActivity, change));
+                    mEditorChanges.put(name, new MPPair<String, JSONObject>(targetActivity, change));
                 }
 
                 applyVariantsAndEventBindings();
@@ -823,7 +824,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             mEditorEventBindings.clear();
             if (!mPersistentEventBindings.isEmpty() && mOriginalEventBindings.isEmpty()) {
                 mOriginalEventBindings.addAll(mPersistentEventBindings);
-                for (Pair<String, JSONObject> eventBinding : mPersistentEventBindings) {
+                for (MPPair<String, JSONObject> eventBinding : mPersistentEventBindings) {
                     try {
                         mEditorEventBindings.put(eventBinding.second.get("path").toString(), eventBinding);
                     } catch (JSONException e) {
@@ -836,7 +837,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                 try {
                     final JSONObject event = eventBindings.getJSONObject(i);
                     final String targetActivity = JSONUtils.optionalStringKey(event, "target_activity");
-                    mEditorEventBindings.put(event.get("path").toString(), new Pair<String, JSONObject>(targetActivity, event));
+                    mEditorEventBindings.put(event.get("path").toString(), new MPPair<String, JSONObject>(targetActivity, event));
                 } catch (final JSONException e) {
                     MPLog.e(LOGTAG, "Bad event binding received from editor in " + eventBindings.toString(), e);
                 }
@@ -877,15 +878,15 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
          * will be updated, and experiment statuses will be tracked.
          */
         private void applyVariantsAndEventBindings() {
-            final List<Pair<String, ViewVisitor>> newVisitors = new ArrayList<Pair<String, ViewVisitor>>();
-            final Set<Pair<Integer, Integer>> toTrack = new HashSet<Pair<Integer, Integer>>();
+            final List<MPPair<String, ViewVisitor>> newVisitors = new ArrayList<MPPair<String, ViewVisitor>>();
+            final Set<MPPair<Integer, Integer>> toTrack = new HashSet<MPPair<Integer, Integer>>();
             Set<String> updatedTweaks = new HashSet<>();
 
             {
                 for (VariantChange changeInfo : mAppliedVisualChanges) {
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.change);
-                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
+                        newVisitors.add(new MPPair<String, ViewVisitor>(changeInfo.activityName, edit.visitor));
                         if (!mSeenExperiments.contains(changeInfo.variantId)) {
                             toTrack.add(changeInfo.variantId);
                         }
@@ -902,7 +903,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             {
                 for (VariantTweak tweakInfo : mAppliedTweaks) {
                     try {
-                        final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
+                        final MPPair<String, Object> tweakValue = mProtocol.readTweak(tweakInfo.tweak);
 
                         if (!mSeenExperiments.contains(tweakInfo.variantId)) {
                             toTrack.add(tweakInfo.variantId);
@@ -937,10 +938,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                for (Pair<String, JSONObject> changeInfo:mEditorChanges.values()) {
+                for (MPPair<String, JSONObject> changeInfo:mEditorChanges.values()) {
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.second);
-                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, edit.visitor));
+                        newVisitors.add(new MPPair<String, ViewVisitor>(changeInfo.first, edit.visitor));
                         mEditorAssetUrls.addAll(edit.imageUrls);
                     } catch (final EditProtocol.CantGetEditAssetsException e) {
                         MPLog.v(LOGTAG, "Can't load assets for an edit, won't apply the change now", e);
@@ -958,7 +959,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                     final JSONObject tweakDesc = mEditorTweaks.get(i);
 
                     try {
-                        final Pair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
+                        final MPPair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
                         if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
                             updatedTweaks.add(tweakValue.first);
                         }
@@ -971,10 +972,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
             {
                 if (mEditorEventBindings.size() == 0 && mOriginalEventBindings.size() == 0) {
-                    for (Pair<String, JSONObject> changeInfo : mPersistentEventBindings) {
+                    for (MPPair<String, JSONObject> changeInfo : mPersistentEventBindings) {
                         try {
                             final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
-                            newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                            newVisitors.add(new MPPair<String, ViewVisitor>(changeInfo.first, visitor));
                         } catch (final EditProtocol.InapplicableInstructionsException e) {
                             MPLog.i(LOGTAG, e.getMessage());
                         } catch (final EditProtocol.BadInstructionsException e) {
@@ -985,10 +986,10 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                for (Pair<String, JSONObject> changeInfo : mEditorEventBindings.values()) {
+                for (MPPair<String, JSONObject> changeInfo : mEditorEventBindings.values()) {
                     try {
                         final ViewVisitor visitor = mProtocol.readEventBinding(changeInfo.second, mDynamicEventTracker);
-                        newVisitors.add(new Pair<String, ViewVisitor>(changeInfo.first, visitor));
+                        newVisitors.add(new MPPair<String, ViewVisitor>(changeInfo.first, visitor));
                     } catch (final EditProtocol.InapplicableInstructionsException e) {
                         MPLog.i(LOGTAG, e.getMessage());
                     } catch (final EditProtocol.BadInstructionsException e) {
@@ -1000,7 +1001,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             final Map<String, List<ViewVisitor>> editMap = new HashMap<String, List<ViewVisitor>>();
             final int totalEdits = newVisitors.size();
             for (int i = 0; i < totalEdits; i++) {
-                final Pair<String, ViewVisitor> next = newVisitors.get(i);
+                final MPPair<String, ViewVisitor> next = newVisitors.get(i);
                 final List<ViewVisitor> mapElement;
                 if (editMap.containsKey(next.first)) {
                     mapElement = editMap.get(next.first);
@@ -1023,12 +1024,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
         }
 
-        private void trackSeenExperiments(Set<Pair<Integer, Integer>> toTrack) {
+        private void trackSeenExperiments(Set<MPPair<Integer, Integer>> toTrack) {
             if (toTrack != null && toTrack.size() > 0) {
                 final JSONObject variantObject = new JSONObject();
 
                 try {
-                    for (Pair<Integer, Integer> variant : toTrack) {
+                    for (MPPair<Integer, Integer> variant : toTrack) {
                         final int experimentId = variant.first;
                         final int variantId = variant.second;
 
@@ -1070,16 +1071,16 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private final EditProtocol mProtocol;
         private final ImageStore mImageStore;
 
-        private final Map<String, Pair<String,JSONObject>> mEditorChanges;
+        private final Map<String, MPPair<String,JSONObject>> mEditorChanges;
         private final List<JSONObject> mEditorTweaks;
         private final List<String> mEditorAssetUrls;
-        private final Map<String, Pair<String,JSONObject>> mEditorEventBindings;
+        private final Map<String, MPPair<String,JSONObject>> mEditorEventBindings;
         private final Set<VariantChange> mAppliedVisualChanges;
         private final Set<VariantTweak> mAppliedTweaks;
-        private final Set<Pair<Integer, Integer>> mEmptyExperiments;
-        private final Set<Pair<String,JSONObject>> mPersistentEventBindings;
-        private final Set<Pair<String,JSONObject>> mOriginalEventBindings;
-        private final Set<Pair<Integer, Integer>> mSeenExperiments;
+        private final Set<MPPair<Integer, Integer>> mEmptyExperiments;
+        private final Set<MPPair<String,JSONObject>> mPersistentEventBindings;
+        private final Set<MPPair<String,JSONObject>> mOriginalEventBindings;
+        private final Set<MPPair<Integer, Integer>> mSeenExperiments;
     }
 
     private class Editor implements EditorConnection.Editor {
@@ -1133,7 +1134,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
     }
 
     private static class VariantChange {
-        public VariantChange(String aName, String anActivityName, JSONObject someChange, Pair<Integer, Integer> aVariantId) {
+        public VariantChange(String aName, String anActivityName, JSONObject someChange, MPPair<Integer, Integer> aVariantId) {
             name = aName;
             activityName = anActivityName;
             change = someChange;
@@ -1157,11 +1158,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         public final String name;
         public final String activityName;
         public final JSONObject change;
-        public final Pair<Integer, Integer> variantId;
+        public final MPPair<Integer, Integer> variantId;
     }
 
     private static class VariantTweak {
-        public VariantTweak(String aTweakName, JSONObject aTweak, Pair<Integer, Integer> aVariantId) {
+        public VariantTweak(String aTweakName, JSONObject aTweak, MPPair<Integer, Integer> aVariantId) {
             tweakName = aTweakName;
             tweak = aTweak;
             variantId = aVariantId;
@@ -1183,7 +1184,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         public final String tweakName;
         public final JSONObject tweak;
-        public final Pair<Integer, Integer> variantId;
+        public final MPPair<Integer, Integer> variantId;
     }
 
     private final MPConfig mConfig;
