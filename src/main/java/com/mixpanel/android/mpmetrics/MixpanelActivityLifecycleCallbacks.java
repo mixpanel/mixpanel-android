@@ -15,7 +15,6 @@ import com.mixpanel.android.viewcrawler.GestureTracker;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Locale;
 
@@ -93,6 +92,7 @@ import java.util.Locale;
             mMpInstance.getPeople().joinExperimentIfAvailable();
         }
 
+        mMpInstance.mSessionMetadata.reset();
         mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;

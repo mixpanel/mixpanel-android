@@ -2195,7 +2195,7 @@ public class MixpanelAPI {
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
-    private final SessionMetadata mSessionMetadata;
+    final SessionMetadata mSessionMetadata;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

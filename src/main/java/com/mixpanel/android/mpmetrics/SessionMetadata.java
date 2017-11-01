@@ -13,14 +13,14 @@ import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
  * Created by yardeneitan on 10/30/17.
  */
 
-public class SessionMetadata {
+class SessionMetadata {
     private Long eventsCounter;
     private Long peopleCounter;
     private Long sessionID;
     private Long sessionStartEpoch;
 
 
-    public SessionMetadata() {
+    SessionMetadata() {
         eventsCounter = 0L;
         peopleCounter = 0L;
         sessionID = 0L;
