@@ -25,7 +25,7 @@ import java.util.Set;
     }
 
     public synchronized void setupIntegrations(Set<String> integrations) {
-        if (integrations.contains("urban_airship")) {
+        if (integrations.contains("urbanairship")) {
             setUrbanAirshipPeopleProp();
         }
     }
