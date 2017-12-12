@@ -1,5 +1,6 @@
 package com.mixpanel.android.util;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -52,6 +53,8 @@ public class HttpService implements RemoteService {
         t.start();
     }
 
+    @SuppressLint("MissingPermission")
+    @SuppressWarnings("MissingPermission")
     @Override
     public boolean isOnline(Context context, OfflineMode offlineMode) {
         if (sIsMixpanelBlocked) return false;
