@@ -19,6 +19,7 @@ import java.util.Set;
 
     public interface OnNewResultsListener {
         void onNewResults();
+        void onNewConnectIntegrations();
     }
 
     public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
@@ -31,6 +32,7 @@ import java.util.Set;
         mUnseenNotifications = new LinkedList<InAppNotification>();
         mNotificationIds = new HashSet<Integer>(notificationIds);
         mVariants = null;
+        mIntegrations = new HashSet<String>();
     }
 
     public String getToken() {
@@ -50,7 +52,11 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(List<InAppNotification> newNotifications, JSONArray eventBindings, JSONArray variants, boolean automaticEvents) {
+    public synchronized void reportResults(List<InAppNotification> newNotifications,
+                                           JSONArray eventBindings,
+                                           JSONArray variants,
+                                           boolean automaticEvents,
+                                           JSONArray integrations) {
         boolean newContent = false;
         int newVariantsLength = variants.length();
         boolean hasNewVariants = false;
@@ -111,6 +117,21 @@ import java.util.Set;
         }
         mAutomaticEventsEnabled = automaticEvents;
 
+        if (integrations != null) {
+            try {
+                HashSet<String> integrationsSet = new HashSet<String>();
+                for (int i = 0; i < integrations.length(); i++) {
+                    integrationsSet.add(integrations.getString(i));
+                }
+                if (!mIntegrations.equals(integrationsSet)) {
+                    mIntegrations = integrationsSet;
+                    mListener.onNewConnectIntegrations();
+                }
+            } catch(JSONException e) {
+                MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);
+            }
+        }
+
         MPLog.v(LOGTAG, "New Decide content has become available. " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
@@ -152,6 +173,8 @@ import java.util.Set;
         return notif;
     }
 
+    public synchronized Set<String> getIntegrations() { return mIntegrations; }
+
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
     public synchronized void markNotificationAsUnseen(InAppNotification notif) {
@@ -184,6 +207,7 @@ import java.util.Set;
     private static final Set<Integer> mLoadedVariants = new HashSet<>();
     private Boolean mAutomaticEventsEnabled;
     private Context mContext;
+    private Set<String> mIntegrations;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";

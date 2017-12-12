@@ -340,8 +340,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         }
 
         @Override
-        public void reportResults(List<InAppNotification> newNotifications, JSONArray newBindings, JSONArray variants, boolean isAutomaticEvents) {
-            super.reportResults(newNotifications, newBindings, variants, isAutomaticEvents);
+        public void reportResults(List<InAppNotification> newNotifications,
+                                  JSONArray eventBindings,
+                                  JSONArray variants,
+                                  boolean automaticEvents,
+                                  JSONArray integrations) {
+            super.reportResults(newNotifications, eventBindings, variants, automaticEvents, integrations);
             mExpectations.resolve();
         }
     }

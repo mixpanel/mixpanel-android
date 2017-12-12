@@ -144,6 +144,8 @@ import com.mixpanel.android.util.MPLog;
         return ret;
     }
 
+    @SuppressLint("MissingPermission")
+    @SuppressWarnings("MissingPermission")
     public Boolean isWifiConnected() {
         Boolean ret = null;
 

@@ -25,6 +25,11 @@ public class DecideMessagesTest extends AndroidTestCase {
             public void onNewResults() {
                 mListenerCalls.add("CALLED");
             }
+
+            @Override
+            public void onNewConnectIntegrations() {
+                mListenerCalls.add("CONNECT INTEGRATIONS");
+            }
         };
 
         mMockUpdates = new UpdatesFromMixpanel() {
@@ -85,7 +90,7 @@ public class DecideMessagesTest extends AndroidTestCase {
     }
 
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
@@ -99,7 +104,7 @@ public class DecideMessagesTest extends AndroidTestCase {
 
         assertNull(mDecideMessages.getNotification(false));
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         assertNull(mDecideMessages.getNotification(false));
 
@@ -109,7 +114,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification unseenNotification = new MiniInAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         assertEquals(mDecideMessages.getNotification(false), unseenNotification);
 
@@ -120,7 +125,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         final InAppNotification n1 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
@@ -134,12 +139,12 @@ public class DecideMessagesTest extends AndroidTestCase {
 
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -150,7 +155,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(newNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
+        mDecideMessages.reportResults(newNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }
