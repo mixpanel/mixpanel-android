@@ -35,7 +35,6 @@ import com.mixpanel.android.java_websocket.handshake.ClientHandshakeBuilder;
 import com.mixpanel.android.java_websocket.handshake.Handshakedata;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshake;
 import com.mixpanel.android.java_websocket.handshake.ServerHandshakeBuilder;
-import com.mixpanel.android.java_websocket.server.WebSocketServer.WebSocketWorker;
 import com.mixpanel.android.java_websocket.util.Charsetfunctions;
 
 /**
@@ -71,11 +70,6 @@ public class WebSocketImpl implements WebSocket {
 	 * Queue of buffers that need to be processed
 	 */
 	public final BlockingQueue<ByteBuffer> inQueue;
-
-	/**
-	 * Helper variable meant to store the thread which ( exclusively ) triggers this objects decode method.
-	 **/
-	public volatile WebSocketWorker workerThread; // TODO reset worker?
 
 	/** When true no further frames may be submitted to be sent */
 	private volatile boolean flushandclosestate = false;
