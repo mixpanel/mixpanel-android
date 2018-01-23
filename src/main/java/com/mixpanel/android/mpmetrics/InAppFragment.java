@@ -8,7 +8,6 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -236,12 +235,6 @@ public class InAppFragment extends Fragment {
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState) {
-        cleanUp();
-        super.onSaveInstanceState(outState);
-    }
-
-    @Override
     public void onPause() {
         super.onPause();
         cleanUp();
@@ -255,7 +248,11 @@ public class InAppFragment extends Fragment {
 
             final FragmentManager fragmentManager = mParent.getFragmentManager();
             FragmentTransaction transaction = fragmentManager.beginTransaction();
-            transaction.remove(this).commit();
+            try {
+                transaction.remove(this).commit();
+            } catch (IllegalStateException e) {
+                transaction.remove(this).commitAllowingStateLoss();
+            }
         }
 
         mCleanedUp = true;
@@ -272,7 +269,11 @@ public class InAppFragment extends Fragment {
             // setCustomAnimations works on a per transaction level, so the animations set
             // when this fragment was created do not apply
             FragmentTransaction transaction = fragmentManager.beginTransaction();
-            transaction.setCustomAnimations(0, R.animator.com_mixpanel_android_slide_down).remove(this).commit();
+            try {
+                transaction.setCustomAnimations(0, R.animator.com_mixpanel_android_slide_down).remove(this).commit();
+            } catch (IllegalStateException e) {
+                transaction.setCustomAnimations(0, R.animator.com_mixpanel_android_slide_down).remove(this).commitAllowingStateLoss();
+            }
             UpdateDisplayState.releaseDisplayState(mDisplayStateId);
             mCleanedUp = true;
         }
