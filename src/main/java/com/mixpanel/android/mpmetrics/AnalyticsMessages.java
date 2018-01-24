@@ -325,7 +325,8 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
                         token = message.getToken();
-                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, MPDbAdapter.Table.PEOPLE, false);
+
+                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, mUrlBuilder.getEndpoint(), MPDbAdapter.Table.PEOPLE, false);
                     } else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
@@ -338,7 +339,7 @@ import javax.net.ssl.SSLSocketFactory;
                             if (decide != null && eventDescription.isAutomatic() && !decide.shouldTrackAutomaticEvent()) {
                                 return;
                             }
-                            returnCode = mDbAdapter.addJSON(message, token, MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
+                            returnCode = mDbAdapter.addJSON(message, token, mUrlBuilder.getEndpoint(), MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -485,7 +486,7 @@ import javax.net.ssl.SSLSocketFactory;
                 if (decideMessages == null || decideMessages.isAutomaticEventsEnabled() == null) {
                     includeAutomaticEvents = false;
                 }
-                String[] eventsData = dbAdapter.generateDataString(table, token, includeAutomaticEvents);
+                String[] eventsData = dbAdapter.generateDataString(table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                 Integer queueCount = 0;
                 if (eventsData != null) {
                     queueCount = Integer.valueOf(eventsData[2]);
@@ -544,7 +545,7 @@ import javax.net.ssl.SSLSocketFactory;
 
                     if (deleteEvents) {
                         logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
-                        dbAdapter.cleanupEvents(lastId, table, token, includeAutomaticEvents);
+                        dbAdapter.cleanupEvents(lastId, table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                     } else {
                         removeMessages(FLUSH_QUEUE, token);
                         mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
@@ -558,7 +559,7 @@ import javax.net.ssl.SSLSocketFactory;
                         break;
                     }
 
-                    eventsData = dbAdapter.generateDataString(table, token, includeAutomaticEvents);
+                    eventsData = dbAdapter.generateDataString(table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                     if (eventsData != null) {
                         queueCount = Integer.valueOf(eventsData[2]);
                     }

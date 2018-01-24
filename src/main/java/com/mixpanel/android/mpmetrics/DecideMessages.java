@@ -23,8 +23,13 @@ import java.util.Set;
     }
 
     public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
+        this(context, token, "", listener, updatesFromMixpanel, notificationIds);
+    }
+
+    public DecideMessages(Context context, String token, String endpoint, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
         mContext = context;
         mToken = token;
+        mEndpoint = endpoint;
         mListener = listener;
         mUpdatesFromMixpanel = updatesFromMixpanel;
 
@@ -199,6 +204,7 @@ import java.util.Set;
     private String mDistinctId;
 
     private final String mToken;
+    private final String mEndpoint;
     private final Set<Integer> mNotificationIds;
     private final List<InAppNotification> mUnseenNotifications;
     private final OnNewResultsListener mListener;

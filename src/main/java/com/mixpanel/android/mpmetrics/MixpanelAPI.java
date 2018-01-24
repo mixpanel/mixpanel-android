@@ -1425,7 +1425,7 @@ public class MixpanelAPI {
     }
 
     /* package */ DecideMessages constructDecideUpdates(final String token, final DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-        return new DecideMessages(mContext, token, listener, updatesFromMixpanel, mPersistentIdentity.getSeenCampaignIds());
+        return new DecideMessages(mContext, token, mEndpoint, listener, updatesFromMixpanel, mPersistentIdentity.getSeenCampaignIds());
     }
 
     /* package */ UpdatesListener constructUpdatesListener() {

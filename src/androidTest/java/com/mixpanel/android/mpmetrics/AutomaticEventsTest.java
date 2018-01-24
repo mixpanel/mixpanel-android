@@ -91,11 +91,11 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, String endpoint, Table table, boolean isAutomaticRecord) {
                 if (token.equalsIgnoreCase(TOKEN)) {
                     mTrackedEvents++;
                     mLatch.countDown();
-                    return super.addJSON(j, token, table, isAutomaticRecord);
+                    return super.addJSON(j, token, endpoint, table, isAutomaticRecord);
                 }
 
                 return 1;
@@ -252,10 +252,10 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, String endpoint, Table table, boolean isAutomaticRecord) {
                 if (token.equalsIgnoreCase(SECOND_TOKEN)) {
                     secondLatch.countDown();
-                    return super.addJSON(j, token, table, isAutomaticRecord);
+                    return super.addJSON(j, token, endpoint, table, isAutomaticRecord);
                 }
 
                 return 1;

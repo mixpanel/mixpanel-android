@@ -120,9 +120,9 @@ public class HttpTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+            public void cleanupEvents(String last_id, Table table, String token, String endpoint, boolean includeAutomaticEvents) {
                 mCleanupCalls.add("called");
-                super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                super.cleanupEvents(last_id, table, token, endpoint, includeAutomaticEvents);
             }
 
             @Override

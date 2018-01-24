@@ -13,6 +13,7 @@ public class MPUrlBuilder {
     private final String mEventEndpoint;
     private final String mPeopleEndpoint;
     private final String mDecideEndpoint;
+    private final String mEndpoint;
     private final String mEditorUrl;
 
     public MPUrlBuilder(MPConfig config) {
@@ -33,7 +34,7 @@ public class MPUrlBuilder {
             mPeopleEndpoint = enpointOveride + "engage";
             mDecideEndpoint = enpointOveride + "decide";
         }
-
+        mEndpoint = enpointOveride == null ? "" : enpointOveride;
         mEditorUrl = config.getEditorUrl();
     }
 
@@ -56,5 +57,9 @@ public class MPUrlBuilder {
 
     public String getEventEndpoint() {
         return mEventEndpoint;
+    }
+
+    public String getEndpoint() {
+        return mEndpoint;
     }
 }
