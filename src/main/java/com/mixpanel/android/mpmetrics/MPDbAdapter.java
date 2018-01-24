@@ -194,6 +194,22 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+        return addJSON(j, token, "", table, isAutomaticRecord);
+    }
+
+
+    /**
+     * Adds a JSON string representing an event with properties or a person record
+     * to the SQLiteDatabase.
+     * @param j the JSON to record
+     * @param token token of the project
+     * @param endpoint endpoint of the project
+     * @param table the table to insert into, either "events" or "people"
+     * @param isAutomaticRecord mark the record as an automatic event or not
+     * @return the number of rows in the table, or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
+     * on failure
+     */
+    public int addJSON(JSONObject j, String token, String endpoint, Table table, boolean isAutomaticRecord) {
         // we are aware of the race condition here, but what can we do..?
         if (!this.belowMemThreshold()) {
             MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
@@ -215,7 +231,7 @@ import com.mixpanel.android.util.MPLog;
             cv.put(KEY_TOKEN, token);
             db.insert(tableName, null, cv);
 
-            c = db.rawQuery("SELECT COUNT(*) FROM " + tableName + " WHERE token='" + token + "'", null);
+            c = db.rawQuery("SELECT COUNT(*) FROM " + tableName + " WHERE token='" + token + endpoint + "'", null);
             c.moveToFirst();
             count = c.getInt(0);
         } catch (final SQLiteException e) {
@@ -238,19 +254,31 @@ import com.mixpanel.android.util.MPLog;
         }
         return count;
     }
-
     /**
      * Removes events with an _id <= last_id from table
      * @param last_id the last id to delete
+     * @param token mxp token
      * @param table the table to remove events from, either "events" or "people"
      * @param includeAutomaticEvents whether or not automatic events should be included in the cleanup
      */
     public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+        cleanupEvents(last_id, table, token, "", includeAutomaticEvents);
+    }
+
+    /**
+     * Removes events with an _id <= last_id from table
+     * @param last_id the last id to delete
+     * @param token mxp token
+     * @param endpoint overidden enpoint
+     * @param table the table to remove events from, either "events" or "people"
+     * @param includeAutomaticEvents whether or not automatic events should be included in the cleanup
+     */
+    public void cleanupEvents(String last_id, Table table, String token, String endpoint, boolean includeAutomaticEvents) {
         final String tableName = table.getName();
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
-            StringBuffer deleteQuery = new StringBuffer("_id <= " + last_id + " AND " + KEY_TOKEN + " = '" + token + "'");
+            StringBuffer deleteQuery = new StringBuffer("_id <= " + last_id + " AND " + KEY_TOKEN + " = '" + token+ endpoint + "'");
 
             if (!includeAutomaticEvents) {
                 deleteQuery.append(" AND " + KEY_AUTOMATIC_DATA + "=0");
@@ -298,16 +326,25 @@ import com.mixpanel.android.util.MPLog;
      * @param token token of the project you want to remove automatic events from
      */
     public synchronized void cleanupAutomaticEvents(String token) {
-        cleanupAutomaticEvents(Table.EVENTS, token);
-        cleanupAutomaticEvents(Table.PEOPLE, token);
+        cleanupAutomaticEvents(token, "");
     }
 
-    private void cleanupAutomaticEvents(Table table, String token) {
+    /**
+     * Removes automatic events.
+     * @param token token of the project you want to remove automatic events from
+     * @param endpoint endpoint of the project you want to remove automatic events from
+     */
+    public synchronized void cleanupAutomaticEvents(String token,  String endpoint) {
+        cleanupAutomaticEvents(Table.EVENTS, token, endpoint);
+        cleanupAutomaticEvents(Table.PEOPLE, token, endpoint);
+    }
+
+    private void cleanupAutomaticEvents(Table table, String token, String endpoint) {
         final String tableName = table.getName();
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
-            db.delete(tableName, KEY_AUTOMATIC_DATA + " = 1 AND " + KEY_TOKEN + " = '" + token + "'", null);
+            db.delete(tableName, KEY_AUTOMATIC_DATA + " = 1 AND " + KEY_TOKEN + " = '" + token + endpoint + "'", null);
         } catch (final SQLiteException e) {
             MPLog.e(LOGTAG, "Could not clean automatic Mixpanel records from " + tableName + ". Re-initializing database.", e);
 
@@ -338,6 +375,22 @@ import com.mixpanel.android.util.MPLog;
      * current number of events in the queue.
      */
     public String[] generateDataString(Table table, String token, boolean includeAutomaticEvents) {
+        return generateDataString(table, token, "", includeAutomaticEvents);
+    }
+
+    /**
+     * Returns the data string to send to Mixpanel and the maximum ID of the row that
+     * we're sending, so we know what rows to delete when a track request was successful.
+     *
+     * @param table the table to read the JSON from, either "events" or "people"
+     * @param token the token of the project you want to retrieve the records for
+     * @param endpoint the endpoint of the project you want to retrieve the records for
+     * @param includeAutomaticEvents whether or not it should include pre-track records
+     * @return String array containing the maximum ID, the data string
+     * representing the events (or null if none could be successfully retrieved) and the total
+     * current number of events in the queue.
+     */
+    public String[] generateDataString(Table table, String token, String endpoint, boolean includeAutomaticEvents) {
         Cursor c = null;
         Cursor queueCountCursor = null;
         String data = null;
@@ -347,8 +400,8 @@ import com.mixpanel.android.util.MPLog;
         final SQLiteDatabase db = mDb.getReadableDatabase();
 
         try {
-            StringBuffer rawDataQuery = new StringBuffer("SELECT * FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
-            StringBuffer queueCountQuery = new StringBuffer("SELECT COUNT(*) FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
+            StringBuffer rawDataQuery = new StringBuffer("SELECT * FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + endpoint + "' ");
+            StringBuffer queueCountQuery = new StringBuffer("SELECT COUNT(*) FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + endpoint + "' ");
             if (!includeAutomaticEvents) {
                 rawDataQuery.append("AND " + KEY_AUTOMATIC_DATA + " = 0 ");
                 queueCountQuery.append(" AND " + KEY_AUTOMATIC_DATA + " = 0");

@@ -14,10 +14,12 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.google.android.gms.iid.InstanceID;
+
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.MPUrlBuilder;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,12 +45,21 @@ import javax.net.ssl.SSLSocketFactory;
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(final Context context) {
+    /* package */ AnalyticsMessages(final Context context, MPUrlBuilder urlBuilder) {
         mContext = context;
         mConfig = getConfig(context);
+        mUrlBuilder = urlBuilder == null ? new MPUrlBuilder(mConfig) : urlBuilder;
         mWorker = createWorker();
         getPoster().checkIsMixpanelBlocked();
     }
+
+    /**
+     * Do not call directly. You should call AnalyticsMessages.getInstance()
+     */
+    /* package */ AnalyticsMessages(final Context context) {
+         this(context, null);
+    }
+
 
     protected Worker createWorker() {
         return new Worker();
@@ -60,19 +71,41 @@ import javax.net.ssl.SSLSocketFactory;
      *
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
+     * @param endpoint mixpanel url
+     */
+    public static AnalyticsMessages getInstance(final Context messageContext, String endpoint) {
+
+        synchronized (sInstanceMap) {
+            final Context appContext = messageContext.getApplicationContext();
+
+            String instanceKey = endpoint == null ? "" : endpoint;
+
+            Map <Context, AnalyticsMessages> instances = sInstanceMap.get(instanceKey);
+            if (null == instances) {
+                instances = new HashMap<Context, AnalyticsMessages>();
+                sInstanceMap.put(instanceKey, instances);
+            }
+
+            AnalyticsMessages instance = instances.get(appContext);
+            if (null == instance) {
+                MPUrlBuilder urlBuilder = new MPUrlBuilder(MPConfig.getInstance(messageContext), endpoint);
+                instance = new AnalyticsMessages(appContext, urlBuilder);
+                instances.put(appContext, instance);
+            }
+
+            return instance;
+        }
+    }
+
+    /**
+     * Use this to get an instance of AnalyticsMessages instead of creating one directly
+     * for yourself.
+     *
+     * @param messageContext should be the Main Activity of the application
+     *     associated with these messages.
      */
     public static AnalyticsMessages getInstance(final Context messageContext) {
-        synchronized (sInstances) {
-            final Context appContext = messageContext.getApplicationContext();
-            AnalyticsMessages ret;
-            if (! sInstances.containsKey(appContext)) {
-                ret = new AnalyticsMessages(appContext);
-                sInstances.put(appContext, ret);
-            } else {
-                ret = sInstances.get(appContext);
-            }
-            return ret;
-        }
+        return getInstance(messageContext, null);
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -271,7 +304,7 @@ import javax.net.ssl.SSLSocketFactory;
             }
 
             protected DecideChecker createDecideChecker() {
-                return new DecideChecker(mContext, mConfig);
+                return new DecideChecker(mContext, mUrlBuilder);
             }
 
             @Override
@@ -292,7 +325,8 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
                         token = message.getToken();
-                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, MPDbAdapter.Table.PEOPLE, false);
+
+                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, mUrlBuilder.getEndpoint(), MPDbAdapter.Table.PEOPLE, false);
                     } else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
@@ -305,7 +339,7 @@ import javax.net.ssl.SSLSocketFactory;
                             if (decide != null && eventDescription.isAutomatic() && !decide.shouldTrackAutomaticEvent()) {
                                 return;
                             }
-                            returnCode = mDbAdapter.addJSON(message, token, MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
+                            returnCode = mDbAdapter.addJSON(message, token, mUrlBuilder.getEndpoint(), MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -441,8 +475,8 @@ import javax.net.ssl.SSLSocketFactory;
                     return;
                 }
 
-                sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
-                sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mUrlBuilder.getEventEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mUrlBuilder.getPeopleEndpoint());
             }
 
             private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
@@ -452,7 +486,7 @@ import javax.net.ssl.SSLSocketFactory;
                 if (decideMessages == null || decideMessages.isAutomaticEventsEnabled() == null) {
                     includeAutomaticEvents = false;
                 }
-                String[] eventsData = dbAdapter.generateDataString(table, token, includeAutomaticEvents);
+                String[] eventsData = dbAdapter.generateDataString(table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                 Integer queueCount = 0;
                 if (eventsData != null) {
                     queueCount = Integer.valueOf(eventsData[2]);
@@ -511,7 +545,7 @@ import javax.net.ssl.SSLSocketFactory;
 
                     if (deleteEvents) {
                         logAboutMessageToMixpanel("Not retrying this batch of events, deleting them from DB.");
-                        dbAdapter.cleanupEvents(lastId, table, token, includeAutomaticEvents);
+                        dbAdapter.cleanupEvents(lastId, table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                     } else {
                         removeMessages(FLUSH_QUEUE, token);
                         mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
@@ -525,7 +559,7 @@ import javax.net.ssl.SSLSocketFactory;
                         break;
                     }
 
-                    eventsData = dbAdapter.generateDataString(table, token, includeAutomaticEvents);
+                    eventsData = dbAdapter.generateDataString(table, token, mUrlBuilder.getEndpoint(), includeAutomaticEvents);
                     if (eventsData != null) {
                         queueCount = Integer.valueOf(eventsData[2]);
                     }
@@ -677,6 +711,7 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Used across thread boundaries
     private final Worker mWorker;
+    private final MPUrlBuilder mUrlBuilder;
     protected final Context mContext;
     protected final MPConfig mConfig;
 
@@ -690,6 +725,6 @@ import javax.net.ssl.SSLSocketFactory;
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 
-    private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
-
+    // Maps each token/endpoint tuple to a singleton AnalyticsMessages instance
+    private static final Map<String, Map<Context, AnalyticsMessages>> sInstanceMap = new HashMap<String, Map<Context, AnalyticsMessages>>();
 }

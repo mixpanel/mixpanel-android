@@ -366,6 +366,11 @@ public class MPConfig {
         return mDecideEndpoint;
     }
 
+    // Preferred URL for tracking events
+    public Boolean getUseIpAddressForGeolocation() {
+        return mUseIpAddressForGeolocation;
+    }
+
     // Check for and show eligible in app notifications on Activity changes
     public boolean getAutoShowMixpanelUpdates() {
         return mAutoShowMixpanelUpdates;

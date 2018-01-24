@@ -117,7 +117,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+            public int addJSON(JSONObject message, String token, String endpoint, MPDbAdapter.Table table, boolean isAutomatic) {
                 if (!isAutomatic) {
                     messages.add(message);
                     throw new RuntimeException("BANG!");
@@ -165,7 +165,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+            public int addJSON(JSONObject message, String token, String endpoint, MPDbAdapter.Table table, boolean isAutomatic) {
                 if (!isAutomatic) {
                     messages.add(message);
                 }
@@ -420,7 +420,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
+            public int addJSON(JSONObject message, String token, String endpoint, MPDbAdapter.Table table, boolean isAutomaticEvent) {
                 if (!isAutomaticEvent) {
                     try {
                         messages.put("TABLE " + table.getName());
@@ -430,7 +430,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     }
                 }
 
-                return super.addJSON(message, token, table, isAutomaticEvent);
+                return super.addJSON(message, token, endpoint, table, isAutomaticEvent);
             }
         };
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
@@ -693,12 +693,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String endpoint) {
                 final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
 
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, endpoint);
             }
 
             @Override
@@ -780,7 +780,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
                 final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
                     @Override
-                    public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
+                    public int addJSON(JSONObject message, String token, String endpoint, MPDbAdapter.Table table, boolean isAutomatic) {
                         if (!isAutomatic) {
                             mMessages.add(message);
                         }

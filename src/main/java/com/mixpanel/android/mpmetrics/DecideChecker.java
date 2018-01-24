@@ -11,6 +11,7 @@ import android.view.WindowManager;
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.MPUrlBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,8 +32,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 /* package */ class DecideChecker {
     private static final String LOGTAG = "MixpanelAPI.DChecker";
-
-    private final MPConfig mConfig;
+    private final MPUrlBuilder mUrlBuilder;
     private final Context mContext;
     private final Map<String, DecideMessages> mChecks;
     private final ImageStore mImageStore;
@@ -61,12 +61,16 @@ import javax.net.ssl.SSLSocketFactory;
         public JSONArray integrations;
     }
 
-    public DecideChecker(final Context context, final MPConfig config) {
+    public DecideChecker(final Context context, final MPUrlBuilder urlBuilder) {
         mContext = context;
-        mConfig = config;
+        mUrlBuilder = urlBuilder;
         mChecks = new HashMap<String, DecideMessages>();
         mImageStore = createImageStore(context);
         mSystemInformation = SystemInformation.getInstance(context);
+    }
+
+    public DecideChecker(final Context context, final MPConfig config) {
+        this(context, new MPUrlBuilder(config));
     }
 
     protected ImageStore createImageStore(final Context context) {
@@ -245,7 +249,7 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         final String checkQuery = queryBuilder.toString();
-        final String url = mConfig.getDecideEndpoint() + checkQuery;
+        final String url = mUrlBuilder.getDecideEndpoint() + checkQuery;
 
         MPLog.v(LOGTAG, "Querying decide server, url: " + url);
 
