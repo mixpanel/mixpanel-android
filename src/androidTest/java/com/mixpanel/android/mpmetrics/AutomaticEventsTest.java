@@ -143,12 +143,12 @@ public class AutomaticEventsTest extends AndroidTestCase {
         mCleanMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN) {
 
             @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String endpoint) {
+                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token + endpoint;
                 final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
                 ret.edit().clear().commit();
 
-                final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+                final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token + endpoint;
                 final SharedPreferences timeSharedPrefs = context.getSharedPreferences(timeEventsPrefsName, Context.MODE_PRIVATE);
                 timeSharedPrefs.edit().clear().commit();
 
@@ -156,7 +156,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putInt("latest_version_code", -2).commit(); // -1 is the default value
 
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, endpoint);
             }
 
             @Override

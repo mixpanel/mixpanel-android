@@ -280,7 +280,7 @@ public class MixpanelAPI {
 
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mTrackingDebug = constructTrackingDebug();
-        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
+        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, endPoint == null ? "" : endPoint);
         mEventTimings = mPersistentIdentity.getTimeEvents();
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
@@ -1401,7 +1401,7 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext, mEndpoint);
     }
 
-    /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
+    /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token, final String endpoint) {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
             public void onPrefsLoaded(SharedPreferences preferences) {
@@ -1412,10 +1412,10 @@ public class MixpanelAPI {
             }
         };
 
-        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token + endpoint;
         final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
 
-        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token + endpoint;
         final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
 
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";

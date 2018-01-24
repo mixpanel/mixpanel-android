@@ -693,12 +693,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String endpoint) {
                 final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
 
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, endpoint);
             }
 
             @Override
