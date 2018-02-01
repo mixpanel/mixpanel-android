@@ -70,6 +70,11 @@ public class InAppFragment extends Fragment {
             return;
         }
 
+        View decorView = mParent.getWindow().getDecorView();
+        if (decorView != null) {
+            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+            decorView.setSystemUiVisibility(uiOptions);
+        }
         // We have to manually clear these Runnables in onStop in case they exist, since they
         // do illegal operations when onSaveInstanceState has been called already.
 
@@ -276,6 +281,13 @@ public class InAppFragment extends Fragment {
             }
             UpdateDisplayState.releaseDisplayState(mDisplayStateId);
             mCleanedUp = true;
+            
+            // reset ui
+            View decorView = mParent.getWindow().getDecorView();
+            if (decorView != null) {
+                int uiOptions = View.SYSTEM_UI_FLAG_VISIBLE;
+                decorView.setSystemUiVisibility(uiOptions);
+            }
         }
     }
 
