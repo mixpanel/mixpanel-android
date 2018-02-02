@@ -58,10 +58,9 @@ public class Tweaks {
             MPLog.w(LOGTAG, "Attempt to reference a tweak \"" + tweakName + "\" which has never been defined.");
             return false;
         }
-        if(container == null || container.value == null)
-            return value == null;
-        
         final TweakValue container = mTweakValues.get(tweakName);
+        if (container == null || container.value == null)
+            return value == null;
         return !container.value.equals(value);
     }
 
