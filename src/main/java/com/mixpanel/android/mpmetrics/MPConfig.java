@@ -7,6 +7,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 
 import com.mixpanel.android.BuildConfig;
+import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode;
 
@@ -253,26 +254,29 @@ public class MPConfig {
         mNotificationChannelName = notificationChannelName;
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
-        if (null == eventsEndpoint) {
-            eventsEndpoint = "https://api.mixpanel.com/track?ip=" + (getUseIpAddressForGeolocation() ? "1" : "0");
+        if (eventsEndpoint != null) {
+            setEventsEndpoint(eventsEndpoint);
+        } else {
+            setMixpanelEventsEndpoint();
         }
-        setEventsEndpoint(eventsEndpoint);
 
         String peopleEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleEndpoint");
-        if (null == peopleEndpoint) {
-            peopleEndpoint = "https://api.mixpanel.com/engage";
+        if (peopleEndpoint != null) {
+            setPeopleEndpoint(peopleEndpoint);
+        } else {
+            setMixpanelPeopleEndpoint();
         }
-        mPeopleEndpoint = peopleEndpoint;
 
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
-        if (null == decideEndpoint) {
-            decideEndpoint = "https://decide.mixpanel.com/decide";
+        if (decideEndpoint != null) {
+            setDecideEndpoint(decideEndpoint);
+        } else {
+            setMixpanelDecideEndpoint();
         }
-        mDecideEndpoint = decideEndpoint;
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
         if (null == editorUrl) {
-            editorUrl = "wss://switchboard.mixpanel.com/connect/";
+            editorUrl = MPConstants.URL.SWITCHBOARD;
         }
         mEditorUrl = editorUrl;
 
@@ -330,6 +334,10 @@ public class MPConfig {
         return mEventsEndpoint;
     }
 
+    public void setMixpanelEventsEndpoint() {
+        setEventsEndpoint(MPConstants.URL.EVENT + (getUseIpAddressForGeolocation() ? "1" : "0"));
+    }
+
     public void setEventsEndpoint(String eventsEndpoint) {
         mEventsEndpoint = eventsEndpoint;
     }
@@ -339,9 +347,25 @@ public class MPConfig {
         return mPeopleEndpoint;
     }
 
+    public void setMixpanelPeopleEndpoint() {
+        setPeopleEndpoint(MPConstants.URL.PEOPLE);
+    }
+
+    public void setPeopleEndpoint(String peopleEndpoint) {
+        mPeopleEndpoint = peopleEndpoint;
+    }
+
     // Preferred URL for pulling decide data
     public String getDecideEndpoint() {
         return mDecideEndpoint;
+    }
+
+    public void setMixpanelDecideEndpoint() {
+        setDecideEndpoint(MPConstants.URL.DECIDE);
+    }
+
+    public void setDecideEndpoint(String decideEndpoint) {
+        mDecideEndpoint = decideEndpoint;
     }
 
     // Check for and show eligible in app notifications on Activity changes
@@ -478,8 +502,8 @@ public class MPConfig {
     private final boolean mDisableViewCrawler;
     private final String[] mDisableViewCrawlerForProjects;
     private String mEventsEndpoint;
-    private final String mPeopleEndpoint;
-    private final String mDecideEndpoint;
+    private String mPeopleEndpoint;
+    private String mDecideEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;
