@@ -7,6 +7,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 
 import com.mixpanel.android.BuildConfig;
+import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode;
 
@@ -253,26 +254,29 @@ public class MPConfig {
         mNotificationChannelName = notificationChannelName;
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
-        if (null == eventsEndpoint) {
-            eventsEndpoint = "https://api.mixpanel.com/track?ip=" + (mUseIpAddressForGeolocation ? "1" : "0");
+        if (eventsEndpoint != null) {
+            setEventsEndpoint(eventsEndpoint);
+        } else {
+            setMixpanelEventsEndpoint();
         }
-        mEventsEndpoint = eventsEndpoint;
 
         String peopleEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleEndpoint");
-        if (null == peopleEndpoint) {
-            peopleEndpoint = "https://api.mixpanel.com/engage";
+        if (peopleEndpoint != null) {
+            setPeopleEndpoint(peopleEndpoint);
+        } else {
+            setMixpanelPeopleEndpoint();
         }
-        mPeopleEndpoint = peopleEndpoint;
 
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
-        if (null == decideEndpoint) {
-            decideEndpoint = "https://decide.mixpanel.com/decide";
+        if (decideEndpoint != null) {
+            setDecideEndpoint(decideEndpoint);
+        } else {
+            setMixpanelDecideEndpoint();
         }
-        mDecideEndpoint = decideEndpoint;
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
         if (null == editorUrl) {
-            editorUrl = "wss://switchboard.mixpanel.com/connect/";
+            editorUrl = MPConstants.URL.SWITCHBOARD;
         }
         mEditorUrl = editorUrl;
 
@@ -283,33 +287,7 @@ public class MPConfig {
             mDisableViewCrawlerForProjects = new String[0];
         }
 
-        MPLog.v(LOGTAG,
-                "Mixpanel (" + VERSION + ") configured with:\n" +
-                "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
-                "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
-                "    FlushInterval " + getFlushInterval() + "\n" +
-                "    DataExpiration " + getDataExpiration() + "\n" +
-                "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
-                "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
-                "    DisableViewCrawler " + getDisableViewCrawler() + "\n" +
-                "    DisableGestureBindingUI " + getDisableGestureBindingUI() + "\n" +
-                "    DisableEmulatorBindingUI " + getDisableEmulatorBindingUI() + "\n" +
-                "    EnableDebugLogging " + DEBUG + "\n" +
-                "    TestMode " + getTestMode() + "\n" +
-                "    EventsEndpoint " + getEventsEndpoint() + "\n" +
-                "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
-                "    DecideEndpoint " + getDecideEndpoint() + "\n" +
-                "    EditorUrl " + getEditorUrl() + "\n" +
-                "    ImageCacheMaxMemoryFactor " + getImageCacheMaxMemoryFactor() + "\n" +
-                "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
-                "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
-                "    NotificationDefaults " + getNotificationDefaults() + "\n" +
-                "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
-                "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
-                "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
-                "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
-                "    NotificationChannelImportance: " + getNotificationChannelImportance()
-        );
+        MPLog.v(LOGTAG, toString());
     }
 
     // Max size of queue before we require a flush. Must be below the limit the service will accept.
@@ -356,14 +334,38 @@ public class MPConfig {
         return mEventsEndpoint;
     }
 
+    public void setMixpanelEventsEndpoint() {
+        setEventsEndpoint(MPConstants.URL.EVENT + (getUseIpAddressForGeolocation() ? "1" : "0"));
+    }
+
+    public void setEventsEndpoint(String eventsEndpoint) {
+        mEventsEndpoint = eventsEndpoint;
+    }
+
     // Preferred URL for tracking people
     public String getPeopleEndpoint() {
         return mPeopleEndpoint;
     }
 
+    public void setMixpanelPeopleEndpoint() {
+        setPeopleEndpoint(MPConstants.URL.PEOPLE);
+    }
+
+    public void setPeopleEndpoint(String peopleEndpoint) {
+        mPeopleEndpoint = peopleEndpoint;
+    }
+
     // Preferred URL for pulling decide data
     public String getDecideEndpoint() {
         return mDecideEndpoint;
+    }
+
+    public void setMixpanelDecideEndpoint() {
+        setDecideEndpoint(MPConstants.URL.DECIDE);
+    }
+
+    public void setDecideEndpoint(String decideEndpoint) {
+        mDecideEndpoint = decideEndpoint;
     }
 
     // Check for and show eligible in app notifications on Activity changes
@@ -406,6 +408,10 @@ public class MPConfig {
 
     public int getNotificationChannelImportance() {
         return mNotificationChannelImportance;
+    }
+
+    public boolean getUseIpAddressForGeolocation() {
+        return mUseIpAddressForGeolocation;
     }
 
     // Pre-configured package name for resources, if they differ from the application package name
@@ -456,6 +462,35 @@ public class MPConfig {
         }
     }
 
+    @Override
+    public String toString() {
+        return "Mixpanel (" + VERSION + ") configured with:\n" +
+                "    AutoShowMixpanelUpdates " + getAutoShowMixpanelUpdates() + "\n" +
+                "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
+                "    FlushInterval " + getFlushInterval() + "\n" +
+                "    DataExpiration " + getDataExpiration() + "\n" +
+                "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
+                "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
+                "    DisableViewCrawler " + getDisableViewCrawler() + "\n" +
+                "    DisableGestureBindingUI " + getDisableGestureBindingUI() + "\n" +
+                "    DisableEmulatorBindingUI " + getDisableEmulatorBindingUI() + "\n" +
+                "    EnableDebugLogging " + DEBUG + "\n" +
+                "    TestMode " + getTestMode() + "\n" +
+                "    EventsEndpoint " + getEventsEndpoint() + "\n" +
+                "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
+                "    DecideEndpoint " + getDecideEndpoint() + "\n" +
+                "    EditorUrl " + getEditorUrl() + "\n" +
+                "    ImageCacheMaxMemoryFactor " + getImageCacheMaxMemoryFactor() + "\n" +
+                "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
+                "    IgnoreInvisibleViewsEditor " + getIgnoreInvisibleViewsEditor() + "\n" +
+                "    NotificationDefaults " + getNotificationDefaults() + "\n" +
+                "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
+                "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
+                "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
+                "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
+                "    NotificationChannelImportance: " + getNotificationChannelImportance();
+    }
+
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
     private final int mDataExpiration;
@@ -466,9 +501,9 @@ public class MPConfig {
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableViewCrawler;
     private final String[] mDisableViewCrawlerForProjects;
-    private final String mEventsEndpoint;
-    private final String mPeopleEndpoint;
-    private final String mDecideEndpoint;
+    private String mEventsEndpoint;
+    private String mPeopleEndpoint;
+    private String mDecideEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;
     private final String mResourcePackageName;
