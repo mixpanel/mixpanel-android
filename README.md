@@ -40,8 +40,13 @@ compile "com.google.android.gms:play-services-gcm:7.5.0+"
 ### Permissions in *app/src/main/AndroidManifest.xml*
 
 ```xml
+<!-- This permission is required to allow the application to send events and properties to Mixpanel -->
 <uses-permission android:name="android.permission.INTERNET" />
+
+<!-- This permission is optional but recommended so we can be smart about when to send data  -->
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<!-- This permission is optional but recommended so events will contain information about bluetooth state -->
 <uses-permission android:name="android.permission.BLUETOOTH" />
 ```
 
