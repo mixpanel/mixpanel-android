@@ -223,7 +223,7 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
+        mDataExpiration = metaData.getFloat("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
@@ -301,7 +301,7 @@ public class MPConfig {
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
-    public int getDataExpiration() {
+    public float getDataExpiration() {
         return mDataExpiration;
     }
 
@@ -493,7 +493,7 @@ public class MPConfig {
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
-    private final int mDataExpiration;
+    private final float mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;

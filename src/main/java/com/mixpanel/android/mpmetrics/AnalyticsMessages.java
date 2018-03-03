@@ -278,8 +278,9 @@ import javax.net.ssl.SSLSocketFactory;
             public void handleMessage(Message msg) {
                 if (mDbAdapter == null) {
                     mDbAdapter = makeDbAdapter(mContext);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.EVENTS);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.PEOPLE);
+                    long dataExpiration = (long) mConfig.getDataExpiration();
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - dataExpiration, MPDbAdapter.Table.EVENTS);
+                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - dataExpiration, MPDbAdapter.Table.PEOPLE);
                 }
 
                 try {
