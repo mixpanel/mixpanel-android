@@ -223,7 +223,6 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mDataExpiration = metaData.getInt("com.mixpanel.android.MPConfig.DataExpiration", 1000 * 60 * 60 * 24 * 5); // 5 days default
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
@@ -240,6 +239,23 @@ public class MPConfig {
         mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
         mNotificationChannelImportance = metaData.getInt("com.mixpanel.android.MPConfig.NotificationChannelImportance", 3); // NotificationManger.IMPORTANCE_DEFAULT
+
+        Object dataExpirationMetaData = metaData.get("com.mixpanel.android.MPConfig.DataExpiration");
+        long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
+        if (dataExpirationMetaData != null) {
+            try {
+                if (dataExpirationMetaData instanceof Integer) {
+                    dataExpirationLong = (long) (int) dataExpirationMetaData;
+                } else if (dataExpirationMetaData instanceof Float) {
+                    dataExpirationLong = (long) (float) dataExpirationMetaData;
+                } else {
+                    throw new NumberFormatException(dataExpirationMetaData.toString() + " is not a number.");
+                }
+            } catch (Exception e) {
+                MPLog.e(LOGTAG,"Error parsing com.mixpanel.android.MPConfig.DataExpiration meta-data value", e);
+            }
+        }
+        mDataExpiration = dataExpirationLong;
 
         String notificationChannelId = metaData.getString("com.mixpanel.android.MPConfig.NotificationChannelId");
         if (notificationChannelId == null) {
@@ -301,7 +317,7 @@ public class MPConfig {
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
-    public int getDataExpiration() {
+    public long getDataExpiration() {
         return mDataExpiration;
     }
 
@@ -493,7 +509,7 @@ public class MPConfig {
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
-    private final int mDataExpiration;
+    private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mTestMode;
     private final boolean mDisableGestureBindingUI;
