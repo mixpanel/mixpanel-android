@@ -23,7 +23,7 @@ public class TestUtils {
 
     public static class CleanMixpanelAPI extends MixpanelAPI {
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            super(context, referrerPreferences, token);
+            super(context, referrerPreferences, token, false);
         }
 
         @Override

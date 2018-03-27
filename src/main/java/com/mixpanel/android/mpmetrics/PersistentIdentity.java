@@ -137,6 +137,21 @@ import com.mixpanel.android.util.MPLog;
         return mReferrerPropertiesCache;
     }
 
+    public void clearReferrerProperties() {
+        synchronized (sReferrerPrefsLock) {
+            try {
+                final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
+                final SharedPreferences.Editor prefsEdit = referrerPrefs.edit();
+                prefsEdit.clear();
+                writeEdits(prefsEdit);
+            } catch (final ExecutionException e) {
+                MPLog.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e.getCause());
+            } catch (final InterruptedException e) {
+                MPLog.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e);
+            }
+        }
+    }
+
     public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -148,6 +163,7 @@ import com.mixpanel.android.util.MPLog;
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
+
         mEventsDistinctId = eventsDistinctId;
         writeIdentities();
     }
@@ -163,6 +179,7 @@ import com.mixpanel.android.util.MPLog;
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
+
         mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
     }
@@ -174,8 +191,16 @@ import com.mixpanel.android.util.MPLog;
         if (null == mWaitingPeopleRecords) {
             mWaitingPeopleRecords = new JSONArray();
         }
+
         mWaitingPeopleRecords.put(record);
         writeIdentities();
+    }
+
+    /* package */ synchronized JSONArray getWaitingPeopleRecords() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mWaitingPeopleRecords;
     }
 
     public synchronized JSONArray waitingPeopleRecordsForSending() {
@@ -208,6 +233,19 @@ import com.mixpanel.android.util.MPLog;
             throw new RuntimeException(e.getCause());
         } catch (final InterruptedException e) {
             throw new RuntimeException(e.getCause());
+        }
+    }
+
+    public void clearTimeEvents() {
+        try {
+            final SharedPreferences prefs = mTimeEventsPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.clear();
+            writeEdits(editor);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
         }
     }
 
@@ -462,6 +500,19 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    public synchronized void setOptOutTracking(boolean optOutTracking) {
+        mIsUserOptOut = optOutTracking;
+        writeOptOutFlag();
+    }
+
+    public synchronized boolean getOptOutTracking() {
+        if (mIsUserOptOut == null) {
+            readOptOutFlag();
+        }
+
+        return mIsUserOptOut;
+    }
+
     //////////////////////////////////////////////////
 
     // Must be called from a synchronized setting
@@ -573,6 +624,35 @@ import com.mixpanel.android.util.MPLog;
         mIdentitiesLoaded = true;
     }
 
+    private void readOptOutFlag() {
+        SharedPreferences prefs = null;
+        try {
+            prefs = mMixpanelPreferences.get();
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Cannot read opt out flag from sharedPreferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Cannot read opt out flag from sharedPreferences.", e);
+        }
+
+        if (null == prefs) {
+            return;
+        }
+
+        mIsUserOptOut = prefs.getBoolean("opt_out", false);
+    }
+
+    private void writeOptOutFlag() {
+        try {
+            final SharedPreferences prefs = mMixpanelPreferences.get();
+            final SharedPreferences.Editor prefsEditor = prefs.edit();
+            prefsEditor.putBoolean("opt_out", mIsUserOptOut);
+            writeEdits(prefsEditor);
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e);
+        }
+    }
     // All access should be synchronized on this
     private void writeIdentities() {
         try {
@@ -609,6 +689,7 @@ import com.mixpanel.android.util.MPLog;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
+    private Boolean mIsUserOptOut;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
 

@@ -655,7 +655,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testPersistence() {
-        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false);
         metricsOne.reset();
 
         JSONObject props;
@@ -690,7 +690,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         class ListeningAPI extends MixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token);
+                super(c, prefs, token, false);
             }
 
             @Override
