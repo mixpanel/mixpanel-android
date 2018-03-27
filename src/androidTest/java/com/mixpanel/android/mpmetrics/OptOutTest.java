@@ -350,7 +350,7 @@ public class OptOutTest extends AndroidTestCase {
                 if (token.equalsIgnoreCase(TOKEN)) {
                     result = super.addJSON(j, token, table, isAutomaticRecord);
                     try {
-                        if (Table.EVENTS == table) {
+                        if (!isAutomaticRecord && Table.EVENTS == table) {
                             mStoredEvents.put(j.getString("event"));
                         } else if (Table.PEOPLE == table) {
                             mStoredPeopleUpdates.put(j.toString());
