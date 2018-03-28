@@ -148,13 +148,11 @@ import javax.net.ssl.SSLSocketFactory;
         public EventDescription(String eventName,
                                 JSONObject properties,
                                 String token,
-                                boolean isAutomatic,
-                                SessionMetadata metadata) {
+                                boolean isAutomatic) {
             super(token);
             mEventName = eventName;
             mProperties = properties;
             mIsAutomatic = isAutomatic;
-            mSessionMetadata = metadata;
         }
 
         public String getEventName() {
@@ -172,7 +170,6 @@ import javax.net.ssl.SSLSocketFactory;
         private final String mEventName;
         private final JSONObject mProperties;
         private final boolean mIsAutomatic;
-        private final SessionMetadata mSessionMetadata;
     }
 
     static class PeopleDescription extends MixpanelDescription {
@@ -640,7 +637,6 @@ import javax.net.ssl.SSLSocketFactory;
                 }
                 eventObj.put("event", eventDescription.getEventName());
                 eventObj.put("properties", sendProperties);
-                eventDescription.mSessionMetadata.addMetadataToObject(eventObj, true);
                 return eventObj;
             }
 

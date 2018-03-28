@@ -92,7 +92,6 @@ import java.util.Locale;
             mMpInstance.getPeople().joinExperimentIfAvailable();
         }
 
-        mMpInstance.mSessionMetadata.reset();
         mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;
@@ -104,6 +103,7 @@ import java.util.Locale;
         if (wasBackground) {
             // App is in foreground now
             sStartSessionTime = (double) System.currentTimeMillis();
+            mMpInstance.onForeground();
         }
     }
 

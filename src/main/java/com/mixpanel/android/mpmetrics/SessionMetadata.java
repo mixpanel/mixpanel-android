@@ -9,45 +9,46 @@ import java.util.Random;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
-/**
- * Created by yardeneitan on 10/30/17.
- */
+/* package */ class SessionMetadata {
+    private long mEventsCounter, mPeopleCounter, mSessionID, mSessionStartEpoch;
 
-class SessionMetadata {
-    private Long eventsCounter;
-    private Long peopleCounter;
-    private Long sessionID;
-    private Long sessionStartEpoch;
-
-
-    SessionMetadata() {
-        eventsCounter = 0L;
-        peopleCounter = 0L;
-        sessionID = 0L;
-        sessionStartEpoch = System.currentTimeMillis();
+    /* package */ SessionMetadata() {
+        initSession();
     }
 
-    void reset() {
-        eventsCounter = 0L;
-        peopleCounter = 0L;
-        sessionID = new Random().nextLong();
+    protected void initSession() {
+        mEventsCounter = 0L;
+        mPeopleCounter = 0L;
+        mSessionID = new Random().nextLong();
+        mSessionStartEpoch = System.currentTimeMillis();
     }
 
-    void addMetadataToObject(JSONObject object, Boolean isEvent) {
+    public JSONObject getMetadataForEvent() {
+        return getNewMetadata(true);
+    }
+
+    public JSONObject getMetadataForPeople() {
+        return getNewMetadata(false);
+    }
+
+    private JSONObject getNewMetadata(boolean isEvent) {
         try {
-            object.put("$mp_event_id", new Random().nextLong());
-            object.put("$mp_session_id", sessionID);
-            object.put("$mp_session_seq_id", isEvent ? eventsCounter : peopleCounter);
-            object.put("$mp_session_start_sec", sessionStartEpoch);
+            JSONObject metadataJson = new JSONObject();
+            metadataJson.put("$mp_event_id", new Random().nextLong());
+            metadataJson.put("$mp_session_id", mSessionID);
+            metadataJson.put("$mp_session_seq_id", isEvent ? mEventsCounter : mPeopleCounter);
+            metadataJson.put("$mp_session_start_sec", mSessionStartEpoch);
             if (isEvent) {
-                eventsCounter += 1;
+                mEventsCounter += 1;
             } else {
-                peopleCounter += 1;
+                mPeopleCounter += 1;
             }
+
+            return metadataJson;
         } catch (JSONException e) {
             MPLog.e(LOGTAG, "value read cannot be written to a JSON object", e);
         }
+
+        return new JSONObject();
     }
-
-
 }
