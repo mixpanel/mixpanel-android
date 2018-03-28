@@ -9,45 +9,47 @@ import java.util.Random;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
-/**
- * Created by yardeneitan on 10/30/17.
- */
+/* package */ class SessionMetadata {
+    private long mEventsCounter, mPeopleCounter, mSessionStartEpoch;
+    private String mSessionID;
+    private Random mRandom;
 
-class SessionMetadata {
-    private Long eventsCounter;
-    private Long peopleCounter;
-    private Long sessionID;
-    private Long sessionStartEpoch;
-
-
-    SessionMetadata() {
-        eventsCounter = 0L;
-        peopleCounter = 0L;
-        sessionID = 0L;
-        sessionStartEpoch = System.currentTimeMillis();
+    /* package */ SessionMetadata() {
+        initSession();
+        mRandom = new Random();
     }
 
-    void reset() {
-        eventsCounter = 0L;
-        peopleCounter = 0L;
-        sessionID = new Random().nextLong();
+    protected void initSession() {
+        mEventsCounter = 0L;
+        mPeopleCounter = 0L;
+        mSessionID = Long.toHexString(new Random().nextLong());
+        mSessionStartEpoch = System.currentTimeMillis() / 1000;
     }
 
-    void addMetadataToObject(JSONObject object, Boolean isEvent) {
+    public JSONObject getMetadataForEvent() {
+        return getNewMetadata(true);
+    }
+
+    public JSONObject getMetadataForPeople() {
+        return getNewMetadata(false);
+    }
+
+    private JSONObject getNewMetadata(boolean isEvent) {
+        JSONObject metadataJson = new JSONObject();
         try {
-            object.put("$mp_event_id", new Random().nextLong());
-            object.put("$mp_session_id", sessionID);
-            object.put("$mp_session_seq_id", isEvent ? eventsCounter : peopleCounter);
-            object.put("$mp_session_start_sec", sessionStartEpoch);
+            metadataJson.put("$mp_event_id", Long.toHexString(mRandom.nextLong()));
+            metadataJson.put("$mp_session_id", mSessionID);
+            metadataJson.put("$mp_session_seq_id", isEvent ? mEventsCounter : mPeopleCounter);
+            metadataJson.put("$mp_session_start_sec", mSessionStartEpoch);
             if (isEvent) {
-                eventsCounter += 1;
+                mEventsCounter++;
             } else {
-                peopleCounter += 1;
+                mPeopleCounter++;
             }
         } catch (JSONException e) {
-            MPLog.e(LOGTAG, "value read cannot be written to a JSON object", e);
+            MPLog.e(LOGTAG, "Cannot create session metadata JSON object", e);
         }
+
+        return metadataJson;
     }
-
-
 }

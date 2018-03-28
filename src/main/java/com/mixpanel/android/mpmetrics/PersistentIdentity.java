@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;

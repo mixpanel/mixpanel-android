@@ -147,14 +147,20 @@ import javax.net.ssl.SSLSocketFactory;
     static class EventDescription extends MixpanelDescription {
         public EventDescription(String eventName,
                                 JSONObject properties,
+                                String token) {
+            this(eventName, properties, token, false, new JSONObject());
+        }
+
+        public EventDescription(String eventName,
+                                JSONObject properties,
                                 String token,
                                 boolean isAutomatic,
-                                SessionMetadata metadata) {
+                                JSONObject sessionMetada) {
             super(token);
             mEventName = eventName;
             mProperties = properties;
             mIsAutomatic = isAutomatic;
-            mSessionMetadata = metadata;
+            mSessionMetadata = sessionMetada;
         }
 
         public String getEventName() {
@@ -165,14 +171,18 @@ import javax.net.ssl.SSLSocketFactory;
             return mProperties;
         }
 
+        public JSONObject getSessionMetadata() {
+            return mSessionMetadata;
+        }
+
         public boolean isAutomatic() {
             return mIsAutomatic;
         }
 
         private final String mEventName;
         private final JSONObject mProperties;
+        private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
-        private final SessionMetadata mSessionMetadata;
     }
 
     static class PeopleDescription extends MixpanelDescription {
@@ -640,7 +650,7 @@ import javax.net.ssl.SSLSocketFactory;
                 }
                 eventObj.put("event", eventDescription.getEventName());
                 eventObj.put("properties", sendProperties);
-                eventDescription.mSessionMetadata.addMetadataToObject(eventObj, true);
+                eventObj.put("$mp_metadata", eventDescription.getSessionMetadata());
                 return eventObj;
             }
 
