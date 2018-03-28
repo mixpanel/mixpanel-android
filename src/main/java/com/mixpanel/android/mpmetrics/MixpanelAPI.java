@@ -268,8 +268,6 @@ public class MixpanelAPI {
 
         if (optOutTrackingDefault) {
             optOutTracking();
-        } else {
-            mPersistentIdentity.setOptOutTracking(false);
         }
 
         mUpdatesListener = constructUpdatesListener();
