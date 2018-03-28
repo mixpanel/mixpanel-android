@@ -118,7 +118,7 @@ import com.mixpanel.android.util.MPLog;
         }
 
         final JSONObject replacementCache = updates.update(copy);
-        if (null == replacementCache) {
+        if (replacementCache == null) {
             MPLog.w(LOGTAG, "An update to Mixpanel's super properties returned null, and will have no effect.");
             return;
         }
@@ -517,7 +517,7 @@ import com.mixpanel.android.util.MPLog;
 
     // Must be called from a synchronized setting
     private JSONObject getSuperPropertiesCache() {
-        if (null == mSuperPropertiesCache) {
+        if (mSuperPropertiesCache == null) {
             readSuperProperties();
         }
         return mSuperPropertiesCache;
@@ -538,7 +538,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Cannot parse stored superProperties");
             storeSuperProperties();
         } finally {
-            if (null == mSuperPropertiesCache) {
+            if (mSuperPropertiesCache == null) {
                 mSuperPropertiesCache = new JSONObject();
             }
         }
@@ -568,7 +568,7 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void storeSuperProperties() {
-        if (null == mSuperPropertiesCache) {
+        if (mSuperPropertiesCache == null) {
             MPLog.e(LOGTAG, "storeSuperProperties should not be called with uninitialized superPropertiesCache.");
             return;
         }
@@ -599,7 +599,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Cannot read distinct ids from sharedPreferences.", e);
         }
 
-        if (null == prefs) {
+        if (prefs == null) {
             return;
         }
 
@@ -616,7 +616,7 @@ import com.mixpanel.android.util.MPLog;
             }
         }
 
-        if (null == mEventsDistinctId) {
+        if (mEventsDistinctId == null) {
             mEventsDistinctId = UUID.randomUUID().toString();
             writeIdentities();
         }
@@ -634,7 +634,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Cannot read opt out flag from sharedPreferences.", e);
         }
 
-        if (null == prefs) {
+        if (prefs == null) {
             return;
         }
 
