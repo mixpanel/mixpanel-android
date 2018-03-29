@@ -937,7 +937,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription eventDescription) {
-                eventsMessages.add(eventDescription);
+                if (!eventDescription.isAutomatic()) {
+                    eventsMessages.add(eventDescription);
+                }
                 super.eventsMessage(eventDescription);
             }
 
