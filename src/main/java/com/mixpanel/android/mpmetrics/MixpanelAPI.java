@@ -305,8 +305,7 @@ public class MixpanelAPI {
                         new AnalyticsMessages.EventDescription(
                                 "Integration",
                                 messageProps,
-                                "85053bf24bba75239b16a601d9387e17",
-                                false);
+                                "85053bf24bba75239b16a601d9387e17");
                 mMessages.eventsMessage(eventDescription);
                 mMessages.postToServer(new AnalyticsMessages.FlushDescription("85053bf24bba75239b16a601d9387e17", false));
 
@@ -2086,7 +2085,8 @@ public class MixpanelAPI {
             }
 
             final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
+                    new AnalyticsMessages.EventDescription(eventName, messageProps,
+                            mToken, isAutomaticEvent, mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
 
             if (null != mTrackingDebug) {
