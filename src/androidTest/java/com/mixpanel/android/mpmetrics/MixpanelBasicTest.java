@@ -977,6 +977,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
         }
+        assertNull(eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
         for (int i = 0; i < 3; i++) {
             JSONObject sessionMetadata = peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getMessage().getJSONObject("$mp_metadata");
@@ -986,6 +987,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
         }
+        assertNull(peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
         for (int i = 0; i < 4; i++) {
             JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
@@ -1004,6 +1006,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
         }
+        assertNull(storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
     }
 
     private Future<SharedPreferences> mMockPreferences;

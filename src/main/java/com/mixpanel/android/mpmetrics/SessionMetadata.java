@@ -42,9 +42,9 @@ import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
             metadataJson.put("$mp_session_seq_id", isEvent ? mEventsCounter : mPeopleCounter);
             metadataJson.put("$mp_session_start_sec", mSessionStartEpoch);
             if (isEvent) {
-                mEventsCounter += 1;
+                mEventsCounter++;
             } else {
-                mPeopleCounter += 1;
+                mPeopleCounter++;
             }
         } catch (JSONException e) {
             MPLog.e(LOGTAG, "Cannot create session metadata JSON object", e);
