@@ -913,12 +913,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
                         }
 
                         if (!mTweaks.getAllValues().containsKey(tweakValue.first)) {
-                            Tweaks.TweakValue persistedTweak = Tweaks.TweakValue.fromJson(tweakInfo.tweak);
-                            if (persistedTweak != null) {
-                                mTweaks.declareTweak(tweakValue.first, persistedTweak.getDefaultValue(), persistedTweak.getMinimum(), persistedTweak.getMaximum(), persistedTweak.type);
-                            }
+                            Tweaks.TweakValue notDeclaredTweak = Tweaks.TweakValue.fromJson(tweakInfo.tweak);
+                            mTweaks.addUndeclaredTweak(tweakValue.first, notDeclaredTweak);
+                        } else {
+                            mTweaks.set(tweakValue.first, tweakValue.second);
                         }
-                        mTweaks.set(tweakValue.first, tweakValue.second);
                     } catch (EditProtocol.BadInstructionsException e) {
                         MPLog.e(LOGTAG, "Bad editor tweak cannot be applied.", e);
                     }
