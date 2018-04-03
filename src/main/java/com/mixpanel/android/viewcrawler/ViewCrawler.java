@@ -304,7 +304,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             mProtocol = new EditProtocol(context, resourceIds, mImageStore, layoutErrorListener);
             mOriginalEventBindings = new HashSet<MPPair<String, JSONObject>>();
             mEditorChanges = new HashMap<String, MPPair<String, JSONObject>>();
-            mEditorTweaks = new ArrayList<JSONObject>();
+            mEditorTweaks = new HashMap<String, MPPair<String, Object>>();
             mEditorAssetUrls = new ArrayList<String>();
             mEditorEventBindings = new HashMap<String, MPPair<String, JSONObject>>();
             mAppliedVisualChanges = new HashSet<VariantChange>();
@@ -768,15 +768,17 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
 
         private void handleEditorTweaksReceived(JSONObject tweaksMessage) {
             try {
-                mEditorTweaks.clear();
                 final JSONObject payload = tweaksMessage.getJSONObject("payload");
                 final JSONArray tweaks = payload.getJSONArray("tweaks");
                 final int length = tweaks.length();
                 for (int i = 0; i < length; i++) {
                     final JSONObject tweakDesc = tweaks.getJSONObject(i);
-                    mEditorTweaks.add(tweakDesc);
+                    MPPair<String, Object> tweak = mProtocol.readTweak(tweakDesc);
+                    mEditorTweaks.put(tweak.first, tweak);
                 }
             } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Bad tweaks received", e);
+            } catch (final EditProtocol.BadInstructionsException e) {
                 MPLog.e(LOGTAG, "Bad tweaks received", e);
             }
 
@@ -938,7 +940,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                for (MPPair<String, JSONObject> changeInfo:mEditorChanges.values()) {
+                for (MPPair<String, JSONObject> changeInfo : mEditorChanges.values()) {
                     try {
                         final EditProtocol.Edit edit = mProtocol.readEdit(changeInfo.second);
                         newVisitors.add(new MPPair<String, ViewVisitor>(changeInfo.first, edit.visitor));
@@ -954,19 +956,11 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             {
-                final int size = mEditorTweaks.size();
-                for (int i = 0; i < size; i++) {
-                    final JSONObject tweakDesc = mEditorTweaks.get(i);
-
-                    try {
-                        final MPPair<String, Object> tweakValue = mProtocol.readTweak(tweakDesc);
-                        if (mTweaks.isNewValue(tweakValue.first, tweakValue.second)) {
-                            updatedTweaks.add(tweakValue.first);
-                        }
-                        mTweaks.set(tweakValue.first, tweakValue.second);
-                    } catch (final EditProtocol.BadInstructionsException e) {
-                        MPLog.e(LOGTAG, "Strange tweaks received", e);
+                for (MPPair<String, Object> tweak : mEditorTweaks.values()) {
+                    if (mTweaks.isNewValue(tweak.first, tweak.second)) {
+                        updatedTweaks.add(tweak.first);
                     }
+                    mTweaks.set(tweak.first, tweak.second);
                 }
             }
 
@@ -1072,7 +1066,7 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
         private final ImageStore mImageStore;
 
         private final Map<String, MPPair<String,JSONObject>> mEditorChanges;
-        private final List<JSONObject> mEditorTweaks;
+        private final Map<String, MPPair<String, Object>> mEditorTweaks;
         private final List<String> mEditorAssetUrls;
         private final Map<String, MPPair<String,JSONObject>> mEditorEventBindings;
         private final Set<VariantChange> mAppliedVisualChanges;
