@@ -939,8 +939,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             public void eventsMessage(EventDescription eventDescription) {
                 if (!eventDescription.isAutomatic()) {
                     eventsMessages.add(eventDescription);
+                    super.eventsMessage(eventDescription);
                 }
-                super.eventsMessage(eventDescription);
             }
 
             @Override
