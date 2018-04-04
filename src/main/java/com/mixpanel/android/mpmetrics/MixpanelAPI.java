@@ -734,7 +734,7 @@ public class MixpanelAPI {
     }
 
     /**
-     * Clears all distinct_ids, superProperties, and push registrations from persistent storage.
+     * Clears tweaks and all distinct_ids, superProperties, and push registrations from persistent storage.
      * Will not clear referrer information.
      */
     public void reset() {
@@ -744,6 +744,8 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
         identify(getDistinctId());
         mConnectIntegrations.reset();
+        mUpdatesFromMixpanel.storeVariants(new JSONArray());
+        mUpdatesFromMixpanel.applyPersistedUpdates();
         flush();
     }
 
