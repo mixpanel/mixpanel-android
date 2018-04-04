@@ -16,7 +16,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.JsonWriter;
-import android.util.Pair;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -1006,8 +1005,12 @@ public class ViewCrawler implements UpdatesFromMixpanel, TrackingDebug, ViewVisi
             }
 
             mEditState.setEdits(editMap);
+            for (MPPair<Integer, Integer> emptyExperiment : mEmptyExperiments) {
+                if (!mSeenExperiments.contains(emptyExperiment)) {
+                    toTrack.add(emptyExperiment);
+                }
+            }
             mSeenExperiments.addAll(toTrack);
-            toTrack.addAll(mEmptyExperiments);
             trackSeenExperiments(toTrack);
             mEmptyExperiments.clear();
             if (updatedTweaks.size() > 0) {
