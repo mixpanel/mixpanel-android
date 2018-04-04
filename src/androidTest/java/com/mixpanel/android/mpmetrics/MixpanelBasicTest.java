@@ -11,6 +11,7 @@ import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
 import android.util.Log;
 
+import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
@@ -919,6 +920,98 @@ public class MixpanelBasicTest extends AndroidTestCase {
         // Check that we post the alias immediately
         metrics.identify("old id");
         metrics.alias("new id", "old id");
+    }
+
+    public void testSessionMetadata() throws InterruptedException, JSONException {
+        final BlockingQueue<JSONObject> storedJsons = new LinkedBlockingQueue<>();
+        final BlockingQueue<AnalyticsMessages.EventDescription> eventsMessages = new LinkedBlockingQueue<>();
+        final BlockingQueue<AnalyticsMessages.PeopleDescription> peopleMessages = new LinkedBlockingQueue<>();
+        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+
+            @Override
+            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+                storedJsons.add(j);
+                return super.addJSON(j, token, table, isAutomaticRecord);
+            }
+        };
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void eventsMessage(EventDescription eventDescription) {
+                if (!eventDescription.isAutomatic()) {
+                    Log.d("SERGIOTESTHERE", "Adding event  " + eventDescription.getEventName());
+                    Log.d("SERGIOTESTHERE", "Adding event metadata " + eventDescription.getSessionMetadata().toString());
+                    eventsMessages.add(eventDescription);
+                    super.eventsMessage(eventDescription);
+                }
+            }
+
+            @Override
+            public void peopleMessage(PeopleDescription peopleDescription) {
+                peopleMessages.add(peopleDescription);
+                super.peopleMessage(peopleDescription);
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+        };
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Session Metadata") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+
+        metrics.track("First Event");
+        metrics.track("Second Event");
+        metrics.track("Third Event");
+        metrics.track("Fourth Event");
+
+        metrics.getPeople().identify("Mixpanel");
+        metrics.getPeople().set("setProperty", "setValue");
+        metrics.getPeople().append("appendProperty", "appendValue");
+        metrics.getPeople().deleteUser();
+
+        for (int i = 0; i < 4; i++) {
+            JSONObject sessionMetadata = eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getSessionMetadata();
+            Log.d("SERGIOTESTHERE", "Event is " + sessionMetadata.toString());
+            assertTrue(sessionMetadata.has("$mp_event_id"));
+            assertTrue(sessionMetadata.has("$mp_session_id"));
+            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+
+            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+        }
+        assertNull(eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+
+        for (int i = 0; i < 3; i++) {
+            JSONObject sessionMetadata = peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getMessage().getJSONObject("$mp_metadata");
+            assertTrue(sessionMetadata.has("$mp_event_id"));
+            assertTrue(sessionMetadata.has("$mp_session_id"));
+            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+
+            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+        }
+        assertNull(peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+
+        for (int i = 0; i < 4; i++) {
+            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
+            assertTrue(sessionMetadata.has("$mp_event_id"));
+            assertTrue(sessionMetadata.has("$mp_session_id"));
+            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+
+            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
+            assertTrue(sessionMetadata.has("$mp_event_id"));
+            assertTrue(sessionMetadata.has("$mp_session_id"));
+            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+
+            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+        }
+        assertNull(storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
     }
 
     private Future<SharedPreferences> mMockPreferences;
