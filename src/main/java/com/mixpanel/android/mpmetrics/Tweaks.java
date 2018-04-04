@@ -55,7 +55,6 @@ public class Tweaks {
 
     public synchronized boolean isNewValue(String tweakName, Object value) {
         if (!mTweakValues.containsKey(tweakName)) {
-            MPLog.w(LOGTAG, "Attempt to reference a tweak \"" + tweakName + "\" which has never been defined.");
             return false;
         }
 
@@ -311,6 +310,7 @@ public class Tweaks {
     /* package */ Tweaks() {
         mTweakValues = new ConcurrentHashMap<>();
         mTweakDefaultValues = new ConcurrentHashMap<>();
+        mUndeclaredTweaks = new ConcurrentHashMap<>();
         mTweakDeclaredListeners = new ArrayList<>();
     }
 
@@ -461,13 +461,26 @@ public class Tweaks {
         return mTweakValues.get(tweakName);
     }
 
+    public void addUndeclaredTweak(String tweakName, TweakValue notDeclaredTweak) {
+        if (tweakName == null || notDeclaredTweak == null) {
+            return;
+        }
+        mUndeclaredTweaks.put(tweakName, notDeclaredTweak);
+    }
+
     public void declareTweak(String tweakName, Object defaultValue, Number minimumValue, Number maximumValue, @TweakType int tweakType) {
         if (mTweakValues.containsKey(tweakName)) {
             MPLog.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;
         }
 
-        final TweakValue value = new TweakValue(tweakType, defaultValue, minimumValue, maximumValue, defaultValue, tweakName);
+        TweakValue value;
+        if (mUndeclaredTweaks.containsKey(tweakName)) {
+            value = mUndeclaredTweaks.get(tweakName);
+            mUndeclaredTweaks.remove(tweakName);
+        } else {
+            value = new TweakValue(tweakType, defaultValue, minimumValue, maximumValue, defaultValue, tweakName);
+        }
         mTweakValues.put(tweakName, value);
         mTweakDefaultValues.put(tweakName, value);
         final int listenerSize = mTweakDeclaredListeners.size();
@@ -479,6 +492,7 @@ public class Tweaks {
     // All access to mTweakValues must be synchronized
     private final ConcurrentMap<String, TweakValue> mTweakValues;
     private final ConcurrentMap<String, TweakValue> mTweakDefaultValues;
+    private final ConcurrentMap<String, TweakValue> mUndeclaredTweaks;
     private final List<OnTweakDeclaredListener> mTweakDeclaredListeners;
 
     private static final String LOGTAG = "MixpanelAPI.Tweaks";
