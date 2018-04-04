@@ -938,6 +938,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             public void eventsMessage(EventDescription eventDescription) {
                 if (!eventDescription.isAutomatic()) {
+                    Log.d("SERGIOTESTHERE", "Adding event  " + eventDescription.getEventName());
+                    Log.d("SERGIOTESTHERE", "Adding event metadata " + eventDescription.getSessionMetadata().toString());
                     eventsMessages.add(eventDescription);
                     super.eventsMessage(eventDescription);
                 }
@@ -973,6 +975,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         for (int i = 0; i < 4; i++) {
             JSONObject sessionMetadata = eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getSessionMetadata();
+            Log.d("SERGIOTESTHERE", "Event is " + sessionMetadata.toString());
             assertTrue(sessionMetadata.has("$mp_event_id"));
             assertTrue(sessionMetadata.has("$mp_session_id"));
             assertTrue(sessionMetadata.has("$mp_session_start_sec"));
