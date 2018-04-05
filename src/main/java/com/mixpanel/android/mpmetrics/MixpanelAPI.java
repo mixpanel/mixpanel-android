@@ -259,6 +259,7 @@ public class MixpanelAPI {
         }
         mDeviceInfo = Collections.unmodifiableMap(deviceInfo);
 
+        mSessionMetadata = new SessionMetadata();
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
@@ -302,7 +303,10 @@ public class MixpanelAPI {
                 messageProps.put("distinct_id", token);
 
                 final AnalyticsMessages.EventDescription eventDescription =
-                        new AnalyticsMessages.EventDescription("Integration", messageProps, "85053bf24bba75239b16a601d9387e17", false);
+                        new AnalyticsMessages.EventDescription(
+                                "Integration",
+                                messageProps,
+                                "85053bf24bba75239b16a601d9387e17");
                 mMessages.eventsMessage(eventDescription);
                 mMessages.postToServer(new AnalyticsMessages.FlushDescription("85053bf24bba75239b16a601d9387e17", false));
 
@@ -1320,10 +1324,13 @@ public class MixpanelAPI {
         return false;
     }
 
-
     /* package */ void onBackground() {
         flush();
         mUpdatesFromMixpanel.applyPersistedUpdates();
+    }
+
+    /* package */ void onForeground() {
+        mSessionMetadata.initSession();
     }
 
     // Package-level access. Used (at least) by GCMReceiver
@@ -1805,10 +1812,10 @@ public class MixpanelAPI {
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
-
             if (null != distinctId) {
                 dataObj.put("$distinct_id", distinctId);
             }
+            dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
 
             return dataObj;
         }
@@ -2094,7 +2101,8 @@ public class MixpanelAPI {
             }
 
             final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(eventName, messageProps, mToken, isAutomaticEvent);
+                    new AnalyticsMessages.EventDescription(eventName, messageProps,
+                            mToken, isAutomaticEvent, mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
 
             if (null != mTrackingDebug) {
@@ -2206,6 +2214,7 @@ public class MixpanelAPI {
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
+    private final SessionMetadata mSessionMetadata;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

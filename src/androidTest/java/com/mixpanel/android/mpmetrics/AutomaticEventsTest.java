@@ -310,11 +310,11 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(initialCalls, mTrackedEvents);
 
         assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
-        Thread.sleep(500);
+        mLatch = new CountDownLatch(MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls);
         for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
+        assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
         assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
