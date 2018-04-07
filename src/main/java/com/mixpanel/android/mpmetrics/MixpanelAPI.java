@@ -832,7 +832,7 @@ public class MixpanelAPI {
             mPersistentIdentity.clearTimeEvents();
         }
         mPersistentIdentity.clearReferrerProperties();
-        mPersistentIdentity.setOptOutTracking(true);
+        mPersistentIdentity.setOptOutTracking(true, mToken);
     }
 
     /**
@@ -880,7 +880,7 @@ public class MixpanelAPI {
      * See also {@link #optInTracking()} and {@link #optOutTracking()}.
      */
     public void optInTracking(String distinctId, JSONObject properties) {
-        mPersistentIdentity.setOptOutTracking(false);
+        mPersistentIdentity.setOptOutTracking(false, mToken);
         if (distinctId != null) {
             identify(distinctId);
         }
@@ -893,7 +893,7 @@ public class MixpanelAPI {
      * @return true if user has opted out from tracking. Defaults to false.
      */
     public boolean hasOptedOutTracking() {
-        return mPersistentIdentity.getOptOutTracking();
+        return mPersistentIdentity.getOptOutTracking(mToken);
     }
 
     /**

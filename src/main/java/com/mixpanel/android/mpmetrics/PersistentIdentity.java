@@ -500,14 +500,14 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public synchronized void setOptOutTracking(boolean optOutTracking) {
+    public synchronized void setOptOutTracking(boolean optOutTracking, String token) {
         mIsUserOptOut = optOutTracking;
-        writeOptOutFlag();
+        writeOptOutFlag(token);
     }
 
-    public synchronized boolean getOptOutTracking() {
+    public synchronized boolean getOptOutTracking(String token) {
         if (mIsUserOptOut == null) {
-            readOptOutFlag();
+            readOptOutFlag(token);
         }
 
         return mIsUserOptOut;
@@ -624,7 +624,7 @@ import com.mixpanel.android.util.MPLog;
         mIdentitiesLoaded = true;
     }
 
-    private void readOptOutFlag() {
+    private void readOptOutFlag(String token) {
         SharedPreferences prefs = null;
         try {
             prefs = mMixpanelPreferences.get();
@@ -638,14 +638,14 @@ import com.mixpanel.android.util.MPLog;
             return;
         }
 
-        mIsUserOptOut = prefs.getBoolean("opt_out", false);
+        mIsUserOptOut = prefs.getBoolean("opt_out_" + token, false);
     }
 
-    private void writeOptOutFlag() {
+    private void writeOptOutFlag(String token) {
         try {
             final SharedPreferences prefs = mMixpanelPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
-            prefsEditor.putBoolean("opt_out", mIsUserOptOut);
+            prefsEditor.putBoolean("opt_out_" + token, mIsUserOptOut);
             writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e.getCause());
