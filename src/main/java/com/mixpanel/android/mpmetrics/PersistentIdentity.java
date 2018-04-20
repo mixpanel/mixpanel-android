@@ -118,7 +118,7 @@ import com.mixpanel.android.util.MPLog;
         }
 
         final JSONObject replacementCache = updates.update(copy);
-        if (null == replacementCache) {
+        if (replacementCache == null) {
             MPLog.w(LOGTAG, "An update to Mixpanel's super properties returned null, and will have no effect.");
             return;
         }
@@ -137,6 +137,21 @@ import com.mixpanel.android.util.MPLog;
         return mReferrerPropertiesCache;
     }
 
+    public void clearReferrerProperties() {
+        synchronized (sReferrerPrefsLock) {
+            try {
+                final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
+                final SharedPreferences.Editor prefsEdit = referrerPrefs.edit();
+                prefsEdit.clear();
+                writeEdits(prefsEdit);
+            } catch (final ExecutionException e) {
+                MPLog.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e.getCause());
+            } catch (final InterruptedException e) {
+                MPLog.e(LOGTAG, "Cannot load referrer properties from shared preferences.", e);
+            }
+        }
+    }
+
     public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -148,6 +163,7 @@ import com.mixpanel.android.util.MPLog;
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
+
         mEventsDistinctId = eventsDistinctId;
         writeIdentities();
     }
@@ -163,6 +179,7 @@ import com.mixpanel.android.util.MPLog;
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
+
         mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
     }
@@ -174,8 +191,16 @@ import com.mixpanel.android.util.MPLog;
         if (null == mWaitingPeopleRecords) {
             mWaitingPeopleRecords = new JSONArray();
         }
+
         mWaitingPeopleRecords.put(record);
         writeIdentities();
+    }
+
+    /* package */ synchronized JSONArray getWaitingPeopleRecords() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mWaitingPeopleRecords;
     }
 
     public synchronized JSONArray waitingPeopleRecordsForSending() {
@@ -208,6 +233,19 @@ import com.mixpanel.android.util.MPLog;
             throw new RuntimeException(e.getCause());
         } catch (final InterruptedException e) {
             throw new RuntimeException(e.getCause());
+        }
+    }
+
+    public void clearTimeEvents() {
+        try {
+            final SharedPreferences prefs = mTimeEventsPreferences.get();
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.clear();
+            writeEdits(editor);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
         }
     }
 
@@ -462,11 +500,24 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    public synchronized void setOptOutTracking(boolean optOutTracking, String token) {
+        mIsUserOptOut = optOutTracking;
+        writeOptOutFlag(token);
+    }
+
+    public synchronized boolean getOptOutTracking(String token) {
+        if (mIsUserOptOut == null) {
+            readOptOutFlag(token);
+        }
+
+        return mIsUserOptOut;
+    }
+
     //////////////////////////////////////////////////
 
     // Must be called from a synchronized setting
     private JSONObject getSuperPropertiesCache() {
-        if (null == mSuperPropertiesCache) {
+        if (mSuperPropertiesCache == null) {
             readSuperProperties();
         }
         return mSuperPropertiesCache;
@@ -487,7 +538,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Cannot parse stored superProperties");
             storeSuperProperties();
         } finally {
-            if (null == mSuperPropertiesCache) {
+            if (mSuperPropertiesCache == null) {
                 mSuperPropertiesCache = new JSONObject();
             }
         }
@@ -517,7 +568,7 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void storeSuperProperties() {
-        if (null == mSuperPropertiesCache) {
+        if (mSuperPropertiesCache == null) {
             MPLog.e(LOGTAG, "storeSuperProperties should not be called with uninitialized superPropertiesCache.");
             return;
         }
@@ -548,7 +599,7 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Cannot read distinct ids from sharedPreferences.", e);
         }
 
-        if (null == prefs) {
+        if (prefs == null) {
             return;
         }
 
@@ -565,7 +616,7 @@ import com.mixpanel.android.util.MPLog;
             }
         }
 
-        if (null == mEventsDistinctId) {
+        if (mEventsDistinctId == null) {
             mEventsDistinctId = UUID.randomUUID().toString();
             writeIdentities();
         }
@@ -573,6 +624,35 @@ import com.mixpanel.android.util.MPLog;
         mIdentitiesLoaded = true;
     }
 
+    private void readOptOutFlag(String token) {
+        SharedPreferences prefs = null;
+        try {
+            prefs = mMixpanelPreferences.get();
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Cannot read opt out flag from sharedPreferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Cannot read opt out flag from sharedPreferences.", e);
+        }
+
+        if (prefs == null) {
+            return;
+        }
+
+        mIsUserOptOut = prefs.getBoolean("opt_out_" + token, false);
+    }
+
+    private void writeOptOutFlag(String token) {
+        try {
+            final SharedPreferences prefs = mMixpanelPreferences.get();
+            final SharedPreferences.Editor prefsEditor = prefs.edit();
+            prefsEditor.putBoolean("opt_out_" + token, mIsUserOptOut);
+            writeEdits(prefsEditor);
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e);
+        }
+    }
     // All access should be synchronized on this
     private void writeIdentities() {
         try {
@@ -609,6 +689,7 @@ import com.mixpanel.android.util.MPLog;
     private String mEventsDistinctId;
     private String mPeopleDistinctId;
     private JSONArray mWaitingPeopleRecords;
+    private Boolean mIsUserOptOut;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
 

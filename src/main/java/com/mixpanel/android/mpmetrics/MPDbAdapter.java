@@ -294,6 +294,30 @@ import com.mixpanel.android.util.MPLog;
     }
 
     /**
+     * Removes all events given a project token.
+     * @param table the table to remove events from, either "events" or "people"
+     * @param token token of the project to remove events from
+     */
+    public void cleanupAllEvents(Table table, String token) {
+        final String tableName = table.getName();
+
+        try {
+            final SQLiteDatabase db = mDb.getWritableDatabase();
+            db.delete(tableName, KEY_TOKEN + " = '" + token + "'", null);
+        } catch (final SQLiteException e) {
+            MPLog.e(LOGTAG, "Could not clean timed-out Mixpanel records from " + tableName + ". Re-initializing database.", e);
+
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
+        } finally {
+            mDb.close();
+        }
+    }
+
+    /**
      * Removes automatic events.
      * @param token token of the project you want to remove automatic events from
      */

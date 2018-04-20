@@ -228,15 +228,15 @@ public class MixpanelAPI {
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context));
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault) {
+        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault);
     }
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config) {
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault) {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
@@ -264,6 +264,12 @@ public class MixpanelAPI {
         mTrackingDebug = constructTrackingDebug();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
         mEventTimings = mPersistentIdentity.getTimeEvents();
+        mMessages = getAnalyticsMessages();
+
+        if (optOutTrackingDefault) {
+            optOutTracking();
+        }
+
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
         mConnectIntegrations = new ConnectIntegrations(this);
@@ -275,8 +281,6 @@ public class MixpanelAPI {
             decideId = mPersistentIdentity.getEventsDistinctId();
         }
         mDecideMessages.setDistinctId(decideId);
-
-        mMessages = getAnalyticsMessages();
 
         if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
             track(AutomaticEvents.FIRST_OPEN, null, true);
@@ -301,6 +305,7 @@ public class MixpanelAPI {
                 messageProps.put("mp_lib", "Android");
                 messageProps.put("lib", "Android");
                 messageProps.put("distinct_id", token);
+                messageProps.put("$lib_version", MPConfig.VERSION);
 
                 final AnalyticsMessages.EventDescription eventDescription =
                         new AnalyticsMessages.EventDescription(
@@ -356,6 +361,38 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token) {
+        return getInstance(context, token, false);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     *     instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     *     in the settings dialog.
+     * @param optOutTrackingDefault Whether or not Mixpanel can start tracking by default. See
+     *     {@link #optOutTracking()}.
+     * @return an instance of MixpanelAPI associated with your project
+     */
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault) {
         if (null == token || null == context) {
             return null;
         }
@@ -374,7 +411,7 @@ public class MixpanelAPI {
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
@@ -413,6 +450,7 @@ public class MixpanelAPI {
      * @param original the old distinct_id that alias will be mapped to.
      */
     public void alias(String alias, String original) {
+        if (hasOptedOutTracking()) return;
         if (original == null) {
             original = getDistinctId();
         }
@@ -458,6 +496,7 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
+        if (hasOptedOutTracking()) return;
         synchronized (mPersistentIdentity) {
             mPersistentIdentity.setEventsDistinctId(distinctId);
             String decideId = mPersistentIdentity.getPeopleDistinctId();
@@ -476,6 +515,7 @@ public class MixpanelAPI {
      * @param eventName the name of the event to track with timing.
      */
     public void timeEvent(final String eventName) {
+        if (hasOptedOutTracking()) return;
         final long writeTime = System.currentTimeMillis();
         synchronized (mEventTimings) {
             mEventTimings.put(eventName, writeTime);
@@ -512,6 +552,7 @@ public class MixpanelAPI {
      * See also {@link #track(String, org.json.JSONObject)}
      */
     public void trackMap(String eventName, Map<String, Object> properties) {
+        if (hasOptedOutTracking()) return;
         if (null == properties) {
             track(eventName, null);
         } else {
@@ -540,6 +581,7 @@ public class MixpanelAPI {
     // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
     // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
+        if (hasOptedOutTracking()) return;
         track(eventName, properties, false);
     }
 
@@ -549,6 +591,7 @@ public class MixpanelAPI {
      * @param eventName the name of the event to send
      */
     public void track(String eventName) {
+        if (hasOptedOutTracking()) return;
         track(eventName, null);
     }
 
@@ -564,6 +607,7 @@ public class MixpanelAPI {
      * your main application activity.
      */
     public void flush() {
+        if (hasOptedOutTracking()) return;
         mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken));
     }
 
@@ -615,6 +659,7 @@ public class MixpanelAPI {
      * See also {@link #registerSuperProperties(org.json.JSONObject)}
      */
     public void registerSuperPropertiesMap(Map<String, Object> superProperties) {
+        if (hasOptedOutTracking()) return;
         if (null == superProperties) {
             MPLog.e(LOGTAG, "registerSuperPropertiesMap does not accept null properties");
             return;
@@ -646,6 +691,7 @@ public class MixpanelAPI {
      * @see #clearSuperProperties()
      */
     public void registerSuperProperties(JSONObject superProperties) {
+        if (hasOptedOutTracking()) return;
         mPersistentIdentity.registerSuperProperties(superProperties);
     }
 
@@ -660,6 +706,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void unregisterSuperProperty(String superPropertyName) {
+        if (hasOptedOutTracking()) return;
         mPersistentIdentity.unregisterSuperProperty(superPropertyName);
     }
 
@@ -674,6 +721,7 @@ public class MixpanelAPI {
      * See also {@link #registerSuperPropertiesOnce(org.json.JSONObject)}
      */
     public void registerSuperPropertiesOnceMap(Map<String, Object> superProperties) {
+        if (hasOptedOutTracking()) return;
         if (null == superProperties) {
             MPLog.e(LOGTAG, "registerSuperPropertiesOnceMap does not accept null properties");
             return;
@@ -696,6 +744,7 @@ public class MixpanelAPI {
      * @see #registerSuperProperties(JSONObject)
      */
     public void registerSuperPropertiesOnce(JSONObject superProperties) {
+        if (hasOptedOutTracking()) return;
         mPersistentIdentity.registerSuperPropertiesOnce(superProperties);
     }
 
@@ -723,6 +772,7 @@ public class MixpanelAPI {
      * @param update A function from one set of super properties to another. The update should not return null.
      */
     public void updateSuperProperties(SuperPropertyUpdate update) {
+        if (hasOptedOutTracking()) return;
         mPersistentIdentity.updateSuperProperties(update);
     }
 
@@ -761,6 +811,89 @@ public class MixpanelAPI {
      */
     public Map<String, String> getDeviceInfo() {
         return mDeviceInfo;
+    }
+
+    /**
+     * Use this method to opt-out a user from tracking. Events and people updates that haven't been
+     * flushed yet will be deleted. Use {@link #flush()} before calling this method if you want
+     * to send all the queues to Mixpanel before.
+     *
+     * This method will also remove any user-related information from the device.
+     */
+    public void optOutTracking() {
+        getAnalyticsMessages().emptyTrackingQueues(new AnalyticsMessages.MixpanelDescription(mToken));
+        if (getPeople().isIdentified()) {
+            getPeople().deleteUser();
+            getPeople().clearCharges();
+        }
+        mPersistentIdentity.clearPreferences();
+        synchronized (mEventTimings) {
+            mEventTimings.clear();
+            mPersistentIdentity.clearTimeEvents();
+        }
+        mPersistentIdentity.clearReferrerProperties();
+        mPersistentIdentity.setOptOutTracking(true, mToken);
+    }
+
+    /**
+     * Use this method to opt-in an already opted-out user from tracking. People updates and track
+     * calls will be sent to Mixpanel after using this method.
+     * This method will internally track an opt-in event to your project. If you want to identify
+     * the opt-in event and/or pass properties to the event, see {@link #optInTracking(String)} and
+     * {@link #optInTracking(String, JSONObject)}
+     *
+     * See also {@link #optOutTracking()}.
+     */
+    public void optInTracking() {
+        optInTracking(null, null);
+    }
+
+    /**
+     * Use this method to opt-in an already opted-out user from tracking. People updates and track
+     * calls will be sent to Mixpanel after using this method.
+     * This method will internally track an opt-in event to your project.
+     *
+     * @param distinctId Optional string to use as the distinct ID for events.
+     *                   This will call {@link #identify(String)}.
+     *                   If you use people profiles make sure you manually call
+     *                   {@link People#identify(String)} after this method.
+     *
+     * See also {@link #optInTracking(String)}, {@link #optInTracking(String, JSONObject)} and
+     *  {@link #optOutTracking()}.
+     */
+    public void optInTracking(String distinctId) {
+        optInTracking(distinctId, null);
+    }
+
+    /**
+     * Use this method to opt-in an already opted-out user from tracking. People updates and track
+     * calls will be sent to Mixpanel after using this method.
+     * This method will internally track an opt-in event to your project.
+     *
+     * @param distinctId Optional string to use as the distinct ID for events.
+     *                   This will call {@link #identify(String)}.
+     *                   If you use people profiles make sure you manually call
+     *                   {@link People#identify(String)} after this method.
+     * @param properties Optional JSONObject that could be passed to add properties to the
+     *                   opt-in event that is sent to Mixpanel.
+     *
+     * See also {@link #optInTracking()} and {@link #optOutTracking()}.
+     */
+    public void optInTracking(String distinctId, JSONObject properties) {
+        mPersistentIdentity.setOptOutTracking(false, mToken);
+        if (distinctId != null) {
+            identify(distinctId);
+        }
+        track("$opt_in", properties);
+    }
+    /**
+     * Will return true if the user has opted out from tracking. See {@link #optOutTracking()} and
+     * {@link MixpanelAPI#getInstance(Context, String, boolean)} for more information.
+     *
+     * @return true if user has opted out from tracking. Defaults to false.
+     */
+    public boolean hasOptedOutTracking() {
+        return mPersistentIdentity.getOptOutTracking(mToken);
     }
 
     /**
@@ -975,6 +1108,13 @@ public class MixpanelAPI {
          * to People Analytics using the same distinct id will create and store new values.
          */
         public void deleteUser();
+
+        /**
+         * Checks if the people profile is identified or not.
+         *
+         * @return Whether the current user is identified or not.
+         */
+        public boolean isIdentified();
 
         /**
          * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel.
@@ -1422,6 +1562,7 @@ public class MixpanelAPI {
     private class PeopleImpl implements People {
         @Override
         public void identify(String distinctId) {
+            if (hasOptedOutTracking()) return;
             synchronized (mPersistentIdentity) {
                 mPersistentIdentity.setPeopleDistinctId(distinctId);
                 mDecideMessages.setDistinctId(distinctId);
@@ -1431,6 +1572,7 @@ public class MixpanelAPI {
 
         @Override
         public void setMap(Map<String, Object> properties) {
+            if (hasOptedOutTracking()) return;
             if (null == properties) {
                 MPLog.e(LOGTAG, "setMap does not accept null properties");
                 return;
@@ -1445,6 +1587,7 @@ public class MixpanelAPI {
 
         @Override
         public void set(JSONObject properties) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONObject sendProperties = new JSONObject(mDeviceInfo);
                 for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
@@ -1461,6 +1604,7 @@ public class MixpanelAPI {
 
         @Override
         public void set(String property, Object value) {
+            if (hasOptedOutTracking()) return;
             try {
                 set(new JSONObject().put(property, value));
             } catch (final JSONException e) {
@@ -1470,6 +1614,7 @@ public class MixpanelAPI {
 
         @Override
         public void setOnceMap(Map<String, Object> properties) {
+            if (hasOptedOutTracking()) return;
             if (null == properties) {
                 MPLog.e(LOGTAG, "setOnceMap does not accept null properties");
                 return;
@@ -1483,6 +1628,7 @@ public class MixpanelAPI {
 
         @Override
         public void setOnce(JSONObject properties) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONObject message = stdPeopleMessage("$set_once", properties);
                 recordPeopleMessage(message);
@@ -1493,6 +1639,7 @@ public class MixpanelAPI {
 
         @Override
         public void setOnce(String property, Object value) {
+            if (hasOptedOutTracking()) return;
             try {
                 setOnce(new JSONObject().put(property, value));
             } catch (final JSONException e) {
@@ -1502,6 +1649,7 @@ public class MixpanelAPI {
 
         @Override
         public void increment(Map<String, ? extends Number> properties) {
+            if (hasOptedOutTracking()) return;
             final JSONObject json = new JSONObject(properties);
             try {
                 final JSONObject message = stdPeopleMessage("$add", json);
@@ -1514,6 +1662,7 @@ public class MixpanelAPI {
         @Override
         // Must be thread safe
         public void merge(String property, JSONObject updates) {
+            if (hasOptedOutTracking()) return;
             final JSONObject mergeMessage = new JSONObject();
             try {
                 mergeMessage.put(property, updates);
@@ -1526,6 +1675,7 @@ public class MixpanelAPI {
 
         @Override
         public void increment(String property, double value) {
+            if (hasOptedOutTracking()) return;
             final Map<String, Double> map = new HashMap<String, Double>();
             map.put(property, value);
             increment(map);
@@ -1533,6 +1683,7 @@ public class MixpanelAPI {
 
         @Override
         public void append(String name, Object value) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONObject properties = new JSONObject();
                 properties.put(name, value);
@@ -1545,6 +1696,7 @@ public class MixpanelAPI {
 
         @Override
         public void union(String name, JSONArray value) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONObject properties = new JSONObject();
                 properties.put(name, value);
@@ -1557,6 +1709,7 @@ public class MixpanelAPI {
 
         @Override
         public void remove(String name, Object value) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONObject properties = new JSONObject();
                 properties.put(name, value);
@@ -1569,6 +1722,7 @@ public class MixpanelAPI {
 
         @Override
         public void unset(String name) {
+            if (hasOptedOutTracking()) return;
             try {
                 final JSONArray names = new JSONArray();
                 names.put(name);
@@ -1586,9 +1740,10 @@ public class MixpanelAPI {
 
         @Override
         public void trackNotificationSeen(InAppNotification notif) {
-            if(notif == null) return;
-
+            if (notif == null) return;
             mPersistentIdentity.saveCampaignAsSeen(notif.getId());
+            if (hasOptedOutTracking()) return;
+
             trackNotification("$campaign_delivery", notif, null);
             final MixpanelAPI.People people = getPeople().withIdentity(getDistinctId());
             if (people != null) {
@@ -1630,6 +1785,7 @@ public class MixpanelAPI {
 
         @Override
         public void trackNotification(final String eventName, final InAppNotification notif, final JSONObject properties) {
+            if (hasOptedOutTracking()) return;
             JSONObject notificationProperties = notif.getCampaignProperties();
             if (properties != null) {
                 try {
@@ -1653,6 +1809,7 @@ public class MixpanelAPI {
 
         @Override
         public void trackCharge(double amount, JSONObject properties) {
+            if (hasOptedOutTracking()) return;
             final Date now = new Date();
             final DateFormat dateFormat = new SimpleDateFormat(ENGAGE_DATE_FORMAT_STRING, Locale.US);
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -1933,6 +2090,11 @@ public class MixpanelAPI {
 
             });
         }
+
+        @Override
+        public boolean isIdentified() {
+            return getDistinctId() != null;
+        }
     }// PeopleImpl
 
     private interface UpdatesListener extends DecideMessages.OnNewResultsListener {
@@ -2050,11 +2212,12 @@ public class MixpanelAPI {
 
     ////////////////////////////////////////////////////
     protected void flushNoDecideCheck() {
+        if (hasOptedOutTracking()) return;
         mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken, false));
     }
 
     protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
-        if (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent()) {
+        if (hasOptedOutTracking() || (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent())) {
             return;
         }
 
@@ -2114,6 +2277,7 @@ public class MixpanelAPI {
     }
 
     private void recordPeopleMessage(JSONObject message) {
+        if (hasOptedOutTracking()) return;
         if (message.has("$distinct_id")) {
            mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
         } else {
@@ -2122,6 +2286,7 @@ public class MixpanelAPI {
     }
 
     private void pushWaitingPeopleRecord() {
+        if (hasOptedOutTracking()) return;
         final JSONArray records = mPersistentIdentity.waitingPeopleRecordsForSending();
         if (null != records) {
             sendAllPeopleRecords(records);
@@ -2131,6 +2296,7 @@ public class MixpanelAPI {
     // MUST BE THREAD SAFE. Called from crazy places. mPersistentIdentity may not exist
     // when this is called (from its crazy thread)
     private void sendAllPeopleRecords(JSONArray records) {
+        if (hasOptedOutTracking()) return;
         for (int i = 0; i < records.length(); i++) {
             try {
                 final JSONObject message = records.getJSONObject(i);

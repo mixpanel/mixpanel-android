@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
@@ -23,7 +24,7 @@ public class TestUtils {
 
     public static class CleanMixpanelAPI extends MixpanelAPI {
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            super(context, referrerPreferences, token);
+            super(context, referrerPreferences, token, false);
         }
 
         @Override
@@ -38,7 +39,7 @@ public class TestUtils {
 
             final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
             final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
-            mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
+            mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).apply();
 
             return super.getPersistentIdentity(context, referrerPreferences, token);
         }

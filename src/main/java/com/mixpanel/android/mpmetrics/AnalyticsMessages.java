@@ -116,6 +116,14 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    public void emptyTrackingQueues(final MixpanelDescription mixpanelDescription) {
+        final Message m = Message.obtain();
+        m.what = EMPTY_QUEUES;
+        m.obj = mixpanelDescription;
+
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         final Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -352,6 +360,11 @@ import javax.net.ssl.SSLSocketFactory;
                     } else if (msg.what == REGISTER_FOR_GCM) {
                         final String senderId = (String) msg.obj;
                         runGCMRegistration(senderId);
+                    } else if (msg.what == EMPTY_QUEUES) {
+                        final MixpanelDescription message = (MixpanelDescription) msg.obj;
+                        token = message.getToken();
+                        mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.EVENTS, token);
+                        mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.PEOPLE, token);
                     } else if (msg.what == KILL_WORKER) {
                         MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
@@ -702,6 +715,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
     private static final int FLUSH_QUEUE = 2; // push given JSON message to events DB
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
+    private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people updates from the db
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
     private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 

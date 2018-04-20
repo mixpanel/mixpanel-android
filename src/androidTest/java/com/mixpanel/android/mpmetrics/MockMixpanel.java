@@ -16,7 +16,7 @@ import java.util.concurrent.Future;
 @SuppressWarnings("deprecation")
 class MockMixpanel extends MixpanelAPI {
     public MockMixpanel(Context context, Future<SharedPreferences> prefsFuture, String testToken) {
-        super(context, prefsFuture, testToken);
+        super(context, prefsFuture, testToken, false);
     }
 
     // Not complete- you may need to override track(), registerSuperProperties, etc
@@ -203,6 +203,10 @@ class MockMixpanel extends MixpanelAPI {
             return null;
         }
 
+        @Override
+        public boolean isIdentified() {
+            return true;
+        }
     };
 
 
