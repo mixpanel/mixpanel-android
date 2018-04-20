@@ -118,7 +118,7 @@ public class HttpService implements RemoteService {
                 }
 
                 connection.setConnectTimeout(2000);
-                connection.setReadTimeout(10000);
+                connection.setReadTimeout(30000);
                 if (null != params) {
                     Uri.Builder builder = new Uri.Builder();
                     for (Map.Entry<String, Object> param : params.entrySet()) {
