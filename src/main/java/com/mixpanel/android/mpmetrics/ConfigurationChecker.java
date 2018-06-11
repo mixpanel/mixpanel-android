@@ -108,16 +108,14 @@ import java.util.Set;
         }
 
         // This permission is only required on older devices
-        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN && PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.GET_ACCOUNTS", packageName)) {
             MPLog.i(LOGTAG, "Package does not have permission android.permission.GET_ACCOUNTS");
             MPLog.i(LOGTAG, "Android versions below 4.1 require GET_ACCOUNTS to receive Mixpanel push notifications.\n" +
                     "Devices with later OS versions will still be able to receive messages, but if you'd like to support " +
                     "older devices, you'll need to add the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.GET_ACCOUNTS\" />");
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-                return false;
-            }
+            return false;
         }
 
         // check receivers
