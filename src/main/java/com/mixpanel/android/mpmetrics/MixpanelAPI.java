@@ -272,7 +272,7 @@ public class MixpanelAPI {
 
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
-        mConnectIntegrations = new ConnectIntegrations(this);
+        mConnectIntegrations = new ConnectIntegrations(this, mContext);
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.

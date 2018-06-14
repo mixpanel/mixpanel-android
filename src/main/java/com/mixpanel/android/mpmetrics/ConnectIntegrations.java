@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
 import android.os.Handler;
 
 import com.mixpanel.android.util.MPLog;
@@ -9,14 +10,16 @@ import java.util.Set;
 
 /* package */ class ConnectIntegrations {
     private final MixpanelAPI mMixpanel;
+    private Context mContext;
     private String mSavedUrbanAirshipChannelID;
     private int mUrbanAirshipRetries;
 
     private static final String LOGTAG = "MixpanelAPI.CnctInts";
     private static final int UA_MAX_RETRIES = 3;
 
-    public ConnectIntegrations(MixpanelAPI mixpanel) {
+    public ConnectIntegrations(MixpanelAPI mixpanel, Context context) {
         mMixpanel = mixpanel;
+        mContext = context;
     }
 
     public void reset() {
@@ -27,6 +30,9 @@ import java.util.Set;
     public synchronized void setupIntegrations(Set<String> integrations) {
         if (integrations.contains("urbanairship")) {
             setUrbanAirshipPeopleProp();
+        }
+        if (integrations.contains("braze")) {
+            setBrazePeopleProp();
         }
     }
 
@@ -59,6 +65,35 @@ import java.util.Set;
             MPLog.w(LOGTAG, "Urban Airship SDK not found but Urban Airship is integrated on Mixpanel", e);
         } catch (NoSuchMethodException e) {
             MPLog.e(LOGTAG, "Urban Airship SDK class exists but methods do not", e);
+        } catch (InvocationTargetException e) {
+            MPLog.e(LOGTAG, "method invocation failed", e);
+        } catch (IllegalAccessException e) {
+            MPLog.e(LOGTAG, "method invocation failed", e);
+        }
+    }
+
+    private void setBrazePeopleProp() {
+        String urbanAirshipClassName = "com.appboy.Appboy";
+        try {
+            Class brazeClass = Class.forName(urbanAirshipClassName);
+            Object brazeInstance = brazeClass.getMethod("getInstance", Context.class).invoke(null, mContext);
+            String deviceId = (String) brazeInstance.getClass().getMethod("getDeviceId", null).invoke(brazeInstance);
+
+            Object currentUser = brazeInstance.getClass().getMethod("getCurrentUser", null).invoke(brazeInstance);
+            String externalUserId = (String) currentUser.getClass().getMethod("getUserId", null).invoke(currentUser);
+
+            if (deviceId != null) {
+                mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
+                mMixpanel.getPeople().set("$braze_device_id", deviceId);
+            }
+            if (externalUserId != null) {
+                mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
+                mMixpanel.getPeople().set("$braze_external_id", externalUserId);
+            }
+        } catch (ClassNotFoundException e) {
+            MPLog.w(LOGTAG, "Braze SDK not found but Braze is integrated on Mixpanel", e);
+        } catch (NoSuchMethodException e) {
+            MPLog.e(LOGTAG, "Braze SDK class exists but methods do not", e);
         } catch (InvocationTargetException e) {
             MPLog.e(LOGTAG, "method invocation failed", e);
         } catch (IllegalAccessException e) {
