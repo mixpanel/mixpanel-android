@@ -82,11 +82,11 @@ import java.util.Set;
             Object currentUser = brazeInstance.getClass().getMethod("getCurrentUser", null).invoke(brazeInstance);
             String externalUserId = (String) currentUser.getClass().getMethod("getUserId", null).invoke(currentUser);
 
-            if (deviceId != null) {
+            if (deviceId != null && !deviceId.isEmpty()) {
                 mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_device_id", deviceId);
             }
-            if (externalUserId != null) {
+            if (externalUserId != null && !externalUserId.isEmpty()) {
                 mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_external_id", externalUserId);
             }
