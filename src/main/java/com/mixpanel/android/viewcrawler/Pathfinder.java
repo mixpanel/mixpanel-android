@@ -226,9 +226,7 @@ import java.util.List;
     private static boolean hasClassName(Object o, String className) {
         Class<?> klass = o.getClass();
         while (true) {
-
             String klassCanonicalName = klass.getCanonicalName();
-
             if (klassCanonicalName != null && klassCanonicalName.equals(className)) {
                 return true;
             }
