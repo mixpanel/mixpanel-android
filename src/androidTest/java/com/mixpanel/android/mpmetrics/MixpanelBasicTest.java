@@ -87,15 +87,19 @@ public class MixpanelBasicTest extends AndroidTestCase {
         MPDbAdapter adapter = new MPDbAdapter(getContext(), "DeleteTestDB");
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.GROUPS, false);
         adapter.deleteDB();
 
         String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
         assertEquals(emptyEventsData, null);
         String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
         assertEquals(emptyPeopleData, null);
+        String[] emptyGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN", true);
+        assertEquals(emptyPeopleData, null);
 
         adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
         adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.GROUPS, false);
 
         try {
             String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
@@ -107,7 +111,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONArray somePeople = new JSONArray(somePeopleData[1]);
             assertEquals(somePeople.length(), 1);
             assertEquals(somePeople.getJSONObject(0).get("added"), "after");
-        } catch (JSONException e) {
+
+            String[] someGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN", true);
+            JSONArray someGroups = new JSONArray(somePeopleData[1]);
+            assertEquals(someGroups.length(), 1);
+            assertEquals(someGroups.getJSONObject(0).get("added"), "after");        } catch (JSONException e) {
             fail("Unexpected JSON or lack thereof in MPDbAdapter test");
         }
     }
@@ -341,6 +349,83 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(messages.get(10).getMessage().has("$delete"));
     }
 
+    public void testGroupOperations() throws JSONException {
+        final List<AnalyticsMessages.GroupDescription> messages = new ArrayList<AnalyticsMessages.GroupDescription>();
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void groupMessage(GroupDescription heard) {
+                messages.add(heard);
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testGroupOperations") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+
+        Map<String, Object> mapObj1 = new HashMap<>();
+        mapObj1.put("SET MAP INT", 1);
+        Map<String, Object> mapObj2 = new HashMap<>();
+        mapObj2.put("SET ONCE MAP STR", "SET ONCE MAP VALUE");
+
+        String groupKey = "group key";
+        String groupID = "group id";
+
+        mixpanel.getGroup(groupKey, groupID).set("SET NAME", "SET VALUE");
+        mixpanel.getGroup(groupKey, groupID).setMap(mapObj1);
+        mixpanel.getGroup(groupKey, groupID).setOnce("SET ONCE NAME", "SET ONCE VALUE");
+        mixpanel.getGroup(groupKey, groupID).setOnceMap(mapObj2);
+        mixpanel.getGroup(groupKey, groupID).union("UNION NAME", new JSONArray("[100]"));
+        mixpanel.getGroup(groupKey, groupID).unset("UNSET NAME");
+        mixpanel.getGroup(groupKey, groupID).deleteGroup();
+
+        JSONObject setMessage = messages.get(0).getMessage();
+        assertEquals(setMessage.getString("$group_key"), groupKey);
+        assertEquals(setMessage.getString("$group_id"), groupID);
+        assertEquals("SET VALUE",
+                setMessage.getJSONObject("$set").getString("SET NAME"));
+
+        JSONObject setMapMessage = messages.get(1).getMessage();
+        assertEquals(setMapMessage.getString("$group_key"), groupKey);
+        assertEquals(setMapMessage.getString("$group_id"), groupID);
+        assertEquals(mapObj1.get("SET MAP INT"),
+                setMapMessage.getJSONObject("$set").getInt("SET MAP INT"));
+
+        JSONObject setOnceMessage = messages.get(2).getMessage();
+        assertEquals(setOnceMessage.getString("$group_key"), groupKey);
+        assertEquals(setOnceMessage.getString("$group_id"), groupID);
+        assertEquals("SET ONCE VALUE",
+                setOnceMessage.getJSONObject("$set_once").getString("SET ONCE NAME"));
+
+        JSONObject setOnceMapMessage = messages.get(3).getMessage();
+        assertEquals(setOnceMapMessage.getString("$group_key"), groupKey);
+        assertEquals(setOnceMapMessage.getString("$group_id"), groupID);
+        assertEquals(mapObj2.get("SET ONCE MAP STR"),
+                setOnceMapMessage.getJSONObject("$set_once").getString("SET ONCE MAP STR"));
+
+        JSONObject unionMessage = messages.get(4).getMessage();
+        assertEquals(unionMessage.getString("$group_key"), groupKey);
+        assertEquals(unionMessage.getString("$group_id"), groupID);
+        JSONArray unionValues = unionMessage.getJSONObject("$union").getJSONArray("UNION NAME");
+        assertEquals(1, unionValues.length());
+        assertEquals(100, unionValues.getInt(0));
+
+        JSONObject unsetMessage = messages.get(5).getMessage();
+        assertEquals(unsetMessage.getString("$group_key"), groupKey);
+        assertEquals(unsetMessage.getString("$group_id"), groupID);
+        JSONArray unsetValues = unsetMessage.getJSONArray("$unset");
+        assertEquals(1, unsetValues.length());
+        assertEquals("UNSET NAME", unsetValues.get(0));
+
+        JSONObject deleteMessage = messages.get(6).getMessage();
+        assertEquals(deleteMessage.getString("$group_key"), groupKey);
+        assertEquals(deleteMessage.getString("$group_id"), groupID);
+        assertTrue(deleteMessage.has("$delete"));
+    }
+
     public void testIdentifyAfterSet() {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
@@ -528,6 +613,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
 
             @Override
+            public String getGroupsEndpoint() {
+                return "GROUPS_ENDPOINT";
+            }
+
+            @Override
             public String getDecideEndpoint() {
                 return "DECIDE_ENDPOINT";
             }
@@ -635,6 +725,25 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONArray peopleSent = new JSONArray(expectedJSONMessage);
             assertEquals(1, peopleSent.length());
 
+            metrics.getGroup("testKey", "testID").set("prop", "yup");
+            metrics.flush();
+
+            String groupsTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("TABLE " + MPDbAdapter.Table.GROUPS.getName(), groupsTable);
+
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            JSONObject groupsMessage = new JSONObject(expectedJSONMessage);
+
+            assertEquals("testKey", groupsMessage.getString("$group_key"));
+            assertEquals("testID", groupsMessage.getString("$group_id"));
+            assertEquals("yup", groupsMessage.getJSONObject("$set").getString("prop"));
+
+            String groupsFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("SENT FLUSH GROUPS_ENDPOINT", groupsFlush);
+
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            JSONArray groupsSent = new JSONArray(expectedJSONMessage);
+            assertEquals(1, groupsSent.length());
         } catch (InterruptedException e) {
             fail("Expected a log message about mixpanel communication but did not receive it.");
         } catch (JSONException e) {
@@ -873,6 +982,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PEOPLE ENDPOINT");
+        appInfo.metaData.putString("com.mixpanel.android.MPConfig.GroupsEndpoint", "GROUPS ENDPOINT");
         appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DECIDE ENDPOINT");
 
         final PackageManager packageManager = new MockPackageManager() {

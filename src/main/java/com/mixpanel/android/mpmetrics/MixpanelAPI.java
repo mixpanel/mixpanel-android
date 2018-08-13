@@ -31,13 +31,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -240,6 +243,7 @@ public class MixpanelAPI {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
+        mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -572,6 +576,39 @@ public class MixpanelAPI {
     }
 
     /**
+     * Track an event with specific groups.
+     *
+     * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
+     * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+     * have a string name, and an optional set of name/value pairs that describe the properties of
+     * that event. Group key/value pairs are upserted into the property map before tracking.
+     *
+     * @param eventName The name of the event to send
+     * @param properties A Map containing the key value pairs of the properties to include in this event.
+     *                   Pass null if no extra properties exist.
+     * @param groups A Map containing the group key value pairs for this event.
+     *
+     * See also {@link #track(String, org.json.JSONObject)}, {@link #trackMap(String, Map)}
+     */
+    public void trackWithGroups(String eventName, Map<String, Object> properties, Map<String, Object> groups) {
+        if (hasOptedOutTracking()) return;
+
+        if (null == groups) {
+            trackMap(eventName, properties);
+        } else if (null == properties) {
+            trackMap(eventName, groups);
+        } else {
+            for (Entry<String, Object> e : groups.entrySet()) {
+                if (e.getValue() != null) {
+                    properties.put(e.getKey(), e.getValue());
+                }
+            }
+
+            trackMap(eventName, properties);
+        }
+    }
+
+    /**
      * Track an event.
      *
      * <p>Every call to track eventually results in a data point sent to Mixpanel. These data points
@@ -805,6 +842,119 @@ public class MixpanelAPI {
     }
 
     /**
+     * Set the group this user belongs to.
+     *
+     * @param groupKey The property name associated with this group type (must already have been set up).
+     * @param groupID The group the user belongs to.
+     */
+    public void setGroup(String groupKey, Object groupID) {
+        if (hasOptedOutTracking()) return;
+
+        List<Object> groupIDs = new ArrayList<>(1);
+        groupIDs.add(groupID);
+        setGroup(groupKey, groupIDs);
+    }
+
+    /**
+     * Set the groups this user belongs to.
+     *
+     * @param groupKey The property name associated with this group type (must already have been set up).
+     * @param groupIDs The list of groups the user belongs to.
+     */
+    public void setGroup(String groupKey, List<Object> groupIDs) {
+        if (hasOptedOutTracking()) return;
+
+        List<Object> vals = new ArrayList<>();
+
+        for (Object s : groupIDs) {
+            if (s == null) {
+                MPLog.w(LOGTAG, "groupID must be non-null");
+            } else {
+                vals.add(s);
+            }
+        }
+
+        try {
+            registerSuperProperties((new JSONObject()).put(groupKey, vals));
+            mPeople.set(groupKey, vals);
+        } catch (JSONException e) {
+            MPLog.w(LOGTAG, "groupKey must be non-null");
+        }
+    }
+
+    /**
+     * Add a group to this user's membership for a particular group key
+     *
+     * @param groupKey The property name associated with this group type (must already have been set up).
+     * @param groupID The new group the user belongs to.
+     */
+    public void addGroup(final String groupKey, final Object groupID) {
+        if (hasOptedOutTracking()) return;
+
+        updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                try {
+                    in.accumulate(groupKey, groupID);
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Failed to add groups superProperty", e);
+                }
+
+                return in;
+            }
+        });
+
+        // This is a best effort--if the people property is not already a list, this call does nothing.
+        mPeople.union(groupKey, (new JSONArray()).put(groupID));
+    }
+
+    /**
+     * Remove a group from this user's membership for a particular group key
+     *
+     * @param groupKey The property name associated with this group type (must already have been set up).
+     * @param groupID The group value to remove.
+     */
+    public void removeGroup(final String groupKey, final Object groupID) {
+        if (hasOptedOutTracking()) return;
+
+        updateSuperProperties(new SuperPropertyUpdate() {
+            public JSONObject update(JSONObject in) {
+                try {
+                    JSONArray vals = in.getJSONArray(groupKey);
+                    JSONArray newVals = new JSONArray();
+
+                    if (vals.length() <= 1) {
+                        unregisterSuperProperty(groupKey);
+
+                        // This is a best effort--we can't guarantee people and super properties match
+                        mPeople.unset(groupKey);
+                    } else {
+
+                        for (int i = 0; i < vals.length(); i++) {
+                            if (!vals.get(i).equals(groupID)) {
+                                newVals.put(vals.get(i));
+                            }
+                        }
+
+                        in.put(groupKey, newVals);
+
+                        // This is a best effort--we can't guarantee people and super properties match
+                        // If people property is not a list, this call does nothing.
+                        mPeople.remove(groupKey, groupID);
+                    }
+                } catch (JSONException e) {
+                    unregisterSuperProperty(groupKey);
+
+                    // This is a best effort--we can't guarantee people and super properties match
+                    mPeople.unset(groupKey);
+                }
+
+                return in;
+            }
+        });
+    }
+
+
+    /**
      * Returns a Mixpanel.People object that can be used to set and increment
      * People Analytics properties.
      *
@@ -813,6 +963,38 @@ public class MixpanelAPI {
      */
     public People getPeople() {
         return mPeople;
+    }
+
+    /**
+     * Returns a Mixpanel.Group object that can be used to set and increment
+     * Group Analytics properties.
+     *
+     * @param groupKey String identifying the type of group (must be already in use as a group key)
+     * @param groupID Object identifying the specific group
+     * @return an instance of {@link Group} that you can use to update
+     *     records in Mixpanel Group Analytics
+     */
+    public Group getGroup(String groupKey, Object groupID) {
+        String mapKey = makeMapKey(groupKey, groupID);
+        GroupImpl group = mGroups.get(mapKey);
+
+        if (group == null) {
+            group = new GroupImpl(groupKey, groupID);
+            mGroups.put(mapKey, group);
+        }
+
+        if (!(group.mGroupKey.equals(groupKey) && group.mGroupID.equals(groupID))) {
+            // we hit a map key collision, return a new group with the correct key and ID
+            MPLog.i(LOGTAG, "groups map key collision " + mapKey);
+            group = new GroupImpl(groupKey, groupID);
+            mGroups.put(mapKey, group);
+        }
+
+        return group;
+    }
+
+    private String makeMapKey(String groupKey, Object groupID) {
+        return groupKey + '_' + groupID;
     }
 
     /**
@@ -1423,6 +1605,136 @@ public class MixpanelAPI {
          */
         public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
 
+    }
+
+    /**
+     * Core interface for using Mixpanel Group Analytics features.
+     * You can get an instance by calling {@link MixpanelAPI#getGroup(String, Object)}
+     *
+     * <p>The Group object is used to update properties in a group's Group Analytics record.
+     *
+     * A typical use case for the Group object might look like this:
+     *
+     * <pre>
+     * {@code
+     *
+     * public class MainActivity extends Activity {
+     *      MixpanelAPI mMixpanel;
+     *
+     *      public void onCreate(Bundle saved) {
+     *          mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL API TOKEN");
+     *          ...
+     *      }
+     *
+     *      public void companyPlanTypeChanged(string company, String newPlan) {
+     *          mMixpanel.getGroup("Company", company).set("Plan Type", newPlan);
+     *          ...
+     *      }
+     *
+     *      public void onDestroy() {
+     *          mMixpanel.flush();
+     *          super.onDestroy();
+     *      }
+     * }
+     *
+     * }
+     * </pre>
+     *
+     * @see MixpanelAPI
+     */
+    public interface Group {
+        /**
+         * Sets a single property with the given name and value for this group.
+         * The given name and value will be assigned to the user in Mixpanel Group Analytics,
+         * possibly overwriting an existing property with the same name.
+         *
+         * @param propertyName The name of the Mixpanel property. This must be a String, for example "Zip Code"
+         * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
+         */
+        public void set(String propertyName, Object value);
+
+        /**
+         * Set a collection of properties on the identified group all at once.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified group. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #set(org.json.JSONObject)}
+         */
+        public void setMap(Map<String, Object> properties);
+
+        /**
+         * Set a collection of properties on the identified group all at once.
+         *
+         * @param properties a JSONObject containing the collection of properties you wish to apply
+         *      to the identified group. Each key in the JSONObject will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         */
+        public void set(JSONObject properties);
+
+        /**
+         * Works just like {@link Group#set(String, Object)}, except it will not overwrite existing property values. This is useful for properties like "First login date".
+         *
+         * @param propertyName The name of the Mixpanel property. This must be a String, for example "Zip Code"
+         * @param value The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
+         */
+        public void setOnce(String propertyName, Object value);
+
+        /**
+         * Like {@link Group#set(String, Object)}, but will not set properties that already exist on a record.
+         *
+         * @param properties a Map containing the collection of properties you wish to apply
+         *      to the identified group. Each key in the Map will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         *
+         * See also {@link #setOnce(org.json.JSONObject)}
+         */
+        public void setOnceMap(Map<String, Object> properties);
+
+        /**
+         * Like {@link Group#set(String, Object)}, but will not set properties that already exist on a record.
+         *
+         * @param properties a JSONObject containing the collection of properties you wish to apply
+         *      to this group. Each key in the JSONObject will be associated with
+         *      a property name, and the value of that key will be assigned to the property.
+         */
+        public void setOnce(JSONObject properties);
+
+        /**
+         * Adds values to a list-valued property only if they are not already present in the list.
+         * If the property does not currently exist, it will be created with the given list as its value.
+         * If the property exists and is not list-valued, the union will be ignored.
+         *
+         * @param name name of the list-valued property to set or modify
+         * @param value an array of values to add to the property value if not already present
+         */
+        void union(String name, JSONArray value);
+
+        /**
+         * Remove value from a list-valued property only if it is already present in the list.
+         * If the property does not currently exist, the remove will be ignored.
+         * If the property exists and is not list-valued, the remove will be ignored.
+         *
+         * @param name the Group Analytics list-valued property that should have a value removed
+         * @param value the value that will be removed from the list
+         */
+        public void remove(String name, Object value);
+
+        /**
+         * Permanently removes the property with the given name from the group's profile
+         * @param name name of a property to unset
+         */
+        void unset(String name);
+
+
+        /**
+         * Permanently deletes this group's record from Group Analytics.
+         *
+         * <p>Calling deleteGroup deletes an entire record completely. Any future calls
+         * to Group Analytics using the same group value will create and store new values.
+         */
+        public void deleteGroup();
     }
 
     /**
@@ -2151,6 +2463,153 @@ public class MixpanelAPI {
         }
     }
 
+    private class GroupImpl implements Group {
+        private String mGroupKey;
+        private Object mGroupID;
+
+        public GroupImpl(String groupKey, Object groupID) {
+            mGroupKey = groupKey;
+            mGroupID = groupID;
+        }
+
+        @Override
+        public void setMap(Map<String, Object> properties) {
+            if (hasOptedOutTracking()) return;
+            if (null == properties) {
+                MPLog.e(LOGTAG, "setMap does not accept null properties");
+                return;
+            }
+
+            set(new JSONObject(properties));
+        }
+
+        @Override
+        public void set(JSONObject properties) {
+            if (hasOptedOutTracking()) return;
+            try {
+                final JSONObject sendProperties = new JSONObject();
+                for (final Iterator<?> iter = properties.keys(); iter.hasNext();) {
+                    final String key = (String) iter.next();
+                    sendProperties.put(key, properties.get(key));
+                }
+
+                final JSONObject message = stdGroupMessage("$set", sendProperties);
+                recordGroupMessage(message);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception setting group properties", e);
+            }
+        }
+
+        @Override
+        public void set(String property, Object value) {
+            if (hasOptedOutTracking()) return;
+            try {
+                set(new JSONObject().put(property, value));
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "set", e);
+            }
+        }
+
+        @Override
+        public void setOnceMap(Map<String, Object> properties) {
+            if (hasOptedOutTracking()) return;
+            if (null == properties) {
+                MPLog.e(LOGTAG, "setOnceMap does not accept null properties");
+                return;
+            }
+            try {
+                setOnce(new JSONObject(properties));
+            } catch (NullPointerException e) {
+                MPLog.w(LOGTAG, "Can't have null keys in the properties for setOnceMap!");
+            }
+        }
+
+        @Override
+        public void setOnce(JSONObject properties) {
+            if (hasOptedOutTracking()) return;
+            try {
+                final JSONObject message = stdGroupMessage("$set_once", properties);
+                recordGroupMessage(message);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception setting group properties");
+            }
+        }
+
+        @Override
+        public void setOnce(String property, Object value) {
+            if (hasOptedOutTracking()) return;
+            try {
+                setOnce(new JSONObject().put(property, value));
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Property name cannot be null", e);
+            }
+        }
+
+        @Override
+        public void union(String name, JSONArray value) {
+            if (hasOptedOutTracking()) return;
+            try {
+                final JSONObject properties = new JSONObject();
+                properties.put(name, value);
+                final JSONObject message = stdGroupMessage("$union", properties);
+                recordGroupMessage(message);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception unioning a property", e);
+            }
+        }
+
+        @Override
+        public void remove(String name, Object value) {
+            if (hasOptedOutTracking()) return;
+            try {
+                final JSONObject properties = new JSONObject();
+                properties.put(name, value);
+                final JSONObject message = stdGroupMessage("$remove", properties);
+                recordGroupMessage(message);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception removing a property", e);
+            }
+        }
+
+        @Override
+        public void unset(String name) {
+            if (hasOptedOutTracking()) return;
+            try {
+                final JSONArray names = new JSONArray();
+                names.put(name);
+                final JSONObject message = stdGroupMessage("$unset", names);
+                recordGroupMessage(message);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception unsetting a property", e);
+            }
+        }
+
+        @Override
+        public void deleteGroup() {
+            try {
+                final JSONObject message = stdGroupMessage("$delete", JSONObject.NULL);
+                recordGroupMessage(message);
+                mGroups.remove(makeMapKey(mGroupKey, mGroupID));
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Exception deleting a group", e);
+            }
+        }
+
+        private JSONObject stdGroupMessage(String actionType, Object properties)
+                throws JSONException {
+            final JSONObject dataObj = new JSONObject();
+
+            dataObj.put(actionType, properties);
+            dataObj.put("$token", mToken);
+            dataObj.put("$time", System.currentTimeMillis());
+            dataObj.put("$group_key", mGroupKey);
+            dataObj.put("$group_id", mGroupID);
+            dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
+
+            return dataObj;
+        }
+    }// GroupImpl
+
     private class SupportedUpdatesListener implements UpdatesListener, Runnable {
         @Override
         public void onNewResults() {
@@ -2317,6 +2776,15 @@ public class MixpanelAPI {
         }
     }
 
+    private void recordGroupMessage(JSONObject message) {
+        if (hasOptedOutTracking()) return;
+        if (message.has("$group_key") && message.has("$group_id")) {
+            mMessages.groupMessage(new AnalyticsMessages.GroupDescription(message, mToken));
+        } else {
+            MPLog.e(LOGTAG, "Attempt to update group without key and value--this should not happen.");
+        }
+    }
+
     private void pushWaitingPeopleRecord() {
         if (hasOptedOutTracking()) return;
         final JSONArray records = mPersistentIdentity.waitingPeopleRecordsForSending();
@@ -2403,6 +2871,7 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final String mToken;
     private final PeopleImpl mPeople;
+    private final Map<String, GroupImpl> mGroups;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;

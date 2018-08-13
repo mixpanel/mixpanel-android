@@ -91,6 +91,15 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    // Must be thread safe.
+    public void groupMessage(final GroupDescription groupDescription) {
+        final Message m = Message.obtain();
+        m.what = ENQUEUE_GROUP;
+        m.obj = groupDescription;
+
+        mWorker.runMessage(m);
+    }
+
     public void postToServer(final FlushDescription flushDescription) {
         final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
@@ -195,6 +204,24 @@ import javax.net.ssl.SSLSocketFactory;
 
     static class PeopleDescription extends MixpanelDescription {
         public PeopleDescription(JSONObject message, String token) {
+            super(token);
+            this.message = message;
+        }
+
+        @Override
+        public String toString() {
+            return message.toString();
+        }
+
+        public JSONObject getMessage() {
+            return message;
+        }
+
+        private final JSONObject message;
+    }
+
+    static class GroupDescription extends MixpanelDescription {
+        public GroupDescription(JSONObject message, String token) {
             super(token);
             this.message = message;
         }
@@ -317,6 +344,13 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("    " + message.toString());
                         token = message.getToken();
                         returnCode = mDbAdapter.addJSON(message.getMessage(), token, MPDbAdapter.Table.PEOPLE, false);
+                    } else if (msg.what == ENQUEUE_GROUP) {
+                        final GroupDescription message = (GroupDescription) msg.obj;
+
+                        logAboutMessageToMixpanel("Queuing group record for sending later");
+                        logAboutMessageToMixpanel("    " + message.toString());
+                        token = message.getToken();
+                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, MPDbAdapter.Table.GROUPS, false);
                     } else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
@@ -365,6 +399,7 @@ import javax.net.ssl.SSLSocketFactory;
                         token = message.getToken();
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.EVENTS, token);
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.PEOPLE, token);
+                        mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.GROUPS, token);
                     } else if (msg.what == KILL_WORKER) {
                         MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
@@ -472,6 +507,7 @@ import javax.net.ssl.SSLSocketFactory;
 
                 sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
                 sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
             }
 
             private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
@@ -711,11 +747,12 @@ import javax.net.ssl.SSLSocketFactory;
     protected final MPConfig mConfig;
 
     // Messages for our thread
-    private static final int ENQUEUE_PEOPLE = 0; // submit events and people data
-    private static final int ENQUEUE_EVENTS = 1; // push given JSON message to people DB
-    private static final int FLUSH_QUEUE = 2; // push given JSON message to events DB
+    private static final int ENQUEUE_PEOPLE = 0; // push given JSON message to people DB
+    private static final int ENQUEUE_EVENTS = 1; // push given JSON message to events DB
+    private static final int FLUSH_QUEUE = 2; // submit events, people, and groups data
+    private static final int ENQUEUE_GROUP = 3; // push given JSON message to groups DB
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
-    private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people updates from the db
+    private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
     private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
