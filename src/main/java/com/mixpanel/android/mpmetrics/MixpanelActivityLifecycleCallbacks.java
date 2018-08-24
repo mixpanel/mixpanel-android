@@ -91,7 +91,7 @@ import java.util.Locale;
     @Override
     public void onActivityResumed(Activity activity) {
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
-            mMpInstance.getPeople().joinExperimentIfAvailable();
+            mMpInstance.getPeople().joinOnlyNewExperiments();
         }
 
         mCurrentActivity = new WeakReference<>(activity);

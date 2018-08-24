@@ -1460,8 +1460,8 @@ public class MixpanelAPI {
         public void showNotificationIfAvailable(Activity parent);
 
         /**
-         * Applies A/B test changes, if they are present. By default, your application will attempt
-         * to join available experiments any time an activity is resumed, but you can disable this
+         * Applies all A/B test changes, if they are present. By default, your application will attempt
+         * to join only new experiments any time an activity is resumed, but you can disable this
          * automatic behavior by adding the following tag to the &lt;application&gt; tag in your AndroidManifest.xml
          * {@code
          *     <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
@@ -1475,6 +1475,15 @@ public class MixpanelAPI {
          * be informed that new experiments are ready.
          */
         public void joinExperimentIfAvailable();
+
+        /**
+         * Called when a new activity is resumed. It will attempt to join only new experiments but
+         * not existing ones so the user' session is not affected.
+         *
+         * Existing experiments with new values will automatically be applied on app background. If
+         * you want to apply all experiments, see {@link #joinExperimentIfAvailable()}
+         */
+        /* package */ void joinOnlyNewExperiments();
 
         /**
          * Shows the given in-app notification to the user. Display will occur just as if the
@@ -2136,6 +2145,11 @@ public class MixpanelAPI {
 
         @Override
         public void joinExperimentIfAvailable() {
+            mUpdatesFromMixpanel.applyPersistedUpdates();
+        }
+
+        @Override
+        public void joinOnlyNewExperiments() {
             final JSONArray variants = mDecideMessages.getVariants();
             mUpdatesFromMixpanel.setVariants(variants);
         }
