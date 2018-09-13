@@ -403,6 +403,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         String setId = metrics.getDistinctId();
         assertEquals("Events Id", setId);
 
+        String userId = metrics.getUserId();
+        assertEquals("Events Id", userId);
+
         String stillEmpty = metrics.getPeople().getDistinctId();
         assertNull(stillEmpty);
 
@@ -412,6 +415,44 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         String setPeopleId = metrics.getPeople().getDistinctId();
         assertEquals("People Id", setPeopleId);
+    }
+
+    public void testIdentifyAndCheckUserIDAndDeviceID() {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+
+        String generatedId = metrics.getAnonymousId();
+        assertNotNull(generatedId);
+        String eventsDistinctId = metrics.getDistinctId();
+        assertNotNull(eventsDistinctId);
+        assertEquals(eventsDistinctId, generatedId);
+        assertNull(metrics.getUserId());
+
+        String emptyId = metrics.getPeople().getDistinctId();
+        assertNull(emptyId);
+
+        metrics.identify("Events Id");
+        String setId = metrics.getDistinctId();
+        assertEquals("Events Id", setId);
+        String anonymousIdAfterIdentify = metrics.getAnonymousId();
+        assertEquals(anonymousIdAfterIdentify, generatedId);
+
+        String stillEmpty = metrics.getPeople().getDistinctId();
+        assertNull(stillEmpty);
+
+        metrics.getPeople().identify("People Id");
+        String unchangedId = metrics.getDistinctId();
+        assertEquals("Events Id", unchangedId);
+
+        String setPeopleId = metrics.getPeople().getDistinctId();
+        assertEquals("People Id", setPeopleId);
+
+        // once its reset we will only have generated id but user id should be null
+        metrics.reset();
+        String generatedId2 = metrics.getAnonymousId();
+        assertNotNull(generatedId2);
+        assertNotSame(generatedId, generatedId2);
+        assertNotNull(metrics.getDistinctId());
+        assertNull(metrics.getUserId());
     }
 
     public void testMessageQueuing() {

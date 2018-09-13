@@ -189,6 +189,22 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertEquals("STORED PUSH ID", testPreferences.getString("push_id", "FAIL"));
     }
 
+    public void testGeneratedAnonymousId() {
+        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        testPreferences.edit().remove("events_distinct_id").commit();
+
+        final String generatedAnonymousId = mPersistentIdentity.getAnonymousId();
+        assertNotNull(generatedAnonymousId);
+
+        // before identifying the anonymous identity is equal to generated distinct_id
+        final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
+        assertEquals("eventsDistinctId should be same as anonymousId before identify", generatedAnonymousId, eventsDistinctId);
+
+
+        mPersistentIdentity.setEventsDistinctId("identified_id");
+        assertNotSame("anonymous id doesn't differ from eventsDistinctId post identify", generatedAnonymousId, mPersistentIdentity.getEventsDistinctId());
+    }
+
     private PersistentIdentity mPersistentIdentity;
     private static final String TEST_PREFERENCES = "TEST PERSISTENT PROPERTIES PREFS";
     private static final String TEST_REFERRER_PREFERENCES  = "TEST REFERRER PREFS";
