@@ -25,11 +25,6 @@ public class DecideMessagesTest extends AndroidTestCase {
             public void onNewResults() {
                 mListenerCalls.add("CALLED");
             }
-
-            @Override
-            public void onNewConnectIntegrations() {
-                mListenerCalls.add("CONNECT INTEGRATIONS");
-            }
         };
 
         mMockUpdates = new UpdatesFromMixpanel() {

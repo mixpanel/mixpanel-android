@@ -27,7 +27,7 @@ import java.util.Set;
         mUrbanAirshipRetries = 0;
     }
 
-    public synchronized void setupIntegrations(Set<String> integrations) {
+    public void setupIntegrations(Set<String> integrations) {
         if (integrations.contains("urbanairship")) {
             setUrbanAirshipPeopleProp();
         }
@@ -36,7 +36,7 @@ import java.util.Set;
         }
     }
 
-    private synchronized void setUrbanAirshipPeopleProp() {
+    private void setUrbanAirshipPeopleProp() {
         String urbanAirshipClassName = "com.urbanairship.UAirship";
         try {
             Class urbanAirshipClass = Class.forName(urbanAirshipClassName);

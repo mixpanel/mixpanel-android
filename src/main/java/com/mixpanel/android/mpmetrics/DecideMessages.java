@@ -19,7 +19,6 @@ import java.util.Set;
 
     public interface OnNewResultsListener {
         void onNewResults();
-        void onNewConnectIntegrations();
     }
 
     public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
@@ -125,7 +124,7 @@ import java.util.Set;
                 }
                 if (!mIntegrations.equals(integrationsSet)) {
                     mIntegrations = integrationsSet;
-                    mListener.onNewConnectIntegrations();
+                    newContent = true;
                 }
             } catch(JSONException e) {
                 MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);

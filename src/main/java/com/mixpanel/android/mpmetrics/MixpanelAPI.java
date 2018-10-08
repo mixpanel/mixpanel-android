@@ -2109,11 +2109,6 @@ public class MixpanelAPI {
         }
 
         @Override
-        public void onNewConnectIntegrations() {
-            // Do nothing, not supported
-        }
-
-        @Override
         public void addOnMixpanelUpdatesReceivedListener(OnMixpanelUpdatesReceivedListener listener) {
             // Do nothing, not supported
         }
@@ -2128,11 +2123,6 @@ public class MixpanelAPI {
         @Override
         public void onNewResults() {
             mExecutor.execute(this);
-        }
-
-        @Override
-        public void onNewConnectIntegrations() {
-            mConnectIntegrations.setupIntegrations(mDecideMessages.getIntegrations());
         }
 
         @Override
@@ -2156,6 +2146,7 @@ public class MixpanelAPI {
             for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
+            mConnectIntegrations.setupIntegrations(mDecideMessages.getIntegrations());
         }
 
         private final Set<OnMixpanelUpdatesReceivedListener> mListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelUpdatesReceivedListener, Boolean>());
