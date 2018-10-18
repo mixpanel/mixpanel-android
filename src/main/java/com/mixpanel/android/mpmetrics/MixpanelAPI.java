@@ -301,12 +301,11 @@ public class MixpanelAPI {
         if (!mPersistentIdentity.isFirstIntegration(mToken)) {
             try {
                 final JSONObject messageProps = new JSONObject();
-
                 messageProps.put("mp_lib", "Android");
                 messageProps.put("lib", "Android");
                 messageProps.put("distinct_id", token);
                 messageProps.put("$lib_version", MPConfig.VERSION);
-
+                messageProps.put("$user_id", token);
                 final AnalyticsMessages.EventDescription eventDescription =
                         new AnalyticsMessages.EventDescription(
                                 "Integration",
@@ -458,7 +457,6 @@ public class MixpanelAPI {
             MPLog.w(LOGTAG, "Attempted to alias identical distinct_ids " + alias + ". Alias message will not be sent.");
             return;
         }
-
         try {
             final JSONObject j = new JSONObject();
             j.put("alias", alias);
@@ -496,9 +494,16 @@ public class MixpanelAPI {
      * @see People#identify(String)
      */
     public void identify(String distinctId) {
+        identify(distinctId, true);
+    }
+
+    private void identify(String distinctId, boolean markAsUserId) {
         if (hasOptedOutTracking()) return;
         synchronized (mPersistentIdentity) {
             mPersistentIdentity.setEventsDistinctId(distinctId);
+            if(markAsUserId) {
+                mPersistentIdentity.markEventsUserIdPresent();
+            }
             String decideId = mPersistentIdentity.getPeopleDistinctId();
             if (null == decideId) {
                 decideId = mPersistentIdentity.getEventsDistinctId();
@@ -640,6 +645,27 @@ public class MixpanelAPI {
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
      }
+
+     /**
+     * Returns the anonymoous id currently being used to uniquely identify the device and all
+     * with events sent using {@link #track(String, JSONObject)} will have this id as a device
+     * id
+     *
+     * @return The device id associated with event tracking
+     */
+    protected String getAnonymousId() {
+        return mPersistentIdentity.getAnonymousId();
+    }
+
+    /**
+     * Returns the user id with which identify is called  and all the with events sent using
+     * {@link #track(String, JSONObject)} will have this id as a user id
+     *
+     * @return The user id associated with event tracking
+     */
+    protected String getUserId() {
+        return mPersistentIdentity.getEventsUserId();
+    }
 
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
@@ -796,7 +822,7 @@ public class MixpanelAPI {
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
-        identify(getDistinctId());
+        identify(getDistinctId(), false);
         mConnectIntegrations.reset();
         mUpdatesFromMixpanel.storeVariants(new JSONArray());
         mUpdatesFromMixpanel.applyPersistedUpdates();
@@ -1965,12 +1991,16 @@ public class MixpanelAPI {
                 throws JSONException {
             final JSONObject dataObj = new JSONObject();
             final String distinctId = getDistinctId(); // TODO ensure getDistinctId is thread safe
-
+            final String anonymousId = getAnonymousId();
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
+            if (null != anonymousId) {
+                dataObj.put("$device_id", anonymousId);
+            }
             if (null != distinctId) {
                 dataObj.put("$distinct_id", distinctId);
+                dataObj.put("$user_id", distinctId);
             }
             dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
 
@@ -2235,8 +2265,17 @@ public class MixpanelAPI {
             // but DO allow the caller to override them in their given properties.
             final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
             final long timeSeconds = (long) timeSecondsDouble;
+            final String distinctId = getDistinctId();
+            final String anonymousId = getAnonymousId();
+            final String userId = getUserId();
             messageProps.put("time", timeSeconds);
-            messageProps.put("distinct_id", getDistinctId());
+            messageProps.put("distinct_id", distinctId);
+            if(anonymousId != null) {
+                messageProps.put("$device_id", anonymousId);
+            }
+            if(userId != null) {
+                messageProps.put("$user_id", userId);
+            }
 
             if (null != eventBegin) {
                 final double eventBeginDouble = ((double) eventBegin) / 1000.0;

@@ -152,6 +152,13 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    public synchronized String getAnonymousId() {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        return mAnonymousId;
+    }
+
     public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -159,12 +166,29 @@ import com.mixpanel.android.util.MPLog;
         return mEventsDistinctId;
     }
 
-    public synchronized void setEventsDistinctId(String eventsDistinctId) {
+    public synchronized String getEventsUserId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
+        if(mEventsUserIdPresent) {
+            return mEventsDistinctId;
+        }
+        return null;
+    }
 
+    public synchronized void setEventsDistinctId(String eventsDistinctId) {
+        if(!mIdentitiesLoaded) {
+            readIdentities();
+        }
         mEventsDistinctId = eventsDistinctId;
+        writeIdentities();
+    }
+
+    public synchronized void markEventsUserIdPresent() {
+        if(!mIdentitiesLoaded) {
+            readIdentities();
+        }
+        mEventsUserIdPresent = true;
         writeIdentities();
     }
 
@@ -179,7 +203,6 @@ import com.mixpanel.android.util.MPLog;
         if (! mIdentitiesLoaded) {
             readIdentities();
         }
-
         mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
     }
@@ -604,7 +627,9 @@ import com.mixpanel.android.util.MPLog;
         }
 
         mEventsDistinctId = prefs.getString("events_distinct_id", null);
+        mEventsUserIdPresent = prefs.getBoolean("events_user_id_present", false);
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
+        mAnonymousId = prefs.getString("anonymous_id", null);
         mWaitingPeopleRecords = null;
 
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
@@ -617,10 +642,11 @@ import com.mixpanel.android.util.MPLog;
         }
 
         if (mEventsDistinctId == null) {
-            mEventsDistinctId = UUID.randomUUID().toString();
+            mAnonymousId = UUID.randomUUID().toString();
+            mEventsDistinctId = mAnonymousId;
+            mEventsUserIdPresent = false;
             writeIdentities();
         }
-
         mIdentitiesLoaded = true;
     }
 
@@ -660,7 +686,9 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor prefsEditor = prefs.edit();
 
             prefsEditor.putString("events_distinct_id", mEventsDistinctId);
+            prefsEditor.putBoolean("events_user_id_present", mEventsUserIdPresent);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
+            prefsEditor.putString("anonymous_id", mAnonymousId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             } else {
@@ -687,7 +715,9 @@ import com.mixpanel.android.util.MPLog;
     private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
+    private boolean mEventsUserIdPresent;
     private String mPeopleDistinctId;
+    private String mAnonymousId;
     private JSONArray mWaitingPeopleRecords;
     private Boolean mIsUserOptOut;
     private static Integer sPreviousVersionCode;
