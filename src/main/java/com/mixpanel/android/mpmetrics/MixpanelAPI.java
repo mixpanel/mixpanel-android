@@ -330,7 +330,9 @@ public class MixpanelAPI {
 
         mUpdatesFromMixpanel.startUpdates();
 
-        ExceptionHandler.init();
+        if (!mConfig.getDisableExceptionHandler()) {
+            ExceptionHandler.init();
+        }
     }
 
     /**
