@@ -58,6 +58,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.DisableAppOpenEvent</dt>
  *     <dd>A boolean value. If true, do not send an "$app_open" event when the MixpanelAPI object is created for the first time. Defaults to true - the $app_open event will not be sent by default.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.DisableExceptionHandler</dt>
+ *     <dd>A boolean value. If true, do not automatically capture app crashes. "App Crashed" events won't show up on Mixpanel. Defaults to false.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates</dt>
  *     <dd>A boolean value. If true, automatically show notifications and A/B test variants. Defaults to true.</dd>
  *
@@ -230,6 +233,7 @@ public class MPConfig {
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
         mDisableViewCrawler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableViewCrawler", false);
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
+        mDisableExceptionHandler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableExceptionHandler", false);
         mImageCacheMaxMemoryFactor = metaData.getInt("com.mixpanel.android.MPConfig.ImageCacheMaxMemoryFactor", 10);
         mIgnoreInvisibleViewsEditor = metaData.getBoolean("com.mixpanel.android.MPConfig.IgnoreInvisibleViewsVisualEditor", false);
         mAutoShowMixpanelUpdates = metaData.getBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", true);
@@ -414,6 +418,10 @@ public class MPConfig {
         return mSessionTimeoutDuration;
     }
 
+    public boolean getDisableExceptionHandler() {
+        return mDisableExceptionHandler;
+    }
+
     public String getNotificationChannelId() {
         return mNotificationChannelId;
     }
@@ -502,6 +510,7 @@ public class MPConfig {
                 "    NotificationDefaults " + getNotificationDefaults() + "\n" +
                 "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
                 "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
+                "    DisableExceptionHandler: " + getDisableExceptionHandler() + "\n" +
                 "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
                 "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
                 "    NotificationChannelImportance: " + getNotificationChannelImportance();
@@ -516,6 +525,7 @@ public class MPConfig {
     private final boolean mDisableEmulatorBindingUI;
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableViewCrawler;
+    private final boolean mDisableExceptionHandler;
     private final String[] mDisableViewCrawlerForProjects;
     private String mEventsEndpoint;
     private String mPeopleEndpoint;
