@@ -33,8 +33,8 @@ Check out our **[official documentation](https://mixpanel.com/help/reference/and
 Add Mixpanel and Google Play Services to the `dependencies` section in *app/build.gradle*
 
 ```gradle
-compile "com.mixpanel.android:mixpanel-android:5.+"
-compile "com.google.android.gms:play-services-gcm:7.5.0+"
+implementation "com.mixpanel.android:mixpanel-android:5.+"
+implementation "com.google.android.gms:play-services-gcm:7.5.0+"
 ```
 
 ### Permissions in *app/src/main/AndroidManifest.xml*
