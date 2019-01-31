@@ -159,6 +159,13 @@ import com.mixpanel.android.util.MPLog;
         return mAnonymousId;
     }
 
+    public synchronized boolean getHadPersistedDistinctId() {
+        if (! mIdentitiesLoaded) {
+           readIdentities();
+        }
+        return mHadPersistedDistinctId;
+    }
+
     public synchronized String getEventsDistinctId() {
         if (! mIdentitiesLoaded) {
             readIdentities();
@@ -174,6 +181,18 @@ import com.mixpanel.android.util.MPLog;
             return mEventsDistinctId;
         }
         return null;
+    }
+
+    public synchronized void setAnonymousIdIfAbsent(String anonymousId) {
+        if (! mIdentitiesLoaded) {
+            readIdentities();
+        }
+        if (mAnonymousId != null) {
+            return;
+        }
+        mAnonymousId = anonymousId;
+        mHadPersistedDistinctId = true;
+        writeIdentities();
     }
 
     public synchronized void setEventsDistinctId(String eventsDistinctId) {
@@ -630,6 +649,7 @@ import com.mixpanel.android.util.MPLog;
         mEventsUserIdPresent = prefs.getBoolean("events_user_id_present", false);
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mAnonymousId = prefs.getString("anonymous_id", null);
+        mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
         mWaitingPeopleRecords = null;
 
         final String storedWaitingRecord = prefs.getString("waiting_array", null);
@@ -663,7 +683,6 @@ import com.mixpanel.android.util.MPLog;
         if (prefs == null) {
             return;
         }
-
         mIsUserOptOut = prefs.getBoolean("opt_out_" + token, false);
     }
 
@@ -689,6 +708,7 @@ import com.mixpanel.android.util.MPLog;
             prefsEditor.putBoolean("events_user_id_present", mEventsUserIdPresent);
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             prefsEditor.putString("anonymous_id", mAnonymousId);
+            prefsEditor.putBoolean("had_persisted_distinct_id", mHadPersistedDistinctId);
             if (mWaitingPeopleRecords == null) {
                 prefsEditor.remove("waiting_array");
             } else {
@@ -718,6 +738,7 @@ import com.mixpanel.android.util.MPLog;
     private boolean mEventsUserIdPresent;
     private String mPeopleDistinctId;
     private String mAnonymousId;
+    private boolean mHadPersistedDistinctId;
     private JSONArray mWaitingPeopleRecords;
     private Boolean mIsUserOptOut;
     private static Integer sPreviousVersionCode;
