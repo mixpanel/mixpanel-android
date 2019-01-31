@@ -502,6 +502,8 @@ public class MixpanelAPI {
     private void identify(String distinctId, boolean markAsUserId) {
         if (hasOptedOutTracking()) return;
         synchronized (mPersistentIdentity) {
+            String currentEventsDistinctId = mPersistentIdentity.getEventsDistinctId();
+            mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
             mPersistentIdentity.setEventsDistinctId(distinctId);
             if(markAsUserId) {
                 mPersistentIdentity.markEventsUserIdPresent();
@@ -1997,6 +1999,7 @@ public class MixpanelAPI {
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
+            dataObj.put("$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
             if (null != anonymousId) {
                 dataObj.put("$device_id", anonymousId);
             }
@@ -2272,6 +2275,7 @@ public class MixpanelAPI {
             final String userId = getUserId();
             messageProps.put("time", timeSeconds);
             messageProps.put("distinct_id", distinctId);
+            messageProps.put("$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
             if(anonymousId != null) {
                 messageProps.put("$device_id", anonymousId);
             }
