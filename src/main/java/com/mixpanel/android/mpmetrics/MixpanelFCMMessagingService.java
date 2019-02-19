@@ -38,7 +38,7 @@ import org.json.JSONObject;
  * buildscript {
  *      ...
  *      dependencies {
- *          classpath 'com.google.gms:google-services:3.0.0'
+ *          classpath 'com.google.gms:google-services:4.1.0'
  *          ...
  *      }
  * }

@@ -1156,7 +1156,7 @@ public class MixpanelAPI {
          * buildscript {
          *      ...
          *      dependencies {
-         *          classpath 'com.google.gms:google-services:3.0.0'
+         *          classpath 'com.google.gms:google-services:4.1.0'
          *          ...
          *      }
          * }
@@ -1887,7 +1887,7 @@ public class MixpanelAPI {
                             "buildscript {\n" +
                             "   ...\n" +
                             "   dependencies {\n" +
-                            "       classpath 'com.google.gms:google-services:3.0.0'\n" +
+                            "       classpath 'com.google.gms:google-services:4.1.0'\n" +
                             "       ...\n" +
                             "   }\n" +
                             "}\n" +
