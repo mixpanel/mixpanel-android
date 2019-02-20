@@ -12,8 +12,6 @@ import android.util.DisplayMetrics;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.gcm.GoogleCloudMessaging;
-import com.google.android.gms.iid.InstanceID;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
@@ -104,14 +102,6 @@ import javax.net.ssl.SSLSocketFactory;
         final Message m = Message.obtain();
         m.what = INSTALL_DECIDE_CHECK;
         m.obj = check;
-
-        mWorker.runMessage(m);
-    }
-
-    public void registerForGCM(final String senderID) {
-        final Message m = Message.obtain();
-        m.what = REGISTER_FOR_GCM;
-        m.obj = senderID;
 
         mWorker.runMessage(m);
     }
@@ -357,9 +347,6 @@ import javax.net.ssl.SSLSocketFactory;
                                 mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
                             }
                         }
-                    } else if (msg.what == REGISTER_FOR_GCM) {
-                        final String senderId = (String) msg.obj;
-                        runGCMRegistration(senderId);
                     } else if (msg.what == EMPTY_QUEUES) {
                         final MixpanelDescription message = (MixpanelDescription) msg.obj;
                         token = message.getToken();
@@ -420,47 +407,6 @@ import javax.net.ssl.SSLSocketFactory;
 
             protected long getTrackEngageRetryAfter() {
                 return mTrackEngageRetryAfter;
-            }
-
-            private void runGCMRegistration(String senderID) {
-                final String registrationId;
-                try {
-                    // We don't actually require Google Play Services to be available
-                    // (since we can't specify what version customers will be using,
-                    // and because the latest Google Play Services actually have
-                    // dependencies on Java 7)
-
-                    // Consider adding a transitive dependency on the latest
-                    // Google Play Services version and requiring Java 1.7
-                    // in the next major library release.
-                    try {
-                        final int resultCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
-                        if (resultCode != ConnectionResult.SUCCESS) {
-                            MPLog.i(LOGTAG, "Can't register for push notifications, Google Play Services are not installed.");
-                            return;
-                        }
-                    } catch (RuntimeException e) {
-                        MPLog.i(LOGTAG, "Can't register for push notifications, Google Play services are not configured.");
-                        return;
-                    }
-
-                    InstanceID instanceID = InstanceID.getInstance(mContext);
-                    registrationId = instanceID.getToken(senderID, GoogleCloudMessaging.INSTANCE_ID_SCOPE, null);
-                } catch (IOException e) {
-                    MPLog.i(LOGTAG, "Exception when trying to register for GCM", e);
-                    return;
-                } catch (NoClassDefFoundError e) {
-                    MPLog.w(LOGTAG, "Google play services were not part of this build, push notifications cannot be registered or delivered");
-                    return;
-                }
-
-                MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-                    @Override
-                    public void process(MixpanelAPI api) {
-                        MPLog.v(LOGTAG, "Using existing pushId " + registrationId);
-                        api.getPeople().setPushRegistrationId(registrationId);
-                    }
-                });
             }
 
             private void sendAllData(MPDbAdapter dbAdapter, String token) {
@@ -717,7 +663,6 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people updates from the db
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
-    private static final int REGISTER_FOR_GCM = 13; // Register for GCM using Google Play Services
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 

@@ -1,24 +1,21 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.test.AndroidTestCase;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class GCMReceiverTest extends AndroidTestCase {
+public class FCMMessagingServiceTest extends AndroidTestCase {
     @Override
     public void setUp() throws PackageManager.NameNotFoundException {
         // ACTION_BUG_REPORT is chosen because it's identifiably weird
         final Intent defaultIntent = new Intent(Intent.ACTION_BUG_REPORT);
-        mGcmReceiver = new TestGCMReceiver(defaultIntent);
+        mFCMMessaging = new TestFCMMessagingService(defaultIntent);
         final Map<String, Integer> resources = new HashMap<String, Integer>();
         resources.put("ic_pretend_icon", 12345);
         mResourceIds = new TestUtils.TestResourceIds(resources);
@@ -32,7 +29,7 @@ public class GCMReceiverTest extends AndroidTestCase {
 
     public void testNotificationEmptyIntent() {
         final Intent intent = new Intent();
-        assertNull(mGcmReceiver.readInboundIntent(this.getContext(), intent, mResourceIds));
+        assertNull(mFCMMessaging.readInboundIntent(this.getContext(), intent, mResourceIds));
     }
 
     public void testCompleteNotification() {
@@ -41,7 +38,7 @@ public class GCMReceiverTest extends AndroidTestCase {
         intent.putExtra("mp_icnm", "ic_pretend_icon");
         intent.putExtra("mp_title", "TITLE");
         intent.putExtra("mp_cta", mGoodUri.toString());
-        final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
 
         assertEquals(created.icon, 12345);
         assertEquals(created.title, "TITLE");
@@ -53,7 +50,7 @@ public class GCMReceiverTest extends AndroidTestCase {
     public void testMinimalNotification(){
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
         assertEquals(created.icon, mDefaultIcon);
         assertEquals(created.title, mDefaultTitle);
         assertEquals(created.message, "MESSAGE");
@@ -64,7 +61,7 @@ public class GCMReceiverTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_icnm", "NO SUCH ICON");
-        final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
 
         assertEquals(created.icon, mDefaultIcon);
     }
@@ -73,12 +70,12 @@ public class GCMReceiverTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_cta", (String) null);
-        final GCMReceiver.NotificationData created = mGcmReceiver.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
         assertNull(created.intent.getData());
     }
 
-    private static class TestGCMReceiver extends GCMReceiver {
-        public TestGCMReceiver(Intent aDummy) {
+    private static class TestFCMMessagingService extends MixpanelFCMMessagingService {
+        public TestFCMMessagingService(Intent aDummy) {
             dummyIntent = aDummy;
         }
 
@@ -92,7 +89,7 @@ public class GCMReceiverTest extends AndroidTestCase {
 
     private CharSequence mDefaultTitle;
     private int mDefaultIcon;
-    private GCMReceiver mGcmReceiver;
+    private TestFCMMessagingService mFCMMessaging;
     private ResourceIds mResourceIds;
     private Uri mGoodUri;
 }

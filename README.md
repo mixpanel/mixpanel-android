@@ -30,11 +30,11 @@ Check out our **[official documentation](https://mixpanel.com/help/reference/and
 
 ### Dependencies in *app/build.gradle*
 
-Add Mixpanel and Google Play Services to the `dependencies` section in *app/build.gradle*
+Add Mixpanel and Firebase Messaging (optional, for push notifications) to the `dependencies` section in *app/build.gradle*
 
 ```gradle
 implementation "com.mixpanel.android:mixpanel-android:5.+"
-implementation "com.google.android.gms:play-services-gcm:7.5.0+"
+implementation "com.google.firebase:firebase-messaging:17.3.4"
 ```
 
 ### Permissions in *app/src/main/AndroidManifest.xml*
