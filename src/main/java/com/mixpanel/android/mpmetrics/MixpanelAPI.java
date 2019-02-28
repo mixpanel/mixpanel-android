@@ -1839,10 +1839,6 @@ public class MixpanelAPI {
         public void setPushRegistrationId(String registrationId) {
             // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
-                if (mPersistentIdentity.getPeopleDistinctId() == null) {
-                    return;
-                }
-
                 mPersistentIdentity.storePushId(registrationId);
                 final JSONArray ids = new JSONArray();
                 ids.put(registrationId);
