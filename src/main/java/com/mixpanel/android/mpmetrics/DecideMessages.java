@@ -28,8 +28,9 @@ import java.util.Set;
         mUpdatesFromMixpanel = updatesFromMixpanel;
 
         mDistinctId = null;
-        mUnseenNotifications = new LinkedList<InAppNotification>();
-        mNotificationIds = new HashSet<Integer>(notificationIds);
+        mUnseenNotifications = new LinkedList<>();
+        mNotificationIds = new HashSet<>(notificationIds);
+        mUnseenEventTriggeredNotifications = new LinkedList<>();
         mVariants = null;
         mIntegrations = new HashSet<String>();
     }
@@ -52,6 +53,7 @@ import java.util.Set;
     }
 
     public synchronized void reportResults(List<InAppNotification> newNotifications,
+                                           List<InAppNotification> newTriggeredNotifications,
                                            JSONArray eventBindings,
                                            JSONArray variants,
                                            boolean automaticEvents,
@@ -67,6 +69,15 @@ import java.util.Set;
             if (! mNotificationIds.contains(id)) {
                 mNotificationIds.add(id);
                 mUnseenNotifications.add(n);
+                newContent = true;
+            }
+        }
+
+        for (final InAppNotification n : newTriggeredNotifications) {
+            final int id = n.getId();
+            if (! mNotificationIds.contains(id)) {
+                mNotificationIds.add(id);
+                mUnseenEventTriggeredNotifications.add(n);
                 newContent = true;
             }
         }
@@ -172,18 +183,39 @@ import java.util.Set;
         return notif;
     }
 
+    public synchronized InAppNotification getNotification(AnalyticsMessages.EventDescription eventDescription, boolean replace) {
+        for (int i = 0; i < mUnseenEventTriggeredNotifications.size(); i ++) {
+            final InAppNotification n = mUnseenEventTriggeredNotifications.get(i);
+            if (n.matchesEventDescription(eventDescription)) {
+                if (!replace) {
+                    mUnseenEventTriggeredNotifications.remove(i);
+                }
+                return n;
+            }
+        }
+        return null;
+    }
+
     public synchronized Set<String> getIntegrations() { return mIntegrations; }
 
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
     public synchronized void markNotificationAsUnseen(InAppNotification notif) {
         if (!MPConfig.DEBUG) {
-            mUnseenNotifications.add(notif);
+            if (notif.isEventTriggered()) {
+                mUnseenEventTriggeredNotifications.add(notif);
+            } else {
+                mUnseenNotifications.add(notif);
+            }
         }
     }
 
     public synchronized boolean hasUpdatesAvailable() {
         return (! mUnseenNotifications.isEmpty()) || (mVariants != null && mVariants.length() > 0);
+    }
+
+    /* package */ synchronized boolean hasNotificationsAvailable() {
+        return (!mUnseenEventTriggeredNotifications.isEmpty() || !mUnseenNotifications.isEmpty());
     }
 
     public Boolean isAutomaticEventsEnabled() {
@@ -200,6 +232,7 @@ import java.util.Set;
     private final String mToken;
     private final Set<Integer> mNotificationIds;
     private final List<InAppNotification> mUnseenNotifications;
+    private final List<InAppNotification> mUnseenEventTriggeredNotifications;
     private final OnNewResultsListener mListener;
     private final UpdatesFromMixpanel mUpdatesFromMixpanel;
     private JSONArray mVariants;

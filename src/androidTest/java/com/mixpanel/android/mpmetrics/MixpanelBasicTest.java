@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
-import android.util.Log;
 
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
@@ -488,7 +487,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     } else {
                         assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID" + mAppProperties, endpointUrl);
                     }
-                    return TestUtils.bytes("{}");
+                    return TestUtils.bytes("{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295, \"display_triggers\":[{\"event\":\"test_event\"}]}]}");
                 }
 
                 assertTrue(params.containsKey("data"));
@@ -589,6 +588,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             String messageFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH EVENTS_ENDPOINT", messageFlush);
+
+            assertTrue(metrics.getDecideMessages().hasNotificationsAvailable());
 
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
