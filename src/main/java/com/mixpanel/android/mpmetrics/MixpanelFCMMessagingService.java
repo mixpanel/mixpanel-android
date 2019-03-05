@@ -113,21 +113,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
-        Context context = getApplicationContext();
-        final MPConfig config = MPConfig.getInstance(context);
-        String resourcePackage = config.getResourcePackageName();
-        if (null == resourcePackage) {
-            resourcePackage = context.getPackageName();
-        }
-
-        final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
-        final Context applicationContext = context.getApplicationContext();
-        final Notification notification = buildNotification(applicationContext, remoteMessage.toIntent(), drawableIds);
-
-        if (null != notification) {
-            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.notify(0, notification);
-        }
+        onMessageReceived(getApplicationContext(), remoteMessage.toIntent());
     }
 
     @Override
@@ -140,6 +126,23 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
                 api.getPeople().setPushRegistrationId(token);
             }
         });
+    }
+
+    public void onMessageReceived(Context context, Intent messageIntent) {
+        final MPConfig config = MPConfig.getInstance(context);
+        String resourcePackage = config.getResourcePackageName();
+        if (null == resourcePackage) {
+            resourcePackage = context.getPackageName();
+        }
+
+        final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
+        final Context applicationContext = context.getApplicationContext();
+        final Notification notification = buildNotification(applicationContext, messageIntent, drawableIds);
+
+        if (null != notification) {
+            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.notify(0, notification);
+        }
     }
 
     private Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
