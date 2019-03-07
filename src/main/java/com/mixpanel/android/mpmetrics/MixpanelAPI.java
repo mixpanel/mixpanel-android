@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -414,6 +413,9 @@ public class MixpanelAPI {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
+                if (ConfigurationChecker.checkPushNotificationConfiguration(appContext)) {
+                    MixpanelFCMMessagingService.init();
+                }
             }
 
             checkIntentForInboundAppLink(context);
@@ -1837,8 +1839,13 @@ public class MixpanelAPI {
 
         @Override
         public void setPushRegistrationId(String registrationId) {
+            String existingRegistrationId = getPushRegistrationId();
+            if (existingRegistrationId != null && existingRegistrationId.equals(registrationId)) {
+                return;
+            }
             // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
+                MPLog.d(LOGTAG, "Setting new push token on people profile: " + registrationId);
                 mPersistentIdentity.storePushId(registrationId);
                 final JSONArray ids = new JSONArray();
                 ids.put(registrationId);

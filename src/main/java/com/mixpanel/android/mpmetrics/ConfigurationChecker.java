@@ -2,19 +2,18 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 
 import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
 import com.mixpanel.android.util.MPLog;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 /*
  * Copyright 2012 Google Inc.
@@ -87,5 +86,70 @@ import java.util.Set;
         }
 
         return mTakeoverActivityAvailable;
+    }
+
+    public static boolean checkPushNotificationConfiguration(Context context) {
+        final PackageManager packageManager = context.getPackageManager();
+        final String packageName = context.getPackageName();
+
+        if (packageManager == null || packageName == null) {
+            return false;
+        }
+
+        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
+            MPLog.w(LOGTAG, "Package does not have permission android.permission.INTERNET");
+            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
+                    "<uses-permission android:name=\"android.permission.INTERNET\" />");
+            return false;
+        }
+
+        // check services
+        final PackageInfo servicesInfo;
+        try {
+            servicesInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_SERVICES);
+        } catch (final PackageManager.NameNotFoundException e) {
+            return false;
+        }
+        final ServiceInfo[] services = servicesInfo.services;
+        if (services == null || services.length == 0) {
+            return false;
+        }
+
+        Intent intent = new Intent("com.google.firebase.MESSAGING_EVENT");
+        intent.setPackage(packageName);
+        List<ResolveInfo> intentServices = packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA);
+        Iterator<ResolveInfo> it = intentServices.iterator();
+        while (it.hasNext()) {
+            ResolveInfo resolveInfo = it.next();
+            if (resolveInfo.serviceInfo.name.equals("com.google.firebase.messaging.FirebaseMessagingService")) {
+                it.remove();
+            }
+        }
+        if (intentServices == null || intentServices.size() == 0) {
+            return false;
+        }
+
+        List<ServiceInfo> registeredServices = new ArrayList<>();
+        for (ResolveInfo intentService : intentServices) {
+            for (ServiceInfo serviceInfo : services) {
+                if (serviceInfo.name.equals(intentService.serviceInfo.name) && serviceInfo.isEnabled()) {
+                    registeredServices.add(intentService.serviceInfo);
+                }
+            }
+        }
+        if (registeredServices.size() > 1) {
+            MPLog.w(LOGTAG, "You can't have more than one service handling \"com.google.firebase.MESSAGING_EVENT\" intent filter. " +
+                    "Android will only use the first one that is declared on your AndroidManifest.xml. If you have more than one push provider " +
+                    "you need to crate your own FirebaseMessagingService class.");
+        }
+
+        try {
+            Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
+        } catch(final ClassNotFoundException e) {
+            MPLog.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
+            MPLog.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
+        }
+
+        return true;
     }
 }
