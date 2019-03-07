@@ -196,7 +196,10 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     }
 
     private static Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
-        final MixpanelFCMMessagingService.NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds);
+        final PackageManager manager = context.getPackageManager();
+        Intent defaultIntent =  manager.getLaunchIntentForPackage(context.getPackageName());
+
+        final MixpanelFCMMessagingService.NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds, defaultIntent);
         if (null == notificationData) {
             return null;
         }
@@ -349,7 +352,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         return n;
     }
 
-    /* package */ static NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds) {
+    /* package */ static NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds, Intent defaultIntent) {
         final PackageManager manager = context.getPackageManager();
 
         final String message = inboundIntent.getStringExtra("mp_message");
@@ -420,43 +423,36 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             notificationTitle = "A message for you";
         }
 
-        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId, extraLogData);
-
-        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
-    }
-
-    private static Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId, String extraLogData) {
         Uri uri = null;
         if (null != uriString) {
             uri = Uri.parse(uriString);
         }
-
-        final Intent ret;
+        final Intent intent;
         if (null == uri) {
-            ret = getDefaultIntent(context);
+            intent = defaultIntent;
         } else {
-            ret = new Intent(Intent.ACTION_VIEW, uri);
+            intent = new Intent(Intent.ACTION_VIEW, uri);
         }
 
+        final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
+
+        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
+    }
+
+    private static Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
         if (campaignId != null) {
-            ret.putExtra("mp_campaign_id", campaignId);
+            intent.putExtra("mp_campaign_id", campaignId);
         }
 
         if (messageId != null) {
-            ret.putExtra("mp_message_id", messageId);
+            intent.putExtra("mp_message_id", messageId);
         }
 
         if (extraLogData != null) {
-            ret.putExtra("mp", extraLogData);
+            intent.putExtra("mp", extraLogData);
         }
 
-        return ret;
-    }
-
-
-    /* package */ static Intent getDefaultIntent(Context context) {
-        final PackageManager manager = context.getPackageManager();
-        return manager.getLaunchIntentForPackage(context.getPackageName());
+        return intent;
     }
 
     private static void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
