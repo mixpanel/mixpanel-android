@@ -14,8 +14,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.support.v4.app.NotificationCompat;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.mixpanel.android.util.MPLog;
@@ -110,25 +113,55 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         public static final int NOT_SET = -1;
     }
 
+    /* package */ static void init() {
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(Task<InstanceIdResult> task) {
+                        if (task.isSuccessful()) {
+                            String registrationId = task.getResult().getToken();
+                            addToken(registrationId);
+                        }
+                    }
+                });
+    }
+
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
+        MPLog.d(LOGTAG, "MP FCM on new message received");
         onMessageReceived(getApplicationContext(), remoteMessage.toIntent());
     }
 
     @Override
-    public void onNewToken(final String token) {
+    public void onNewToken(String token) {
         super.onNewToken(token);
-        MPLog.d(LOGTAG, "MP FCM new push token: " + token);
-        MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-            @Override
-            public void process(MixpanelAPI api) {
-                api.getPeople().setPushRegistrationId(token);
-            }
-        });
+        MPLog.d(LOGTAG, "MP FCM on new push token: " + token);
+        addToken(token);
     }
 
-    public void onMessageReceived(Context context, Intent messageIntent) {
+    /**
+     * Util method to let subclasses customize the payload through the push notification intent.
+     *
+     * @param context The application context
+     * @param intent Push payload intent. Could be modified before calling super() from a sub-class.
+     *
+     */
+    protected void onMessageReceived(Context context, Intent intent) {
+        showPushNotification(context, intent);
+    }
+
+    /**
+     * Only use this method if you have implemented your own custom FirebaseMessagingService. This
+     * is useful when you use multiple push providers.
+     * Displays a Mixpanel push notification on the device.
+     *
+     * @param context The application context you are tracking
+     * @param messageIntent Intent that bundles the data used to build a notification. If the intent
+     *                      is not valid, the notification will not be shown.
+     *                      See {@link #showPushNotification(Context, Intent)}
+     */
+    public static void showPushNotification(Context context, Intent messageIntent) {
         final MPConfig config = MPConfig.getInstance(context);
         String resourcePackage = config.getResourcePackageName();
         if (null == resourcePackage) {
@@ -145,8 +178,28 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         }
     }
 
-    private Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
-        final MixpanelFCMMessagingService.NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds);
+    /**
+     * Only use this method if you have implemented your own custom FirebaseMessagingService. This
+     * is useful when you use multiple push providers.
+     * This method should be called from a onNewToken callback. It adds a new FCM token to a Mixpanel
+     * people profile.
+     *
+     * @param token Firebase Cloud Messaging token to be added to the people profile.
+     */
+    public static void addToken(final String token) {
+        MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
+            @Override
+            public void process(MixpanelAPI api) {
+                api.getPeople().setPushRegistrationId(token);
+            }
+        });
+    }
+
+    private static Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
+        final PackageManager manager = context.getPackageManager();
+        Intent defaultIntent =  manager.getLaunchIntentForPackage(context.getPackageName());
+
+        final MixpanelFCMMessagingService.NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds, defaultIntent);
         if (null == notificationData) {
             return null;
         }
@@ -166,10 +219,8 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             notification = makeNotificationSDK21OrHigher(context, contentIntent, notificationData);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationData);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationData);
         } else {
-            notification = makeNotificationSDKLessThan11(context, contentIntent, notificationData);
+            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationData);
         }
 
         return notification;
@@ -180,7 +231,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
      */
     @SuppressLint("NewApi")
     @TargetApi(26)
-    protected Notification makeNotificationSDK26OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
+    protected static Notification makeNotificationSDK26OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
         NotificationManager mNotificationManager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -228,29 +279,8 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     }
 
     @SuppressWarnings("deprecation")
-    @TargetApi(9)
-    protected Notification makeNotificationSDKLessThan11(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
-        final NotificationCompat.Builder builder = new NotificationCompat.Builder(context).
-                setSmallIcon(notificationData.icon).
-                setTicker(notificationData.message).
-                setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
-                setContentIntent(intent).
-                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
-
-        if (notificationData.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
-        }
-
-        final Notification n = builder.getNotification();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
-        return n;
-    }
-
-    @SuppressWarnings("deprecation")
     @TargetApi(11)
-    protected Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
+    protected static Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
@@ -271,7 +301,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
     @SuppressLint("NewApi")
     @TargetApi(16)
-    protected Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
+    protected static Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setSmallIcon(notificationData.icon).
                 setTicker(notificationData.message).
@@ -293,7 +323,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
     @SuppressLint("NewApi")
     @TargetApi(21)
-    protected Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
+    protected static Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
         final Notification.Builder builder = new Notification.Builder(context).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
@@ -322,7 +352,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         return n;
     }
 
-    /* package */ NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds) {
+    /* package */ static NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds, Intent defaultIntent) {
         final PackageManager manager = context.getPackageManager();
 
         final String message = inboundIntent.getStringExtra("mp_message");
@@ -393,46 +423,39 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             notificationTitle = "A message for you";
         }
 
-        final Intent notificationIntent = buildNotificationIntent(context, uriString, campaignId, messageId, extraLogData);
-
-        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
-    }
-
-    private Intent buildNotificationIntent(Context context, String uriString, String campaignId, String messageId, String extraLogData) {
         Uri uri = null;
         if (null != uriString) {
             uri = Uri.parse(uriString);
         }
-
-        final Intent ret;
+        final Intent intent;
         if (null == uri) {
-            ret = getDefaultIntent(context);
+            intent = defaultIntent;
         } else {
-            ret = new Intent(Intent.ACTION_VIEW, uri);
+            intent = new Intent(Intent.ACTION_VIEW, uri);
         }
 
+        final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
+
+        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color);
+    }
+
+    private static Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
         if (campaignId != null) {
-            ret.putExtra("mp_campaign_id", campaignId);
+            intent.putExtra("mp_campaign_id", campaignId);
         }
 
         if (messageId != null) {
-            ret.putExtra("mp_message_id", messageId);
+            intent.putExtra("mp_message_id", messageId);
         }
 
         if (extraLogData != null) {
-            ret.putExtra("mp", extraLogData);
+            intent.putExtra("mp", extraLogData);
         }
 
-        return ret;
+        return intent;
     }
 
-
-    /* package */ Intent getDefaultIntent(Context context) {
-        final PackageManager manager = context.getPackageManager();
-        return manager.getLaunchIntentForPackage(context.getPackageName());
-    }
-
-    private void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
+    private static void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
         if (campaignId != null && messageId != null) {
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                 @Override

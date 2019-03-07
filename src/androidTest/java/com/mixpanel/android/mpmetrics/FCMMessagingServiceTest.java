@@ -14,8 +14,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
     @Override
     public void setUp() throws PackageManager.NameNotFoundException {
         // ACTION_BUG_REPORT is chosen because it's identifiably weird
-        final Intent defaultIntent = new Intent(Intent.ACTION_BUG_REPORT);
-        mFCMMessaging = new TestFCMMessagingService(defaultIntent);
+        mDefaultIntent = new Intent(Intent.ACTION_BUG_REPORT);
         final Map<String, Integer> resources = new HashMap<String, Integer>();
         resources.put("ic_pretend_icon", 12345);
         mResourceIds = new TestUtils.TestResourceIds(resources);
@@ -29,7 +28,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
 
     public void testNotificationEmptyIntent() {
         final Intent intent = new Intent();
-        assertNull(mFCMMessaging.readInboundIntent(this.getContext(), intent, mResourceIds));
+        assertNull(MixpanelFCMMessagingService.readInboundIntent(this.getContext(), intent, mResourceIds, mDefaultIntent));
     }
 
     public void testCompleteNotification() {
@@ -38,7 +37,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         intent.putExtra("mp_icnm", "ic_pretend_icon");
         intent.putExtra("mp_title", "TITLE");
         intent.putExtra("mp_cta", mGoodUri.toString());
-        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = MixpanelFCMMessagingService.readInboundIntent(getContext(), intent, mResourceIds, mDefaultIntent);
 
         assertEquals(created.icon, 12345);
         assertEquals(created.title, "TITLE");
@@ -50,7 +49,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
     public void testMinimalNotification(){
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = MixpanelFCMMessagingService.readInboundIntent(getContext(), intent, mResourceIds, mDefaultIntent);
         assertEquals(created.icon, mDefaultIcon);
         assertEquals(created.title, mDefaultTitle);
         assertEquals(created.message, "MESSAGE");
@@ -61,7 +60,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_icnm", "NO SUCH ICON");
-        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = MixpanelFCMMessagingService.readInboundIntent(getContext(), intent, mResourceIds, mDefaultIntent);
 
         assertEquals(created.icon, mDefaultIcon);
     }
@@ -70,26 +69,13 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_cta", (String) null);
-        final MixpanelFCMMessagingService.NotificationData created = mFCMMessaging.readInboundIntent(getContext(), intent, mResourceIds);
+        final MixpanelFCMMessagingService.NotificationData created = MixpanelFCMMessagingService.readInboundIntent(getContext(), intent, mResourceIds, mDefaultIntent);
         assertNull(created.intent.getData());
-    }
-
-    private static class TestFCMMessagingService extends MixpanelFCMMessagingService {
-        public TestFCMMessagingService(Intent aDummy) {
-            dummyIntent = aDummy;
-        }
-
-        @Override
-        public Intent getDefaultIntent(Context context) {
-            return dummyIntent;
-        }
-
-        public final Intent dummyIntent;
     }
 
     private CharSequence mDefaultTitle;
     private int mDefaultIcon;
-    private TestFCMMessagingService mFCMMessaging;
+    private Intent mDefaultIntent;
     private ResourceIds mResourceIds;
     private Uri mGoodUri;
 }
