@@ -49,12 +49,14 @@ import javax.net.ssl.SSLSocketFactory;
     /* package */ static class Result {
         public Result() {
             notifications = new ArrayList<>();
+            eventTriggeredNotifications = new ArrayList<>();
             eventBindings = EMPTY_JSON_ARRAY;
             variants = EMPTY_JSON_ARRAY;
             automaticEvents = false;
         }
 
         public final List<InAppNotification> notifications;
+        public final List<InAppNotification> eventTriggeredNotifications;
         public JSONArray eventBindings;
         public JSONArray variants;
         public boolean automaticEvents;
@@ -84,7 +86,7 @@ import javax.net.ssl.SSLSocketFactory;
             try {
                 final Result result = runDecideCheck(updates.getToken(), distinctId, poster);
                 if (result != null) {
-                    updates.reportResults(result.notifications, result.eventBindings, result.variants, result.automaticEvents, result.integrations);
+                    updates.reportResults(result.notifications, result.eventTriggeredNotifications, result.eventBindings, result.variants, result.automaticEvents, result.integrations);
                 }
             } catch (final UnintelligibleMessageException e) {
                 MPLog.e(LOGTAG, e.getMessage(), e);
@@ -100,6 +102,20 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
+    private void setImages(final Iterator<InAppNotification> notificationIterator) throws RemoteService.ServiceUnavailableException {
+        while (notificationIterator.hasNext()) {
+            final InAppNotification notification = notificationIterator.next();
+            final Bitmap image = getNotificationImage(notification, mContext);
+            if (null == image) {
+                MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
+                        ", will not show the notification.");
+                notificationIterator.remove();
+            } else {
+                notification.setImage(image);
+            }
+        }
+    }
+
     private Result runDecideCheck(final String token, final String distinctId, final RemoteService poster)
         throws RemoteService.ServiceUnavailableException, UnintelligibleMessageException {
         final String responseString = getDecideResponseFromServer(token, distinctId, poster);
@@ -109,23 +125,63 @@ import javax.net.ssl.SSLSocketFactory;
         Result parsedResult = null;
         if (responseString != null) {
             parsedResult = parseDecideResponse(responseString);
-
-            final Iterator<InAppNotification> notificationIterator = parsedResult.notifications.iterator();
-            while (notificationIterator.hasNext()) {
-                final InAppNotification notification = notificationIterator.next();
-                final Bitmap image = getNotificationImage(notification, mContext);
-                if (null == image) {
-                    MPLog.i(LOGTAG, "Could not retrieve image for notification " + notification.getId() +
-                            ", will not show the notification.");
-                    notificationIterator.remove();
-                } else {
-                    notification.setImage(image);
-                }
-            }
+            setImages(parsedResult.notifications.iterator());
+            setImages(parsedResult.eventTriggeredNotifications.iterator());
         }
 
         return parsedResult;
     }// runDecideCheck
+
+    private static List<InAppNotification> parseInAppNotifications(JSONObject response) {
+        JSONArray notifications = null;
+        final List<InAppNotification> ret = new ArrayList<>();
+
+        if (response.has(NOTIFICATIONS)) {
+            try {
+                notifications = response.getJSONArray(NOTIFICATIONS);
+            } catch (final JSONException e) {
+                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for " + NOTIFICATIONS + ": " + response);
+            }
+        }
+
+        if (null != notifications) {
+            int triggeredCount = 0, normalCount = 0;
+            for (int i = 0; i < notifications.length(); i++) {
+                try {
+                    final JSONObject notificationJson = notifications.getJSONObject(i);
+                    if (notificationJson.has("display_triggers")) {
+                        if (triggeredCount >= MPConfig.MAX_EVENT_TRIGGERED_NOTIFICATION_CACHE_COUNT) {
+                            continue;
+                        } else {
+                            triggeredCount++;
+                        }
+                    } else {
+                        if (normalCount >= MPConfig.MAX_NOTIFICATION_CACHE_COUNT) {
+                            continue;
+                        } else  {
+                            normalCount++;
+                        }
+                    }
+                    final String notificationType = notificationJson.getString("type");
+                    if (notificationType.equalsIgnoreCase("takeover")) {
+                        final TakeoverInAppNotification notification = new TakeoverInAppNotification(notificationJson);
+                        ret.add(notification);
+                    } else if (notificationType.equalsIgnoreCase("mini")) {
+                        final MiniInAppNotification notification = new MiniInAppNotification(notificationJson);
+                        ret.add(notification);
+                    }
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                } catch (final BadDecideObjectException e) {
+                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
+                } catch (final OutOfMemoryError e) {
+                    MPLog.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
+                }
+            }
+        }
+
+        return ret;
+    }
 
     /* package */ static Result parseDecideResponse(String responseString)
             throws UnintelligibleMessageException {
@@ -139,36 +195,11 @@ import javax.net.ssl.SSLSocketFactory;
             throw new UnintelligibleMessageException(message, e);
         }
 
-        JSONArray notifications = null;
-        if (response.has(NOTIFICATIONS)) {
-            try {
-                notifications = response.getJSONArray(NOTIFICATIONS);
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Mixpanel endpoint returned non-array JSON for notifications: " + response);
-            }
-        }
-
-        if (null != notifications) {
-            final int notificationsToRead = Math.min(notifications.length(), MPConfig.MAX_NOTIFICATION_CACHE_COUNT);
-            for (int i = 0; i < notificationsToRead; i++) {
-                try {
-                    final JSONObject notificationJson = notifications.getJSONObject(i);
-                    final String notificationType = notificationJson.getString("type");
-
-                    if (notificationType.equalsIgnoreCase("takeover")) {
-                        final TakeoverInAppNotification notification = new TakeoverInAppNotification(notificationJson);
-                        ret.notifications.add(notification);
-                    } else if (notificationType.equalsIgnoreCase("mini")) {
-                        final MiniInAppNotification notification = new MiniInAppNotification(notificationJson);
-                        ret.notifications.add(notification);
-                    }
-                } catch (final JSONException e) {
-                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
-                } catch (final BadDecideObjectException e) {
-                    MPLog.e(LOGTAG, "Received a strange response from notifications service: " + notifications.toString(), e);
-                } catch (final OutOfMemoryError e) {
-                    MPLog.e(LOGTAG, "Not enough memory to show load notification from package: " + notifications.toString(), e);
-                }
+        for (InAppNotification notif : parseInAppNotifications(response)) {
+            if (notif.isEventTriggered()) {
+                ret.eventTriggeredNotifications.add(notif);
+            } else {
+                ret.notifications.add(notif);
             }
         }
 

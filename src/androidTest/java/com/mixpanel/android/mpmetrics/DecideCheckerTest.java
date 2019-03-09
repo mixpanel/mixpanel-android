@@ -9,6 +9,8 @@ import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -23,7 +25,7 @@ public class DecideCheckerTest extends AndroidTestCase {
 
     @Override
     public void setUp() {
-        mConfig = new MPConfig(new Bundle(), null);
+        mConfig = new MPConfig(new Bundle(), getContext());
         mDecideChecker = new DecideChecker(getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
@@ -82,7 +84,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.bindingsSeen.clear();
     }
 
-    public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException {
+    public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException, JSONException {
         {
             final String nonsense = "I AM NONSENSE";
             try {
@@ -162,6 +164,43 @@ public class DecideCheckerTest extends AndroidTestCase {
             assertEquals(parsedNotification.getId(), 1191793);
             assertEquals(parsedNotification.getType(), InAppNotification.Type.MINI);
 
+        }
+
+        {
+            final String etn_notifs = "{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295, \"display_triggers\":[{\"event\":\"test_event\", \"selector\":{\"operator\":\"==\",\"children\":[{\"operator\":\"string\",\"children\":[{\"property\":\"event\",\"value\":\"$device\"}]},{\"property\":\"literal\",\"value\":\"Android\"}]}}]}, {\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295}]}";
+            final DecideChecker.Result parsedNotifs = DecideChecker.parseDecideResponse(etn_notifs);
+
+            assertEquals(1, parsedNotifs.notifications.size());
+            assertEquals(1, parsedNotifs.eventTriggeredNotifications.size());
+
+            final MiniInAppNotification notification = (MiniInAppNotification) parsedNotifs.notifications.get(0);
+            assertEquals(notification.getBody(), "A");
+            assertEquals(notification.getBodyColor(), Color.WHITE);
+            assertEquals(notification.getImageTintColor(), Color.WHITE);
+            assertEquals(notification.getBorderColor(), Color.WHITE);
+            assertEquals(notification.getBackgroundColor(), Color.parseColor("#E6000000"));
+            assertEquals(notification.getExtras().length(), 0);
+            assertEquals(notification.getMessageId(), 85151);
+            assertEquals(notification.getImageUrl(), "https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png");
+            assertEquals(notification.getCtaUrl(), null);
+            assertEquals(notification.getId(), 1191793);
+            assertEquals(notification.getType(), InAppNotification.Type.MINI);
+            assertFalse(notification.isEventTriggered());
+
+            final MiniInAppNotification triggeredNotification = (MiniInAppNotification) parsedNotifs.eventTriggeredNotifications.get(0);
+            assertEquals(triggeredNotification.getBody(), "A");
+            assertEquals(triggeredNotification.getBodyColor(), Color.WHITE);
+            assertEquals(triggeredNotification.getImageTintColor(), Color.WHITE);
+            assertEquals(triggeredNotification.getBorderColor(), Color.WHITE);
+            assertEquals(triggeredNotification.getBackgroundColor(), Color.parseColor("#E6000000"));
+            assertEquals(triggeredNotification.getExtras().length(), 0);
+            assertEquals(triggeredNotification.getMessageId(), 85151);
+            assertEquals(triggeredNotification.getImageUrl(), "https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png");
+            assertEquals(triggeredNotification.getCtaUrl(), null);
+            assertEquals(triggeredNotification.getId(), 1191793);
+            assertEquals(triggeredNotification.getType(), InAppNotification.Type.MINI);
+            assertTrue(triggeredNotification.isEventTriggered());
+            assertTrue(triggeredNotification.matchesEventDescription(new AnalyticsMessages.EventDescription("test_event", new JSONObject("{\"$device\": \"Android\"}"), "")));
         }
     }
 

@@ -15,6 +15,7 @@ import com.mixpanel.android.viewcrawler.GestureTracker;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.ref.WeakReference;
 import java.text.NumberFormat;
 import java.util.Locale;
 
@@ -55,6 +56,7 @@ import java.util.Locale;
         if (check != null) {
             mHandler.removeCallbacks(check);
         }
+        mCurrentActivity = null;
 
         mHandler.postDelayed(check = new Runnable(){
             @Override
@@ -92,6 +94,8 @@ import java.util.Locale;
             mMpInstance.getPeople().joinExperimentIfAvailable();
         }
 
+        mCurrentActivity = new WeakReference<>(activity);
+
         mPaused = false;
         boolean wasBackground = !mIsForeground;
         mIsForeground = true;
@@ -112,6 +116,10 @@ import java.util.Locale;
 
     protected boolean isInForeground() {
         return mIsForeground;
+    }
+
+    protected Activity getCurrentActivity() {
+        return mCurrentActivity != null ? mCurrentActivity.get() : null;
     }
 
     private void trackCampaignOpenedIfNeeded(Intent intent) {
@@ -149,4 +157,5 @@ import java.util.Locale;
 
     private final MixpanelAPI mMpInstance;
     private final MPConfig mConfig;
+    private WeakReference<Activity> mCurrentActivity;
 }

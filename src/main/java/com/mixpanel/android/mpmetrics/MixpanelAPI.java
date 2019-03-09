@@ -280,7 +280,11 @@ public class MixpanelAPI {
         }
         mDecideMessages.setDistinctId(decideId);
 
-        if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
+        final boolean dbExists = MPDbAdapter.getInstance(mContext).getDatabaseFile().exists();
+
+        registerMixpanelActivityLifecycleCallbacks();
+
+        if (mPersistentIdentity.isFirstLaunch(dbExists)) {
             track(AutomaticEvents.FIRST_OPEN, null, true);
 
             mPersistentIdentity.setHasLaunched();
@@ -289,8 +293,6 @@ public class MixpanelAPI {
         if (!mConfig.getDisableDecideChecker()) {
             mMessages.installDecideCheck(mDecideMessages);
         }
-
-        registerMixpanelActivityLifecycleCallbacks();
 
         if (sendAppOpen()) {
             track("$app_open", null);
@@ -1479,6 +1481,10 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext);
     }
 
+    /* package */ DecideMessages getDecideMessages() {
+        return mDecideMessages;
+    }
+
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
@@ -2243,6 +2249,10 @@ public class MixpanelAPI {
                     new AnalyticsMessages.EventDescription(eventName, messageProps,
                             mToken, isAutomaticEvent, mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
+
+            if (mMixpanelActivityLifecycleCallbacks.getCurrentActivity() != null) {
+                getPeople().showGivenNotification(mDecideMessages.getNotification(eventDescription, mConfig.getTestMode()), mMixpanelActivityLifecycleCallbacks.getCurrentActivity());
+            }
 
             if (null != mTrackingDebug) {
                 mTrackingDebug.reportTrack(eventName);
