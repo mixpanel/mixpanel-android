@@ -69,6 +69,8 @@ public class DecideMessagesTest extends AndroidTestCase {
 
         mDecideMessages = new DecideMessages(getContext(), "TEST TOKEN", mMockListener, mMockUpdates, new HashSet<Integer>());
         mSomeNotifications = new ArrayList<>();
+        mSomeTriggeredNotifications = new ArrayList<>();
+
 
         JSONObject notifsDesc1 = new JSONObject(
                 "{\"id\": 1234, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}"
@@ -76,22 +78,45 @@ public class DecideMessagesTest extends AndroidTestCase {
         JSONObject notifsDesc2 = new JSONObject(
                 "{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295}"
         );
+        JSONObject triggeredDesc1 = new JSONObject(
+                "{\"display_triggers\": [{\"event\": \"test_event1\"}], \"id\": 1000, \"message_id\": 4321, \"type\": \"takeover\", \"body\": \"Hook me up, yo!\", \"body_color\": 4294901760, \"title\": null, \"title_color\": 4278255360, \"image_url\": \"http://mixpanel.com/Balok.jpg\", \"bg_color\": 3909091328, \"close_color\": 4294967295, \"extras\": {\"image_fade\": true},\"buttons\": [{\"text\": \"Button!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}, {\"text\": \"Button 2!\", \"text_color\": 4278190335, \"bg_color\": 4294967040, \"border_color\": 4278255615, \"cta_url\": \"hellomixpanel://deeplink/howareyou\"}]}"
+        );
+        JSONObject triggeredDesc2 = new JSONObject(
+                "{\"display_triggers\": [{\"event\": \"test_event2\", \"selector\":{\"operator\":\"==\",\"children\":[{\"operator\":\"string\",\"children\":[{\"property\":\"event\",\"value\":\"$device\"}]},{\"property\":\"literal\",\"value\":\"Android\"}]}}],\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":2000,\"body_color\":4294967295}"
+        );
 
         mSomeNotifications.add(new TakeoverInAppNotification(notifsDesc1));
         mSomeNotifications.add(new MiniInAppNotification(notifsDesc2));
+        mSomeTriggeredNotifications.add(new TakeoverInAppNotification(triggeredDesc1));
+        mSomeTriggeredNotifications.add(new MiniInAppNotification(triggeredDesc2));
 
         mSomeBindings = new JSONArray(); // TODO need some bindings
         mSomeVariants = new JSONArray(); // TODO need some variants
     }
 
+    public void testTriggeredInapps() throws JSONException, BadDecideObjectException {
+        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        assertNull(mDecideMessages.getNotification(false));
+
+        final AnalyticsMessages.EventDescription testEvent1 = new AnalyticsMessages.EventDescription("test_event1", null, "");
+        final AnalyticsMessages.EventDescription testEvent2 = new AnalyticsMessages.EventDescription("test_event2", new JSONObject("{\"$device\": \"Android\"}"), "");
+        assertNotNull(mDecideMessages.getNotification(testEvent1, false));
+        assertNotNull(mDecideMessages.getNotification(testEvent2, false));
+
+        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        assertNull(mDecideMessages.getNotification(testEvent1, false));
+        assertNull(mDecideMessages.getNotification(testEvent2, false));
+    }
+
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
-            if (real.getClass().isInstance(TakeoverInAppNotification.class)) {
+            if (real.getClass() == TakeoverInAppNotification.class) {
                 fakeNotifications.add(new TakeoverInAppNotification(new JSONObject(real.toString())));
-            } else if (real.getClass().isInstance(MiniInAppNotification.class)) {
+            } else if (real.getClass() == MiniInAppNotification.class) {
                 fakeNotifications.add(new MiniInAppNotification(new JSONObject(real.toString())));
             }
             assertEquals(mDecideMessages.getNotification(false), real);
@@ -99,7 +124,7 @@ public class DecideMessagesTest extends AndroidTestCase {
 
         assertNull(mDecideMessages.getNotification(false));
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         assertNull(mDecideMessages.getNotification(false));
 
@@ -109,7 +134,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification unseenNotification = new MiniInAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         assertEquals(mDecideMessages.getNotification(false), unseenNotification);
 
@@ -120,7 +145,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
 
         final InAppNotification n1 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
@@ -134,12 +159,12 @@ public class DecideMessagesTest extends AndroidTestCase {
 
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideMessages.reportResults(mSomeNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -150,7 +175,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(newNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(newNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }
@@ -162,5 +187,6 @@ public class DecideMessagesTest extends AndroidTestCase {
     private JSONArray mSomeBindings;
     private JSONArray mSomeVariants;
     private List<InAppNotification> mSomeNotifications;
+    private List<InAppNotification> mSomeTriggeredNotifications;
     private boolean mIsAutomaticEventsEnabled;
 }
