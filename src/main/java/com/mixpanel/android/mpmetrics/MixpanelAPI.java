@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
 import android.app.FragmentTransaction;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -102,8 +101,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>In addition to this documentation, you may wish to take a look at
  * <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">the Mixpanel sample Android application</a>.
  * It demonstrates a variety of techniques, including
- * updating People Analytics records with {@link People} and registering for
- * and receiving push notifications with {@link People#initPushHandling(String)}.
+ * updating People Analytics records with {@link People} and others.
  *
  * <p>There are also <a href="https://mixpanel.com/docs/">step-by-step getting started documents</a>
  * available at mixpanel.com
@@ -286,7 +284,11 @@ public class MixpanelAPI {
         }
         mDecideMessages.setDistinctId(decideId);
 
-        if (mPersistentIdentity.isFirstLaunch(MPDbAdapter.getInstance(mContext).getDatabaseFile().exists())) {
+        final boolean dbExists = MPDbAdapter.getInstance(mContext).getDatabaseFile().exists();
+
+        registerMixpanelActivityLifecycleCallbacks();
+
+        if (mPersistentIdentity.isFirstLaunch(dbExists)) {
             track(AutomaticEvents.FIRST_OPEN, null, true);
 
             mPersistentIdentity.setHasLaunched();
@@ -295,8 +297,6 @@ public class MixpanelAPI {
         if (!mConfig.getDisableDecideChecker()) {
             mMessages.installDecideCheck(mDecideMessages);
         }
-
-        registerMixpanelActivityLifecycleCallbacks();
 
         if (sendAppOpen()) {
             track("$app_open", null);
@@ -419,28 +419,15 @@ public class MixpanelAPI {
                 instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
+                if (ConfigurationChecker.checkPushNotificationConfiguration(appContext)) {
+                    MixpanelFCMMessagingService.init();
+                }
             }
 
             checkIntentForInboundAppLink(context);
 
             return instance;
         }
-    }
-
-    /**
-     * This call is a no-op, and will be removed in future versions.
-     *
-     * @deprecated in 4.0.0, use com.mixpanel.android.MPConfig.FlushInterval application metadata instead
-     */
-    @Deprecated
-    public static void setFlushInterval(Context context, long milliseconds) {
-        MPLog.i(
-            LOGTAG,
-            "MixpanelAPI.setFlushInterval is deprecated. Calling is now a no-op.\n" +
-            "    To set a custom Mixpanel flush interval for your application, add\n" +
-            "    <meta-data android:name=\"com.mixpanel.android.MPConfig.FlushInterval\" android:value=\"YOUR_INTERVAL\" />\n" +
-            "    to the <application> section of your AndroidManifest.xml."
-        );
     }
 
     /**
@@ -506,6 +493,8 @@ public class MixpanelAPI {
     private void identify(String distinctId, boolean markAsUserId) {
         if (hasOptedOutTracking()) return;
         synchronized (mPersistentIdentity) {
+            String currentEventsDistinctId = mPersistentIdentity.getEventsDistinctId();
+            mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
             mPersistentIdentity.setEventsDistinctId(distinctId);
             if(markAsUserId) {
                 mPersistentIdentity.markEventsUserIdPresent();
@@ -959,7 +948,7 @@ public class MixpanelAPI {
      * People Analytics properties.
      *
      * @return an instance of {@link People} that you can use to update
-     *     records in Mixpanel People Analytics and manage Mixpanel Google Cloud Messaging notifications.
+     *     records in Mixpanel People Analytics and manage Mixpanel Firebase Cloud Messaging notifications.
      */
     public People getPeople() {
         return mPeople;
@@ -1128,7 +1117,6 @@ public class MixpanelAPI {
      *      public void onCreate(Bundle saved) {
      *          mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL API TOKEN");
      *          mMixpanel.getPeople().identify("A UNIQUE ID FOR THIS USER");
-     *          mMixpanel.getPeople().initPushHandling("YOUR 12 DIGIT GOOGLE SENDER API");
      *          ...
      *      }
      *
@@ -1151,7 +1139,7 @@ public class MixpanelAPI {
     public interface People {
         /**
          * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
-         * and {@link #initPushHandling(String)} with a particular People Analytics user.
+         * {@link #append(String, Object)}, etc... with a particular People Analytics user.
          *
          * <p>All future calls to the People object will rely on this value to assign
          * and increment properties. The user identification will persist across
@@ -1327,111 +1315,102 @@ public class MixpanelAPI {
         public boolean isIdentified();
 
         /**
-         * Enable end-to-end Google Cloud Messaging (GCM) from Mixpanel.
+         * This is a no-op, and will be removed in future versions of the library.
          *
-         * <p>Calling this method will allow the Mixpanel libraries to handle GCM user
-         * registration, and enable Mixpanel to show alerts when GCM messages arrive.
-         *
-         * <p>To use {@link People#initPushHandling}, you will need to add the following to your application manifest:
+         * @deprecated in 5.5.0. Google Cloud Messaging (GCM) is now deprecated by Google.
+         * To enable end-to-end Firebase Cloud Messaging (FCM) from Mixpanel you only need to add
+         * the following to your application manifest XML file:
          *
          * <pre>
          * {@code
-         * <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
-         *           android:permission="com.google.android.c2dm.permission.SEND" >
-         *     <intent-filter>
-         *         <action android:name="com.google.android.c2dm.intent.RECEIVE" />
-         *         <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
-         *         <category android:name="YOUR_PACKAGE_NAME" />
-         *     </intent-filter>
-         * </receiver>
+         * <service
+         *       android:name="com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService"
+         *       android:enabled="true"
+         *       android:exported="false">
+         *       <intent-filter>
+         *           <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+         *       </intent-filter>
+         * </service>
          * }
          * </pre>
          *
-         * Be sure to replace "YOUR_PACKAGE_NAME" with the name of your package. For
-         * more information and a list of necessary permissions, see {@link GCMReceiver}.
+         * Make sure you have a valid google-services.json file in your project and firebase
+         * messaging is included as a dependency. Example:
          *
-         * <p>If you're planning to use end-to-end support for Messaging, we recommend you
-         * call this method immediately after calling {@link People#identify(String)}, likely
-         * early in your application's life cycle. (for example, in the onCreate method of your
-         * main application activity.)
+         * <pre>
+         * {@code
+         * buildscript {
+         *      ...
+         *      dependencies {
+         *          classpath 'com.google.gms:google-services:4.1.0'
+         *          ...
+         *      }
+         * }
          *
-         * <p>Calls to {@link People#initPushHandling} should not be mixed with calls to
-         * {@link #setPushRegistrationId(String)} and {@link #clearPushRegistrationId()}
-         * in the same application. Application authors should choose one or the other
-         * method for handling Mixpanel GCM messages.
+         * dependencies {
+         *     implementation 'com.google.firebase:firebase-messaging:17.3.4'
+         *     implementation 'com.mixpanel.android:mixpanel-android:5.5.0'
+         * }
          *
-         * @param senderID of the Google API Project that registered for Google Cloud Messaging
-         *     You can find your ID by looking at the URL of in your Google API Console
-         *     at https://code.google.com/apis/console/; it is the twelve digit number after
-         *     after "#project:" in the URL address bar on console pages.
+         * apply plugin: 'com.google.gms.google-services'
+         * }
+         * </pre>
          *
-         * @see com.mixpanel.android.mpmetrics.GCMReceiver
+         * We recommend you update your Server Key on mixpanel.com from your Firebase console. Legacy
+         * server keys are still supported.
+         *
          * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
          */
+        @Deprecated
         public void initPushHandling(String senderID);
 
         /**
-         * Retrieves Google Cloud Messaging registration ID.
+         * Retrieves current Firebase Cloud Messaging token.
          *
          * <p>{@link People#getPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
-         * @return GCM push token or null if the user has not been registered in GCM.
+         * @return FCM push token or null if the user has not been registered in FCM.
          *
-         * @see #initPushHandling(String)
          * @see #setPushRegistrationId(String)
+         * @see #clearPushRegistrationId
          */
         public String getPushRegistrationId();
 
         /**
-         * Manually send a Google Cloud Messaging registration id to Mixpanel.
+         * Manually send a Firebase Cloud Messaging token to Mixpanel.
          *
-         * <p>If you are handling Google Cloud Messages in your own application, but would like to
+         * <p>If you are handling Firebase Cloud Messages in your own application, but would like to
          * allow Mixpanel to handle messages originating from Mixpanel campaigns, you should
-         * call setPushRegistrationId with the "registration_id" property of the
-         * com.google.android.c2dm.intent.REGISTRATION intent when it is received.
+         * call setPushRegistrationId with the FCM token.
          *
          * <p>setPushRegistrationId should only be called after {@link #identify(String)} has been called.
          *
-         * <p>Calls to {@link People#setPushRegistrationId} should not be mixed with calls to {@link #initPushHandling(String)}
-         * in the same application. In addition, applications that call setPushRegistrationId
-         * should also call {@link #clearPushRegistrationId()} when they receive an intent to unregister
-         * (a com.google.android.c2dm.intent.REGISTRATION intent with getStringExtra("unregistered") != null)
+         * Optionally, applications that call setPushRegistrationId should also call
+         * {@link #clearPushRegistrationId()} when they unregister the device id.
          *
-         * @param registrationId the result of calling intent.getStringExtra("registration_id")
-         *     on a com.google.android.c2dm.intent.REGISTRATION intent
+         * @param token Firebase Cloud Messaging token
          *
-         * @see #initPushHandling(String)
          * @see #clearPushRegistrationId()
          */
-        public void setPushRegistrationId(String registrationId);
+        public void setPushRegistrationId(String token);
 
         /**
-         * Manually clear all current Google Cloud Messaging registration ids from Mixpanel.
-         *
-         * <p>If you are handling Google Cloud Messages in your own application, you should
-         * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
-         * with getStringExtra("unregistered") != null
+         * Manually clear all current Firebase Cloud Messaging tokens from Mixpanel.
          *
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId
+         * clearPushRegistrationId.
          */
         public void clearPushRegistrationId();
 
         /**
-         * Manually clear a single Google Cloud Messaging registration id from Mixpanel.
-         *
-         * <p>If you are handling Google Cloud Messages in your own application, you should
-         * call this method when your application receives a com.google.android.c2dm.intent.REGISTRATION
-         * with getStringExtra("unregistered") != null
+         * Manually clear a single Firebase Cloud Messaging token from Mixpanel.
          *
          * <p>{@link People#clearPushRegistrationId} should only be called after {@link #identify(String)} has been called.
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
-         * clearPushRegistrationId, and no applications that call
-         * {@link #initPushHandling(String)} should call clearPushRegistrationId
+         * clearPushRegistrationId.
          */
         public void clearPushRegistrationId(String registrationId);
 
@@ -1813,7 +1792,7 @@ public class MixpanelAPI {
         mSessionMetadata.initSession();
     }
 
-    // Package-level access. Used (at least) by GCMReceiver
+    // Package-level access. Used (at least) by MixpanelFCMMessagingService
     // when OS-level events occur.
     /* package */ interface InstanceProcessor {
         public void process(MixpanelAPI m);
@@ -1835,6 +1814,10 @@ public class MixpanelAPI {
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
         return AnalyticsMessages.getInstance(mContext);
+    }
+
+    /* package */ DecideMessages getDecideMessages() {
+        return mDecideMessages;
     }
 
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
@@ -2197,12 +2180,13 @@ public class MixpanelAPI {
 
         @Override
         public void setPushRegistrationId(String registrationId) {
+            String existingRegistrationId = getPushRegistrationId();
+            if (existingRegistrationId != null && existingRegistrationId.equals(registrationId)) {
+                return;
+            }
             // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
-                if (mPersistentIdentity.getPeopleDistinctId() == null) {
-                    return;
-                }
-
+                MPLog.d(LOGTAG, "Setting new push token on people profile: " + registrationId);
                 mPersistentIdentity.storePushId(registrationId);
                 final JSONArray ids = new JSONArray();
                 ids.put(registrationId);
@@ -2230,28 +2214,33 @@ public class MixpanelAPI {
 
         @Override
         public void initPushHandling(String senderID) {
-            if (! ConfigurationChecker.checkPushConfiguration(mContext) ) {
-                MPLog.i(LOGTAG, "Can't register for push notification services. Push notifications will not work.");
-                MPLog.i(LOGTAG, "See log tagged " + ConfigurationChecker.LOGTAG + " above for details.");
-            }
-            else { // Configuration is good for at least some push notifications
-                final String pushId = mPersistentIdentity.getPushId();
-                if (pushId == null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        registerForPushIdAPI21AndUp(senderID);
-                    } else {
-                        registerForPushIdAPI19AndOlder(senderID);
-                    }
-                } else {
-                    MixpanelAPI.allInstances(new InstanceProcessor() {
-                        @Override
-                        public void process(MixpanelAPI api) {
-                            MPLog.v(LOGTAG, "Using existing pushId " + pushId);
-                            api.getPeople().setPushRegistrationId(pushId);
-                        }
-                    });
-                }
-            }// endelse
+            MPLog.w(
+                    LOGTAG,
+                    "MixpanelAPI.initPushHandling is deprecated. This is a no-op.\n" +
+                            "   Mixpanel now uses Firebase Cloud Messaging. You need to remove your old Mixpanel" +
+                            " GCM Receiver from your AndroidManifest.xml and add the following:\n" +
+                            "   <service\n" +
+                            "       android:name=\"com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService\"\n" +
+                            "       android:enabled=\"true\"\n" +
+                            "       android:exported=\"false\">\n" +
+                            "       <intent-filter>\n" +
+                            "           <action android:name=\"com.google.firebase.MESSAGING_EVENT\"/>\n" +
+                            "       </intent-filter>\n" +
+                            "   </service>\n\n" +
+                            "Make sure to add firebase messaging as a dependency on your gradle file:\n" +
+                            "buildscript {\n" +
+                            "   ...\n" +
+                            "   dependencies {\n" +
+                            "       classpath 'com.google.gms:google-services:4.1.0'\n" +
+                            "       ...\n" +
+                            "   }\n" +
+                            "}\n" +
+                            "dependencies {\n" +
+                            "   implementation 'com.google.firebase:firebase-messaging:17.3.4'\n" +
+                            "   implementation 'com.mixpanel.android:mixpanel-android:5.5.0'\n" +
+                            "}\n" +
+                            "apply plugin: 'com.google.gms.google-services'"
+            );
         }
 
         @Override
@@ -2309,6 +2298,7 @@ public class MixpanelAPI {
             dataObj.put(actionType, properties);
             dataObj.put("$token", mToken);
             dataObj.put("$time", System.currentTimeMillis());
+            dataObj.put("$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
             if (null != anonymousId) {
                 dataObj.put("$device_id", anonymousId);
             }
@@ -2319,24 +2309,6 @@ public class MixpanelAPI {
             dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
 
             return dataObj;
-        }
-
-        @TargetApi(21)
-        private void registerForPushIdAPI21AndUp(String senderID) {
-            mMessages.registerForGCM(senderID);
-        }
-
-        @TargetApi(19)
-        private void registerForPushIdAPI19AndOlder(String senderID) {
-            try {
-                MPLog.v(LOGTAG, "Registering a new push id");
-                final Intent registrationIntent = new Intent("com.google.android.c2dm.intent.REGISTER");
-                registrationIntent.putExtra("app", PendingIntent.getBroadcast(mContext, 0, new Intent(), 0));
-                registrationIntent.putExtra("sender", senderID);
-                mContext.startService(registrationIntent);
-            } catch (final SecurityException e) {
-                MPLog.w(LOGTAG, "Error registering for push notifications", e);
-            }
         }
 
         private void showGivenOrAvailableNotification(final InAppNotification notifOrNull, final Activity parent) {
@@ -2731,6 +2703,7 @@ public class MixpanelAPI {
             final String userId = getUserId();
             messageProps.put("time", timeSeconds);
             messageProps.put("distinct_id", distinctId);
+            messageProps.put("$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
             if(anonymousId != null) {
                 messageProps.put("$device_id", anonymousId);
             }
@@ -2758,6 +2731,10 @@ public class MixpanelAPI {
                     new AnalyticsMessages.EventDescription(eventName, messageProps,
                             mToken, isAutomaticEvent, mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
+
+            if (mMixpanelActivityLifecycleCallbacks.getCurrentActivity() != null) {
+                getPeople().showGivenNotification(mDecideMessages.getNotification(eventDescription, mConfig.getTestMode()), mMixpanelActivityLifecycleCallbacks.getCurrentActivity());
+            }
 
             if (null != mTrackingDebug) {
                 mTrackingDebug.reportTrack(eventName);

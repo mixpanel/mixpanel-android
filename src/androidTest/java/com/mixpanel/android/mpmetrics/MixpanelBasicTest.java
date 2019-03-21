@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -573,7 +574,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     } else {
                         assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID" + mAppProperties, endpointUrl);
                     }
-                    return TestUtils.bytes("{}");
+                    return TestUtils.bytes("{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295, \"display_triggers\":[{\"event\":\"test_event\"}]}]}");
                 }
 
                 assertTrue(params.containsKey("data"));
@@ -679,6 +680,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             String messageFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH EVENTS_ENDPOINT", messageFlush);
+
+            assertTrue(metrics.getDecideMessages().hasNotificationsAvailable());
 
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
@@ -803,6 +806,84 @@ public class MixpanelBasicTest extends AndroidTestCase {
             fail("Transaction message had unexpected layout:\n" + message.toString());
         }
     }
+
+    public void testTrackWithSavedDistinctId(){
+        final String savedDistinctID = "saved_distinct_id";
+        final List<Object> messages = new ArrayList<Object>();
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void eventsMessage(EventDescription heard) {
+                if (!heard.isAutomatic()) {
+                    messages.add(heard);
+                }
+            }
+
+            @Override
+            public void peopleMessage(PeopleDescription heard) {
+                messages.add(heard);
+            }
+        };
+
+        class TestMixpanelAPI extends MixpanelAPI {
+            public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
+                super(c, prefs, token, false);
+            }
+
+            @Override
+            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+                final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+                mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
+                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                final SharedPreferences loadstorePrefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
+                loadstorePrefs.edit().clear().putString("events_distinct_id", savedDistinctID).putString("people_distinct_id", savedDistinctID).commit();
+                return super.getPersistentIdentity(context, referrerPreferences, token);
+                }
+
+            @Override
+            /* package */ boolean sendAppOpen() {
+                return false;
+            }
+
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        }
+
+        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        assertEquals(mpMetrics.getDistinctId(), savedDistinctID);
+        mpMetrics.identify("new_user");
+
+        mpMetrics.track("eventname", null);
+        mpMetrics.getPeople().set("people prop name", "Indeed");
+
+        assertEquals(2, messages.size());
+
+        AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
+        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(1)).getMessage();
+
+        try {
+            JSONObject eventProps = eventMessage.getProperties();
+            String deviceId = eventProps.getString("$device_id");
+            assertEquals(savedDistinctID, deviceId);
+            boolean hadPersistedDistinctId = eventProps.getBoolean("$had_persisted_distinct_id");
+            assertEquals(true, hadPersistedDistinctId);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+
+        try {
+            String deviceId = peopleMessage.getString("$device_id");
+            boolean hadPersistedDistinctId = peopleMessage.getBoolean("$had_persisted_distinct_id");
+            assertEquals(savedDistinctID, deviceId);
+            assertEquals(true, hadPersistedDistinctId);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+        messages.clear();
+    }
+
 
     public void testPersistence() {
         MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false);

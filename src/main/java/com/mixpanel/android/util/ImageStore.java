@@ -3,8 +3,8 @@ package com.mixpanel.android.util;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.support.v4.util.LruCache;
 import android.util.Base64;
+import android.util.LruCache;
 
 import com.mixpanel.android.mpmetrics.MPConfig;
 

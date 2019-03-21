@@ -31,24 +31,6 @@
     -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
 
-    <!--
-      These permissions are required to allow the application to receive and display
-      Google Cloud Messaging notifications from Mixpanel.
-     -->
-    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!--
-      This custom permission is also required for Google Cloud Messaging. In your
-      own applications, you will need to be sure that the permission name is
-
-           ${application_package}.C2D_MESSAGE
-
-      Where ${application_package} is the package name declared in your <manifest> element.
-     -->
-    <permission android:name="com.mixpanel.example.hello.permission.C2D_MESSAGE" android:protectionLevel="signature" />
-    <uses-permission android:name="com.mixpanel.example.hello.permission.C2D_MESSAGE" />
 
     <application
         android:allowBackup="true"
@@ -91,14 +73,14 @@
                   android:theme="@style/com_mixpanel_android_TakeoverInAppActivityTheme"/>
 
         <!-- This receiver will allow your application to register for and receive Mixpanel push notifications -->
-        <receiver android:name="com.mixpanel.android.mpmetrics.GCMReceiver"
-            android:permission="com.google.android.c2dm.permission.SEND" >
+        <service
+            android:name="com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService"
+            android:enabled="true"
+            android:exported="false">
             <intent-filter>
-                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
-                <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
-                <category android:name="com.mixpanel.example.hello" />
-           </intent-filter>
-        </receiver>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
 
         <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
         <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">

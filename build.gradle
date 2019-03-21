@@ -1,9 +1,10 @@
 buildscript {
     repositories {
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.3'
+        classpath 'com.android.tools.build:gradle:3.3.1'
     }
 }
 
@@ -15,8 +16,8 @@ group = GROUP
 version = VERSION_NAME
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion '26.0.1'
+    compileSdkVersion 27
+    buildToolsVersion '28.0.3'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
@@ -24,8 +25,8 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 9
-        targetSdkVersion 23
+        minSdkVersion 14
+        targetSdkVersion 27
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
         consumerProguardFiles 'proguard.txt'
@@ -48,17 +49,18 @@ allprojects {
             options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
         }
     }
+    repositories {
+        mavenCentral()
+        jcenter()
+        google()
+    }
 }
 
 // Note- *all* dependencies are marked as optional in our final
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    compile 'com.google.android.gms:play-services-gcm:10.0.1'
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.14.1'
+    implementation 'com.google.firebase:firebase-messaging:17.3.4'
 }
 
 apply from: rootProject.file('maven.gradle')

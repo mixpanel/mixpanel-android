@@ -200,9 +200,20 @@ public class PersistentIdentityTest extends AndroidTestCase {
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
         assertEquals("eventsDistinctId should be same as anonymousId before identify", generatedAnonymousId, eventsDistinctId);
 
-
         mPersistentIdentity.setEventsDistinctId("identified_id");
         assertNotSame("anonymous id doesn't differ from eventsDistinctId post identify", generatedAnonymousId, mPersistentIdentity.getEventsDistinctId());
+    }
+
+    public void testHadPersistedDistinctId() {
+        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
+        assertNotNull("events distinct id is not null");
+        assertNull("no anonymous id yet", mPersistentIdentity.getAnonymousId());
+
+        mPersistentIdentity.setAnonymousIdIfAbsent("anon_id");
+
+        assertNotNull("anonymous id cannot be null", mPersistentIdentity.getAnonymousId());
+        assertTrue("hadPersistedDistinctId cannot be false", mPersistentIdentity.getHadPersistedDistinctId());
     }
 
     private PersistentIdentity mPersistentIdentity;

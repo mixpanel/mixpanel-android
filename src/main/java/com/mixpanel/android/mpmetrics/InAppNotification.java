@@ -7,9 +7,12 @@ import android.os.Parcelable;
 import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.util.MPLog;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +30,7 @@ public abstract class InAppNotification implements Parcelable {
     private final String mBody;
     private final int mBodyColor;
     private final String mImageUrl;
+    private final List<DisplayTrigger> mDisplayTriggers;
 
     private Bitmap mImage;
 
@@ -39,6 +43,7 @@ public abstract class InAppNotification implements Parcelable {
         mBody = null;
         mBodyColor = 0;
         mImageUrl = null;
+        mDisplayTriggers = null;
     }
 
     public InAppNotification(Parcel in) {
@@ -60,9 +65,13 @@ public abstract class InAppNotification implements Parcelable {
         mBodyColor = in.readInt();
         mImageUrl = in.readString();
         mImage = in.readParcelable(Bitmap.class.getClassLoader());
+        mDisplayTriggers = new ArrayList<>();
+        in.readList(mDisplayTriggers, null);
     }
 
     /* package */ InAppNotification(JSONObject description) throws BadDecideObjectException {
+        JSONArray tempDisplayTriggers;
+        mDisplayTriggers = new ArrayList<>();
         try {
             mDescription = description;
             mExtras = description.getJSONObject("extras");
@@ -73,6 +82,10 @@ public abstract class InAppNotification implements Parcelable {
             mBodyColor = description.optInt("body_color");
             mImageUrl = description.getString("image_url");
             mImage = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888);
+            tempDisplayTriggers = description.optJSONArray("display_triggers");
+            for (int i = 0; null != tempDisplayTriggers && i < tempDisplayTriggers.length(); i++) {
+                mDisplayTriggers.add(new DisplayTrigger(tempDisplayTriggers.getJSONObject(i)));
+            }
         } catch (final JSONException e) {
             throw new BadDecideObjectException("Notification JSON was unexpected or bad", e);
         }
@@ -167,6 +180,21 @@ public abstract class InAppNotification implements Parcelable {
         return mImage;
     }
 
+    public boolean isEventTriggered() {
+        return null != mDisplayTriggers && !mDisplayTriggers.isEmpty();
+    }
+
+    public boolean matchesEventDescription(AnalyticsMessages.EventDescription eventDescription) {
+        if (isEventTriggered()) {
+            for (DisplayTrigger trigger : mDisplayTriggers) {
+                if (trigger.matchesEventDescription(eventDescription)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /* package */ static String sizeSuffixUrl(String url, String sizeSuffix) {
         final Matcher matcher = FILE_EXTENSION_PATTERN.matcher(url);
         if (matcher.find()) {
@@ -196,6 +224,7 @@ public abstract class InAppNotification implements Parcelable {
         dest.writeInt(mBodyColor);
         dest.writeString(mImageUrl);
         dest.writeParcelable(mImage, flags);
+        dest.writeList(mDisplayTriggers);
     }
 
     @Override

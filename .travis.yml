@@ -6,9 +6,9 @@ branches:
   - master
 env:
   global:
-    - ANDROID_API_LEVEL=26
+    - ANDROID_API_LEVEL=27
     - EMULATOR_API_LEVEL=24
-    - ANDROID_BUILD_TOOLS_VERSION=26.0.1
+    - ANDROID_BUILD_TOOLS_VERSION=28.0.3
     - ANDROID_ABI=armeabi-v7a # x86 requires HAXM and it's not supported by travis (https://github.com/travis-ci/travis-ci/issues/1419)
     - ADB_INSTALL_TIMEOUT=8 # in minutes (2 minutes by default)
 
