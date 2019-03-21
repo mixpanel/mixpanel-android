@@ -70,6 +70,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.PeopleEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send people updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.GroupsEndpoint</dt>
+ *     <dd>A string URL. If present, the library will attempt to send group updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.DecideEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to get notification, codeless event tracking, and A/B test variant information from this url rather than the default Mixpanel endpoint.</dd>
  *
@@ -288,6 +291,13 @@ public class MPConfig {
             setMixpanelPeopleEndpoint();
         }
 
+        String groupsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.GroupsEndpoint");
+        if (groupsEndpoint != null) {
+            setGroupsEndpoint(groupsEndpoint);
+        } else {
+            setMixpanelGroupsEndpoint();
+        }
+
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
         if (decideEndpoint != null) {
             setDecideEndpoint(decideEndpoint);
@@ -374,6 +384,19 @@ public class MPConfig {
 
     public void setPeopleEndpoint(String peopleEndpoint) {
         mPeopleEndpoint = peopleEndpoint;
+    }
+
+    // Preferred URL for tracking groups
+    public String getGroupsEndpoint() {
+        return mGroupsEndpoint;
+    }
+
+    public void setMixpanelGroupsEndpoint() {
+        setGroupsEndpoint(MPConstants.URL.GROUPS);
+    }
+
+    public void setGroupsEndpoint(String groupsEndpoint) {
+        mGroupsEndpoint = groupsEndpoint;
     }
 
     // Preferred URL for pulling decide data
@@ -530,6 +553,7 @@ public class MPConfig {
     private final String[] mDisableViewCrawlerForProjects;
     private String mEventsEndpoint;
     private String mPeopleEndpoint;
+    private String mGroupsEndpoint;
     private String mDecideEndpoint;
     private final boolean mAutoShowMixpanelUpdates;
     private final String mEditorUrl;

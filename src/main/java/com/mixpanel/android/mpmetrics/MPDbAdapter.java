@@ -30,7 +30,8 @@ import com.mixpanel.android.util.MPLog;
 
     public enum Table {
         EVENTS ("events"),
-        PEOPLE ("people");
+        PEOPLE ("people"),
+        GROUPS ("groups");
 
         Table(String name) {
             mTableName = name;
@@ -53,7 +54,11 @@ import com.mixpanel.android.util.MPLog;
     public static final int DB_UNDEFINED_CODE = -3;
 
     private static final String DATABASE_NAME = "mixpanel";
-    private static final int DATABASE_VERSION = 5;
+    private static final int MIN_DB_VERSION = 4;
+
+    // If you increment DATABASE_VERSION, don't forget to define migration
+    private static final int DATABASE_VERSION = 6; // current database version
+    private static final int MAX_DB_VERSION = 6; // Max database version onUpdate can migrate to.
 
     private static final String CREATE_EVENTS_TABLE =
        "CREATE TABLE " + Table.EVENTS.getName() + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -67,12 +72,21 @@ import com.mixpanel.android.util.MPLog;
         KEY_CREATED_AT + " INTEGER NOT NULL, " +
         KEY_AUTOMATIC_DATA + " INTEGER DEFAULT 0, " +
         KEY_TOKEN + " STRING NOT NULL DEFAULT '')";
+    private static final String CREATE_GROUPS_TABLE =
+            "CREATE TABLE " + Table.GROUPS.getName() + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    KEY_DATA + " STRING NOT NULL, " +
+                    KEY_CREATED_AT + " INTEGER NOT NULL, " +
+                    KEY_AUTOMATIC_DATA + " INTEGER DEFAULT 0, " +
+                    KEY_TOKEN + " STRING NOT NULL DEFAULT '')";
     private static final String EVENTS_TIME_INDEX =
         "CREATE INDEX IF NOT EXISTS time_idx ON " + Table.EVENTS.getName() +
         " (" + KEY_CREATED_AT + ");";
     private static final String PEOPLE_TIME_INDEX =
         "CREATE INDEX IF NOT EXISTS time_idx ON " + Table.PEOPLE.getName() +
         " (" + KEY_CREATED_AT + ");";
+    private static final String GROUPS_TIME_INDEX =
+            "CREATE INDEX IF NOT EXISTS time_idx ON " + Table.GROUPS.getName() +
+                    " (" + KEY_CREATED_AT + ");";
 
     private final MPDatabaseHelper mDb;
 
@@ -97,23 +111,34 @@ import com.mixpanel.android.util.MPLog;
 
             db.execSQL(CREATE_EVENTS_TABLE);
             db.execSQL(CREATE_PEOPLE_TABLE);
+            db.execSQL(CREATE_GROUPS_TABLE);
             db.execSQL(EVENTS_TIME_INDEX);
             db.execSQL(PEOPLE_TIME_INDEX);
+            db.execSQL(GROUPS_TIME_INDEX);
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
             MPLog.v(LOGTAG, "Upgrading app, replacing Mixpanel events DB");
 
-            if (newVersion == 5) {
-                migrateTableFrom4To5(db);
+            if (oldVersion >= MIN_DB_VERSION && newVersion <= MAX_DB_VERSION) {
+                if (oldVersion == 4) {
+                    migrateTableFrom4To5(db);
+                }
+
+                if (newVersion == 6) {
+                    migrateTableFrom5To6(db);
+                }
             } else {
                 db.execSQL("DROP TABLE IF EXISTS " + Table.EVENTS.getName());
                 db.execSQL("DROP TABLE IF EXISTS " + Table.PEOPLE.getName());
+                db.execSQL("DROP TABLE IF EXISTS " + Table.GROUPS.getName());
                 db.execSQL(CREATE_EVENTS_TABLE);
                 db.execSQL(CREATE_PEOPLE_TABLE);
+                db.execSQL(CREATE_GROUPS_TABLE);
                 db.execSQL(EVENTS_TIME_INDEX);
                 db.execSQL(PEOPLE_TIME_INDEX);
+                db.execSQL(GROUPS_TIME_INDEX);
             }
         }
 
@@ -157,6 +182,11 @@ import com.mixpanel.android.util.MPLog;
             }
         }
 
+        private void migrateTableFrom5To6(SQLiteDatabase db) {
+            db.execSQL(CREATE_GROUPS_TABLE);
+            db.execSQL(GROUPS_TIME_INDEX);
+        }
+
         private final File mDatabaseFile;
         private final MPConfig mConfig;
     }
@@ -188,7 +218,7 @@ import com.mixpanel.android.util.MPLog;
      * to the SQLiteDatabase.
      * @param j the JSON to record
      * @param token token of the project
-     * @param table the table to insert into, either "events" or "people"
+     * @param table the table to insert into, one of "events", "people", or "groups"
      * @param isAutomaticRecord mark the record as an automatic event or not
      * @return the number of rows in the table, or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
      * on failure
@@ -242,7 +272,7 @@ import com.mixpanel.android.util.MPLog;
     /**
      * Removes events with an _id <= last_id from table
      * @param last_id the last id to delete
-     * @param table the table to remove events from, either "events" or "people"
+     * @param table the table to remove events from, one of "events", "people", or "groups"
      * @param includeAutomaticEvents whether or not automatic events should be included in the cleanup
      */
     public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
@@ -272,7 +302,7 @@ import com.mixpanel.android.util.MPLog;
     /**
      * Removes events before time.
      * @param time the unix epoch in milliseconds to remove events before
-     * @param table the table to remove events from, either "events" or "people"
+     * @param table the table to remove events from, one of "events", "people", or "groups"
      */
     public void cleanupEvents(long time, Table table) {
         final String tableName = table.getName();
@@ -295,7 +325,7 @@ import com.mixpanel.android.util.MPLog;
 
     /**
      * Removes all events given a project token.
-     * @param table the table to remove events from, either "events" or "people"
+     * @param table the table to remove events from, one of "events", "people", or "groups"
      * @param token token of the project to remove events from
      */
     public void cleanupAllEvents(Table table, String token) {
@@ -324,6 +354,7 @@ import com.mixpanel.android.util.MPLog;
     public synchronized void cleanupAutomaticEvents(String token) {
         cleanupAutomaticEvents(Table.EVENTS, token);
         cleanupAutomaticEvents(Table.PEOPLE, token);
+        cleanupAutomaticEvents(Table.GROUPS, token);
     }
 
     private void cleanupAutomaticEvents(Table table, String token) {
@@ -354,7 +385,7 @@ import com.mixpanel.android.util.MPLog;
      * Returns the data string to send to Mixpanel and the maximum ID of the row that
      * we're sending, so we know what rows to delete when a track request was successful.
      *
-     * @param table the table to read the JSON from, either "events" or "people"
+     * @param table the table to read the JSON from, one of "events", "people", or "groups"
      * @param token the token of the project you want to retrieve the records for
      * @param includeAutomaticEvents whether or not it should include pre-track records
      * @return String array containing the maximum ID, the data string
