@@ -268,7 +268,7 @@ public class MixpanelAPI {
         mEventTimings = mPersistentIdentity.getTimeEvents();
         mMessages = getAnalyticsMessages();
 
-        if (optOutTrackingDefault) {
+        if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
             optOutTracking();
         }
 

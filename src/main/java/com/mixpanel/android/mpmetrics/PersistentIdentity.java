@@ -698,6 +698,18 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Can't write opt-out shared preferences.", e);
         }
     }
+
+    protected boolean hasOptOutFlag(String token) {
+        try {
+            final SharedPreferences prefs = mMixpanelPreferences.get();
+            return prefs.contains("opt_out_" + token);
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Can't read opt-out shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Can't read opt-out shared preferences.", e);
+        }
+        return false;
+    }
     // All access should be synchronized on this
     private void writeIdentities() {
         try {
