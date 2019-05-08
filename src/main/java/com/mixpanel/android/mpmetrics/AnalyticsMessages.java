@@ -614,7 +614,7 @@ import javax.net.ssl.SSLSocketFactory;
                     ret.put("$has_telephone", hasTelephony.booleanValue());
 
                 final String carrier = mSystemInformation.getCurrentNetworkOperator();
-                if (null != carrier)
+                if (null != carrier && !carrier.trim().isEmpty())
                     ret.put("$carrier", carrier);
 
                 final Boolean isWifi = mSystemInformation.isWifiConnected();
