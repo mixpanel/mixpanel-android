@@ -699,6 +699,19 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    protected void removeOptOutFlag(String token) {
+        try {
+            final SharedPreferences prefs = mMixpanelPreferences.get();
+            final SharedPreferences.Editor prefsEditor = prefs.edit();
+            prefsEditor.clear();
+            writeEdits(prefsEditor);
+        } catch (final ExecutionException e) {
+            MPLog.e(LOGTAG, "Can't remove opt-out shared preferences.", e.getCause());
+        } catch (final InterruptedException e) {
+            MPLog.e(LOGTAG, "Can't remove opt-out shared preferences.", e);
+        }
+    }
+
     protected boolean hasOptOutFlag(String token) {
         try {
             final SharedPreferences prefs = mMixpanelPreferences.get();

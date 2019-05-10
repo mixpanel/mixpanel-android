@@ -88,9 +88,9 @@ public class OptOutTest extends AndroidTestCase {
     protected void tearDown() throws Exception {
         if (mPersistentIdentity != null) {
             mPersistentIdentity.clearPreferences();
+            mPersistentIdentity.removeOptOutFlag(TOKEN);
             mPersistentIdentity = null;
         }
-        mMixpanelAPI.optInTracking();
         mMockAdapter.deleteDB();
         super.tearDown();
     }
@@ -135,6 +135,12 @@ public class OptOutTest extends AndroidTestCase {
     public void testHasOptOutTrackingOrNot() throws InterruptedException {
         mCleanUpCalls = new CountDownLatch(4); // optOutTrack calls
         mMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, true) {
+            @Override
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
+                return mPersistentIdentity;
+            }
+
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mAnalyticsMessages;
@@ -242,6 +248,12 @@ public class OptOutTest extends AndroidTestCase {
      */
     public void testDropEventsAndOptInEvent() throws InterruptedException {
         mMixpanelAPI = new TestUtils.CleanMixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN) {
+            @Override
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
+                return mPersistentIdentity;
+            }
+
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mAnalyticsMessages;
