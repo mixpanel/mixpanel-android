@@ -34,8 +34,8 @@ public class FadingImageView extends ImageView {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
         if (mShouldShowShadow) {
-            mHeight = getHeight();
-            mWidth = getWidth();
+            mHeight = getMeasuredHeight();
+            mWidth = getMeasuredWidth();
 
             int parentHeight = MeasureSpec.getSize(heightMeasureSpec);
             mGradientMatrix.setScale(1, parentHeight);
