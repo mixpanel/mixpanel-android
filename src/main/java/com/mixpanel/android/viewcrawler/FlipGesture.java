@@ -86,7 +86,7 @@ import com.mixpanel.android.util.MPLog;
     private float[] smoothXYZ(final float[] samples) {
         // Note that smoothing doesn't depend on sample timestamp!
         for (int i = 0; i < 3; i++) {
-            final float oldVal = mSmoothed[i];
+            final float oldVal = i < mSmoothed.length ? mSmoothed[i] : 0;
             mSmoothed[i] = oldVal + (ACCELEROMETER_SMOOTHING * (samples[i] - oldVal));
         }
 
