@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -10,7 +9,6 @@ import android.os.Bundle;
 import android.test.AndroidTestCase;
 import android.test.mock.MockContext;
 import android.test.mock.MockPackageManager;
-import android.util.Log;
 
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
@@ -549,13 +547,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
-                if (!isAutomaticEvent) {
-                    try {
+                try {
+                    if (!isAutomaticEvent) {
                         messages.put("TABLE " + table.getName());
                         messages.put(message.toString());
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
                     }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
 
                 return super.addJSON(message, token, table, isAutomaticEvent);
@@ -654,7 +652,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metrics.identify("EVENTS ID");
 
         // Test filling up the message queue
-        for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
+        for (int i=0; i < mockConfig.getBulkUploadLimit() - 2; i++) {
             metrics.track("frequent event", null);
         }
 
@@ -662,20 +660,27 @@ public class MixpanelBasicTest extends AndroidTestCase {
         String expectedJSONMessage = "<No message actually received>";
 
         try {
-            for (int i=0; i < mockConfig.getBulkUploadLimit() - 1; i++) {
-                String messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
-                assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
-
-                expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
-                JSONObject message = new JSONObject(expectedJSONMessage);
-                assertEquals("frequent event", message.getString("event"));
-            }
-
             String messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
 
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject message = new JSONObject(expectedJSONMessage);
+            assertEquals("$identify", message.getString("event"));
+
+            for (int i=0; i < mockConfig.getBulkUploadLimit() - 2; i++) {
+                messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+                assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
+
+                expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+                message = new JSONObject(expectedJSONMessage);
+                assertEquals("frequent event", message.getString("event"));
+            }
+
+            messageTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), messageTable);
+
+            expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            message = new JSONObject(expectedJSONMessage);
             assertEquals("final event", message.getString("event"));
 
             String messageFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
@@ -813,7 +818,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
-                if (!heard.isAutomatic()) {
+                if (!heard.isAutomatic() && !heard.getEventName().equals("$identify")) {
                     messages.add(heard);
                 }
             }
@@ -884,6 +889,81 @@ public class MixpanelBasicTest extends AndroidTestCase {
         messages.clear();
     }
 
+    public void testIdentifyCall() throws JSONException {
+        String newDistinctId = "New distinct ID";
+        final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void eventsMessage(EventDescription heard) {
+                if (!heard.isAutomatic()) {
+                    messages.add(heard);
+                }
+            }
+        };
+
+
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Identify Call") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+        String oldDistinctId = metrics.getDistinctId();
+        metrics.identify(newDistinctId);
+        metrics.identify(newDistinctId);
+        metrics.identify(newDistinctId);
+
+        assertEquals(messages.size(), 1);
+        AnalyticsMessages.EventDescription identifyEventDescription = messages.get(0);
+        assertEquals(identifyEventDescription.getEventName(), "$identify");
+        String newDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("distinct_id");
+        String anonDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("$anon_distinct_id");
+
+        assertEquals(newDistinctIdIdentifyTrack, newDistinctId);
+        assertEquals(anonDistinctIdIdentifyTrack, oldDistinctId);
+        assertEquals(messages.size(), 1);
+    }
+
+    public void testIdentifyResetCall() throws JSONException {
+        String newDistinctId = "New distinct ID";
+        final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void eventsMessage(EventDescription heard) {
+                if (!heard.isAutomatic()) {
+                    messages.add(heard);
+                }
+            }
+        };
+
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Identify Call") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+        ArrayList<String> oldDistinctIds = new ArrayList<>();
+        oldDistinctIds.add(metrics.getDistinctId());
+        metrics.identify(newDistinctId + "0");
+        metrics.reset();
+        oldDistinctIds.add(metrics.getDistinctId());
+        metrics.identify(newDistinctId + "1");
+        metrics.reset();
+
+        oldDistinctIds.add(metrics.getDistinctId());
+        metrics.identify(newDistinctId + "2");
+
+        assertEquals(messages.size(), 3);
+        for (int i=0; i < 3; i++) {
+            AnalyticsMessages.EventDescription identifyEventDescription = messages.get(i);
+            assertEquals(identifyEventDescription.getEventName(), "$identify");
+            String newDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("distinct_id");
+            String anonDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("$anon_distinct_id");
+
+            assertEquals(newDistinctIdIdentifyTrack, newDistinctId + String.valueOf(i));
+            assertEquals(anonDistinctIdIdentifyTrack, oldDistinctIds.get(i));
+        }
+    }
 
     public void testPersistence() {
         MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false);

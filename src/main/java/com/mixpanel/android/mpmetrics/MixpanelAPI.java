@@ -504,6 +504,16 @@ public class MixpanelAPI {
                 decideId = mPersistentIdentity.getEventsDistinctId();
             }
             mDecideMessages.setDistinctId(decideId);
+
+            if (!distinctId.equals(currentEventsDistinctId)) {
+                try {
+                    JSONObject identifyPayload = new JSONObject();
+                    identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
+                    track("$identify", identifyPayload);
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Could not track $identify event");
+                }
+            }
         }
     }
 
