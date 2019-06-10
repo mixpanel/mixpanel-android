@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="com_mixpanel_android_logo">By Mixpanel</string>
-    <string name="com_mixpanel_android_exit">Завершить</string>
     <string name="com_mixpanel_android_close">Закрыть</string>
     <string name="com_mixpanel_android_done">Готово</string>
     <string name="com_mixpanel_android_notification_image">Image not displayed</string>
