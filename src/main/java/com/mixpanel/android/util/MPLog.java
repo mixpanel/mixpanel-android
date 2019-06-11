@@ -2,8 +2,6 @@ package com.mixpanel.android.util;
 
 import android.util.Log;
 
-import com.mixpanel.android.mpmetrics.MPConfig;
-
 public class MPLog {
 
     public static final int VERBOSE = 2;

@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.view.MotionEvent;
 import android.view.View;
 
-import com.mixpanel.android.R;
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
 
 /**

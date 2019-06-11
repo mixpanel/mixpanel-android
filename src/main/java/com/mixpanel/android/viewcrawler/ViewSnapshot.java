@@ -168,12 +168,8 @@ import java.util.concurrent.TimeoutException;
         j.name("scrollY").value(view.getScrollY());
         j.name("visibility").value(view.getVisibility());
 
-        float translationX = 0;
-        float translationY = 0;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            translationX = view.getTranslationX();
-            translationY = view.getTranslationY();
-        }
+        float translationX = view.getTranslationX();
+        float translationY = view.getTranslationY();
 
         j.name("translationX").value(translationX);
         j.name("translationY").value(translationY);
