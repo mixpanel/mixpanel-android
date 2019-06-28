@@ -22,6 +22,7 @@ import com.mixpanel.android.util.MPLog;
 // In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
 @SuppressLint("CommitPrefEdits")
 /* package */ class PersistentIdentity {
+    public static final int MAX_WAITING_PEOPLE_RECORDS = 1000;
 
     // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
     public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
@@ -232,6 +233,8 @@ import com.mixpanel.android.util.MPLog;
         }
         if (null == mWaitingPeopleRecords) {
             mWaitingPeopleRecords = new JSONArray();
+        } else if (mWaitingPeopleRecords.length() >= MAX_WAITING_PEOPLE_RECORDS) {
+            return;
         }
 
         mWaitingPeopleRecords.put(record);

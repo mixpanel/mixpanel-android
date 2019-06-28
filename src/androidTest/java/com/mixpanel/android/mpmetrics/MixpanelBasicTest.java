@@ -474,6 +474,41 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    public void testTooManyAnonymousUpdates() {
+        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void peopleMessage(PeopleDescription heard) {
+                messages.add(heard);
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testTooManyAnonymousUpdates") {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+
+            @Override
+            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
+                return super.constructDecideUpdates(token, listener, updatesFromMixpanel);
+            }
+        };
+
+        MixpanelAPI.People people = mixpanel.getPeople();
+
+        for (int i = 0; i < PersistentIdentity.MAX_WAITING_PEOPLE_RECORDS + 1; i++) {
+            people.increment("the prop", i);
+        }
+
+        people.set("the prop", 2);
+        people.increment("the prop", 3L);
+        people.identify("Personal Identity");
+
+        assertEquals(messages.size(), PersistentIdentity.MAX_WAITING_PEOPLE_RECORDS);
+    }
+
     public void testIdentifyAndGetDistinctId() {
         MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
 
