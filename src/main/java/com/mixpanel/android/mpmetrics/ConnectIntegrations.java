@@ -52,7 +52,7 @@ import java.util.Set;
             } else {
                 mUrbanAirshipRetries++;
                 if (mUrbanAirshipRetries <= UA_MAX_RETRIES) {
-                    final Handler delayedHandler = new Handler();
+                    final Handler delayedHandler = new Handler(android.os.Looper.getMainLooper());
                     delayedHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
