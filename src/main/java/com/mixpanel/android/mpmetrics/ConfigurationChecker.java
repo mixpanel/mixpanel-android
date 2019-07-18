@@ -121,7 +121,8 @@ import java.util.List;
         Iterator<ResolveInfo> it = intentServices.iterator();
         while (it.hasNext()) {
             ResolveInfo resolveInfo = it.next();
-            if (resolveInfo.serviceInfo.name.equals("com.google.firebase.messaging.FirebaseMessagingService")) {
+            String serviceName = resolveInfo.serviceInfo.name;
+            if (!serviceName.startsWith(packageName) && !serviceName.equals("com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService")) {
                 it.remove();
             }
         }
