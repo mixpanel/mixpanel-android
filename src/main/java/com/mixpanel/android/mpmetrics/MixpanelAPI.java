@@ -508,7 +508,8 @@ public class MixpanelAPI {
             if (!distinctId.equals(currentEventsDistinctId)) {
                 try {
                     JSONObject identifyPayload = new JSONObject();
-                    identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
+                    identifyPayload.put("$anon_id", currentEventsDistinctId);
+                    identifyPayload.put("$identified_id", distinctId);
                     track("$identify", identifyPayload);
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Could not track $identify event");
