@@ -253,6 +253,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         final Notification.Builder builder = new Notification.Builder(context).
                 setTicker(notificationData.message).
                 setWhen(System.currentTimeMillis()).
+                setShowWhen(true).
                 setContentTitle(notificationData.title).
                 setContentText(notificationData.message).
                 setContentIntent(intent).
