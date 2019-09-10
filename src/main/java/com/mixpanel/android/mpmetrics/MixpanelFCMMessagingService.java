@@ -1,7 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -170,7 +168,8 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
         final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
         final Context applicationContext = context.getApplicationContext();
-        final Notification notification = buildNotification(applicationContext, messageIntent, drawableIds);
+        final Notification.Builder builder = new Notification.Builder(context);
+        final Notification notification = buildNotification(applicationContext, messageIntent, builder, drawableIds, System.currentTimeMillis());
 
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -195,163 +194,108 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         });
     }
 
-    private static Notification buildNotification(Context context, Intent inboundIntent, ResourceIds iconIds) {
+    protected static Notification buildNotification(Context context, Intent inboundIntent, Notification.Builder builder, ResourceIds iconIds, long now) {
         final PackageManager manager = context.getPackageManager();
         Intent defaultIntent =  manager.getLaunchIntentForPackage(context.getPackageName());
 
-        final MixpanelFCMMessagingService.NotificationData notificationData = readInboundIntent(context, inboundIntent, iconIds, defaultIntent);
-        if (null == notificationData) {
+        final MixpanelFCMMessagingService.NotificationData data = readInboundIntent(context, inboundIntent, iconIds, defaultIntent);
+        if (null == data) {
             return null;
         }
 
-        MPLog.d(LOGTAG, "MP FCM notification received: " + notificationData.message);
+        MPLog.d(LOGTAG, "MP FCM notification received: " + data.message);
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
                 0,
-                notificationData.intent,
+                data.intent,
                 PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        final Notification notification;
+        builder.
+                setDefaults(MPConfig.getInstance(context).getNotificationDefaults()).
+                setWhen(now).
+                setContentTitle(data.title).
+                setContentText(data.message).
+                setTicker(data.message).
+                setContentIntent(contentIntent);
+
+        maybeSetNotificationBarIcon(builder, data);
+        maybeSetLargeIcon(builder, data, context);
+        maybeSetExpandableNotification(builder, data);
+        maybeSetCustomIconColor(builder, data);
+        maybeSetChannel(builder, data, context);
+
+        final Notification n = getNotification(builder);
+        n.flags |= Notification.FLAG_AUTO_CANCEL;
+
+        return n;
+    }
+
+    private static void maybeSetNotificationBarIcon(Notification.Builder builder, NotificationData data) {
+        // For Android 5.0+ (Lollipop), any non-transparent pixels are turned white, so users generally specify
+        // icons for these devices and regular full-color icons for older devices.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && data.whiteIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
+            builder.setSmallIcon(data.whiteIcon);
+        } else {
+            builder.setSmallIcon(data.icon);
+        }
+    }
+
+    private static void maybeSetLargeIcon(Notification.Builder builder, NotificationData data, Context context) {
+        if (data.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
+            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), data.largeIcon));
+        }
+    }
+
+    private static void maybeSetExpandableNotification(Notification.Builder builder, NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            builder.setStyle(new Notification.BigTextStyle().bigText(data.message));
+        }
+    }
+
+    private static void maybeSetCustomIconColor(Notification.Builder builder, NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (data.color != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
+                builder.setColor(data.color);
+            }
+        }
+    }
+
+    private static void maybeSetChannel(Notification.Builder builder, NotificationData data, Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notification = makeNotificationSDK26OrHigher(context, contentIntent, notificationData);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            notification = makeNotificationSDK21OrHigher(context, contentIntent, notificationData);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            notification = makeNotificationSDK16OrHigher(context, contentIntent, notificationData);
+            NotificationManager mNotificationManager =
+                    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+            String channelId = MPConfig.getInstance(context).getNotificationChannelId();
+            String channelName = MPConfig.getInstance(context).getNotificationChannelName();
+            int importance = MPConfig.getInstance(context).getNotificationChannelImportance();
+
+            NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
+            int notificationDefaults = MPConfig.getInstance(context).getNotificationDefaults();
+
+            if (notificationDefaults == Notification.DEFAULT_VIBRATE || notificationDefaults == Notification.DEFAULT_ALL) {
+                channel.enableVibration(true);
+            }
+
+            if (notificationDefaults == Notification.DEFAULT_LIGHTS || notificationDefaults == Notification.DEFAULT_ALL) {
+                channel.enableLights(true);
+                channel.setLightColor(Color.WHITE);
+            }
+
+            mNotificationManager.createNotificationChannel(channel);
+
+            builder.setChannelId(channelId);
+        }
+    }
+
+    private static Notification getNotification(Notification.Builder builder) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            return builder.build();
         } else {
-            notification = makeNotificationSDK11OrHigher(context, contentIntent, notificationData);
+            return builder.getNotification();
         }
-
-        return notification;
     }
 
-    /**
-     * Mixpanel Notification Builder
-     */
-    @SuppressLint("NewApi")
-    @TargetApi(26)
-    protected static Notification makeNotificationSDK26OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
-        NotificationManager mNotificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-
-        String channelId = MPConfig.getInstance(context).getNotificationChannelId();
-        String channelName = MPConfig.getInstance(context).getNotificationChannelName();
-        int importance = MPConfig.getInstance(context).getNotificationChannelImportance();
-
-        NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
-        int notificationDefaults = MPConfig.getInstance(context).getNotificationDefaults();
-        if (notificationDefaults == Notification.DEFAULT_VIBRATE || notificationDefaults == Notification.DEFAULT_ALL) {
-            channel.enableVibration(true);
-        }
-        if (notificationDefaults == Notification.DEFAULT_LIGHTS || notificationDefaults == Notification.DEFAULT_ALL) {
-            channel.enableLights(true);
-            channel.setLightColor(Color.WHITE);
-        }
-        mNotificationManager.createNotificationChannel(channel);
-
-        final Notification.Builder builder = new Notification.Builder(context).
-                setTicker(notificationData.message).
-                setWhen(System.currentTimeMillis()).
-                setShowWhen(true).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
-                setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
-                setChannelId(channelId);
-
-        if (notificationData.whiteIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setSmallIcon(notificationData.whiteIcon);
-        } else {
-            builder.setSmallIcon(notificationData.icon);
-        }
-
-        if (notificationData.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
-        }
-
-        if (notificationData.color != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setColor(notificationData.color);
-        }
-
-        final Notification n = builder.build();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
-        return n;
-    }
-
-    @SuppressWarnings("deprecation")
-    @TargetApi(11)
-    protected static Notification makeNotificationSDK11OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
-        final Notification.Builder builder = new Notification.Builder(context).
-                setSmallIcon(notificationData.icon).
-                setTicker(notificationData.message).
-                setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
-                setContentIntent(intent).
-                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
-
-        if (notificationData.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
-        }
-
-        final Notification n = builder.getNotification();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
-        return n;
-    }
-
-    @SuppressLint("NewApi")
-    @TargetApi(16)
-    protected static Notification makeNotificationSDK16OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
-        final Notification.Builder builder = new Notification.Builder(context).
-                setSmallIcon(notificationData.icon).
-                setTicker(notificationData.message).
-                setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
-                setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
-                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
-
-        if (notificationData.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
-        }
-
-        final Notification n = builder.build();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
-        return n;
-    }
-
-    @SuppressLint("NewApi")
-    @TargetApi(21)
-    protected static Notification makeNotificationSDK21OrHigher(Context context, PendingIntent intent, MixpanelFCMMessagingService.NotificationData notificationData) {
-        final Notification.Builder builder = new Notification.Builder(context).
-                setTicker(notificationData.message).
-                setWhen(System.currentTimeMillis()).
-                setContentTitle(notificationData.title).
-                setContentText(notificationData.message).
-                setContentIntent(intent).
-                setStyle(new Notification.BigTextStyle().bigText(notificationData.message)).
-                setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
-
-        if (notificationData.whiteIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setSmallIcon(notificationData.whiteIcon);
-        } else {
-            builder.setSmallIcon(notificationData.icon);
-        }
-
-        if (notificationData.largeIcon != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setLargeIcon(BitmapFactory.decodeResource(context.getResources(), notificationData.largeIcon));
-        }
-
-        if (notificationData.color != MixpanelFCMMessagingService.NotificationData.NOT_SET) {
-            builder.setColor(notificationData.color);
-        }
-
-        final Notification n = builder.build();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
-        return n;
-    }
 
     /* package */ static NotificationData readInboundIntent(Context context, Intent inboundIntent, ResourceIds iconIds, Intent defaultIntent) {
         final PackageManager manager = context.getPackageManager();
@@ -380,7 +324,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             return null;
         }
 
-        int notificationIcon = -1;
+        int notificationIcon = MixpanelFCMMessagingService.NotificationData.NOT_SET;
         if (null != iconName) {
             if (iconIds.knownIdName(iconName)) {
                 notificationIcon = iconIds.idFromName(iconName);
