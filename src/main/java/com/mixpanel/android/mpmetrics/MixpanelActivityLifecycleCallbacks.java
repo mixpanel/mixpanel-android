@@ -146,9 +146,6 @@ import java.util.Locale;
                     mMpInstance.track("$app_open", pushProps);
                 } catch (JSONException e) {}
 
-                intent.removeExtra("mp_campaign_id");
-                intent.removeExtra("mp_message_id");
-                intent.removeExtra("mp");
             }
         } catch (BadParcelableException e) {
             // https://github.com/mixpanel/mixpanel-android/issues/251
