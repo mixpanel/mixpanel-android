@@ -1834,9 +1834,9 @@ public class MixpanelAPI {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
             public void onPrefsLoaded(SharedPreferences preferences) {
-                final JSONArray records = PersistentIdentity.waitingPeopleRecordsForSending(preferences);
-                if (null != records) {
-                    sendAllPeopleRecords(records);
+                final String distinctId = PersistentIdentity.getPeopleDistinctId(preferences);
+                if (null != distinctId) {
+                    pushWaitingPeopleRecord(distinctId);
                 }
             }
         };
@@ -1900,7 +1900,7 @@ public class MixpanelAPI {
                 mPersistentIdentity.setPeopleDistinctId(distinctId);
                 mDecideMessages.setDistinctId(distinctId);
             }
-            pushWaitingPeopleRecord();
+            pushWaitingPeopleRecord(distinctId);
          }
 
         @Override
@@ -2756,11 +2756,7 @@ public class MixpanelAPI {
 
     private void recordPeopleMessage(JSONObject message) {
         if (hasOptedOutTracking()) return;
-        if (message.has("$distinct_id")) {
-           mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
-        } else {
-           mPersistentIdentity.storeWaitingPeopleRecord(message);
-        }
+        mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
     }
 
     private void recordGroupMessage(JSONObject message) {
@@ -2772,26 +2768,9 @@ public class MixpanelAPI {
         }
     }
 
-    private void pushWaitingPeopleRecord() {
+    private void pushWaitingPeopleRecord(String distinctId) {
         if (hasOptedOutTracking()) return;
-        final JSONArray records = mPersistentIdentity.waitingPeopleRecordsForSending();
-        if (null != records) {
-            sendAllPeopleRecords(records);
-        }
-    }
-
-    // MUST BE THREAD SAFE. Called from crazy places. mPersistentIdentity may not exist
-    // when this is called (from its crazy thread)
-    private void sendAllPeopleRecords(JSONArray records) {
-        if (hasOptedOutTracking()) return;
-        for (int i = 0; i < records.length(); i++) {
-            try {
-                final JSONObject message = records.getJSONObject(i);
-                mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(message, mToken));
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Malformed people record stored pending identity, will not send it.", e);
-            }
-        }
+        mMessages.pushAnonymousPeopleMessage(new AnalyticsMessages.PushAnonymousPeopleDescription(distinctId, mToken));
     }
 
     private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {

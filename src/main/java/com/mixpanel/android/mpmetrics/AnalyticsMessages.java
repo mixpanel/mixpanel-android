@@ -98,6 +98,15 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    // Must be thread safe.
+    public void pushAnonymousPeopleMessage(final PushAnonymousPeopleDescription pushAnonymousPeopleDescription) {
+        final Message m = Message.obtain();
+        m.what = PUSH_ANONYMOUS_PEOPLE_RECORDS;
+        m.obj = pushAnonymousPeopleDescription;
+
+        mWorker.runMessage(m);
+    }
+
     public void postToServer(final FlushDescription flushDescription) {
         final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
@@ -207,6 +216,10 @@ import javax.net.ssl.SSLSocketFactory;
             return message;
         }
 
+        public boolean isAnonymous() {
+            return !message.has("$distinct_id");
+        }
+
         private final JSONObject message;
     }
 
@@ -226,6 +239,24 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         private final JSONObject message;
+    }
+
+    static class PushAnonymousPeopleDescription extends MixpanelDescription {
+        public PushAnonymousPeopleDescription(String distinctId, String token) {
+            super(token);
+            this.mDistinctId = distinctId;
+        }
+
+        @Override
+        public String toString() {
+            return this.mDistinctId;
+        }
+
+        public String getDistinctId() {
+            return this.mDistinctId;
+        }
+
+        private final String mDistinctId;
     }
 
     static class FlushDescription extends MixpanelDescription {
@@ -329,11 +360,13 @@ import javax.net.ssl.SSLSocketFactory;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final PeopleDescription message = (PeopleDescription) msg.obj;
+                        final MPDbAdapter.Table peopleTable = message.isAnonymous() ? MPDbAdapter.Table.ANONYMOUS_PEOPLE : MPDbAdapter.Table.PEOPLE;
 
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
                         token = message.getToken();
-                        returnCode = mDbAdapter.addJSON(message.getMessage(), token, MPDbAdapter.Table.PEOPLE, false);
+                        int numRowsTable = mDbAdapter.addJSON(message.getMessage(), token, peopleTable, false);
+                        returnCode = message.isAnonymous() ? 0 : numRowsTable;
                     } else if (msg.what == ENQUEUE_GROUP) {
                         final GroupDescription message = (GroupDescription) msg.obj;
 
@@ -357,6 +390,11 @@ import javax.net.ssl.SSLSocketFactory;
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
+                    } else if (msg.what == PUSH_ANONYMOUS_PEOPLE_RECORDS) {
+                        final PushAnonymousPeopleDescription pushAnonymousPeopleDescription = (PushAnonymousPeopleDescription) msg.obj;
+                        final String distinctId = pushAnonymousPeopleDescription.getDistinctId();
+                        token = pushAnonymousPeopleDescription.getToken();
+                        mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
@@ -697,6 +735,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int ENQUEUE_EVENTS = 1; // push given JSON message to events DB
     private static final int FLUSH_QUEUE = 2; // submit events, people, and groups data
     private static final int ENQUEUE_GROUP = 3; // push given JSON message to groups DB
+    private static final int PUSH_ANONYMOUS_PEOPLE_RECORDS = 4; // push anonymous people DB updates to people DB
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
