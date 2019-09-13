@@ -1062,7 +1062,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
 
-        assertEquals(1, messages.size());
+        assertEquals(2, messages.size());
 
         AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(0);
 

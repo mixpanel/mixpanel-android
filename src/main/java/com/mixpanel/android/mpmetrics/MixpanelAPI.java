@@ -264,9 +264,9 @@ public class MixpanelAPI {
         mSessionMetadata = new SessionMetadata();
         mUpdatesFromMixpanel = constructUpdatesFromMixpanel(context, token);
         mTrackingDebug = constructTrackingDebug();
+        mMessages = getAnalyticsMessages();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
         mEventTimings = mPersistentIdentity.getTimeEvents();
-        mMessages = getAnalyticsMessages();
 
         if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
             optOutTracking();
@@ -2770,7 +2770,6 @@ public class MixpanelAPI {
     }
 
     private void pushWaitingPeopleRecord(String distinctId) {
-        if (hasOptedOutTracking()) return;
         mMessages.pushAnonymousPeopleMessage(new AnalyticsMessages.PushAnonymousPeopleDescription(distinctId, mToken));
     }
 
