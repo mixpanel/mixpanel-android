@@ -298,7 +298,7 @@ import com.mixpanel.android.util.MPLog;
      * to the SQLiteDatabase.
      * @param j the JSON to record
      * @param token token of the project
-     * @param table the table to insert into, one of "events", "people", or "groups"
+     * @param table the table to insert into, one of "events", "people", "groups" or "anonymous_people"
      * @param isAutomaticRecord mark the record as an automatic event or not
      * @return the number of rows in the table, or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
      * on failure
@@ -407,7 +407,7 @@ import com.mixpanel.android.util.MPLog;
     /**
      * Removes events with an _id <= last_id from table
      * @param last_id the last id to delete
-     * @param table the table to remove events from, one of "events", "people", or "groups"
+     * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
      * @param includeAutomaticEvents whether or not automatic events should be included in the cleanup
      */
     public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
@@ -437,7 +437,7 @@ import com.mixpanel.android.util.MPLog;
     /**
      * Removes events before time.
      * @param time the unix epoch in milliseconds to remove events before
-     * @param table the table to remove events from, one of "events", "people", or "groups"
+     * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
      */
     public void cleanupEvents(long time, Table table) {
         final String tableName = table.getName();
@@ -460,7 +460,7 @@ import com.mixpanel.android.util.MPLog;
 
     /**
      * Removes all events given a project token.
-     * @param table the table to remove events from, one of "events", "people", or "groups"
+     * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
      * @param token token of the project to remove events from
      */
     public void cleanupAllEvents(Table table, String token) {

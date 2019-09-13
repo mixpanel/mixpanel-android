@@ -31,6 +31,7 @@ public class OptOutTest extends AndroidTestCase {
     final private BlockingQueue<String> mPerformRequestEvents = new LinkedBlockingQueue<>();
     final private BlockingQueue<String> mStoredEvents = new LinkedBlockingQueue<>();
     final private BlockingQueue<String> mStoredPeopleUpdates = new LinkedBlockingQueue<>();
+    final private BlockingQueue<String> mStoredAnonymousPeopleUpdates = new LinkedBlockingQueue<>();
     private CountDownLatch mCleanUpCalls = new CountDownLatch(1);
 
     private MPDbAdapter mMockAdapter;
@@ -120,9 +121,10 @@ public class OptOutTest extends AndroidTestCase {
         };
         mMixpanelAPI.flush();
         assertEquals(null, mStoredEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        assertEquals(null, mStoredPeopleUpdates.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        assertEquals(null, mStoredAnonymousPeopleUpdates.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertNull(mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(0, mMixpanelAPI.getSuperProperties().length());
-        assertNull(mPersistentIdentity.getWaitingPeopleRecords());
         assertNull(mMixpanelAPI.getPeople().getDistinctId());
         assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
@@ -180,11 +182,10 @@ public class OptOutTest extends AndroidTestCase {
         };
 
         mMixpanelAPI.getPeople().set("optOutProperty", "optOutPropertyValue");
-        assertEquals(1, mPersistentIdentity.getWaitingPeopleRecords().length());
-        assertEquals("optOutPropertyValue", mPersistentIdentity.getWaitingPeopleRecords().getJSONObject(0).getJSONObject("$set").getString("optOutProperty"));
+        assertEquals("optOutPropertyValue", new JSONObject(mStoredAnonymousPeopleUpdates.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS)).getJSONObject("$set").getString("optOutProperty"));
+        assertEquals(0, mStoredAnonymousPeopleUpdates.size());
 
         mMixpanelAPI.optOutTracking();
-        assertNull(mPersistentIdentity.getWaitingPeopleRecords());
         mMixpanelAPI.getPeople().set("optOutProperty", "optOutPropertyValue");
         mMixpanelAPI.getPeople().increment("optOutPropertyIncrement", 1);
         mMixpanelAPI.getPeople().append("optOutPropertyAppend", "append");
@@ -192,7 +193,7 @@ public class OptOutTest extends AndroidTestCase {
         mMixpanelAPI.getPeople().union("optOutPropertyUnion", new JSONArray("[{'key':'value'},{'key2':'value2'}]"));
         mMixpanelAPI.getPeople().unset("optOutPropertyUnset");
         mMixpanelAPI.getPeople().setOnce("optOutPropertySetOnce", "setOnceValue");
-        assertNull(mPersistentIdentity.getWaitingPeopleRecords());
+        assertEquals(true, mStoredAnonymousPeopleUpdates.isEmpty());
         assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
         mMixpanelAPI.optInTracking();
@@ -366,6 +367,8 @@ public class OptOutTest extends AndroidTestCase {
                             mStoredEvents.put(j.getString("event"));
                         } else if (Table.PEOPLE == table) {
                             mStoredPeopleUpdates.put(j.toString());
+                        } else if (Table.ANONYMOUS_PEOPLE == table) {
+                            mStoredAnonymousPeopleUpdates.put(j.toString());
                         }
                     } catch (Exception e) {
                         throw new RuntimeException("Malformed data passed to test mock adapter", e);

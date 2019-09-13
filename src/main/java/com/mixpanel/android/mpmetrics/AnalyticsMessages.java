@@ -107,6 +107,15 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    // Must be thread safe.
+    public void clearAnonymousUpdatesMessage(final MixpanelDescription clearAnonymousUpdatesDescription) {
+        final Message m = Message.obtain();
+        m.what = CLEAR_ANONYMOUS_UPDATES;
+        m.obj = clearAnonymousUpdatesDescription;
+
+        mWorker.runMessage(m);
+    }
+
     public void postToServer(final FlushDescription flushDescription) {
         final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
@@ -395,6 +404,10 @@ import javax.net.ssl.SSLSocketFactory;
                         final String distinctId = pushAnonymousPeopleDescription.getDistinctId();
                         token = pushAnonymousPeopleDescription.getToken();
                         mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
+                    } else if (msg.what == CLEAR_ANONYMOUS_UPDATES) {
+                        final MixpanelDescription mixpanelDescription = (MixpanelDescription) msg.obj;
+                        token = mixpanelDescription.getToken();
+                        mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
@@ -425,6 +438,7 @@ import javax.net.ssl.SSLSocketFactory;
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.EVENTS, token);
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.PEOPLE, token);
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.GROUPS, token);
+                        mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
                     } else if (msg.what == KILL_WORKER) {
                         MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
                         synchronized(mHandlerLock) {
@@ -738,6 +752,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int PUSH_ANONYMOUS_PEOPLE_RECORDS = 4; // push anonymous people DB updates to people DB
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
+    private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
 
     private static final String LOGTAG = "MixpanelAPI.Messages";

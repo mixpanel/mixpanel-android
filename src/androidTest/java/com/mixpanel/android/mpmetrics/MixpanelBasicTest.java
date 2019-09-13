@@ -425,17 +425,43 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(deleteMessage.has("$delete"));
     }
 
-    public void testIdentifyAfterSet() {
-        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
+    public void testIdentifyAfterSet() throws InterruptedException, JSONException {
+        String token = "TEST TOKEN testIdentifyAfterSet";
+        final List<AnalyticsMessages.MixpanelDescription> messages = new ArrayList<AnalyticsMessages.MixpanelDescription>();
+        final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue();
+        final BlockingQueue<JSONObject> peopleUpdates = new LinkedBlockingQueue();
 
+        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+                if (table == Table.ANONYMOUS_PEOPLE) {
+                    anonymousUpdates.add(j);
+                } else if (table == Table.PEOPLE) {
+                    peopleUpdates.add(j);
+                }
+                return super.addJSON(j, token, table, isAutomaticRecord);
+            }
+        };
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
+                super.peopleMessage(heard);
+            }
+
+            @Override
+            public void pushAnonymousPeopleMessage(PushAnonymousPeopleDescription pushAnonymousPeopleDescription) {
+                messages.add(pushAnonymousPeopleDescription);
+                super.pushAnonymousPeopleMessage(pushAnonymousPeopleDescription);
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, token) {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -452,61 +478,33 @@ public class MixpanelBasicTest extends AndroidTestCase {
         people.append("the prop", 1);
         people.set("the prop", 2);
         people.increment("the prop", 3L);
-        people.increment("the prop", 4);
         people.append("the prop", 5);
-        people.append("the prop", 6);
+
+        assertEquals(0L, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("the prop"));
+        assertEquals(1, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").get("the prop"));
+        assertEquals(2, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").get("the prop"));
+        assertEquals(3L, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("the prop"));
+        assertEquals(5, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").get("the prop"));
+        assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+        assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+
         people.identify("Personal Identity");
+        people.set("the prop identified", "prop value identified");
 
-        assertEquals(messages.size(), 7);
-        try {
-            for (AnalyticsMessages.PeopleDescription message: messages) {
-                String distinctId = message.getMessage().getString("$distinct_id");
-                assertEquals(distinctId, "Personal Identity");
-            }
+        assertEquals("prop value identified", peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("the prop identified"));
+        assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+        assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
-            assertTrue(messages.get(0).getMessage().has("$add"));
-            assertTrue(messages.get(1).getMessage().has("$append"));
-            assertTrue(messages.get(2).getMessage().has("$set"));
-            assertTrue(messages.get(3).getMessage().has("$add"));
-            assertTrue(messages.get(4).getMessage().has("$add"));
-        } catch (JSONException e) {
-            fail("Unexpected JSON error in stored messages.");
+        String[] storedAnonymous = mockAdapter.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token,false);
+        assertNull(storedAnonymous);
+
+        String[] storedPeople = mockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, token,false);
+        assertEquals(6, Integer.valueOf(storedPeople[2]).intValue());
+        JSONArray data = new JSONArray(storedPeople[1]);
+        for (int i=0; i < data.length(); i++) {
+            JSONObject j = data.getJSONObject(i);
+            assertEquals("Personal Identity", j.getString("$distinct_id"));
         }
-    }
-
-    public void testTooManyAnonymousUpdates() {
-        final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
-
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
-            @Override
-            public void peopleMessage(PeopleDescription heard) {
-                messages.add(heard);
-            }
-        };
-
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testTooManyAnonymousUpdates") {
-            @Override
-            protected AnalyticsMessages getAnalyticsMessages() {
-                return listener;
-            }
-
-            @Override
-            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-                return super.constructDecideUpdates(token, listener, updatesFromMixpanel);
-            }
-        };
-
-        MixpanelAPI.People people = mixpanel.getPeople();
-
-        for (int i = 0; i < PersistentIdentity.MAX_WAITING_PEOPLE_RECORDS + 1; i++) {
-            people.increment("the prop", i);
-        }
-
-        people.set("the prop", 2);
-        people.increment("the prop", 3L);
-        people.identify("Personal Identity");
-
-        assertEquals(messages.size(), PersistentIdentity.MAX_WAITING_PEOPLE_RECORDS);
     }
 
     public void testIdentifyAndGetDistinctId() {
@@ -1268,6 +1266,59 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metrics.identify("old id");
         metrics.alias("new id", "old id");
     }
+
+    public void testAnonymousPeopleUpdates() throws InterruptedException, JSONException {
+        final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
+        final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
+
+        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+            @Override
+            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+                if (table == Table.ANONYMOUS_PEOPLE) {
+                    anonymousUpdates.add(j);
+                } else if (table == Table.PEOPLE) {
+                    identifiedUpdates.add(j);
+                }
+                return super.addJSON(j, token, table, isAutomaticRecord);
+            }
+        };
+
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "testAnonymousPeopleUpdates") {
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+        mixpanel.getPeople().set("firstProperty", "firstValue");
+        mixpanel.getPeople().increment("incrementProperty", 3L);
+        mixpanel.getPeople().append("appendProperty", "appendPropertyValue");
+        mixpanel.getPeople().unset("unSetProperty");
+        assertEquals("firstValue", anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstProperty"));
+        assertEquals(3L, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("incrementProperty"));
+        assertEquals("appendPropertyValue", anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").getString("appendProperty"));
+        assertEquals("[\"unSetProperty\"]", anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONArray("$unset").toString());
+        assertEquals(0, anonymousUpdates.size());
+        assertEquals(0, identifiedUpdates.size());
+
+        mixpanel.getPeople().identify("mixpanel_distinct_id");
+        mixpanel.getPeople().set("firstPropertyIdentified", "firstValue");
+        mixpanel.getPeople().increment("incrementPropertyIdentified", 3L);
+        mixpanel.getPeople().append("appendPropertyIdentified", "appendPropertyValue");
+        mixpanel.getPeople().unset("unSetPropertyIdentified");
+        assertEquals("firstValue", identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstPropertyIdentified"));
+        assertEquals(3L, identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("incrementPropertyIdentified"));
+        assertEquals("appendPropertyValue", identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").getString("appendPropertyIdentified"));
+        assertEquals("[\"unSetPropertyIdentified\"]", identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONArray("$unset").toString());
+        assertEquals(0, anonymousUpdates.size());
+    }
+
 
     public void testSessionMetadata() throws InterruptedException, JSONException {
         final BlockingQueue<JSONObject> storedJsons = new LinkedBlockingQueue<>();

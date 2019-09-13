@@ -1005,6 +1005,7 @@ public class MixpanelAPI {
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
+        getAnalyticsMessages().clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
         identify(getDistinctId(), false);
         mConnectIntegrations.reset();
         mUpdatesFromMixpanel.storeVariants(new JSONArray());
