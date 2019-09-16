@@ -353,9 +353,17 @@ import com.mixpanel.android.util.MPLog;
      * Copies anonymous people updates to people db after a user has been identified
      * @param token project token
      * @param distinctId people profile distinct id
+     * @return the number of rows copied (anonymous updates), or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
+     * on failure
      */
-    public void pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
+    /* package */ int pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
+        if (!this.belowMemThreshold()) {
+            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+            return DB_OUT_OF_MEMORY_ERROR;
+        }
         Cursor selectCursor = null;
+        int count = DB_UPDATE_ERROR;
+
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
             StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.ANONYMOUS_PEOPLE.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
@@ -376,6 +384,7 @@ import com.mixpanel.android.util.MPLog;
                         db.insert(Table.PEOPLE.getName(), null, values);
                         int rowId = selectCursor.getInt(selectCursor.getColumnIndex("_id"));
                         db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);
+                        count++;
                     } catch (final JSONException e) {
                         // Ignore this object
                     }
@@ -402,6 +411,8 @@ import com.mixpanel.android.util.MPLog;
             }
             mDb.close();
         }
+
+        return count;
     }
 
     /**

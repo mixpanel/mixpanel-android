@@ -403,7 +403,7 @@ import javax.net.ssl.SSLSocketFactory;
                         final PushAnonymousPeopleDescription pushAnonymousPeopleDescription = (PushAnonymousPeopleDescription) msg.obj;
                         final String distinctId = pushAnonymousPeopleDescription.getDistinctId();
                         token = pushAnonymousPeopleDescription.getToken();
-                        mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
+                        returnCode = mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
                     } else if (msg.what == CLEAR_ANONYMOUS_UPDATES) {
                         final MixpanelDescription mixpanelDescription = (MixpanelDescription) msg.obj;
                         token = mixpanelDescription.getToken();
