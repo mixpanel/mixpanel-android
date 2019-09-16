@@ -29,14 +29,14 @@ import java.util.Set;
 
     public void setupIntegrations(Set<String> integrations) {
         if (integrations.contains("urbanairship")) {
-            setUrbanAirshipPeopleProp();
+            setAirshipPeopleProp();
         }
         if (integrations.contains("braze")) {
             setBrazePeopleProp();
         }
     }
 
-    private void setUrbanAirshipPeopleProp() {
+    private void setAirshipPeopleProp() {
         String urbanAirshipClassName = "com.urbanairship.UAirship";
         try {
             Class urbanAirshipClass = Class.forName(urbanAirshipClassName);
@@ -56,19 +56,22 @@ import java.util.Set;
                     delayedHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            setUrbanAirshipPeopleProp();
+                            setAirshipPeopleProp();
                         }
                     }, 2000);
                 }
             }
         } catch (ClassNotFoundException e) {
-            MPLog.w(LOGTAG, "Urban Airship SDK not found but Urban Airship is integrated on Mixpanel", e);
+            MPLog.w(LOGTAG, "Airship SDK not found but Urban Airship is integrated on Mixpanel", e);
         } catch (NoSuchMethodException e) {
-            MPLog.e(LOGTAG, "Urban Airship SDK class exists but methods do not", e);
+            MPLog.e(LOGTAG, "Airship SDK class exists but methods do not", e);
         } catch (InvocationTargetException e) {
             MPLog.e(LOGTAG, "method invocation failed", e);
         } catch (IllegalAccessException e) {
             MPLog.e(LOGTAG, "method invocation failed", e);
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Error setting Airship people property", e);
+
         }
     }
 
@@ -80,6 +83,10 @@ import java.util.Set;
             String deviceId = (String) brazeInstance.getClass().getMethod("getDeviceId", null).invoke(brazeInstance);
 
             Object currentUser = brazeInstance.getClass().getMethod("getCurrentUser", null).invoke(brazeInstance);
+            if (currentUser == null) {
+                MPLog.w(LOGTAG, "Make sure Braze is initialized properly before Mixpanel.");
+                return;
+            }
             String externalUserId = (String) currentUser.getClass().getMethod("getUserId", null).invoke(currentUser);
 
             if (deviceId != null && !deviceId.isEmpty()) {
@@ -98,6 +105,8 @@ import java.util.Set;
             MPLog.e(LOGTAG, "method invocation failed", e);
         } catch (IllegalAccessException e) {
             MPLog.e(LOGTAG, "method invocation failed", e);
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Error setting braze people properties", e);
         }
     }
 }
