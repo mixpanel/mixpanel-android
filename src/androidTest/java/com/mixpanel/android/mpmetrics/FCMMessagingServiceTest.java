@@ -11,6 +11,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.test.AndroidTestCase;
 
+import org.mockito.ArgumentMatcher;
+
 import static org.mockito.Mockito.*;
 
 import java.util.HashMap;
@@ -42,8 +44,6 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
     }
 
     public void testCompleteNotification() {
-        long now = System.currentTimeMillis();
-        Notification.Builder builder = spy(new Notification.Builder(getContext()));
 
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
@@ -52,6 +52,12 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         intent.putExtra("mp_color", "#ff9900");
         intent.putExtra("mp_title", "TITLE");
         intent.putExtra("mp_cta", mGoodUri.toString());
+        intent.putExtra("mp_buttons", "[{\"lbl\": \"Button 1\", \"uri\": \"my-app://action\"}, {\"icnm\": \"ic_pretend_icon\", \"lbl\": \"Button 2\", \"uri\": \"my-app://action2\"}, {\"lbl\": \"Button 3\", \"uri\": \"https://mixpanel.com\"}]");
+
+        long now = System.currentTimeMillis();
+
+        MixpanelFCMMessagingService.NotificationData notificationData = MixpanelFCMMessagingService.readInboundIntent(this.getContext(), intent, mResourceIds, mDefaultIntent);
+        Notification.Builder builder = spy(new Notification.Builder(getContext()));
 
         MixpanelFCMMessagingService.buildNotification(getContext(), intent, builder, mResourceIds, now);
 
@@ -59,6 +65,10 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             verifyExpandableNotification(builder);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            verifyButtons(notificationData, builder);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -89,6 +99,43 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
     private void verifyCustomIconColor(Notification.Builder builder) {
         verify(builder).setColor(Color.parseColor("#ff9900"));
     }
+
+    private void verifyButtons(MixpanelFCMMessagingService.NotificationData data, Notification.Builder builder) {
+        assertEquals(data.buttons.get(0).icon, -1);
+        assertEquals(data.buttons.get(0).label, "Button 1");
+        assertEquals("my-app://action", data.buttons.get(0).uri);
+
+        assertEquals(data.buttons.get(1).icon, 12345);
+        assertEquals(data.buttons.get(1).label, "Button 2");
+        assertEquals("my-app://action2", data.buttons.get(1).uri);
+
+        assertEquals(data.buttons.get(2).icon, -1);
+        assertEquals(data.buttons.get(2).label, "Button 3");
+        assertEquals("https://mixpanel.com", data.buttons.get(2).uri);
+
+        verify(builder, times(3)).addAction(any(Notification.Action.class));
+        verify(builder, atLeastOnce()).addAction(argThat(new ExpectedAction("Button 1", -1)));
+        verify(builder, atLeastOnce()).addAction(argThat(new ExpectedAction("Button 2", 12345)));
+        verify(builder, atLeastOnce()).addAction(argThat(new ExpectedAction("Button 3", -1)));
+    }
+
+    private static final class ExpectedAction implements ArgumentMatcher<Notification.Action> {
+        private String expectedTitle;
+        private int expectedIconId;
+
+        public ExpectedAction(String expectedTitle, int expectedIconId) {
+            this.expectedTitle = expectedTitle;
+            this.expectedIconId = expectedIconId;
+        }
+
+        @Override
+        public boolean matches(Notification.Action action) {
+            boolean titleMatches = action.title.equals(this.expectedTitle);
+            boolean iconMatches = this.expectedIconId == action.icon;
+            return titleMatches && iconMatches;
+        }
+    }
+
 
     private void verifyChannelSet(Notification.Builder builder) {
         verify(builder).setChannelId(anyString());

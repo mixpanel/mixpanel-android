@@ -61,8 +61,8 @@ allprojects {
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
     implementation 'com.google.firebase:firebase-messaging:17.3.4'
-    testCompile "org.mockito:mockito-core:3.0.0"
-    androidTestCompile "org.mockito:mockito-android:3.0.0"
+    testImplementation "org.mockito:mockito-core:3.0.0"
+    androidTestImplementation "org.mockito:mockito-android:3.0.0"
 }
 
 apply from: rootProject.file('maven.gradle')
