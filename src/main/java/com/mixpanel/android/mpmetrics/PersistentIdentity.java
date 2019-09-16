@@ -9,7 +9,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -22,38 +21,9 @@ import com.mixpanel.android.util.MPLog;
 // In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
 @SuppressLint("CommitPrefEdits")
 /* package */ class PersistentIdentity {
-    public static final int MAX_WAITING_PEOPLE_RECORDS = 1000;
-
     // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
-    public static JSONArray waitingPeopleRecordsForSending(SharedPreferences storedPreferences) {
-        JSONArray ret = null;
-        final String peopleDistinctId = storedPreferences.getString("people_distinct_id", null);
-        final String waitingPeopleRecords = storedPreferences.getString("waiting_array", null);
-        if ((null != waitingPeopleRecords) && (null != peopleDistinctId)) {
-            JSONArray waitingObjects = null;
-            try {
-                waitingObjects = new JSONArray(waitingPeopleRecords);
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Waiting people records were unreadable.");
-                return null;
-            }
-
-            ret = new JSONArray();
-            for (int i = 0; i < waitingObjects.length(); i++) {
-                try {
-                    final JSONObject ob = waitingObjects.getJSONObject(i);
-                    ob.put("$distinct_id", peopleDistinctId);
-                    ret.put(ob);
-                } catch (final JSONException e) {
-                    MPLog.e(LOGTAG, "Unparsable object found in waiting people records", e);
-                }
-            }
-
-            final SharedPreferences.Editor editor = storedPreferences.edit();
-            editor.remove("waiting_array");
-            writeEdits(editor);
-        }
-        return ret;
+    public static String getPeopleDistinctId(SharedPreferences storedPreferences) {
+        return storedPreferences.getString("people_distinct_id", null);
     }
 
     public static void writeReferrerPrefs(Context context, String preferencesName, Map<String, String> properties) {
@@ -225,41 +195,6 @@ import com.mixpanel.android.util.MPLog;
         }
         mPeopleDistinctId = peopleDistinctId;
         writeIdentities();
-    }
-
-    public synchronized void storeWaitingPeopleRecord(JSONObject record) {
-        if (! mIdentitiesLoaded) {
-            readIdentities();
-        }
-        if (null == mWaitingPeopleRecords) {
-            mWaitingPeopleRecords = new JSONArray();
-        } else if (mWaitingPeopleRecords.length() >= MAX_WAITING_PEOPLE_RECORDS) {
-            return;
-        }
-
-        mWaitingPeopleRecords.put(record);
-        writeIdentities();
-    }
-
-    /* package */ synchronized JSONArray getWaitingPeopleRecords() {
-        if (! mIdentitiesLoaded) {
-            readIdentities();
-        }
-        return mWaitingPeopleRecords;
-    }
-
-    public synchronized JSONArray waitingPeopleRecordsForSending() {
-        JSONArray ret = null;
-        try {
-            final SharedPreferences prefs = mLoadStoredPreferences.get();
-            ret = waitingPeopleRecordsForSending(prefs);
-            readIdentities();
-        } catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read waiting people records from shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read waiting people records from shared preferences.", e);
-        }
-        return ret;
     }
 
     public synchronized void clearPreferences() {
@@ -653,16 +588,6 @@ import com.mixpanel.android.util.MPLog;
         mPeopleDistinctId = prefs.getString("people_distinct_id", null);
         mAnonymousId = prefs.getString("anonymous_id", null);
         mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
-        mWaitingPeopleRecords = null;
-
-        final String storedWaitingRecord = prefs.getString("waiting_array", null);
-        if (storedWaitingRecord != null) {
-            try {
-                mWaitingPeopleRecords = new JSONArray(storedWaitingRecord);
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Could not interpret waiting people JSON record " + storedWaitingRecord);
-            }
-        }
 
         if (mEventsDistinctId == null) {
             mAnonymousId = UUID.randomUUID().toString();
@@ -737,11 +662,6 @@ import com.mixpanel.android.util.MPLog;
             prefsEditor.putString("people_distinct_id", mPeopleDistinctId);
             prefsEditor.putString("anonymous_id", mAnonymousId);
             prefsEditor.putBoolean("had_persisted_distinct_id", mHadPersistedDistinctId);
-            if (mWaitingPeopleRecords == null) {
-                prefsEditor.remove("waiting_array");
-            } else {
-                prefsEditor.putString("waiting_array", mWaitingPeopleRecords.toString());
-            }
             writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             MPLog.e(LOGTAG, "Can't write distinct ids to shared preferences.", e.getCause());
@@ -767,7 +687,6 @@ import com.mixpanel.android.util.MPLog;
     private String mPeopleDistinctId;
     private String mAnonymousId;
     private boolean mHadPersistedDistinctId;
-    private JSONArray mWaitingPeopleRecords;
     private Boolean mIsUserOptOut;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
