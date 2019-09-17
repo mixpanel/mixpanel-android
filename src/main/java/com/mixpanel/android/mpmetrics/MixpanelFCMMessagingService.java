@@ -245,7 +245,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
                 setDefaults(MPConfig.getInstance(context).getNotificationDefaults()).
                 setWhen(now).
                 setContentTitle(data.title).
-                setContentText("hello").
+                setContentText(data.message).
                 setTicker(data.message).
                 setContentIntent(contentIntent);
 
@@ -258,7 +258,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         maybeSetSubTitle(builder, data, context);
         maybeSetExpandableImage(builder, data, context);
         maybeSetIconImage(builder, data, context);
-        //maybeSetBadgeCount(builder, data);
+        maybeSetBadgeCount(builder, data);
 
         final Notification n = getNotification(builder);
         n.flags |= Notification.FLAG_AUTO_CANCEL;
@@ -268,7 +268,6 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
     private static void maybeSetBadgeCount(Notification.Builder builder, NotificationData data) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BASE && data.badgeCount > 0) {
-            Log.e("COUNTS", "MADE IT IN COUNTS");
             builder.setNumber(data.badgeCount);
         }
     }
@@ -371,7 +370,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.iconUrl) {
             ImageStore is = new ImageStore(context, "Push Notifications");
             try {
-                Bitmap imageBitmap = is.getImage(data.imgUrl);
+                Bitmap imageBitmap = is.getImage(data.iconUrl);
                 builder.setLargeIcon(imageBitmap);
             } catch (Exception e){
                 MPLog.w(LOGTAG, "Problem getting image", e);
@@ -445,7 +444,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
         int badgeCount = NotificationData.NOT_SET;
         try {
-            if (null != whiteIconName && Integer.parseInt(badgeCountStr) > 0) {
+            if (null != badgeCountStr && Integer.parseInt(badgeCountStr) > 0) {
                 badgeCount = Integer.parseInt(badgeCountStr);
             }
         }catch (NumberFormatException e) {
