@@ -110,6 +110,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             intent = anIntent;
             color = aColor;
             buttons = aButtons;
+            badgeCount = notificationBadgeCount;
         }
 
         public final int icon;
@@ -123,6 +124,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         public final Intent intent;
         public final int color;
         public final List<NotificationButtonData> buttons;
+        public final int badgeCount;
 
         public static final int NOT_SET = -1;
     }
@@ -264,6 +266,13 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         return n;
     }
 
+    private static void maybeSetBadgeCount(Notification.Builder builder, NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BASE && data.badgeCount > 0) {
+            builder.setNumber(data.badgeCount);
+        }
+    }
+
+
     private static void maybeSetNotificationBarIcon(Notification.Builder builder, NotificationData data) {
         // For Android 5.0+ (Lollipop), any non-transparent pixels are turned white, so users generally specify
         // icons for these devices and regular full-color icons for older devices.
@@ -397,6 +406,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = MixpanelFCMMessagingService.NotificationData.NOT_SET;
         List<NotificationButtonData> buttons = new ArrayList<>();
+        final String badgeCountStr = inboundIntent.getStringExtra("mp_badgecount");
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
@@ -430,6 +440,15 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
                 whiteNotificationIcon = iconIds.idFromName(whiteIconName);
             }
         }
+
+        int badgeCount = NotificationData.NOT_SET;
+        try {
+            if (null != badgeCountStr && Integer.parseInt(badgeCountStr) > 0) {
+                badgeCount = Integer.parseInt(badgeCountStr);
+            }
+        }catch (NumberFormatException e) {
+        }
+
 
         ApplicationInfo appInfo;
         try {
