@@ -8,10 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.util.Log;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -19,6 +21,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
@@ -27,6 +30,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Service for handling Firebase Cloud Messaging callbacks.
@@ -94,11 +98,14 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     private static final String LOGTAG = "MixpanelAPI.MixpanelFCMMessagingService";
 
     protected static class NotificationData {
-        private NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, CharSequence aTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons) {
+        private NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String aImgUrl, String aIconUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int notificationBadgeCount) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
+            imgUrl = aImgUrl;
+            iconUrl = aIconUrl;
             title = aTitle;
+            subTitle = aSubTitle;
             message = aMessage;
             intent = anIntent;
             color = aColor;
@@ -108,7 +115,10 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         public final int icon;
         public final int largeIcon;
         public final int whiteIcon;
+        public final String imgUrl;
+        public final String iconUrl;
         public final CharSequence title;
+        public final CharSequence subTitle;
         public final String message;
         public final Intent intent;
         public final int color;
@@ -243,6 +253,10 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         maybeSetCustomIconColor(builder, data);
         maybeAddActionButtons(builder, data, context);
         maybeSetChannel(builder, data, context);
+        maybeSetSubTitle(builder, data, context);
+        maybeSetExpandableImage(builder, data, context);
+        maybeSetIconImage(builder, data, context);
+        maybeSetBadgeCount(builder, data);
 
         final Notification n = getNotification(builder);
         n.flags |= Notification.FLAG_AUTO_CANCEL;
@@ -297,6 +311,8 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     }
 
     private static void maybeSetChannel(Notification.Builder builder, NotificationData data, Context context) {
+
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mNotificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -323,6 +339,37 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         }
     }
 
+    private static void maybeSetSubTitle(Notification.Builder builder, NotificationData data, Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && null != data.subTitle) {
+            builder.setSubText(data.subTitle);
+        }
+    }
+
+    private static void maybeSetExpandableImage(Notification.Builder builder, NotificationData data, Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.imgUrl) {
+            ImageStore is = new ImageStore(context, "Push Notifications");
+            try {
+                Bitmap imageBitmap = is.getImage(data.imgUrl);
+                builder.setStyle(new Notification.BigPictureStyle().bigPicture(imageBitmap));
+            } catch (Exception e){
+                MPLog.w(LOGTAG, "Problem getting image", e);
+            }
+        }
+    }
+
+    private static void maybeSetIconImage(Notification.Builder builder, NotificationData data, Context context) {
+        if (data.largeIcon ==MixpanelFCMMessagingService.NotificationData.NOT_SET && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.iconUrl) {
+            ImageStore is = new ImageStore(context, "Push Notifications");
+            try {
+                Bitmap imageBitmap = is.getImage(data.iconUrl);
+                builder.setLargeIcon(imageBitmap);
+            } catch (Exception e){
+                MPLog.w(LOGTAG, "Problem getting image", e);
+            }
+        }
+    }
+
+
     private static Notification getNotification(Notification.Builder builder) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             return builder.build();
@@ -339,8 +386,10 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
         final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
+        final String expandableImageURL = inboundIntent.getStringExtra("mp_imgurl");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
+        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_stitle");
         final String colorName = inboundIntent.getStringExtra("mp_color");
         final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
@@ -446,7 +495,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color, buttons);
+        return new MixpanelFCMMessagingService.NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, largeIconName, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount);
     }
 
     private static Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
@@ -489,4 +538,5 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             });
         }
     }
+
 }

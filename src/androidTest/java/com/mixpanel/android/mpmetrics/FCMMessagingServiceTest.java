@@ -65,6 +65,8 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             verifyExpandableNotification(builder);
+            verifyLargeIcon(builder);
+            verifyExpandableImage(builder);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
@@ -78,6 +80,7 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             verifyChannelSet(builder);
         }
+
     }
 
     private void verifyBasicNotification(Notification.Builder builder, long now) {
@@ -89,6 +92,14 @@ public class FCMMessagingServiceTest extends AndroidTestCase {
         verify(builder).setContentIntent(any(PendingIntent.class));
         verify(builder).setSmallIcon(12345);
         verify(builder).setLargeIcon(any(Bitmap.class));
+    }
+
+    private void verifyLargeIcon(Notification.Builder builder) {
+        verify(builder).setLargeIcon(any(Bitmap.class));
+    }
+
+    private void verifyExpandableImage(Notification.Builder builder) {
+        verify(builder, times(2)).setStyle(any(Notification.BigTextStyle.class));
     }
 
     private void verifyExpandableNotification(Notification.Builder builder) {
