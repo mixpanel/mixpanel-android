@@ -181,6 +181,25 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(mpPushSpy).buildNotificationIntent(DEFAULT_INTENT, null, null, null);
     }
 
+    public void testActionButtons() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_buttons", "[{\"lbl\": \"Button 1\", \"uri\": \"my-app://action\"}, {\"icnm\": \"" + VALID_RESOURCE_NAME + "\", \"lbl\": \"Button 2\", \"uri\": \"my-app://action2\"}, {\"lbl\": \"Button 3\", \"uri\": \"https://mixpanel.com\", \"icnm\": \"" + INVALID_RESOURCE_NAME + "\"}]");
+        mpPushSpy.createNotification(intent);
+
+        verify(mpPushSpy, atLeastOnce()).createAction(-1,"Button 1", "my-app://action");
+        verify(mpPushSpy, atLeastOnce()).createAction(VALID_RESOURCE_ID, "Button 2", "my-app://action2");
+        verify(mpPushSpy, atLeastOnce()).createAction(-1,"Button 3", "https://mixpanel.com");
+        verify(builderSpy, times(3)).addAction(any(Notification.Action.class));
+    }
+
+    public void testNoActionButtons() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy, never()).addAction(any(Notification.Action.class));
+    }
+
     private static final class URIMatcher implements ArgumentMatcher<Uri> {
         public URIMatcher(String expectedUri) {
             this.expectedUri = expectedUri;
