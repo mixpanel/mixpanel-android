@@ -15,6 +15,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 
+import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
@@ -60,17 +61,25 @@ public class MixpanelPushNotification {
                 setTicker(data.message).
                 setContentIntent(contentIntent);
 
+        maybeSetSubTitle(data);
         maybeSetNotificationBarIcon(data);
         maybeSetLargeIcon(data);
         maybeSetExpandableNotification(data);
         maybeSetCustomIconColor(data);
         maybeAddActionButtons(data);
         maybeSetChannel();
+        maybeSetNotificationBadge(data);
 
         final Notification n = buildNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
 
         return n;
+    }
+
+    protected void maybeSetSubTitle(NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && null != data.subTitle) {
+            builder.setSubText(data.subTitle);
+        }
     }
 
     protected void maybeSetNotificationBarIcon(NotificationData data) {
@@ -91,7 +100,34 @@ public class MixpanelPushNotification {
 
     protected void maybeSetExpandableNotification(NotificationData data) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            builder.setStyle(new Notification.BigTextStyle().bigText(data.message));
+            if (null != data.expandableImageUrl && data.expandableImageUrl.startsWith("http")) {
+                try {
+                    Bitmap imageBitmap = getBitmapFromUrl(data.expandableImageUrl);
+
+                    if (imageBitmap == null) {
+                        setBigTextStyle(data.message);
+                    } else {
+                        setBigPictureStyle(imageBitmap);
+                    }
+                } catch (Exception e) {
+                    setBigTextStyle(data.message);
+                }
+            } else {
+                setBigTextStyle(data.message);
+            }
+
+        }
+    }
+
+    protected void setBigTextStyle(String message) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            builder.setStyle(new Notification.BigTextStyle().setSummaryText(message));
+        }
+    }
+
+    protected void setBigPictureStyle(Bitmap imageBitmap) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            builder.setStyle(new Notification.BigPictureStyle().bigPicture(imageBitmap));
         }
     }
 
@@ -153,8 +189,19 @@ public class MixpanelPushNotification {
         }
     }
 
+    protected void maybeSetNotificationBadge(NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BASE && data.badgeCount > 0) {
+            builder.setNumber(data.badgeCount);
+        }
+    }
+
     protected Bitmap getBitmapFromResourceId(int resourceId) {
         return BitmapFactory.decodeResource(context.getResources(), resourceId);
+    }
+
+    protected Bitmap getBitmapFromUrl(String url) throws ImageStore.CantGetImageException {
+        ImageStore is = new ImageStore(context, "Push Notifications");
+        return is.getImage(url);
     }
 
     /* package */ NotificationData readInboundIntent(Intent inboundIntent) {
@@ -163,8 +210,10 @@ public class MixpanelPushNotification {
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
         final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
+        final String expandableImageURL = inboundIntent.getStringExtra("mp_imgurl");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
+        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_stitle");
         final String colorName = inboundIntent.getStringExtra("mp_color");
         final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
@@ -172,6 +221,7 @@ public class MixpanelPushNotification {
         final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = NotificationData.NOT_SET;
         List<NotificationButtonData> buttons = new ArrayList<>();
+        final String badgeCountStr = inboundIntent.getStringExtra("mp_badgecount");
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
@@ -204,6 +254,13 @@ public class MixpanelPushNotification {
             if (drawableIds.knownIdName(whiteIconName)) {
                 whiteNotificationIcon = drawableIds.idFromName(whiteIconName);
             }
+        }
+
+        int badgeCount = NotificationData.NOT_SET;
+        if (null != badgeCountStr) {
+            try {
+                badgeCount = Integer.parseInt(badgeCountStr);
+            } catch (NumberFormatException e) {}
         }
 
         if (notificationIcon == NotificationData.NOT_SET) {
@@ -255,7 +312,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, notificationTitle, message, notificationIntent, color, buttons);
+        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount);
     }
 
     protected ApplicationInfo getAppInfo() {
@@ -342,25 +399,31 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, CharSequence aTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons) {
+        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
+            expandableImageUrl = anExpandableImageUrl;
             title = aTitle;
+            subTitle = aSubTitle;
             message = aMessage;
             intent = anIntent;
             color = aColor;
             buttons = aButtons;
+            badgeCount = aBadgeCount;
         }
 
         public final int icon;
         public final int largeIcon;
         public final int whiteIcon;
+        public final String expandableImageUrl;
         public final CharSequence title;
+        public final CharSequence subTitle;
         public final String message;
         public final Intent intent;
         public final int color;
         public final List<NotificationButtonData> buttons;
+        public final int badgeCount;
 
         public static final int NOT_SET = -1;
     }

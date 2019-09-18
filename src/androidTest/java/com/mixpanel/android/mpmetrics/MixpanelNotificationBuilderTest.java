@@ -8,6 +8,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.test.AndroidTestCase;
 
+import com.mixpanel.android.util.ImageStore;
+
 import org.mockito.ArgumentMatcher;
 
 import static org.mockito.Mockito.*;
@@ -19,6 +21,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
     private final String VALID_RESOURCE_NAME = "com_mixpanel_android_logo";
     private final int VALID_RESOURCE_ID = R.drawable.com_mixpanel_android_logo;
+    private final String VALID_URL = "https://dev.images.mxpnl.com/1939595/fc767ba09b1a5420bdbcee71c7ae9904.png";
     private final String INVALID_RESOURCE_NAME = "NOT A VALID RESOURCE";
     private final String DEFAULT_TITLE = "DEFAULT TITLE";
     private final int DEFAULT_ICON_ID = android.R.drawable.sym_def_app_icon;
@@ -85,6 +88,14 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(builderSpy).setContentTitle(DEFAULT_TITLE);
     }
 
+    public void testSubTitle() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_stitle", "TITLE");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setSubText("TITLE");
+    }
+
     public void testIcon() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
@@ -106,6 +117,32 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_icnm", INVALID_RESOURCE_NAME);
         mpPushSpy.createNotification(intent);
         verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
+    }
+
+    public void testExpandedImageUsingValidUrl() throws ImageStore.CantGetImageException{
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_imgurl", VALID_URL);
+
+        Bitmap fakeBitmap = getFakeBitmap();
+
+        when(mpPushSpy.getBitmapFromUrl(VALID_URL)).thenReturn(fakeBitmap);
+
+        mpPushSpy.createNotification(intent);
+        verify(mpPushSpy).getBitmapFromUrl(VALID_URL);
+        verify(builderSpy).setStyle(new Notification.BigPictureStyle().bigPicture(fakeBitmap));
+    }
+
+    public void testExpandedImageUsingInvalidUrl() throws ImageStore.CantGetImageException{
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_imgurl", "");
+
+        when(mpPushSpy.getBitmapFromUrl(VALID_URL)).thenReturn(null);
+
+        mpPushSpy.createNotification(intent);
+        verify(mpPushSpy).getBitmapFromUrl(VALID_URL);
+        verify(builderSpy).setStyle(new Notification.BigTextStyle().setSummaryText("MESSAGE"));
     }
 
     public void testThumbnailImageUsingResourceName() {
@@ -198,6 +235,22 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
         mpPushSpy.createNotification(intent);
         verify(builderSpy, never()).addAction(any(Notification.Action.class));
+    }
+
+    public void testValidNotificationBadge() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_badgecount", "2");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setNumber(2);
+    }
+
+    public void testInvalidNotificationBadge() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_badgecount", "0");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setNumber(-1);
     }
 
     private static final class URIMatcher implements ArgumentMatcher<Uri> {
