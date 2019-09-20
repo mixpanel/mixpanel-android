@@ -1,7 +1,10 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -10,10 +13,13 @@ import android.test.AndroidTestCase;
 
 import com.mixpanel.android.util.ImageStore;
 
+import junit.framework.Assert;
+
 import org.mockito.ArgumentMatcher;
 
 import static org.mockito.Mockito.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,20 +27,24 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
     private final String VALID_RESOURCE_NAME = "com_mixpanel_android_logo";
     private final int VALID_RESOURCE_ID = R.drawable.com_mixpanel_android_logo;
-    private final String VALID_URL = "https://dev.images.mxpnl.com/1939595/fc767ba09b1a5420bdbcee71c7ae9904.png";
+    private final String VALID_IMAGE_URL = "https://dev.images.mxpnl.com/1939595/fc767ba09b1a5420bdbcee71c7ae9904.png";
+    private final String INVALID_IMAGE_URL = "http:/badurl";
     private final String INVALID_RESOURCE_NAME = "NOT A VALID RESOURCE";
     private final String DEFAULT_TITLE = "DEFAULT TITLE";
     private final int DEFAULT_ICON_ID = android.R.drawable.sym_def_app_icon;
     private final Intent DEFAULT_INTENT = new Intent(Intent.ACTION_BUG_REPORT); // ACTION_BUG_REPORT is chosen because it's identifiably weird
+    private Context context;
 
     @Override
     public void setUp() throws Exception {
         super.setUp();
         System.setProperty("org.mockito.android.target", getContext().getCacheDir().getPath());
 
+        this.context = getContext();
+
         now = System.currentTimeMillis();
         builderSpy = spy(new Notification.Builder(getContext()));
-        mpPushSpy = spy(new MixpanelPushNotification(this.getContext(), builderSpy, getTestResources(), now));
+        mpPushSpy = spy(new MixpanelPushNotification(context, builderSpy, getTestResources(), now));
 
         when(mpPushSpy.getDefaultTitle()).thenReturn(DEFAULT_TITLE);
         when(mpPushSpy.getDefaultIcon()).thenReturn(DEFAULT_ICON_ID);
@@ -51,7 +61,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_title", "TITLE");
         mpPushSpy.createNotification(intent);
 
-        verify(builderSpy).setDefaults(MPConfig.getInstance(getContext()).getNotificationDefaults());
+        verify(builderSpy).setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
         verify(builderSpy).setWhen(now);
         verify(builderSpy).setContentTitle("TITLE");
         verify(builderSpy).setContentText("MESSAGE");
@@ -119,30 +129,30 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
     }
 
-    public void testExpandedImageUsingValidUrl() throws ImageStore.CantGetImageException{
+    public void testExpandedImageUsingValidUrl() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_imgurl", VALID_URL);
+        intent.putExtra("mp_img", VALID_IMAGE_URL);
 
         Bitmap fakeBitmap = getFakeBitmap();
 
-        when(mpPushSpy.getBitmapFromUrl(VALID_URL)).thenReturn(fakeBitmap);
+        when(mpPushSpy.getBitmapFromUrl(VALID_IMAGE_URL)).thenReturn(fakeBitmap);
 
         mpPushSpy.createNotification(intent);
-        verify(mpPushSpy).getBitmapFromUrl(VALID_URL);
-        verify(builderSpy).setStyle(new Notification.BigPictureStyle().bigPicture(fakeBitmap));
+        verify(mpPushSpy).getBitmapFromUrl(VALID_IMAGE_URL);
+        verify(mpPushSpy).setBigPictureStyle(fakeBitmap);
     }
 
-    public void testExpandedImageUsingInvalidUrl() throws ImageStore.CantGetImageException{
+    public void testExpandedImageUsingInvalidUrl() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_imgurl", "");
+        intent.putExtra("mp_img", INVALID_IMAGE_URL);
 
-        when(mpPushSpy.getBitmapFromUrl(VALID_URL)).thenReturn(null);
+        when(mpPushSpy.getBitmapFromUrl(INVALID_IMAGE_URL)).thenReturn(null);
 
         mpPushSpy.createNotification(intent);
-        verify(mpPushSpy).getBitmapFromUrl(VALID_URL);
-        verify(builderSpy).setStyle(new Notification.BigTextStyle().setSummaryText("MESSAGE"));
+        verify(mpPushSpy).getBitmapFromUrl(INVALID_IMAGE_URL);
+        verify(mpPushSpy).setBigTextStyle("MESSAGE");
     }
 
     public void testThumbnailImageUsingResourceName() {
@@ -240,7 +250,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     public void testValidNotificationBadge() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_badgecount", "2");
+        intent.putExtra("mp_bdgcnt", 2);
         mpPushSpy.createNotification(intent);
         verify(builderSpy).setNumber(2);
     }
@@ -248,9 +258,71 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     public void testInvalidNotificationBadge() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_badgecount", "0");
+        intent.putExtra("mp_bdgcnt", "0");
         mpPushSpy.createNotification(intent);
-        verify(builderSpy).setNumber(-1);
+        verify(builderSpy, never()).setNumber(any(Integer.class));
+    }
+
+    public void testChannelId() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_channel_id", "12345");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setChannelId("12345");
+        assertEquals(notification.getChannelId(), "12345");
+    }
+
+    public void testNoChannelId() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setChannelId(anyString());
+        assertEquals(notification.getChannelId(), MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
+    }
+
+    public void testSubText() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_subtxt", "SUBTEXT");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setSubText("SUBTEXT");
+    }
+
+    public void testNoSubText() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setSubText("MESSAGE");
+    }
+
+    public void testTicker() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_ticker", "TICK");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setTicker("TICK");
+    }
+
+    public void testNoTicker() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setTicker("MESSAGE");
+    }
+
+    public void testSticky() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_sticky", "true");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setOngoing(true);
+    }
+
+    public void testNoSticky() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setOngoing(false);
     }
 
     private static final class URIMatcher implements ArgumentMatcher<Uri> {

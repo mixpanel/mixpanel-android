@@ -14,6 +14,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.util.Log;
 
 import com.mixpanel.android.util.ImageStore;
 import com.mixpanel.android.util.MPLog;
@@ -27,6 +28,7 @@ import java.util.List;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
+    public String tag;
 
     public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
         this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
@@ -58,7 +60,7 @@ public class MixpanelPushNotification {
                 setWhen(now).
                 setContentTitle(data.title).
                 setContentText(data.message).
-                setTicker(data.message).
+                setTicker(data.ticker == null ? data.message : data.ticker).
                 setContentIntent(contentIntent);
 
         maybeSetSubTitle(data);
@@ -67,13 +69,26 @@ public class MixpanelPushNotification {
         maybeSetExpandableNotification(data);
         maybeSetCustomIconColor(data);
         maybeAddActionButtons(data);
-        maybeSetChannel();
+        maybeSetChannel(data);
         maybeSetNotificationBadge(data);
+        maybeSetTag(data);
+        maybeSetGroupKey(data, contentIntent);
+        maybeSetSticky(data);
 
         final Notification n = buildNotification();
         n.flags |= Notification.FLAG_AUTO_CANCEL;
 
         return n;
+    }
+
+    protected void maybeSetGroupKey(NotificationData data, PendingIntent contentIntent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && data.groupKey != null) {
+            builder.setGroup(data.groupKey);
+        }
+    }
+
+    protected void maybeSetTag(NotificationData data) {
+        this.tag = data.tag;
     }
 
     protected void maybeSetSubTitle(NotificationData data) {
@@ -162,27 +177,15 @@ public class MixpanelPushNotification {
         );
     }
 
-    protected void maybeSetChannel() {
+    protected void maybeSetChannel(NotificationData data) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mNotificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-            String channelId = MPConfig.getInstance(context).getNotificationChannelId();
+            String channelId = data.channelId == null ? MPConfig.getInstance(context).getNotificationChannelId() : data.channelId;
             String channelName = MPConfig.getInstance(context).getNotificationChannelName();
-            int importance = MPConfig.getInstance(context).getNotificationChannelImportance();
 
-            NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
-            int notificationDefaults = MPConfig.getInstance(context).getNotificationDefaults();
-
-            if (notificationDefaults == Notification.DEFAULT_VIBRATE || notificationDefaults == Notification.DEFAULT_ALL) {
-                channel.enableVibration(true);
-            }
-
-            if (notificationDefaults == Notification.DEFAULT_LIGHTS || notificationDefaults == Notification.DEFAULT_ALL) {
-                channel.enableLights(true);
-                channel.setLightColor(Color.WHITE);
-            }
-
+            NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
             mNotificationManager.createNotificationChannel(channel);
 
             builder.setChannelId(channelId);
@@ -190,8 +193,14 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetNotificationBadge(NotificationData data) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BASE && data.badgeCount > 0) {
+        if (data.badgeCount > 0) {
             builder.setNumber(data.badgeCount);
+        }
+    }
+
+    protected void maybeSetSticky(NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            builder.setOngoing(data.sticky);
         }
     }
 
@@ -199,9 +208,14 @@ public class MixpanelPushNotification {
         return BitmapFactory.decodeResource(context.getResources(), resourceId);
     }
 
-    protected Bitmap getBitmapFromUrl(String url) throws ImageStore.CantGetImageException {
-        ImageStore is = new ImageStore(context, "Push Notifications");
-        return is.getImage(url);
+    protected Bitmap getBitmapFromUrl(String url) {
+        ImageStore is = new ImageStore(context, "MixpanelPushNotification");
+        try {
+            Bitmap bm = is.getImage(url);
+            return bm;
+        } catch (ImageStore.CantGetImageException e) {
+            return null;
+        }
     }
 
     /* package */ NotificationData readInboundIntent(Intent inboundIntent) {
@@ -210,10 +224,10 @@ public class MixpanelPushNotification {
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
         final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
-        final String expandableImageURL = inboundIntent.getStringExtra("mp_imgurl");
+        final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
-        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_stitle");
+        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_subtxt");
         final String colorName = inboundIntent.getStringExtra("mp_color");
         final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
@@ -221,7 +235,13 @@ public class MixpanelPushNotification {
         final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = NotificationData.NOT_SET;
         List<NotificationButtonData> buttons = new ArrayList<>();
-        final String badgeCountStr = inboundIntent.getStringExtra("mp_badgecount");
+        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", NotificationData.NOT_SET);
+        final String channelId = inboundIntent.getStringExtra("mp_channel_id");
+        final String notificationTag = inboundIntent.getStringExtra("mp_tag");
+        final String groupKey = inboundIntent.getStringExtra("mp_groupkey");
+        final String ticker = inboundIntent.getStringExtra("mp_ticker");
+        final String stickyString = inboundIntent.getStringExtra("mp_sticky");
+
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
@@ -233,6 +253,11 @@ public class MixpanelPushNotification {
 
         if (message == null) {
             return null;
+        }
+
+        boolean sticky = false;
+        if (stickyString != null && stickyString.equals("true")) {
+            sticky = true;
         }
 
         int notificationIcon = NotificationData.NOT_SET;
@@ -254,13 +279,6 @@ public class MixpanelPushNotification {
             if (drawableIds.knownIdName(whiteIconName)) {
                 whiteNotificationIcon = drawableIds.idFromName(whiteIconName);
             }
-        }
-
-        int badgeCount = NotificationData.NOT_SET;
-        if (null != badgeCountStr) {
-            try {
-                badgeCount = Integer.parseInt(badgeCountStr);
-            } catch (NumberFormatException e) {}
         }
 
         if (notificationIcon == NotificationData.NOT_SET) {
@@ -312,7 +330,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount);
+        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky);
     }
 
     protected ApplicationInfo getAppInfo() {
@@ -399,7 +417,7 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount) {
+        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
@@ -411,6 +429,11 @@ public class MixpanelPushNotification {
             color = aColor;
             buttons = aButtons;
             badgeCount = aBadgeCount;
+            channelId = aChannelId == null ? NotificationData.DEFAULT_CHANNEL_ID : aChannelId;
+            tag = aNotificationTag;
+            groupKey = aGroupKey;
+            ticker = aTicker;
+            sticky = aSticky;
         }
 
         public final int icon;
@@ -424,8 +447,16 @@ public class MixpanelPushNotification {
         public final int color;
         public final List<NotificationButtonData> buttons;
         public final int badgeCount;
+        public final String channelId;
+        public final String tag;
+        public final String groupKey;
+        public final String ticker;
+        public final boolean sticky;
 
         public static final int NOT_SET = -1;
+        public static final int DEFAULT_PRIORITY = 3;
+        public static final String DEFAULT_CHANNEL_ID = "mp";
+
     }
 
     protected static class NotificationButtonData {
