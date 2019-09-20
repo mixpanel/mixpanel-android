@@ -101,7 +101,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     public void testSubTitle() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_stitle", "TITLE");
+        intent.putExtra("mp_subtxt", "TITLE");
         mpPushSpy.createNotification(intent);
         verify(builderSpy).setSubText("TITLE");
     }
@@ -292,7 +292,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSubText("MESSAGE");
+        verify(builderSpy, never()).setSubText("MESSAGE");
     }
 
     public void testTicker() {
@@ -315,14 +315,16 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_sticky", "true");
         Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setOngoing(true);
+        int flag = notification.flags;
+        assertTrue((flag | Notification.FLAG_AUTO_CANCEL) != flag);
     }
 
     public void testNoSticky() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setOngoing(false);
+        int flag = notification.flags;
+        assertEquals(flag | Notification.FLAG_AUTO_CANCEL, flag);
     }
 
     private static final class URIMatcher implements ArgumentMatcher<Uri> {

@@ -73,10 +73,11 @@ public class MixpanelPushNotification {
         maybeSetNotificationBadge(data);
         maybeSetTag(data);
         maybeSetGroupKey(data, contentIntent);
-        maybeSetSticky(data);
 
         final Notification n = buildNotification();
-        n.flags |= Notification.FLAG_AUTO_CANCEL;
+        if (!data.sticky) {
+            n.flags |= Notification.FLAG_AUTO_CANCEL;
+        }
 
         return n;
     }
@@ -130,7 +131,6 @@ public class MixpanelPushNotification {
             } else {
                 setBigTextStyle(data.message);
             }
-
         }
     }
 
@@ -195,12 +195,6 @@ public class MixpanelPushNotification {
     protected void maybeSetNotificationBadge(NotificationData data) {
         if (data.badgeCount > 0) {
             builder.setNumber(data.badgeCount);
-        }
-    }
-
-    protected void maybeSetSticky(NotificationData data) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            builder.setOngoing(data.sticky);
         }
     }
 
