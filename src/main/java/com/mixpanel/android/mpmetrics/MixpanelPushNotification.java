@@ -28,7 +28,7 @@ import java.util.List;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
-    public String tag;
+    public NotificationData data;
 
     public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
         this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
@@ -45,6 +45,8 @@ public class MixpanelPushNotification {
         final NotificationData data = readInboundIntent(inboundIntent);
         if (null == data) {
             return null;
+        } else {
+            this.data = data;
         }
 
         MPLog.d(LOGTAG, "MP FCM notification received: " + data.message);
@@ -63,18 +65,17 @@ public class MixpanelPushNotification {
                 setTicker(data.ticker == null ? data.message : data.ticker).
                 setContentIntent(contentIntent);
 
-        maybeSetSubTitle(data);
-        maybeSetNotificationBarIcon(data);
-        maybeSetLargeIcon(data);
-        maybeSetExpandableNotification(data);
-        maybeSetCustomIconColor(data);
-        maybeAddActionButtons(data);
-        maybeSetChannel(data);
-        maybeSetNotificationBadge(data);
-        maybeSetTag(data);
-        maybeSetGroupKey(data, contentIntent);
-        maybeSetTime(data);
-        maybeSetVisibility(data);
+        maybeSetSubTitle();
+        maybeSetNotificationBarIcon();
+        maybeSetLargeIcon();
+        maybeSetExpandableNotification();
+        maybeSetCustomIconColor();
+        maybeAddActionButtons();
+        maybeSetChannel();
+        maybeSetNotificationBadge();
+        maybeSetGroupKey(contentIntent);
+        maybeSetTime();
+        maybeSetVisibility();
 
         final Notification n = buildNotification();
         if (!data.sticky) {
@@ -84,23 +85,19 @@ public class MixpanelPushNotification {
         return n;
     }
 
-    protected void maybeSetGroupKey(NotificationData data, PendingIntent contentIntent) {
+    protected void maybeSetGroupKey(PendingIntent contentIntent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && data.groupKey != null) {
             builder.setGroup(data.groupKey);
         }
     }
 
-    protected void maybeSetTag(NotificationData data) {
-        this.tag = data.tag;
-    }
-
-    protected void maybeSetSubTitle(NotificationData data) {
+    protected void maybeSetSubTitle() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && null != data.subTitle) {
             builder.setSubText(data.subTitle);
         }
     }
 
-    protected void maybeSetNotificationBarIcon(NotificationData data) {
+    protected void maybeSetNotificationBarIcon() {
         // For Android 5.0+ (Lollipop), any non-transparent pixels are turned white, so users generally specify
         // icons for these devices and regular full-color icons for older devices.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && data.whiteIcon != NotificationData.NOT_SET) {
@@ -110,13 +107,13 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected void maybeSetLargeIcon(NotificationData data) {
+    protected void maybeSetLargeIcon() {
         if (data.largeIcon != NotificationData.NOT_SET) {
             builder.setLargeIcon(getBitmapFromResourceId(data.largeIcon));
         }
     }
 
-    protected void maybeSetExpandableNotification(NotificationData data) {
+    protected void maybeSetExpandableNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             if (null != data.expandableImageUrl && data.expandableImageUrl.startsWith("http")) {
                 try {
@@ -148,7 +145,7 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected void maybeSetCustomIconColor(NotificationData data) {
+    protected void maybeSetCustomIconColor() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (data.color != NotificationData.NOT_SET) {
                 builder.setColor(data.color);
@@ -156,7 +153,7 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected void maybeAddActionButtons(NotificationData data) {
+    protected void maybeAddActionButtons() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             for (int i = 0; i < data.buttons.size(); i++) {
                 NotificationButtonData btn = data.buttons.get(i);
@@ -179,7 +176,7 @@ public class MixpanelPushNotification {
         );
     }
 
-    protected void maybeSetChannel(NotificationData data) {
+    protected void maybeSetChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mNotificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -194,20 +191,21 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected void maybeSetNotificationBadge(NotificationData data) {
+    protected void maybeSetNotificationBadge() {
         if (data.badgeCount > 0) {
             builder.setNumber(data.badgeCount);
         }
     }
 
-    protected void maybeSetTime(NotificationData data) {
+    protected void maybeSetTime() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && data.timeString != null) {
-            Instant instant = Instant.parse( "2011-05-03T11:58:01Z" );
+            Instant instant = Instant.parse(data.timeString);
+            builder.setShowWhen(true);
             builder.setWhen(instant.toEpochMilli());
         }
     }
 
-    protected void maybeSetVisibility(NotificationData data) {
+    protected void maybeSetVisibility() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             builder.setVisibility(data.visibility);
         }
@@ -220,8 +218,7 @@ public class MixpanelPushNotification {
     protected Bitmap getBitmapFromUrl(String url) {
         ImageStore is = new ImageStore(context, "MixpanelPushNotification");
         try {
-            Bitmap bm = is.getImage(url);
-            return bm;
+            return is.getImage(url);
         } catch (ImageStore.CantGetImageException e) {
             return null;
         }
@@ -470,7 +467,6 @@ public class MixpanelPushNotification {
         public final int visibility;
 
         public static final int NOT_SET = -1;
-        public static final int DEFAULT_PRIORITY = 3;
         public static final String DEFAULT_CHANNEL_ID = "mp";
 
     }

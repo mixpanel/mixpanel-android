@@ -99,14 +99,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(builderSpy).setContentTitle(DEFAULT_TITLE);
     }
 
-    public void testSubTitle() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_subtxt", "TITLE");
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSubText("TITLE");
-    }
-
     public void testIcon() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
@@ -259,7 +251,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     public void testInvalidNotificationBadge() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_bdgcnt", "0");
+        intent.putExtra("mp_bdgcnt", 0);
         mpPushSpy.createNotification(intent);
         verify(builderSpy, never()).setNumber(any(Integer.class));
     }
@@ -277,7 +269,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setChannelId(anyString());
+        verify(builderSpy).setChannelId(MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
         assertEquals(notification.getChannelId(), MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
     }
 
@@ -293,7 +285,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy, never()).setSubText("MESSAGE");
+        verify(builderSpy, never()).setSubText(any(String.class));
     }
 
     public void testTicker() {
@@ -333,7 +325,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
         Notification notification = mpPushSpy.createNotification(intent);
-        Instant instant = Instant.parse( "2011-05-03T11:58:01Z" );
+        Instant instant = Instant.parse( "2014-10-02T15:01:23.045123456Z" );
+        verify(builderSpy).setShowWhen(true);
         verify(builderSpy).setWhen(instant.toEpochMilli());
     }
 
