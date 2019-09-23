@@ -42,11 +42,9 @@ public class MixpanelPushNotification {
     }
 
     public Notification createNotification(Intent inboundIntent) {
-        final NotificationData data = readInboundIntent(inboundIntent);
+        this.data = readInboundIntent(inboundIntent);
         if (null == data) {
             return null;
-        } else {
-            this.data = data;
         }
 
         MPLog.d(LOGTAG, "MP FCM notification received: " + data.message);

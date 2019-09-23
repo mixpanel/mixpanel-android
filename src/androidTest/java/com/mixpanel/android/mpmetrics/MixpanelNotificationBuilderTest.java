@@ -325,7 +325,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
         Notification notification = mpPushSpy.createNotification(intent);
-        Instant instant = Instant.parse( "2014-10-02T15:01:23.045123456Z" );
+        Instant instant = Instant.parse("2014-10-02T15:01:23.045123456Z");
         verify(builderSpy).setShowWhen(true);
         verify(builderSpy).setWhen(instant.toEpochMilli());
     }
