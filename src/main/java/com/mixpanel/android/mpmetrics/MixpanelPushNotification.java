@@ -23,8 +23,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -76,6 +74,7 @@ public class MixpanelPushNotification {
         maybeSetTag(data);
         maybeSetGroupKey(data, contentIntent);
         maybeSetTime(data);
+        maybeSetVisibility(data);
 
         final Notification n = buildNotification();
         if (!data.sticky) {
@@ -208,6 +207,12 @@ public class MixpanelPushNotification {
         }
     }
 
+    protected void maybeSetVisibility(NotificationData data) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder.setVisibility(data.visibility);
+        }
+    }
+
     protected Bitmap getBitmapFromResourceId(int resourceId) {
         return BitmapFactory.decodeResource(context.getResources(), resourceId);
     }
@@ -246,6 +251,7 @@ public class MixpanelPushNotification {
         final String ticker = inboundIntent.getStringExtra("mp_ticker");
         final String stickyString = inboundIntent.getStringExtra("mp_sticky");
         final String timeString = inboundIntent.getStringExtra("mp_time");
+        final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
 
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
@@ -335,7 +341,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString);
+        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
     }
 
     protected ApplicationInfo getAppInfo() {
@@ -422,7 +428,7 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString) {
+        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
@@ -440,6 +446,8 @@ public class MixpanelPushNotification {
             ticker = aTicker;
             sticky = aSticky;
             timeString = aTimeString;
+            visibility = aVisibility;
+
         }
 
         public final int icon;
@@ -459,6 +467,7 @@ public class MixpanelPushNotification {
         public final String ticker;
         public final boolean sticky;
         public final String timeString;
+        public final int visibility;
 
         public static final int NOT_SET = -1;
         public static final int DEFAULT_PRIORITY = 3;

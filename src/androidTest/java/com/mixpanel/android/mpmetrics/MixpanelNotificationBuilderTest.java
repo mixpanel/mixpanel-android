@@ -343,6 +343,21 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(builderSpy, never()).setWhen(any(Long.class));
     }
 
+    public void testVisibility() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_visibility", Notification.VISIBILITY_SECRET);
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
+    }
+
+    public void testDefaultVisibility() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        Notification notification = mpPushSpy.createNotification(intent);
+        verify(builderSpy).setVisibility(Notification.VISIBILITY_PRIVATE);
+    }
+
     private static final class URIMatcher implements ArgumentMatcher<Uri> {
         public URIMatcher(String expectedUri) {
             this.expectedUri = expectedUri;
