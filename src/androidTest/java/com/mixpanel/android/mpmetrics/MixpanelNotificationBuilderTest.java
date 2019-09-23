@@ -1,26 +1,20 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.test.AndroidTestCase;
-
-import com.mixpanel.android.util.ImageStore;
-
-import junit.framework.Assert;
 
 import org.mockito.ArgumentMatcher;
 
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -100,52 +94,62 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testIcon() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_icnm", VALID_RESOURCE_NAME);
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSmallIcon(VALID_RESOURCE_ID);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_icnm", VALID_RESOURCE_NAME);
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy).setSmallIcon(VALID_RESOURCE_ID);
+        }
     }
 
     public void testNoIcon() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
+        }
     }
 
     public void testInvalidIcon() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_icnm", INVALID_RESOURCE_NAME);
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_icnm", INVALID_RESOURCE_NAME);
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy).setSmallIcon(DEFAULT_ICON_ID);
+        }
     }
 
     public void testExpandedImageUsingValidUrl() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_img", VALID_IMAGE_URL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_img", VALID_IMAGE_URL);
 
-        Bitmap fakeBitmap = getFakeBitmap();
+            Bitmap fakeBitmap = getFakeBitmap();
 
-        when(mpPushSpy.getBitmapFromUrl(VALID_IMAGE_URL)).thenReturn(fakeBitmap);
+            when(mpPushSpy.getBitmapFromUrl(VALID_IMAGE_URL)).thenReturn(fakeBitmap);
 
-        mpPushSpy.createNotification(intent);
-        verify(mpPushSpy).getBitmapFromUrl(VALID_IMAGE_URL);
-        verify(mpPushSpy).setBigPictureStyle(fakeBitmap);
+            mpPushSpy.createNotification(intent);
+            verify(mpPushSpy).getBitmapFromUrl(VALID_IMAGE_URL);
+            verify(mpPushSpy).setBigPictureStyle(fakeBitmap);
+        }
     }
 
     public void testExpandedImageUsingInvalidUrl() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_img", INVALID_IMAGE_URL);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_img", INVALID_IMAGE_URL);
 
-        when(mpPushSpy.getBitmapFromUrl(INVALID_IMAGE_URL)).thenReturn(null);
+            when(mpPushSpy.getBitmapFromUrl(INVALID_IMAGE_URL)).thenReturn(null);
 
-        mpPushSpy.createNotification(intent);
-        verify(mpPushSpy).getBitmapFromUrl(INVALID_IMAGE_URL);
-        verify(mpPushSpy).setBigTextStyle("MESSAGE");
+            mpPushSpy.createNotification(intent);
+            verify(mpPushSpy).getBitmapFromUrl(INVALID_IMAGE_URL);
+            verify(mpPushSpy).setBigTextStyle("MESSAGE");
+        }
     }
 
     public void testThumbnailImageUsingResourceName() {
@@ -178,18 +182,22 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testIconColor() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_color", "#ff9900");
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy).setColor(Color.parseColor("#ff9900"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_color", "#ff9900");
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy).setColor(Color.parseColor("#ff9900"));
+        }
     }
 
     public void testNoIconColor() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy, never()).setColor(anyInt());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy, never()).setColor(anyInt());
+        }
     }
 
     public void testCTA() {
@@ -222,22 +230,26 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testActionButtons() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_buttons", "[{\"lbl\": \"Button 1\", \"uri\": \"my-app://action\"}, {\"icnm\": \"" + VALID_RESOURCE_NAME + "\", \"lbl\": \"Button 2\", \"uri\": \"my-app://action2\"}, {\"lbl\": \"Button 3\", \"uri\": \"https://mixpanel.com\", \"icnm\": \"" + INVALID_RESOURCE_NAME + "\"}]");
-        mpPushSpy.createNotification(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_buttons", "[{\"lbl\": \"Button 1\", \"uri\": \"my-app://action\"}, {\"icnm\": \"" + VALID_RESOURCE_NAME + "\", \"lbl\": \"Button 2\", \"uri\": \"my-app://action2\"}, {\"lbl\": \"Button 3\", \"uri\": \"https://mixpanel.com\", \"icnm\": \"" + INVALID_RESOURCE_NAME + "\"}]");
+            mpPushSpy.createNotification(intent);
 
-        verify(mpPushSpy, atLeastOnce()).createAction(-1,"Button 1", "my-app://action");
-        verify(mpPushSpy, atLeastOnce()).createAction(VALID_RESOURCE_ID, "Button 2", "my-app://action2");
-        verify(mpPushSpy, atLeastOnce()).createAction(-1,"Button 3", "https://mixpanel.com");
-        verify(builderSpy, times(3)).addAction(any(Notification.Action.class));
+            verify(mpPushSpy, atLeastOnce()).createAction(-1, "Button 1", "my-app://action");
+            verify(mpPushSpy, atLeastOnce()).createAction(VALID_RESOURCE_ID, "Button 2", "my-app://action2");
+            verify(mpPushSpy, atLeastOnce()).createAction(-1, "Button 3", "https://mixpanel.com");
+            verify(builderSpy, times(3)).addAction(any(Notification.Action.class));
+        }
     }
 
     public void testNoActionButtons() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        mpPushSpy.createNotification(intent);
-        verify(builderSpy, never()).addAction(any(Notification.Action.class));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            mpPushSpy.createNotification(intent);
+            verify(builderSpy, never()).addAction(any(Notification.Action.class));
+        }
     }
 
     public void testValidNotificationBadge() {
@@ -257,35 +269,43 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testChannelId() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_channel_id", "12345");
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setChannelId("12345");
-        assertEquals(notification.getChannelId(), "12345");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_channel_id", "12345");
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy).setChannelId("12345");
+            assertEquals(notification.getChannelId(), "12345");
+        }
     }
 
     public void testNoChannelId() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setChannelId(MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
-        assertEquals(notification.getChannelId(), MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy).setChannelId(MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
+            assertEquals(notification.getChannelId(), MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
+        }
     }
 
     public void testSubText() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_subtxt", "SUBTEXT");
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setSubText("SUBTEXT");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_subtxt", "SUBTEXT");
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy).setSubText("SUBTEXT");
+        }
     }
 
     public void testNoSubText() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy, never()).setSubText(any(String.class));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy, never()).setSubText(any(String.class));
+        }
     }
 
     public void testTicker() {
@@ -321,34 +341,42 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testTimestamp() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
-        Notification notification = mpPushSpy.createNotification(intent);
-        Instant instant = Instant.parse("2014-10-02T15:01:23.045123456Z");
-        verify(builderSpy).setShowWhen(true);
-        verify(builderSpy).setWhen(instant.toEpochMilli());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
+            Notification notification = mpPushSpy.createNotification(intent);
+            Instant instant = Instant.parse("2014-10-02T15:01:23.045123456Z");
+            verify(builderSpy).setShowWhen(true);
+            verify(builderSpy).setWhen(instant.toEpochMilli());
+        }
     }
 
     public void testNoTimestamp() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        verify(builderSpy, never()).setWhen(any(Long.class));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            verify(builderSpy, never()).setWhen(any(Long.class));
+        }
     }
 
     public void testVisibility() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_visibility", Notification.VISIBILITY_SECRET);
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            intent.putExtra("mp_visibility", Notification.VISIBILITY_SECRET);
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
+        }
     }
 
     public void testDefaultVisibility() {
-        final Intent intent = new Intent();
-        intent.putExtra("mp_message", "MESSAGE");
-        Notification notification = mpPushSpy.createNotification(intent);
-        verify(builderSpy).setVisibility(Notification.VISIBILITY_PRIVATE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            final Intent intent = new Intent();
+            intent.putExtra("mp_message", "MESSAGE");
+            Notification notification = mpPushSpy.createNotification(intent);
+            verify(builderSpy).setVisibility(Notification.VISIBILITY_PRIVATE);
+        }
     }
 
     private static final class URIMatcher implements ArgumentMatcher<Uri> {

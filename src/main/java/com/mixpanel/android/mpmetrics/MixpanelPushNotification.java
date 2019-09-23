@@ -63,7 +63,7 @@ public class MixpanelPushNotification {
                 setTicker(data.ticker == null ? data.message : data.ticker).
                 setContentIntent(contentIntent);
 
-        maybeSetSubTitle();
+        maybeSetSubText();
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
         maybeSetExpandableNotification();
@@ -71,7 +71,6 @@ public class MixpanelPushNotification {
         maybeAddActionButtons();
         maybeSetChannel();
         maybeSetNotificationBadge();
-        maybeSetGroupKey(contentIntent);
         maybeSetTime();
         maybeSetVisibility();
 
@@ -83,13 +82,7 @@ public class MixpanelPushNotification {
         return n;
     }
 
-    protected void maybeSetGroupKey(PendingIntent contentIntent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && data.groupKey != null) {
-            builder.setGroup(data.groupKey);
-        }
-    }
-
-    protected void maybeSetSubTitle() {
+    protected void maybeSetSubText() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && null != data.subTitle) {
             builder.setSubText(data.subTitle);
         }
