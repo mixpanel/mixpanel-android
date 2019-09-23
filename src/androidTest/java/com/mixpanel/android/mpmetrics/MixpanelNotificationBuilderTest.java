@@ -19,6 +19,7 @@ import org.mockito.ArgumentMatcher;
 
 import static org.mockito.Mockito.*;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -325,6 +326,21 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         Notification notification = mpPushSpy.createNotification(intent);
         int flag = notification.flags;
         assertEquals(flag | Notification.FLAG_AUTO_CANCEL, flag);
+    }
+
+    public void testTimestamp() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
+        Notification notification = mpPushSpy.createNotification(intent);
+        Instant instant = Instant.parse( "2011-05-03T11:58:01Z" );
+        verify(builderSpy).setWhen(instant.toEpochMilli());
+    }
+
+    public void testNoTimestamp() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        verify(builderSpy, never()).setWhen(any(Long.class));
     }
 
     private static final class URIMatcher implements ArgumentMatcher<Uri> {
