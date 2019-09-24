@@ -41,11 +41,129 @@ public class MixpanelPushNotification {
         this.now = now;
     }
 
-    public Notification createNotification(Intent inboundIntent) {
-        this.data = readInboundIntent(inboundIntent);
-        if (null == data) {
-            return null;
+    protected void parseIntent(Intent inboundIntent) {
+
+        final String message = inboundIntent.getStringExtra("mp_message");
+        final String iconName = inboundIntent.getStringExtra("mp_icnm");
+        final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
+        final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
+        final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
+        final String uriString = inboundIntent.getStringExtra("mp_cta");
+        CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
+        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_subtxt");
+        final String colorName = inboundIntent.getStringExtra("mp_color");
+        final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
+        final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
+        final String messageId = inboundIntent.getStringExtra("mp_message_id");
+        final String extraLogData = inboundIntent.getStringExtra("mp");
+        int color = NotificationData.NOT_SET;
+        List<NotificationButtonData> buttons = new ArrayList<>();
+        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", NotificationData.NOT_SET);
+        final String channelId = inboundIntent.getStringExtra("mp_channel_id");
+        final String notificationTag = inboundIntent.getStringExtra("mp_tag");
+        final String groupKey = inboundIntent.getStringExtra("mp_groupkey");
+        final String ticker = inboundIntent.getStringExtra("mp_ticker");
+        final String stickyString = inboundIntent.getStringExtra("mp_sticky");
+        final String timeString = inboundIntent.getStringExtra("mp_time");
+        final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
+
+
+        trackCampaignReceived(campaignId, messageId, extraLogData);
+
+        if (colorName != null) {
+            try {
+                color = Color.parseColor(colorName);
+            } catch (IllegalArgumentException e) {}
         }
+
+        if (message == null) {
+            return;
+        }
+
+        if (notificationSubTitle.length() == 0) {
+            notificationSubTitle = null;
+        }
+
+        boolean sticky = false;
+        if (stickyString != null && stickyString.equals("true")) {
+            sticky = true;
+        }
+
+        int notificationIcon = NotificationData.NOT_SET;
+        if (null != iconName) {
+            if (drawableIds.knownIdName(iconName)) {
+                notificationIcon = drawableIds.idFromName(iconName);
+            }
+        }
+
+        int largeNotificationIcon = NotificationData.NOT_SET;
+
+        if (null != largeIconName) {
+            if (drawableIds.knownIdName(largeIconName)) {
+                largeNotificationIcon = drawableIds.idFromName(largeIconName);
+            }
+        }
+
+        int whiteNotificationIcon = NotificationData.NOT_SET;
+        if (null != whiteIconName) {
+            if (drawableIds.knownIdName(whiteIconName)) {
+                whiteNotificationIcon = drawableIds.idFromName(whiteIconName);
+            }
+        }
+
+        if (notificationIcon == NotificationData.NOT_SET) {
+            notificationIcon = getDefaultIcon();
+        }
+
+        if (null == notificationTitle) {
+            notificationTitle = getDefaultTitle();
+        }
+
+        if (null != buttonsJsonStr) {
+            try {
+                JSONArray buttonsArr = new JSONArray(buttonsJsonStr);
+                for (int i = 0; i < buttonsArr.length(); i++) {
+                    JSONObject buttonObj = buttonsArr.getJSONObject(i);
+
+                    // get button icon from name if one sent
+                    int btnIcon = NotificationData.NOT_SET;
+                    if (buttonObj.has("icnm")) {
+                        String btnIconName = buttonObj.getString("icnm");
+                        if (drawableIds.knownIdName(btnIconName)) {
+                            btnIcon = drawableIds.idFromName(btnIconName);
+                        }
+                    }
+
+                    // handle button label
+                    final String btnLabel = buttonObj.getString("lbl");
+
+                    // handle button action
+                    final String btnUri = buttonObj.getString("uri");
+
+                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, btnUri));
+                }
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
+            }
+        }
+
+        Uri uri = null;
+        if (null != uriString) {
+            uri = Uri.parse(uriString);
+        }
+        final Intent intent;
+        if (null == uri) {
+            intent = getDefaultIntent();
+        } else {
+            intent = buildIntentForUri(uri);
+        }
+
+        final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
+
+        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
+    }
+
+    protected void buildNotificationFromData() {
 
         MPLog.d(LOGTAG, "MP FCM notification received: " + data.message);
         final PendingIntent contentIntent = PendingIntent.getActivity(
@@ -75,8 +193,15 @@ public class MixpanelPushNotification {
         maybeSetTime();
         maybeSetVisibility();
         maybeSetSubText();
+    }
 
-        final Notification n = buildNotification();
+    protected Notification createNotification(Intent inboundIntent) {
+        this.parseIntent(inboundIntent);
+
+        this.buildNotificationFromData();
+
+        final Notification n = builderToNotification();
+
         if (!data.sticky) {
             n.flags |= Notification.FLAG_AUTO_CANCEL;
         }
@@ -228,128 +353,6 @@ public class MixpanelPushNotification {
         }
     }
 
-    /* package */ NotificationData readInboundIntent(Intent inboundIntent) {
-
-        final String message = inboundIntent.getStringExtra("mp_message");
-        final String iconName = inboundIntent.getStringExtra("mp_icnm");
-        final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
-        final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
-        final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
-        final String uriString = inboundIntent.getStringExtra("mp_cta");
-        CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
-        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_subtxt");
-        final String colorName = inboundIntent.getStringExtra("mp_color");
-        final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
-        final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
-        final String messageId = inboundIntent.getStringExtra("mp_message_id");
-        final String extraLogData = inboundIntent.getStringExtra("mp");
-        int color = NotificationData.NOT_SET;
-        List<NotificationButtonData> buttons = new ArrayList<>();
-        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", NotificationData.NOT_SET);
-        final String channelId = inboundIntent.getStringExtra("mp_channel_id");
-        final String notificationTag = inboundIntent.getStringExtra("mp_tag");
-        final String groupKey = inboundIntent.getStringExtra("mp_groupkey");
-        final String ticker = inboundIntent.getStringExtra("mp_ticker");
-        final String stickyString = inboundIntent.getStringExtra("mp_sticky");
-        final String timeString = inboundIntent.getStringExtra("mp_time");
-        final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
-
-
-        trackCampaignReceived(campaignId, messageId, extraLogData);
-
-        if (colorName != null) {
-            try {
-                color = Color.parseColor(colorName);
-            } catch (IllegalArgumentException e) {}
-        }
-
-        if (message == null) {
-            return null;
-        }
-
-        if (notificationSubTitle.length() == 0) {
-            notificationSubTitle = null;
-        }
-
-        boolean sticky = false;
-        if (stickyString != null && stickyString.equals("true")) {
-            sticky = true;
-        }
-
-        int notificationIcon = NotificationData.NOT_SET;
-        if (null != iconName) {
-            if (drawableIds.knownIdName(iconName)) {
-                notificationIcon = drawableIds.idFromName(iconName);
-            }
-        }
-
-        int largeNotificationIcon = NotificationData.NOT_SET;
-
-        if (null != largeIconName) {
-            if (drawableIds.knownIdName(largeIconName)) {
-                largeNotificationIcon = drawableIds.idFromName(largeIconName);
-            }
-        }
-
-        int whiteNotificationIcon = NotificationData.NOT_SET;
-        if (null != whiteIconName) {
-            if (drawableIds.knownIdName(whiteIconName)) {
-                whiteNotificationIcon = drawableIds.idFromName(whiteIconName);
-            }
-        }
-
-        if (notificationIcon == NotificationData.NOT_SET) {
-            notificationIcon = getDefaultIcon();
-        }
-
-        if (null == notificationTitle) {
-            notificationTitle = getDefaultTitle();
-        }
-
-        if (null != buttonsJsonStr) {
-            try {
-                JSONArray buttonsArr = new JSONArray(buttonsJsonStr);
-                for (int i = 0; i < buttonsArr.length(); i++) {
-                    JSONObject buttonObj = buttonsArr.getJSONObject(i);
-
-                    // get button icon from name if one sent
-                    int btnIcon = NotificationData.NOT_SET;
-                    if (buttonObj.has("icnm")) {
-                        String btnIconName = buttonObj.getString("icnm");
-                        if (drawableIds.knownIdName(btnIconName)) {
-                            btnIcon = drawableIds.idFromName(btnIconName);
-                        }
-                    }
-
-                    // handle button label
-                    final String btnLabel = buttonObj.getString("lbl");
-
-                    // handle button action
-                    final String btnUri = buttonObj.getString("uri");
-
-                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, btnUri));
-                }
-            } catch (JSONException e) {
-                MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
-            }
-        }
-
-        Uri uri = null;
-        if (null != uriString) {
-            uri = Uri.parse(uriString);
-        }
-        final Intent intent;
-        if (null == uri) {
-            intent = getDefaultIntent();
-        } else {
-            intent = buildIntentForUri(uri);
-        }
-
-        final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
-
-        return new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
-    }
-
     protected ApplicationInfo getAppInfo() {
         try {
             return context.getPackageManager().getApplicationInfo(context.getPackageName(), 0);
@@ -425,7 +428,7 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected Notification buildNotification() {
+    protected Notification builderToNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             return builder.build();
         } else {

@@ -136,8 +136,10 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
         final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
         final Context applicationContext = context.getApplicationContext();
-        MixpanelPushNotification mixpanelPushNotification = new MixpanelPushNotification(applicationContext, drawableIds);
+
+        MixpanelPushNotification mixpanelPushNotification = createMixpanelPushNotification(applicationContext, drawableIds);
         Notification notification = mixpanelPushNotification.createNotification(messageIntent);
+
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (mixpanelPushNotification.data.tag != null) {
@@ -146,6 +148,19 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
                 notificationManager.notify(0, notification);
             }
         }
+    }
+
+    /**
+     * Create an instance of MixpanelPushNotification used to construct a Notification using data from the intent.
+     * Developers can subclass MixpanelPushNotification to customize how push notifications are built and
+     * override this method to use their subclass.
+     *
+     * @param context
+     * @param drawableIds
+     * @return
+     */
+    protected static MixpanelPushNotification createMixpanelPushNotification(Context context, ResourceIds drawableIds) {
+        return new MixpanelPushNotification(context, drawableIds);
     }
 
     /**
