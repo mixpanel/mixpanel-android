@@ -66,6 +66,7 @@ public class MixpanelPushNotification {
         final String stickyString = inboundIntent.getStringExtra("mp_sticky");
         final String timeString = inboundIntent.getStringExtra("mp_time");
         final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
+        final String silent = inboundIntent.getStringExtra("mp_silent");
 
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
@@ -83,6 +84,8 @@ public class MixpanelPushNotification {
         if (notificationSubText != null && notificationSubText.length() == 0) {
             notificationSubText = null;
         }
+
+        boolean isSilent = silent != null && silent.equals("true") ? true : false;
 
         boolean sticky = false;
         if (stickyString != null && stickyString.equals("true")) {
@@ -152,7 +155,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
+        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent);
     }
 
     protected void buildNotificationFromData() {
@@ -187,7 +190,7 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (this.data == null) {
+        if (this.data == null || this.data.silent) {
             return null;
         }
 
@@ -432,7 +435,7 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
+        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility, boolean isSilent) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
@@ -451,6 +454,7 @@ public class MixpanelPushNotification {
             sticky = aSticky;
             timeString = aTimeString;
             visibility = aVisibility;
+            silent = isSilent;
 
         }
 
@@ -472,6 +476,7 @@ public class MixpanelPushNotification {
         public final boolean sticky;
         public final String timeString;
         public final int visibility;
+        public final boolean silent;
 
         public static final int NOT_SET = -1;
         public static final String DEFAULT_CHANNEL_ID = "mp";
