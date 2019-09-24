@@ -101,8 +101,15 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetLargeIcon() {
-        if (data.largeIcon != NotificationData.NOT_SET) {
-            builder.setLargeIcon(getBitmapFromResourceId(data.largeIcon));
+        if (null != data.largeIcon) {
+            if (drawableIds.knownIdName(data.largeIcon)) {
+                builder.setLargeIcon(getBitmapFromResourceId(drawableIds.idFromName(data.largeIcon)));
+            } else {
+                Bitmap imageBitmap = getBitmapFromUrl(data.largeIcon);
+                if (imageBitmap != null) {
+                    builder.setLargeIcon(imageBitmap);
+                }
+            }
         }
     }
 
@@ -277,6 +284,7 @@ public class MixpanelPushNotification {
         }
 
         int largeNotificationIcon = NotificationData.NOT_SET;
+
         if (null != largeIconName) {
             if (drawableIds.knownIdName(largeIconName)) {
                 largeNotificationIcon = drawableIds.idFromName(largeIconName);
@@ -339,7 +347,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        return new NotificationData(notificationIcon, largeNotificationIcon, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
+        return new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
     }
 
     protected ApplicationInfo getAppInfo() {
@@ -426,7 +434,7 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, int aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
+        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
@@ -449,7 +457,7 @@ public class MixpanelPushNotification {
         }
 
         public final int icon;
-        public final int largeIcon;
+        public final String largeIcon;
         public final int whiteIcon;
         public final String expandableImageUrl;
         public final CharSequence title;
