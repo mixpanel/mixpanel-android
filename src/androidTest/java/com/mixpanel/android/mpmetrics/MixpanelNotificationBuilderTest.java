@@ -58,6 +58,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         mpPushSpy.createNotification(intent);
 
         verify(builderSpy).setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
+        verify(builderSpy).setShowWhen(true);
         verify(builderSpy).setWhen(now);
         verify(builderSpy).setContentTitle("TITLE");
         verify(builderSpy).setContentText("MESSAGE");

@@ -157,7 +157,6 @@ public class MixpanelPushNotification {
 
     protected void buildNotificationFromData() {
 
-        MPLog.d(LOGTAG, "MP FCM notification received: " + data.message);
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
                 0,
@@ -167,12 +166,10 @@ public class MixpanelPushNotification {
 
         builder.
                 setDefaults(MPConfig.getInstance(context).getNotificationDefaults()).
-                setWhen(now).
                 setContentTitle(data.title).
                 setContentText(data.message).
                 setTicker(data.ticker == null ? data.message : data.ticker).
                 setContentIntent(contentIntent);
-
 
 
         maybeSetNotificationBarIcon();
@@ -189,6 +186,10 @@ public class MixpanelPushNotification {
 
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
+
+        if (this.data == null) {
+            return null;
+        }
 
         this.buildNotificationFromData();
 
@@ -221,11 +222,13 @@ public class MixpanelPushNotification {
         if (null != data.largeIcon) {
             if (drawableIds.knownIdName(data.largeIcon)) {
                 builder.setLargeIcon(getBitmapFromResourceId(drawableIds.idFromName(data.largeIcon)));
-            } else {
+            } else if (data.largeIcon.startsWith("http")) {
                 Bitmap imageBitmap = getBitmapFromUrl(data.largeIcon);
                 if (imageBitmap != null) {
                     builder.setLargeIcon(imageBitmap);
                 }
+            } else {
+                MPLog.d(LOGTAG, "large icon data was sent but did match a resource name or a valid url: " + data.largeIcon);
             }
         }
     }
