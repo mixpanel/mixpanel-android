@@ -96,14 +96,6 @@ public class MixpanelPushNotification {
             }
         }
 
-        int largeNotificationIcon = NotificationData.NOT_SET;
-
-        if (null != largeIconName) {
-            if (drawableIds.knownIdName(largeIconName)) {
-                largeNotificationIcon = drawableIds.idFromName(largeIconName);
-            }
-        }
-
         int whiteNotificationIcon = NotificationData.NOT_SET;
         if (null != whiteIconName) {
             if (drawableIds.knownIdName(whiteIconName)) {
