@@ -50,7 +50,7 @@ public class MixpanelPushNotification {
         final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
-        CharSequence notificationSubTitle = inboundIntent.getStringExtra("mp_subtxt");
+        CharSequence notificationSubText = inboundIntent.getStringExtra("mp_subtxt");
         final String colorName = inboundIntent.getStringExtra("mp_color");
         final String buttonsJsonStr = inboundIntent.getStringExtra("mp_buttons");
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
@@ -80,8 +80,8 @@ public class MixpanelPushNotification {
             return;
         }
 
-        if (notificationSubTitle != null && notificationSubTitle.length() == 0) {
-            notificationSubTitle = null;
+        if (notificationSubText != null && notificationSubText.length() == 0) {
+            notificationSubText = null;
         }
 
         boolean sticky = false;
@@ -152,7 +152,7 @@ public class MixpanelPushNotification {
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
 
-        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubTitle, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
+        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility);
     }
 
     protected void buildNotificationFromData() {
@@ -202,8 +202,8 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetSubText() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.subTitle) {
-            builder.setSubText(data.subTitle);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.subText) {
+            builder.setSubText(data.subText);
         }
     }
 
@@ -429,13 +429,13 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubTitle, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
+        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
             expandableImageUrl = anExpandableImageUrl;
             title = aTitle;
-            subTitle = aSubTitle;
+            subText = aSubText;
             message = aMessage;
             intent = anIntent;
             color = aColor;
@@ -456,7 +456,7 @@ public class MixpanelPushNotification {
         public final int whiteIcon;
         public final String expandableImageUrl;
         public final CharSequence title;
-        public final CharSequence subTitle;
+        public final CharSequence subText;
         public final String message;
         public final Intent intent;
         public final int color;
