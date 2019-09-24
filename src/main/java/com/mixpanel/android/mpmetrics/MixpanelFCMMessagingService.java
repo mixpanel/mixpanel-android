@@ -140,7 +140,11 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         Notification notification = mixpanelPushNotification.createNotification(messageIntent);
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.notify(0, notification);
+            if (mixpanelPushNotification.data.tag != null) {
+                notificationManager.notify(mixpanelPushNotification.data.tag, 0, notification);
+            } else {
+                notificationManager.notify(0, notification);
+            }
         }
     }
 
