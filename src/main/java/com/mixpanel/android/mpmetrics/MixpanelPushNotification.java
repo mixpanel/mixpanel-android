@@ -80,7 +80,7 @@ public class MixpanelPushNotification {
             return;
         }
 
-        if (notificationSubTitle.length() == 0) {
+        if (notificationSubTitle != null && notificationSubTitle.length() == 0) {
             notificationSubTitle = null;
         }
 
