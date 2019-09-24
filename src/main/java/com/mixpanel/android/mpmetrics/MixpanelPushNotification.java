@@ -63,7 +63,8 @@ public class MixpanelPushNotification {
                 setTicker(data.ticker == null ? data.message : data.ticker).
                 setContentIntent(contentIntent);
 
-        maybeSetSubText();
+
+
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
         maybeSetExpandableNotification();
@@ -73,6 +74,7 @@ public class MixpanelPushNotification {
         maybeSetNotificationBadge();
         maybeSetTime();
         maybeSetVisibility();
+        maybeSetSubText();
 
         final Notification n = buildNotification();
         if (!data.sticky) {
@@ -83,7 +85,7 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetSubText() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && null != data.subTitle) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.subTitle) {
             builder.setSubText(data.subTitle);
         }
     }
@@ -126,7 +128,7 @@ public class MixpanelPushNotification {
 
     protected void setBigTextStyle(String message) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            builder.setStyle(new Notification.BigTextStyle().setSummaryText(message));
+            builder.setStyle(new Notification.BigTextStyle().bigText(message));
         }
     }
 
@@ -189,10 +191,14 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetTime() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && data.timeString != null) {
-            Instant instant = Instant.parse(data.timeString);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setShowWhen(true);
-            builder.setWhen(instant.toEpochMilli());
+            if (data.timeString == null) {
+                builder.setWhen(now);
+            } else {
+                Instant instant = Instant.parse(data.timeString);
+                builder.setWhen(instant.toEpochMilli());
+            }
         }
     }
 
@@ -252,6 +258,10 @@ public class MixpanelPushNotification {
 
         if (message == null) {
             return null;
+        }
+
+        if (notificationSubTitle.length() == 0) {
+            notificationSubTitle = null;
         }
 
         boolean sticky = false;
