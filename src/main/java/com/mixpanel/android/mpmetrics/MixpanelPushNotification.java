@@ -85,14 +85,14 @@ public class MixpanelPushNotification {
             return;
         }
 
-        if (notificationSubText != null && notificationSubText.length() == 0) {
+        if (null != notificationSubText && notificationSubText.length() == 0) {
             notificationSubText = null;
         }
 
-        boolean isSilent = silent != null && silent.equals("true") ? true : false;
+        boolean isSilent = null != silent && silent.equals("true") ? true : false;
 
         boolean sticky = false;
-        if (stickyString != null && stickyString.equals("true")) {
+        if (null != stickyString && stickyString.equals("true")) {
             sticky = true;
         }
 
@@ -178,7 +178,7 @@ public class MixpanelPushNotification {
                 setDefaults(MPConfig.getInstance(context).getNotificationDefaults()).
                 setContentTitle(data.title).
                 setContentText(data.message).
-                setTicker(data.ticker == null ? data.message : data.ticker).
+                setTicker(null == data.ticker ? data.message : data.ticker).
                 setContentIntent(contentIntent);
 
 
@@ -197,7 +197,7 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (this.data == null || this.data.silent) {
+        if (null == this.data || this.data.silent) {
             return null;
         }
 
@@ -234,7 +234,7 @@ public class MixpanelPushNotification {
                 builder.setLargeIcon(getBitmapFromResourceId(drawableIds.idFromName(data.largeIcon)));
             } else if (data.largeIcon.startsWith("http")) {
                 Bitmap imageBitmap = getBitmapFromUrl(data.largeIcon);
-                if (imageBitmap != null) {
+                if (null != imageBitmap) {
                     builder.setLargeIcon(imageBitmap);
                 }
             } else {
@@ -249,7 +249,7 @@ public class MixpanelPushNotification {
                 try {
                     Bitmap imageBitmap = getBitmapFromUrl(data.expandableImageUrl);
 
-                    if (imageBitmap == null) {
+                    if (null == imageBitmap) {
                         setBigTextStyle(data.message);
                     } else {
                         setBigPictureStyle(imageBitmap);
@@ -319,7 +319,7 @@ public class MixpanelPushNotification {
             NotificationManager mNotificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-            String channelId = data.channelId == null ? MPConfig.getInstance(context).getNotificationChannelId() : data.channelId;
+            String channelId = null == data.channelId ? MPConfig.getInstance(context).getNotificationChannelId() : data.channelId;
             String channelName = MPConfig.getInstance(context).getNotificationChannelName();
 
             NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
@@ -338,7 +338,7 @@ public class MixpanelPushNotification {
     protected void maybeSetTime() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setShowWhen(true);
-            if (data.timeString == null) {
+            if (null == data.timeString) {
                 builder.setWhen(now);
             } else {
                 Instant instant = Instant.parse(data.timeString);
@@ -401,15 +401,15 @@ public class MixpanelPushNotification {
     }
 
     protected Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
-        if (campaignId != null) {
+        if (null != campaignId) {
             intent.putExtra("mp_campaign_id", campaignId);
         }
 
-        if (messageId != null) {
+        if (null != messageId) {
             intent.putExtra("mp_message_id", messageId);
         }
 
-        if (extraLogData != null) {
+        if (null != extraLogData) {
             intent.putExtra("mp", extraLogData);
         }
 
@@ -417,14 +417,14 @@ public class MixpanelPushNotification {
     }
 
     protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
-        if (campaignId != null && messageId != null) {
+        if (null != campaignId && null != messageId) {
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
                     if(api.isAppInForeground()) {
                         JSONObject pushProps = new JSONObject();
                         try {
-                            if (extraLogData != null) {
+                            if (null != extraLogData) {
                                 pushProps = new JSONObject(extraLogData);
                             }
                         } catch (JSONException e) {}
@@ -462,7 +462,7 @@ public class MixpanelPushNotification {
             color = aColor;
             buttons = aButtons;
             badgeCount = aBadgeCount;
-            channelId = aChannelId == null ? NotificationData.DEFAULT_CHANNEL_ID : aChannelId;
+            channelId = null == aChannelId ? NotificationData.DEFAULT_CHANNEL_ID : aChannelId;
             tag = aNotificationTag;
             groupKey = aGroupKey;
             ticker = aTicker;
