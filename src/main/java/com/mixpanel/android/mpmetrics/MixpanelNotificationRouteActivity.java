@@ -46,28 +46,24 @@ public class MixpanelNotificationRouteActivity extends Activity {
         Bundle intentExtras = routeIntent.getExtras();
 
         CharSequence actionIdChars = intentExtras.getCharSequence("actionId");
-
         if (null == actionIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no actionId.");
             return;
         }
 
         CharSequence uriChars = intentExtras.getCharSequence("uri");
-
         if (null == uriChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no uri.");
             return;
         }
 
         CharSequence messageIdChars = intentExtras.getCharSequence("messageId");
-
         if (null == messageIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no messageId.");
             return;
         }
 
         CharSequence campaignIdChars = intentExtras.getCharSequence("campaignId");
-
         if (null == campaignIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no campaignId.");
             return;
