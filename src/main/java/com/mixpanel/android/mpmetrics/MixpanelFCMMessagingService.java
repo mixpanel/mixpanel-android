@@ -13,7 +13,6 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.mixpanel.android.util.MPLog;
 
-
 /**
  * Service for handling Firebase Cloud Messaging callbacks.
  *
