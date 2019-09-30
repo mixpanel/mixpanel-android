@@ -30,7 +30,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
         trackAction(routeIntent);
 
         Intent notificationIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
-        if (extras.getBoolean("sticky")) {
+        if (!extras.getBoolean("sticky")) {
             cancelNotification(extras);
         }
         startActivity(notificationIntent);
