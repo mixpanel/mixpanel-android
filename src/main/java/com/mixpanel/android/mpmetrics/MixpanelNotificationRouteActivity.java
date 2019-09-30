@@ -81,19 +81,17 @@ public class MixpanelNotificationRouteActivity extends Activity {
         MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
             @Override
             public void process(MixpanelAPI api) {
-                if (api.isAppInForeground()) {
-                    JSONObject pushProps = new JSONObject();
+                JSONObject pushProps = new JSONObject();
 
-                    try {
-                        pushProps.put("actionId", actionId);
-                        pushProps.put("uri", uri);
-                        pushProps.put("messageId", messageId);
-                        pushProps.put("campaignId", campaignId);
-                    } catch (JSONException e) {
-                        MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
-                    }
-                    api.track("Notification Action Click", pushProps);
+                try {
+                    pushProps.put("actionId", actionId);
+                    pushProps.put("uri", uri);
+                    pushProps.put("messageId", messageId);
+                    pushProps.put("campaignId", campaignId);
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                 }
+                api.track("Notification Action Click", pushProps);
             }
         });
     }
