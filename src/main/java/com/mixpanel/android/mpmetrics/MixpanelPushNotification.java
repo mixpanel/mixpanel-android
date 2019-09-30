@@ -46,7 +46,6 @@ public class MixpanelPushNotification {
     }
 
     protected void parseIntent(Intent inboundIntent) {
-
         final String message = inboundIntent.getStringExtra("mp_message");
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
@@ -71,7 +70,6 @@ public class MixpanelPushNotification {
         final String timeString = inboundIntent.getStringExtra("mp_time");
         final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
         final String silent = inboundIntent.getStringExtra("mp_silent");
-
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
@@ -161,7 +159,6 @@ public class MixpanelPushNotification {
         }
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
-
         this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent, campaignId, messageId);
     }
 
@@ -180,8 +177,7 @@ public class MixpanelPushNotification {
                 setContentText(data.message).
                 setTicker(null == data.ticker ? data.message : data.ticker).
                 setContentIntent(contentIntent);
-
-
+        
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
         maybeSetExpandableNotification();
