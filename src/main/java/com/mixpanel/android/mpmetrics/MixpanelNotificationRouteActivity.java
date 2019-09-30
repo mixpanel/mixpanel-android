@@ -45,29 +45,38 @@ public class MixpanelNotificationRouteActivity extends Activity {
     protected void trackAction(Intent routeIntent) {
         Bundle intentExtras = routeIntent.getExtras();
 
-        final String actionId = intentExtras.getCharSequence("actionId").toString();
-        if (null == actionId) {
+        CharSequence actionIdChars = intentExtras.getCharSequence("actionId");
+
+        if (null == actionIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no actionId.");
             return;
         }
 
-        final String uri = intentExtras.getCharSequence("uri").toString();
-        if (null == uri) {
-            MPLog.i(LOGTAG, "Notification action click logged with no actionId.");
+        CharSequence uriChars = intentExtras.getCharSequence("uri");
+
+        if (null == uriChars) {
+            MPLog.i(LOGTAG, "Notification action click logged with no uri.");
             return;
         }
 
-        final String messageId = intentExtras.getCharSequence("messageId").toString();
-        if (null == messageId) {
+        CharSequence messageIdChars = intentExtras.getCharSequence("messageId");
+
+        if (null == messageIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no messageId.");
             return;
         }
 
-        final String campaignId = intentExtras.getCharSequence("campaignId").toString();
-        if (null == campaignId) {
+        CharSequence campaignIdChars = intentExtras.getCharSequence("campaignId");
+
+        if (null == campaignIdChars) {
             MPLog.i(LOGTAG, "Notification action click logged with no campaignId.");
             return;
         }
+
+        final String actionId = actionIdChars.toString();
+        final String uri = uriChars.toString();
+        final String messageId = messageIdChars.toString();
+        final String campaignId = campaignIdChars.toString();
 
         MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
             @Override
@@ -83,10 +92,10 @@ public class MixpanelNotificationRouteActivity extends Activity {
                     } catch (JSONException e) {
                         MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                     }
-
                     api.track("Notification Action Click", pushProps);
                 }
             }
         });
     }
+
 }
