@@ -177,7 +177,7 @@ public class MixpanelPushNotification {
                 setContentText(data.message).
                 setTicker(null == data.ticker ? data.message : data.ticker).
                 setContentIntent(contentIntent);
-        
+
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
         maybeSetExpandableNotification();
