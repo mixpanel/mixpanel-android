@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.GestureTracker;
 
 import org.json.JSONException;
@@ -27,6 +28,7 @@ import java.util.Locale;
     private boolean mPaused = true;
     private static Double sStartSessionTime;
     public static final int CHECK_DELAY = 500;
+    protected final String LOGTAG = "MixpanelAPI.MixpanelActivityLifecycleCallbacks";
 
     public MixpanelActivityLifecycleCallbacks(MixpanelAPI mpInstance, MPConfig config) {
         mMpInstance = mpInstance;
