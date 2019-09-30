@@ -26,10 +26,12 @@ import org.json.JSONObject;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
     public NotificationData data;
+    public int notificationId;
 
     public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
         this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
@@ -40,6 +42,7 @@ public class MixpanelPushNotification {
         this.builder = builder;
         this.drawableIds = drawableIds;
         this.now = now;
+        this.notificationId = new Random().nextInt(Integer.MAX_VALUE);
     }
 
     protected void parseIntent(Intent inboundIntent) {

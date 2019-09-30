@@ -147,7 +147,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             if (mixpanelPushNotification.data.tag != null) {
                 notificationManager.notify(mixpanelPushNotification.data.tag, 0, notification);
             } else {
-                notificationManager.notify(0, notification);
+                notificationManager.notify(mixpanelPushNotification.notificationId, notification);
             }
         }
     }
