@@ -69,10 +69,15 @@ public class MixpanelPushNotification {
         final String ticker = inboundIntent.getStringExtra("mp_ticker");
         final String stickyString = inboundIntent.getStringExtra("mp_sticky");
         final String timeString = inboundIntent.getStringExtra("mp_time");
-        final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
+        final String visibilityStr = inboundIntent.getStringExtra("mp_visibility");
         final String silent = inboundIntent.getStringExtra("mp_silent");
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
+
+        int visibility = Notification.VISIBILITY_PRIVATE;
+        if (null != visibilityStr) {
+            visibility = Integer.parseInt(visibilityStr);
+        }
 
         int color = NotificationData.NOT_SET;
         if (colorName != null) {
