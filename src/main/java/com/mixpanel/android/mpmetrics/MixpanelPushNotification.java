@@ -80,13 +80,13 @@ public class MixpanelPushNotification {
         }
 
         int color = NotificationData.NOT_SET;
-        if (colorName != null) {
+        if (null != colorName) {
             try {
                 color = Color.parseColor(colorName);
             } catch (IllegalArgumentException e) {}
         }
 
-        if (message == null) {
+        if (null == message) {
             return;
         }
 
