@@ -13,6 +13,8 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.mixpanel.android.util.MPLog;
 
+import java.util.Random;
+
 
 /**
  * Service for handling Firebase Cloud Messaging callbacks.
@@ -144,10 +146,12 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
 
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            final int id = new Random().nextInt(Integer.MAX_VALUE);
             if (mixpanelPushNotification.data.tag != null) {
+                //Use 0 as id so that we can reference notification solely by tag
                 notificationManager.notify(mixpanelPushNotification.data.tag, 0, notification);
             } else {
-                notificationManager.notify(0, notification);
+                notificationManager.notify(id, notification);
             }
         }
     }
