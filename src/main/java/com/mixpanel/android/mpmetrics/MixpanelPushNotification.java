@@ -86,11 +86,7 @@ public class MixpanelPushNotification {
         }
 
         boolean isSilent = silent != null && silent.equals("true");
-
-        boolean sticky = false;
-        if (stickyString != null && stickyString.equals("true")) {
-            sticky = true;
-        }
+        boolean sticky = stickyString != null && stickyString.equals("true");
 
         int notificationIcon = NotificationData.NOT_SET;
         if (null != iconName) {
@@ -190,7 +186,12 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (this.data == null || this.data.silent) {
+        if (this.data.silent) {
+            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+            return null;
+        }
+
+        if (null == this.data) {
             return null;
         }
 
