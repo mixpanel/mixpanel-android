@@ -85,7 +85,7 @@ public class MixpanelPushNotification {
             notificationSubText = null;
         }
 
-        boolean isSilent = silent != null && silent.equals("true") ? true : false;
+        boolean isSilent = silent != null && silent.equals("true");
 
         boolean sticky = false;
         if (stickyString != null && stickyString.equals("true")) {
