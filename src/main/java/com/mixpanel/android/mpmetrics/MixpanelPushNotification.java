@@ -74,6 +74,14 @@ public class MixpanelPushNotification {
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
+        if (null == message) {
+            return;
+        }
+
+        if (null != notificationSubText && notificationSubText.length() == 0) {
+            notificationSubText = null;
+        }
+
         int visibility = Notification.VISIBILITY_PRIVATE;
         if (null != visibilityStr) {
             visibility = Integer.parseInt(visibilityStr);
@@ -84,14 +92,6 @@ public class MixpanelPushNotification {
             try {
                 color = Color.parseColor(colorName);
             } catch (IllegalArgumentException e) {}
-        }
-
-        if (null == message) {
-            return;
-        }
-
-        if (null != notificationSubText && notificationSubText.length() == 0) {
-            notificationSubText = null;
         }
 
         boolean isSilent = null != silent && silent.equals("true") ? true : false;
@@ -147,12 +147,13 @@ public class MixpanelPushNotification {
                     final String btnLabel = buttonObj.getString("lbl");
 
                     // handle button action
-                    final String btnUri = buttonObj.getString("uri");
+                    final JSONObject pushActionJSON = buttonObj.getJSONObject("ontap");
+                    final PushTapAction pushAction = new PushTapAction(pushActionJSON.getString("type"), pushActionJSON.getString("uri"));
 
                     //handle button id
                     final String btnId = buttonObj.getString("id");
 
-                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, btnUri, btnId));
+                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, pushAction, btnId));
                 }
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
@@ -295,20 +296,21 @@ public class MixpanelPushNotification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             for (int i = 0; i < data.buttons.size(); i++) {
                 NotificationButtonData btn = data.buttons.get(i);
-                builder.addAction(this.createAction(btn.icon, btn.label, btn.uri, btn.actionId));
+                builder.addAction(this.createAction(btn.icon, btn.label, btn.onTap, btn.actionId));
             }
         }
     }
 
     @TargetApi(20)
-    protected Notification.Action createAction(int icon, CharSequence title, String uri, String actionId) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(uri, actionId))).build();
+    protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId) {
+        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId))).build();
     }
 
-    protected PendingIntent createActionIntent(String uri, String actionId) {
+    protected PendingIntent createActionIntent(PushTapAction onTap, String actionId) {
         Bundle options = new Bundle();
         options.putCharSequence("actionId", actionId);
-        options.putCharSequence("uri", uri);
+        options.putCharSequence("uri", onTap.uri);
+        options.putCharSequence("actionType", onTap.actionType);
         options.putCharSequence("messageId", data.messageId);
         options.putCharSequence("campaignId", data.campaignId);
         options.putInt("notificationId", notificationId);
@@ -523,17 +525,28 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationButtonData {
-        public NotificationButtonData(int anIcon, String aLabel, String aUri, String aId) {
+        public NotificationButtonData(int anIcon, String aLabel, PushTapAction anOnTap, String aId) {
             icon = anIcon;
             label = aLabel;
-            uri = aUri;
+            onTap = anOnTap;
             actionId = aId;
         }
 
         public final int icon;
         public final String label;
-        public final String uri;
+        public final PushTapAction onTap;
         public final String actionId;
+    }
+
+    protected static class PushTapAction {
+        public PushTapAction(String type, String aUri) {
+            actionType = type;
+            uri = aUri;
+        }
+
+
+        public final String actionType;
+        public final String uri;
     }
 
     protected Context context;
