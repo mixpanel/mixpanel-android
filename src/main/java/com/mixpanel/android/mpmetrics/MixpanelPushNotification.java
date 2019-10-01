@@ -61,7 +61,6 @@ public class MixpanelPushNotification {
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
         final String messageId = inboundIntent.getStringExtra("mp_message_id");
         final String extraLogData = inboundIntent.getStringExtra("mp");
-        int color = NotificationData.NOT_SET;
         List<NotificationButtonData> buttons = new ArrayList<>();
         final String badgeCountStr = inboundIntent.getStringExtra("mp_bdgcnt");
         final String channelId = inboundIntent.getStringExtra("mp_channel_id");
@@ -75,6 +74,7 @@ public class MixpanelPushNotification {
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
 
+        int color = NotificationData.NOT_SET;
         if (colorName != null) {
             try {
                 color = Color.parseColor(colorName);
