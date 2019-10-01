@@ -190,7 +190,12 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (this.data == null || this.data.silent) {
+        if (this.data.silent) {
+            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+            return null;
+        }
+
+        if (null == this.data) {
             return null;
         }
 
