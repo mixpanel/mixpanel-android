@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -25,6 +26,7 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -61,7 +63,7 @@ public class MixpanelPushNotification {
         final String extraLogData = inboundIntent.getStringExtra("mp");
         int color = NotificationData.NOT_SET;
         List<NotificationButtonData> buttons = new ArrayList<>();
-        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", NotificationData.NOT_SET);
+        final String badgeCountStr = inboundIntent.getStringExtra("mp_bdgcnt");
         final String channelId = inboundIntent.getStringExtra("mp_channel_id");
         final String notificationTag = inboundIntent.getStringExtra("mp_tag");
         final String groupKey = inboundIntent.getStringExtra("mp_groupkey");
@@ -92,6 +94,11 @@ public class MixpanelPushNotification {
         boolean sticky = false;
         if (null != stickyString && stickyString.equals("true")) {
             sticky = true;
+        }
+
+        int badgeCount = NotificationData.NOT_SET;
+        if (null != badgeCountStr) {
+            badgeCount = Integer.parseInt(badgeCountStr);
         }
 
         int notificationIcon = NotificationData.NOT_SET;
@@ -306,8 +313,20 @@ public class MixpanelPushNotification {
         routingIntent.setClass(context, MixpanelNotificationRouteActivity.class);
         routingIntent.putExtras(options);
         routingIntent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+        verifyIntentPackage(routingIntent);
 
         return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+    }
+
+    protected void verifyIntentPackage(Intent intent) {
+        String appPackage = context.getPackageName() + "/com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity";
+        PackageManager packageManager = context.getPackageManager();
+
+        List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+
+        if (activities.size() == 0) {
+            MPLog.e(LOGTAG, "No activities found to handle Notification Routing Activity");
+        }
     }
 
     protected void maybeSetChannel() {
