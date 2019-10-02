@@ -26,7 +26,6 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -54,6 +53,7 @@ public class MixpanelPushNotification {
         final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
         final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
+        final String onTapStr = inboundIntent.getStringExtra("mp_ontap");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
         CharSequence notificationSubText = inboundIntent.getStringExtra("mp_subtxt");
         final String colorName = inboundIntent.getStringExtra("mp_color");
