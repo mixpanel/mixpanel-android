@@ -19,7 +19,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Intent routeIntent = getIntent();
+        final Intent routeIntent = getIntent();
         Bundle extras = routeIntent.getExtras();
 
         if (null == routeIntent) {
@@ -29,14 +29,31 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
         trackAction(routeIntent);
 
-        Intent notificationIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
+        final Intent notificationIntent = handleRouteIntent(routeIntent);
+
+
         if (!extras.getBoolean("sticky")) {
             cancelNotification(extras);
         }
         startActivity(notificationIntent);
     }
 
-    private void cancelNotification(Bundle extras) {
+    protected Intent handleRouteIntent(Intent routeIntent) {
+        String actionType = routeIntent.getExtras().getCharSequence("actionType").toString();
+
+        if (actionType.equals("browser") || actionType.equals("deeplink")) {
+            return new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
+        } else if (actionType.equals("webview")) {
+            return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
+                    putExtra("uri", routeIntent.getExtras().getCharSequence("uri").toString()).
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        } else {
+            //use homescreen as default if no actionType specified
+            return this.getPackageManager().getLaunchIntentForPackage(this.getPackageName());
+        }
+    }
+
+    protected void cancelNotification(Bundle extras) {
         int notificationId = extras.getInt("notificationId");
         NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
         notificationManager.cancel(notificationId);
