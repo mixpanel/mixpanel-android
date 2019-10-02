@@ -188,8 +188,8 @@ public class MixpanelPushNotification {
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
                 0,
-                data.intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                getRoutingIntent(data.onTap, "notificationClick", "notification"),
+                PendingIntent.FLAG_CANCEL_CURRENT
         );
 
         builder.
@@ -311,26 +311,38 @@ public class MixpanelPushNotification {
 
     @TargetApi(20)
     protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId))).build();
+        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId, title))).build();
     }
 
-    protected PendingIntent createActionIntent(PushTapAction onTap, String actionId) {
+    protected PendingIntent createActionIntent(PushTapAction onTap, String actionId, CharSequence label) {
+        Intent routingIntent = getRoutingIntent(onTap, actionId, label);
+        return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+    }
+
+    protected Intent getRoutingIntent(PushTapAction onTap, String actionId, CharSequence label) {
+        Bundle options = buildBundle(onTap, actionId, label);
+
+        Intent routingIntent = new Intent().
+                setClass(context, MixpanelNotificationRouteActivity.class).
+                putExtras(options).
+                setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+
+        verifyIntentPackage(routingIntent);
+        return routingIntent;
+    }
+
+    protected Bundle buildBundle(PushTapAction onTap, String actionId, CharSequence label) {
         Bundle options = new Bundle();
         options.putCharSequence("actionId", actionId);
-        options.putCharSequence("uri", onTap.uri);
+        options.putCharSequence("label", label);
         options.putCharSequence("actionType", onTap.actionType);
+        options.putCharSequence("uri", onTap.uri);
         options.putCharSequence("messageId", data.messageId);
         options.putCharSequence("campaignId", data.campaignId);
         options.putInt("notificationId", notificationId);
         options.putBoolean("sticky", data.sticky);
 
-        Intent routingIntent = new Intent();
-        routingIntent.setClass(context, MixpanelNotificationRouteActivity.class);
-        routingIntent.putExtras(options);
-        routingIntent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-        verifyIntentPackage(routingIntent);
-
-        return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        return options;
     }
 
     protected void verifyIntentPackage(Intent intent) {
@@ -340,7 +352,7 @@ public class MixpanelPushNotification {
         List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
 
         if (activities.size() == 0) {
-            MPLog.e(LOGTAG, "No activities found to handle Notification Routing Activity");
+            MPLog.e(LOGTAG, "No activities found to handle: " + appPackage);
         }
     }
 
