@@ -26,12 +26,12 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
+    protected final int ROUTING_REQUEST_CODE = 2;
     public NotificationData data;
     public int notificationId;
 
@@ -54,6 +54,7 @@ public class MixpanelPushNotification {
         final String whiteIconName = inboundIntent.getStringExtra("mp_icnm_w");
         final String expandableImageURL = inboundIntent.getStringExtra("mp_img");
         final String uriString = inboundIntent.getStringExtra("mp_cta");
+        final String onTapStr = inboundIntent.getStringExtra("mp_ontap");
         CharSequence notificationTitle = inboundIntent.getStringExtra("mp_title");
         CharSequence notificationSubText = inboundIntent.getStringExtra("mp_subtxt");
         final String colorName = inboundIntent.getStringExtra("mp_color");
@@ -160,28 +161,36 @@ public class MixpanelPushNotification {
             }
         }
 
-        Uri uri = null;
-        if (null != uriString) {
-            uri = Uri.parse(uriString);
-        }
-        final Intent intent;
-        if (null == uri) {
-            intent = getDefaultIntent();
+        PushTapAction onTap;
+        if (null != onTapStr) {
+            try {
+                final JSONObject onTapJSON = new JSONObject(onTapStr);
+                onTap = new PushTapAction(onTapJSON.getString("type"), onTapJSON.getString("uri"));
+            } catch (JSONException e){
+                MPLog.e(LOGTAG, "Couldn't parse JSON Object for \'mp_ontap\'");
+                onTap = null;
+            }
         } else {
-            intent = buildIntentForUri(uri);
+            onTap = null;
         }
 
-        final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
-        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent, campaignId, messageId);
+        if (null == onTap) {
+            if (null == uriString) {
+                onTap = new PushTapAction("homescreen", "");
+            } else {
+                onTap = new PushTapAction("browser", uriString);
+            }
+        }
+
+        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, onTap, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent, campaignId, messageId);
     }
 
     protected void buildNotificationFromData() {
-
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
-                0,
-                data.intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                ROUTING_REQUEST_CODE,
+                getRoutingIntent(data.onTap, "notificationClick", "notification"),
+                PendingIntent.FLAG_CANCEL_CURRENT
         );
 
         builder.
@@ -303,26 +312,38 @@ public class MixpanelPushNotification {
 
     @TargetApi(20)
     protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId))).build();
+        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId, title))).build();
     }
 
-    protected PendingIntent createActionIntent(PushTapAction onTap, String actionId) {
+    protected PendingIntent createActionIntent(PushTapAction onTap, String actionId, CharSequence label) {
+        Intent routingIntent = getRoutingIntent(onTap, actionId, label);
+        return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+    }
+
+    protected Intent getRoutingIntent(PushTapAction onTap, String actionId, CharSequence label) {
+        Bundle options = buildBundle(onTap, actionId, label);
+
+        Intent routingIntent = new Intent().
+                setClass(context, MixpanelNotificationRouteActivity.class).
+                putExtras(options).
+                setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+
+        verifyIntentPackage(routingIntent);
+        return routingIntent;
+    }
+
+    protected Bundle buildBundle(PushTapAction onTap, String actionId, CharSequence label) {
         Bundle options = new Bundle();
         options.putCharSequence("actionId", actionId);
-        options.putCharSequence("uri", onTap.uri);
+        options.putCharSequence("label", label);
         options.putCharSequence("actionType", onTap.actionType);
+        options.putCharSequence("uri", onTap.uri);
         options.putCharSequence("messageId", data.messageId);
         options.putCharSequence("campaignId", data.campaignId);
         options.putInt("notificationId", notificationId);
         options.putBoolean("sticky", data.sticky);
 
-        Intent routingIntent = new Intent();
-        routingIntent.setClass(context, MixpanelNotificationRouteActivity.class);
-        routingIntent.putExtras(options);
-        routingIntent.setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-        verifyIntentPackage(routingIntent);
-
-        return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        return options;
     }
 
     protected void verifyIntentPackage(Intent intent) {
@@ -332,7 +353,7 @@ public class MixpanelPushNotification {
         List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
 
         if (activities.size() == 0) {
-            MPLog.e(LOGTAG, "No activities found to handle Notification Routing Activity");
+            MPLog.e(LOGTAG, "No activities found to handle: " + appPackage);
         }
     }
 
@@ -422,22 +443,6 @@ public class MixpanelPushNotification {
         return new Intent(Intent.ACTION_VIEW, uri);
     }
 
-    protected Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
-        if (null != campaignId) {
-            intent.putExtra("mp_campaign_id", campaignId);
-        }
-
-        if (null != messageId) {
-            intent.putExtra("mp_message_id", messageId);
-        }
-
-        if (null != extraLogData) {
-            intent.putExtra("mp", extraLogData);
-        }
-
-        return intent;
-    }
-
     protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
         if (null != campaignId && null != messageId) {
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
@@ -472,7 +477,7 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationData {
-        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility, boolean isSilent, String aCampaignId, String aMessageId) {
+        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, PushTapAction anOnTap, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility, boolean isSilent, String aCampaignId, String aMessageId) {
             icon = anIcon;
             largeIcon = aLargeIcon;
             whiteIcon = aWhiteIcon;
@@ -480,7 +485,7 @@ public class MixpanelPushNotification {
             title = aTitle;
             subText = aSubText;
             message = aMessage;
-            intent = anIntent;
+            onTap = anOnTap;
             color = aColor;
             buttons = aButtons;
             badgeCount = aBadgeCount;
@@ -504,7 +509,7 @@ public class MixpanelPushNotification {
         public final CharSequence title;
         public final CharSequence subText;
         public final String message;
-        public final Intent intent;
+        public final PushTapAction onTap;
         public final int color;
         public final List<NotificationButtonData> buttons;
         public final int badgeCount;
