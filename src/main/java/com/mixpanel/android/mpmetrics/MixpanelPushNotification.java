@@ -31,6 +31,7 @@ import java.util.Random;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
+    protected final int ROUTING_REQUEST_CODE = 1;
     public NotificationData data;
     public int notificationId;
 
@@ -316,7 +317,7 @@ public class MixpanelPushNotification {
 
     protected PendingIntent createActionIntent(PushTapAction onTap, String actionId, CharSequence label) {
         Intent routingIntent = getRoutingIntent(onTap, actionId, label);
-        return PendingIntent.getActivity(context, 0, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        return PendingIntent.getActivity(context, ROUTING_REQUEST_CODE, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
     }
 
     protected Intent getRoutingIntent(PushTapAction onTap, String actionId, CharSequence label) {
