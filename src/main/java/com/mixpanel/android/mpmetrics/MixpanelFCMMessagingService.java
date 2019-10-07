@@ -181,5 +181,4 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             }
         });
     }
-
 }
