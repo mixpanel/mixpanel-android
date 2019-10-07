@@ -22,13 +22,23 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
     public NotificationData data;
+
+    static final String DATETIME_NO_TZ = "yyyy-MM-dd'T'HH:mm:ss";
+    static final String DATETIME_WITH_TZ = "yyyy-MM-dd'T'HH:mm:ssz";
+    static final String DATETIME_ZULU_TZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
     public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
         this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
@@ -185,12 +195,12 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (this.data.silent) {
-            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+        if (null == this.data) {
             return null;
         }
 
-        if (null == this.data) {
+        if (this.data.silent) {
+            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
             return null;
         }
 
@@ -323,14 +333,41 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetTime() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             builder.setShowWhen(true);
-            if (data.timeString == null) {
-                builder.setWhen(now);
-            } else {
-                Instant instant = Instant.parse(data.timeString);
-                builder.setWhen(instant.toEpochMilli());
+        }
+
+        if (data.timeString == null) {
+            builder.setWhen(now);
+        } else {
+            Date dt = parseDateTime(DATETIME_WITH_TZ, data.timeString);
+
+            if (null == dt) {
+                dt = parseDateTime(DATETIME_ZULU_TZ, data.timeString);
             }
+
+            if (null == dt) {
+                dt = parseDateTime(DATETIME_NO_TZ, data.timeString);
+            }
+
+            if (null == dt) {
+                MPLog.d(LOGTAG,"Unable to parse date string into datetime: " + data.timeString);
+            } else {
+                builder.setWhen(dt.getTime());
+            }
+
+        }
+    }
+
+    private Date parseDateTime(String format, String datetime) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
+            if (format.equals(DATETIME_ZULU_TZ)) {
+                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            }
+            return sdf.parse(datetime);
+        } catch (ParseException e) {
+            return null;
         }
     }
 
