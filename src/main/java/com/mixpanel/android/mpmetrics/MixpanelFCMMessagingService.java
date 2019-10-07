@@ -77,6 +77,7 @@ import com.mixpanel.android.util.MPLog;
  */
 public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     private static final String LOGTAG = "MixpanelAPI.MixpanelFCMMessagingService";
+    private static final int NOTIFICATION_ID = 1;
 
     /* package */ static void init() {
         FirebaseInstanceId.getInstance().getInstanceId()
@@ -144,7 +145,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (null != mixpanelPushNotification.data.tag) {
-                notificationManager.notify(mixpanelPushNotification.data.tag, 0, notification);
+                notificationManager.notify(mixpanelPushNotification.data.tag, NOTIFICATION_ID, notification);
             } else {
                 notificationManager.notify(mixpanelPushNotification.notificationId, notification);
             }
@@ -180,5 +181,4 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             }
         });
     }
-
 }

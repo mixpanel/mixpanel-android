@@ -19,7 +19,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Intent routeIntent = getIntent();
+        final Intent routeIntent = getIntent();
         Bundle extras = routeIntent.getExtras();
 
         if (null == routeIntent) {
@@ -29,14 +29,31 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
         trackAction(routeIntent);
 
-        Intent notificationIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
+        final Intent notificationIntent = handleRouteIntent(routeIntent);
+
+
         if (!extras.getBoolean("sticky")) {
             cancelNotification(extras);
         }
         startActivity(notificationIntent);
     }
 
-    private void cancelNotification(Bundle extras) {
+    protected Intent handleRouteIntent(Intent routeIntent) {
+        String actionType = routeIntent.getExtras().getCharSequence("actionType").toString();
+
+        if (actionType.equals("browser") || actionType.equals("deeplink")) {
+            return new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
+        } else if (actionType.equals("webview")) {
+            return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
+                    putExtra("uri", routeIntent.getExtras().getCharSequence("uri").toString()).
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        } else {
+            //use homescreen as default if no actionType specified
+            return this.getPackageManager().getLaunchIntentForPackage(this.getPackageName());
+        }
+    }
+
+    protected void cancelNotification(Bundle extras) {
         int notificationId = extras.getInt("notificationId");
         NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
         notificationManager.cancel(notificationId);
@@ -70,7 +87,8 @@ public class MixpanelNotificationRouteActivity extends Activity {
         }
 
         final String actionId = actionIdChars.toString();
-        final String uri = uriChars.toString();
+        final String actionType = actionTypeChars.toString();
+        final String label = labelChars.toString();
         final String messageId = messageIdChars.toString();
         final String campaignId = campaignIdChars.toString();
 
@@ -78,16 +96,22 @@ public class MixpanelNotificationRouteActivity extends Activity {
             @Override
             public void process(MixpanelAPI api) {
                 JSONObject pushProps = new JSONObject();
-
+                String tapTarget;
                 try {
-                    pushProps.put("actionId", actionId);
-                    pushProps.put("uri", uri);
-                    pushProps.put("messageId", messageId);
-                    pushProps.put("campaignId", campaignId);
+                    if (actionId.equals("notificationClick")) {
+                        pushProps.put("tap_target", "notification");
+                    } else {
+                        pushProps.put("tap_target", "button");
+                        pushProps.put("button_id", actionId);
+                        pushProps.put("button_label", label);
+                    }
+
+                    pushProps.put("message_id", messageId);
+                    pushProps.put("campaign_id", campaignId);
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                 }
-                api.track("Notification Action Click", pushProps);
+                api.track("$push_notification_tap", pushProps);
             }
         });
     }
