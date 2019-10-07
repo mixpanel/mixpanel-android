@@ -28,6 +28,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Routing activity to introduce mixpanel tracking to notification actions
+ *
+ * <p>This class acts as a liaison between a notification's actions and the
+ * handling of that action by Android so that we can make tracking calls to
+ * the Mixpanel API.
+ *
+ * <p>To enable this activity in your apps you must add the activity in the
+ * Android Manifest XML file for that project.
+ *
+ *<pre>
+ *{@code
+ *
+ *<activity android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity">
+ *    <intent-filter>
+ *        <action android:name="android.intent.action.VIEW"/>
+ *    </intent-filter>
+ *</activity>
+ *}
+ *</pre>
+ */
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
     protected final int ROUTING_REQUEST_CODE = 1;
@@ -337,6 +358,20 @@ public class MixpanelPushNotification {
     }
 
     protected Bundle buildBundle(PushTapAction onTap, String actionId, CharSequence label) {
+    /**
+     * Util method to let subclasses customize the payload through the push notification intent.
+     *
+     * Creates an intent to start the routing activity with a bundle describing the new intent
+     * the routing activity should launch.
+     *
+     * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
+     * in Android.
+     *
+     * @param uri The target uri for the notification action
+     * @param actionId The actionId for the notification action - either for
+     *                 a button or the general notification
+     *
+     */
         Bundle options = new Bundle();
         options.putCharSequence("actionId", actionId);
         options.putCharSequence("label", label);
