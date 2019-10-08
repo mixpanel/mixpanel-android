@@ -23,7 +23,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -57,9 +56,7 @@ public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
     protected final static String TAP_TARGET_BUTTON = "button";
     protected final static String TAP_TARGET_NOTIFICATION = "notification";
-    // use non-zero request code for pending intents that start the MixpanelNotificationRouteActivity
-    // not sure why this behaves this way
-    protected final int ROUTING_REQUEST_CODE = 1;
+    protected final int ROUTING_REQUEST_CODE = (int) System.currentTimeMillis();
     public NotificationData data;
     public int notificationId;
 
@@ -76,7 +73,7 @@ public class MixpanelPushNotification {
         this.builder = builder;
         this.drawableIds = drawableIds;
         this.now = now;
-        this.notificationId = (int)System.currentTimeMillis();
+        this.notificationId = (int) System.currentTimeMillis();
     }
 
     protected void parseIntent(Intent inboundIntent) {
@@ -171,7 +168,7 @@ public class MixpanelPushNotification {
     protected void buildNotificationFromData() {
         final PendingIntent contentIntent = PendingIntent.getActivity(
                 context,
-                0,
+                ROUTING_REQUEST_CODE,
                 getRoutingIntent(data.onTap),
                 PendingIntent.FLAG_CANCEL_CURRENT
         );
@@ -292,7 +289,7 @@ public class MixpanelPushNotification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             for (int i = 0; i < data.buttons.size(); i++) {
                 NotificationButtonData btn = data.buttons.get(i);
-                builder.addAction(this.createAction(btn.icon, btn.label, btn.onTap, btn.buttonId));
+                builder.addAction(this.createAction(btn.icon, btn.label, btn.onTap, btn.buttonId, i + 1));
             }
         }
     }
@@ -365,13 +362,13 @@ public class MixpanelPushNotification {
     }
 
     @TargetApi(20)
-    protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId, title))).build();
+    protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId, int index) {
+        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId, title, index))).build();
     }
 
-    protected PendingIntent createActionIntent(PushTapAction onTap, String buttonId, CharSequence label) {
+    protected PendingIntent createActionIntent(PushTapAction onTap, String buttonId, CharSequence label, int index) {
         Intent routingIntent = getRoutingIntent(onTap, buttonId, label);
-        return PendingIntent.getActivity(context, ROUTING_REQUEST_CODE, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        return PendingIntent.getActivity(context, ROUTING_REQUEST_CODE + index, routingIntent, PendingIntent.FLAG_CANCEL_CURRENT);
     }
 
     protected Intent getRoutingIntent(PushTapAction onTap, String buttonId, CharSequence label) {
