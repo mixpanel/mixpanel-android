@@ -40,7 +40,12 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
         now = System.currentTimeMillis();
         builderSpy = spy(new Notification.Builder(getContext()));
-        mpPushSpy = spy(new MixpanelPushNotification(context, builderSpy, getTestResources(), now));
+        mpPushSpy = spy(new MixpanelPushNotification(context, builderSpy, now) {
+            @Override
+            protected ResourceIds getResourceIds(Context context) {
+                return getTestResources();
+            }
+        });
 
         when(mpPushSpy.getDefaultTitle()).thenReturn(DEFAULT_TITLE);
         when(mpPushSpy.getDefaultIcon()).thenReturn(DEFAULT_ICON_ID);
@@ -49,7 +54,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
     public void testNotificationEmptyIntent() {
         mpPushSpy.parseIntent(new Intent());
-        assertNull(mpPushSpy.data);
+        assertNull(mpPushSpy.getData());
     }
 
     public void testBasicNotification() {
@@ -286,8 +291,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
             Notification notification = mpPushSpy.createNotification(intent);
-            verify(builderSpy).setChannelId(MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
-            assertEquals(notification.getChannelId(), MixpanelPushNotification.NotificationData.DEFAULT_CHANNEL_ID);
+            verify(builderSpy).setChannelId(MixpanelNotificationData.DEFAULT_CHANNEL_ID);
+            assertEquals(notification.getChannelId(), MixpanelNotificationData.DEFAULT_CHANNEL_ID);
         }
     }
 
