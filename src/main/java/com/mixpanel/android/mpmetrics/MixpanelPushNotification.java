@@ -23,6 +23,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -93,7 +94,6 @@ public class MixpanelPushNotification {
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
         final String messageId = inboundIntent.getStringExtra("mp_message_id");
         final String extraLogData = inboundIntent.getStringExtra("mp");
-        List<NotificationButtonData> buttons = new ArrayList<>();
         final String badgeCountStr = inboundIntent.getStringExtra("mp_bdgcnt");
         final String channelId = inboundIntent.getStringExtra("mp_channel_id");
         final String notificationTag = inboundIntent.getStringExtra("mp_tag");
@@ -156,13 +156,13 @@ public class MixpanelPushNotification {
         boolean isSilent = null != silent && silent.equals("true");
         boolean sticky = null != stickyString && stickyString.equals("true");
 
-        buildButtons(buttons, buttonsJsonStr);
+        List<NotificationButtonData> buttons = buildButtons(buttonsJsonStr);
         PushTapAction onTap = buildOnTap(onTapStr);
         if (null == onTap) {
             onTap = buildOnTapFromURI(uriString);
         }
         if (null == onTap) {
-            onTap = new PushTapAction(PushTapTarget.HOMESCREEN);
+            onTap = getDefaultOnTap();
         }
 
         this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, onTap, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent, campaignId, messageId);
@@ -297,7 +297,8 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected void buildButtons(List<NotificationButtonData> buttons, String buttonsJsonStr) {
+    protected List<NotificationButtonData> buildButtons(String buttonsJsonStr) {
+        List<NotificationButtonData> buttons = new ArrayList<>();
         if (null != buttonsJsonStr) {
             try {
                 JSONArray buttonsArr = new JSONArray(buttonsJsonStr);
@@ -330,6 +331,8 @@ public class MixpanelPushNotification {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
             }
         }
+
+        return buttons;
     }
 
     protected PushTapAction buildOnTap(String onTapStr) {
@@ -355,6 +358,10 @@ public class MixpanelPushNotification {
         }
 
         return onTap;
+    }
+
+    protected PushTapAction getDefaultOnTap() {
+        return new PushTapAction(PushTapTarget.HOMESCREEN);
     }
 
     @TargetApi(20)
