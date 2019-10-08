@@ -45,7 +45,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
             MPLog.d(LOGTAG, "Notification action click logged with no action type");
             target = PushTapTarget.HOMESCREEN;
         } else {
-            target = PushTapTarget.valueOf(actionTypeChars.toString());
+            target = PushTapTarget.fromString(actionTypeChars.toString());
         }
 
         CharSequence uri = routeIntent.getExtras().getCharSequence("uri");
