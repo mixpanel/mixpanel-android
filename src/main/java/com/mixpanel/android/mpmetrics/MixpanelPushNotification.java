@@ -23,10 +23,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.time.Instant;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.Random;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Routing activity to introduce mixpanel tracking to notification actions
@@ -59,6 +62,10 @@ public class MixpanelPushNotification {
     public NotificationData data;
     public int notificationId;
 
+    static final String DATETIME_NO_TZ = "yyyy-MM-dd'T'HH:mm:ss";
+    static final String DATETIME_WITH_TZ = "yyyy-MM-dd'T'HH:mm:ssz";
+    static final String DATETIME_ZULU_TZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+
     public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
         this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
     }
@@ -68,7 +75,7 @@ public class MixpanelPushNotification {
         this.builder = builder;
         this.drawableIds = drawableIds;
         this.now = now;
-        this.notificationId = new Random().nextInt(Integer.MAX_VALUE);
+        this.notificationId = (int)System.currentTimeMillis();
     }
 
     protected void parseIntent(Intent inboundIntent) {
@@ -170,7 +177,6 @@ public class MixpanelPushNotification {
         );
 
         builder.
-                setDefaults(MPConfig.getInstance(context).getNotificationDefaults()).
                 setContentTitle(data.title).
                 setContentText(data.message).
                 setTicker(null == data.ticker ? data.message : data.ticker).
@@ -191,7 +197,12 @@ public class MixpanelPushNotification {
     protected Notification createNotification(Intent inboundIntent) {
         this.parseIntent(inboundIntent);
 
-        if (null == this.data || this.data.silent) {
+        if (null == this.data) {
+            return null;
+        }
+
+        if (this.data.silent) {
+            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
             return null;
         }
 
@@ -459,6 +470,8 @@ public class MixpanelPushNotification {
             mNotificationManager.createNotificationChannel(channel);
 
             builder.setChannelId(channelId);
+        } else {
+            builder.setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
         }
     }
 
@@ -469,14 +482,41 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetTime() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             builder.setShowWhen(true);
-            if (null == data.timeString) {
-                builder.setWhen(now);
-            } else {
-                Instant instant = Instant.parse(data.timeString);
-                builder.setWhen(instant.toEpochMilli());
+        }
+
+        if (data.timeString == null) {
+            builder.setWhen(now);
+        } else {
+            Date dt = parseDateTime(DATETIME_WITH_TZ, data.timeString);
+
+            if (null == dt) {
+                dt = parseDateTime(DATETIME_ZULU_TZ, data.timeString);
             }
+
+            if (null == dt) {
+                dt = parseDateTime(DATETIME_NO_TZ, data.timeString);
+            }
+
+            if (null == dt) {
+                MPLog.d(LOGTAG,"Unable to parse date string into datetime: " + data.timeString);
+            } else {
+                builder.setWhen(dt.getTime());
+            }
+
+        }
+    }
+
+    private Date parseDateTime(String format, String datetime) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
+            if (format.equals(DATETIME_ZULU_TZ)) {
+                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            }
+            return sdf.parse(datetime);
+        } catch (ParseException e) {
+            return null;
         }
     }
 

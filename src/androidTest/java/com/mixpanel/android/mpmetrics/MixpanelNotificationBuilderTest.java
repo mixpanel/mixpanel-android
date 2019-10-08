@@ -14,9 +14,9 @@ import org.mockito.ArgumentMatcher;
 
 import static org.mockito.Mockito.*;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
@@ -57,7 +57,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_title", "TITLE");
         mpPushSpy.createNotification(intent);
 
-        verify(builderSpy).setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
         verify(builderSpy).setShowWhen(true);
         verify(builderSpy).setWhen(now);
         verify(builderSpy).setContentTitle("TITLE");
@@ -296,7 +295,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
             intent.putExtra("mp_subtxt", "SUBTEXT");
-            Notification notification = mpPushSpy.createNotification(intent);
+            mpPushSpy.createNotification(intent);
             verify(builderSpy).setSubText("SUBTEXT");
         }
     }
@@ -305,7 +304,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
-            Notification notification = mpPushSpy.createNotification(intent);
+            mpPushSpy.createNotification(intent);
             verify(builderSpy, never()).setSubText(any(String.class));
         }
     }
@@ -314,14 +313,14 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
         intent.putExtra("mp_ticker", "TICK");
-        Notification notification = mpPushSpy.createNotification(intent);
+        mpPushSpy.createNotification(intent);
         verify(builderSpy).setTicker("TICK");
     }
 
     public void testNoTicker() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");
-        Notification notification = mpPushSpy.createNotification(intent);
+        mpPushSpy.createNotification(intent);
         verify(builderSpy).setTicker("MESSAGE");
     }
 
@@ -343,23 +342,56 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testTimestamp() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            final Intent intent = new Intent();
-            intent.putExtra("mp_message", "MESSAGE");
-            intent.putExtra("mp_time", "2014-10-02T15:01:23.045123456Z");
-            Notification notification = mpPushSpy.createNotification(intent);
-            Instant instant = Instant.parse("2014-10-02T15:01:23.045123456Z");
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_time", "2014-10-02T15:01:23+0000");
+
+        mpPushSpy.createNotification(intent);
+
+        verify(builderSpy).setWhen(1412262083000L);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             verify(builderSpy).setShowWhen(true);
-            verify(builderSpy).setWhen(instant.toEpochMilli());
         }
     }
 
+    public void testTimestampUTC() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_time", "2014-10-02T15:01:23+0000");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setWhen(1412262083000L);
+    }
+
+    public void testTimestampZulu() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_time", "2014-10-02T15:01:23Z");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setWhen(1412262083000L);
+    }
+
+    public void testTimestampCentral() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_time", "2014-10-02T15:01:23-0500");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setWhen(1412280083000L);
+    }
+
+    public void testTimestampUserLocal() {
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
+        intent.putExtra("mp_time", "2014-10-02T15:01:23");
+        mpPushSpy.createNotification(intent);
+        verify(builderSpy).setWhen(1412287283000L);
+    }
+
     public void testNoTimestamp() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            final Intent intent = new Intent();
-            intent.putExtra("mp_message", "MESSAGE");
-            verify(builderSpy, never()).setWhen(any(Long.class));
-        }
+        final Intent intent = new Intent();
+        intent.putExtra("mp_message", "MESSAGE");
+        verify(builderSpy, never()).setWhen(any(Long.class));
     }
 
     public void testVisibility() {
