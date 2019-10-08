@@ -33,26 +33,58 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public class MixpanelPushNotification {
-    protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
-    public NotificationData data;
+    private final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
 
-    static final String DATETIME_NO_TZ = "yyyy-MM-dd'T'HH:mm:ss";
-    static final String DATETIME_WITH_TZ = "yyyy-MM-dd'T'HH:mm:ssz";
-    static final String DATETIME_ZULU_TZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+    private static final String DATETIME_NO_TZ = "yyyy-MM-dd'T'HH:mm:ss";
+    private static final String DATETIME_WITH_TZ = "yyyy-MM-dd'T'HH:mm:ssz";
+    private static final String DATETIME_ZULU_TZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+    private Context mContext;
+    private ResourceIds mDrawableIds;
+    private Notification.Builder mBuilder;
+    private long mNow;
+    private MixpanelNotificationData mData;
 
-    public MixpanelPushNotification(Context context, ResourceIds drawableIds) {
-        this(context, new Notification.Builder(context), drawableIds, System.currentTimeMillis());
+    public MixpanelPushNotification(Context context) {
+        this(context, new Notification.Builder(context), System.currentTimeMillis());
     }
 
-    public MixpanelPushNotification(Context context, Notification.Builder builder, ResourceIds drawableIds, long now) {
-        this.context = context;
-        this.builder = builder;
-        this.drawableIds = drawableIds;
-        this.now = now;
+    public MixpanelPushNotification(Context context, Notification.Builder builder, long now) {
+        this.mContext = context;
+        this.mBuilder = builder;
+        this.mDrawableIds = getResourceIds(context);
+        this.mNow = now;
     }
 
-    protected void parseIntent(Intent inboundIntent) {
+    /* package */ Notification createNotification(Intent inboundIntent) {
+        parseIntent(inboundIntent);
 
+        if (this.mData == null) {
+            return null;
+        }
+
+        if (this.mData.isSilent()) {
+            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+            return null;
+        }
+
+        buildNotificationFromData();
+
+        Notification n;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            n = mBuilder.build();
+        } else {
+            n = mBuilder.getNotification();
+        }
+
+        if (!mData.isSticky()) {
+            n.flags |= Notification.FLAG_AUTO_CANCEL;
+        }
+
+        return n;
+    }
+
+    /* package */ void parseIntent(Intent inboundIntent) {
+        List<MixpanelNotificationData.MixpanelNotificationButtonData> buttons = new ArrayList<>();
         final String message = inboundIntent.getStringExtra("mp_message");
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
@@ -66,9 +98,7 @@ public class MixpanelPushNotification {
         final String campaignId = inboundIntent.getStringExtra("mp_campaign_id");
         final String messageId = inboundIntent.getStringExtra("mp_message_id");
         final String extraLogData = inboundIntent.getStringExtra("mp");
-        int color = NotificationData.NOT_SET;
-        List<NotificationButtonData> buttons = new ArrayList<>();
-        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", NotificationData.NOT_SET);
+        final int badgeCount = inboundIntent.getIntExtra("mp_bdgcnt", MixpanelNotificationData.NOT_SET);
         final String channelId = inboundIntent.getStringExtra("mp_channel_id");
         final String notificationTag = inboundIntent.getStringExtra("mp_tag");
         final String groupKey = inboundIntent.getStringExtra("mp_groupkey");
@@ -78,107 +108,127 @@ public class MixpanelPushNotification {
         final int visibility = inboundIntent.getIntExtra("mp_visibility", Notification.VISIBILITY_PRIVATE);
         final String silent = inboundIntent.getStringExtra("mp_silent");
 
-
         trackCampaignReceived(campaignId, messageId, extraLogData);
-
-        if (colorName != null) {
-            try {
-                color = Color.parseColor(colorName);
-            } catch (IllegalArgumentException e) {}
-        }
 
         if (message == null) {
             return;
         }
 
+        mData = new MixpanelNotificationData();
+        mData.setMessage(message);
+        mData.setLargeIconName(largeIconName);
+        mData.setExpandableImageUrl(expandableImageURL);
+        mData.setBadgeCount(badgeCount);
+        mData.setTag(notificationTag);
+        mData.setGroupKey(groupKey);
+        mData.setTicker(ticker);
+        mData.setTimeString(timeString);
+        mData.setVisibility(visibility);
+
+        if (channelId != null) {
+            mData.setChannelId(channelId);
+        }
+
+        int color = MixpanelNotificationData.NOT_SET;
+        if (colorName != null) {
+            try {
+                color = Color.parseColor(colorName);
+            } catch (IllegalArgumentException e) {}
+        }
+        mData.setColor(color);
+
         if (notificationSubText != null && notificationSubText.length() == 0) {
             notificationSubText = null;
         }
+        mData.setSubText(notificationSubText);
 
         boolean isSilent = silent != null && silent.equals("true");
+        mData.setSilent(isSilent);
+
         boolean sticky = stickyString != null && stickyString.equals("true");
+        mData.setSticky(sticky);
 
-        int notificationIcon = NotificationData.NOT_SET;
-        if (null != iconName) {
-            if (drawableIds.knownIdName(iconName)) {
-                notificationIcon = drawableIds.idFromName(iconName);
+        int notificationIcon = MixpanelNotificationData.NOT_SET;
+        if (iconName != null) {
+            if (mDrawableIds.knownIdName(iconName)) {
+                notificationIcon = mDrawableIds.idFromName(iconName);
             }
         }
-
-        int whiteNotificationIcon = NotificationData.NOT_SET;
-        if (null != whiteIconName) {
-            if (drawableIds.knownIdName(whiteIconName)) {
-                whiteNotificationIcon = drawableIds.idFromName(whiteIconName);
-            }
-        }
-
-        if (notificationIcon == NotificationData.NOT_SET) {
+        if (notificationIcon == MixpanelNotificationData.NOT_SET) {
             notificationIcon = getDefaultIcon();
         }
+        mData.setIcon(notificationIcon);
 
-        if (null == notificationTitle) {
+        int whiteNotificationIcon = MixpanelNotificationData.NOT_SET;
+        if (whiteIconName != null) {
+            if (mDrawableIds.knownIdName(whiteIconName)) {
+                whiteNotificationIcon = mDrawableIds.idFromName(whiteIconName);
+            }
+        }
+        mData.setWhiteIcon(whiteNotificationIcon);
+
+        if (notificationTitle == null || notificationTitle.length() == 0) {
             notificationTitle = getDefaultTitle();
         }
+        mData.setTitle(notificationTitle);
 
-        if (null != buttonsJsonStr) {
+        if (buttonsJsonStr != null) {
             try {
                 JSONArray buttonsArr = new JSONArray(buttonsJsonStr);
                 for (int i = 0; i < buttonsArr.length(); i++) {
+                    MixpanelNotificationData.MixpanelNotificationButtonData buttonData;
+                    buttonData = new MixpanelNotificationData.MixpanelNotificationButtonData();
                     JSONObject buttonObj = buttonsArr.getJSONObject(i);
 
-                    // get button icon from name if one sent
-                    int btnIcon = NotificationData.NOT_SET;
+                    int btnIcon = MixpanelNotificationData.NOT_SET;
                     if (buttonObj.has("icnm")) {
                         String btnIconName = buttonObj.getString("icnm");
-                        if (drawableIds.knownIdName(btnIconName)) {
-                            btnIcon = drawableIds.idFromName(btnIconName);
+                        if (mDrawableIds.knownIdName(btnIconName)) {
+                            btnIcon = mDrawableIds.idFromName(btnIconName);
                         }
                     }
+                    buttonData.setIcon(btnIcon);
 
-                    // handle button label
                     final String btnLabel = buttonObj.getString("lbl");
-
-                    // handle button action
+                    buttonData.setLabel(btnLabel);
                     final String btnUri = buttonObj.getString("uri");
-
-                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, btnUri));
+                    buttonData.setUri(btnUri);
+                    buttons.add(buttonData);
                 }
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
             }
         }
+        mData.setButtons(buttons);
 
         Uri uri = null;
-        if (null != uriString) {
+        if (uriString != null) {
             uri = Uri.parse(uriString);
         }
         final Intent intent;
-        if (null == uri) {
+        if (uri == null) {
             intent = getDefaultIntent();
         } else {
             intent = buildIntentForUri(uri);
         }
 
         final Intent notificationIntent = buildNotificationIntent(intent, campaignId, messageId, extraLogData);
-
-        this.data = new NotificationData(notificationIcon, largeIconName, whiteNotificationIcon, expandableImageURL, notificationTitle, notificationSubText, message, notificationIntent, color, buttons, badgeCount, channelId, notificationTag, groupKey, ticker, sticky, timeString, visibility, isSilent);
+        mData.setIntent(notificationIntent);
     }
 
     protected void buildNotificationFromData() {
-
         final PendingIntent contentIntent = PendingIntent.getActivity(
-                context,
+                mContext,
                 0,
-                data.intent,
+                mData.getIntent(),
                 PendingIntent.FLAG_UPDATE_CURRENT
         );
 
-        builder.
-                setContentTitle(data.title).
-                setContentText(data.message).
-                setTicker(data.ticker == null ? data.message : data.ticker).
+        mBuilder.
+                setContentTitle(mData.getTitle()).
+                setContentText(mData.getMessage()).
+                setTicker(mData.getTicker()== null ? mData.getMessage() : mData.getTicker()).
                 setContentIntent(contentIntent);
-
 
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
@@ -192,117 +242,88 @@ public class MixpanelPushNotification {
         maybeSetSubText();
     }
 
-    protected Notification createNotification(Intent inboundIntent) {
-        this.parseIntent(inboundIntent);
-
-        if (null == this.data) {
-            return null;
-        }
-
-        if (this.data.silent) {
-            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
-            return null;
-        }
-
-        this.buildNotificationFromData();
-
-        final Notification n = builderToNotification();
-
-        if (!data.sticky) {
-            n.flags |= Notification.FLAG_AUTO_CANCEL;
-        }
-
-        return n;
-    }
-
     protected void maybeSetSubText() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && null != data.subText) {
-            builder.setSubText(data.subText);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && mData.getSubText() != null) {
+            mBuilder.setSubText(mData.getSubText());
         }
     }
 
     protected void maybeSetNotificationBarIcon() {
         // For Android 5.0+ (Lollipop), any non-transparent pixels are turned white, so users generally specify
         // icons for these devices and regular full-color icons for older devices.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && data.whiteIcon != NotificationData.NOT_SET) {
-            builder.setSmallIcon(data.whiteIcon);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mData.getWhiteIcon() != MixpanelNotificationData.NOT_SET) {
+            mBuilder.setSmallIcon(mData.getWhiteIcon());
         } else {
-            builder.setSmallIcon(data.icon);
+            mBuilder.setSmallIcon(mData.getIcon());
         }
     }
 
     protected void maybeSetLargeIcon() {
-        if (null != data.largeIcon) {
-            if (drawableIds.knownIdName(data.largeIcon)) {
-                builder.setLargeIcon(getBitmapFromResourceId(drawableIds.idFromName(data.largeIcon)));
-            } else if (data.largeIcon.startsWith("http")) {
-                Bitmap imageBitmap = getBitmapFromUrl(data.largeIcon);
+        if (mData.getLargeIconName() != null) {
+            if (mDrawableIds.knownIdName(mData.getLargeIconName())) {
+                mBuilder.setLargeIcon(getBitmapFromResourceId(mDrawableIds.idFromName(mData.getLargeIconName())));
+            } else if (mData.getLargeIconName().startsWith("http")) {
+                Bitmap imageBitmap = getBitmapFromUrl(mData.getLargeIconName());
                 if (imageBitmap != null) {
-                    builder.setLargeIcon(imageBitmap);
+                    mBuilder.setLargeIcon(imageBitmap);
                 }
             } else {
-                MPLog.d(LOGTAG, "large icon data was sent but did match a resource name or a valid url: " + data.largeIcon);
+                MPLog.d(LOGTAG, "large icon data was sent but did match a resource name or a valid url: " + mData.getLargeIconName());
             }
         }
     }
 
     protected void maybeSetExpandableNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            if (null != data.expandableImageUrl && data.expandableImageUrl.startsWith("http")) {
+            if (null != mData.getExpandableImageUrl() && mData.getExpandableImageUrl().startsWith("http")) {
                 try {
-                    Bitmap imageBitmap = getBitmapFromUrl(data.expandableImageUrl);
-
+                    Bitmap imageBitmap = getBitmapFromUrl(mData.getExpandableImageUrl());
                     if (imageBitmap == null) {
-                        setBigTextStyle(data.message);
+                        setBigTextStyle(mData.getMessage());
                     } else {
                         setBigPictureStyle(imageBitmap);
                     }
                 } catch (Exception e) {
-                    setBigTextStyle(data.message);
+                    setBigTextStyle(mData.getMessage());
                 }
             } else {
-                setBigTextStyle(data.message);
+                setBigTextStyle(mData.getMessage());
             }
         }
     }
 
     protected void setBigTextStyle(String message) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            builder.setStyle(new Notification.BigTextStyle().bigText(message));
+            mBuilder.setStyle(new Notification.BigTextStyle().bigText(message));
         }
     }
 
     protected void setBigPictureStyle(Bitmap imageBitmap) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            builder.setStyle(new Notification.BigPictureStyle().bigPicture(imageBitmap));
+            mBuilder.setStyle(new Notification.BigPictureStyle().bigPicture(imageBitmap));
         }
     }
 
     protected void maybeSetCustomIconColor() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (data.color != NotificationData.NOT_SET) {
-                builder.setColor(data.color);
+            if (mData.getColor() != MixpanelNotificationData.NOT_SET) {
+                mBuilder.setColor(mData.getColor());
             }
         }
     }
 
     protected void maybeAddActionButtons() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
-            for (int i = 0; i < data.buttons.size(); i++) {
-                NotificationButtonData btn = data.buttons.get(i);
-                builder.addAction(this.createAction(btn.icon, btn.label, btn.uri));
+            for (int i = 0; i < mData.getButtons().size(); i++) {
+                MixpanelNotificationData.MixpanelNotificationButtonData btn = mData.getButtons().get(i);
+                mBuilder.addAction(this.createAction(btn.getIcon(), btn.getLabel(), btn.getUri()));
             }
         }
     }
 
-    @TargetApi(20)
-    protected Notification.Action createAction(int icon, CharSequence title, String uri) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(uri))).build();
-    }
-
-    protected PendingIntent createActionIntent(String uri) {
+    private PendingIntent createActionIntent(String uri) {
         return PendingIntent.getActivity(
-                context,
+                mContext,
                 0,
                 new Intent(Intent.ACTION_VIEW, Uri.parse(uri)),
                 PendingIntent.FLAG_UPDATE_CURRENT
@@ -312,96 +333,62 @@ public class MixpanelPushNotification {
     protected void maybeSetChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mNotificationManager =
-                    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                    (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
 
-            String channelId = data.channelId == null ? MPConfig.getInstance(context).getNotificationChannelId() : data.channelId;
-            String channelName = MPConfig.getInstance(context).getNotificationChannelName();
+            String channelId = mData.getChannelId() == null ? MPConfig.getInstance(mContext).getNotificationChannelId() : mData.getChannelId();
+            String channelName = MPConfig.getInstance(mContext).getNotificationChannelName();
 
             NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
             mNotificationManager.createNotificationChannel(channel);
 
-            builder.setChannelId(channelId);
+            mBuilder.setChannelId(channelId);
         } else {
-            builder.setDefaults(MPConfig.getInstance(context).getNotificationDefaults());
+            mBuilder.setDefaults(MPConfig.getInstance(mContext).getNotificationDefaults());
         }
     }
 
     protected void maybeSetNotificationBadge() {
-        if (data.badgeCount > 0) {
-            builder.setNumber(data.badgeCount);
+        if (mData.getBadgeCount() > 0) {
+            mBuilder.setNumber(mData.getBadgeCount());
         }
     }
 
     protected void maybeSetTime() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            builder.setShowWhen(true);
+            mBuilder.setShowWhen(true);
         }
 
-        if (data.timeString == null) {
-            builder.setWhen(now);
+        if (mData.getTimeString() == null) {
+            mBuilder.setWhen(mNow);
         } else {
-            Date dt = parseDateTime(DATETIME_WITH_TZ, data.timeString);
+            Date dt = parseDateTime(DATETIME_WITH_TZ, mData.getTimeString());
 
             if (null == dt) {
-                dt = parseDateTime(DATETIME_ZULU_TZ, data.timeString);
+                dt = parseDateTime(DATETIME_ZULU_TZ, mData.getTimeString());
             }
 
             if (null == dt) {
-                dt = parseDateTime(DATETIME_NO_TZ, data.timeString);
+                dt = parseDateTime(DATETIME_NO_TZ, mData.getTimeString());
             }
 
             if (null == dt) {
-                MPLog.d(LOGTAG,"Unable to parse date string into datetime: " + data.timeString);
+                MPLog.d(LOGTAG,"Unable to parse date string into datetime: " + mData.getTimeString());
             } else {
-                builder.setWhen(dt.getTime());
+                mBuilder.setWhen(dt.getTime());
             }
-
-        }
-    }
-
-    private Date parseDateTime(String format, String datetime) {
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
-            if (format.equals(DATETIME_ZULU_TZ)) {
-                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-            }
-            return sdf.parse(datetime);
-        } catch (ParseException e) {
-            return null;
         }
     }
 
     protected void maybeSetVisibility() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder.setVisibility(data.visibility);
-        }
-    }
-
-    protected Bitmap getBitmapFromResourceId(int resourceId) {
-        return BitmapFactory.decodeResource(context.getResources(), resourceId);
-    }
-
-    protected Bitmap getBitmapFromUrl(String url) {
-        ImageStore is = new ImageStore(context, "MixpanelPushNotification");
-        try {
-            return is.getImage(url);
-        } catch (ImageStore.CantGetImageException e) {
-            return null;
-        }
-    }
-
-    protected ApplicationInfo getAppInfo() {
-        try {
-            return context.getPackageManager().getApplicationInfo(context.getPackageName(), 0);
-        } catch (final PackageManager.NameNotFoundException e) {
-            return null;
+            mBuilder.setVisibility(mData.getVisibility());
         }
     }
 
     protected CharSequence getDefaultTitle() {
         ApplicationInfo appInfo = getAppInfo();
         if (null != appInfo) {
-            return context.getPackageManager().getApplicationLabel(appInfo);
+            return mContext.getPackageManager().getApplicationLabel(appInfo);
         } else {
             return "A message for you";
         }
@@ -414,30 +401,6 @@ public class MixpanelPushNotification {
         } else {
             return android.R.drawable.sym_def_app_icon;
         }
-    }
-
-    protected Intent getDefaultIntent() {
-        return context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-    }
-
-    protected Intent buildIntentForUri(Uri uri) {
-        return new Intent(Intent.ACTION_VIEW, uri);
-    }
-
-    protected Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
-        if (campaignId != null) {
-            intent.putExtra("mp_campaign_id", campaignId);
-        }
-
-        if (messageId != null) {
-            intent.putExtra("mp_message_id", messageId);
-        }
-
-        if (extraLogData != null) {
-            intent.putExtra("mp", extraLogData);
-        }
-
-        return intent;
     }
 
     protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
@@ -465,77 +428,78 @@ public class MixpanelPushNotification {
         }
     }
 
-    protected Notification builderToNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            return builder.build();
-        } else {
-            return builder.getNotification();
+    private Date parseDateTime(String format, String datetime) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat(format, Locale.US);
+            if (format.equals(DATETIME_ZULU_TZ)) {
+                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            }
+            return sdf.parse(datetime);
+        } catch (ParseException e) {
+            return null;
         }
     }
 
-    protected static class NotificationData {
-        protected NotificationData(int anIcon, String aLargeIcon, int aWhiteIcon, String anExpandableImageUrl, CharSequence aTitle, CharSequence aSubText, String aMessage, Intent anIntent, int aColor, List<NotificationButtonData> aButtons, int aBadgeCount, String aChannelId, String aNotificationTag, String aGroupKey, String aTicker, boolean aSticky, String aTimeString, int aVisibility, boolean isSilent) {
-            icon = anIcon;
-            largeIcon = aLargeIcon;
-            whiteIcon = aWhiteIcon;
-            expandableImageUrl = anExpandableImageUrl;
-            title = aTitle;
-            subText = aSubText;
-            message = aMessage;
-            intent = anIntent;
-            color = aColor;
-            buttons = aButtons;
-            badgeCount = aBadgeCount;
-            channelId = aChannelId == null ? NotificationData.DEFAULT_CHANNEL_ID : aChannelId;
-            tag = aNotificationTag;
-            groupKey = aGroupKey;
-            ticker = aTicker;
-            sticky = aSticky;
-            timeString = aTimeString;
-            visibility = aVisibility;
-            silent = isSilent;
-
+    private ApplicationInfo getAppInfo() {
+        try {
+            return mContext.getPackageManager().getApplicationInfo(mContext.getPackageName(), 0);
+        } catch (final PackageManager.NameNotFoundException e) {
+            return null;
         }
-
-        public final int icon;
-        public final String largeIcon;
-        public final int whiteIcon;
-        public final String expandableImageUrl;
-        public final CharSequence title;
-        public final CharSequence subText;
-        public final String message;
-        public final Intent intent;
-        public final int color;
-        public final List<NotificationButtonData> buttons;
-        public final int badgeCount;
-        public final String channelId;
-        public final String tag;
-        public final String groupKey;
-        public final String ticker;
-        public final boolean sticky;
-        public final String timeString;
-        public final int visibility;
-        public final boolean silent;
-
-        public static final int NOT_SET = -1;
-        public static final String DEFAULT_CHANNEL_ID = "mp";
-
     }
 
-    protected static class NotificationButtonData {
-        public NotificationButtonData(int anIcon, String aLabel, String aUri) {
-            icon = anIcon;
-            label = aLabel;
-            uri = aUri;
+    /* package */ Intent buildNotificationIntent(Intent intent, String campaignId, String messageId, String extraLogData) {
+        if (campaignId != null) {
+            intent.putExtra("mp_campaign_id", campaignId);
         }
 
-        public final int icon;
-        public final String label;
-        public final String uri;
+        if (messageId != null) {
+            intent.putExtra("mp_message_id", messageId);
+        }
+
+        if (extraLogData != null) {
+            intent.putExtra("mp", extraLogData);
+        }
+
+        return intent;
     }
 
-    protected Context context;
-    protected Notification.Builder builder;
-    protected ResourceIds drawableIds;
-    protected long now;
+    /* package */ Intent getDefaultIntent() {
+        return mContext.getPackageManager().getLaunchIntentForPackage(mContext.getPackageName());
+    }
+
+    /* package */ Intent buildIntentForUri(Uri uri) {
+        return new Intent(Intent.ACTION_VIEW, uri);
+    }
+
+    /* package */ MixpanelNotificationData getData() {
+        return mData;
+    }
+
+    /* package */ Bitmap getBitmapFromResourceId(int resourceId) {
+        return BitmapFactory.decodeResource(mContext.getResources(), resourceId);
+    }
+
+    @TargetApi(20)
+    /* package */ Notification.Action createAction(int icon, CharSequence title, String uri) {
+        return (new Notification.Action.Builder(icon, title, createActionIntent(uri))).build();
+    }
+
+    /* package */ Bitmap getBitmapFromUrl(String url) {
+        ImageStore is = new ImageStore(mContext, "MixpanelPushNotification");
+        try {
+            return is.getImage(url);
+        } catch (ImageStore.CantGetImageException e) {
+            return null;
+        }
+    }
+
+    /* package */ ResourceIds getResourceIds(Context context) {
+        final MPConfig config = MPConfig.getInstance(context);
+        String resourcePackage = config.getResourcePackageName();
+        if (null == resourcePackage) {
+            resourcePackage = context.getPackageName();
+        }
+        return new ResourceReader.Drawables(resourcePackage, context);
+    }
 }

@@ -122,56 +122,6 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     /**
      * Only use this method if you have implemented your own custom FirebaseMessagingService. This
      * is useful when you use multiple push providers.
-     * Displays a Mixpanel push notification on the device.
-     *
-     * @param context The application context you are tracking
-     * @param messageIntent Intent that bundles the data used to build a notification. If the intent
-     *                      is not valid, the notification will not be shown.
-     *                      See {@link #showPushNotification(Context, Intent)}
-     */
-    public static void showPushNotification(Context context, Intent messageIntent) {
-        final MPConfig config = MPConfig.getInstance(context);
-        String resourcePackage = config.getResourcePackageName();
-        if (null == resourcePackage) {
-            resourcePackage = context.getPackageName();
-        }
-
-        final ResourceIds drawableIds = new ResourceReader.Drawables(resourcePackage, context);
-        final Context applicationContext = context.getApplicationContext();
-
-        MixpanelPushNotification mixpanelPushNotification = createMixpanelPushNotification(applicationContext, drawableIds);
-        Notification notification = mixpanelPushNotification.createNotification(messageIntent);
-
-        MPLog.d(LOGTAG, "MP FCM notification received: " + mixpanelPushNotification.data.message);
-
-        if (null != notification) {
-            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            final int id = new Random().nextInt(Integer.MAX_VALUE);
-            if (mixpanelPushNotification.data.tag != null) {
-                //Use 0 as id so that we can reference notification solely by tag
-                notificationManager.notify(mixpanelPushNotification.data.tag, 0, notification);
-            } else {
-                notificationManager.notify(id, notification);
-            }
-        }
-    }
-
-    /**
-     * Create an instance of MixpanelPushNotification used to construct a Notification using data from the intent.
-     * Developers can subclass MixpanelPushNotification to customize how push notifications are built and
-     * override this method to use their subclass.
-     *
-     * @param context
-     * @param drawableIds
-     * @return
-     */
-    protected static MixpanelPushNotification createMixpanelPushNotification(Context context, ResourceIds drawableIds) {
-        return new MixpanelPushNotification(context, drawableIds);
-    }
-
-    /**
-     * Only use this method if you have implemented your own custom FirebaseMessagingService. This
-     * is useful when you use multiple push providers.
      * This method should be called from a onNewToken callback. It adds a new FCM token to a Mixpanel
      * people profile.
      *
@@ -186,4 +136,47 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         });
     }
 
+    /**
+     * Only use this method if you have implemented your own custom FirebaseMessagingService. This
+     * is useful when you use multiple push providers.
+     * Displays a Mixpanel push notification on the device.
+     *
+     * @param context The application context you are tracking
+     * @param messageIntent Intent that bundles the data used to build a notification. If the intent
+     *                      is not valid, the notification will not be shown.
+     *                      See {@link #showPushNotification(Context, Intent)}
+     */
+    public static void showPushNotification(Context context, Intent messageIntent) {
+        MixpanelPushNotification mixpanelPushNotification = new MixpanelPushNotification(context.getApplicationContext());
+        showPushNotification(context, messageIntent, mixpanelPushNotification);
+    }
+
+    /**
+     * Only use this method if you have implemented your own custom FirebaseMessagingService. This is
+     * useful if you need to override {@link MixpanelPushNotification} to further customize your
+     * Mixpanel push notification.
+     * Displays a Mixpanel push notification on the device.
+     *
+     * @param context The application context you are tracking
+     * @param messageIntent Intent that bundles the data used to build a notification. If the intent
+     *                      is not valid, the notification will not be shown.
+     *                      See {@link #showPushNotification(Context, Intent)}
+     * @param mixpanelPushNotification A customized MixpanelPushNotification object.
+     */
+    public static void showPushNotification(Context context, Intent messageIntent, MixpanelPushNotification mixpanelPushNotification) {
+        Notification notification = mixpanelPushNotification.createNotification(messageIntent);
+
+        MPLog.d(LOGTAG, "MP FCM notification received: " + mixpanelPushNotification.getData().getMessage());
+
+        if (null != notification) {
+            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            final int id = new Random().nextInt(Integer.MAX_VALUE);
+            if (mixpanelPushNotification.getData().getTag() != null) {
+                //Use 0 as id so that we can reference notification solely by tag
+                notificationManager.notify(mixpanelPushNotification.getData().getTag(), 0, notification);
+            } else {
+                notificationManager.notify(id, notification);
+            }
+        }
+    }
 }
