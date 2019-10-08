@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.mpmetrics.MixpanelPushNotification.PushTapTarget;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,7 +32,6 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
         final Intent notificationIntent = handleRouteIntent(routeIntent);
 
-
         if (!extras.getBoolean("sticky")) {
             cancelNotification(extras);
         }
@@ -39,18 +39,47 @@ public class MixpanelNotificationRouteActivity extends Activity {
     }
 
     protected Intent handleRouteIntent(Intent routeIntent) {
-        String actionType = routeIntent.getExtras().getCharSequence("actionType").toString();
-
-        if (actionType.equals("browser") || actionType.equals("deeplink")) {
-            return new Intent(Intent.ACTION_VIEW, Uri.parse(routeIntent.getExtras().getCharSequence("uri").toString()));
-        } else if (actionType.equals("webview")) {
-            return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
-                    putExtra("uri", routeIntent.getExtras().getCharSequence("uri").toString()).
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        CharSequence actionTypeChars = routeIntent.getExtras().getCharSequence("actionType");
+        PushTapTarget target;
+        if (null == actionTypeChars) {
+            MPLog.d(LOGTAG, "Notification action click logged with no action type");
+            target = PushTapTarget.HOMESCREEN;
         } else {
-            //use homescreen as default if no actionType specified
-            return this.getPackageManager().getLaunchIntentForPackage(this.getPackageName());
+            target = PushTapTarget.valueOf(actionTypeChars.toString());
         }
+
+        CharSequence uri = routeIntent.getExtras().getCharSequence("uri");
+
+        final Intent defaultIntent = this.getPackageManager().getLaunchIntentForPackage(this.getPackageName());
+
+        switch (target) {
+            case HOMESCREEN:
+                return defaultIntent;
+            case URL_IN_BROWSER:
+                if (isValidURL(uri.toString())) {
+                    return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
+                } else {
+                    MPLog.d(LOGTAG, "Wanted to open url in browser but url is invalid: " + uri.toString() + ". Starting default intent");
+                    return defaultIntent;
+                }
+            case URL_IN_WEBVIEW:
+                if (isValidURL(uri.toString())) {
+                    return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
+                            putExtra("uri", uri.toString()).
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                } else {
+                    MPLog.d(LOGTAG, "Wanted to open url in webview but url is invalid: " + uri.toString() + ". Starting default intent");
+                    return defaultIntent;
+                }
+            case DEEP_LINK:
+                return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
+            default:
+                return defaultIntent;
+        }
+    }
+
+    protected boolean isValidURL(CharSequence url) {
+        return null != url && url.toString().startsWith("http");
     }
 
     protected void cancelNotification(Bundle extras) {
@@ -62,33 +91,48 @@ public class MixpanelNotificationRouteActivity extends Activity {
     protected void trackAction(Intent routeIntent) {
         Bundle intentExtras = routeIntent.getExtras();
 
-        CharSequence actionIdChars = intentExtras.getCharSequence("actionId");
-        if (null == actionIdChars) {
-            MPLog.d(LOGTAG, "Notification action click logged with no actionId.");
+        CharSequence tapTargetChars = intentExtras.getCharSequence("tapTarget");
+        if (null == tapTargetChars) {
+            MPLog.d(LOGTAG, "Notification action click logged with no tapTarget");
             return;
         }
 
-        CharSequence uriChars = intentExtras.getCharSequence("uri");
-        if (null == uriChars) {
-            MPLog.d(LOGTAG, "Notification action click logged with no uri.");
-            return;
+        final String tapTarget = tapTargetChars.toString();
+        final String buttonId;
+        final String label;
+
+        if (tapTarget.equals(MixpanelPushNotification.TAP_TARGET_BUTTON)) {
+            CharSequence buttonIdChars = intentExtras.getCharSequence("buttonId");
+            if (null == buttonIdChars) {
+                MPLog.d(LOGTAG, "Notification action click logged with no buttonId");
+                return;
+            }
+
+            CharSequence labelChars = intentExtras.getCharSequence("label");
+            if (null == labelChars) {
+                MPLog.d(LOGTAG, "Notification action click logged with no label");
+                return;
+            }
+
+            buttonId = buttonIdChars.toString();
+            label = labelChars.toString();
+        } else {
+            buttonId = null;
+            label = null;
         }
 
         CharSequence messageIdChars = intentExtras.getCharSequence("messageId");
         if (null == messageIdChars) {
-            MPLog.d(LOGTAG, "Notification action click logged with no messageId.");
+            MPLog.d(LOGTAG, "Notification action click logged with no messageId");
             return;
         }
 
         CharSequence campaignIdChars = intentExtras.getCharSequence("campaignId");
         if (null == campaignIdChars) {
-            MPLog.d(LOGTAG, "Notification action click logged with no campaignId.");
+            MPLog.d(LOGTAG, "Notification action click logged with no campaignId");
             return;
         }
 
-        final String actionId = actionIdChars.toString();
-        final String actionType = actionTypeChars.toString();
-        final String label = labelChars.toString();
         final String messageId = messageIdChars.toString();
         final String campaignId = campaignIdChars.toString();
 
@@ -96,16 +140,12 @@ public class MixpanelNotificationRouteActivity extends Activity {
             @Override
             public void process(MixpanelAPI api) {
                 JSONObject pushProps = new JSONObject();
-                String tapTarget;
                 try {
-                    if (actionId.equals("notificationClick")) {
-                        pushProps.put("tap_target", "notification");
-                    } else {
-                        pushProps.put("tap_target", "button");
-                        pushProps.put("button_id", actionId);
+                    pushProps.put("tap_target", tapTarget);
+                    if (tapTarget.equals(MixpanelPushNotification.TAP_TARGET_BUTTON)) {
+                        pushProps.put("button_id", buttonId);
                         pushProps.put("button_label", label);
                     }
-
                     pushProps.put("message_id", messageId);
                     pushProps.put("campaign_id", campaignId);
                 } catch (JSONException e) {
