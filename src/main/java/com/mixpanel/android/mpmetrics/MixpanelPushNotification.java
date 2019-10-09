@@ -24,9 +24,7 @@ import org.json.JSONObject;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -63,7 +61,17 @@ public class MixpanelPushNotification {
         }
 
         if (this.mData.isSilent()) {
-            MPLog.i(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+            MPLog.d(LOGTAG, "Notification will not be shown because \'mp_silent = true\'");
+            return null;
+        }
+
+        if (this.mData.getMessage() == null) {
+            MPLog.d(LOGTAG, "Notification will not be shown because 'mp_message' was null");
+            return null;
+        }
+
+        if (this.mData.getMessage().equals("")) {
+            MPLog.d(LOGTAG, "Notification will not be shown because 'mp_message' was empty");
             return null;
         }
 
@@ -109,10 +117,6 @@ public class MixpanelPushNotification {
         final String silent = inboundIntent.getStringExtra("mp_silent");
 
         trackCampaignReceived(campaignId, messageId, extraLogData);
-
-        if (message == null) {
-            return;
-        }
 
         mData = new MixpanelNotificationData();
         mData.setMessage(message);
