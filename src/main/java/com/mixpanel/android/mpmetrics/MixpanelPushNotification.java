@@ -337,7 +337,13 @@ public class MixpanelPushNotification {
         if (null != onTapStr) {
             try {
                 final JSONObject onTapJSON = new JSONObject(onTapStr);
-                onTap = new PushTapAction(PushTapTarget.fromString(onTapJSON.getString("type")), onTapJSON.getString("uri"));
+                final String uriFromJSON = onTapJSON.getString("uri");
+                if (uriFromJSON != null) {
+                    onTap = new PushTapAction(PushTapTarget.fromString(onTapJSON.getString("type")), uriFromJSON);
+                } else {
+                    onTap = new PushTapAction(PushTapTarget.fromString(onTapJSON.getString("type")));
+                }
+
             } catch (JSONException e){
                 MPLog.d(LOGTAG, "Couldn't parse JSON Object for \'mp_ontap\'");
                 onTap = null;
