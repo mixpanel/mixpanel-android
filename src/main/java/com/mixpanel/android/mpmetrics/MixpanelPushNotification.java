@@ -317,7 +317,13 @@ public class MixpanelPushNotification {
                     // handle button action
                     final JSONObject pushActionJSON = buttonObj.getJSONObject("ontap");
                     final PushTapTarget target = PushTapTarget.fromString(pushActionJSON.getString("type"));
-                    final PushTapAction pushAction = new PushTapAction(target, pushActionJSON.getString("uri"));
+                    final PushTapAction pushAction;
+
+                    if (target == PushTapTarget.HOMESCREEN) {
+                        pushAction = new PushTapAction(target);
+                    } else {
+                        pushAction = new PushTapAction(target, pushActionJSON.getString("uri"));
+                    }
 
                     //handle button id
                     final String btnId = buttonObj.getString("id");
