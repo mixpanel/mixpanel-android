@@ -166,7 +166,9 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     public static void showPushNotification(Context context, Intent messageIntent, MixpanelPushNotification mixpanelPushNotification) {
         Notification notification = mixpanelPushNotification.createNotification(messageIntent);
 
-        MPLog.d(LOGTAG, "MP FCM notification received: " + mixpanelPushNotification.getData().getMessage());
+        MixpanelNotificationData data = mixpanelPushNotification.getData();
+        String message = data == null ? "null" : data.getMessage();
+        MPLog.d(LOGTAG, "MP FCM notification received: " + message);
 
         if (null != notification) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
