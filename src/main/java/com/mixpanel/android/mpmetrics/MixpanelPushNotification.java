@@ -337,11 +337,13 @@ public class MixpanelPushNotification {
         if (null != onTapStr) {
             try {
                 final JSONObject onTapJSON = new JSONObject(onTapStr);
-                final String uriFromJSON = onTapJSON.getString("uri");
-                if (uriFromJSON != null) {
-                    onTap = new PushTapAction(PushTapTarget.fromString(onTapJSON.getString("type")), uriFromJSON);
+                final String typeFromJSON = onTapJSON.getString("type");
+
+                if (!typeFromJSON.equals(PushTapTarget.HOMESCREEN.getTarget())) {
+                    final String uriFromJSON = onTapJSON.getString("uri");
+                    onTap = new PushTapAction(PushTapTarget.fromString(typeFromJSON), uriFromJSON);
                 } else {
-                    onTap = new PushTapAction(PushTapTarget.fromString(onTapJSON.getString("type")));
+                    onTap = new PushTapAction(PushTapTarget.fromString(typeFromJSON));
                 }
 
             } catch (JSONException e){
