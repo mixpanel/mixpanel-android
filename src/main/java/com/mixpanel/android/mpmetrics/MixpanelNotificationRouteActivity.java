@@ -109,17 +109,15 @@ public class MixpanelNotificationRouteActivity extends Activity {
             CharSequence buttonIdChars = intentExtras.getCharSequence("buttonId");
             if (null == buttonIdChars) {
                 MPLog.d(LOGTAG, "Notification action click logged with no buttonId");
-                return;
             }
 
             CharSequence labelChars = intentExtras.getCharSequence("label");
             if (null == labelChars) {
                 MPLog.d(LOGTAG, "Notification action click logged with no label");
-                return;
             }
 
-            buttonId = buttonIdChars.toString();
-            label = labelChars.toString();
+            buttonId = buttonIdChars == null ? null : buttonIdChars.toString();
+            label = labelChars == null ? null : labelChars.toString();
         } else {
             buttonId = null;
             label = null;
@@ -128,17 +126,15 @@ public class MixpanelNotificationRouteActivity extends Activity {
         CharSequence messageIdChars = intentExtras.getCharSequence("messageId");
         if (null == messageIdChars) {
             MPLog.d(LOGTAG, "Notification action click logged with no messageId");
-            return;
         }
 
         CharSequence campaignIdChars = intentExtras.getCharSequence("campaignId");
         if (null == campaignIdChars) {
             MPLog.d(LOGTAG, "Notification action click logged with no campaignId");
-            return;
         }
 
-        final String messageId = messageIdChars.toString();
-        final String campaignId = campaignIdChars.toString();
+        final String messageId = messageIdChars == null ? null : messageIdChars.toString();
+        final String campaignId = campaignIdChars == null ? null : campaignIdChars.toString();
 
         MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
             @Override
