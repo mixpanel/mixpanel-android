@@ -56,14 +56,14 @@ public class MixpanelNotificationRouteActivity extends Activity {
             case HOMESCREEN:
                 return defaultIntent;
             case URL_IN_BROWSER:
-                if (isValidURL(uri.toString(), PushTapTarget.URL_IN_BROWSER)) {
+                if (isValidURL(uri.toString(), false)) {
                     return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
                 } else {
                     MPLog.d(LOGTAG, "Wanted to open url in browser but url is invalid: " + uri.toString() + ". Starting default intent");
                     return defaultIntent;
                 }
             case URL_IN_WEBVIEW:
-                if (isValidURL(uri.toString(), PushTapTarget.URL_IN_WEBVIEW)) {
+                if (isValidURL(uri.toString(), true)) {
                     return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
                             putExtra("uri", uri.toString()).
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -78,8 +78,8 @@ public class MixpanelNotificationRouteActivity extends Activity {
         }
     }
 
-    protected boolean isValidURL(CharSequence url, PushTapTarget target) {
-        if (target == PushTapTarget.URL_IN_WEBVIEW) {
+    protected boolean isValidURL(CharSequence url, boolean requireHttps) {
+        if (requireHttps) {
             return null != url && url.toString().startsWith("https");
         } else {
             return null != url && url.toString().startsWith("http");
