@@ -10,7 +10,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.viewcrawler.GestureTracker;
 
 import org.json.JSONException;

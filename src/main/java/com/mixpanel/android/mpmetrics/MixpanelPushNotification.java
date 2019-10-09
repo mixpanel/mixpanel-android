@@ -37,20 +37,6 @@ import java.util.TimeZone;
  * <p>This class acts as a liaison between a notification's actions and the
  * handling of that action by Android so that we can make tracking calls to
  * the Mixpanel API.
- *
- * <p>To enable this activity in your apps you must add the activity in the
- * Android Manifest XML file for that project.
- *
- *<pre>
- *{@code
- *
- *<activity android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity">
- *    <intent-filter>
- *        <action android:name="android.intent.action.VIEW"/>
- *    </intent-filter>
- *</activity>
- *}
- *</pre>
  */
 public class MixpanelPushNotification {
     protected final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
@@ -124,7 +110,9 @@ public class MixpanelPushNotification {
         if (null != colorName) {
             try {
                 color = Color.parseColor(colorName);
-            } catch (IllegalArgumentException e) {}
+            } catch (IllegalArgumentException e) {
+                MPLog.d(LOGTAG, "Could not parse color given: " + colorName);
+            }
         }
 
         int badgeCount = NotificationData.NOT_SET;
@@ -315,15 +303,7 @@ public class MixpanelPushNotification {
                     final String btnLabel = buttonObj.getString("lbl");
 
                     // handle button action
-                    final JSONObject pushActionJSON = buttonObj.getJSONObject("ontap");
-                    final PushTapTarget target = PushTapTarget.fromString(pushActionJSON.getString("type"));
-                    final PushTapAction pushAction;
-
-                    if (target == PushTapTarget.HOMESCREEN) {
-                        pushAction = new PushTapAction(target);
-                    } else {
-                        pushAction = new PushTapAction(target, pushActionJSON.getString("uri"));
-                    }
+                    final PushTapAction pushAction = buildOnTap(buttonObj.getString("ontap"));
 
                     //handle button id
                     final String btnId = buttonObj.getString("id");
@@ -353,7 +333,7 @@ public class MixpanelPushNotification {
                 }
 
             } catch (JSONException e){
-                MPLog.d(LOGTAG, "Couldn't parse JSON Object for \'mp_ontap\'");
+                MPLog.d(LOGTAG, "Exception occurred while parsing ontap");
                 onTap = null;
             }
         }
@@ -419,9 +399,7 @@ public class MixpanelPushNotification {
          * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
          * in Android.
          *
-         * @param uri The target uri for the notification action
-         * @param actionId The actionId for the notification action - either for
-         *                 a button or the general notification
+         * @param onTap The PushTapAction for the intent this bundle is a member of
          *
          */
         Bundle options = new Bundle();
@@ -446,22 +424,15 @@ public class MixpanelPushNotification {
      * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
      * in Android.
      *
-     * @param uri The target uri for the notification action
-     * @param actionId The actionId for the notification action - either for
-     *                 a button or the general notification
+     * @param onTap The PushTapAction for the intent this bundle is a member of
+     * @param buttonId The buttonId for the Notification action this bundle will be a member of
+     * @param buttonLabel The label for the button that will appear in the notification which
+     *                    this bundle will me a member of
      *
      */
-        Bundle options = new Bundle();
-        options.putCharSequence("tapTarget", TAP_TARGET_BUTTON);
+        Bundle options = buildBundle(onTap);
         options.putCharSequence("buttonId", buttonId);
         options.putCharSequence("label", buttonLabel);
-        options.putCharSequence("actionType", onTap.actionType.getTarget());
-        options.putCharSequence("uri", onTap.uri);
-        options.putCharSequence("messageId", data.messageId);
-        options.putCharSequence("campaignId", data.campaignId);
-        options.putInt("notificationId", notificationId);
-        options.putBoolean("sticky", data.sticky);
-
         return options;
     }
 

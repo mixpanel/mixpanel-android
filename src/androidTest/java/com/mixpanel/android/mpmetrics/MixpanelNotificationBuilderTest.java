@@ -208,11 +208,11 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_cta", "http://mixpanel.com");
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("browser"), "http://mixpanel.com");
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
 
         mpPushSpy.createNotification(intent);
         verify(mpPushSpy).buildOnTap(null);
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
     }
 
     public void testCTAWithCampaignMetadata() {
@@ -224,10 +224,10 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_cta", "http://mixpanel.com");
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("browser"), "http://mixpanel.com");
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
     }
 
     public void testNoCTA() {
@@ -235,12 +235,12 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("homescreen"));
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(null);
         verify(mpPushSpy).buildOnTapFromURI(null);
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
     }
 
     public void testOnTapHomescreen() {
@@ -250,15 +250,15 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_ontap", onTap);
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("homescreen"));
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(onTap);
         verify(mpPushSpy, never()).buildOnTapFromURI(nullable(String.class));
         verify(mpPushSpy, never()).getDefaultOnTap();
         verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
-        verify(mpPushSpy).buildBundle(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
     }
 
     public void testOnTapBrowser() {
@@ -268,15 +268,15 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_ontap", onTap);
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("browser"), "http://mixpanel.com");
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(onTap);
         verify(mpPushSpy, never()).buildOnTapFromURI(nullable(String.class));
         verify(mpPushSpy, never()).getDefaultOnTap();
         verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
-        verify(mpPushSpy).buildBundle(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
     }
 
     public void testOnTapWebview() {
@@ -286,15 +286,15 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_ontap", onTap);
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("webview"), "http://mixpanel.com");
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(onTap);
         verify(mpPushSpy, never()).buildOnTapFromURI(nullable(String.class));
         verify(mpPushSpy, never()).getDefaultOnTap();
         verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
-        verify(mpPushSpy).buildBundle(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
     }
 
     public void testOnTapDeeplink() {
@@ -304,15 +304,15 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_ontap", onTap);
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("deeplink"), "my-app://action2");
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(onTap);
         verify(mpPushSpy, never()).buildOnTapFromURI(nullable(String.class));
         verify(mpPushSpy, never()).getDefaultOnTap();
         verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
-        verify(mpPushSpy).buildBundle(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
     }
 
     public void testNoOnTap() {
@@ -320,15 +320,15 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         intent.putExtra("mp_message", "MESSAGE");
 
         MixpanelPushNotification.PushTapAction fakeOnTap = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.fromString("homescreen"));
-        PushTapActionMatcher matcher = new PushTapActionMatcher(fakeOnTap);
+        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(null);
         verify(mpPushSpy).buildOnTapFromURI(null);
         verify(mpPushSpy).getDefaultOnTap();
         verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matcher));
-        verify(mpPushSpy).buildBundle(argThat(matcher));
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
     }
 
     public void testActionButtons() {
