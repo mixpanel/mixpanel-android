@@ -174,7 +174,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             final int id = new Random().nextInt(Integer.MAX_VALUE);
             if (mixpanelPushNotification.getData().getTag() != null) {
-                //Use 0 as id so that we can reference notification solely by tag
+                // Use 0 as id so that we can reference notification solely by tag
                 notificationManager.notify(mixpanelPushNotification.getData().getTag(), 0, notification);
             } else {
                 notificationManager.notify(id, notification);

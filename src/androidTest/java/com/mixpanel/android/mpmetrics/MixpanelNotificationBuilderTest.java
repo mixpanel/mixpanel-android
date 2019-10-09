@@ -52,8 +52,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     public void testNotificationEmptyIntent() {
-        mpPushSpy.parseIntent(new Intent());
-        assertNull(mpPushSpy.getData());
+        Notification notification = mpPushSpy.createNotification(new Intent());
+        assertNull(notification);
     }
 
     public void testBasicNotification() {
