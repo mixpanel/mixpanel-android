@@ -373,23 +373,23 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             mpPushSpy.createNotification(intent);
 
             PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap1);
-            verify(mpPushSpy, atLeastOnce()).createAction(fakeButtonList.get(0).icon, fakeButtonList.get(0).label, fakeButtonList.get(0).onTap, fakeButtonList.get(0).buttonId, 1);
-            verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap), eq(fakeButtonList.get(0).buttonId), eq(fakeButtonList.get(0).label));
-            verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap), eq(fakeButtonList.get(0).buttonId), eq(fakeButtonList.get(0).label));
+            verifyButtonAction(matchesFakeOnTap, fakeButtonList.get(0), 1);
 
             matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap2);
-            verify(mpPushSpy, atLeastOnce()).createAction(fakeButtonList.get(1).icon, fakeButtonList.get(1).label, fakeButtonList.get(1).onTap, fakeButtonList.get(1).buttonId, 2);
-            verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap), eq(fakeButtonList.get(1).buttonId), eq(fakeButtonList.get(1).label));
-            verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap), eq(fakeButtonList.get(1).buttonId), eq(fakeButtonList.get(1).label));
+            verifyButtonAction(matchesFakeOnTap, fakeButtonList.get(1), 2);
 
             matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap3);
-            verify(mpPushSpy, atLeastOnce()).createAction(fakeButtonList.get(2).icon, fakeButtonList.get(2).label, fakeButtonList.get(2).onTap, fakeButtonList.get(2).buttonId, 3);
-            verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap), eq(fakeButtonList.get(2).buttonId), eq(fakeButtonList.get(2).label));
-            verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap), eq(fakeButtonList.get(2).buttonId), eq(fakeButtonList.get(2).label));
+            verifyButtonAction(matchesFakeOnTap, fakeButtonList.get(2), 3);
 
             verify(builderSpy, times(3)).addAction(any(Notification.Action.class));
             verify(mpPushSpy, times(4)).buildBundle(any(MixpanelPushNotification.PushTapAction.class));
         }
+    }
+
+    private void verifyButtonAction(PushTapActionMatcher matchesFakeOnTap, MixpanelPushNotification.NotificationButtonData buttonData, int index) {
+        verify(mpPushSpy, atLeastOnce()).createAction(buttonData.icon, buttonData.label, buttonData.onTap, buttonData.buttonId, index);
+        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap), eq(buttonData.buttonId), eq(buttonData.label));
+        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap), eq(buttonData.buttonId), eq(buttonData.label));
     }
 
     public void testNoActionButtons() {
