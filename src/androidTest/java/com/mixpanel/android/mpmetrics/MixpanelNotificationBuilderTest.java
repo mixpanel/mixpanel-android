@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.test.AndroidTestCase;
@@ -30,7 +29,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     private final String INVALID_RESOURCE_NAME = "NOT A VALID RESOURCE";
     private final String DEFAULT_TITLE = "DEFAULT TITLE";
     private final int DEFAULT_ICON_ID = android.R.drawable.sym_def_app_icon;
-    private final Intent DEFAULT_INTENT = new Intent(Intent.ACTION_BUG_REPORT); // ACTION_BUG_REPORT is chosen because it's identifiably weird
     private Context context;
 
     @Override
@@ -561,19 +559,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             verify(builderSpy).setVisibility(Notification.VISIBILITY_PRIVATE);
             assertEquals(notification.visibility, 0);
         }
-    }
-
-    private static final class URIMatcher implements ArgumentMatcher<Uri> {
-        public URIMatcher(String expectedUri) {
-            this.expectedUri = expectedUri;
-        }
-
-        @Override
-        public boolean matches(Uri uri) {
-            return uri.toString().equals(expectedUri);
-        }
-
-        String expectedUri;
     }
 
     private static final class PushTapActionMatcher implements ArgumentMatcher<MixpanelPushNotification.PushTapAction> {
