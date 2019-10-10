@@ -547,8 +547,9 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
             intent.putExtra("mp_visibility", Integer.toString(Notification.VISIBILITY_SECRET));
-            mpPushSpy.createNotification(intent);
+            Notification notification = mpPushSpy.createNotification(intent);
             verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
+            assertEquals(notification.visibility, -1);
         }
     }
 
@@ -558,6 +559,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
             intent.putExtra("mp_message", "MESSAGE");
             Notification notification = mpPushSpy.createNotification(intent);
             verify(builderSpy).setVisibility(Notification.VISIBILITY_PRIVATE);
+            assertEquals(notification.visibility, 0);
         }
     }
 
