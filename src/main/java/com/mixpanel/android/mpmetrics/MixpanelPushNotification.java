@@ -431,6 +431,7 @@ public class MixpanelPushNotification {
      *
      */
         Bundle options = buildBundle(onTap);
+        options.putCharSequence("tapTarget", TAP_TARGET_BUTTON);
         options.putCharSequence("buttonId", buttonId);
         options.putCharSequence("label", buttonLabel);
         return options;
