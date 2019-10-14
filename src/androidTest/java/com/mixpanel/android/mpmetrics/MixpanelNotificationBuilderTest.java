@@ -356,16 +356,16 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
-            intent.putExtra("mp_buttons", "[{\"id\": \"id1\", \"lbl\": \"Button 1\", \"ontap\": {\"type\": \"webview\", \"uri\": \"http://mixpanel.com\"}}, {\"id\": \"id2\", \"icnm\": \"" + VALID_RESOURCE_NAME + "\", \"lbl\": \"Button 2\", \"ontap\": {\"type\": \"deeplink\", \"uri\": \"my-app://action2\"}}, {\"id\": \"id3\", \"lbl\": \"Button 3\", {\"type\": \"browser\", \"uri\": \"http://mixpanel.com\"}, \"icnm\": \"" + INVALID_RESOURCE_NAME + "\"}]");
+            intent.putExtra("mp_buttons", "[{\"id\": \"id1\", \"lbl\": \"Button 1\", \"ontap\": {\"type\": \"webview\", \"uri\": \"http://mixpanel.com\"}}, {\"id\": \"id2\", \"lbl\": \"Button 2\", \"ontap\": {\"type\": \"deeplink\", \"uri\": \"my-app://action2\"}}, {\"id\": \"id3\", \"lbl\": \"Button 3\", {\"type\": \"browser\", \"uri\": \"http://mixpanel.com\"}}]");
 
             MixpanelPushNotification.PushTapAction fakeOnTap1 = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_WEBVIEW, "http://mixpanel.com");
             MixpanelPushNotification.PushTapAction fakeOnTap2 = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.DEEP_LINK, "my-app://action2");
             MixpanelPushNotification.PushTapAction fakeOnTap3 = new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_BROWSER, "http://mixpanel.com");
 
             List<MixpanelPushNotification.NotificationButtonData> fakeButtonList = new ArrayList<>();
-            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData(-1, "Button 1", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_WEBVIEW, "http://mixpanel.com"), "id1"));
-            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData(VALID_RESOURCE_ID, "Button 2", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.DEEP_LINK, "my-app://action2"), "id2"));
-            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData(-1, "Button 3", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_BROWSER, "http://mixpanel.com"), "id3"));
+            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData("Button 1", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_WEBVIEW, "http://mixpanel.com"), "id1"));
+            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData("Button 2", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.DEEP_LINK, "my-app://action2"), "id2"));
+            fakeButtonList.add(new MixpanelPushNotification.NotificationButtonData("Button 3", new MixpanelPushNotification.PushTapAction(MixpanelPushNotification.PushTapTarget.URL_IN_BROWSER, "http://mixpanel.com"), "id3"));
 
             when(mpPushSpy.buildButtons(intent.getStringExtra("mp_buttons"))).thenReturn(fakeButtonList);
             mpPushSpy.createNotification(intent);
@@ -385,7 +385,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     }
 
     private void verifyButtonAction(PushTapActionMatcher matchesFakeOnTap, MixpanelPushNotification.NotificationButtonData buttonData, int index) {
-        verify(mpPushSpy, atLeastOnce()).createAction(buttonData.icon, buttonData.label, buttonData.onTap, buttonData.buttonId, index);
+        verify(mpPushSpy, atLeastOnce()).createAction(buttonData.label, buttonData.onTap, buttonData.buttonId, index);
         verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap), eq(buttonData.buttonId), eq(buttonData.label));
         verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap), eq(buttonData.buttonId), eq(buttonData.label));
     }

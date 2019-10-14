@@ -277,7 +277,7 @@ public class MixpanelPushNotification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             for (int i = 0; i < data.buttons.size(); i++) {
                 NotificationButtonData btn = data.buttons.get(i);
-                builder.addAction(this.createAction(btn.icon, btn.label, btn.onTap, btn.buttonId, i + 1));
+                builder.addAction(this.createAction(btn.label, btn.onTap, btn.buttonId, i + 1));
             }
         }
     }
@@ -290,15 +290,6 @@ public class MixpanelPushNotification {
                 for (int i = 0; i < buttonsArr.length(); i++) {
                     JSONObject buttonObj = buttonsArr.getJSONObject(i);
 
-                    // get button icon from name if one sent
-                    int btnIcon = NotificationData.NOT_SET;
-                    if (buttonObj.has("icnm")) {
-                        String btnIconName = buttonObj.getString("icnm");
-                        if (drawableIds.knownIdName(btnIconName)) {
-                            btnIcon = drawableIds.idFromName(btnIconName);
-                        }
-                    }
-
                     // handle button label
                     final String btnLabel = buttonObj.getString("lbl");
 
@@ -308,7 +299,7 @@ public class MixpanelPushNotification {
                     //handle button id
                     final String btnId = buttonObj.getString("id");
 
-                    buttons.add(new NotificationButtonData(btnIcon, btnLabel, pushAction, btnId));
+                    buttons.add(new NotificationButtonData(btnLabel, pushAction, btnId));
                 }
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
@@ -356,8 +347,8 @@ public class MixpanelPushNotification {
     }
 
     @TargetApi(20)
-    protected Notification.Action createAction(int icon, CharSequence title, PushTapAction onTap, String actionId, int index) {
-        return (new Notification.Action.Builder(icon, title, createActionIntent(onTap, actionId, title, index))).build();
+    protected Notification.Action createAction(CharSequence title, PushTapAction onTap, String actionId, int index) {
+        return (new Notification.Action.Builder(NotificationData.NOT_SET, title, createActionIntent(onTap, actionId, title, index))).build();
     }
 
     protected PendingIntent createActionIntent(PushTapAction onTap, String buttonId, CharSequence label, int index) {
@@ -640,14 +631,12 @@ public class MixpanelPushNotification {
     }
 
     protected static class NotificationButtonData {
-        protected NotificationButtonData(int anIcon, String aLabel, PushTapAction anOnTap, String bId) {
-            icon = anIcon;
+        protected NotificationButtonData(String aLabel, PushTapAction anOnTap, String bId) {
             label = aLabel;
             onTap = anOnTap;
             buttonId = bId;
         }
 
-        public final int icon;
         public final String label;
         public final PushTapAction onTap;
         public final String buttonId;
