@@ -344,15 +344,17 @@ public class MixpanelPushNotification {
                     final String btnLabel = buttonObj.getString("lbl");
 
                     // handle button action
-                    MixpanelNotificationData.PushTapAction pushAction = buildOnTap(buttonObj.getString("ontap"));
-                    if (pushAction == null) {
-                        pushAction = getDefaultOnTap();
-                    }
+                    final MixpanelNotificationData.PushTapAction pushAction = buildOnTap(buttonObj.getString("ontap"));
 
                     //handle button id
                     final String btnId = buttonObj.getString("id");
 
-                    buttons.add(new MixpanelNotificationData.MixpanelNotificationButtonData(btnLabel, pushAction, btnId));
+                    if (pushAction == null || btnLabel == null || btnId == null) {
+                        MPLog.d(LOGTAG, "Null button data received. No buttons will be rendered.");
+                    } else {
+                        buttons.add(new MixpanelNotificationData.MixpanelNotificationButtonData(btnLabel, pushAction, btnId));
+                    }
+
                 }
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
