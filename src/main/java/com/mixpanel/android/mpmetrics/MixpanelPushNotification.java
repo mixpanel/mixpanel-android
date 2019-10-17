@@ -344,7 +344,10 @@ public class MixpanelPushNotification {
                     final String btnLabel = buttonObj.getString("lbl");
 
                     // handle button action
-                    final MixpanelNotificationData.PushTapAction pushAction = buildOnTap(buttonObj.getString("ontap"));
+                    MixpanelNotificationData.PushTapAction pushAction = buildOnTap(buttonObj.getString("ontap"));
+                    if (pushAction == null) {
+                        pushAction = getDefaultOnTap();
+                    }
 
                     //handle button id
                     final String btnId = buttonObj.getString("id");
