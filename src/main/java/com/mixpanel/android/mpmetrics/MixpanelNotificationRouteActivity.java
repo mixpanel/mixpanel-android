@@ -7,7 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 
 import com.mixpanel.android.util.MPLog;
-import com.mixpanel.android.mpmetrics.MixpanelPushNotification.PushTapTarget;
+import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapTarget;
 
 import org.json.JSONException;
 import org.json.JSONObject;
