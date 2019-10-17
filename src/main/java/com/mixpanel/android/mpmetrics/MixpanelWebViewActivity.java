@@ -1,6 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.os.Bundle;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -33,4 +34,5 @@ public class MixpanelWebViewActivity extends Activity {
 
         webView.loadUrl(getIntent().getExtras().getString("uri"));
     }
+
 }

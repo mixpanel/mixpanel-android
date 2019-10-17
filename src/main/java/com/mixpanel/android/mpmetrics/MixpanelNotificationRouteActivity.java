@@ -65,7 +65,8 @@ public class MixpanelNotificationRouteActivity extends Activity {
             case URL_IN_WEBVIEW:
                 if (isValidURL(uri.toString(), true)) {
                     return new Intent(this.getApplicationContext(), MixpanelWebViewActivity.class).
-                            putExtra("uri", uri.toString());
+                            putExtra("uri", uri.toString()).
+                            setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 } else {
                     MPLog.d(LOGTAG, "Wanted to open url in webview but url is invalid or not secure (http): " + uri.toString() + ". Starting default intent");
                     return defaultIntent;
