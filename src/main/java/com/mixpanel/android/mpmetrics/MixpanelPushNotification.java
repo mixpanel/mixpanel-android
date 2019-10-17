@@ -142,6 +142,7 @@ public class MixpanelPushNotification {
         mData.setTimeString(timeString);
         mData.setCampaignId(campaignId);
         mData.setMessageId(messageId);
+        mData.setButtons(buildButtons(buttonsJsonStr));
 
         int badgeCount = MixpanelNotificationData.NOT_SET;
         if (null != badgeCountStr) {
@@ -162,6 +163,7 @@ public class MixpanelPushNotification {
                 case VISIBILITY_PUBLIC:
                     visibility = Notification.VISIBILITY_PUBLIC;
                     break;
+                case VISIBILITY_PRIVATE:
                 default:
                     visibility = Notification.VISIBILITY_PRIVATE;
             }
@@ -214,8 +216,6 @@ public class MixpanelPushNotification {
             notificationTitle = getDefaultTitle();
         }
         mData.setTitle(notificationTitle);
-
-        mData.setButtons(buildButtons(buttonsJsonStr));
 
         MixpanelNotificationData.PushTapAction onTap = buildOnTap(onTapStr);
         if (null == onTap) {
