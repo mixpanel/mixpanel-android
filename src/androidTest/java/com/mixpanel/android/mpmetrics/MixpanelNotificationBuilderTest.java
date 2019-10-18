@@ -28,6 +28,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
     private final String INVALID_IMAGE_URL = "http:/badurl";
     private final String INVALID_RESOURCE_NAME = "NOT A VALID RESOURCE";
     private final String DEFAULT_TITLE = "DEFAULT TITLE";
+    private final static String VISIBILITY_SECRET = "VISIBILITY_SECRET";
     private final int DEFAULT_ICON_ID = android.R.drawable.sym_def_app_icon;
     private Context context;
 
@@ -549,7 +550,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
-            intent.putExtra("mp_visibility", Integer.toString(Notification.VISIBILITY_SECRET));
+            intent.putExtra("mp_visibility", VISIBILITY_SECRET);
             Notification notification = mpPushSpy.createNotification(intent);
             verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
             assertEquals(notification.visibility, Notification.VISIBILITY_SECRET);
