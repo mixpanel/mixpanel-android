@@ -928,7 +928,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
-                if (!heard.isAutomatic() && !heard.getEventName().equals("$identify")) {
+                if (!heard.isAutomatic() &&
+                        !heard.getEventName().equals("$identify") &&
+                        !heard.getEventName().equals("Integration")) {
                     messages.add(heard);
                 }
             }
@@ -979,7 +981,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject setMessage = peopleMessage.getJSONObject("$set");
             assertEquals((new JSONArray()).put(groupID), setMessage.getJSONArray("group_key"));
         } catch (JSONException e) {
-            fail("Event message has an unexpected shape " + e);
+            fail("People message has an unexpected shape " + e);
         }
 
         messages.clear();
@@ -1049,7 +1051,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals(1, unsetMessage.length());
             assertEquals("group_key", unsetMessage.get(0));
         } catch (JSONException e) {
-            fail("Event message has an unexpected shape " + e);
+            fail("People message has an unexpected shape " + e);
         }
 
         messages.clear();
