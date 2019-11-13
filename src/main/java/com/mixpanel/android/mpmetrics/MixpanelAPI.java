@@ -922,7 +922,7 @@ public class MixpanelAPI {
                     JSONArray newVals = new JSONArray();
 
                     if (vals.length() <= 1) {
-                        unregisterSuperProperty(groupKey);
+                        in.remove(groupKey);
 
                         // This is a best effort--we can't guarantee people and super properties match
                         mPeople.unset(groupKey);
@@ -941,7 +941,7 @@ public class MixpanelAPI {
                         mPeople.remove(groupKey, groupID);
                     }
                 } catch (JSONException e) {
-                    unregisterSuperProperty(groupKey);
+                    in.remove(groupKey);
 
                     // This is a best effort--we can't guarantee people and super properties match
                     mPeople.unset(groupKey);
