@@ -863,13 +863,13 @@ public class MixpanelAPI {
     public void setGroup(String groupKey, List<Object> groupIDs) {
         if (hasOptedOutTracking()) return;
 
-        List<Object> vals = new ArrayList<>();
+        JSONArray vals = new JSONArray();
 
         for (Object s : groupIDs) {
             if (s == null) {
                 MPLog.w(LOGTAG, "groupID must be non-null");
             } else {
-                vals.add(s);
+                vals.put(s);
             }
         }
 
