@@ -863,13 +863,13 @@ public class MixpanelAPI {
     public void setGroup(String groupKey, List<Object> groupIDs) {
         if (hasOptedOutTracking()) return;
 
-        List<Object> vals = new ArrayList<>();
+        JSONArray vals = new JSONArray();
 
         for (Object s : groupIDs) {
             if (s == null) {
                 MPLog.w(LOGTAG, "groupID must be non-null");
             } else {
-                vals.add(s);
+                vals.put(s);
             }
         }
 
@@ -922,7 +922,7 @@ public class MixpanelAPI {
                     JSONArray newVals = new JSONArray();
 
                     if (vals.length() <= 1) {
-                        unregisterSuperProperty(groupKey);
+                        in.remove(groupKey);
 
                         // This is a best effort--we can't guarantee people and super properties match
                         mPeople.unset(groupKey);
@@ -941,7 +941,7 @@ public class MixpanelAPI {
                         mPeople.remove(groupKey, groupID);
                     }
                 } catch (JSONException e) {
-                    unregisterSuperProperty(groupKey);
+                    in.remove(groupKey);
 
                     // This is a best effort--we can't guarantee people and super properties match
                     mPeople.unset(groupKey);

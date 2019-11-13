@@ -922,6 +922,141 @@ public class MixpanelBasicTest extends AndroidTestCase {
         messages.clear();
     }
 
+    public void testSetAddRemoveGroup(){
+        final String savedDistinctID = "saved_distinct_id";
+        final List<Object> messages = new ArrayList<Object>();
+        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+            @Override
+            public void eventsMessage(EventDescription heard) {
+                if (!heard.isAutomatic() &&
+                        !heard.getEventName().equals("$identify") &&
+                        !heard.getEventName().equals("Integration")) {
+                    messages.add(heard);
+                }
+            }
+
+            @Override
+            public void peopleMessage(PeopleDescription heard) {
+                messages.add(heard);
+            }
+        };
+
+        class TestMixpanelAPI extends MixpanelAPI {
+            public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
+                super(c, prefs, token, false);
+            }
+
+            @Override
+                /* package */ boolean sendAppOpen() {
+                return false;
+            }
+
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        }
+
+        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        mpMetrics.identify("new_user");
+
+        int groupID = 42;
+        mpMetrics.setGroup("group_key", groupID);
+        mpMetrics.track("eventname", null);
+
+        assertEquals(2, messages.size());
+
+        JSONObject peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(0)).getMessage();
+        AnalyticsMessages.EventDescription eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
+
+        try {
+            JSONObject eventProps = eventMessage.getProperties();
+            JSONArray groupIDs = eventProps.getJSONArray("group_key");
+            assertEquals((new JSONArray()).put(groupID), groupIDs);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+
+        try {
+            JSONObject setMessage = peopleMessage.getJSONObject("$set");
+            assertEquals((new JSONArray()).put(groupID), setMessage.getJSONArray("group_key"));
+        } catch (JSONException e) {
+            fail("People message has an unexpected shape " + e);
+        }
+
+        messages.clear();
+
+        int groupID2 = 77;
+        mpMetrics.addGroup("group_key", groupID2);
+        mpMetrics.track("eventname", null);
+        JSONArray expectedGroupIDs = new JSONArray();
+        expectedGroupIDs.put(groupID);
+        expectedGroupIDs.put(groupID2);
+
+        assertEquals(2, messages.size());
+        peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(0)).getMessage();
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
+
+        try {
+            JSONObject eventProps = eventMessage.getProperties();
+            JSONArray groupIDs = eventProps.getJSONArray("group_key");
+            assertEquals(expectedGroupIDs, groupIDs);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+
+        try {
+            JSONObject unionMessage = peopleMessage.getJSONObject("$union");
+            assertEquals((new JSONArray()).put(groupID2), unionMessage.getJSONArray("group_key"));
+        } catch (JSONException e) {
+            fail("People message has an unexpected shape " + e);
+        }
+
+        messages.clear();
+        mpMetrics.removeGroup("group_key", groupID2);
+        mpMetrics.track("eventname", null);
+
+        assertEquals(2, messages.size());
+        peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(0)).getMessage();
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
+
+        try {
+            JSONObject eventProps = eventMessage.getProperties();
+            JSONArray groupIDs = eventProps.getJSONArray("group_key");
+            assertEquals((new JSONArray()).put(groupID), groupIDs);
+        } catch (JSONException e) {
+            fail("Event message has an unexpected shape " + e);
+        }
+
+        try {
+            JSONObject removeMessage = peopleMessage.getJSONObject("$remove");
+            assertEquals(groupID2, removeMessage.getInt("group_key"));
+        } catch (JSONException e) {
+            fail("People message has an unexpected shape " + e);
+        }
+
+        messages.clear();
+        mpMetrics.removeGroup("group_key", groupID);
+        mpMetrics.track("eventname", null);
+
+        assertEquals(2, messages.size());
+        peopleMessage =  ((AnalyticsMessages.PeopleDescription)messages.get(0)).getMessage();
+        eventMessage = (AnalyticsMessages.EventDescription) messages.get(1);
+
+        JSONObject eventProps = eventMessage.getProperties();
+        assertFalse(eventProps.has("group_key"));
+
+        try {
+            JSONArray unsetMessage = peopleMessage.getJSONArray("$unset");
+            assertEquals(1, unsetMessage.length());
+            assertEquals("group_key", unsetMessage.get(0));
+        } catch (JSONException e) {
+            fail("People message has an unexpected shape " + e);
+        }
+
+        messages.clear();
+    }
+
     public void testIdentifyCall() throws JSONException {
         String newDistinctId = "New distinct ID";
         final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
