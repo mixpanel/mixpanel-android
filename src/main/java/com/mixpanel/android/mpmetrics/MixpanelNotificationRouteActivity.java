@@ -88,8 +88,16 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
     protected void cancelNotification(Bundle extras) {
         int notificationId = extras.getInt("notificationId");
+        String tag = extras.getString("tag");
+        boolean hasTag = tag != null;
+
         NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
-        notificationManager.cancel(notificationId);
+
+        if (hasTag) {
+            notificationManager.cancel(tag, MixpanelFCMMessagingService.NOTIFICATION_ID);
+        } else {
+            notificationManager.cancel(notificationId);
+        }
     }
 
     protected void trackAction(Intent routeIntent) {

@@ -456,6 +456,7 @@ public class MixpanelPushNotification {
         options.putCharSequence("campaignId", mData.getCampaignId());
         options.putInt("notificationId", notificationId);
         options.putBoolean("sticky", mData.isSticky());
+        options.putCharSequence("tag", mData.getTag());
 
         return options;
     }

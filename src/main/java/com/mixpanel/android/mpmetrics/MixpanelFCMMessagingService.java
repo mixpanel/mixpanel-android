@@ -77,7 +77,7 @@ import com.mixpanel.android.util.MPLog;
  */
 public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     private static final String LOGTAG = "MixpanelAPI.MixpanelFCMMessagingService";
-    private static final int NOTIFICATION_ID = 1;
+    protected static final int NOTIFICATION_ID = 1;
 
     /* package */ static void init() {
         FirebaseInstanceId.getInstance().getInstanceId()
