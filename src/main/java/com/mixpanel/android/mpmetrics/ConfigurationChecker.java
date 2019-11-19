@@ -122,8 +122,13 @@ import java.util.List;
         while (it.hasNext()) {
             ResolveInfo resolveInfo = it.next();
             String serviceName = resolveInfo.serviceInfo.name;
-            if (!serviceName.startsWith(packageName) && !serviceName.equals("com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService")) {
-                it.remove();
+            try {
+                Class fcmClass = Class.forName(serviceName);
+                boolean extendsMpFcmService = MixpanelFCMMessagingService.class.isAssignableFrom(fcmClass);
+                if (!extendsMpFcmService) {
+                    it.remove();
+                }
+            } catch (ClassNotFoundException e) {
             }
         }
         if (intentServices == null || intentServices.size() == 0) {
