@@ -121,8 +121,14 @@ import java.util.List;
         Iterator<ResolveInfo> it = intentServices.iterator();
         while (it.hasNext()) {
             ResolveInfo resolveInfo = it.next();
-            if (resolveInfo.serviceInfo.name.equals("com.google.firebase.messaging.FirebaseMessagingService")) {
-                it.remove();
+            String serviceName = resolveInfo.serviceInfo.name;
+            try {
+                Class fcmClass = Class.forName(serviceName);
+                boolean extendsMpFcmService = MixpanelFCMMessagingService.class.isAssignableFrom(fcmClass);
+                if (!extendsMpFcmService) {
+                    it.remove();
+                }
+            } catch (ClassNotFoundException e) {
             }
         }
         if (intentServices == null || intentServices.size() == 0) {
