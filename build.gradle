@@ -60,7 +60,7 @@ allprojects {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    implementation 'com.google.firebase:firebase-messaging:17.3.4'
+    api 'com.google.firebase:firebase-messaging:17.3.4'
     testImplementation "org.mockito:mockito-core:2.25.1"
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
 }
