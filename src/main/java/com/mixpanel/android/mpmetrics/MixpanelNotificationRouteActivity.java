@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.URLUtil;
 
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapTarget;
@@ -80,9 +81,9 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
     protected boolean isValidURL(CharSequence url, boolean requireHttps) {
         if (requireHttps) {
-            return null != url && url.toString().startsWith("https");
+            return URLUtil.isValidUrl(url.toString()) && url.toString().startsWith("https");
         } else {
-            return null != url && url.toString().startsWith("http");
+            return URLUtil.isValidUrl(url.toString());
         }
     }
 
