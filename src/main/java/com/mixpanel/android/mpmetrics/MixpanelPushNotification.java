@@ -149,7 +149,7 @@ public class MixpanelPushNotification {
             try {
                 badgeCount = Integer.parseInt(badgeCountStr);
             } catch(NumberFormatException e) {
-                badgeCount = 1;
+                badgeCount = 0;
             }
         }
         mData.setBadgeCount(badgeCount);
