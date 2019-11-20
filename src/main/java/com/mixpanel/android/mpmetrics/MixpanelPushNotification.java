@@ -147,7 +147,11 @@ public class MixpanelPushNotification {
         int badgeCount = MixpanelNotificationData.NOT_SET;
         if (null != badgeCountStr) {
             try {
+
                 badgeCount = Integer.parseInt(badgeCountStr);
+                if (badgeCount < 0) {
+                    badgeCount = 0;
+                }
             } catch(NumberFormatException e) {
                 badgeCount = 0;
             }
@@ -419,7 +423,6 @@ public class MixpanelPushNotification {
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
 
-        verifyIntentPackage(routingIntent);
         return routingIntent;
     }
 
@@ -430,8 +433,7 @@ public class MixpanelPushNotification {
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-
-        verifyIntentPackage(routingIntent);
+        
         return routingIntent;
     }
 
@@ -482,17 +484,6 @@ public class MixpanelPushNotification {
         options.putCharSequence("buttonId", buttonId);
         options.putCharSequence("label", buttonLabel);
         return options;
-    }
-
-    protected void verifyIntentPackage(Intent intent) {
-        String appPackage = mContext.getPackageName() + "/com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity";
-        PackageManager packageManager = mContext.getPackageManager();
-
-        List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
-
-        if (activities.size() == 0) {
-            MPLog.e(LOGTAG, "No activities found to handle: " + appPackage);
-        }
     }
 
     protected void maybeSetChannel() {
