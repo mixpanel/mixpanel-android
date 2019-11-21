@@ -86,16 +86,21 @@ public abstract class ResourceReader implements ResourceIds {
                 if (Modifier.isStatic(modifiers)) {
                     final Class fieldType = field.getType();
                     if (fieldType == int.class) {
-                        final String name = field.getName();
-                        final int value = field.getInt(null);
-                        final String namespacedName;
-                        if (null == namespace) {
-                            namespacedName = name;
-                        } else {
-                            namespacedName = namespace + ":" + name;
-                        }
+                        try {
+                            final String name = field.getName();
+                            final int value = field.getInt(null);
+                            final String namespacedName;
+                            if (null == namespace) {
+                                namespacedName = name;
+                            } else {
+                                namespacedName = namespace + ":" + name;
+                            }
 
-                        namesToIds.put(namespacedName, value);
+                            namesToIds.put(namespacedName, value);
+                        } catch (ArrayIndexOutOfBoundsException e) {
+                            // https://github.com/mixpanel/mixpanel-android/issues/241
+                            MPLog.e(LOGTAG, "Can't read built-in id name from " + platformIdClass.getName(), e);
+                        }
                     }
                 }
             }
