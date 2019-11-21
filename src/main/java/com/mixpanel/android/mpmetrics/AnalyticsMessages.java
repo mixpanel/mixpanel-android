@@ -82,31 +82,23 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Must be thread safe.
     public void peopleMessage(final PeopleDescription peopleDescription) {
-        try {
-            peopleDescription.getMessage().toString();
+        peopleDescription.getMessage().toString();
 
-            final Message m = Message.obtain();
-            m.what = ENQUEUE_PEOPLE;
-            m.obj = peopleDescription;
+        final Message m = Message.obtain();
+        m.what = ENQUEUE_PEOPLE;
+        m.obj = peopleDescription;
 
-            mWorker.runMessage(m);
-        } catch (AssertionError e) {
-            MPLog.e(LOGTAG, "Could not record people update (see https://github.com/mixpanel/mixpanel-android/issues/567)", e);
-        }
+        mWorker.runMessage(m);
     }
 
     // Must be thread safe.
     public void groupMessage(final GroupDescription groupDescription) {
-        try {
-            groupDescription.getMessage().toString();
-            final Message m = Message.obtain();
-            m.what = ENQUEUE_GROUP;
-            m.obj = groupDescription;
+        groupDescription.getMessage().toString();
+        final Message m = Message.obtain();
+        m.what = ENQUEUE_GROUP;
+        m.obj = groupDescription;
 
-            mWorker.runMessage(m);
-        } catch (AssertionError e) {
-            MPLog.e(LOGTAG, "Could not record group update (see https://github.com/mixpanel/mixpanel-android/issues/567)", e);
-        }
+        mWorker.runMessage(m);
     }
 
     // Must be thread safe.
