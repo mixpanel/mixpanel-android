@@ -140,7 +140,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        mCleanMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, false) {
+        mCleanMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, false, null) {
 
             @Override
         /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
