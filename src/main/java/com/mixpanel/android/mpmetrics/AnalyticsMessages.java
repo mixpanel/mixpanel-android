@@ -169,7 +169,7 @@ import javax.net.ssl.SSLSocketFactory;
 
     ////////////////////////////////////////////////////
 
-    static class EventDescription extends MixpanelDescription {
+    static class EventDescription extends MixpanelMessageDescription {
         public EventDescription(String eventName,
                                 JSONObject properties,
                                 String token) {
@@ -181,9 +181,8 @@ import javax.net.ssl.SSLSocketFactory;
                                 String token,
                                 boolean isAutomatic,
                                 JSONObject sessionMetada) {
-            super(token);
+            super(token, properties);
             mEventName = eventName;
-            mProperties = properties;
             mIsAutomatic = isAutomatic;
             mSessionMetadata = sessionMetada;
         }
@@ -193,7 +192,7 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         public JSONObject getProperties() {
-            return mProperties;
+            return getMessage();
         }
 
         public JSONObject getSessionMetadata() {
@@ -205,49 +204,34 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         private final String mEventName;
-        private final JSONObject mProperties;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
     }
 
-    static class PeopleDescription extends MixpanelDescription {
+    static class PeopleDescription extends MixpanelMessageDescription {
         public PeopleDescription(JSONObject message, String token) {
-            super(token);
-            this.message = message;
+            super(token, message);
         }
 
         @Override
         public String toString() {
-            return message.toString();
-        }
-
-        public JSONObject getMessage() {
-            return message;
+            return getMessage().toString();
         }
 
         public boolean isAnonymous() {
-            return !message.has("$distinct_id");
+            return !getMessage().has("$distinct_id");
         }
-
-        private final JSONObject message;
     }
 
-    static class GroupDescription extends MixpanelDescription {
+    static class GroupDescription extends MixpanelMessageDescription {
         public GroupDescription(JSONObject message, String token) {
-            super(token);
-            this.message = message;
+            super(token, message);
         }
 
         @Override
         public String toString() {
-            return message.toString();
+            return getMessage().toString();
         }
-
-        public JSONObject getMessage() {
-            return message;
-        }
-
-        private final JSONObject message;
     }
 
     static class PushAnonymousPeopleDescription extends MixpanelDescription {
@@ -278,12 +262,37 @@ import javax.net.ssl.SSLSocketFactory;
             this.checkDecide = checkDecide;
         }
 
-
         public boolean shouldCheckDecide() {
             return checkDecide;
         }
 
         private final boolean checkDecide;
+    }
+
+    static class MixpanelMessageDescription extends MixpanelDescription {
+        public MixpanelMessageDescription(String token, JSONObject message) {
+            super(token);
+            if (message != null && message.length() > 0) {
+                Iterator<String> it = message.keys();
+                while (it.hasNext()) {
+                    String jsonKey = it.next();
+                    try {
+                        message.get(jsonKey).toString();
+                    } catch (AssertionError e) {
+                        // see https://github.com/mixpanel/mixpanel-android/issues/567
+                        message.remove(jsonKey);
+                        MPLog.e(LOGTAG, "Removing people profile property from update (see https://github.com/mixpanel/mixpanel-android/issues/567)", e);
+                    } catch (JSONException e) {}
+                }
+            }
+            this.mMessage = message;
+        }
+
+        public JSONObject getMessage() {
+            return mMessage;
+        }
+
+        private final JSONObject mMessage;
     }
 
     static class MixpanelDescription {
