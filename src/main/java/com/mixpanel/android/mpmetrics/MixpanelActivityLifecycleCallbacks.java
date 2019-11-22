@@ -71,6 +71,8 @@ import java.util.Locale;
                             String sessionLengthString = nf.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
                             JSONObject sessionProperties = new JSONObject();
                             sessionProperties.put(AutomaticEvents.SESSION_LENGTH, sessionLengthString);
+                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
+                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, sessionLength / 1000);
                             mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
                         }
                     } catch (JSONException e) {
