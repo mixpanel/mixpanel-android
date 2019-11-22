@@ -82,8 +82,6 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Must be thread safe.
     public void peopleMessage(final PeopleDescription peopleDescription) {
-        peopleDescription.getMessage().toString();
-
         final Message m = Message.obtain();
         m.what = ENQUEUE_PEOPLE;
         m.obj = peopleDescription;
@@ -93,7 +91,6 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Must be thread safe.
     public void groupMessage(final GroupDescription groupDescription) {
-        groupDescription.getMessage().toString();
         final Message m = Message.obtain();
         m.what = ENQUEUE_GROUP;
         m.obj = groupDescription;
