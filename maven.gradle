@@ -106,7 +106,6 @@ task install(type: Upload, dependsOn: assemble) {
 }
 
 task androidJavadocs(type: Javadoc, dependsOn: ':generateReleaseBuildConfig') {
-    source = android.sourceSets.main.java.source
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
     classpath += project.files('build/generated/source/buildConfig/release')
     exclude(
@@ -148,7 +147,7 @@ task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
 
 task androidSourcesJar(type: Jar) {
     classifier = 'sources'
-    from android.sourceSets.main.java.source
+    from android.sourceSets.main.java.srcDirs
 }
 
 signing {
