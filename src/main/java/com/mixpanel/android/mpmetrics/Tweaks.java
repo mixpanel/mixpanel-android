@@ -469,6 +469,10 @@ public class Tweaks {
     }
 
     public void declareTweak(String tweakName, Object defaultValue, Number minimumValue, Number maximumValue, @TweakType int tweakType) {
+        if (tweakName == null) {
+            MPLog.w(LOGTAG, "Attempt to define a null tweak");
+            return;
+        }
         if (mTweakValues.containsKey(tweakName)) {
             MPLog.w(LOGTAG, "Attempt to define a tweak \"" + tweakName + "\" twice with the same name");
             return;
