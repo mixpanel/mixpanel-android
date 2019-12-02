@@ -76,11 +76,6 @@
         -->
 
         <!-- This activity will alow your application to open URLs from Notifications in a Webview instead of a browser -->
-        <activity android:name="com.mixpanel.android.mpmetrics.MixpanelWebViewActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-            </intent-filter>
-        </activity>
 
         <!-- This activity will alow your application to make tracking calls to the MixpanelAPI for Notification clicks
          along with Notification button clicks-->
