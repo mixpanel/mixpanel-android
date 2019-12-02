@@ -33,14 +33,10 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
         final Intent notificationIntent = handleRouteIntent(routeIntent);
 
-        if (notificationIntent != null) {
-            if (!extras.getBoolean("sticky")) {
-                cancelNotification(extras);
-            }
-            startActivity(notificationIntent);
-        } else {
+        if (!extras.getBoolean("sticky")) {
             cancelNotification(extras);
         }
+        startActivity(notificationIntent);
     }
 
     protected Intent handleRouteIntent(Intent routeIntent) {
@@ -78,8 +74,6 @@ public class MixpanelNotificationRouteActivity extends Activity {
                 }
             case DEEP_LINK:
                 return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
-            case ERROR:
-                return null;
             default:
                 return defaultIntent;
         }
