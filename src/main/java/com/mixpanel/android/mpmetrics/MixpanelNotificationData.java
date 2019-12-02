@@ -249,7 +249,8 @@ import java.util.List;
         HOMESCREEN("homescreen"),
         URL_IN_BROWSER("browser"),
         URL_IN_WEBVIEW("webview"),
-        DEEP_LINK("deeplink");
+        DEEP_LINK("deeplink"),
+        ERROR("error");
 
         private String target;
 
@@ -267,7 +268,7 @@ import java.util.List;
                     return entry;
                 }
             }
-            throw new IllegalArgumentException("No enum found for string: " + target);
+            return ERROR;
         }
     }
 }

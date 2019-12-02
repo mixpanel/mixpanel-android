@@ -168,7 +168,7 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         String message = data == null ? "null" : data.getMessage();
         MPLog.d(LOGTAG, "MP FCM notification received: " + message);
 
-        if (null != notification) {
+        if (notification != null && !mixpanelPushNotification.hasOnTapError) {
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (null != data.getTag()) {
                 notificationManager.notify(data.getTag(), NOTIFICATION_ID, notification);

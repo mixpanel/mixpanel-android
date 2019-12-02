@@ -52,6 +52,7 @@ public class MixpanelPushNotification {
     private long mNow;
     private MixpanelNotificationData mData;
     public int notificationId;
+    public boolean hasOnTapError = false;
 
     public MixpanelPushNotification(Context context) {
         this(context, new Notification.Builder(context), System.currentTimeMillis());
@@ -382,6 +383,9 @@ public class MixpanelPushNotification {
                     onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString(typeFromJSON));
                 }
 
+                if (onTap == null) {
+                    hasOnTapError = true;
+                }
             } catch (JSONException e){
                 MPLog.d(LOGTAG, "Exception occurred while parsing ontap");
                 onTap = null;
@@ -433,7 +437,7 @@ public class MixpanelPushNotification {
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-        
+
         return routingIntent;
     }
 
