@@ -383,7 +383,7 @@ public class MixpanelPushNotification {
                     onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString(typeFromJSON));
                 }
 
-                if (onTap == null) {
+                if (onTap.getActionType().equals(MixpanelNotificationData.PushTapTarget.ERROR)) {
                     hasOnTapError = true;
                 }
             } catch (JSONException e){
