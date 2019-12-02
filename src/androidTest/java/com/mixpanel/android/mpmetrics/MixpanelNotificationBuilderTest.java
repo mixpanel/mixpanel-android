@@ -293,28 +293,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapTarget.URL_IN_BROWSER.getTarget());
     }
 
-    public void testOnTapWebview() {
-        final Intent intent = new Intent();
-        final String onTap = "{\"type\": \"webview\", \"uri\": \"http://mixpanel.com\"}";
-        intent.putExtra("mp_message", "MESSAGE");
-        intent.putExtra("mp_ontap", onTap);
-
-        MixpanelNotificationData.PushTapAction fakeOnTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString("webview"), "http://mixpanel.com");
-        PushTapActionMatcher matchesFakeOnTap = new PushTapActionMatcher(fakeOnTap);
-        mpPushSpy.createNotification(intent);
-
-        verify(mpPushSpy).buildOnTap(onTap);
-        verify(mpPushSpy, never()).buildOnTapFromURI(nullable(String.class));
-        verify(mpPushSpy, never()).getDefaultOnTap();
-        verify(mpPushSpy).buildNotificationFromData();
-        verify(mpPushSpy).getRoutingIntent(argThat(matchesFakeOnTap));
-        verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
-
-        Bundle options = mpPushSpy.buildBundle(fakeOnTap);
-        assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapTarget.URL_IN_WEBVIEW.getTarget());
-    }
-
     public void testOnTapDeeplink() {
         final Intent intent = new Intent();
         final String onTap = "{\"type\": \"deeplink\", \"uri\": \"my-app://action2\"}";
@@ -361,14 +339,14 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
-            intent.putExtra("mp_buttons", "[{\"id\": \"id1\", \"lbl\": \"Button 1\", \"ontap\": {\"type\": \"webview\", \"uri\": \"http://mixpanel.com\"}}, {\"id\": \"id2\", \"lbl\": \"Button 2\", \"ontap\": {\"type\": \"deeplink\", \"uri\": \"my-app://action2\"}}, {\"id\": \"id3\", \"lbl\": \"Button 3\", {\"type\": \"browser\", \"uri\": \"http://mixpanel.com\"}}]");
+            intent.putExtra("mp_buttons", "[{\"id\": \"id1\", \"lbl\": \"Button 1\", \"ontap\": {\"type\": \"homescreen\"}}, {\"id\": \"id2\", \"lbl\": \"Button 2\", \"ontap\": {\"type\": \"deeplink\", \"uri\": \"my-app://action2\"}}, {\"id\": \"id3\", \"lbl\": \"Button 3\", {\"type\": \"browser\", \"uri\": \"http://mixpanel.com\"}}]");
 
-            MixpanelNotificationData.PushTapAction fakeOnTap1 = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.URL_IN_WEBVIEW, "http://mixpanel.com");
+            MixpanelNotificationData.PushTapAction fakeOnTap1 = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.HOMESCREEN);
             MixpanelNotificationData.PushTapAction fakeOnTap2 = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.DEEP_LINK, "my-app://action2");
             MixpanelNotificationData.PushTapAction fakeOnTap3 = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.URL_IN_BROWSER, "http://mixpanel.com");
 
             List<MixpanelNotificationData.MixpanelNotificationButtonData> fakeButtonList = new ArrayList<>();
-            fakeButtonList.add(new MixpanelNotificationData.MixpanelNotificationButtonData("Button 1", new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.URL_IN_WEBVIEW, "http://mixpanel.com"), "id1"));
+            fakeButtonList.add(new MixpanelNotificationData.MixpanelNotificationButtonData("Button 1", new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.HOMESCREEN, null), "id1"));
             fakeButtonList.add(new MixpanelNotificationData.MixpanelNotificationButtonData("Button 2", new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.DEEP_LINK, "my-app://action2"), "id2"));
             fakeButtonList.add(new MixpanelNotificationData.MixpanelNotificationButtonData("Button 3", new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.URL_IN_BROWSER, "http://mixpanel.com"), "id3"));
 

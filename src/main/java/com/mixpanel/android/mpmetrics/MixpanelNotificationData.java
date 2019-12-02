@@ -248,7 +248,6 @@ import java.util.List;
     protected enum PushTapTarget {
         HOMESCREEN("homescreen"),
         URL_IN_BROWSER("browser"),
-        URL_IN_WEBVIEW("webview"),
         DEEP_LINK("deeplink");
 
         private String target;
