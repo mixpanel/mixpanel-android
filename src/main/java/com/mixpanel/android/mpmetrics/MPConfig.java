@@ -379,7 +379,7 @@ public class MPConfig {
     }
 
     public void setMixpanelPeopleEndpoint() {
-        setPeopleEndpoint(MPConstants.URL.PEOPLE);
+        setPeopleEndpoint(MPConstants.URL.PEOPLE + (getUseIpAddressForGeolocation() ? "1" : "0"));
     }
 
     public void setPeopleEndpoint(String peopleEndpoint) {
