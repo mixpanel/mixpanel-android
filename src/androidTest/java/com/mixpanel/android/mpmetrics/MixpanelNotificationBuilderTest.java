@@ -315,6 +315,19 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapTarget.DEEP_LINK.getTarget());
     }
 
+    public void testOnTapError() {
+        final Intent intent = new Intent();
+        final String onTap = "{\"type\": \"badtype\", \"uri\": \"my-app://action2\"}";
+        intent.putExtra("mp_message", "MESSAGE");
+        intent.putExtra("mp_ontap", onTap);
+
+        MixpanelNotificationData.PushTapAction fakeOnTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString("badtype"), "my-app://action2");
+        mpPushSpy.createNotification(intent);
+
+        verify(mpPushSpy).buildOnTap(onTap);
+        assertTrue(mpPushSpy.hasOnTapError);
+    }
+
     public void testNoOnTap() {
         final Intent intent = new Intent();
         intent.putExtra("mp_message", "MESSAGE");

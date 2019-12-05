@@ -248,7 +248,8 @@ import java.util.List;
     protected enum PushTapTarget {
         HOMESCREEN("homescreen"),
         URL_IN_BROWSER("browser"),
-        DEEP_LINK("deeplink");
+        DEEP_LINK("deeplink"),
+        ERROR("error");
 
         private String target;
 
@@ -266,7 +267,7 @@ import java.util.List;
                     return entry;
                 }
             }
-            throw new IllegalArgumentException("No enum found for string: " + target);
+            return ERROR;
         }
     }
 }
