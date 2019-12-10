@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -168,13 +169,28 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         String message = data == null ? "null" : data.getMessage();
         MPLog.d(LOGTAG, "MP FCM notification received: " + message);
 
-        if (notification != null && !mixpanelPushNotification.hasOnTapError) {
+        if (notification != null) {
+            if (!mixpanelPushNotification.isValid()) {
+                MPLog.e(LOGTAG, "MP FCM notification has error");
+            }
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (null != data.getTag()) {
                 notificationManager.notify(data.getTag(), NOTIFICATION_ID, notification);
             } else {
                 notificationManager.notify(mixpanelPushNotification.notificationId, notification);
             }
+        }
+    }
+
+    protected void cancelNotification(Bundle extras, NotificationManager notificationManager) {
+        int notificationId = extras.getInt("notificationId");
+        String tag = extras.getString("tag");
+        boolean hasTag = tag != null;
+
+        if (hasTag) {
+            notificationManager.cancel(tag, MixpanelFCMMessagingService.NOTIFICATION_ID);
+        } else {
+            notificationManager.cancel(notificationId);
         }
     }
 }

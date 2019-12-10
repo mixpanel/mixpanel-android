@@ -541,7 +541,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             final Intent intent = new Intent();
             intent.putExtra("mp_message", "MESSAGE");
-            intent.putExtra("mp_visibility", VISIBILITY_SECRET);
+            intent.putExtra("mp_visibility", MixpanelNotificationBuilderTest.VISIBILITY_SECRET);
             Notification notification = mpPushSpy.createNotification(intent);
             verify(builderSpy).setVisibility(Notification.VISIBILITY_SECRET);
             assertEquals(notification.visibility, Notification.VISIBILITY_SECRET);

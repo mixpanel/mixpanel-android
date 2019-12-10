@@ -148,12 +148,11 @@ public class MixpanelPushNotification {
         int badgeCount = MixpanelNotificationData.NOT_SET;
         if (null != badgeCountStr) {
             try {
-
                 badgeCount = Integer.parseInt(badgeCountStr);
                 if (badgeCount < 0) {
                     badgeCount = 0;
                 }
-            } catch(NumberFormatException e) {
+            } catch (NumberFormatException e) {
                 badgeCount = 0;
             }
         }
@@ -162,13 +161,13 @@ public class MixpanelPushNotification {
         int visibility = Notification.VISIBILITY_PRIVATE;
         if (null != visibilityStr) {
             switch (visibilityStr) {
-                case VISIBILITY_SECRET:
+                case MixpanelPushNotification.VISIBILITY_SECRET:
                     visibility = Notification.VISIBILITY_SECRET;
                     break;
-                case VISIBILITY_PUBLIC:
+                case MixpanelPushNotification.VISIBILITY_PUBLIC:
                     visibility = Notification.VISIBILITY_PUBLIC;
                     break;
-                case VISIBILITY_PRIVATE:
+                case MixpanelPushNotification.VISIBILITY_PRIVATE:
                 default:
                     visibility = Notification.VISIBILITY_PRIVATE;
             }
@@ -359,7 +358,6 @@ public class MixpanelPushNotification {
                     } else {
                         buttons.add(new MixpanelNotificationData.MixpanelNotificationButtonData(btnLabel, pushAction, btnId));
                     }
-
                 }
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception parsing buttons payload", e);
@@ -385,6 +383,7 @@ public class MixpanelPushNotification {
 
                 if (onTap.getActionType().getTarget().equals(MixpanelNotificationData.PushTapTarget.ERROR.getTarget())) {
                     hasOnTapError = true;
+                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.HOMESCREEN);
                 }
             } catch (JSONException e){
                 MPLog.d(LOGTAG, "Exception occurred while parsing ontap");
@@ -441,19 +440,19 @@ public class MixpanelPushNotification {
         return routingIntent;
     }
 
+    /**
+     * Util method to let subclasses customize the payload through the push notification intent.
+     *
+     * Creates an intent to start the routing activity with a bundle describing the new intent
+     * the routing activity should launch.
+     *
+     * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
+     * in Android.
+     *
+     * @param onTap The PushTapAction for the intent this bundle is a member of
+     *
+     */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap) {
-        /**
-         * Util method to let subclasses customize the payload through the push notification intent.
-         *
-         * Creates an intent to start the routing activity with a bundle describing the new intent
-         * the routing activity should launch.
-         *
-         * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
-         * in Android.
-         *
-         * @param onTap The PushTapAction for the intent this bundle is a member of
-         *
-         */
         Bundle options = new Bundle();
         options.putCharSequence("tapTarget", TAP_TARGET_NOTIFICATION);
         options.putCharSequence("actionType", onTap.getActionType().getTarget());
@@ -467,7 +466,6 @@ public class MixpanelPushNotification {
         return options;
     }
 
-    protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence buttonLabel) {
     /**
      * Util method to let subclasses customize the payload through the push notification intent.
      *
@@ -483,6 +481,7 @@ public class MixpanelPushNotification {
      *                    this bundle will me a member of
      *
      */
+    protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence buttonLabel) {
         Bundle options = buildBundle(onTap);
         options.putCharSequence("tapTarget", TAP_TARGET_BUTTON);
         options.putCharSequence("buttonId", buttonId);
@@ -569,6 +568,10 @@ public class MixpanelPushNotification {
         } else {
             return android.R.drawable.sym_def_app_icon;
         }
+    }
+
+    protected boolean isValid() {
+        return mData != null && !hasOnTapError;
     }
 
     protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {

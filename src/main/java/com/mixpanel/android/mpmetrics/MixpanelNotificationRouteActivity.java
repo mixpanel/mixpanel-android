@@ -34,7 +34,9 @@ public class MixpanelNotificationRouteActivity extends Activity {
         final Intent notificationIntent = handleRouteIntent(routeIntent);
 
         if (!extras.getBoolean("sticky")) {
-            cancelNotification(extras);
+            MixpanelFCMMessagingService fcmMessagingService = new MixpanelFCMMessagingService();
+            NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
+            fcmMessagingService.cancelNotification(extras, notificationManager);
         }
         startActivity(notificationIntent);
     }
@@ -67,20 +69,6 @@ public class MixpanelNotificationRouteActivity extends Activity {
                 return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
             default:
                 return defaultIntent;
-        }
-    }
-
-    protected void cancelNotification(Bundle extras) {
-        int notificationId = extras.getInt("notificationId");
-        String tag = extras.getString("tag");
-        boolean hasTag = tag != null;
-
-        NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
-
-        if (hasTag) {
-            notificationManager.cancel(tag, MixpanelFCMMessagingService.NOTIFICATION_ID);
-        } else {
-            notificationManager.cancel(notificationId);
         }
     }
 
