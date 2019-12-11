@@ -27,6 +27,9 @@ import java.util.List;
     private int mVisibility;
     private boolean mSilent;
     private String mLargeIconName;
+    private PushTapAction mOnTap;
+    private String mCampaignId;
+    private String mMessageId;
 
     public int getIcon() {
         return mIcon;
@@ -56,9 +59,7 @@ import java.util.List;
         return mExpandableImageUrl;
     }
 
-    public void setExpandableImageUrl(String expandableImageUrl) {
-        this.mExpandableImageUrl = expandableImageUrl;
-    }
+    public void setExpandableImageUrl(String expandableImageUrl) { this.mExpandableImageUrl = expandableImageUrl; }
 
     public CharSequence getTitle() {
         return mTitle;
@@ -104,9 +105,7 @@ import java.util.List;
         return mButtons;
     }
 
-    public void setButtons(List<MixpanelNotificationButtonData> buttons) {
-        this.mButtons = buttons;
-    }
+    public void setButtons(List<MixpanelNotificationButtonData> buttons) { this.mButtons = buttons; }
 
     public int getBadgeCount() {
         return mBadgeCount;
@@ -180,17 +179,27 @@ import java.util.List;
         this.mSilent = silent;
     }
 
+    public PushTapAction getOnTap() { return mOnTap; }
+
+    public void setOnTap(PushTapAction onTap) { this.mOnTap = onTap; }
+
+    public void setCampaignId(String campaignId) { this.mCampaignId = campaignId; }
+
+    public String getCampaignId() { return mCampaignId; }
+
+    public void setMessageId(String campaignId) { this.mMessageId = campaignId; }
+
+    public String getMessageId() { return mMessageId; }
+
     /* package */ static class MixpanelNotificationButtonData {
-        private int mIcon;
         private String mLabel;
-        private String mUri;
+        private PushTapAction mOnTap;
+        private String mId;
 
-        public int getIcon() {
-            return mIcon;
-        }
-
-        public void setIcon(int icon) {
-            this.mIcon = icon;
+        public MixpanelNotificationButtonData(String label, PushTapAction onTap, String id) {
+            this.mLabel = label;
+            this.mOnTap = onTap;
+            this.mId = id;
         }
 
         public String getLabel() {
@@ -201,12 +210,64 @@ import java.util.List;
             this.mLabel = label;
         }
 
-        public String getUri() {
-            return mUri;
+        public PushTapAction getOnTap() {
+            return mOnTap;
         }
 
-        public void setUri(String uri) {
-            this.mUri = uri;
+        public void setOnTap(PushTapAction onTap) {
+            this.mOnTap = onTap;
+        }
+
+        public String getId() {
+            return mId;
+        }
+
+        public void setId(String id) {
+            this.mId = id;
+        }
+    }
+
+    protected static class PushTapAction {
+        public PushTapAction(PushTapTarget type, String aUri) {
+            mActionType = type;
+            mUri = aUri;
+        }
+
+        public PushTapAction(PushTapTarget type) {
+            this(type, null);
+        }
+
+        public PushTapTarget getActionType() { return mActionType; };
+
+        public String getUri() { return mUri; };
+
+        private final PushTapTarget mActionType;
+        private final String mUri;
+    }
+
+    protected enum PushTapTarget {
+        HOMESCREEN("homescreen"),
+        URL_IN_BROWSER("browser"),
+        DEEP_LINK("deeplink"),
+        ERROR("error");
+
+        private String target;
+
+        PushTapTarget(String envTarget) {
+            this.target = envTarget;
+        }
+
+        public String getTarget() {
+            return target;
+        }
+
+        public static PushTapTarget fromString(String target) {
+            for (PushTapTarget entry : PushTapTarget.values()) {
+                if (entry.getTarget().equals(target)) {
+                    return entry;
+                }
+            }
+            return ERROR;
         }
     }
 }

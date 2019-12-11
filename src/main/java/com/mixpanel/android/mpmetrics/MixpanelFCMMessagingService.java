@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -12,9 +13,6 @@ import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.mixpanel.android.util.MPLog;
-
-import java.util.Random;
-
 
 /**
  * Service for handling Firebase Cloud Messaging callbacks.
@@ -80,6 +78,7 @@ import java.util.Random;
  */
 public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     private static final String LOGTAG = "MixpanelAPI.MixpanelFCMMessagingService";
+    protected static final int NOTIFICATION_ID = 1;
 
     /* package */ static void init() {
         FirebaseInstanceId.getInstance().getInstanceId()
@@ -170,15 +169,28 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
         String message = data == null ? "null" : data.getMessage();
         MPLog.d(LOGTAG, "MP FCM notification received: " + message);
 
-        if (null != notification) {
-            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            final int id = new Random().nextInt(Integer.MAX_VALUE);
-            if (mixpanelPushNotification.getData().getTag() != null) {
-                // Use 0 as id so that we can reference notification solely by tag
-                notificationManager.notify(mixpanelPushNotification.getData().getTag(), 0, notification);
-            } else {
-                notificationManager.notify(id, notification);
+        if (notification != null) {
+            if (!mixpanelPushNotification.isValid()) {
+                MPLog.e(LOGTAG, "MP FCM notification has error");
             }
+            final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (null != data.getTag()) {
+                notificationManager.notify(data.getTag(), NOTIFICATION_ID, notification);
+            } else {
+                notificationManager.notify(mixpanelPushNotification.getNotificationId(), notification);
+            }
+        }
+    }
+
+    protected void cancelNotification(Bundle extras, NotificationManager notificationManager) {
+        int notificationId = extras.getInt("notificationId");
+        String tag = extras.getString("tag");
+        boolean hasTag = tag != null;
+
+        if (hasTag) {
+            notificationManager.cancel(tag, MixpanelFCMMessagingService.NOTIFICATION_ID);
+        } else {
+            notificationManager.cancel(notificationId);
         }
     }
 }

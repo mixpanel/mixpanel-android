@@ -21,7 +21,6 @@
     -->
 
     <application>
-
         <!-- The Mixpanel library will automatically attempt to show available in
              app notifications every time a new Activity is displayed. To disable this behavior,
              add the following line. The default value for this option is set to true. -->
@@ -75,5 +74,13 @@
             </intent-filter>
         </receiver>
         -->
+        
+        <!-- This activity will alow your application to make tracking calls to the MixpanelAPI for Notification clicks
+         along with Notification button clicks-->
+        <activity android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
