@@ -50,8 +50,8 @@ public class MixpanelPushNotification {
     private Notification.Builder mBuilder;
     private long mNow;
     private MixpanelNotificationData mData;
-    public int notificationId;
-    public boolean hasOnTapError = false;
+    private int notificationId;
+    private boolean hasOnTapError = false;
 
     public MixpanelPushNotification(Context context) {
         this(context, new Notification.Builder(context), System.currentTimeMillis());
@@ -567,6 +567,10 @@ public class MixpanelPushNotification {
         } else {
             return android.R.drawable.sym_def_app_icon;
         }
+    }
+
+    protected int getNotificationId(){
+        return this.notificationId;
     }
 
     protected boolean isValid() {

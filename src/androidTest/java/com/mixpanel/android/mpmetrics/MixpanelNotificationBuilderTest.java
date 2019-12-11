@@ -325,7 +325,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         mpPushSpy.createNotification(intent);
 
         verify(mpPushSpy).buildOnTap(onTap);
-        assertTrue(mpPushSpy.hasOnTapError);
+        assertFalse(mpPushSpy.isValid());
     }
 
     public void testNoOnTap() {
