@@ -582,21 +582,19 @@ public class MixpanelPushNotification {
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
-                    if(api.isAppInForeground()) {
-                        JSONObject pushProps = new JSONObject();
-                        try {
-                            if (extraLogData != null) {
-                                pushProps = new JSONObject(extraLogData);
-                            }
-                        } catch (JSONException e) {}
+                    JSONObject pushProps = new JSONObject();
+                    try {
+                        if (extraLogData != null) {
+                            pushProps = new JSONObject(extraLogData);
+                        }
+                    } catch (JSONException e) {}
 
-                        try {
-                            pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
-                            pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                            pushProps.put("message_type", "push");
-                            api.track("$campaign_received", pushProps);
-                        } catch (JSONException e) {}
-                    }
+                    try {
+                        pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
+                        pushProps.put("message_id", Integer.valueOf(messageId).intValue());
+                        pushProps.put("message_type", "push");
+                        api.track("$campaign_received", pushProps);
+                    } catch (JSONException e) {}
                 }
             });
         }
