@@ -228,24 +228,24 @@ import java.util.List;
     }
 
     protected static class PushTapAction {
-        public PushTapAction(PushTapTarget type, String aUri) {
+        public PushTapAction(PushTapActionType type, String aUri) {
             mActionType = type;
             mUri = aUri;
         }
 
-        public PushTapAction(PushTapTarget type) {
+        public PushTapAction(PushTapActionType type) {
             this(type, null);
         }
 
-        public PushTapTarget getActionType() { return mActionType; };
+        public PushTapActionType getActionType() { return mActionType; };
 
         public String getUri() { return mUri; };
 
-        private final PushTapTarget mActionType;
+        private final PushTapActionType mActionType;
         private final String mUri;
     }
 
-    protected enum PushTapTarget {
+    protected enum PushTapActionType {
         HOMESCREEN("homescreen"),
         URL_IN_BROWSER("browser"),
         DEEP_LINK("deeplink"),
@@ -253,7 +253,7 @@ import java.util.List;
 
         private String target;
 
-        PushTapTarget(String envTarget) {
+        PushTapActionType(String envTarget) {
             this.target = envTarget;
         }
 
@@ -261,8 +261,8 @@ import java.util.List;
             return target;
         }
 
-        public static PushTapTarget fromString(String target) {
-            for (PushTapTarget entry : PushTapTarget.values()) {
+        public static PushTapActionType fromString(String target) {
+            for (PushTapActionType entry : PushTapActionType.values()) {
                 if (entry.getTarget().equals(target)) {
                     return entry;
                 }

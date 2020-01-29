@@ -373,16 +373,16 @@ public class MixpanelPushNotification {
                 final JSONObject onTapJSON = new JSONObject(onTapStr);
                 final String typeFromJSON = onTapJSON.getString("type");
 
-                if (!typeFromJSON.equals(MixpanelNotificationData.PushTapTarget.HOMESCREEN.getTarget())) {
+                if (!typeFromJSON.equals(MixpanelNotificationData.PushTapActionType.HOMESCREEN.getTarget())) {
                     final String uriFromJSON = onTapJSON.getString("uri");
-                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString(typeFromJSON), uriFromJSON);
+                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.fromString(typeFromJSON), uriFromJSON);
                 } else {
-                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.fromString(typeFromJSON));
+                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.fromString(typeFromJSON));
                 }
 
-                if (onTap.getActionType().getTarget().equals(MixpanelNotificationData.PushTapTarget.ERROR.getTarget())) {
+                if (onTap.getActionType().getTarget().equals(MixpanelNotificationData.PushTapActionType.ERROR.getTarget())) {
                     hasOnTapError = true;
-                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.HOMESCREEN);
+                    onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.HOMESCREEN);
                 }
             } catch (JSONException e){
                 MPLog.d(LOGTAG, "Exception occurred while parsing ontap");
@@ -397,14 +397,14 @@ public class MixpanelPushNotification {
         MixpanelNotificationData.PushTapAction onTap = null;
 
         if (null != uriString) {
-            onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.URL_IN_BROWSER, uriString);
+            onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.URL_IN_BROWSER, uriString);
         }
 
         return onTap;
     }
 
     protected MixpanelNotificationData.PushTapAction getDefaultOnTap() {
-        return new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapTarget.HOMESCREEN);
+        return new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.HOMESCREEN);
     }
 
     @TargetApi(20)
