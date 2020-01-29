@@ -251,19 +251,19 @@ import java.util.List;
         DEEP_LINK("deeplink"),
         ERROR("error");
 
-        private String target;
+        private String stringVal;
 
         PushTapActionType(String envTarget) {
-            this.target = envTarget;
+            this.stringVal = envTarget;
         }
 
-        public String getTarget() {
-            return target;
+        public String toString() {
+            return stringVal;
         }
 
         public static PushTapActionType fromString(String target) {
             for (PushTapActionType entry : PushTapActionType.values()) {
-                if (entry.getTarget().equals(target)) {
+                if (entry.toString().equals(target)) {
                     return entry;
                 }
             }

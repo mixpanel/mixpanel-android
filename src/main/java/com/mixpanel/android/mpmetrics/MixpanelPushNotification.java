@@ -373,14 +373,14 @@ public class MixpanelPushNotification {
                 final JSONObject onTapJSON = new JSONObject(onTapStr);
                 final String typeFromJSON = onTapJSON.getString("type");
 
-                if (!typeFromJSON.equals(MixpanelNotificationData.PushTapActionType.HOMESCREEN.getTarget())) {
+                if (!typeFromJSON.equals(MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString())) {
                     final String uriFromJSON = onTapJSON.getString("uri");
                     onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.fromString(typeFromJSON), uriFromJSON);
                 } else {
                     onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.fromString(typeFromJSON));
                 }
 
-                if (onTap.getActionType().getTarget().equals(MixpanelNotificationData.PushTapActionType.ERROR.getTarget())) {
+                if (onTap.getActionType().toString().equals(MixpanelNotificationData.PushTapActionType.ERROR.toString())) {
                     hasOnTapError = true;
                     onTap = new MixpanelNotificationData.PushTapAction(MixpanelNotificationData.PushTapActionType.HOMESCREEN);
                 }
@@ -454,7 +454,7 @@ public class MixpanelPushNotification {
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = new Bundle();
         options.putCharSequence("tapTarget", TAP_TARGET_NOTIFICATION);
-        options.putCharSequence("actionType", onTap.getActionType().getTarget());
+        options.putCharSequence("actionType", onTap.getActionType().toString());
         options.putCharSequence("uri", onTap.getUri());
         options.putCharSequence("messageId", mData.getMessageId());
         options.putCharSequence("campaignId", mData.getCampaignId());

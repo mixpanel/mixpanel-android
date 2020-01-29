@@ -268,7 +268,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
         assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.getTarget());
+        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
     }
 
     public void testOnTapBrowser() {
@@ -290,7 +290,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
         assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.URL_IN_BROWSER.getTarget());
+        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.URL_IN_BROWSER.toString());
     }
 
     public void testOnTapDeeplink() {
@@ -312,7 +312,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
         assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.DEEP_LINK.getTarget());
+        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.DEEP_LINK.toString());
     }
 
     public void testOnTapError() {
@@ -345,7 +345,7 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
         assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.getTarget());
+        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
     }
 
     public void testActionButtons() {
