@@ -8,7 +8,7 @@ import android.os.Bundle;
 import android.webkit.URLUtil;
 
 import com.mixpanel.android.util.MPLog;
-import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapTarget;
+import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapActionType;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,12 +43,12 @@ public class MixpanelNotificationRouteActivity extends Activity {
 
     protected Intent handleRouteIntent(Intent routeIntent) {
         CharSequence actionTypeChars = routeIntent.getExtras().getCharSequence("actionType");
-        PushTapTarget target;
+        PushTapActionType target;
         if (null == actionTypeChars) {
             MPLog.d(LOGTAG, "Notification action click logged with no action type");
-            target = PushTapTarget.HOMESCREEN;
+            target = PushTapActionType.HOMESCREEN;
         } else {
-            target = PushTapTarget.fromString(actionTypeChars.toString());
+            target = PushTapActionType.fromString(actionTypeChars.toString());
         }
 
         CharSequence uri = routeIntent.getExtras().getCharSequence("uri");
