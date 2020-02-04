@@ -143,6 +143,7 @@ public class MixpanelPushNotification {
         mData.setCampaignId(campaignId);
         mData.setMessageId(messageId);
         mData.setButtons(buildButtons(buttonsJsonStr));
+        mData.setExtraLogData(extraLogData);
 
         int badgeCount = MixpanelNotificationData.NOT_SET;
         if (null != badgeCountStr) {
@@ -461,7 +462,8 @@ public class MixpanelPushNotification {
         options.putInt("notificationId", notificationId);
         options.putBoolean("sticky", mData.isSticky());
         options.putCharSequence("tag", mData.getTag());
-        options.putCharSequence("canonicalIdentifer", getCanonicalIdentifier());
+        options.putCharSequence("extraLogData", mData.getExtraLogData());
+        options.putCharSequence("canonicalNotificationId", getCanonicalIdentifier());
 
         return options;
     }

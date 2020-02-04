@@ -275,6 +275,7 @@ public class MixpanelAPI {
         if (superProperties != null) {
             registerSuperProperties(superProperties);
         }
+
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
         mConnectIntegrations = new ConnectIntegrations(this, mContext);

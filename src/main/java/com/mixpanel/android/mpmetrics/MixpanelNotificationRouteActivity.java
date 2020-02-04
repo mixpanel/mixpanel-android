@@ -80,7 +80,8 @@ public class MixpanelNotificationRouteActivity extends Activity {
         final String tapActionUri = getStringFromBundle(intentExtras, "uri");
         final String messageId = getStringFromBundle(intentExtras, "messageId");
         final String campaignId = getStringFromBundle(intentExtras, "campaignId");
-        final String canonicalId = getStringFromBundle(intentExtras, "canonicalId");
+        final String canonicalId = getStringFromBundle(intentExtras, "canonicalNotificationId");
+        final String extraLogData = getStringFromBundle(intentExtras, "extraLogData");
         final Boolean sticky = getBooleanFromBundle(intentExtras, "sticky");
 
         final String buttonId;
@@ -98,12 +99,17 @@ public class MixpanelNotificationRouteActivity extends Activity {
             public void process(MixpanelAPI api) {
                 JSONObject pushProps = new JSONObject();
                 try {
+                    if (extraLogData != null) {
+                        pushProps = new JSONObject(extraLogData);
+                    }
+                } catch (JSONException e) {}
+                try {
                     putIfNotNull(pushProps, "tap_target", tapTarget);
                     putIfNotNull(pushProps, "tap_action_type", tapActionType);
                     putIfNotNull(pushProps, "tap_action_uri", tapActionUri);
                     putIfNotNull(pushProps, "message_id", messageId);
                     putIfNotNull(pushProps, "campaign_id", campaignId);
-                    putIfNotNull(pushProps, "notification_id", canonicalId);
+                    putIfNotNull(pushProps, "android_notification_id", canonicalId);
                     putIfNotNull(pushProps, "sticky", sticky);
                     putIfNotNull(pushProps, "button_id", buttonId);
                     putIfNotNull(pushProps, "button_label", buttonLabel);

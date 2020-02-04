@@ -30,6 +30,7 @@ import java.util.List;
     private PushTapAction mOnTap;
     private String mCampaignId;
     private String mMessageId;
+    private String mExtraLogData;
 
     public int getIcon() {
         return mIcon;
@@ -190,6 +191,10 @@ import java.util.List;
     public void setMessageId(String campaignId) { this.mMessageId = campaignId; }
 
     public String getMessageId() { return mMessageId; }
+
+    public void setExtraLogData(String extraLogData) { this.mExtraLogData = extraLogData; }
+
+    public String getExtraLogData() { return mExtraLogData; }
 
     /* package */ static class MixpanelNotificationButtonData {
         private String mLabel;
