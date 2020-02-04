@@ -461,6 +461,7 @@ public class MixpanelPushNotification {
         options.putInt("notificationId", notificationId);
         options.putBoolean("sticky", mData.isSticky());
         options.putCharSequence("tag", mData.getTag());
+        options.putCharSequence("canonicalIdentifer", getCanonicalIdentifier());
 
         return options;
     }
@@ -571,6 +572,14 @@ public class MixpanelPushNotification {
 
     protected int getNotificationId(){
         return this.notificationId;
+    }
+
+    protected String getCanonicalIdentifier() {
+        if (this.mData.getTag() != null) {
+            return this.mData.getTag();
+        } else {
+            return Integer.toString(this.notificationId);
+        }
     }
 
     protected boolean isValid() {
