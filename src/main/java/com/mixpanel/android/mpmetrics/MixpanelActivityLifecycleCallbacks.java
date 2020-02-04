@@ -130,10 +130,10 @@ import java.util.Locale;
         }
 
         try {
-            if (intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
-                String campaignId = intent.getStringExtra("mp_campaign_id");
-                String messageId = intent.getStringExtra("mp_message_id");
-                String extraLogData = intent.getStringExtra("mp");
+            if (intent.hasExtra("campaignId") && intent.hasExtra("messageId")) {
+                String campaignId = intent.getStringExtra("campaignId");
+                String messageId = intent.getStringExtra("messageId");
+                String extraLogData = intent.getStringExtra("extraLogData");
 
                 try {
                     JSONObject pushProps;
