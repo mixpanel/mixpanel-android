@@ -2263,7 +2263,7 @@ public class MixpanelAPI {
         @Override
         public void setPushRegistrationId(String registrationId) {
             String existingRegistrationId = getPushRegistrationId();
-            if (existingRegistrationId != null && existingRegistrationId.equals(registrationId)) {
+            if (existingRegistrationId != null) {
                 return;
             }
             // Must be thread safe, will be called from a lot of different threads.
