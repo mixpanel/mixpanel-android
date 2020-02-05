@@ -2261,14 +2261,10 @@ public class MixpanelAPI {
         }
 
         @Override
+        // Must be thread safe, will be called from a lot of different threads.
         public void setPushRegistrationId(String registrationId) {
-            String existingRegistrationId = getPushRegistrationId();
-            if (existingRegistrationId != null) {
-                return;
-            }
-            // Must be thread safe, will be called from a lot of different threads.
             synchronized (mPersistentIdentity) {
-                MPLog.d(LOGTAG, "Setting new push token on people profile: " + registrationId);
+                MPLog.d(LOGTAG, "Setting push token on people profile: " + registrationId);
                 mPersistentIdentity.storePushId(registrationId);
                 final JSONArray ids = new JSONArray();
                 ids.put(registrationId);
