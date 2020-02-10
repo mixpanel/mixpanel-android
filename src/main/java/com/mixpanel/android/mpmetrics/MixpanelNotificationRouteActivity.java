@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.URLUtil;
 
+import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapActionType;
 
@@ -104,15 +105,15 @@ public class MixpanelNotificationRouteActivity extends Activity {
                     }
                 } catch (JSONException e) {}
                 try {
-                    putIfNotNull(pushProps, "tap_target", tapTarget);
-                    putIfNotNull(pushProps, "tap_action_type", tapActionType);
-                    putIfNotNull(pushProps, "tap_action_uri", tapActionUri);
-                    putIfNotNull(pushProps, "message_id", messageId);
-                    putIfNotNull(pushProps, "campaign_id", campaignId);
-                    putIfNotNull(pushProps, "android_notification_id", canonicalId);
-                    putIfNotNull(pushProps, "sticky", sticky);
-                    putIfNotNull(pushProps, "button_id", buttonId);
-                    putIfNotNull(pushProps, "button_label", buttonLabel);
+                    JSONUtils.putIfNotNull(pushProps, "tap_target", tapTarget);
+                    JSONUtils.putIfNotNull(pushProps, "tap_action_type", tapActionType);
+                    JSONUtils.putIfNotNull(pushProps, "tap_action_uri", tapActionUri);
+                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId);
+                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId);
+                    JSONUtils.putIfNotNull(pushProps, "android_notification_id", canonicalId);
+                    JSONUtils.putIfNotNull(pushProps, "sticky", sticky);
+                    JSONUtils.putIfNotNull(pushProps, "button_id", buttonId);
+                    JSONUtils.putIfNotNull(pushProps, "button_label", buttonLabel);
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                 }
@@ -140,12 +141,6 @@ public class MixpanelNotificationRouteActivity extends Activity {
             val = bundle.getBoolean(key);
         }
         return val;
-    }
-
-    private void putIfNotNull(JSONObject json, String key, Object val) throws JSONException {
-        if (val != null) {
-            json.put(key, val);
-        }
     }
 
 }
