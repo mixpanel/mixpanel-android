@@ -593,6 +593,8 @@ public class MixpanelPushNotification {
         final String messageId = this.mData.getMessageId();
         final String extraLogData = this.mData.getExtraLogData();
         if (campaignId != null && messageId != null) {
+            // TODO: we should use the distinct_id and token from the push payload to track
+            // instead of naively tracking to all instances
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
