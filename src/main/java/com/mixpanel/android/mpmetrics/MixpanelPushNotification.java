@@ -130,8 +130,6 @@ public class MixpanelPushNotification {
         final String visibilityStr = inboundIntent.getStringExtra("mp_visibility");
         final String silent = inboundIntent.getStringExtra("mp_silent");
 
-        trackCampaignReceived(campaignId, messageId, extraLogData);
-
         mData = new MixpanelNotificationData();
         mData.setMessage(message);
         mData.setLargeIconName(largeIconName);
@@ -229,6 +227,8 @@ public class MixpanelPushNotification {
             onTap = getDefaultOnTap();
         }
         mData.setOnTap(onTap);
+
+        trackCampaignReceived();
     }
 
     protected void buildNotificationFromData() {
@@ -588,26 +588,39 @@ public class MixpanelPushNotification {
         return mData != null && !hasOnTapError;
     }
 
-    protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
+    protected void trackCampaignReceived() {
+        final String campaignId = this.mData.getCampaignId();
+        final String messageId = this.mData.getMessageId();
+        final String extraLogData = this.mData.getExtraLogData();
         if (campaignId != null && messageId != null) {
             MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
                 @Override
                 public void process(MixpanelAPI api) {
-                    if(api.isAppInForeground()) {
-                        JSONObject pushProps = new JSONObject();
-                        try {
-                            if (extraLogData != null) {
-                                pushProps = new JSONObject(extraLogData);
-                            }
-                        } catch (JSONException e) {}
+                    JSONObject pushProps = new JSONObject();
+                    try {
+                        if (extraLogData != null) {
+                            pushProps = new JSONObject(extraLogData);
+                        }
+                    } catch (JSONException e) {}
 
-                        try {
-                            pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
-                            pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                            pushProps.put("message_type", "push");
-                            api.track("$campaign_received", pushProps);
-                        } catch (JSONException e) {}
+                    try {
+                        pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
+                        pushProps.put("message_id", Integer.valueOf(messageId).intValue());
+                        pushProps.put("android_notification_id", getCanonicalIdentifier());
+                        pushProps.put("message_type", "push");
+                    } catch (JSONException e) {}
+
+                    api.track("$push_notification_received", pushProps);
+
+                    // This $campaign_received is tracked for legacy purposes
+                    // but should be considered @deprecated as it's behavior across platforms
+                    // is inconsistent and it's not a very valuable event. We can probably
+                    // remove it once folks start using the new $push_notification_* events
+                    if(api.isAppInForeground()) {
+                        api.track("$campaign_received", pushProps);
                     }
+
+                    api.flushNoDecideCheck();
                 }
             });
         }
