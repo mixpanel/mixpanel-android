@@ -76,20 +76,20 @@ public class MixpanelNotificationRouteActivity extends Activity {
     protected void trackAction(Intent routeIntent) {
         Bundle intentExtras = routeIntent.getExtras();
 
-        final String tapTarget = getStringFromBundle(intentExtras, "tapTarget");
-        final String tapActionType = getStringFromBundle(intentExtras, "tapActionType");
-        final String tapActionUri = getStringFromBundle(intentExtras, "uri");
-        final String messageId = getStringFromBundle(intentExtras, "messageId");
-        final String campaignId = getStringFromBundle(intentExtras, "campaignId");
-        final String canonicalId = getStringFromBundle(intentExtras, "canonicalNotificationId");
-        final String extraLogData = getStringFromBundle(intentExtras, "extraLogData");
-        final Boolean sticky = getBooleanFromBundle(intentExtras, "sticky");
+        final String tapTarget = getStringFromBundle(intentExtras, "mp_tap_target");
+        final String tapActionType = getStringFromBundle(intentExtras, "mp_tap_action_type");
+        final String tapActionUri = getStringFromBundle(intentExtras, "mp_tap_action_uri");
+        final String messageId = getStringFromBundle(intentExtras, "mp_message_id");
+        final String campaignId = getStringFromBundle(intentExtras, "mp_campaign_id");
+        final String canonicalId = getStringFromBundle(intentExtras, "mp_canonical_notification_id");
+        final String extraLogData = getStringFromBundle(intentExtras, "mp");
+        final Boolean sticky = getBooleanFromBundle(intentExtras, "mp_is_sticky");
 
         final String buttonId;
         final String buttonLabel;
         if (tapTarget != null && tapTarget.equals(MixpanelPushNotification.TAP_TARGET_BUTTON)) {
-            buttonId = getStringFromBundle(intentExtras, "buttonId");
-            buttonLabel = getStringFromBundle(intentExtras, "label");
+            buttonId = getStringFromBundle(intentExtras, "mp_button_id");
+            buttonLabel = getStringFromBundle(intentExtras, "mp_button_label");
         } else {
             buttonId = null;
             buttonLabel = null;
@@ -105,15 +105,15 @@ public class MixpanelNotificationRouteActivity extends Activity {
                     }
                 } catch (JSONException e) {}
                 try {
-                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId); // no $ prefix for historical reasons
-                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId); // no $ prefix for historical reasons
+                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId); // no $ prefix for historical consistency
+                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId); // no $ prefix for historical consistency
                     JSONUtils.putIfNotNull(pushProps, "$tap_target", tapTarget);
                     JSONUtils.putIfNotNull(pushProps, "$tap_action_type", tapActionType);
                     JSONUtils.putIfNotNull(pushProps, "$tap_action_uri", tapActionUri);
                     JSONUtils.putIfNotNull(pushProps, "$is_sticky", sticky);
                     JSONUtils.putIfNotNull(pushProps, "$button_id", buttonId);
-                    JSONUtils.putIfNotNull(pushProps, "$android_notification_id", canonicalId);
                     JSONUtils.putIfNotNull(pushProps, "$button_label", buttonLabel);
+                    JSONUtils.putIfNotNull(pushProps, "$android_notification_id", canonicalId);
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                 }

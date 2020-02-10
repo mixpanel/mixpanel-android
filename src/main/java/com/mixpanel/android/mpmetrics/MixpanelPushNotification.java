@@ -454,16 +454,16 @@ public class MixpanelPushNotification {
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = new Bundle();
-        options.putCharSequence("tapTarget", TAP_TARGET_NOTIFICATION);
-        options.putCharSequence("actionType", onTap.getActionType().toString());
-        options.putCharSequence("uri", onTap.getUri());
-        options.putCharSequence("messageId", mData.getMessageId());
-        options.putCharSequence("campaignId", mData.getCampaignId());
-        options.putInt("notificationId", notificationId);
-        options.putBoolean("sticky", mData.isSticky());
-        options.putCharSequence("tag", mData.getTag());
-        options.putCharSequence("extraLogData", mData.getExtraLogData());
-        options.putCharSequence("canonicalNotificationId", getCanonicalIdentifier());
+        options.putCharSequence("mp_tap_target", TAP_TARGET_NOTIFICATION);
+        options.putCharSequence("mp_tap_action_type", onTap.getActionType().toString());
+        options.putCharSequence("mp_tap_action_uri", onTap.getUri());
+        options.putCharSequence("mp_message_id", mData.getMessageId());
+        options.putCharSequence("mp_campaign_id", mData.getCampaignId());
+        options.putInt("mp_notification_id", notificationId);
+        options.putBoolean("mp_is_sticky", mData.isSticky());
+        options.putCharSequence("mp_tag", mData.getTag());
+        options.putCharSequence("mp_canonical_notification_id", getCanonicalIdentifier());
+        options.putCharSequence("mp", mData.getExtraLogData());
 
         return options;
     }
@@ -485,9 +485,9 @@ public class MixpanelPushNotification {
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence buttonLabel) {
         Bundle options = buildBundle(onTap);
-        options.putCharSequence("tapTarget", TAP_TARGET_BUTTON);
-        options.putCharSequence("buttonId", buttonId);
-        options.putCharSequence("label", buttonLabel);
+        options.putCharSequence("mp_tap_target", TAP_TARGET_BUTTON);
+        options.putCharSequence("mp_button_id", buttonId);
+        options.putCharSequence("mp_button_label", buttonLabel);
         return options;
     }
 
@@ -608,6 +608,7 @@ public class MixpanelPushNotification {
                     try {
                         pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
                         pushProps.put("message_id", Integer.valueOf(messageId).intValue());
+                        pushProps.put("message_type", "push");
                         pushProps.put("$android_notification_id", getCanonicalIdentifier());
                     } catch (JSONException e) {}
 
@@ -618,9 +619,6 @@ public class MixpanelPushNotification {
                     // is inconsistent and it's not a very valuable event. We can probably
                     // remove it once folks start using the new $push_notification_* events
                     if(api.isAppInForeground()) {
-                        try {
-                            pushProps.put("message_type", "push");
-                        } catch (JSONException e) {}
                         api.track("$campaign_received", pushProps);
                     }
 

@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.viewcrawler.GestureTracker;
 
 import org.json.JSONException;
@@ -130,10 +131,11 @@ import java.util.Locale;
         }
 
         try {
-            if (intent.hasExtra("campaignId") && intent.hasExtra("messageId")) {
-                String campaignId = intent.getStringExtra("campaignId");
-                String messageId = intent.getStringExtra("messageId");
-                String extraLogData = intent.getStringExtra("extraLogData");
+            if (intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
+                String campaignId = intent.getStringExtra("mp_campaign_id");
+                String messageId = intent.getStringExtra("mp_message_id");
+                String canonicalId = intent.getStringExtra("mp_canonical_notification_id");
+                String extraLogData = intent.getStringExtra("mp");
 
                 try {
                     JSONObject pushProps;
@@ -145,6 +147,7 @@ import java.util.Locale;
                     pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
                     pushProps.put("message_id", Integer.valueOf(messageId).intValue());
                     pushProps.put("message_type", "push");
+                    JSONUtils.putIfNotNull(pushProps,"$android_notification_id", canonicalId);
                     mMpInstance.track("$app_open", pushProps);
                 } catch (JSONException e) {}
 
