@@ -608,8 +608,7 @@ public class MixpanelPushNotification {
                     try {
                         pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
                         pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                        pushProps.put("android_notification_id", getCanonicalIdentifier());
-                        pushProps.put("message_type", "push");
+                        pushProps.put("$android_notification_id", getCanonicalIdentifier());
                     } catch (JSONException e) {}
 
                     api.track("$push_notification_received", pushProps);
@@ -619,6 +618,9 @@ public class MixpanelPushNotification {
                     // is inconsistent and it's not a very valuable event. We can probably
                     // remove it once folks start using the new $push_notification_* events
                     if(api.isAppInForeground()) {
+                        try {
+                            pushProps.put("message_type", "push");
+                        } catch (JSONException e) {}
                         api.track("$campaign_received", pushProps);
                     }
 

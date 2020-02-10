@@ -105,15 +105,15 @@ public class MixpanelNotificationRouteActivity extends Activity {
                     }
                 } catch (JSONException e) {}
                 try {
-                    JSONUtils.putIfNotNull(pushProps, "tap_target", tapTarget);
-                    JSONUtils.putIfNotNull(pushProps, "tap_action_type", tapActionType);
-                    JSONUtils.putIfNotNull(pushProps, "tap_action_uri", tapActionUri);
-                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId);
-                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId);
-                    JSONUtils.putIfNotNull(pushProps, "android_notification_id", canonicalId);
-                    JSONUtils.putIfNotNull(pushProps, "sticky", sticky);
-                    JSONUtils.putIfNotNull(pushProps, "button_id", buttonId);
-                    JSONUtils.putIfNotNull(pushProps, "button_label", buttonLabel);
+                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId); // no $ prefix for historical reasons
+                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId); // no $ prefix for historical reasons
+                    JSONUtils.putIfNotNull(pushProps, "$tap_target", tapTarget);
+                    JSONUtils.putIfNotNull(pushProps, "$tap_action_type", tapActionType);
+                    JSONUtils.putIfNotNull(pushProps, "$tap_action_uri", tapActionUri);
+                    JSONUtils.putIfNotNull(pushProps, "$is_sticky", sticky);
+                    JSONUtils.putIfNotNull(pushProps, "$button_id", buttonId);
+                    JSONUtils.putIfNotNull(pushProps, "$android_notification_id", canonicalId);
+                    JSONUtils.putIfNotNull(pushProps, "$button_label", buttonLabel);
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
                 }
