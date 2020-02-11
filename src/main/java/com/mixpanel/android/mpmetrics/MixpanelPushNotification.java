@@ -239,11 +239,19 @@ public class MixpanelPushNotification {
                 PendingIntent.FLAG_CANCEL_CURRENT
         );
 
+        final PendingIntent deleteIntent = PendingIntent.getBroadcast(
+                mContext,
+                2,
+                getDeleteIntent(),
+                0
+        );
+
         mBuilder.
                 setContentTitle(mData.getTitle()).
                 setContentText(mData.getMessage()).
                 setTicker(null == mData.getTicker() ? mData.getMessage() : mData.getTicker()).
-                setContentIntent(contentIntent);
+                setContentIntent(contentIntent).
+                setDeleteIntent(deleteIntent);
 
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
@@ -438,6 +446,19 @@ public class MixpanelPushNotification {
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
 
         return routingIntent;
+    }
+
+
+    protected Intent getDeleteIntent() {
+        Bundle options = new Bundle();
+        options.putCharSequence("mp_message_id", mData.getMessageId());
+        options.putCharSequence("mp_campaign_id", mData.getCampaignId());
+        options.putCharSequence("mp_canonical_notification_id", getCanonicalIdentifier());
+        options.putCharSequence("mp", mData.getExtraLogData());
+
+        return new Intent().
+                setClass(mContext, MixpanelPushNotificationDismissedReceiver.class).
+                putExtras(options);
     }
 
     /**
