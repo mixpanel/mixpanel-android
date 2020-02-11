@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.URLUtil;
 
-import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.mpmetrics.MixpanelNotificationData.PushTapActionType;
 
@@ -30,11 +29,11 @@ public class MixpanelNotificationRouteActivity extends Activity {
             return;
         }
 
-        trackAction(routeIntent);
+        trackTapAction(routeIntent);
 
         final Intent notificationIntent = handleRouteIntent(routeIntent);
 
-        if (!extras.getBoolean("sticky")) {
+        if (!extras.getBoolean("mp_is_sticky")) {
             MixpanelFCMMessagingService fcmMessagingService = new MixpanelFCMMessagingService();
             NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
             fcmMessagingService.cancelNotification(extras, notificationManager);
@@ -43,7 +42,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
     }
 
     protected Intent handleRouteIntent(Intent routeIntent) {
-        CharSequence actionTypeChars = routeIntent.getExtras().getCharSequence("actionType");
+        CharSequence actionTypeChars = routeIntent.getExtras().getCharSequence("mp_tap_action_type");
         PushTapActionType target;
         if (null == actionTypeChars) {
             MPLog.d(LOGTAG, "Notification action click logged with no action type");
@@ -52,7 +51,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
             target = PushTapActionType.fromString(actionTypeChars.toString());
         }
 
-        CharSequence uri = routeIntent.getExtras().getCharSequence("uri");
+        CharSequence uri = routeIntent.getExtras().getCharSequence("mp_tap_action_uri");
 
         final Intent defaultIntent = this.getPackageManager().getLaunchIntentForPackage(this.getPackageName());
 
@@ -73,74 +72,37 @@ public class MixpanelNotificationRouteActivity extends Activity {
         }
     }
 
-    protected void trackAction(Intent routeIntent) {
-        Bundle intentExtras = routeIntent.getExtras();
-
-        final String tapTarget = getStringFromBundle(intentExtras, "mp_tap_target");
-        final String tapActionType = getStringFromBundle(intentExtras, "mp_tap_action_type");
-        final String tapActionUri = getStringFromBundle(intentExtras, "mp_tap_action_uri");
-        final String messageId = getStringFromBundle(intentExtras, "mp_message_id");
-        final String campaignId = getStringFromBundle(intentExtras, "mp_campaign_id");
-        final String canonicalId = getStringFromBundle(intentExtras, "mp_canonical_notification_id");
-        final String extraLogData = getStringFromBundle(intentExtras, "mp");
-        final Boolean sticky = getBooleanFromBundle(intentExtras, "mp_is_sticky");
-
+    protected void trackTapAction(Intent routeIntent) {
+        final String tapTarget = routeIntent.getStringExtra("mp_tap_target");
+        final String tapActionType = routeIntent.getStringExtra("mp_tap_action_type");
+        final String tapActionUri = routeIntent.getStringExtra("mp_tap_action_uri");
+        final Boolean sticky = routeIntent.getBooleanExtra("mp_is_sticky", false);
         final String buttonId;
         final String buttonLabel;
         if (tapTarget != null && tapTarget.equals(MixpanelPushNotification.TAP_TARGET_BUTTON)) {
-            buttonId = getStringFromBundle(intentExtras, "mp_button_id");
-            buttonLabel = getStringFromBundle(intentExtras, "mp_button_label");
+            buttonId = routeIntent.getStringExtra("mp_button_id");
+            buttonLabel = routeIntent.getStringExtra("mp_button_label");
         } else {
             buttonId = null;
             buttonLabel = null;
         }
 
-        MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-            @Override
-            public void process(MixpanelAPI api) {
-                JSONObject pushProps = new JSONObject();
-                try {
-                    if (extraLogData != null) {
-                        pushProps = new JSONObject(extraLogData);
-                    }
-                } catch (JSONException e) {}
-                try {
-                    JSONUtils.putIfNotNull(pushProps, "message_id", messageId); // no $ prefix for historical consistency
-                    JSONUtils.putIfNotNull(pushProps, "campaign_id", campaignId); // no $ prefix for historical consistency
-                    JSONUtils.putIfNotNull(pushProps, "$tap_target", tapTarget);
-                    JSONUtils.putIfNotNull(pushProps, "$tap_action_type", tapActionType);
-                    JSONUtils.putIfNotNull(pushProps, "$tap_action_uri", tapActionUri);
-                    JSONUtils.putIfNotNull(pushProps, "$is_sticky", sticky);
-                    JSONUtils.putIfNotNull(pushProps, "$button_id", buttonId);
-                    JSONUtils.putIfNotNull(pushProps, "$button_label", buttonLabel);
-                    JSONUtils.putIfNotNull(pushProps, "$android_notification_id", canonicalId);
-                } catch (JSONException e) {
-                    MPLog.e(LOGTAG, "Error loading tracking JSON properties.");
-                }
-                api.track("$push_notification_tap", pushProps);
-            }
-        });
-    }
-
-    private String getStringFromBundle(Bundle bundle, String key) {
-        String val = null;
-        CharSequence valChars = bundle.getCharSequence(key);
-        if (null == valChars) {
-            MPLog.d(LOGTAG, "$push_notification_tap logged with no \"" + key + "\" property");
-        } else {
-            val = valChars.toString();
+        JSONObject additionalProperties = new JSONObject();
+        try {
+            additionalProperties.putOpt("$tap_target", tapTarget);
+            additionalProperties.putOpt("$tap_action_type", tapActionType);
+            additionalProperties.putOpt("$tap_action_uri", tapActionUri);
+            additionalProperties.putOpt("$is_sticky", sticky);
+            additionalProperties.putOpt("$button_id", buttonId);
+            additionalProperties.putOpt("$button_label", buttonLabel);
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Error adding tracking JSON properties.", e);
         }
-        return val;
+        MixpanelAPI.trackPushNotificationEventFromIntent(
+                getApplicationContext(),
+                routeIntent,
+                "$push_notification_tap",
+                additionalProperties
+        );
     }
-
-    private Boolean getBooleanFromBundle(Bundle bundle, String key) {
-        Boolean val = null;
-        if (!bundle.containsKey(key)) {
-            MPLog.d(LOGTAG, "$push_notification_tap logged with no \"" + key + "\" property");
-        } else {
-            val = bundle.getBoolean(key);
-        }
-        return val;
-    }
-
 }

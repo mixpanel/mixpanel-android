@@ -24,10 +24,4 @@ public class JSONUtils {
 
         return null;
     }
-
-    public static void putIfNotNull(JSONObject json, String key, Object val) throws JSONException {
-        if (val != null) {
-            json.put(key, val);
-        }
-    }
 }

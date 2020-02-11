@@ -612,40 +612,35 @@ public class MixpanelPushNotification {
     protected void trackCampaignReceived() {
         final String campaignId = this.mData.getCampaignId();
         final String messageId = this.mData.getMessageId();
-        final String extraLogData = this.mData.getExtraLogData();
+        final String mpPayloadStr = this.mData.getExtraLogData();
         if (campaignId != null && messageId != null) {
-            // TODO: we should use the distinct_id and token from the push payload to track
-            // instead of naively tracking to all instances
-            MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-                @Override
-                public void process(MixpanelAPI api) {
-                    JSONObject pushProps = new JSONObject();
-                    try {
-                        if (extraLogData != null) {
-                            pushProps = new JSONObject(extraLogData);
-                        }
-                    } catch (JSONException e) {}
 
-                    try {
-                        pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
-                        pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                        pushProps.put("message_type", "push");
-                        pushProps.put("$android_notification_id", getCanonicalIdentifier());
-                    } catch (JSONException e) {}
+            MixpanelAPI.trackPushNotificationEvent(
+                    mContext,
+                    Integer.valueOf(campaignId),
+                    Integer.valueOf(messageId),
+                    getCanonicalIdentifier(),
+                    mpPayloadStr,
+                    "$push_notification_received",
+                    new JSONObject()
+            );
 
-                    api.track("$push_notification_received", pushProps);
-
-                    // This $campaign_received is tracked for legacy purposes
-                    // but should be considered @deprecated as it's behavior across platforms
-                    // is inconsistent and it's not a very valuable event. We can probably
-                    // remove it once folks start using the new $push_notification_* events
-                    if(api.isAppInForeground()) {
-                        api.track("$campaign_received", pushProps);
-                    }
-
-                    api.flushNoDecideCheck();
-                }
-            });
+            MixpanelAPI instance = MixpanelAPI.getInstanceFromMpPayload(mContext, mpPayloadStr);
+            if (instance != null && instance.isAppInForeground()) {
+                JSONObject additionalProperties = new JSONObject();
+                try {
+                    additionalProperties.put("message_type", "push");
+                } catch (JSONException e) {}
+                MixpanelAPI.trackPushNotificationEvent(
+                        mContext,
+                        Integer.valueOf(campaignId),
+                        Integer.valueOf(messageId),
+                        getCanonicalIdentifier(),
+                        mpPayloadStr,
+                        "$campaign_received",
+                        additionalProperties
+                );
+            }
         }
     }
 
