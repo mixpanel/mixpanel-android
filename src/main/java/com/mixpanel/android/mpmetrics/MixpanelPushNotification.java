@@ -241,7 +241,7 @@ public class MixpanelPushNotification {
 
         final PendingIntent deleteIntent = PendingIntent.getBroadcast(
                 mContext,
-                2,
+                0,
                 getDeleteIntent(),
                 0
         );
