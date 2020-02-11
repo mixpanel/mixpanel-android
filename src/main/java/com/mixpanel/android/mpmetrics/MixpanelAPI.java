@@ -228,7 +228,6 @@ public class MixpanelAPI {
     /**
      * Track a push notification event using data from the intent
      */
-
     /* package */ static void trackPushNotificationEventFromIntent(Context context, Intent intent, String eventName) {
         trackPushNotificationEventFromIntent(context, intent, eventName, new JSONObject());
     }
