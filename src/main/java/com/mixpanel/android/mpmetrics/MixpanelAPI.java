@@ -226,6 +226,93 @@ public class MixpanelAPI {
     }
 
     /**
+     * Track a push notification event using data from the intent
+     */
+    /* package */ static void trackPushNotificationEventFromIntent(Context context, Intent intent, String eventName) {
+        trackPushNotificationEventFromIntent(context, intent, eventName, new JSONObject());
+    }
+
+    /**
+     * Track a push notification event using data from the intent
+     */
+    /* package */ static void trackPushNotificationEventFromIntent(Context context, Intent intent, String eventName, JSONObject additionalProperties) {
+        if (intent.hasExtra("mp") && intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
+            final String messageId = intent.getStringExtra("mp_message_id");
+            final String campaignId = intent.getStringExtra("mp_campaign_id");
+            final String androidNotificationId = intent.getStringExtra("mp_canonical_notification_id");
+            trackPushNotificationEvent(context, Integer.valueOf(campaignId), Integer.valueOf(messageId), androidNotificationId, intent.getStringExtra("mp"), eventName, additionalProperties);
+        } else {
+            MPLog.e(LOGTAG, "Intent is missing Mixpanel notification metadata, not tracking event: \"" + eventName + "\"");
+        }
+    }
+
+    /**
+     * Track a push notification event using the project token and distinct id from the mp payload
+     */
+    /* package */ static void trackPushNotificationEvent(Context context, Integer campaignId, Integer messageId, String androidNotificationId, String mpPayloadStr, String eventName, JSONObject additionalProperties) {
+        JSONObject mpPayload;
+        try {
+            mpPayload = new JSONObject(mpPayloadStr);
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Exception parsing mp payload from intent extras, not tracking event: \"" + eventName + "\"", e);
+            return;
+        }
+
+        String projectToken = mpPayload.optString("token");
+        if (projectToken == null) {
+            MPLog.e(LOGTAG, "\"token\" not found in mp payload, not tracking event: \"" + eventName + "\"");
+            return;
+        }
+        mpPayload.remove("token");
+
+        String distinctId = mpPayload.optString("distinct_id");
+        if (distinctId == null) {
+            MPLog.e(LOGTAG, "\"distinct_id\" not found in mp payload, not tracking event: \"" + eventName + "\"");
+            return;
+        }
+        mpPayload.remove("distinct_id");
+
+        JSONObject properties = mpPayload;
+
+        try {
+            Iterator<String> itr = additionalProperties.keys();
+            while(itr.hasNext()) {
+                String key = itr.next();
+                properties.put(key, additionalProperties.get(key));
+            }
+            properties.put("message_id", messageId); // no $ prefix for historical consistency
+            properties.put("campaign_id", campaignId); // no $ prefix for historical consistency
+            properties.put("$android_notification_id", androidNotificationId);
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Error setting tracking JSON properties.", e);
+        }
+
+        MixpanelAPI instance = getInstanceFromMpPayload(context, mpPayloadStr);
+        if (instance == null) {
+            MPLog.e(LOGTAG, "Got null instance, not tracking \"" + eventName + "\"");
+        } else {
+            instance.track(eventName, properties);
+            instance.flushNoDecideCheck();
+        }
+    }
+
+    /* package */ static MixpanelAPI getInstanceFromMpPayload(Context context, String mpPayloadStr) {
+        JSONObject mpPayload;
+        try {
+            mpPayload = new JSONObject(mpPayloadStr);
+        } catch (JSONException e) {
+            return null;
+        }
+
+        String projectToken = mpPayload.optString("token");
+        if (projectToken == null) {
+            return null;
+        }
+
+        return MixpanelAPI.getInstance(context, projectToken);
+    }
+
+    /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
@@ -753,7 +840,7 @@ public class MixpanelAPI {
      */
     public String getDistinctId() {
         return mPersistentIdentity.getEventsDistinctId();
-     }
+    }
 
      /**
      * Returns the anonymoous id currently being used to uniquely identify the device and all
@@ -2897,6 +2984,10 @@ public class MixpanelAPI {
         } else {
             MPLog.d(APP_LINKS_LOGTAG, "Context is not an instance of Activity. To detect inbound App Links, pass an instance of an Activity to getInstance.");
         }
+    }
+
+    /* package */ Context getContext() {
+        return mContext;
     }
 
     private final Context mContext;

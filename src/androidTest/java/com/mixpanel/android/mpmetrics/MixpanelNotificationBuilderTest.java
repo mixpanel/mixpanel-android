@@ -267,8 +267,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
-        assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
+        assertEquals(options.getString("mp_tap_target"), "notification");
+        assertEquals(options.getString("mp_tap_action_type"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
     }
 
     public void testOnTapBrowser() {
@@ -289,8 +289,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
-        assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.URL_IN_BROWSER.toString());
+        assertEquals(options.getString("mp_tap_target"), "notification");
+        assertEquals(options.getString("mp_tap_action_type"), MixpanelNotificationData.PushTapActionType.URL_IN_BROWSER.toString());
     }
 
     public void testOnTapDeeplink() {
@@ -311,8 +311,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
-        assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.DEEP_LINK.toString());
+        assertEquals(options.getString("mp_tap_target"), "notification");
+        assertEquals(options.getString("mp_tap_action_type"), MixpanelNotificationData.PushTapActionType.DEEP_LINK.toString());
     }
 
     public void testOnTapError() {
@@ -344,8 +344,8 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         verify(mpPushSpy).buildBundle(argThat(matchesFakeOnTap));
 
         Bundle options = mpPushSpy.buildBundle(fakeOnTap);
-        assertEquals(options.getString("tapTarget"), "notification");
-        assertEquals(options.getString("actionType"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
+        assertEquals(options.getString("mp_tap_target"), "notification");
+        assertEquals(options.getString("mp_tap_action_type"), MixpanelNotificationData.PushTapActionType.HOMESCREEN.toString());
     }
 
     public void testActionButtons() {

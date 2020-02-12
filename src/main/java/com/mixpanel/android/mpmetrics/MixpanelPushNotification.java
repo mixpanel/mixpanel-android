@@ -31,6 +31,9 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public class MixpanelPushNotification {
+    public final static String PUSH_TAP_ACTION = "com.mixpanel.push_notification_tap";
+    public final static String PUSH_DISMISS_ACTION = "com.mixpanel.push_notification_dismissed";
+
     private final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
 
     protected final static String TAP_TARGET_BUTTON = "button";
@@ -130,8 +133,6 @@ public class MixpanelPushNotification {
         final String visibilityStr = inboundIntent.getStringExtra("mp_visibility");
         final String silent = inboundIntent.getStringExtra("mp_silent");
 
-        trackCampaignReceived(campaignId, messageId, extraLogData);
-
         mData = new MixpanelNotificationData();
         mData.setMessage(message);
         mData.setLargeIconName(largeIconName);
@@ -143,6 +144,7 @@ public class MixpanelPushNotification {
         mData.setCampaignId(campaignId);
         mData.setMessageId(messageId);
         mData.setButtons(buildButtons(buttonsJsonStr));
+        mData.setExtraLogData(extraLogData);
 
         int badgeCount = MixpanelNotificationData.NOT_SET;
         if (null != badgeCountStr) {
@@ -228,6 +230,8 @@ public class MixpanelPushNotification {
             onTap = getDefaultOnTap();
         }
         mData.setOnTap(onTap);
+
+        trackCampaignReceived();
     }
 
     protected void buildNotificationFromData() {
@@ -238,11 +242,19 @@ public class MixpanelPushNotification {
                 PendingIntent.FLAG_CANCEL_CURRENT
         );
 
+        final PendingIntent deleteIntent = PendingIntent.getBroadcast(
+                mContext,
+                0,
+                getDeleteIntent(),
+                0
+        );
+
         mBuilder.
                 setContentTitle(mData.getTitle()).
                 setContentText(mData.getMessage()).
                 setTicker(null == mData.getTicker() ? mData.getMessage() : mData.getTicker()).
-                setContentIntent(contentIntent);
+                setContentIntent(contentIntent).
+                setDeleteIntent(deleteIntent);
 
         maybeSetNotificationBarIcon();
         maybeSetLargeIcon();
@@ -419,24 +431,33 @@ public class MixpanelPushNotification {
 
     protected Intent getRoutingIntent(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence label) {
         Bundle options = buildBundle(onTap, buttonId, label);
-
-        Intent routingIntent = new Intent().
+        return new Intent().
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-
-        return routingIntent;
     }
 
     protected Intent getRoutingIntent(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = buildBundle(onTap);
-
-        Intent routingIntent = new Intent().
+        return new Intent().
+                setAction(PUSH_TAP_ACTION).
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+    }
 
-        return routingIntent;
+
+    protected Intent getDeleteIntent() {
+        Bundle options = new Bundle();
+        options.putCharSequence("mp_message_id", mData.getMessageId());
+        options.putCharSequence("mp_campaign_id", mData.getCampaignId());
+        options.putCharSequence("mp_canonical_notification_id", getCanonicalIdentifier());
+        options.putCharSequence("mp", mData.getExtraLogData());
+
+        return new Intent().
+                setAction(PUSH_DISMISS_ACTION).
+                setClass(mContext, MixpanelPushNotificationDismissedReceiver.class).
+                putExtras(options);
     }
 
     /**
@@ -453,14 +474,16 @@ public class MixpanelPushNotification {
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = new Bundle();
-        options.putCharSequence("tapTarget", TAP_TARGET_NOTIFICATION);
-        options.putCharSequence("actionType", onTap.getActionType().toString());
-        options.putCharSequence("uri", onTap.getUri());
-        options.putCharSequence("messageId", mData.getMessageId());
-        options.putCharSequence("campaignId", mData.getCampaignId());
-        options.putInt("notificationId", notificationId);
-        options.putBoolean("sticky", mData.isSticky());
-        options.putCharSequence("tag", mData.getTag());
+        options.putCharSequence("mp_tap_target", TAP_TARGET_NOTIFICATION);
+        options.putCharSequence("mp_tap_action_type", onTap.getActionType().toString());
+        options.putCharSequence("mp_tap_action_uri", onTap.getUri());
+        options.putCharSequence("mp_message_id", mData.getMessageId());
+        options.putCharSequence("mp_campaign_id", mData.getCampaignId());
+        options.putInt("mp_notification_id", notificationId);
+        options.putBoolean("mp_is_sticky", mData.isSticky());
+        options.putCharSequence("mp_tag", mData.getTag());
+        options.putCharSequence("mp_canonical_notification_id", getCanonicalIdentifier());
+        options.putCharSequence("mp", mData.getExtraLogData());
 
         return options;
     }
@@ -482,9 +505,9 @@ public class MixpanelPushNotification {
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence buttonLabel) {
         Bundle options = buildBundle(onTap);
-        options.putCharSequence("tapTarget", TAP_TARGET_BUTTON);
-        options.putCharSequence("buttonId", buttonId);
-        options.putCharSequence("label", buttonLabel);
+        options.putCharSequence("mp_tap_target", TAP_TARGET_BUTTON);
+        options.putCharSequence("mp_button_id", buttonId);
+        options.putCharSequence("mp_button_label", buttonLabel);
         return options;
     }
 
@@ -573,32 +596,50 @@ public class MixpanelPushNotification {
         return this.notificationId;
     }
 
+    protected String getCanonicalIdentifier() {
+        if (this.mData.getTag() != null) {
+            return this.mData.getTag();
+        } else {
+            return Integer.toString(this.notificationId);
+        }
+    }
+
     protected boolean isValid() {
         return mData != null && !hasOnTapError;
     }
 
-    protected void trackCampaignReceived(final String campaignId, final String messageId, final String extraLogData) {
+    protected void trackCampaignReceived() {
+        final String campaignId = this.mData.getCampaignId();
+        final String messageId = this.mData.getMessageId();
+        final String mpPayloadStr = this.mData.getExtraLogData();
         if (campaignId != null && messageId != null) {
-            MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-                @Override
-                public void process(MixpanelAPI api) {
-                    if(api.isAppInForeground()) {
-                        JSONObject pushProps = new JSONObject();
-                        try {
-                            if (extraLogData != null) {
-                                pushProps = new JSONObject(extraLogData);
-                            }
-                        } catch (JSONException e) {}
 
-                        try {
-                            pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
-                            pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                            pushProps.put("message_type", "push");
-                            api.track("$campaign_received", pushProps);
-                        } catch (JSONException e) {}
-                    }
-                }
-            });
+            MixpanelAPI.trackPushNotificationEvent(
+                    mContext,
+                    Integer.valueOf(campaignId),
+                    Integer.valueOf(messageId),
+                    getCanonicalIdentifier(),
+                    mpPayloadStr,
+                    "$push_notification_received",
+                    new JSONObject()
+            );
+
+            MixpanelAPI instance = MixpanelAPI.getInstanceFromMpPayload(mContext, mpPayloadStr);
+            if (instance != null && instance.isAppInForeground()) {
+                JSONObject additionalProperties = new JSONObject();
+                try {
+                    additionalProperties.put("message_type", "push");
+                } catch (JSONException e) {}
+                MixpanelAPI.trackPushNotificationEvent(
+                        mContext,
+                        Integer.valueOf(campaignId),
+                        Integer.valueOf(messageId),
+                        getCanonicalIdentifier(),
+                        mpPayloadStr,
+                        "$campaign_received",
+                        additionalProperties
+                );
+            }
         }
     }
 

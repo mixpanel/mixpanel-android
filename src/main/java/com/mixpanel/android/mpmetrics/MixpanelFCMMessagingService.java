@@ -183,8 +183,8 @@ public class MixpanelFCMMessagingService extends FirebaseMessagingService {
     }
 
     protected void cancelNotification(Bundle extras, NotificationManager notificationManager) {
-        int notificationId = extras.getInt("notificationId");
-        String tag = extras.getString("tag");
+        int notificationId = extras.getInt("mp_notification_id");
+        String tag = extras.getString("mp_tag");
         boolean hasTag = tag != null;
 
         if (hasTag) {

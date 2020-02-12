@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.mixpanel.android.util.JSONUtils;
 import com.mixpanel.android.viewcrawler.GestureTracker;
 
 import org.json.JSONException;
@@ -128,29 +129,8 @@ import java.util.Locale;
         if (intent == null) {
             return;
         }
-
-        try {
-            if (intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
-                String campaignId = intent.getStringExtra("mp_campaign_id");
-                String messageId = intent.getStringExtra("mp_message_id");
-                String extraLogData = intent.getStringExtra("mp");
-
-                try {
-                    JSONObject pushProps;
-                    if (extraLogData != null) {
-                        pushProps = new JSONObject(extraLogData);
-                    } else {
-                        pushProps = new JSONObject();
-                    }
-                    pushProps.put("campaign_id", Integer.valueOf(campaignId).intValue());
-                    pushProps.put("message_id", Integer.valueOf(messageId).intValue());
-                    pushProps.put("message_type", "push");
-                    mMpInstance.track("$app_open", pushProps);
-                } catch (JSONException e) {}
-
-            }
-        } catch (BadParcelableException e) {
-            // https://github.com/mixpanel/mixpanel-android/issues/251
+        if (intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
+            MixpanelAPI.trackPushNotificationEventFromIntent(mMpInstance.getContext(), intent, "$app_open");
         }
     }
 
