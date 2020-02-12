@@ -31,6 +31,9 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 public class MixpanelPushNotification {
+    public final static String PUSH_TAP_ACTION = "com.mixpanel.push_notification_tap";
+    public final static String PUSH_DISMISS_ACTION = "com.mixpanel.push_notification_dismissed";
+
     private final String LOGTAG = "MixpanelAPI.MixpanelPushNotification";
 
     protected final static String TAP_TARGET_BUTTON = "button";
@@ -428,24 +431,19 @@ public class MixpanelPushNotification {
 
     protected Intent getRoutingIntent(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence label) {
         Bundle options = buildBundle(onTap, buttonId, label);
-
-        Intent routingIntent = new Intent().
+        return new Intent().
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-
-        return routingIntent;
     }
 
     protected Intent getRoutingIntent(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = buildBundle(onTap);
-
-        Intent routingIntent = new Intent().
+        return new Intent().
+                setAction(PUSH_TAP_ACTION).
                 setClass(mContext, MixpanelNotificationRouteActivity.class).
                 putExtras(options).
                 setFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-
-        return routingIntent;
     }
 
 
@@ -457,6 +455,7 @@ public class MixpanelPushNotification {
         options.putCharSequence("mp", mData.getExtraLogData());
 
         return new Intent().
+                setAction(PUSH_DISMISS_ACTION).
                 setClass(mContext, MixpanelPushNotificationDismissedReceiver.class).
                 putExtras(options);
     }
