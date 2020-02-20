@@ -378,10 +378,19 @@ public class MixpanelAPI {
 
         registerMixpanelActivityLifecycleCallbacks();
 
-        if (mPersistentIdentity.isFirstLaunch(dbExists)) {
-            track(AutomaticEvents.FIRST_OPEN, null, true);
+        if (!InstallReferrerPlay.hasStartedConnection() && ConfigurationChecker.checkInstallReferrerConfiguration(sReferrerPrefs)) {
+            InstallReferrerPlay referrerPlay = new InstallReferrerPlay(getContext(), token, new InstallReferrerPlay.ReferrerCallback() {
+                @Override
+                public void onReferrerReadSuccess() {
+                    mMessages.updateEventProperties(new AnalyticsMessages.UpdateEventsPropertiesDescription(mToken, mPersistentIdentity.getReferrerProperties()));
+                }
+            });
+            referrerPlay.connect();
+        }
 
-            mPersistentIdentity.setHasLaunched();
+        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken)) {
+            track(AutomaticEvents.FIRST_OPEN, null, true);
+            mPersistentIdentity.setHasLaunched(mToken);
         }
 
         if (!mConfig.getDisableDecideChecker()) {
@@ -1483,55 +1492,6 @@ public class MixpanelAPI {
          */
         public boolean isIdentified();
 
-        /**
-         * This is a no-op, and will be removed in future versions of the library.
-         *
-         * @deprecated in 5.5.0. Google Cloud Messaging (GCM) is now deprecated by Google.
-         * To enable end-to-end Firebase Cloud Messaging (FCM) from Mixpanel you only need to add
-         * the following to your application manifest XML file:
-         *
-         * <pre>
-         * {@code
-         * <service
-         *       android:name="com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService"
-         *       android:enabled="true"
-         *       android:exported="false">
-         *       <intent-filter>
-         *           <action android:name="com.google.firebase.MESSAGING_EVENT"/>
-         *       </intent-filter>
-         * </service>
-         * }
-         * </pre>
-         *
-         * Make sure you have a valid google-services.json file in your project and firebase
-         * messaging is included as a dependency. Example:
-         *
-         * <pre>
-         * {@code
-         * buildscript {
-         *      ...
-         *      dependencies {
-         *          classpath 'com.google.gms:google-services:4.1.0'
-         *          ...
-         *      }
-         * }
-         *
-         * dependencies {
-         *     implementation 'com.google.firebase:firebase-messaging:17.3.4'
-         *     implementation 'com.mixpanel.android:mixpanel-android:5.5.0'
-         * }
-         *
-         * apply plugin: 'com.google.gms.google-services'
-         * }
-         * </pre>
-         *
-         * We recommend you update your Server Key on mixpanel.com from your Firebase console. Legacy
-         * server keys are still supported.
-         *
-         * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">Getting Started with Android Push Notifications</a>
-         */
-        @Deprecated
-        public void initPushHandling(String senderID);
 
         /**
          * Retrieves current Firebase Cloud Messaging token.
@@ -1883,29 +1843,6 @@ public class MixpanelAPI {
          * to Group Analytics using the same group value will create and store new values.
          */
         public void deleteGroup();
-    }
-
-    /**
-     * This method is a no-op, kept for compatibility purposes.
-     *
-     * To enable verbose logging about communication with Mixpanel, add
-     * {@code
-     * <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging" />
-     * }
-     *
-     * To the {@code <application>} tag of your AndroidManifest.xml file.
-     *
-     * @deprecated in 4.1.0, use Manifest meta-data instead
-     */
-    @Deprecated
-    public void logPosts() {
-        MPLog.i(
-                LOGTAG,
-                "MixpanelAPI.logPosts() is deprecated.\n" +
-                        "    To get verbose debug level logging, add\n" +
-                        "    <meta-data android:name=\"com.mixpanel.android.MPConfig.EnableDebugLogging\" value=\"true\" />\n" +
-                        "    to the <application> section of your AndroidManifest.xml."
-        );
     }
 
     /**
@@ -2377,36 +2314,6 @@ public class MixpanelAPI {
             remove("$android_devices", registrationId);
         }
 
-        @Override
-        public void initPushHandling(String senderID) {
-            MPLog.w(
-                    LOGTAG,
-                    "MixpanelAPI.initPushHandling is deprecated. This is a no-op.\n" +
-                            "   Mixpanel now uses Firebase Cloud Messaging. You need to remove your old Mixpanel" +
-                            " GCM Receiver from your AndroidManifest.xml and add the following:\n" +
-                            "   <service\n" +
-                            "       android:name=\"com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService\"\n" +
-                            "       android:enabled=\"true\"\n" +
-                            "       android:exported=\"false\">\n" +
-                            "       <intent-filter>\n" +
-                            "           <action android:name=\"com.google.firebase.MESSAGING_EVENT\"/>\n" +
-                            "       </intent-filter>\n" +
-                            "   </service>\n\n" +
-                            "Make sure to add firebase messaging as a dependency on your gradle file:\n" +
-                            "buildscript {\n" +
-                            "   ...\n" +
-                            "   dependencies {\n" +
-                            "       classpath 'com.google.gms:google-services:4.1.0'\n" +
-                            "       ...\n" +
-                            "   }\n" +
-                            "}\n" +
-                            "dependencies {\n" +
-                            "   implementation 'com.google.firebase:firebase-messaging:17.3.4'\n" +
-                            "   implementation 'com.mixpanel.android:mixpanel-android:5.5.0'\n" +
-                            "}\n" +
-                            "apply plugin: 'com.google.gms.google-services'"
-            );
-        }
 
         @Override
         public String getDistinctId() {

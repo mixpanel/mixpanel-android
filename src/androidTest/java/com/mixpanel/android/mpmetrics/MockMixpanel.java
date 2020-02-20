@@ -110,10 +110,6 @@ class MockMixpanel extends MixpanelAPI {
             Assert.fail("Unexpected call");
         }
 
-        @Override
-        public void initPushHandling(final String senderID) {
-            Assert.fail("Unexpected call");
-        }
 
         @Override
         public String getPushRegistrationId() {

@@ -141,6 +141,14 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
+    public void updateEventProperties(final UpdateEventsPropertiesDescription updateEventsProperties) {
+        final Message m = Message.obtain();
+        m.what = REWRITE_EVENT_PROPERTIES;
+        m.obj = updateEventsProperties;
+
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         final Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -295,6 +303,20 @@ import javax.net.ssl.SSLSocketFactory;
         private final JSONObject mMessage;
     }
 
+
+    static class UpdateEventsPropertiesDescription extends MixpanelDescription {
+        private Map<String, String> mProps;
+
+        public UpdateEventsPropertiesDescription(String token, Map<String, String> props) {
+            super(token);
+            mProps = props;
+        }
+
+        public Map<String, String> getProperties() {
+            return mProps;
+        }
+    }
+
     static class MixpanelDescription {
         public MixpanelDescription(String token) {
             this.mToken = token;
@@ -417,6 +439,10 @@ import javax.net.ssl.SSLSocketFactory;
                         final MixpanelDescription mixpanelDescription = (MixpanelDescription) msg.obj;
                         token = mixpanelDescription.getToken();
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
+                    } else if (msg.what == REWRITE_EVENT_PROPERTIES) {
+                        final UpdateEventsPropertiesDescription description = (UpdateEventsPropertiesDescription) msg.obj;
+                        int updatedEvents = mDbAdapter.rewriteEventDataWithProperties(description.getProperties(), description.getToken());
+                        MPLog.d(LOGTAG, updatedEvents + " stored events were updated with new properties.");
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
@@ -762,6 +788,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
+    private static final int REWRITE_EVENT_PROPERTIES = 8; // Update or add properties to existing queued events
     private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
 
     private static final String LOGTAG = "MixpanelAPI.Messages";

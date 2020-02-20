@@ -15,42 +15,9 @@ import android.os.Bundle;
 import com.mixpanel.android.util.MPLog;
 
 /**
- * BroadcastReceiver for automatically storing Google Play Store referrer information as Mixpanel Super Properties.
- *
- * <p>You can use InstallReferrerReceiver to capture and store referrer information,
- * and use that information to track how users from different sources are using your app.
- * To enable InstallReferrerReceiver, add a clause like the following
- * to the &lt;application&gt; tag of your AndroidManifest.xml.</p>
- *
- * <pre>
- * {@code
- * <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver"
- *           android:exported="true">
- *     <intent-filter>
- *         <action android:name="com.android.vending.INSTALL_REFERRER" />
- *     </intent-filter>
- * </receiver>
- * }
- * </pre>
- *
- * <p>Once you've added the &lt;receiver&gt; tag to your manifest,
- * all calls to {@link com.mixpanel.android.mpmetrics.MixpanelAPI#track(String, org.json.JSONObject)}
- * will include the user's Google Play Referrer as metadata. In addition, if
- * you include utm parameters in your link to Google Play, they will be parsed and
- * provided as individual properties in your track calls.</p>
- *
- * <p>InstallReferrerReceiver looks for any of the following parameters. All are optional.</p>
- * <ul>
- *     <li>utm_source: often represents the source of your traffic (for example, a search engine or an ad)</li>
- *     <li>utm_medium: indicates whether the link was sent via email, on facebook, or pay per click</li>
- *     <li>utm_term: indicates the keyword or search term associated with the link</li>
- *     <li>utm_content: indicates the particular content associated with the link (for example, which email message was sent)</li>
- *     <li>utm_campaign: the name of the marketing campaign associated with the link.</li>
- * </ul>
- *
- * <p>Whether or not the utm parameters are present, the InstallReferrerReceiver will
- * also create a "referrer" super property with the complete referrer string.</p>
+ * @deprecated in 5.8.0. Use {@link com.mixpanel.android.mpmetrics.InstallReferrerPlay} instead.
  */
+@Deprecated
 public class InstallReferrerReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {

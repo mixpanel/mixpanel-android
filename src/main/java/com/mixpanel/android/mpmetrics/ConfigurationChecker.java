@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -14,6 +15,8 @@ import com.mixpanel.android.util.MPLog;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /*
  * Copyright 2012 Google Inc.
@@ -151,11 +154,28 @@ import java.util.List;
 
         try {
             Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
-        } catch(final ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             MPLog.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
             MPLog.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
         }
 
         return true;
+    }
+
+    public static boolean checkInstallReferrerConfiguration(Future<SharedPreferences> referrerPrefs) {
+        try {
+            Class.forName("com.android.installreferrer.api.InstallReferrerStateListener");
+            SharedPreferences refPrefs = referrerPrefs.get();
+            if (refPrefs.getAll().size() == 0) {
+                return true;
+            }
+        } catch (final ClassNotFoundException e) {
+            MPLog.d(LOGTAG, "Missing com.android.installreferrer dependency. Google Play Store referrer information won't be available.");
+        } catch (InterruptedException e) {
+            MPLog.w(LOGTAG, "Could not read referrer shared preferences.");
+        } catch (ExecutionException e) {
+            MPLog.w(LOGTAG, "Could not read referrer shared preferences.");
+        }
+        return false;
     }
 }
