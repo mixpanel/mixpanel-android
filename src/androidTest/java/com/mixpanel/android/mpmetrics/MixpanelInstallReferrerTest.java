@@ -6,22 +6,9 @@ import android.test.AndroidTestCase;
 
 public class MixpanelInstallReferrerTest extends AndroidTestCase {
     public void setUp() {
-        mInstallReferrer = new InstallReferrerPlay(getContext());
+        mInstallReferrer = new InstallReferrerPlay(getContext(), "TOKEN", null);
         SharedPreferences prefs = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().clear().commit();
-    }
-
-    public void testNoReferrer() {
-        mReferrerStr = "utm_source=should no appear";
-        mInstallReferrer.saveReferrerDetails(mReferrerStr);
-        SharedPreferences stored = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
-
-        assertFalse(stored.contains("referrer"));
-        assertFalse(stored.contains("utm_source"));
-        assertFalse(stored.contains("utm_medium"));
-        assertFalse(stored.contains("utm_campaign"));
-        assertFalse(stored.contains("utm_content"));
-        assertFalse(stored.contains("utm_term"));
     }
 
     public void testWeirdReferrer() {

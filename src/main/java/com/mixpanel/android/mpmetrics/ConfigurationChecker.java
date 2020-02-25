@@ -165,9 +165,11 @@ import java.util.concurrent.Future;
     public static boolean checkInstallReferrerConfiguration(Future<SharedPreferences> referrerPrefs) {
         try {
             Class.forName("com.android.installreferrer.api.InstallReferrerStateListener");
-            SharedPreferences refPrefs = referrerPrefs.get();
-            if (refPrefs.getAll().size() == 0) {
-                return true;
+            if (referrerPrefs != null) {
+                SharedPreferences refPrefs = referrerPrefs.get();
+                if (refPrefs.getAll().size() == 0) {
+                    return true;
+                }
             }
         } catch (final ClassNotFoundException e) {
             MPLog.d(LOGTAG, "Missing com.android.installreferrer dependency. Google Play Store referrer information won't be available.");
