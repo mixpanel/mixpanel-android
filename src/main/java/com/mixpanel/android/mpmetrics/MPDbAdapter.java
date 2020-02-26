@@ -440,6 +440,9 @@ import com.mixpanel.android.util.MPLog;
             // otherwise unusable DB. Better to bomb it and get back on track
             // than to leave it junked up (and maybe filling up the disk.)
             mDb.deleteDatabase();
+        } catch (final Exception e) {
+            MPLog.e(LOGTAG, "Unknown exception. Could not clean sent Mixpanel records from " + tableName + ".Re-initializing database.", e);
+            mDb.deleteDatabase();
         } finally {
             mDb.close();
         }
