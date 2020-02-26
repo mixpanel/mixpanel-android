@@ -378,7 +378,7 @@ public class MixpanelAPI {
 
         registerMixpanelActivityLifecycleCallbacks();
 
-        if (!InstallReferrerPlay.hasStartedConnection() && ConfigurationChecker.checkInstallReferrerConfiguration(sReferrerPrefs)) {
+        if (ConfigurationChecker.checkInstallReferrerConfiguration(sReferrerPrefs)) {
             InstallReferrerPlay referrerPlay = new InstallReferrerPlay(getContext(), token, new InstallReferrerPlay.ReferrerCallback() {
                 @Override
                 public void onReferrerReadSuccess() {
