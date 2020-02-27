@@ -244,8 +244,10 @@ public class InAppFragment extends Fragment {
 
     private void cleanUp() {
         if (!mCleanedUp.get()) {
-            mHandler.removeCallbacks(mRemover);
-            mHandler.removeCallbacks(mDisplayMini);
+            if (mHandler != null) {
+                mHandler.removeCallbacks(mRemover);
+                mHandler.removeCallbacks(mDisplayMini);
+            }
             UpdateDisplayState.releaseDisplayState(mDisplayStateId);
 
             final FragmentManager fragmentManager = mParent.getFragmentManager();
