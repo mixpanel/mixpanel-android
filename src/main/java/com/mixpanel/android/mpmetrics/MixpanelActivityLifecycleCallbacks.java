@@ -17,6 +17,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Locale;
 
@@ -67,13 +68,12 @@ import java.util.Locale;
                     try {
                         double sessionLength = System.currentTimeMillis() - sStartSessionTime;
                         if (sessionLength >= mConfig.getMinimumSessionDuration() && sessionLength < mConfig.getSessionTimeoutDuration()) {
-                            NumberFormat nf = NumberFormat.getNumberInstance(Locale.ENGLISH);
-                            nf.setMaximumFractionDigits(1);
-                            String sessionLengthString = nf.format((System.currentTimeMillis() - sStartSessionTime) / 1000);
+                            double elapsedTime = sessionLength / 1000;
+                            double elapsedTimeRounded = Math.round(elapsedTime * 10.0) / 10.0;
                             JSONObject sessionProperties = new JSONObject();
-                            sessionProperties.put(AutomaticEvents.SESSION_LENGTH, sessionLengthString);
+                            sessionProperties.put(AutomaticEvents.SESSION_LENGTH, elapsedTimeRounded);
                             mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS, 1);
-                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, sessionLength / 1000);
+                            mMpInstance.getPeople().increment(AutomaticEvents.TOTAL_SESSIONS_LENGTH, elapsedTimeRounded);
                             mMpInstance.track(AutomaticEvents.SESSION, sessionProperties, true);
                         }
                     } catch (JSONException e) {
