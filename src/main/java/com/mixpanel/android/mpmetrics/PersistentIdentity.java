@@ -349,7 +349,7 @@ import com.mixpanel.android.util.MPLog;
                     MPLog.e(LOGTAG, "Exception registering super property.", e);
                 }
             }
-        }// for
+        }
 
         storeSuperProperties();
     }
@@ -417,15 +417,18 @@ import com.mixpanel.android.util.MPLog;
         return false;
     }
 
-    public synchronized boolean isFirstLaunch(boolean dbExists) {
+    public synchronized boolean isFirstLaunch(boolean dbExists, String token) {
         if (sIsFirstAppLaunch == null) {
             try {
                 SharedPreferences mixpanelPreferences = mMixpanelPreferences.get();
-                boolean hasLaunched = mixpanelPreferences.getBoolean("has_launched", false);
+                boolean hasLaunched = mixpanelPreferences.getBoolean("has_launched_" + token, false);
                 if (hasLaunched) {
                     sIsFirstAppLaunch = false;
                 } else {
                     sIsFirstAppLaunch = !dbExists;
+                    if (!sIsFirstAppLaunch) {
+                        setHasLaunched(token);
+                    }
                 }
             } catch (ExecutionException e) {
                 sIsFirstAppLaunch = false;
@@ -437,10 +440,10 @@ import com.mixpanel.android.util.MPLog;
         return sIsFirstAppLaunch;
     }
 
-    public synchronized void setHasLaunched() {
+    public synchronized void setHasLaunched(String token) {
         try {
             SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
-            mixpanelPreferencesEditor.putBoolean("has_launched", true);
+            mixpanelPreferencesEditor.putBoolean("has_launched_" + token, true);
             writeEdits(mixpanelPreferencesEditor);
         } catch (ExecutionException e) {
             MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());

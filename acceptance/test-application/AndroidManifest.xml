@@ -82,12 +82,6 @@
             </intent-filter>
         </service>
 
-        <!-- This receiver will allow your application to record referrer parameters as super properties automatically -->
-        <receiver android:name="com.mixpanel.android.mpmetrics.InstallReferrerReceiver" android:exported="true">
-            <intent-filter>
-                <action android:name="com.android.vending.INSTALL_REFERRER" />
-            </intent-filter>
-        </receiver>
 
     </application>
 </manifest>

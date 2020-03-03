@@ -61,6 +61,7 @@ allprojects {
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
     api 'com.google.firebase:firebase-messaging:17.3.4'
+    api 'com.android.installreferrer:installreferrer:1.0'
     testImplementation "org.mockito:mockito-core:2.25.1"
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
 }

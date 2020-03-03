@@ -416,6 +416,74 @@ import com.mixpanel.android.util.MPLog;
     }
 
     /**
+     * Copies anonymous people updates to people db after a user has been identified
+     * @param properties Map of properties that will be added to existing events.
+     * @param token project token
+     * @return the number of rows updated , or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
+     * on failure
+     */
+    /* package */ int rewriteEventDataWithProperties(Map<String, String> properties, String token) {
+        if (!this.belowMemThreshold()) {
+            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+            return DB_OUT_OF_MEMORY_ERROR;
+        }
+        Cursor selectCursor = null;
+        int count = 0;
+
+        try {
+            final SQLiteDatabase db = mDb.getWritableDatabase();
+            StringBuffer allAnonymousQuery = new StringBuffer("SELECT * FROM " + Table.EVENTS.getName() + " WHERE " + KEY_TOKEN + " = '" + token + "'");
+
+            selectCursor = db.rawQuery(allAnonymousQuery.toString(), null);
+            db.beginTransaction();
+            try {
+                while (selectCursor.moveToNext()) {
+                    try {
+                        ContentValues values = new ContentValues();
+                        JSONObject updatedData = new JSONObject(selectCursor.getString(selectCursor.getColumnIndex(KEY_DATA)));
+                        JSONObject existingProps = updatedData.getJSONObject("properties");
+                        for (final Map.Entry<String, String> entry : properties.entrySet()) {
+                            final String key = entry.getKey();
+                            final String value = entry.getValue();
+                            existingProps.put(key, value);
+                        }
+                        updatedData.put("properties", existingProps);
+                        values.put(KEY_DATA, updatedData.toString());
+
+                        int rowId = selectCursor.getInt(selectCursor.getColumnIndex("_id"));
+                        db.update(Table.EVENTS.getName(), values, "_id = " + rowId, null);
+                        count++;
+                    } catch (final JSONException e) {
+                        // Ignore this object
+                    }
+                }
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } catch (final SQLiteException e) {
+            MPLog.e(LOGTAG, "Could not re-write events history. Re-initializing database.", e);
+
+            if (selectCursor != null) {
+                selectCursor.close();
+                selectCursor = null;
+            }
+            // We assume that in general, the results of a SQL exception are
+            // unrecoverable, and could be associated with an oversized or
+            // otherwise unusable DB. Better to bomb it and get back on track
+            // than to leave it junked up (and maybe filling up the disk.)
+            mDb.deleteDatabase();
+        } finally {
+            if (selectCursor != null) {
+                selectCursor.close();
+            }
+            mDb.close();
+        }
+
+        return count;
+    }
+
+    /**
      * Removes events with an _id <= last_id from table
      * @param last_id the last id to delete
      * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
