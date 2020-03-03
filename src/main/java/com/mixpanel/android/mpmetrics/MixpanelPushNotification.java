@@ -63,7 +63,7 @@ public class MixpanelPushNotification {
     public MixpanelPushNotification(Context context, Notification.Builder builder, long now) {
         this.mContext = context;
         this.mBuilder = builder;
-        this.mDrawableIds = getResourceIds(context);
+        this.mDrawableIds = getResourceIds(ResourceReader.DRAWABLE_TYPE, context);
         this.mNow = now;
         this.ROUTING_REQUEST_CODE = (int) now;
         this.notificationId = (int) now;
@@ -199,9 +199,13 @@ public class MixpanelPushNotification {
         mData.setSticky(sticky);
 
         int notificationIcon = MixpanelNotificationData.NOT_SET;
+
+        ResourceIds resource = mDrawableIds;
         if (iconName != null) {
             if (mDrawableIds.knownIdName(iconName)) {
-                notificationIcon = mDrawableIds.idFromName(iconName);
+                notificationIcon = resource.idFromName(iconName);
+            } else if ((resource = getResourceIds(ResourceReader.MIPMAP_TYPE, mContext)).knownIdName(iconName)) {
+                notificationIcon = resource.idFromName(iconName);
             }
         }
         if (notificationIcon == MixpanelNotificationData.NOT_SET) {
@@ -209,10 +213,13 @@ public class MixpanelPushNotification {
         }
         mData.setIcon(notificationIcon);
 
+        resource = mDrawableIds;
         int whiteNotificationIcon = MixpanelNotificationData.NOT_SET;
         if (whiteIconName != null) {
             if (mDrawableIds.knownIdName(whiteIconName)) {
-                whiteNotificationIcon = mDrawableIds.idFromName(whiteIconName);
+                whiteNotificationIcon = resource.idFromName(whiteIconName);
+            } else if ((resource = getResourceIds(ResourceReader.MIPMAP_TYPE, mContext)).knownIdName(iconName)) {
+                whiteNotificationIcon = resource.idFromName(iconName);
             }
         }
         mData.setWhiteIcon(whiteNotificationIcon);
@@ -672,12 +679,20 @@ public class MixpanelPushNotification {
         }
     }
 
-    /* package */ ResourceIds getResourceIds(Context context) {
+    /* package */ ResourceIds getResourceIds(String resourceType, Context context) {
         final MPConfig config = MPConfig.getInstance(context);
         String resourcePackage = config.getResourcePackageName();
         if (null == resourcePackage) {
             resourcePackage = context.getPackageName();
         }
-        return new ResourceReader.Drawables(resourcePackage, context);
+
+        switch (resourceType) {
+            case ResourceReader.MIPMAP_TYPE:
+                return new ResourceReader.Mipmap(resourcePackage, context);
+            case ResourceReader.DRAWABLE_TYPE:
+            default:
+                return new ResourceReader.Drawables(resourcePackage, context);
+        }
+
     }
 }

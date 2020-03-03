@@ -56,6 +56,26 @@ public abstract class ResourceReader implements ResourceIds {
         private final String mResourcePackageName;
     }
 
+    public static class Mipmap extends ResourceReader {
+        public Mipmap(String resourcePackageName, Context context) {
+            super(context);
+            mResourcePackageName = resourcePackageName;
+            initialize();
+        }
+
+        @Override
+        protected Class<?> getSystemClass() {
+            return android.R.mipmap.class;
+        }
+
+        @Override
+        protected String getLocalClassName(Context context) {
+            return mResourcePackageName + ".R$mipmap";
+        }
+
+        private final String mResourcePackageName;
+    }
+
     protected ResourceReader(Context context) {
         mContext = context;
         mIdNameToId = new HashMap<String, Integer>();
@@ -151,4 +171,7 @@ public abstract class ResourceReader implements ResourceIds {
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.RsrcReader";
+
+    public static final String DRAWABLE_TYPE = "Drawables";
+    public static final String MIPMAP_TYPE = "Mipmap";
 }
