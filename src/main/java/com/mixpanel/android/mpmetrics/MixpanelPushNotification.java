@@ -206,6 +206,7 @@ public class MixpanelPushNotification {
                 notificationIcon = resource.idFromName(iconName);
             } else if ((resource = getResourceIds(ResourceReader.MIPMAP_TYPE, mContext)).knownIdName(iconName)) {
                 notificationIcon = resource.idFromName(iconName);
+                resource = mDrawableIds;
             }
         }
         if (notificationIcon == MixpanelNotificationData.NOT_SET) {
@@ -213,7 +214,6 @@ public class MixpanelPushNotification {
         }
         mData.setIcon(notificationIcon);
 
-        resource = mDrawableIds;
         int whiteNotificationIcon = MixpanelNotificationData.NOT_SET;
         if (whiteIconName != null) {
             if (mDrawableIds.knownIdName(whiteIconName)) {
