@@ -172,6 +172,7 @@ public abstract class ResourceReader implements ResourceIds {
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.RsrcReader";
 
+    public static final String ID_TYPE = "Ids";
     public static final String DRAWABLE_TYPE = "Drawables";
     public static final String MIPMAP_TYPE = "Mipmap";
 }

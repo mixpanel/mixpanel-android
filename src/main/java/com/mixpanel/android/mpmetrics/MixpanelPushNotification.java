@@ -687,6 +687,8 @@ public class MixpanelPushNotification {
         }
 
         switch (resourceType) {
+            case ResourceReader.ID_TYPE:
+                return new ResourceReader.Ids(resourcePackage, context);
             case ResourceReader.MIPMAP_TYPE:
                 return new ResourceReader.Mipmap(resourcePackage, context);
             case ResourceReader.DRAWABLE_TYPE:
