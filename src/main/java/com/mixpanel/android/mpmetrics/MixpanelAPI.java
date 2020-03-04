@@ -659,6 +659,10 @@ public class MixpanelAPI {
 
     private void identify(String distinctId, boolean markAsUserId) {
         if (hasOptedOutTracking()) return;
+        if (distinctId == null) {
+            MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
+            return;
+        }
         synchronized (mPersistentIdentity) {
             String currentEventsDistinctId = mPersistentIdentity.getEventsDistinctId();
             mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
@@ -1992,6 +1996,10 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             if (hasOptedOutTracking()) return;
+            if (distinctId == null) {
+                MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
+                return;
+            }
             synchronized (mPersistentIdentity) {
                 mPersistentIdentity.setPeopleDistinctId(distinctId);
                 mDecideMessages.setDistinctId(distinctId);
