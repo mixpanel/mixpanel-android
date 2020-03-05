@@ -30,11 +30,12 @@ Check out our **[official documentation](https://mixpanel.com/help/reference/and
 
 ### Dependencies in *app/build.gradle*
 
-Add Mixpanel and Firebase Messaging (optional, for push notifications) to the `dependencies` section in *app/build.gradle*
+Add the following lines to the `dependencies` section in *app/build.gradle*
 
 ```gradle
 implementation "com.mixpanel.android:mixpanel-android:5.+"
-implementation "com.google.firebase:firebase-messaging:17.3.4"
+implementation "com.google.firebase:firebase-messaging:17.3.4" // optional, if push notifications are used
+implementation "com.android.installreferrer:installreferrer:1.1" // optional, if you want to know how users installed your app
 ```
 
 ### Permissions in *app/src/main/AndroidManifest.xml*
