@@ -142,6 +142,7 @@ public class TakeoverInAppActivity extends Activity {
         setUpNotificationAnimations(inAppImageView, titleView, subtextView, ctaButtons, closeButtonWrapper);
     }
 
+    @SuppressWarnings("deprecation")
     private void setUpInAppButton(Button inAppButton, final InAppButton inAppButtonModel, final InAppNotification inApp, final int buttonIndex) {
         if (inAppButtonModel != null) {
             inAppButton.setVisibility(View.VISIBLE);

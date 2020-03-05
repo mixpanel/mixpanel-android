@@ -56,6 +56,7 @@ public class MixpanelPushNotification {
     private int notificationId;
     private boolean hasOnTapError = false;
 
+    @SuppressWarnings("deprecation")
     public MixpanelPushNotification(Context context) {
         this(context, new Notification.Builder(context), System.currentTimeMillis());
     }
@@ -69,6 +70,7 @@ public class MixpanelPushNotification {
         this.notificationId = (int) now;
     }
 
+    @SuppressWarnings("deprecation")
     /* package */ Notification createNotification(Intent inboundIntent) {
         parseIntent(inboundIntent);
 
@@ -420,6 +422,7 @@ public class MixpanelPushNotification {
     }
 
     @TargetApi(20)
+    @SuppressWarnings("deprecation")
     protected Notification.Action createAction(CharSequence title, MixpanelNotificationData.PushTapAction onTap, String actionId, int index) {
         return (new Notification.Action.Builder(MixpanelNotificationData.NOT_SET, title, createActionIntent(onTap, actionId, title, index))).build();
     }
@@ -513,6 +516,7 @@ public class MixpanelPushNotification {
         return options;
     }
 
+    @SuppressWarnings("deprecation")
     protected void maybeSetChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager mNotificationManager =

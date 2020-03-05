@@ -9,6 +9,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Shader;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.widget.ImageView;
 
@@ -44,6 +45,7 @@ public class FadingImageView extends ImageView {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void draw(Canvas canvas) {
         if (mShouldShowShadow) {
@@ -51,7 +53,13 @@ public class FadingImageView extends ImageView {
             // onDraw is called, the Canvas with the background has already been saved, so we can't
             // actually clear it with our opacity gradient.
             final Rect clip = canvas.getClipBounds();
-            final int restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
+
+            int restoreTo = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null);
+            } else {
+                restoreTo = canvas.saveLayer(0, 0, clip.width(), clip.height(), null, Canvas.ALL_SAVE_FLAG);
+            }
 
             super.draw(canvas);
 

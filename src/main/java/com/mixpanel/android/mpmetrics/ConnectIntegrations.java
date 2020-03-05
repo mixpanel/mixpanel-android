@@ -36,13 +36,14 @@ import java.util.Set;
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void setAirshipPeopleProp() {
         String urbanAirshipClassName = "com.urbanairship.UAirship";
         try {
             Class urbanAirshipClass = Class.forName(urbanAirshipClassName);
-            Object sharedUAirship = urbanAirshipClass.getMethod("shared", null).invoke(null);
-            Object pushManager = sharedUAirship.getClass().getMethod("getPushManager", null).invoke(sharedUAirship);
-            String channelID = (String)pushManager.getClass().getMethod("getChannelId", null).invoke(pushManager);
+            Object sharedUAirship = urbanAirshipClass.getMethod("shared").invoke(null);
+            Object pushManager = sharedUAirship.getClass().getMethod("getPushManager").invoke(sharedUAirship);
+            String channelID = (String)pushManager.getClass().getMethod("getChannelId").invoke(pushManager);
             if (channelID != null && !channelID.isEmpty()) {
                 mUrbanAirshipRetries = 0;
                 if (mSavedUrbanAirshipChannelID == null || !mSavedUrbanAirshipChannelID.equals(channelID)) {
@@ -75,27 +76,30 @@ import java.util.Set;
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void setBrazePeopleProp() {
         String urbanAirshipClassName = "com.appboy.Appboy";
         try {
             Class brazeClass = Class.forName(urbanAirshipClassName);
             Object brazeInstance = brazeClass.getMethod("getInstance", Context.class).invoke(null, mContext);
-            String deviceId = (String) brazeInstance.getClass().getMethod("getDeviceId", null).invoke(brazeInstance);
+            String deviceId = (String) brazeInstance.getClass().getMethod("getDeviceId").invoke(brazeInstance);
 
-            Object currentUser = brazeInstance.getClass().getMethod("getCurrentUser", null).invoke(brazeInstance);
+            Object currentUser = brazeInstance.getClass().getMethod("getCurrentUser").invoke(brazeInstance);
             if (currentUser == null) {
                 MPLog.w(LOGTAG, "Make sure Braze is initialized properly before Mixpanel.");
                 return;
             }
-            String externalUserId = (String) currentUser.getClass().getMethod("getUserId", null).invoke(currentUser);
+            String externalUserId = (String) currentUser.getClass().getMethod("getUserId").invoke(currentUser);
 
             if (deviceId != null && !deviceId.isEmpty()) {
                 mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_device_id", deviceId);
+                MPLog.e("SERGIO", "BRAZE IS " + deviceId);
             }
             if (externalUserId != null && !externalUserId.isEmpty()) {
                 mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_external_id", externalUserId);
+                MPLog.e("SERGIO", "BRAZE EXTERNAL IS " + externalUserId);
             }
         } catch (ClassNotFoundException e) {
             MPLog.w(LOGTAG, "Braze SDK not found but Braze is integrated on Mixpanel", e);
