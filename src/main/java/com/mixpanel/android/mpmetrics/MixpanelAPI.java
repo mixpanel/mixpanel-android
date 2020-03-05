@@ -63,9 +63,9 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * <p>The Mixpanel library will periodically send information to
  * Mixpanel servers, so your application will need to have
- * <tt>android.permission.INTERNET</tt>. In addition, to preserve
+ * <code>android.permission.INTERNET</code>. In addition, to preserve
  * battery life, messages to Mixpanel servers may not be sent immediately
- * when you call <tt>track</tt> or {@link People#set(String, Object)}.
+ * when you call {@link #track(String)}or {@link People#set(String, Object)}.
  * The library will send messages periodically throughout the lifetime
  * of your application, but you will need to call {@link #flush()}
  * before your application is completely shutdown to ensure all of your
@@ -121,6 +121,11 @@ public class MixpanelAPI {
      * Declare a string-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<String> stringTweak(String tweakName, String defaultValue) {
         return sSharedTweaks.stringTweak(tweakName, defaultValue);
@@ -130,6 +135,11 @@ public class MixpanelAPI {
      * Declare a boolean-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Boolean> booleanTweak(String tweakName, boolean defaultValue) {
         return sSharedTweaks.booleanTweak(tweakName, defaultValue);
@@ -139,6 +149,11 @@ public class MixpanelAPI {
      * Declare a double-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Double> doubleTweak(String tweakName, double defaultValue) {
         return sSharedTweaks.doubleTweak(tweakName, defaultValue);
@@ -148,6 +163,13 @@ public class MixpanelAPI {
      * Declare a double-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     * @param minimumValue Minimum numeric value of your tweak.
+     * @param maximumValue Maximum numeric value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Double> doubleTweak(String tweakName, double defaultValue, double minimumValue, double maximumValue) {
         return sSharedTweaks.doubleTweak(tweakName, defaultValue, minimumValue, maximumValue);
@@ -157,6 +179,11 @@ public class MixpanelAPI {
      * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Float> floatTweak(String tweakName, float defaultValue) {
         return sSharedTweaks.floatTweak(tweakName, defaultValue);
@@ -166,6 +193,13 @@ public class MixpanelAPI {
      * Declare a float-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     * @param minimumValue Minimum numeric value of your tweak.
+     * @param maximumValue Maximum numeric value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Float> floatTweak(String tweakName, float defaultValue, float minimumValue, float maximumValue) {
         return sSharedTweaks.floatTweak(tweakName, defaultValue, minimumValue, maximumValue);
@@ -175,6 +209,11 @@ public class MixpanelAPI {
      * Declare a long-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Long> longTweak(String tweakName, long defaultValue) {
         return sSharedTweaks.longTweak(tweakName, defaultValue);
@@ -184,6 +223,13 @@ public class MixpanelAPI {
      * Declare a long-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     * @param minimumValue Minimum numeric value of your tweak.
+     * @param maximumValue Maximum numeric value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Long> longTweak(String tweakName, long defaultValue, long minimumValue, long maximumValue) {
         return sSharedTweaks.longTweak(tweakName, defaultValue, minimumValue, maximumValue);
@@ -193,6 +239,11 @@ public class MixpanelAPI {
      * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Integer> intTweak(String tweakName, int defaultValue) {
         return sSharedTweaks.intTweak(tweakName, defaultValue);
@@ -202,6 +253,13 @@ public class MixpanelAPI {
      * Declare an int-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     * @param minimumValue Minimum numeric value of your tweak.
+     * @param maximumValue Maximum numeric value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Integer> intTweak(String tweakName, int defaultValue, int minimumValue, int maximumValue) {
         return sSharedTweaks.intTweak(tweakName, defaultValue, minimumValue, maximumValue);
@@ -211,6 +269,11 @@ public class MixpanelAPI {
      * Declare short-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Short> shortTweak(String tweakName, short defaultValue) {
         return sSharedTweaks.shortTweak(tweakName, defaultValue);
@@ -220,6 +283,11 @@ public class MixpanelAPI {
      * Declare byte-valued tweak, and return a reference you can use to read the value of the tweak.
      * Tweaks can be changed in Mixpanel A/B tests, and can allow you to alter your customers' experience
      * in your app without re-deploying your application through the app store.
+     *
+     * @param tweakName Unique name to identify your tweak.
+     * @param defaultValue Default value of your tweak.
+     *
+     * @return A new or existing tweak object.
      */
     public static Tweak<Byte> byteTweak(String tweakName, byte defaultValue) {
         return sSharedTweaks.byteTweak(tweakName, defaultValue);
@@ -708,6 +776,8 @@ public class MixpanelAPI {
      * Retrieves the time elapsed for the named event since timeEvent() was called.
      *
      * @param eventName the name of the event to be tracked that was previously called with timeEvent()
+     *
+     * @return Time elapsed since {@link #timeEvent(String)} was called for the given eventName.
      */
     public double eventElapsedTime(final String eventName) {
         final long currentTime = System.currentTimeMillis();
@@ -830,6 +900,8 @@ public class MixpanelAPI {
      *
      *<p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
      * and persist beyond the lifetime of your application.
+     *
+     * @return Super properties for this Mixpanel instance.
      */
       public JSONObject getSuperProperties() {
           JSONObject ret = new JSONObject();
@@ -1189,6 +1261,8 @@ public class MixpanelAPI {
      * that will be sent to Mixpanel. These are not all of the default properties,
      * but are a subset that are dependant on the user's device or installed version
      * of the host application, and are guaranteed not to change while the app is running.
+     *
+     * @return Map containing the device description properties that are sent to Mixpanel.
      */
     public Map<String, String> getDeviceInfo() {
         return mDeviceInfo;
@@ -1544,6 +1618,8 @@ public class MixpanelAPI {
          *
          * <p>In general, all applications that call {@link #setPushRegistrationId(String)} should include a call to
          * clearPushRegistrationId.
+         *
+         * @param registrationId The device token you want to remove.
          */
         public void clearPushRegistrationId(String registrationId);
 
@@ -1666,6 +1742,10 @@ public class MixpanelAPI {
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
          * Instances returned by withIdentity will not check decide with the given distinctId.
+         *
+         * @param distinctId Unique identifier (distinct_id) that the people object will have
+         *
+         * @return An instance of {@link MixpanelAPI.People} with the specified distinct_id
          */
         public People withIdentity(String distinctId);
 
@@ -1714,6 +1794,7 @@ public class MixpanelAPI {
         /**
          * Removes the listener previously registered with addOnMixpanelTweaksUpdatedListener.
          *
+         * @param listener Listener you that will be removed.
          */
         public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener);
 

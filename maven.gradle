@@ -105,9 +105,16 @@ task install(type: Upload, dependsOn: assemble) {
     }
 }
 
-task androidJavadocs(type: Javadoc, dependsOn: ':generateReleaseBuildConfig') {
+task androidJavadocs(type: Javadoc, dependsOn: ':assembleRelease') {
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
     classpath += project.files('build/generated/source/buildConfig/release')
+    classpath += project.files(android.sourceSets.main.java.srcDirs)
+    source = android.sourceSets.main.java.sourceFiles
+    android.libraryVariants.all { variant ->
+        if (variant.name == 'release') {
+            owner.classpath += variant.javaCompileProvider.get().classpath
+        }
+    }
     exclude(
             '**/R.*',
             '**/java_websocket/**',

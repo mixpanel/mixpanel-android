@@ -469,8 +469,9 @@ public class MixpanelPushNotification {
      * Uses FLAG_ACTIVITY_NO_HISTORY so that the routing activity does not appear in the back stack
      * in Android.
      *
-     * @param onTap The PushTapAction for the intent this bundle is a member of
+     * @param onTap The PushTapAction for the intent this bundle is a member of.
      *
+     * @return Bundle built from onTap.
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap) {
         Bundle options = new Bundle();
@@ -502,6 +503,7 @@ public class MixpanelPushNotification {
      * @param buttonLabel The label for the button that will appear in the notification which
      *                    this bundle will me a member of
      *
+     * @return Bundle built from the given input params.
      */
     protected Bundle buildBundle(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence buttonLabel) {
         Bundle options = buildBundle(onTap);
