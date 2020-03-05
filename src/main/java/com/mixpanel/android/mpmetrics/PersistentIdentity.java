@@ -58,44 +58,101 @@ import com.mixpanel.android.util.MPLog;
         };
     }
 
-    public synchronized void addSuperPropertiesToObject(JSONObject ob) {
-        final JSONObject superProperties = this.getSuperPropertiesCache();
-        final Iterator<?> superIter = superProperties.keys();
-        while (superIter.hasNext()) {
-            final String key = (String) superIter.next();
+    // Super properties
+    public void addSuperPropertiesToObject(JSONObject ob) {
+        synchronized (mSuperPropsLock) {
+            final JSONObject superProperties = this.getSuperPropertiesCache();
+            final Iterator<?> superIter = superProperties.keys();
+            while (superIter.hasNext()) {
+                final String key = (String) superIter.next();
 
-            try {
-                ob.put(key, superProperties.get(key));
-            } catch (JSONException e) {
-                MPLog.e(LOGTAG, "Object read from one JSON Object cannot be written to another", e);
+                try {
+                    ob.put(key, superProperties.get(key));
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Object read from one JSON Object cannot be written to another", e);
+                }
             }
         }
     }
 
-    public synchronized void updateSuperProperties(SuperPropertyUpdate updates) {
-        final JSONObject oldPropCache = getSuperPropertiesCache();
-        final JSONObject copy = new JSONObject();
+    public void updateSuperProperties(SuperPropertyUpdate updates) {
+        synchronized (mSuperPropsLock) {
+            final JSONObject oldPropCache = getSuperPropertiesCache();
+            final JSONObject copy = new JSONObject();
 
-        try {
-            final Iterator<String> keys = oldPropCache.keys();
-            while (keys.hasNext()) {
-                final String k = keys.next();
-                final Object v = oldPropCache.get(k);
-                copy.put(k, v);
+            try {
+                final Iterator<String> keys = oldPropCache.keys();
+                while (keys.hasNext()) {
+                    final String k = keys.next();
+                    final Object v = oldPropCache.get(k);
+                    copy.put(k, v);
+                }
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Can't copy from one JSONObject to another", e);
+                return;
             }
-        } catch (JSONException e) {
-            MPLog.e(LOGTAG, "Can't copy from one JSONObject to another", e);
-            return;
-        }
 
-        final JSONObject replacementCache = updates.update(copy);
-        if (replacementCache == null) {
-            MPLog.w(LOGTAG, "An update to Mixpanel's super properties returned null, and will have no effect.");
-            return;
-        }
+            final JSONObject replacementCache = updates.update(copy);
+            if (replacementCache == null) {
+                MPLog.w(LOGTAG, "An update to Mixpanel's super properties returned null, and will have no effect.");
+                return;
+            }
 
-        mSuperPropertiesCache = replacementCache;
-        storeSuperProperties();
+            mSuperPropertiesCache = replacementCache;
+            storeSuperProperties();
+        }
+    }
+
+    public void registerSuperProperties(JSONObject superProperties) {
+        synchronized (mSuperPropsLock) {
+            final JSONObject propCache = getSuperPropertiesCache();
+
+            for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+                final String key = (String) iter.next();
+                try {
+                    propCache.put(key, superProperties.get(key));
+                } catch (final JSONException e) {
+                    MPLog.e(LOGTAG, "Exception registering super property.", e);
+                }
+            }
+
+            storeSuperProperties();
+        }
+    }
+
+    public void unregisterSuperProperty(String superPropertyName) {
+        synchronized (mSuperPropsLock) {
+            final JSONObject propCache = getSuperPropertiesCache();
+            propCache.remove(superPropertyName);
+
+            storeSuperProperties();
+        }
+    }
+
+    public void registerSuperPropertiesOnce(JSONObject superProperties) {
+        synchronized (mSuperPropsLock) {
+            final JSONObject propCache = getSuperPropertiesCache();
+
+            for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
+                final String key = (String) iter.next();
+                if (! propCache.has(key)) {
+                    try {
+                        propCache.put(key, superProperties.get(key));
+                    } catch (final JSONException e) {
+                        MPLog.e(LOGTAG, "Exception registering super property.", e);
+                    }
+                }
+            }// for
+
+            storeSuperProperties();
+        }
+    }
+
+    public void clearSuperProperties() {
+        synchronized (mSuperPropsLock) {
+            mSuperPropertiesCache = new JSONObject();
+            storeSuperProperties();
+        }
     }
 
     public Map<String, String> getReferrerProperties() {
@@ -132,7 +189,7 @@ import com.mixpanel.android.util.MPLog;
 
     public synchronized boolean getHadPersistedDistinctId() {
         if (! mIdentitiesLoaded) {
-           readIdentities();
+            readIdentities();
         }
         return mHadPersistedDistinctId;
     }
@@ -229,21 +286,6 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public synchronized void registerSuperProperties(JSONObject superProperties) {
-        final JSONObject propCache = getSuperPropertiesCache();
-
-        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            final String key = (String) iter.next();
-            try {
-               propCache.put(key, superProperties.get(key));
-            } catch (final JSONException e) {
-                MPLog.e(LOGTAG, "Exception registering super property.", e);
-            }
-        }
-
-        storeSuperProperties();
-    }
-
     public synchronized void storePushId(String registrationId) {
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -281,13 +323,6 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Can't write push id to shared preferences", e);
         }
         return ret;
-    }
-
-    public synchronized void unregisterSuperProperty(String superPropertyName) {
-        final JSONObject propCache = getSuperPropertiesCache();
-        propCache.remove(superPropertyName);
-
-        storeSuperProperties();
     }
 
     public Map<String, Long> getTimeEvents() {
@@ -335,28 +370,6 @@ import com.mixpanel.android.util.MPLog;
         } catch (ExecutionException e) {
             e.printStackTrace();
         }
-    }
-
-    public synchronized void registerSuperPropertiesOnce(JSONObject superProperties) {
-        final JSONObject propCache = getSuperPropertiesCache();
-
-        for (final Iterator<?> iter = superProperties.keys(); iter.hasNext(); ) {
-            final String key = (String) iter.next();
-            if (! propCache.has(key)) {
-                try {
-                    propCache.put(key, superProperties.get(key));
-                } catch (final JSONException e) {
-                    MPLog.e(LOGTAG, "Exception registering super property.", e);
-                }
-            }
-        }
-
-        storeSuperProperties();
-    }
-
-    public synchronized void clearSuperProperties() {
-        mSuperPropertiesCache = new JSONObject();
-        storeSuperProperties();
     }
 
     public synchronized boolean isFirstIntegration(String token) {
@@ -683,6 +696,7 @@ import com.mixpanel.android.util.MPLog;
     private final Future<SharedPreferences> mMixpanelPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
     private JSONObject mSuperPropertiesCache;
+    private Object mSuperPropsLock = new Object();
     private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;
