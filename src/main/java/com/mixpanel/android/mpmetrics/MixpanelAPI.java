@@ -447,7 +447,7 @@ public class MixpanelAPI {
         registerMixpanelActivityLifecycleCallbacks();
 
         if (ConfigurationChecker.checkInstallReferrerConfiguration(sReferrerPrefs)) {
-            InstallReferrerPlay referrerPlay = new InstallReferrerPlay(getContext(), token, new InstallReferrerPlay.ReferrerCallback() {
+            InstallReferrerPlay referrerPlay = new InstallReferrerPlay(getContext(), new InstallReferrerPlay.ReferrerCallback() {
                 @Override
                 public void onReferrerReadSuccess() {
                     mMessages.updateEventProperties(new AnalyticsMessages.UpdateEventsPropertiesDescription(mToken, mPersistentIdentity.getReferrerProperties()));

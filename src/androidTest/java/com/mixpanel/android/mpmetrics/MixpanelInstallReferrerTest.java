@@ -6,7 +6,7 @@ import android.test.AndroidTestCase;
 
 public class MixpanelInstallReferrerTest extends AndroidTestCase {
     public void setUp() {
-        mInstallReferrer = new InstallReferrerPlay(getContext(), "TOKEN", null);
+        mInstallReferrer = new InstallReferrerPlay(getContext(), null);
         SharedPreferences prefs = getContext().getSharedPreferences(MPConfig.REFERRER_PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().clear().commit();
     }

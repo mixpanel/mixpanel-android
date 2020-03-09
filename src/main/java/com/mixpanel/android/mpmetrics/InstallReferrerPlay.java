@@ -1,7 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
-import android.os.RemoteException;
 
 import com.android.installreferrer.api.InstallReferrerClient;
 import com.android.installreferrer.api.InstallReferrerStateListener;
@@ -68,15 +67,13 @@ import java.util.regex.Pattern;
     private static boolean sHasStartedConnection = false;
 
     private Context mContext;
-    private String mToken;
     private ReferrerCallback mCallBack;
     private InstallReferrerClient mReferrerClient;
     private int mRetryCount;
     private Timer mTimer;
 
-    public InstallReferrerPlay(Context appContext, String token, ReferrerCallback callback) {
+    public InstallReferrerPlay(Context appContext, ReferrerCallback callback) {
         this.mContext = appContext;
-        this.mToken = token;
         this.mCallBack = callback;
         this.mRetryCount = 0;
         this.mTimer= new Timer();
@@ -91,8 +88,8 @@ import java.util.regex.Pattern;
                     ReferrerDetails details = mReferrerClient.getInstallReferrer();
                     String referrer = details.getInstallReferrer();
                     saveReferrerDetails(referrer);
-                } catch (RemoteException e) {
-                    MPLog.d(TAG, "There was an error fetching your referrer details.");
+                } catch (Exception e) {
+                    MPLog.d(TAG, "There was an error fetching your referrer details.", e);
                     shouldRetry = true;
                 }
                 break;
