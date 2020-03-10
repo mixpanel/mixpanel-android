@@ -218,12 +218,10 @@ public class OptOutTest extends AndroidTestCase {
         assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         for (int i = 0; i < 2; i++) {
             String test = mStoredPeopleUpdates.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
-            Log.d("sergio", "STORED PEOPLE UPDATES POLL " + test);
             assertNotNull(test);
         }
         String[] data = mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN, true);
         JSONArray pendingPeopleUpdatesArray = new JSONArray(data[1]);
-        Log.d("SERGIO", "Data is " + pendingPeopleUpdatesArray);
         assertEquals(2, pendingPeopleUpdatesArray.length());
         assertTrue(pendingPeopleUpdatesArray.getJSONObject(0).has("$delete")); // deleteUser
         assertTrue(pendingPeopleUpdatesArray.getJSONObject(1).has("$unset")); // clearCharges

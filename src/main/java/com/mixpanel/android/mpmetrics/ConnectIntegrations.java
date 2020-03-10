@@ -94,12 +94,10 @@ import java.util.Set;
             if (deviceId != null && !deviceId.isEmpty()) {
                 mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_device_id", deviceId);
-                MPLog.e("SERGIO", "BRAZE IS " + deviceId);
             }
             if (externalUserId != null && !externalUserId.isEmpty()) {
                 mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
                 mMixpanel.getPeople().set("$braze_external_id", externalUserId);
-                MPLog.e("SERGIO", "BRAZE EXTERNAL IS " + externalUserId);
             }
         } catch (ClassNotFoundException e) {
             MPLog.w(LOGTAG, "Braze SDK not found but Braze is integrated on Mixpanel", e);
