@@ -63,7 +63,7 @@ public class MixpanelPushNotification {
     public MixpanelPushNotification(Context context, Notification.Builder builder, long now) {
         this.mContext = context;
         this.mBuilder = builder;
-        this.mDrawableIds = getResourceIds(ResourceReader.DRAWABLE_TYPE, context);
+        this.mDrawableIds = getResourceIds(ResourceReader.IMAGE_TYPE, context);
         this.mNow = now;
         this.ROUTING_REQUEST_CODE = (int) now;
         this.notificationId = (int) now;
@@ -108,7 +108,6 @@ public class MixpanelPushNotification {
     }
 
     /* package */ void parseIntent(Intent inboundIntent) {
-        List<MixpanelNotificationData.MixpanelNotificationButtonData> buttons = new ArrayList<>();
         final String message = inboundIntent.getStringExtra("mp_message");
         final String iconName = inboundIntent.getStringExtra("mp_icnm");
         final String largeIconName = inboundIntent.getStringExtra("mp_icnm_l");
@@ -204,7 +203,7 @@ public class MixpanelPushNotification {
         if (iconName != null) {
             if (mDrawableIds.knownIdName(iconName)) {
                 notificationIcon = resource.idFromName(iconName);
-            } else if ((resource = getResourceIds(ResourceReader.MIPMAP_TYPE, mContext)).knownIdName(iconName)) {
+            } else if ((resource = getResourceIds(ResourceReader.IMAGE_TYPE, mContext)).knownIdName(iconName)) {
                 notificationIcon = resource.idFromName(iconName);
                 resource = mDrawableIds;
             }
@@ -218,7 +217,7 @@ public class MixpanelPushNotification {
         if (whiteIconName != null) {
             if (mDrawableIds.knownIdName(whiteIconName)) {
                 whiteNotificationIcon = resource.idFromName(whiteIconName);
-            } else if ((resource = getResourceIds(ResourceReader.MIPMAP_TYPE, mContext)).knownIdName(iconName)) {
+            } else if ((resource = getResourceIds(ResourceReader.IMAGE_TYPE, mContext)).knownIdName(iconName)) {
                 whiteNotificationIcon = resource.idFromName(iconName);
             }
         }
@@ -689,11 +688,10 @@ public class MixpanelPushNotification {
         switch (resourceType) {
             case ResourceReader.ID_TYPE:
                 return new ResourceReader.Ids(resourcePackage, context);
-            case ResourceReader.MIPMAP_TYPE:
-                return new ResourceReader.Mipmap(resourcePackage, context);
-            case ResourceReader.DRAWABLE_TYPE:
+            case ResourceReader.IMAGE_TYPE:
             default:
-                return new ResourceReader.Drawables(resourcePackage, context);
+                return new ResourceReader.Images(resourcePackage, context);
+
         }
 
     }

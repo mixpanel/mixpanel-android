@@ -42,7 +42,6 @@ public class MixpanelNotificationBuilderTest extends AndroidTestCase {
         now = System.currentTimeMillis();
         builderSpy = spy(new Notification.Builder(getContext()));
         mpPushSpy = spy(new MixpanelPushNotification(context, builderSpy, now) {
-            @Override
             protected ResourceIds getResourceIds(Context context) {
                 return getTestResources();
             }
