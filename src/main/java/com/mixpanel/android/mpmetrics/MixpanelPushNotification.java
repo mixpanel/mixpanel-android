@@ -624,7 +624,7 @@ public class MixpanelPushNotification {
                     new JSONObject()
             );
 
-            MixpanelAPI instance = MixpanelAPI.getInstanceFromMpPayload(mContext, mpPayloadStr);
+            MixpanelAPI instance = MixpanelAPI.getInstanceFromMpPayload(mContext.getApplicationContext(), mpPayloadStr);
             if (instance != null && instance.isAppInForeground()) {
                 JSONObject additionalProperties = new JSONObject();
                 try {
