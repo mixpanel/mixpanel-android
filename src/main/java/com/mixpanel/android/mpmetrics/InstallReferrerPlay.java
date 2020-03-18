@@ -148,8 +148,12 @@ import java.util.regex.Pattern;
     }
 
     public void disconnect() {
-        if (mReferrerClient != null) {
-            mReferrerClient.endConnection();
+        if (mReferrerClient != null && mReferrerClient.isReady()) {
+            try {
+                mReferrerClient.endConnection();
+            } catch (Exception e) {
+                MPLog.e(TAG, "Error closing referrer connection", e);
+            }
         }
     }
 
