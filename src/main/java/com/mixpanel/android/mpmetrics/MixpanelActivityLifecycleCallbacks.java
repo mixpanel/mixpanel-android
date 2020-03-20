@@ -25,7 +25,7 @@ import java.util.Locale;
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
     private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable check;
-    private boolean mIsForeground = true;
+    private boolean mIsForeground = false;
     private boolean mPaused = true;
     private static Double sStartSessionTime;
     public static final int CHECK_DELAY = 500;
