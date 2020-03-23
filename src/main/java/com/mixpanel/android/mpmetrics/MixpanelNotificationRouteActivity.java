@@ -60,7 +60,8 @@ public class MixpanelNotificationRouteActivity extends Activity {
                 return defaultIntent;
             case URL_IN_BROWSER:
                 if (URLUtil.isValidUrl(uri.toString())) {
-                    return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()));
+                    return new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()))
+                            .addCategory(Intent.CATEGORY_BROWSABLE);
                 } else {
                     MPLog.d(LOGTAG, "Wanted to open url in browser but url is invalid: " + uri.toString() + ". Starting default intent");
                     return defaultIntent;
