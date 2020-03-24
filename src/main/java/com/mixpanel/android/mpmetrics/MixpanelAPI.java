@@ -705,14 +705,13 @@ public class MixpanelAPI {
      * the same distinct_id for both calls, and using a distinct_id that is easy
      * to associate with the given user, for example, a server-side account identifier.
      *
-     * <p>Calls to {@link #track(String, JSONObject)} made before corresponding calls to
-     * identify will use an internally generated distinct id, which means it is best
-     * to call identify early to ensure that your Mixpanel funnels and retention
-     * analytics can continue to track the user throughout their lifetime. We recommend
-     * calling identify as early as you can.
+     * <p>Calls to {@link #track(String, JSONObject)} made before corresponding calls to identify
+     * will use an anonymous locally generated distinct id, which means it is best to call identify
+     * early to ensure that your Mixpanel funnels and retention analytics can continue to track the
+     * user throughout their lifetime. We recommend calling identify when the user authenticates.
      *
-     * <p>Once identify is called, the given distinct id persists across restarts of your
-     * application.
+     * <p>Once identify is called, the local distinct id persists across restarts of
+     * your application.
      *
      * @param distinctId a string uniquely identifying this user. Events sent to
      *     Mixpanel using the same disinct_id will be considered associated with the
