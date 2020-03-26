@@ -708,6 +708,10 @@ import javax.net.ssl.SSLSocketFactory;
                 if (null != isWifi)
                     ret.put("$wifi", isWifi.booleanValue());
 
+                final String radio = mSystemInformation.getPhoneRadioType(mContext);
+                if (null != radio)
+                    ret.put("$radio", radio);
+
                 final Boolean isBluetoothEnabled = mSystemInformation.isBluetoothEnabled();
                 if (isBluetoothEnabled != null)
                     ret.put("$bluetooth_enabled", isBluetoothEnabled);
