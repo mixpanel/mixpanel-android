@@ -39,6 +39,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
             fcmMessagingService.cancelNotification(extras, notificationManager);
         }
         startActivity(notificationIntent);
+        finish();
     }
 
     protected Intent handleRouteIntent(Intent routeIntent) {
