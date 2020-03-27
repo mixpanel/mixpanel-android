@@ -38,6 +38,7 @@ public class MixpanelNotificationRouteActivity extends Activity {
             NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
             fcmMessagingService.cancelNotification(extras, notificationManager);
         }
+        finish();
         startActivity(notificationIntent);
     }
 
