@@ -68,9 +68,6 @@
         
         <!-- This activity will allow your application to make tracking calls to the MixpanelAPI for notification interactions-->
         <activity android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-            </intent-filter>
         </activity>
 
         <receiver android:name="com.mixpanel.android.mpmetrics.MixpanelPushNotificationDismissedReceiver">
