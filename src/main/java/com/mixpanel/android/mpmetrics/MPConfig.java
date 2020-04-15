@@ -35,6 +35,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.FlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.FlushOnBackground</dt>
+ *     <dd>A boolean value. If false, the library will not flush the event and people queues when the app goes into the background. Defaults to true.</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.DebugFlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached in debug mode.</dd>
  *
@@ -230,6 +233,7 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
+        mFlushOnBackground = metaData.getBoolean("com.mixpanel.android.MPConfig.FlushOnBackground", true);
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableGestureBindingUI = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", false);
@@ -329,6 +333,11 @@ public class MPConfig {
     // Target max milliseconds between flushes. This is advisory.
     public int getFlushInterval() {
         return mFlushInterval;
+    }
+
+    // Whether the SDK should flush() queues when the app goes into the background or not.
+    public boolean getFlushOnBackground() {
+        return mFlushOnBackground;
     }
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
@@ -537,11 +546,13 @@ public class MPConfig {
                 "    DisableExceptionHandler: " + getDisableExceptionHandler() + "\n" +
                 "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
                 "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
-                "    NotificationChannelImportance: " + getNotificationChannelImportance();
+                "    NotificationChannelImportance: " + getNotificationChannelImportance() + "\n" +
+                "    FlushOnBackground: " + getFlushOnBackground();
     }
 
     private final int mBulkUploadLimit;
     private final int mFlushInterval;
+    private final boolean mFlushOnBackground;
     private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private final boolean mTestMode;
