@@ -1974,7 +1974,9 @@ public class MixpanelAPI {
     }
 
     /* package */ void onBackground() {
-        flush();
+        if (mConfig.getFlushOnBackground()) {
+            flush();
+        }
         mUpdatesFromMixpanel.applyPersistedUpdates();
     }
 
