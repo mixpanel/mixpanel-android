@@ -184,13 +184,22 @@ import java.util.Set;
     }
 
     public synchronized InAppNotification getNotification(AnalyticsMessages.EventDescription eventDescription, boolean replace) {
+        if (mUnseenEventTriggeredNotifications.isEmpty()) {
+            MPLog.v(LOGTAG, "No unseen triggered notifications exist, none will be returned.");
+            return null;
+        }
         for (int i = 0; i < mUnseenEventTriggeredNotifications.size(); i ++) {
             final InAppNotification n = mUnseenEventTriggeredNotifications.get(i);
             if (n.matchesEventDescription(eventDescription)) {
                 if (!replace) {
                     mUnseenEventTriggeredNotifications.remove(i);
+                    MPLog.v(LOGTAG, "recording triggered notification " + n.getId() +
+                            " as seen " + eventDescription.getEventName());
                 }
                 return n;
+            } else {
+                MPLog.v(LOGTAG, "triggered notification " + n.getId() +
+                        " does not match event " + eventDescription.getEventName());
             }
         }
         return null;
