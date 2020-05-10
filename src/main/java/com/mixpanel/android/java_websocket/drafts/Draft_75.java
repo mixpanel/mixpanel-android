@@ -1,10 +1,10 @@
 package com.mixpanel.android.java_websocket.drafts;
 
 import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import com.mixpanel.android.java_websocket.exceptions.InvalidDataException;
 import com.mixpanel.android.java_websocket.exceptions.InvalidFrameException;
@@ -48,7 +48,7 @@ public class Draft_75 extends Draft {
 	protected List<Framedata> readyframes = new LinkedList<Framedata>();
 	protected ByteBuffer currentFrame;
 
-	private final Random reuseableRandom = new Random();
+	private final SecureRandom reuseableRandom = new SecureRandom();
 
 	@Override
 	public HandshakeState acceptHandshakeAsClient( ClientHandshake request, ServerHandshake response ) {

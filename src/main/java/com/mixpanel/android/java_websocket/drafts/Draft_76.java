@@ -6,10 +6,10 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import com.mixpanel.android.java_websocket.WebSocket.Role;
 import com.mixpanel.android.java_websocket.exceptions.IncompleteHandshakeException;
@@ -32,7 +32,7 @@ public class Draft_76 extends Draft_75 {
 	private boolean failed = false;
 	private static final byte[] closehandshake = { -1, 0 };
 	
-	private final Random reuseableRandom = new Random();
+	private final SecureRandom reuseableRandom = new SecureRandom();
 	
 
 	public static byte[] createChallenge( String key1, String key2, byte[] key3 ) throws InvalidHandshakeException {
@@ -65,7 +65,7 @@ public class Draft_76 extends Draft_75 {
 	}
 
 	private static String generateKey() {
-		Random r = new Random();
+		SecureRandom r = new SecureRandom();
 		long maxNumber = 4294967295L;
 		long spaces = r.nextInt( 12 ) + 1;
 		int max = new Long( maxNumber / spaces ).intValue();
