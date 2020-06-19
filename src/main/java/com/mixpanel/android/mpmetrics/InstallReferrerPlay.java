@@ -125,9 +125,14 @@ import java.util.regex.Pattern;
     }
 
     public void connect() {
-        mReferrerClient = InstallReferrerClient.newBuilder(mContext).build();
-        mReferrerClient.startConnection(this);
-        sHasStartedConnection = true;
+        try {
+            mReferrerClient = InstallReferrerClient.newBuilder(mContext).build();
+            mReferrerClient.startConnection(this);
+            sHasStartedConnection = true;
+        } catch (SecurityException e) {
+            // see https://issuetracker.google.com/issues/72926755
+            MPLog.e(TAG, "Install referrer client could not start connection", e);
+        }
     }
 
     private void retryConnection() {
