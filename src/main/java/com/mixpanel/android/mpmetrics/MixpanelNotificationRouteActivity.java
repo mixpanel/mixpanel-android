@@ -22,12 +22,13 @@ public class MixpanelNotificationRouteActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         final Intent routeIntent = getIntent();
-        Bundle extras = routeIntent.getExtras();
 
-        if (null == routeIntent) {
-            MPLog.d(LOGTAG, "Notification route activity given null intent.");
+        if (null == routeIntent || null == routeIntent.getExtras()) {
+            MPLog.d(LOGTAG, "Notification route activity given null intent or null extras.");
             return;
         }
+
+        Bundle extras = routeIntent.getExtras();
 
         trackTapAction(routeIntent);
 
