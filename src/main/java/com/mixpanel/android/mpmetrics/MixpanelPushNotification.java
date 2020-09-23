@@ -424,7 +424,7 @@ public class MixpanelPushNotification {
     @TargetApi(20)
     @SuppressWarnings("deprecation")
     protected Notification.Action createAction(CharSequence title, MixpanelNotificationData.PushTapAction onTap, String actionId, int index) {
-        return (new Notification.Action.Builder(MixpanelNotificationData.NOT_SET, title, createActionIntent(onTap, actionId, title, index))).build();
+        return (new Notification.Action.Builder(0, title, createActionIntent(onTap, actionId, title, index))).build();
     }
 
     protected PendingIntent createActionIntent(MixpanelNotificationData.PushTapAction onTap, String buttonId, CharSequence label, int index) {
