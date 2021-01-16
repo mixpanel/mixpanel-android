@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.mixpanel.android.util.JSONUtils;
-import com.mixpanel.android.viewcrawler.GestureTracker;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,7 +44,6 @@ import java.util.Locale;
         if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
             mMpInstance.getPeople().showNotificationIfAvailable(activity);
         }
-        new GestureTracker(mMpInstance, activity);
     }
 
     @Override
