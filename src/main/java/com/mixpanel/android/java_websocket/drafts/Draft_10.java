@@ -5,10 +5,10 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 import com.mixpanel.android.java_websocket.WebSocket.Role;
 import com.mixpanel.android.java_websocket.exceptions.InvalidDataException;
@@ -66,7 +66,7 @@ public class Draft_10 extends Draft {
 	private ByteBuffer incompleteframe;
 	private Framedata fragmentedframe = null;
 
-	private final Random reuseableRandom = new Random();
+	private final SecureRandom reuseableRandom = new SecureRandom();
 
 	@Override
 	public HandshakeState acceptHandshakeAsClient( ClientHandshake request, ServerHandshake response ) throws InvalidHandshakeException {
