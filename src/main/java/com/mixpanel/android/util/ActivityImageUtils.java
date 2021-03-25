@@ -5,15 +5,21 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.support.annotation.Nullable;
 import android.view.View;
 
 public class ActivityImageUtils {
-    // May return null.
-    public static Bitmap getScaledScreenshot(final Activity activity, int scaleWidth, int scaleHeight, boolean relativeScaleIfTrue) {
+
+    /**
+     * @return the desired Bitmap or null in case rootView hasn't been measured appropriately or it's grabbed before layout.
+     */
+    public static @Nullable Bitmap getScaledScreenshot(final Activity activity, int scaleWidth, int scaleHeight, boolean relativeScaleIfTrue) {
         final View someView = activity.findViewById(android.R.id.content);
         final View rootView = someView.getRootView();
-
-        final Bitmap original = Bitmap.createBitmap(rootView.getWidth() , rootView.getHeight(), Bitmap.Config.ARGB_8888);
+        if (rootView.getWidth() <= 0 || rootView.getHeight() <= 0) {
+            return null;
+        }
+        final Bitmap original = Bitmap.createBitmap(rootView.getWidth(), rootView.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(original);
 
         Drawable backgroundDrawable = rootView.getBackground();
@@ -24,9 +30,6 @@ public class ActivityImageUtils {
         }
         rootView.draw(canvas);
 
-        // We could get a null or zero px bitmap if the rootView hasn't been measured
-        // appropriately, or we grab it before layout.
-        // This is ok, and we should handle it gracefully.
         Bitmap scaled = null;
         if (null != original && original.getWidth() > 0 && original.getHeight() > 0) {
             if (relativeScaleIfTrue) {
