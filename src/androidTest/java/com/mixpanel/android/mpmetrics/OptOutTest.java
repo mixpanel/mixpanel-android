@@ -58,8 +58,7 @@ public class OptOutTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
-                    throws ServiceUnavailableException, IOException {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 if (params != null) {
                     final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                     assertTrue(params.containsKey("data"));
@@ -108,7 +107,7 @@ public class OptOutTest {
 
     /**
      * Init Mixpanel without tracking.
-     *
+     * <p>
      * Make sure that after initialization no events are stored nor flushed.
      * Check that super properties, unidentified people updates or people distinct ID are
      * not stored in the device.
@@ -170,9 +169,9 @@ public class OptOutTest {
     /**
      * Test People updates when opt out/in:
      * 1. Not identified user: Updates stored in SharedPreferences should be removed after opting out
-     *    Following updates should be dropped.
+     * Following updates should be dropped.
      * 2. Identified user: Updates stored in DB should be removed after opting out and never sent
-     *    to Mixpanel. Following updates should be dropped as well.
+     * to Mixpanel. Following updates should be dropped as well.
      *
      * @throws InterruptedException
      */
@@ -318,16 +317,16 @@ public class OptOutTest {
         mMixpanelAPI.optOutTracking();
         assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         mStoredEvents.clear();
-        assertEquals(0,         mPersistentIdentity.getTimeEvents().size());
+        assertEquals(0, mPersistentIdentity.getTimeEvents().size());
 
         mMixpanelAPI.timeEvent("Time Event");
-        assertEquals(0,         mPersistentIdentity.getTimeEvents().size());
+        assertEquals(0, mPersistentIdentity.getTimeEvents().size());
         mMixpanelAPI.track("Time Event");
 
         mMixpanelAPI.optInTracking();
         mMixpanelAPI.track("Time Event");
         mMixpanelAPI.timeEvent("Time Event");
-        assertEquals(1,         mPersistentIdentity.getTimeEvents().size());
+        assertEquals(1, mPersistentIdentity.getTimeEvents().size());
         mMixpanelAPI.track("Time Event");
 
         mMockAdapter = getMockDBAdapter();

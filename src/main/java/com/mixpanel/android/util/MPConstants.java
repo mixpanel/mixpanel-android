@@ -1,7 +1,7 @@
 package com.mixpanel.android.util;
 
 /**
- * Created by sergioalonso on 2/15/18.
+ * Mixpanel Constants
  */
 
 public class MPConstants {

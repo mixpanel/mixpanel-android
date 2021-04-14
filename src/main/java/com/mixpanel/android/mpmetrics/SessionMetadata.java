@@ -12,7 +12,7 @@ import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 /* package */ class SessionMetadata {
     private long mEventsCounter, mPeopleCounter, mSessionStartEpoch;
     private String mSessionID;
-    private SecureRandom mRandom;
+    private final SecureRandom mRandom;
 
     /* package */ SessionMetadata() {
         initSession();

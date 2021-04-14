@@ -1,12 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.os.Build;
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-
-import com.mixpanel.android.viewcrawler.ViewCrawler;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -100,57 +97,6 @@ public class MPConfigTest {
         assertTrue(config.DEBUG);
         mixpanelAPI.setEnableLogging(false);
         assertFalse(config.DEBUG);
-    }
-
-    @Test
-    public void testDisableViewCrawlerDefaultsToFalse() throws Exception {
-        final Bundle metaData = new Bundle();
-
-        // DON'T set "com.mixpanel.android.MPConfig.DisableViewCrawler" in the bundle
-
-        final MixpanelAPI mixpanelAPI = mixpanelApi(mpConfig(metaData));
-
-        if (Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API) {
-            assertTrue("By default, we should use ViewCrawler as our Impl of UpdatesFromMixpanel",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof ViewCrawler);
-        } else {
-            assertTrue("When API is older than MPConfig.UI_FEATURES_MIN_API, we should use NoOp",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof MixpanelAPI.NoOpUpdatesFromMixpanel);
-        }
-    }
-
-    @Test
-    public void testDisableViewCrawlerTrueGetsNoOpImpl() throws Exception {
-        final Bundle metaData = new Bundle();
-
-        metaData.putBoolean(DISABLE_VIEW_CRAWLER_METADATA_KEY, true);
-
-        final MixpanelAPI mixpanelAPI = mixpanelApi(mpConfig(metaData));
-
-        if (Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API) {
-            assertTrue("When DisableViewCrawler is true, we should use a NoOp Impl of UpdatesFromMixpanel",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof MixpanelAPI.NoOpUpdatesFromMixpanel);
-        } else {
-            assertTrue("When API is older than MPConfig.UI_FEATURES_MIN_API, we should use NoOp",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof MixpanelAPI.NoOpUpdatesFromMixpanel);
-        }
-    }
-
-    @Test
-    public void testDisableViewCrawlerFalseGetsViewCrawler() throws Exception {
-        final Bundle metaData = new Bundle();
-
-        metaData.putBoolean(DISABLE_VIEW_CRAWLER_METADATA_KEY, false);
-
-        final MixpanelAPI mixpanelAPI = mixpanelApi(mpConfig(metaData));
-
-        if (Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API) {
-            assertTrue("When DisableViewCrawler is false, we should use ViewCrawler as our Impl of UpdatesFromMixpanel",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof ViewCrawler);
-        } else {
-            assertTrue("When API is older than MPConfig.UI_FEATURES_MIN_API, we should use NoOp",
-                       mixpanelAPI.constructUpdatesFromMixpanel(InstrumentationRegistry.getInstrumentation().getContext(), TOKEN) instanceof MixpanelAPI.NoOpUpdatesFromMixpanel);
-        }
     }
 
     private MPConfig mpConfig(final Bundle metaData) {

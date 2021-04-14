@@ -27,7 +27,7 @@ public class TestUtils {
         }
 
         @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
             final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
             ret.edit().clear().commit();
@@ -44,7 +44,7 @@ public class TestUtils {
         }
 
         @Override
-        /* package */ boolean sendAppOpen() {
+            /* package */ boolean sendAppOpen() {
             return false;
         }
     }
@@ -100,18 +100,17 @@ public class TestUtils {
         }
 
         @Override
-        public SharedPreferences get() throws InterruptedException, ExecutionException {
+        public SharedPreferences get() {
             return mPrefs;
         }
 
         @Override
-        public SharedPreferences get(final long timeout, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
-        {
+        public SharedPreferences get(final long timeout, final TimeUnit unit) {
             return mPrefs;
         }
 
-        private SharedPreferences mPrefs;
-    };
+        private final SharedPreferences mPrefs;
+    }
 
     /**
      * Stub/Mock handler that just runs stuff synchronously

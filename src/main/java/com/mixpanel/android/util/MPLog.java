@@ -2,8 +2,6 @@ package com.mixpanel.android.util;
 
 import android.util.Log;
 
-import com.mixpanel.android.mpmetrics.MPConfig;
-
 public class MPLog {
 
     public static final int VERBOSE = 2;
@@ -76,18 +74,6 @@ public class MPLog {
     public static void e(String tag, String message, Throwable throwable) {
         if (shouldLog(ERROR)) {
             Log.e(tag, message, throwable);
-        }
-    }
-
-    public static void wtf(String tag, String message) {
-        if (shouldLog(ERROR)) {
-            Log.wtf(tag, message);
-        }
-    }
-
-    public static void wtf(String tag, String message, Throwable throwable) {
-        if (shouldLog(ERROR)) {
-            Log.wtf(tag, message, throwable);
         }
     }
 
