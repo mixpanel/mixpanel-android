@@ -16,7 +16,6 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
-import com.mixpanel.android.mpmetrics.OnMixpanelUpdatesReceivedListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -79,7 +78,6 @@ public class MainActivity extends Activity {
      * declare the permissions and receiver capabilities you'll need to get your push notifications working.
      * You can take a look at this application's AndroidManifest.xml file for an example of what is needed.
      */
-    public static final String ANDROID_PUSH_SENDER_ID = "YOUR SENDER ID";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -240,31 +238,6 @@ public class MainActivity extends Activity {
 
     ////////////////////////////////////////////////////
 
-    public void setBackgroundImage(final View view) {
-        final Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-        photoPickerIntent.setType("image/*");
-        startActivityForResult(photoPickerIntent, PHOTO_WAS_PICKED);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (PHOTO_WAS_PICKED == requestCode && null != data) {
-            final Uri imageUri = data.getData();
-            if (null != imageUri) {
-                // AsyncTask, please...
-                final ContentResolver contentResolver = getContentResolver();
-                try {
-                    final InputStream imageStream = contentResolver.openInputStream(imageUri);
-                    System.out.println("DRAWING IMAGE FROM URI " + imageUri);
-                    final Bitmap background = BitmapFactory.decodeStream(imageStream);
-                    getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
-                } catch (final FileNotFoundException e) {
-                    Log.e(LOGTAG, "Image apparently has gone away", e);
-                }
-            }
-        }
-    }
-
     private String getTrackingDistinctId() {
         final SharedPreferences prefs = getPreferences(MODE_PRIVATE);
 
@@ -318,6 +291,5 @@ public class MainActivity extends Activity {
 
     private MixpanelAPI mMixpanel;
     private static final String MIXPANEL_DISTINCT_ID_NAME = "Mixpanel Example $distinctid";
-    private static final int PHOTO_WAS_PICKED = 2;
     private static final String LOGTAG = "Mixpanel Example Application";
 }

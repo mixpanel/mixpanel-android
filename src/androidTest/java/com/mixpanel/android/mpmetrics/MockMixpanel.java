@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -110,88 +109,12 @@ class MockMixpanel extends MixpanelAPI {
             Assert.fail("Unexpected call");
         }
 
-
-        @Override
-        public String getPushRegistrationId() {
-            return null;
-        }
-
-        @Override
-        public void setPushRegistrationId(final String registrationId) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void clearPushRegistrationId() {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void clearPushRegistrationId(String registrationId) {
-
-        }
-
         @Override
         public String getDistinctId() {
             Assert.fail("Unexpected call");
             return null;
         }
 
-        @Override
-        public void showNotificationIfAvailable(final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void joinExperimentIfAvailable() {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public InAppNotification getNotificationIfAvailable() {
-            Assert.fail("Unexpected call");
-            return null;
-        }
-
-        @Override
-        public void showNotificationById(int id, final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void showGivenNotification(InAppNotification notif, final Activity parent) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void trackNotification(String eventName, InAppNotification notif, JSONObject properties) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void addOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void removeOnMixpanelUpdatesReceivedListener(final OnMixpanelUpdatesReceivedListener listener) {
-            Assert.fail("Unexpected call");
-        }
-
-        @Override
-        public void addOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
-
-        }
-
-        @Override
-        public void removeOnMixpanelTweaksUpdatedListener(OnMixpanelTweaksUpdatedListener listener) {
-
-        }
-
-        @Override
-        public void trackNotificationSeen(final InAppNotification notif) {
-            Assert.fail("Unexpected call");
-        }
 
         @Override
         public People withIdentity(final String distinctId) {
@@ -203,7 +126,7 @@ class MockMixpanel extends MixpanelAPI {
         public boolean isIdentified() {
             return true;
         }
-    };
+    }
 
 
 }

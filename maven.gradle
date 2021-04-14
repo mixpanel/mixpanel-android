@@ -117,28 +117,11 @@ task androidJavadocs(type: Javadoc, dependsOn: ':assembleRelease') {
     }
     exclude(
             '**/R.*',
-            '**/java_websocket/**',
-            '**/util/ActivityImageUtils.java',
             '**/util/Base64Coder.java',
             '**/util/HttpService.java',
-            '**/util/ImageStore.java',
-            '**/util/JSONUtils.java',
             '**/util/RemoteService.java',
-            '**/util/StackBlurManager.java',
-            '**/util/StringUtils.java',
-            '**/CardCarouselLayout.java',
-            '**/FadeOnPressButton.java',
-            '**/FadingImageView.java',
-            '**/InAppFragment.java',
-            '**/MiniCircleImageView.java',
             '**/ResourceIds.java',
             '**/ResourceReader.java',
-            '**/TakeoverInAppActivity.java',
-            '**/TrackingDebug.java',
-            '**/Tweaks.java',
-            '**/UpdateDisplayState.java',
-            '**/UpdatesFromMixpanel.java',
-            '**/ViewCrawler.java'
     )
     options {
         encoding = 'UTF-8'

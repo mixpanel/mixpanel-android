@@ -53,7 +53,7 @@ import java.util.regex.Pattern;
  */
 /* package */ class InstallReferrerPlay implements InstallReferrerStateListener {
 
-    private static String TAG = "MixpanelAPI.InstallReferrerPlay";
+    private final static String TAG = "MixpanelAPI.InstallReferrerPlay";
 
     private static final int MAX_INSTALL_REFERRER_RETRIES = 5;
     private static final int TIME_MS_BETWEEN_RETRIES = 2500;
@@ -66,11 +66,11 @@ import java.util.regex.Pattern;
 
     private static boolean sHasStartedConnection = false;
 
-    private Context mContext;
-    private ReferrerCallback mCallBack;
+    private final Context mContext;
+    private final ReferrerCallback mCallBack;
     private InstallReferrerClient mReferrerClient;
     private int mRetryCount;
-    private Timer mTimer;
+    private final Timer mTimer;
 
     public InstallReferrerPlay(Context appContext, ReferrerCallback callback) {
         this.mContext = appContext;

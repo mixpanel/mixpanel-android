@@ -14,7 +14,6 @@ import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
-import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -71,7 +70,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         mixpanel.reset();
         String generatedId2 = mixpanel.getDistinctId();
         assertTrue(generatedId2 != null);
-        assertTrue(generatedId1 != generatedId2);
+        assertTrue(!generatedId1.equals(generatedId2));
     }
 
     public void testDeleteDB() {
@@ -474,11 +473,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
-
-            @Override
-            DecideMessages constructDecideUpdates(String token, DecideMessages.OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel) {
-                return super.constructDecideUpdates(token, listener, updatesFromMixpanel);
-            }
         };
 
         MixpanelAPI.People people = mixpanel.getPeople();
@@ -613,7 +607,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     } else {
                         assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID" + mAppProperties, endpointUrl);
                     }
-                    return TestUtils.bytes("{\"notifications\":[{\"body\":\"A\",\"image_tint_color\":4294967295,\"border_color\":4294967295,\"message_id\":85151,\"bg_color\":3858759680,\"extras\":{},\"image_url\":\"https://cdn.mxpnl.com/site_media/images/engage/inapp_messages/mini/icon_megaphone.png\",\"cta_url\":null,\"type\":\"mini\",\"id\":1191793,\"body_color\":4294967295, \"display_triggers\":[{\"event\":\"test_event\"}]}]}");
+                    return TestUtils.bytes("{}");
                 }
 
                 assertTrue(params.containsKey("data"));
@@ -726,8 +720,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             String messageFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH EVENTS_ENDPOINT", messageFlush);
-
-            assertTrue(metrics.getDecideMessages().hasNotificationsAvailable());
 
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONArray bigFlush = new JSONArray(expectedJSONMessage);
@@ -1136,7 +1128,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             String newDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("distinct_id");
             String anonDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("$anon_distinct_id");
 
-            assertEquals(newDistinctIdIdentifyTrack, newDistinctId + String.valueOf(i));
+            assertEquals(newDistinctIdIdentifyTrack, newDistinctId + i);
             assertEquals(anonDistinctIdIdentifyTrack, oldDistinctIds.get(i));
         }
     }
@@ -1257,7 +1249,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
     public void testTrackInThread() throws InterruptedException, JSONException {
         class TestThread extends Thread {
-            BlockingQueue<JSONObject> mMessages;
+            final BlockingQueue<JSONObject> mMessages;
 
             public TestThread(BlockingQueue<JSONObject> messages) {
                 this.mMessages = messages;
@@ -1347,27 +1339,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(1, testConfig.getBulkUploadLimit());
         assertEquals(2, testConfig.getFlushInterval());
         assertEquals(3, testConfig.getDataExpiration());
-        assertEquals(true, testConfig.getDisableEmulatorBindingUI());
-        assertEquals(true, testConfig.getDisableGestureBindingUI());
         assertEquals(true, testConfig.getDisableAppOpenEvent());
-        assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
         assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
         assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
         assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
-    }
-
-    public void test2XUrls() {
-        final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
-        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@BANANAS.jpg");
-
-        final String nothingMatches = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..", "@BANANAS");
-        assertEquals(nothingMatches, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
-
-        final String emptyMatch = InAppNotification.sizeSuffixUrl("", "@BANANAS");
-        assertEquals(emptyMatch, "");
-
-        final String nothingExtensionful = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/", "@BANANAS");
-        assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
     }
 
     public void testAlias() {
