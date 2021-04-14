@@ -286,45 +286,6 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public synchronized void storePushId(String registrationId) {
-        try {
-            final SharedPreferences prefs = mLoadStoredPreferences.get();
-            final SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("push_id", registrationId);
-            writeEdits(editor);
-        } catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e);
-        }
-    }
-
-    public synchronized void clearPushId() {
-        try {
-            final SharedPreferences prefs = mLoadStoredPreferences.get();
-            final SharedPreferences.Editor editor = prefs.edit();
-            editor.remove("push_id");
-            writeEdits(editor);
-        } catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e);
-        }
-    }
-
-    public synchronized String getPushId() {
-        String ret = null;
-        try {
-            final SharedPreferences prefs = mLoadStoredPreferences.get();
-            ret = prefs.getString("push_id", null);
-        } catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Can't write push id to shared preferences", e);
-        }
-        return ret;
-    }
-
     public Map<String, Long> getTimeEvents() {
         Map<String, Long> timeEvents = new HashMap<>();
 
@@ -462,37 +423,6 @@ import com.mixpanel.android.util.MPLog;
             MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
         } catch (InterruptedException e) {
             MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e);
-        }
-    }
-
-    public synchronized HashSet<Integer> getSeenCampaignIds() {
-        HashSet<Integer> campaignIds = new HashSet<>();
-        try {
-            SharedPreferences mpPrefs = mLoadStoredPreferences.get();
-            String seenIds = mpPrefs.getString("seen_campaign_ids", "");
-            StringTokenizer stTokenizer = new StringTokenizer(seenIds, DELIMITER);
-            while (stTokenizer.hasMoreTokens()) {
-                campaignIds.add(Integer.valueOf(stTokenizer.nextToken()));
-            }
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read Mixpanel shared preferences.", e.getCause());
-        } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read Mixpanel shared preferences.", e);
-        }
-        return campaignIds;
-    }
-
-    public synchronized void saveCampaignAsSeen(Integer notificationId) {
-        try {
-            final SharedPreferences prefs = mLoadStoredPreferences.get();
-            final SharedPreferences.Editor editor = prefs.edit();
-            String campaignIds = prefs.getString("seen_campaign_ids", "");
-            editor.putString("seen_campaign_ids", campaignIds + notificationId + DELIMITER);
-            writeEdits(editor);
-        } catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Can't write campaign d to shared preferences", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Can't write campaign id to shared preferences", e);
         }
     }
 
@@ -696,7 +626,7 @@ import com.mixpanel.android.util.MPLog;
     private final Future<SharedPreferences> mMixpanelPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
     private JSONObject mSuperPropertiesCache;
-    private Object mSuperPropsLock = new Object();
+    private final Object mSuperPropsLock = new Object();
     private Map<String, String> mReferrerPropertiesCache;
     private boolean mIdentitiesLoaded;
     private String mEventsDistinctId;

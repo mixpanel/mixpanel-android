@@ -10,7 +10,7 @@ import java.util.Set;
 
 /* package */ class ConnectIntegrations {
     private final MixpanelAPI mMixpanel;
-    private Context mContext;
+    private final Context mContext;
     private String mSavedUrbanAirshipChannelID;
     private int mUrbanAirshipRetries;
 

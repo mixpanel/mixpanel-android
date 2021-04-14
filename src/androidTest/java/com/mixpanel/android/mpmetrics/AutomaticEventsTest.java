@@ -53,12 +53,11 @@ public class AutomaticEventsTest extends AndroidTestCase {
         mMinRequestsLatch = new CountDownLatch(2); // First Time Open and Update
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
-                    throws ServiceUnavailableException, IOException {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
 
                 if (null == params) {
                     if (mDecideResponse == null) {
-                        return TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
+                        return TestUtils.bytes("{\"automatic_events\": true}");
                     }
                     return mDecideResponse;
                 }
@@ -143,7 +142,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         mCleanMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, false, null) {
 
             @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+                /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
                 final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
                 final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
                 ret.edit().clear().commit();
@@ -188,7 +187,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     public void testDisableAutomaticEvents() throws InterruptedException {
         mCanRunDecide = false;
 
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
+        mDecideResponse = TestUtils.bytes("{\"automatic_events\": false}");
 
         int calls = 3; // First Time Open, App Update, An Event Three
         mLatch = new CountDownLatch(calls);
@@ -218,13 +217,13 @@ public class AutomaticEventsTest extends AndroidTestCase {
         int initialCalls = 2;
         mLatch = new CountDownLatch(initialCalls);
         final CountDownLatch secondLatch = new CountDownLatch(initialCalls);
-        final BlockingQueue<String> secondPerformedRequests =  new LinkedBlockingQueue<>();
+        final BlockingQueue<String> secondPerformedRequests = new LinkedBlockingQueue<>();
 
         final HttpService mpSecondPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 if (null == params) {
-                    return TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
+                    return TestUtils.bytes("{\"automatic_events\": false}");
                 }
 
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());

@@ -1,20 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.content.pm.ServiceInfo;
-import android.os.Build;
-
-import com.mixpanel.android.takeoverinapp.TakeoverInAppActivity;
 import com.mixpanel.android.util.MPLog;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -44,8 +33,6 @@ import java.util.concurrent.Future;
 
     public static String LOGTAG = "MixpanelAPI.ConfigurationChecker";
 
-    private static Boolean mTakeoverActivityAvailable;
-
     public static boolean checkBasicConfiguration(Context context) {
         final PackageManager packageManager = context.getPackageManager();
         final String packageName = context.getPackageName();
@@ -59,104 +46,6 @@ import java.util.concurrent.Future;
             MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
                     "<uses-permission android:name=\"android.permission.INTERNET\" />");
             return false;
-        }
-
-        return true;
-    }
-
-    public static boolean checkTakeoverInAppActivityAvailable(Context context) {
-        if (mTakeoverActivityAvailable == null) {
-            if (Build.VERSION.SDK_INT < MPConfig.UI_FEATURES_MIN_API) {
-                // No need to log, TakeoverInAppActivity doesn't work on this platform.
-                mTakeoverActivityAvailable = false;
-                return mTakeoverActivityAvailable;
-            }
-
-            final Intent takeoverInAppIntent = new Intent(context, TakeoverInAppActivity.class);
-            takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            takeoverInAppIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
-            final PackageManager packageManager = context.getPackageManager();
-            final List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(takeoverInAppIntent, 0);
-            if (intentActivities.size() == 0) {
-                MPLog.w(LOGTAG, TakeoverInAppActivity.class.getName() + " is not registered as an activity in your application, so takeover in-apps can't be shown.");
-                MPLog.i(LOGTAG, "Please add the child tag <activity android:name=\"com.mixpanel.android.takeoverinapp.TakeoverInAppActivity\" /> to your <application> tag.");
-                mTakeoverActivityAvailable = false;
-                return mTakeoverActivityAvailable;
-            }
-
-            mTakeoverActivityAvailable = true;
-        }
-
-        return mTakeoverActivityAvailable;
-    }
-
-    public static boolean checkPushNotificationConfiguration(Context context) {
-        final PackageManager packageManager = context.getPackageManager();
-        final String packageName = context.getPackageName();
-
-        if (packageManager == null || packageName == null) {
-            return false;
-        }
-
-        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.INTERNET", packageName)) {
-            MPLog.w(LOGTAG, "Package does not have permission android.permission.INTERNET");
-            MPLog.i(LOGTAG, "You can fix this by adding the following to your AndroidManifest.xml file:\n" +
-                    "<uses-permission android:name=\"android.permission.INTERNET\" />");
-            return false;
-        }
-
-        // check services
-        final PackageInfo servicesInfo;
-        try {
-            servicesInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_SERVICES);
-        } catch (final PackageManager.NameNotFoundException e) {
-            return false;
-        }
-        final ServiceInfo[] services = servicesInfo.services;
-        if (services == null || services.length == 0) {
-            return false;
-        }
-
-        Intent intent = new Intent("com.google.firebase.MESSAGING_EVENT");
-        intent.setPackage(packageName);
-        List<ResolveInfo> intentServices = packageManager.queryIntentServices(intent, PackageManager.GET_META_DATA);
-        Iterator<ResolveInfo> it = intentServices.iterator();
-        while (it.hasNext()) {
-            ResolveInfo resolveInfo = it.next();
-            String serviceName = resolveInfo.serviceInfo.name;
-            try {
-                Class fcmClass = Class.forName(serviceName);
-                boolean extendsMpFcmService = MixpanelFCMMessagingService.class.isAssignableFrom(fcmClass);
-                if (!extendsMpFcmService) {
-                    it.remove();
-                }
-            } catch (ClassNotFoundException e) {
-            }
-        }
-        if (intentServices == null || intentServices.size() == 0) {
-            return false;
-        }
-
-        List<ServiceInfo> registeredServices = new ArrayList<>();
-        for (ResolveInfo intentService : intentServices) {
-            for (ServiceInfo serviceInfo : services) {
-                if (serviceInfo.name.equals(intentService.serviceInfo.name) && serviceInfo.isEnabled()) {
-                    registeredServices.add(intentService.serviceInfo);
-                }
-            }
-        }
-        if (registeredServices.size() > 1) {
-            MPLog.w(LOGTAG, "You can't have more than one service handling \"com.google.firebase.MESSAGING_EVENT\" intent filter. " +
-                    "Android will only use the first one that is declared on your AndroidManifest.xml. If you have more than one push provider " +
-                    "you need to crate your own FirebaseMessagingService class.");
-        }
-
-        try {
-            Class.forName("com.google.android.gms.common.GooglePlayServicesUtil");
-        } catch (final ClassNotFoundException e) {
-            MPLog.w(LOGTAG, "Google Play Services aren't included in your build- push notifications won't work on Lollipop/API 21 or greater");
-            MPLog.i(LOGTAG, "You can fix this by adding com.google.android.gms:play-services as a dependency of your gradle or maven project");
         }
 
         return true;

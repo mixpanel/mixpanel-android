@@ -3,26 +3,19 @@ package com.mixpanel.android.mpmetrics;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Application;
-import android.content.Intent;
-import android.os.BadParcelableException;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.mixpanel.android.util.JSONUtils;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 /* package */ class MixpanelActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable check;
     private boolean mIsForeground = false;
     private boolean mPaused = true;
@@ -39,11 +32,6 @@ import java.util.Locale;
 
     @Override
     public void onActivityStarted(Activity activity) {
-        trackCampaignOpenedIfNeeded(activity.getIntent());
-
-        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
-            mMpInstance.getPeople().showNotificationIfAvailable(activity);
-        }
     }
 
     @Override
@@ -91,10 +79,6 @@ import java.util.Locale;
 
     @Override
     public void onActivityResumed(Activity activity) {
-        if (android.os.Build.VERSION.SDK_INT >= MPConfig.UI_FEATURES_MIN_API && mConfig.getAutoShowMixpanelUpdates()) {
-            mMpInstance.getPeople().joinExperimentIfAvailable();
-        }
-
         mCurrentActivity = new WeakReference<>(activity);
 
         mPaused = false;
@@ -117,19 +101,6 @@ import java.util.Locale;
 
     protected boolean isInForeground() {
         return mIsForeground;
-    }
-
-    protected Activity getCurrentActivity() {
-        return mCurrentActivity != null ? mCurrentActivity.get() : null;
-    }
-
-    private void trackCampaignOpenedIfNeeded(Intent intent) {
-        if (intent == null) {
-            return;
-        }
-        if (intent.hasExtra("mp_campaign_id") && intent.hasExtra("mp_message_id")) {
-            MixpanelAPI.trackPushNotificationEventFromIntent(mMpInstance.getContext(), intent, "$app_open");
-        }
     }
 
     private final MixpanelAPI mMpInstance;

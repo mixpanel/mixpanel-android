@@ -101,22 +101,6 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertEquals("TEST ID TO SET", storedId);
     }
 
-    public void testPushId() {
-        final String pushId = mPersistentIdentity.getPushId();
-        assertEquals("PUSH ID", pushId);
-
-        mPersistentIdentity.clearPushId();
-        final String noId = mPersistentIdentity.getPushId();
-        assertNull(noId);
-
-        mPersistentIdentity.storePushId("STORED PUSH ID");
-        final String storedId = mPersistentIdentity.getPushId();
-        assertEquals("STORED PUSH ID", storedId);
-
-        final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
-        assertEquals("STORED PUSH ID", testPreferences.getString("push_id", "FAIL"));
-    }
-
     public void testGeneratedAnonymousId() {
         SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("events_distinct_id").commit();
@@ -133,9 +117,8 @@ public class PersistentIdentityTest extends AndroidTestCase {
     }
 
     public void testHadPersistedDistinctId() {
-        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
-        assertNotNull("events distinct id is not null");
+        assertNotNull("events distinct id is not null", eventsDistinctId);
         assertNull("no anonymous id yet", mPersistentIdentity.getAnonymousId());
 
         mPersistentIdentity.setAnonymousIdIfAbsent("anon_id");
