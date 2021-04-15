@@ -4,6 +4,7 @@ sudo: false
 branches:
   only:
   - master
+  - 6.0.0.beta
 env:
   global:
     - ANDROID_API_LEVEL=27
