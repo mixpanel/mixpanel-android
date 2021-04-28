@@ -285,28 +285,28 @@ public class MPConfig {
         if (eventsEndpoint != null) {
             setEventsEndpoint(eventsEndpoint);
         } else {
-            setMixpanelEventsEndpoint();
+            setEventsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String peopleEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleEndpoint");
         if (peopleEndpoint != null) {
             setPeopleEndpoint(peopleEndpoint);
         } else {
-            setMixpanelPeopleEndpoint();
+            setPeopleEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String groupsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.GroupsEndpoint");
         if (groupsEndpoint != null) {
             setGroupsEndpoint(groupsEndpoint);
         } else {
-            setMixpanelGroupsEndpoint();
+            setGroupsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
         if (decideEndpoint != null) {
             setDecideEndpoint(decideEndpoint);
         } else {
-            setMixpanelDecideEndpoint();
+            setDecideEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String editorUrl = metaData.getString("com.mixpanel.android.MPConfig.EditorUrl");
@@ -374,11 +374,27 @@ public class MPConfig {
         return mEventsEndpoint;
     }
 
-    public void setMixpanelEventsEndpoint() {
-        setEventsEndpoint(MPConstants.URL.EVENT + (getUseIpAddressForGeolocation() ? "1" : "0"));
+    // In parity with iOS SDK
+    public void setServerURL(String serverURL) {
+        setEventsEndpointWithBaseURL(serverURL);
+        setPeopleEndpointWithBaseURL(serverURL);
+        setGroupsEndpointWithBaseURL(serverURL);
+        setDecideEndpointWithBaseURL(serverURL);
     }
 
-    public void setEventsEndpoint(String eventsEndpoint) {
+    private String getEndPointWithIpTrackingParam(String endPoint, boolean ifUseIpAddressForGeolocation) {
+        if (endPoint.contains("?ip=")) {
+            return endPoint.substring(0, endPoint.indexOf("?ip=")) + "?ip=" + (ifUseIpAddressForGeolocation ? "1" : "0");
+        } else {
+            return endPoint + "?ip=" + (ifUseIpAddressForGeolocation ? "1" : "0");
+        }
+    }
+
+    private void setEventsEndpointWithBaseURL(String baseURL) {
+        setEventsEndpoint(getEndPointWithIpTrackingParam(baseURL + MPConstants.URL.EVENT, getUseIpAddressForGeolocation()));
+    }
+
+    private void setEventsEndpoint(String eventsEndpoint) {
         mEventsEndpoint = eventsEndpoint;
     }
 
@@ -387,11 +403,11 @@ public class MPConfig {
         return mPeopleEndpoint;
     }
 
-    public void setMixpanelPeopleEndpoint() {
-        setPeopleEndpoint(MPConstants.URL.PEOPLE + (getUseIpAddressForGeolocation() ? "1" : "0"));
+    private void setPeopleEndpointWithBaseURL(String baseURL) {
+        setPeopleEndpoint(getEndPointWithIpTrackingParam(baseURL + MPConstants.URL.PEOPLE, getUseIpAddressForGeolocation()));
     }
 
-    public void setPeopleEndpoint(String peopleEndpoint) {
+    private void setPeopleEndpoint(String peopleEndpoint) {
         mPeopleEndpoint = peopleEndpoint;
     }
 
@@ -400,11 +416,11 @@ public class MPConfig {
         return mGroupsEndpoint;
     }
 
-    public void setMixpanelGroupsEndpoint() {
-        setGroupsEndpoint(MPConstants.URL.GROUPS);
+    private void setGroupsEndpointWithBaseURL(String baseURL) {
+        setGroupsEndpoint(baseURL + MPConstants.URL.GROUPS);
     }
 
-    public void setGroupsEndpoint(String groupsEndpoint) {
+    private void setGroupsEndpoint(String groupsEndpoint) {
         mGroupsEndpoint = groupsEndpoint;
     }
 
@@ -413,11 +429,11 @@ public class MPConfig {
         return mDecideEndpoint;
     }
 
-    public void setMixpanelDecideEndpoint() {
-        setDecideEndpoint(MPConstants.URL.DECIDE);
+    private void setDecideEndpointWithBaseURL(String baseURL) {
+        setDecideEndpoint(baseURL + MPConstants.URL.DECIDE);
     }
 
-    public void setDecideEndpoint(String decideEndpoint) {
+    private void setDecideEndpoint(String decideEndpoint) {
         mDecideEndpoint = decideEndpoint;
     }
 
@@ -467,8 +483,19 @@ public class MPConfig {
         return mNotificationChannelImportance;
     }
 
-    public boolean getUseIpAddressForGeolocation() {
+    private boolean getUseIpAddressForGeolocation() {
         return mUseIpAddressForGeolocation;
+    }
+
+    public void setUseIpAddressForGeolocation(boolean useIpAddressForGeolocation) {
+        mUseIpAddressForGeolocation = useIpAddressForGeolocation;
+        setEventsEndpoint(getEndPointWithIpTrackingParam(getEventsEndpoint(), useIpAddressForGeolocation));
+        setPeopleEndpoint(getEndPointWithIpTrackingParam(getPeopleEndpoint(), useIpAddressForGeolocation));
+    }
+
+    public void setEnableLogging(boolean enableLogging) {
+        DEBUG = enableLogging;
+        MPLog.setLevel(DEBUG ? MPLog.VERBOSE : MPLog.NONE);
     }
 
     // Pre-configured package name for resources, if they differ from the application package name
@@ -547,7 +574,8 @@ public class MPConfig {
                 "    NotificationChannelId: " + getNotificationChannelId() + "\n" +
                 "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
                 "    NotificationChannelImportance: " + getNotificationChannelImportance() + "\n" +
-                "    FlushOnBackground: " + getFlushOnBackground();
+                "    FlushOnBackground: " + getFlushOnBackground() + "\n" +
+                "    UseIpAddressForGeolocation: " + getUseIpAddressForGeolocation();
     }
 
     private final int mBulkUploadLimit;
@@ -575,7 +603,7 @@ public class MPConfig {
     private final int mNotificationDefaults;
     private final int mMinSessionDuration;
     private final int mSessionTimeoutDuration;
-    private final boolean mUseIpAddressForGeolocation;
+    private boolean mUseIpAddressForGeolocation;
     private final int mNotificationChannelImportance;
     private final String mNotificationChannelId;
     private final String mNotificationChannelName;
