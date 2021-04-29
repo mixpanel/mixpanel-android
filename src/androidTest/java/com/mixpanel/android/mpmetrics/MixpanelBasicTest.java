@@ -201,6 +201,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         JSONObject jsonObj2 = new JSONObject();
         JSONObject jsonObj3 = new JSONObject();
         JSONObject jsonObj4 = new JSONObject();
+        JSONObject jsonObj5 = new JSONObject();
         Map<String, Object> mapObj1 = new HashMap<>();
         Map<String, Object> mapObj2 = new HashMap<>();
         Map<String, Object> mapObj3 = new HashMap<>();
@@ -210,6 +211,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         jsonObj2.put("TRACK JSON INT", 1);
         jsonObj3.put("TRACK JSON STRING ONCE", "TRACK JSON STRING ONCE VALUE");
         jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
+        jsonObj5.put("TRACK JSON NULL", JSONObject.NULL);
 
         mapObj1.put("TRACK MAP STRING", "TRACK MAP STRING VALUE");
         mapObj2.put("TRACK MAP INT", 1);
@@ -269,6 +271,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
             assertEquals("event7", message.getString("event"));
             properties = message.getJSONObject("properties");
             assertFalse(properties.has("TRACK JSON STRING ONCE"));
+
+            mixpanel.track("event8", jsonObj5);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event8", message.getString("event"));
+            properties = message.getJSONObject("properties");
+            assertEquals(jsonObj5.get("TRACK JSON NULL"), properties.get("TRACK JSON NULL"));
         } catch (InterruptedException e) {
             fail("Unexpected interruption");
         }

@@ -2915,9 +2915,7 @@ public class MixpanelAPI {
                 final Iterator<?> propIter = properties.keys();
                 while (propIter.hasNext()) {
                     final String key = (String) propIter.next();
-                    if (!properties.isNull(key)) {
-                        messageProps.put(key, properties.get(key));
-                    }
+                    messageProps.put(key, properties.get(key));
                 }
             }
 
