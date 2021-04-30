@@ -1304,7 +1304,6 @@ public class MixpanelBasicTest extends AndroidTestCase {
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 1);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
         appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", true);
         appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);

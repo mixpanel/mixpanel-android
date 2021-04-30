@@ -213,7 +213,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
     public void testAutomaticMultipleInstances() throws InterruptedException {
         final String SECOND_TOKEN = "Automatic Events Token Two";
         mCanRunDecide = true;
-        mDecideResponse = TestUtils.bytes("{\"notifications\":[], \"automatic_events\": true}");
+        mDecideResponse = TestUtils.bytes("{\"automatic_events\": true}");
         int initialCalls = 2;
         mLatch = new CountDownLatch(initialCalls);
         final CountDownLatch secondLatch = new CountDownLatch(initialCalls);

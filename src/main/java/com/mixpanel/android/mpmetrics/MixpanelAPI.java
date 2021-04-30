@@ -95,7 +95,6 @@ import java.util.concurrent.Future;
  *
  * @see <a href="https://mixpanel.com/docs/integration-libraries/android">getting started documentation for tracking events</a>
  * @see <a href="https://mixpanel.com/docs/people-analytics/android">getting started documentation for People Analytics</a>
- * @see <a href="https://mixpanel.com/docs/people-analytics/android-push">getting started with push notifications for Android</a>
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
 public class MixpanelAPI {
@@ -602,10 +601,6 @@ public class MixpanelAPI {
      * @param properties A JSONObject containing the key value pairs of the properties to include in this event.
      *                   Pass null if no extra properties exist.
      */
-    // DO NOT DOCUMENT, but track() must be thread safe since it is used to track events in
-    // notifications from the UI thread, which might not be our MixpanelAPI "home" thread.
-    // This MAY CHANGE IN FUTURE RELEASES, so minimize code that assumes thread safety
-    // (and perhaps document that code here).
     public void track(String eventName, JSONObject properties) {
         if (hasOptedOutTracking()) return;
         track(eventName, properties, false);
@@ -943,7 +938,7 @@ public class MixpanelAPI {
      * People Analytics properties.
      *
      * @return an instance of {@link People} that you can use to update
-     *     records in Mixpanel People Analytics and manage Mixpanel Firebase Cloud Messaging notifications.
+     *     records in Mixpanel People Analytics.
      */
     public People getPeople() {
         return mPeople;
@@ -986,7 +981,7 @@ public class MixpanelAPI {
      * Will not clear referrer information.
      */
     public void reset() {
-        // Will clear distinct_ids, superProperties, notifications, experiments,
+        // Will clear distinct_ids, superProperties,
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
@@ -1095,8 +1090,7 @@ public class MixpanelAPI {
      * Core interface for using Mixpanel People Analytics features.
      * You can get an instance by calling {@link MixpanelAPI#getPeople()}
      *
-     * <p>The People object is used to update properties in a user's People Analytics record,
-     * and to manage the receipt of push notifications sent via Mixpanel Engage.
+     * <p>The People object is used to update properties in a user's People Analytics record.
      * For this reason, it's important to call {@link #identify(String)} on the People
      * object before you work with it. Once you call identify, the user identity will
      * persist across stops and starts of your application, until you make another
@@ -1469,11 +1463,9 @@ public class MixpanelAPI {
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
-     * Once registered, we can automatically check for and show in-app notifications
-     * when any Activity is opened.
+     * Once registered, we can automatically flush on an app background.
      *
-     * This is only available if the android version is >= 16. You can disable livecycle callbacks by setting
-     * com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
+     * This is only available if the android version is >= 16.
      *
      * This function is automatically called when the library is initialized unless you explicitly
      * set com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates to false in your AndroidManifest.xml
@@ -1486,7 +1478,7 @@ public class MixpanelAPI {
                 mMixpanelActivityLifecycleCallbacks = new MixpanelActivityLifecycleCallbacks(this, mConfig);
                 app.registerActivityLifecycleCallbacks(mMixpanelActivityLifecycleCallbacks);
             } else {
-                MPLog.i(LOGTAG, "Context is not an Application, Mixpanel will not automatically show in-app notifications or A/B test experiments. We won't be able to automatically flush on an app background.");
+                MPLog.i(LOGTAG, "Context is not an Application, Mixpanel won't be able to automatically flush on an app background.");
             }
         }
     }
