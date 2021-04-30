@@ -65,7 +65,7 @@ public class OptOutTest extends AndroidTestCase {
 
                 }
 
-                return TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
+                return TestUtils.bytes("{\"automatic_events\": false}");
             }
         };
 
