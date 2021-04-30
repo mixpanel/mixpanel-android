@@ -23,8 +23,7 @@
     <application>
 
         <!-- Set the following option to true if you wish to see the debug output from the Mixpanel Android
-             library. This may be useful in determining when track calls go out or in-app notifications
-             are fetched. The default value is false. -->
+             library. This may be useful in determining when track calls go out. The default value is false. -->
         <!--
         <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging"
             android:value="true" />

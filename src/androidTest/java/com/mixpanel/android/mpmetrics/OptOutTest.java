@@ -77,7 +77,7 @@ public class OptOutTest {
 
                 }
 
-                return TestUtils.bytes("{\"notifications\":[], \"automatic_events\": false}");
+                return TestUtils.bytes("{\"automatic_events\": false}");
             }
         };
 
