@@ -1,7 +1,6 @@
 /**
  * This package contains the interface to Mixpanel that you can use from your
- * Android apps. You can use Mixpanel to send events, update people analytics properties,
- * display push notifications and other Mixpanel-driven content to your users.
+ * Android apps. You can use Mixpanel to send events, update people analytics properties.
  *
  * The primary interface to Mixpanel services is in {@link com.mixpanel.android.mpmetrics.MixpanelAPI}.
  * At it's simplest, you can send events with

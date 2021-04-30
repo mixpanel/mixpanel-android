@@ -153,11 +153,11 @@ public class HttpService implements RemoteService {
             }
             finally {
                 if (null != bout)
-                    try { bout.close(); } catch (final IOException e) { ; }
+                    try { bout.close(); } catch (final IOException e) {}
                 if (null != out)
-                    try { out.close(); } catch (final IOException e) { ; }
+                    try { out.close(); } catch (final IOException e) {}
                 if (null != in)
-                    try { in.close(); } catch (final IOException e) { ; }
+                    try { in.close(); } catch (final IOException e) {}
                 if (null != connection)
                     connection.disconnect();
             }

@@ -16,5 +16,5 @@ public interface SuperPropertyUpdate {
      * @param oldValues the existing super properties
      * @return a new set of super properties that will be sent with every event.
      */
-    public JSONObject update(JSONObject oldValues);
+    JSONObject update(JSONObject oldValues);
 }

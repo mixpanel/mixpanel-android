@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  To get your application working with Mixpanel (particularly for push notifications),
+  To get your application working with Mixpanel
   you will need to make some changes to your application manifest file.
 
   You can use this file as a model for the sorts of changes required. Be aware that
@@ -38,22 +38,9 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
 
-        <!-- The Mixpanel library will automatically attempt to show available in
-             app notifications every time a new Activity is displayed. To disable this behavior,
-             add the following line. The default value for this option is set to true. -->
-        <meta-data android:name="com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates"
-               android:value="false" />
-
-        <!-- If you wish to test receiving notifications multiple times, the following option
-             will prevent tracking that a notification has been displayed to Mixpanel.
-             This will allow you to tweak your in app notifications without having to create
-             a new one each time. -->
-        <meta-data android:name="com.mixpanel.android.MPConfig.TestMode"
-            android:value="true" />
-
         <!-- This will enable various debugging messages that shows communication between the Mixpanel
              Android library and the Mixpanel API servers, which are useful for seeing when track requests
-             go out and when notifications are received. -->
+             go out. -->
         <meta-data android:name="com.mixpanel.android.MPConfig.EnableDebugLogging"
             android:value="true" />
 
@@ -65,22 +52,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- This activity allows your application to show Mixpanel takeover in app notifications.
-             If you only wish to show mini in app notifications, you do not need to declare this Activity.
-             You may also specify a different theme to better fit the look and feel of your application. -->
-        <activity android:name="com.mixpanel.android.takeoverinapp.TakeoverInAppActivity"
-                  android:theme="@style/com_mixpanel_android_TakeoverInAppActivityTheme"/>
-
-        <!-- This receiver will allow your application to register for and receive Mixpanel push notifications -->
-        <service
-            android:name="com.mixpanel.android.mpmetrics.MixpanelFCMMessagingService"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
-            </intent-filter>
-        </service>
 
 
     </application>

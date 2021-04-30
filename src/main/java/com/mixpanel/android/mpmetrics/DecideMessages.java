@@ -3,36 +3,20 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 
 import com.mixpanel.android.util.MPLog;
-import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 /* package */ class DecideMessages {
-
-    public interface OnNewResultsListener {
-        void onNewResults();
-    }
-
-    public DecideMessages(Context context, String token, OnNewResultsListener listener, UpdatesFromMixpanel updatesFromMixpanel, HashSet<Integer> notificationIds) {
+    public DecideMessages(Context context, String token, ConnectIntegrations connectIntegrations) {
         mContext = context;
         mToken = token;
-        mListener = listener;
-        mUpdatesFromMixpanel = updatesFromMixpanel;
-
-        mDistinctId = null;
-        mUnseenNotifications = new LinkedList<>();
-        mNotificationIds = new HashSet<>(notificationIds);
-        mUnseenEventTriggeredNotifications = new LinkedList<>();
-        mVariants = null;
         mIntegrations = new HashSet<String>();
+        mConnectIntegrations = connectIntegrations;
     }
 
     public String getToken() {
@@ -42,9 +26,6 @@ import java.util.Set;
     // Called from other synchronized code. Do not call into other synchronized code or you'll
     // risk deadlock
     public synchronized void setDistinctId(String distinctId) {
-        if (mDistinctId == null || !mDistinctId.equals(distinctId)){
-            mUnseenNotifications.clear();
-        }
         mDistinctId = distinctId;
     }
 
@@ -52,76 +33,8 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(List<InAppNotification> newNotifications,
-                                           List<InAppNotification> newTriggeredNotifications,
-                                           JSONArray eventBindings,
-                                           JSONArray variants,
-                                           boolean automaticEvents,
+    public synchronized void reportResults(boolean automaticEvents,
                                            JSONArray integrations) {
-        boolean newContent = false;
-        int newVariantsLength = variants.length();
-        boolean hasNewVariants = false;
-
-        mUpdatesFromMixpanel.setEventBindings(eventBindings);
-
-        for (final InAppNotification n : newNotifications) {
-            final int id = n.getId();
-            if (! mNotificationIds.contains(id)) {
-                mNotificationIds.add(id);
-                mUnseenNotifications.add(n);
-                newContent = true;
-            }
-        }
-
-        for (final InAppNotification n : newTriggeredNotifications) {
-            final int id = n.getId();
-            if (! mNotificationIds.contains(id)) {
-                mNotificationIds.add(id);
-                mUnseenEventTriggeredNotifications.add(n);
-                newContent = true;
-            }
-        }
-
-        // the following logic checks if the variants have been applied by looking up their id's in the HashSet
-        // this is needed to make sure the user defined `mListener` will get called on new variants receiving
-        mVariants = variants;
-
-        for (int i = 0; i < newVariantsLength; i++) {
-            try {
-                JSONObject variant = variants.getJSONObject(i);
-                if (!mLoadedVariants.contains(variant.getInt("id"))) {
-                    newContent = true;
-                    hasNewVariants = true;
-                    break;
-                }
-            } catch(JSONException e) {
-                MPLog.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while comparing the new variants", e);
-            }
-        }
-
-        if (hasNewVariants && mVariants != null) {
-            mLoadedVariants.clear();
-
-            for (int i = 0; i < newVariantsLength; i++) {
-                try {
-                    JSONObject variant = mVariants.getJSONObject(i);
-                    mLoadedVariants.add(variant.getInt("id"));
-                } catch(JSONException e) {
-                    MPLog.e(LOGTAG, "Could not convert variants[" + i + "] into a JSONObject while updating the map", e);
-                }
-            }
-        }
-
-        // in the case we do not receive a new variant, this means the A/B test should be turned off
-        if (newVariantsLength == 0) {
-            mVariants = new JSONArray();
-            if (mLoadedVariants.size() > 0) {
-                mLoadedVariants.clear();
-                newContent = true;
-            }
-        }
-        mUpdatesFromMixpanel.storeVariants(mVariants);
-
         if (mAutomaticEventsEnabled == null && !automaticEvents) {
             MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
         }
@@ -135,96 +48,12 @@ import java.util.Set;
                 }
                 if (!mIntegrations.equals(integrationsSet)) {
                     mIntegrations = integrationsSet;
-                    newContent = true;
+                    mConnectIntegrations.setupIntegrations(mIntegrations);
                 }
             } catch(JSONException e) {
                 MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);
             }
         }
-
-        MPLog.v(LOGTAG, "New Decide content has become available. " +
-                    newNotifications.size() + " notifications and " +
-                    variants.length() + " experiments have been added.");
-
-        if (newContent && null != mListener) {
-            mListener.onNewResults();
-        }
-    }
-
-    public synchronized JSONArray getVariants() {
-        return mVariants;
-    }
-
-    public synchronized InAppNotification getNotification(boolean replace) {
-        if (mUnseenNotifications.isEmpty()) {
-            MPLog.v(LOGTAG, "No unseen notifications exist, none will be returned.");
-            return null;
-        }
-        InAppNotification n = mUnseenNotifications.remove(0);
-        if (replace) {
-            mUnseenNotifications.add(n);
-        } else {
-            MPLog.v(LOGTAG, "Recording notification " + n + " as seen.");
-        }
-        return n;
-    }
-
-    public synchronized InAppNotification getNotification(int id, boolean replace) {
-        InAppNotification notif = null;
-        for (int i = 0; i < mUnseenNotifications.size(); i++) {
-            if (mUnseenNotifications.get(i).getId() == id) {
-                notif = mUnseenNotifications.get(i);
-                if (!replace) {
-                    mUnseenNotifications.remove(i);
-                }
-                break;
-            }
-        }
-        return notif;
-    }
-
-    public synchronized InAppNotification getNotification(AnalyticsMessages.EventDescription eventDescription, boolean replace) {
-        if (mUnseenEventTriggeredNotifications.isEmpty()) {
-            MPLog.v(LOGTAG, "No unseen triggered notifications exist, none will be returned.");
-            return null;
-        }
-        for (int i = 0; i < mUnseenEventTriggeredNotifications.size(); i ++) {
-            final InAppNotification n = mUnseenEventTriggeredNotifications.get(i);
-            if (n.matchesEventDescription(eventDescription)) {
-                if (!replace) {
-                    mUnseenEventTriggeredNotifications.remove(i);
-                    MPLog.v(LOGTAG, "recording triggered notification " + n.getId() +
-                            " as seen " + eventDescription.getEventName());
-                }
-                return n;
-            } else {
-                MPLog.v(LOGTAG, "triggered notification " + n.getId() +
-                        " does not match event " + eventDescription.getEventName());
-            }
-        }
-        return null;
-    }
-
-    public synchronized Set<String> getIntegrations() { return mIntegrations; }
-
-    // if a notification was failed to show, add it back to the unseen list so that we
-    // won't lose it
-    public synchronized void markNotificationAsUnseen(InAppNotification notif) {
-        if (!MPConfig.DEBUG) {
-            if (notif.isEventTriggered()) {
-                mUnseenEventTriggeredNotifications.add(notif);
-            } else {
-                mUnseenNotifications.add(notif);
-            }
-        }
-    }
-
-    public synchronized boolean hasUpdatesAvailable() {
-        return (! mUnseenNotifications.isEmpty()) || (mVariants != null && mVariants.length() > 0);
-    }
-
-    /* package */ synchronized boolean hasNotificationsAvailable() {
-        return (!mUnseenEventTriggeredNotifications.isEmpty() || !mUnseenNotifications.isEmpty());
     }
 
     public Boolean isAutomaticEventsEnabled() {
@@ -239,16 +68,10 @@ import java.util.Set;
     private String mDistinctId;
 
     private final String mToken;
-    private final Set<Integer> mNotificationIds;
-    private final List<InAppNotification> mUnseenNotifications;
-    private final List<InAppNotification> mUnseenEventTriggeredNotifications;
-    private final OnNewResultsListener mListener;
-    private final UpdatesFromMixpanel mUpdatesFromMixpanel;
-    private JSONArray mVariants;
-    private static final Set<Integer> mLoadedVariants = new HashSet<>();
     private Boolean mAutomaticEventsEnabled;
-    private Context mContext;
+    private final Context mContext;
     private Set<String> mIntegrations;
+    private final ConnectIntegrations mConnectIntegrations;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";

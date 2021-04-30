@@ -4,7 +4,7 @@
 
 # Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.svg)](https://travis-ci.org/mixpanel/mixpanel-android)
 
-##### _March 25, 2021_ - [v5.8.8](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.8.8)
+##### _April 29, 2021_ - [v5.9.0](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.9.0)
 
 # Table of Contents
 
@@ -34,7 +34,6 @@ Add the following lines to the `dependencies` section in *app/build.gradle*
 
 ```gradle
 implementation "com.mixpanel.android:mixpanel-android:5.+"
-implementation "com.google.firebase:firebase-messaging:17.3.4" // optional, if push notifications are used
 implementation "com.android.installreferrer:installreferrer:1.1" // optional, if you want to know how users installed your app
 ```
 

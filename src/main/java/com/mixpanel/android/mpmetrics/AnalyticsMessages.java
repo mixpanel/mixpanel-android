@@ -305,7 +305,7 @@ import javax.net.ssl.SSLSocketFactory;
 
 
     static class UpdateEventsPropertiesDescription extends MixpanelDescription {
-        private Map<String, String> mProps;
+        private final Map<String, String> mProps;
 
         public UpdateEventsPropertiesDescription(String token, Map<String, String> props) {
             super(token);
@@ -369,8 +369,7 @@ import javax.net.ssl.SSLSocketFactory;
         protected Handler restartWorkerThread() {
             final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
             thread.start();
-            final Handler ret = new AnalyticsMessageHandler(thread.getLooper());
-            return ret;
+            return new AnalyticsMessageHandler(thread.getLooper());
         }
 
         class AnalyticsMessageHandler extends Handler {
@@ -447,7 +446,7 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
                         token = (String) msg.obj;
-                        boolean shouldCheckDecide = msg.arg1 == 1 ? true : false;
+                        boolean shouldCheckDecide = msg.arg1 == 1;
                         sendAllData(mDbAdapter, token);
                         if (shouldCheckDecide && SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
                             try {
@@ -457,7 +456,7 @@ import javax.net.ssl.SSLSocketFactory;
                             }
                         }
                     } else if (msg.what == INSTALL_DECIDE_CHECK) {
-                        logAboutMessageToMixpanel("Installing a check for in-app notifications");
+                        logAboutMessageToMixpanel("Installing a check for decide");
                         final DecideMessages check = (DecideMessages) msg.obj;
                         mDecideChecker.addDecideCheck(check);
                         if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {

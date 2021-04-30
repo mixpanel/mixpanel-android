@@ -6,8 +6,6 @@ import org.json.JSONObject;
 
 public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
 
-    private static final String TAG = "MixpanelAPI.Exception";
-
     private static final int SLEEP_TIMEOUT_MS = 400;
 
     private static ExceptionHandler sInstance;

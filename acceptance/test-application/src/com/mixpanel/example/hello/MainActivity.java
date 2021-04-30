@@ -16,7 +16,6 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
-import com.mixpanel.android.mpmetrics.OnMixpanelUpdatesReceivedListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,17 +26,12 @@ import java.util.Calendar;
 import java.util.Date;
 
 /**
- * A little application that allows people to update their Mixpanel information,
- * and receive push notifications from a Mixpanel project.
+ * A little application that allows people to update their Mixpanel information.
  *
  * For more information about integrating Mixpanel with your Android application,
  * please check out:
  *
  *     https://mixpanel.com/docs/integration-libraries/android
- *
- * For instructions on enabling push notifications from Mixpanel, please see
- *
- *     https://mixpanel.com/docs/people-analytics/android-push
  *
  * @author mixpanel
  *
@@ -56,42 +50,16 @@ public class MainActivity extends Activity {
      */
     public static final String MIXPANEL_API_TOKEN = "NOT A REAL TOKEN";
 
-    /*
-     * In order for your app to receive push notifications, you will need to enable
-     * the Google Cloud Messaging for Android service in your Google APIs console. To do this:
-     *
-     * - Navigate to https://code.google.com/apis/console
-     * - Select "Services" from the menu on the left side of the screen
-     * - Scroll down until you see the row labeled "Google Cloud Messaging for Android"
-     * - Make sure the switch next to the service name says "On"
-     *
-     * To identify this application with your Google API account, you'll also need your sender id from Google.
-     * You can get yours by logging in to the Google APIs Console at https://code.google.com/apis/console
-     * Once you have logged in, your sender id will appear as part of the URL in your browser's address bar.
-     * The URL will look something like this:
-     *
-     *     https://code.google.com/apis/console/b/0/#project:256660625236
-     *                                                       ^^^^^^^^^^^^
-     *
-     * The twelve-digit number after 'project:' is your sender id. Paste it below (where you see "YOUR SENDER ID")
-     *
-     * There are also some changes you will need to make to your AndroidManifest.xml file to
-     * declare the permissions and receiver capabilities you'll need to get your push notifications working.
-     * You can take a look at this application's AndroidManifest.xml file for an example of what is needed.
-     */
-    public static final String ANDROID_PUSH_SENDER_ID = "YOUR SENDER ID";
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         final String trackingDistinctId = getTrackingDistinctId();
 
-        // Initialize the Mixpanel library for tracking and push notifications.
+        // Initialize the Mixpanel library for tracking.
         mMixpanel = MixpanelAPI.getInstance(this, MIXPANEL_API_TOKEN);
 
 
-        // We also identify the current user with a distinct ID, and
-        // register ourselves for push notifications from Mixpanel.
+        // We also identify the current user with a distinct ID.
 
         mMixpanel.identify(trackingDistinctId); //this is the distinct_id value that
         // will be sent with events. If you choose not to set this,
@@ -153,17 +121,6 @@ public class MainActivity extends Activity {
         } catch(final JSONException e) {
             throw new RuntimeException("Could not encode hour of the day in JSON");
         }
-
-        // If you have notifications and you have set AutoShowMixpanelUpdates set to false,
-        // the onResume function is a good place to call the functions to display
-        // in app notifications. It is safe to call both these methods right after each other.
-        mMixpanel.getPeople().showNotificationIfAvailable(this);
-        OnMixpanelUpdatesReceivedListener listener = new OnMixpanelUpdatesReceivedListener() {
-            @Override
-            public void onMixpanelUpdatesReceived() {
-                mMixpanel.getPeople().joinExperimentIfAvailable();
-            }
-        };
         mMixpanel.getPeople().addOnMixpanelUpdatesReceivedListener(listener);
     }
 
@@ -240,31 +197,6 @@ public class MainActivity extends Activity {
 
     ////////////////////////////////////////////////////
 
-    public void setBackgroundImage(final View view) {
-        final Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
-        photoPickerIntent.setType("image/*");
-        startActivityForResult(photoPickerIntent, PHOTO_WAS_PICKED);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (PHOTO_WAS_PICKED == requestCode && null != data) {
-            final Uri imageUri = data.getData();
-            if (null != imageUri) {
-                // AsyncTask, please...
-                final ContentResolver contentResolver = getContentResolver();
-                try {
-                    final InputStream imageStream = contentResolver.openInputStream(imageUri);
-                    System.out.println("DRAWING IMAGE FROM URI " + imageUri);
-                    final Bitmap background = BitmapFactory.decodeStream(imageStream);
-                    getWindow().setBackgroundDrawable(new BitmapDrawable(getResources(), background));
-                } catch (final FileNotFoundException e) {
-                    Log.e(LOGTAG, "Image apparently has gone away", e);
-                }
-            }
-        }
-    }
-
     private String getTrackingDistinctId() {
         final SharedPreferences prefs = getPreferences(MODE_PRIVATE);
 
@@ -318,6 +250,5 @@ public class MainActivity extends Activity {
 
     private MixpanelAPI mMixpanel;
     private static final String MIXPANEL_DISTINCT_ID_NAME = "Mixpanel Example $distinctid";
-    private static final int PHOTO_WAS_PICKED = 2;
     private static final String LOGTAG = "Mixpanel Example Application";
 }
