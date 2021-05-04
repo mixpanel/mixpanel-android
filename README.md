@@ -38,6 +38,12 @@ implementation "com.google.firebase:firebase-messaging:17.3.4" // optional, if p
 implementation "com.android.installreferrer:installreferrer:1.1" // optional, if you want to know how users installed your app
 ```
 
+On Jan 1, 2022, we’ll remove the [Messages & Experiments](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started) feature from Mixpanel. For now, you can choose to opt in to our beta version without the Messages & Experiments feature support.
+
+```gradle
+implementation "com.mixpanel.android:mixpanel-android:6.0.0-beta+"
+```
+
 ### Permissions in *app/src/main/AndroidManifest.xml*
 
 ```xml
