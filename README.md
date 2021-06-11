@@ -4,7 +4,7 @@
 
 # Latest Version [![Build Status](https://travis-ci.org/mixpanel/mixpanel-android.svg)](https://travis-ci.org/mixpanel/mixpanel-android)
 
-##### _September 24, 2020_ - [v5.8.5](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.8.5)
+##### _May 18, 2021_ - [v5.9.1](https://github.com/mixpanel/mixpanel-android/releases/tag/v5.9.1)
 
 # Table of Contents
 
@@ -38,6 +38,12 @@ implementation "com.google.firebase:firebase-messaging:17.3.4" // optional, if p
 implementation "com.android.installreferrer:installreferrer:1.1" // optional, if you want to know how users installed your app
 ```
 
+On Jan 1, 2022, we’ll remove the [Messages & Experiments](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started) feature from Mixpanel. For now, you can choose to opt in to our beta version without the Messages & Experiments feature support.
+
+```gradle
+implementation "com.mixpanel.android:mixpanel-android:6.0.0-beta+"
+```
+
 ### Permissions in *app/src/main/AndroidManifest.xml*
 
 ```xml
@@ -66,7 +72,7 @@ Remember to replace `YOUR_PROJECT_TOKEN` with the token provided to you on mixpa
 
 ### Tracking
 
-After installing the library into your Android app, Mixpanel will <a href="https://mixpanel.com/help/questions/articles/which-common-mobile-events-can-mixpanel-collect-on-my-behalf-automatically" target="_blank">automatically collect common mobile events</a>. You can enable/ disable automatic collection through your <a href="https://mixpanel.com/help/questions/articles/how-do-i-enable-common-mobile-events-if-i-have-already-implemented-mixpanel" target="_blank">project settings</a>.
+After installing the library into your Android app, Mixpanel will <a href="https://mixpanel.com/help/questions/articles/which-common-mobile-events-can-mixpanel-collect-on-my-behalf-automatically" target="_blank">automatically collect common mobile events</a>. You can enable/disable automatic collection through your project settings.
 
 With the `mixpanel` object created in [the last step](#integration) a call to `track` is all you need to send additional events to Mixpanel.
 

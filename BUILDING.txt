@@ -16,3 +16,4 @@ inside of its src/main directory. To include the library in your ant or Eclipse
 project, add the following library reference to your project's project.properties file:
 
 android.library.reference.1=RELATIVE_PATH_TO_THE_MIXPANEL_DIRECTORY/src/main
+

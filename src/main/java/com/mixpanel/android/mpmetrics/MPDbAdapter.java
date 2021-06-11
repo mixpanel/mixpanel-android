@@ -329,7 +329,7 @@ import com.mixpanel.android.util.MPLog;
             c.moveToFirst();
             count = c.getInt(0);
         } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not add Mixpanel data to table " + tableName + ". Re-initializing database.", e);
+            MPLog.e(LOGTAG, "Could not add Mixpanel data to table");
 
             // We assume that in general, the results of a SQL exception are
             // unrecoverable, and could be associated with an oversized or
@@ -340,6 +340,8 @@ import com.mixpanel.android.util.MPLog;
                 c = null;
             }
             mDb.deleteDatabase();
+        } catch (final OutOfMemoryError e) {
+            MPLog.e(LOGTAG, "Out of memory when adding Mixpanel data to table");
         } finally {
             if (c != null) {
                 c.close();

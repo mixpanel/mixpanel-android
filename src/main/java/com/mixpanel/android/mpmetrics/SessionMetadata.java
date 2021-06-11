@@ -5,24 +5,24 @@ import com.mixpanel.android.util.MPLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
 /* package */ class SessionMetadata {
     private long mEventsCounter, mPeopleCounter, mSessionStartEpoch;
     private String mSessionID;
-    private Random mRandom;
+    private SecureRandom mRandom;
 
     /* package */ SessionMetadata() {
         initSession();
-        mRandom = new Random();
+        mRandom = new SecureRandom();
     }
 
     protected void initSession() {
         mEventsCounter = 0L;
         mPeopleCounter = 0L;
-        mSessionID = Long.toHexString(new Random().nextLong());
+        mSessionID = Long.toHexString(new SecureRandom().nextLong());
         mSessionStartEpoch = System.currentTimeMillis() / 1000;
     }
 

@@ -42,8 +42,8 @@ import java.util.Set;
         try {
             Class urbanAirshipClass = Class.forName(urbanAirshipClassName);
             Object sharedUAirship = urbanAirshipClass.getMethod("shared").invoke(null);
-            Object pushManager = sharedUAirship.getClass().getMethod("getPushManager").invoke(sharedUAirship);
-            String channelID = (String)pushManager.getClass().getMethod("getChannelId").invoke(pushManager);
+            Object channel = sharedUAirship.getClass().getMethod("getChannel").invoke(sharedUAirship);
+            String channelID = (String)channel.getClass().getMethod("getId").invoke(channel);
             if (channelID != null && !channelID.isEmpty()) {
                 mUrbanAirshipRetries = 0;
                 if (mSavedUrbanAirshipChannelID == null || !mSavedUrbanAirshipChannelID.equals(channelID)) {

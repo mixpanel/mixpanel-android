@@ -25,7 +25,6 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Random;
 
 /**
  * A little application that allows people to update their Mixpanel information,
@@ -287,7 +286,7 @@ public class MainActivity extends Activity {
     // in your users table to store mixpanel distinct_id, so it is easily
     // accesible for use in attributing cross platform or server side events.
     private String generateDistinctId() {
-        final Random random = new Random();
+        final SecureRandom random = new SecureRandom();
         final byte[] randomBytes = new byte[32];
         random.nextBytes(randomBytes);
         return Base64.encodeToString(randomBytes, Base64.NO_WRAP | Base64.NO_PADDING);

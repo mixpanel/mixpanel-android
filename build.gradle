@@ -12,6 +12,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
+
 group = GROUP
 version = VERSION_NAME
 
@@ -39,6 +40,17 @@ android {
             disable "UnusedResources"
             textOutput "stdout"
             textReport true
+        }
+    }
+    buildTypes {
+        debug{
+            minifyEnabled false
+            debuggable true
+            testCoverageEnabled true
+        }
+        release {
+            minifyEnabled false
+            testCoverageEnabled true
         }
     }
 }
