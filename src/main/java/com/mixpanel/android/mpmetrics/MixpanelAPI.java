@@ -600,8 +600,8 @@ public class MixpanelAPI {
      * @param superProperties A JSONObject containing super properties to register.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String distinctId) {
-        return getInstance(context, token, false, superProperties, distinctId);
+    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties) {
+        return getInstance(context, token, false, superProperties, null);
     }
 
     /**
@@ -629,10 +629,13 @@ public class MixpanelAPI {
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
      * @param superProperties A JSONObject containing super properties to register.
+     * @param distinctId A unique identifier for the current user. All future calls to
+     *      {@link #track(String, JSONObject)} will be associated to the user identified by
+     *      the given distinct id. (See {@link #identify(String)})
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties) {
-        return getInstance(context, token, false, superProperties, null);
+    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String distinctId) {
+        return getInstance(context, token, false, superProperties, distinctId);
     }
 
     /**
@@ -662,6 +665,9 @@ public class MixpanelAPI {
      * @param optOutTrackingDefault Whether or not Mixpanel can start tracking by default. See
      *     {@link #optOutTracking()}.
      * @param superProperties A JSONObject containing super properties to register.
+     * @param distinctId A unique identifier that for the current user. All future calls to
+     *      {@link #track(String, JSONObject)} will be associated to the user identified by
+     *      the given distinct id. (See {@link #identify(String)})
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String distinctId) {
