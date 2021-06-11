@@ -16,7 +16,7 @@ import java.util.concurrent.Future;
 @SuppressWarnings("deprecation")
 class MockMixpanel extends MixpanelAPI {
     public MockMixpanel(Context context, Future<SharedPreferences> prefsFuture, String testToken) {
-        super(context, prefsFuture, testToken, false, null);
+        super(context, prefsFuture, testToken, false, null, null);
     }
 
     // Not complete- you may need to override track(), registerSuperProperties, etc

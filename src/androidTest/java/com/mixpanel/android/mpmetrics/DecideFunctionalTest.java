@@ -235,7 +235,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
             "}"
         );
 
-        MixpanelAPI api = new MixpanelAPI(getContext(), mMockPreferences, useToken, false, null) {
+        MixpanelAPI api = new MixpanelAPI(getContext(), mMockPreferences, useToken, false, null, null) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mMockMessages;

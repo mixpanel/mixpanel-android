@@ -872,7 +872,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         class TestMixpanelAPI extends MixpanelAPI {
             public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, null);
             }
 
             @Override
@@ -951,7 +951,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         class TestMixpanelAPI extends MixpanelAPI {
             public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, null);
             }
 
             @Override
@@ -1142,7 +1142,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
     }
 
     public void testPersistence() {
-        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false, null);
+        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false, null, null);
         metricsOne.reset();
 
         JSONObject props;
@@ -1177,7 +1177,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         class ListeningAPI extends MixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, null);
             }
 
             @Override

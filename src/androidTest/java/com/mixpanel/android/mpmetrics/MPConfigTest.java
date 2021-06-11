@@ -140,6 +140,6 @@ public class MPConfigTest extends AndroidTestCase {
     }
 
     private MixpanelAPI mixpanelApi(final MPConfig config) {
-        return new MixpanelAPI(getContext(), new TestUtils.EmptyPreferences(getContext()), TOKEN, config, false, null);
+        return new MixpanelAPI(getContext(), new TestUtils.EmptyPreferences(getContext()), TOKEN, config, false, null, null);
     }
 }
