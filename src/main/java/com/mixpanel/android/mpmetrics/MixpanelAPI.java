@@ -1416,7 +1416,7 @@ public class MixpanelAPI {
     }
     /**
      * Will return true if the user has opted out from tracking. See {@link #optOutTracking()} and
-     * {@link MixpanelAPI#getInstance(Context, String, boolean, JSONObject)} for more information.
+     * {@link MixpanelAPI#getInstance(Context, String, boolean, JSONObject, String)} for more information.
      *
      * @return true if user has opted out from tracking. Defaults to false.
      */
