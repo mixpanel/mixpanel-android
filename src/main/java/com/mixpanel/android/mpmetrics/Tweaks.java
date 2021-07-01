@@ -57,8 +57,9 @@ public class Tweaks {
         if (!mTweakValues.containsKey(tweakName)) {
             return false;
         }
-
         final TweakValue container = mTweakValues.get(tweakName);
+        if (container == null || container.value == null)
+            return value == null;
         return !container.value.equals(value);
     }
 
