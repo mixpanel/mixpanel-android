@@ -101,7 +101,6 @@ public class MixpanelPushNotification {
         } else {
             n = mBuilder.getNotification();
         }
-
         if (!mData.isSticky()) {
             n.flags |= Notification.FLAG_AUTO_CANCEL;
         }
@@ -333,9 +332,10 @@ public class MixpanelPushNotification {
     }
 
     protected void maybeSetCustomIconColor() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (mData.getColor() != MixpanelNotificationData.NOT_SET) {
-                mBuilder.setColor(mData.getColor());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            for (int i = 0; i < mData.getButtons().size(); i++) {
+                MixpanelNotificationData.MixpanelNotificationButtonData btn = mData.getButtons().get(i);
+                mBuilder.addAction(this.createAction(btn.getLabel(), btn.getOnTap(), btn.getId(), i + 1));
             }
         }
     }

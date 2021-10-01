@@ -52,6 +52,12 @@ import com.mixpanel.android.util.MPLog;
     public static final String KEY_AUTOMATIC_DATA = "automatic_data";
     public static final String KEY_TOKEN = "token";
 
+    public static final int ID_COLUMN_INDEX = 0;
+    public static final int DATA_COLUMN_INDEX = 1;
+    public static final int CREATED_AT_COLUMN_INDEX = 2;
+    public static final int AUTOMATIC_DATA_COLUMN_INDEX = 3;
+    public static final int TOKEN_COLUMN_INDEX = 4;
+
     public static final int DB_UPDATE_ERROR = -1;
     public static final int DB_OUT_OF_MEMORY_ERROR = -2;
     public static final int DB_UNDEFINED_CODE = -3;
@@ -62,6 +68,7 @@ import com.mixpanel.android.util.MPLog;
     // If you increment DATABASE_VERSION, don't forget to define migration
     private static final int DATABASE_VERSION = 7; // current database version
     private static final int MAX_DB_VERSION = 7; // Max database version onUpdate can migrate to.
+
 
     private static final String CREATE_EVENTS_TABLE =
        "CREATE TABLE " + Table.EVENTS.getName() + " (_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -184,9 +191,11 @@ import com.mixpanel.android.util.MPLog;
             while (eventsCursor.moveToNext()) {
                 int rowId = 0;
                 try {
-                    final JSONObject j = new JSONObject(eventsCursor.getString(eventsCursor.getColumnIndex(KEY_DATA)));
+                    final int dataColumnIndex = eventsCursor.getColumnIndex(KEY_DATA) >= 0 ? eventsCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                    final JSONObject j = new JSONObject(eventsCursor.getString(dataColumnIndex));
                     String token = j.getJSONObject("properties").getString("token");
-                    rowId = eventsCursor.getInt(eventsCursor.getColumnIndex("_id"));
+                    final int idColumnIndex = eventsCursor.getColumnIndex("_id") >= 0 ? eventsCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                    rowId = eventsCursor.getInt(idColumnIndex);
                     db.execSQL("UPDATE " + Table.EVENTS.getName() + " SET " + KEY_TOKEN + " = '" + token + "' WHERE _id = " + rowId);
                 } catch (final JSONException e) {
                     db.delete(Table.EVENTS.getName(), "_id = " + rowId, null);
@@ -197,9 +206,11 @@ import com.mixpanel.android.util.MPLog;
             while (peopleCursor.moveToNext()) {
                 int rowId = 0;
                 try {
-                    final JSONObject j = new JSONObject(peopleCursor.getString(peopleCursor.getColumnIndex(KEY_DATA)));
+                    final int dataColumnIndex = peopleCursor.getColumnIndex(KEY_DATA) >= 0 ? peopleCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                    final JSONObject j = new JSONObject(peopleCursor.getString(dataColumnIndex));
                     String token = j.getString("$token");
-                    rowId = peopleCursor.getInt(peopleCursor.getColumnIndex("_id"));
+                    final int idColumnIndex = peopleCursor.getColumnIndex("_id") >= 0 ? peopleCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                    rowId = peopleCursor.getInt(idColumnIndex);
                     db.execSQL("UPDATE " + Table.PEOPLE.getName() + " SET " + KEY_TOKEN + " = '" + token + "' WHERE _id = " + rowId);
                 } catch (final JSONException e) {
                     db.delete(Table.PEOPLE.getName(), "_id = " + rowId, null);
@@ -376,15 +387,19 @@ import com.mixpanel.android.util.MPLog;
                 while (selectCursor.moveToNext()) {
                     try {
                         ContentValues values = new ContentValues();
-                        values.put(KEY_CREATED_AT, selectCursor.getLong(selectCursor.getColumnIndex(KEY_CREATED_AT)));
-                        values.put(KEY_AUTOMATIC_DATA, selectCursor.getInt(selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA)));
-                        values.put(KEY_TOKEN, selectCursor.getString(selectCursor.getColumnIndex(KEY_TOKEN)));
-
-                        JSONObject updatedData = new JSONObject(selectCursor.getString(selectCursor.getColumnIndex(KEY_DATA)));
+                        final int createdAtColumnIndex = selectCursor.getColumnIndex(KEY_CREATED_AT) >= 0 ? selectCursor.getColumnIndex(KEY_CREATED_AT) : CREATED_AT_COLUMN_INDEX;
+                        values.put(KEY_CREATED_AT, selectCursor.getLong(createdAtColumnIndex));
+                        final int automaticDataColumnIndex = selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_AUTOMATIC_DATA) : AUTOMATIC_DATA_COLUMN_INDEX;
+                        values.put(KEY_AUTOMATIC_DATA, selectCursor.getInt(automaticDataColumnIndex));
+                        final int tokenColumnIndex = selectCursor.getColumnIndex(KEY_TOKEN) >= 0 ? selectCursor.getColumnIndex(KEY_TOKEN) : TOKEN_COLUMN_INDEX;
+                        values.put(KEY_TOKEN, selectCursor.getString(tokenColumnIndex));
+                        final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                        JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
                         updatedData.put("$distinct_id", distinctId);
                         values.put(KEY_DATA, updatedData.toString());
                         db.insert(Table.PEOPLE.getName(), null, values);
-                        int rowId = selectCursor.getInt(selectCursor.getColumnIndex("_id"));
+                        final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                        int rowId = selectCursor.getInt(idColumnIndex);
                         db.delete(Table.ANONYMOUS_PEOPLE.getName(), "_id = " + rowId, null);
                         count++;
                     } catch (final JSONException e) {
@@ -442,7 +457,8 @@ import com.mixpanel.android.util.MPLog;
                 while (selectCursor.moveToNext()) {
                     try {
                         ContentValues values = new ContentValues();
-                        JSONObject updatedData = new JSONObject(selectCursor.getString(selectCursor.getColumnIndex(KEY_DATA)));
+                        final int dataColumnIndex = selectCursor.getColumnIndex(KEY_DATA) >= 0 ? selectCursor.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                        JSONObject updatedData = new JSONObject(selectCursor.getString(dataColumnIndex));
                         JSONObject existingProps = updatedData.getJSONObject("properties");
                         for (final Map.Entry<String, String> entry : properties.entrySet()) {
                             final String key = entry.getKey();
@@ -451,8 +467,8 @@ import com.mixpanel.android.util.MPLog;
                         }
                         updatedData.put("properties", existingProps);
                         values.put(KEY_DATA, updatedData.toString());
-
-                        int rowId = selectCursor.getInt(selectCursor.getColumnIndex("_id"));
+                        final int idColumnIndex = selectCursor.getColumnIndex("_id") >= 0 ? selectCursor.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                        int rowId = selectCursor.getInt(idColumnIndex);
                         db.update(Table.EVENTS.getName(), values, "_id = " + rowId, null);
                         count++;
                     } catch (final JSONException e) {
@@ -638,10 +654,12 @@ import com.mixpanel.android.util.MPLog;
 
             while (c.moveToNext()) {
                 if (c.isLast()) {
-                    last_id = c.getString(c.getColumnIndex("_id"));
+                    final int idColumnIndex = c.getColumnIndex("_id") >= 0 ? c.getColumnIndex("_id") : ID_COLUMN_INDEX;
+                    last_id = c.getString(idColumnIndex);
                 }
                 try {
-                    final JSONObject j = new JSONObject(c.getString(c.getColumnIndex(KEY_DATA)));
+                    final int dataColumnIndex = c.getColumnIndex(KEY_DATA) >= 0 ? c.getColumnIndex(KEY_DATA) : DATA_COLUMN_INDEX;
+                    final JSONObject j = new JSONObject(c.getString(dataColumnIndex));
                     arr.put(j);
                 } catch (final JSONException e) {
                     // Ignore this object
