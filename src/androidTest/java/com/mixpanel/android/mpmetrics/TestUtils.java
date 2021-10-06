@@ -113,15 +113,15 @@ public class TestUtils {
         private SharedPreferences mPrefs;
     };
 
-//    /**
-//     * Stub/Mock handler that just runs stuff synchronously
-//     */
-//    public static class SynchronousHandler extends Handler {
-//        @Override
-//        public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
-//            dispatchMessage(msg);
-//            return true;
-//        }
-//    }
+    /**
+     * Stub/Mock handler that just runs stuff synchronously
+     */
+    public static class SynchronousHandler extends Handler {
+        @Override
+        public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
+            dispatchMessage(msg);
+            return true;
+        }
+    }
 
 }

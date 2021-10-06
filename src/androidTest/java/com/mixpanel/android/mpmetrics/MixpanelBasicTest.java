@@ -1337,57 +1337,6 @@ public class MixpanelBasicTest {
         assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
     }
 
-//    @Test
-//    public void testConfiguration() {
-//        final ApplicationInfo appInfo = new ApplicationInfo();
-//        appInfo.metaData = new Bundle();
-//        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 1);
-//        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
-//        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
-//        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
-//        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", true);
-//        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", true);
-//        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
-//
-//        appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
-//        appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PEOPLE ENDPOINT");
-//        appInfo.metaData.putString("com.mixpanel.android.MPConfig.GroupsEndpoint", "GROUPS ENDPOINT");
-//        appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DECIDE ENDPOINT");
-//
-//        final PackageManager packageManager = new MockPackageManager() {
-//            @Override
-//            public ApplicationInfo getApplicationInfo(String packageName, int flags) {
-//                assertEquals(packageName, "TEST PACKAGE NAME");
-//                assertTrue((flags & PackageManager.GET_META_DATA) == PackageManager.GET_META_DATA);
-//                return appInfo;
-//            }
-//        };
-//
-//        final Context context = new MockContext() {
-//            @Override
-//            public String getPackageName() {
-//                return "TEST PACKAGE NAME";
-//            }
-//
-//            @Override
-//            public PackageManager getPackageManager() {
-//                return packageManager;
-//            }
-//        };
-//
-//        final MPConfig testConfig = MPConfig.readConfig(context);
-//        assertEquals(1, testConfig.getBulkUploadLimit());
-//        assertEquals(2, testConfig.getFlushInterval());
-//        assertEquals(3, testConfig.getDataExpiration());
-//        assertEquals(true, testConfig.getDisableEmulatorBindingUI());
-//        assertEquals(true, testConfig.getDisableGestureBindingUI());
-//        assertEquals(true, testConfig.getDisableAppOpenEvent());
-//        assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
-//        assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
-//        assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
-//        assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
-//    }
-
     @Test
     public void test2XUrls() {
         final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
