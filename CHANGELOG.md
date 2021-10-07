@@ -1,5 +1,19 @@
 #
 
+## [v5.9.3](https://github.com/mixpanel/mixpanel-android/tree/v5.9.3) (2021-10-07)
+
+### Fixes
+
+- Remove typo in the class name `LocalBroadcastManager` for reflection [\#760](https://github.com/mixpanel/mixpanel-android/pull/760)
+
+**Closed issues:**
+
+- Google Play policy to update targetSdkVersion to 30 [\#756](https://github.com/mixpanel/mixpanel-android/issues/756)
+- Failed resolution of: Lcom/google/firebase/iid/FirebaseInstanceId [\#744](https://github.com/mixpanel/mixpanel-android/issues/744)
+- Mixpanel using legacy support libs in reflection calls - can't drop jetifier due to this [\#717](https://github.com/mixpanel/mixpanel-android/issues/717)
+
+#
+
 ## [v5.9.2](https://github.com/mixpanel/mixpanel-android/tree/v5.9.2) (2021-10-07)
 
 ### Enhancements
@@ -25,6 +39,8 @@
 - Add a CHANGELOG placeholder [\#747](https://github.com/mixpanel/mixpanel-android/pull/747)
 - Add github workflow for auto release [\#745](https://github.com/mixpanel/mixpanel-android/pull/745)
 - Migrate to Github Actions for CI [\#743](https://github.com/mixpanel/mixpanel-android/pull/743)
+
+
 
 
 
