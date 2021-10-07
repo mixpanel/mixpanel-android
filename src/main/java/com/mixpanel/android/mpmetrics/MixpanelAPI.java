@@ -2956,7 +2956,7 @@ public class MixpanelAPI {
     private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {
         // Register a BroadcastReceiver to receive com.parse.bolts.measurement_event and track a call to mixpanel
         try {
-            final Class<?> clazz = Class.forName("androidx.localbroadcastmanager.content.LocalBroadcastManager\n");
+            final Class<?> clazz = Class.forName("androidx.localbroadcastmanager.content.LocalBroadcastManager");
             final Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
             final Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
             final Object localBroadcastManager = methodGetInstance.invoke(null, context);
