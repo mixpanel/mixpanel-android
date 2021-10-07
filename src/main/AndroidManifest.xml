@@ -65,12 +65,12 @@
             </intent-filter>
         </service>
         -->
-        
-        <!-- This activity will allow your application to make tracking calls to the MixpanelAPI for notification interactions-->
-        <activity android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity">
-        </activity>
 
-        <receiver android:name="com.mixpanel.android.mpmetrics.MixpanelPushNotificationDismissedReceiver">
-        </receiver>
+        <!-- This activity will allow your application to make tracking calls to the MixpanelAPI for notification interactions-->
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.MixpanelNotificationRouteActivity"
+            android:exported="false" />
+
+        <receiver android:name="com.mixpanel.android.mpmetrics.MixpanelPushNotificationDismissedReceiver" />
     </application>
 </manifest>
