@@ -2,7 +2,10 @@ package com.mixpanel.android.mpmetrics;
 
 import android.graphics.Color;
 import android.os.Bundle;
-import android.test.AndroidTestCase;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SmallTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
@@ -19,25 +22,38 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+
 import javax.net.ssl.SSLSocketFactory;
 
-public class DecideCheckerTest extends AndroidTestCase {
+@RunWith(AndroidJUnit4.class)
+public class DecideCheckerTest {
 
-    @Override
+    @Before
     public void setUp() {
-        mConfig = new MPConfig(new Bundle(), getContext());
-        mDecideChecker = new DecideChecker(getContext(), mConfig);
+        mConfig = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext());
+        mDecideChecker = new DecideChecker(InstrumentationRegistry.getInstrumentation().getContext(), mConfig);
         mPoster = new MockPoster();
         mEventBinder = new MockUpdatesFromMixpanel();
         mEventBinder.startUpdates();
-        mDecideMessages1 = new DecideMessages(getContext(), "TOKEN 1", null, mEventBinder, new HashSet<Integer>());
+        mDecideMessages1 = new DecideMessages(InstrumentationRegistry.getInstrumentation().getContext(), "TOKEN 1", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages1.setDistinctId("DISTINCT ID 1");
-        mDecideMessages2 = new DecideMessages(getContext(), "TOKEN 2", null, mEventBinder, new HashSet<Integer>());
+        mDecideMessages2 = new DecideMessages(InstrumentationRegistry.getInstrumentation().getContext(), "TOKEN 2", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages2.setDistinctId("DISTINCT ID 2");
-        mDecideMessages3 = new DecideMessages(getContext(), "TOKEN 3", null, mEventBinder, new HashSet<Integer>());
+        mDecideMessages3 = new DecideMessages(InstrumentationRegistry.getInstrumentation().getContext(), "TOKEN 3", null, mEventBinder, new HashSet<Integer>());
         mDecideMessages3.setDistinctId("DISTINCT ID 3");
     }
 
+    @Test
     public void testReadEmptyLists() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
@@ -57,6 +73,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         });
     }
 
+    @Test
     public void testBadDecideResponses() throws RemoteService.ServiceUnavailableException {
         mDecideChecker.addDecideCheck(mDecideMessages1);
 
@@ -84,6 +101,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         mEventBinder.bindingsSeen.clear();
     }
 
+    @Test
     public void testDecideResponses() throws DecideChecker.UnintelligibleMessageException, JSONException {
         {
             final String nonsense = "I AM NONSENSE";
@@ -204,6 +222,7 @@ public class DecideCheckerTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testAutomaticResponse() throws DecideChecker.UnintelligibleMessageException, RemoteService.ServiceUnavailableException {
         final String automaticEventsTrue = "{\"notifications\": null, \"automatic_events\": true}";
         DecideChecker.Result parseElements;

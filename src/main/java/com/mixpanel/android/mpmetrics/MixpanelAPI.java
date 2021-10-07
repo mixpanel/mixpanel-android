@@ -2001,7 +2001,6 @@ public class MixpanelAPI {
         } else {
             MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
         }
-
         return false;
     }
 

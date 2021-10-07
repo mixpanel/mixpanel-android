@@ -13,9 +13,11 @@ jobs:
     - name: Checkout the code
       uses: actions/checkout@v2
     - name: Run Unit test
-      uses: reactivecircus/android-emulator-runner@v2
+      uses: reactivecircus/android-emulator-runner@v2.20.0
       with:
-        api-level: 27
+        api-level: 30
+        profile: Nexus 6
+        arch: x86_64
         script: ./gradlew createDebugCoverageReport
     - name: Lint
       run:  ./gradlew lint

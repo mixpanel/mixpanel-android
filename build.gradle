@@ -1,10 +1,10 @@
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.3.1'
+        classpath 'com.android.tools.build:gradle:4.1.1'
     }
 }
 
@@ -17,19 +17,25 @@ group = GROUP
 version = VERSION_NAME
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 30
+    buildToolsVersion '30.0.3'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
     }
 
+    lintOptions {
+        abortOnError false
+    }
+
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 27
+        targetSdkVersion 30
+        multiDexEnabled true
         testApplicationId "com.mixpanel.android.mpmetrics"
-        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         consumerProguardFiles 'proguard.txt'
 
         buildConfigField "String", "MIXPANEL_VERSION", "\"${version}\""
@@ -40,6 +46,10 @@ android {
             disable "UnusedResources"
             textOutput "stdout"
             textReport true
+        }
+
+        testOptions {
+            execution 'ANDROIDX_TEST_ORCHESTRATOR'
         }
     }
     buildTypes {
@@ -63,7 +73,6 @@ allprojects {
     }
     repositories {
         mavenCentral()
-        jcenter()
         google()
     }
 }
@@ -73,9 +82,22 @@ allprojects {
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
     api 'com.google.firebase:firebase-messaging:17.3.4'
-    api 'com.android.installreferrer:installreferrer:1.0'
-    testImplementation "org.mockito:mockito-core:2.25.1"
+    implementation("com.google.firebase:firebase-iid")
+    api 'com.android.installreferrer:installreferrer:2.2'
+    implementation "androidx.annotation:annotation:1.1.0"
+    implementation 'androidx.multidex:multidex:2.0.1'
+    
+    // AndroidJUnitRunner and JUnit Rules
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test:core:1.4.0'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test:rules:1.4.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.ext:truth:1.4.0'
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
+    androidTestUtil 'androidx.test:orchestrator:1.4.0'
+    testImplementation "org.mockito:mockito-core:2.25.1"
+    
 }
 
 apply from: rootProject.file('maven.gradle')

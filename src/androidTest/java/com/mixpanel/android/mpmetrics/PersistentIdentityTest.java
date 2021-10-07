@@ -2,16 +2,33 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.test.AndroidTestCase;
+
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
-public class PersistentIdentityTest extends AndroidTestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+@RunWith(AndroidJUnit4.class)
+public class PersistentIdentityTest {
+
+    @Before
     public void setUp() {
-        SharedPreferences referrerPrefs = getContext().getSharedPreferences(TEST_REFERRER_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences referrerPrefs = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_REFERRER_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor referrerEditor = referrerPrefs.edit();
         referrerEditor.clear();
         referrerEditor.putString("referrer", "REFERRER");
@@ -22,7 +39,7 @@ public class PersistentIdentityTest extends AndroidTestCase {
         referrerEditor.putString("utm_term", "TERM VALUE");
         referrerEditor.commit();
 
-        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor prefsEditor = testPreferences.edit();
         prefsEditor.clear();
         prefsEditor.putString("events_distinct_id", "EVENTS DISTINCT ID");
@@ -31,20 +48,21 @@ public class PersistentIdentityTest extends AndroidTestCase {
         prefsEditor.putString("super_properties", "{\"thing\": \"superprops\"}");
         prefsEditor.commit();
 
-        SharedPreferences timeEventsPreferences = getContext().getSharedPreferences(TEST_TIME_EVENTS_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences timeEventsPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_TIME_EVENTS_PREFERENCES, Context.MODE_PRIVATE);
         SharedPreferences.Editor timeEventsEditor = timeEventsPreferences.edit();
         timeEventsEditor.clear();
         timeEventsEditor.commit();
 
         SharedPreferencesLoader loader = new SharedPreferencesLoader();
-        Future<SharedPreferences> referrerLoader = loader.loadPreferences(getContext(), TEST_REFERRER_PREFERENCES, null);
-        Future<SharedPreferences> testLoader = loader.loadPreferences(getContext(), TEST_PREFERENCES, null);
-        Future<SharedPreferences> timeEventsLoader = loader.loadPreferences(getContext(), TEST_TIME_EVENTS_PREFERENCES, null);
-        Future<SharedPreferences> mixpanelLoader = loader.loadPreferences(getContext(), TEST_MIXPANEL_PREFERENCES, null);
+        Future<SharedPreferences> referrerLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_REFERRER_PREFERENCES, null);
+        Future<SharedPreferences> testLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_PREFERENCES, null);
+        Future<SharedPreferences> timeEventsLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_TIME_EVENTS_PREFERENCES, null);
+        Future<SharedPreferences> mixpanelLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_MIXPANEL_PREFERENCES, null);
 
         mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader, mixpanelLoader);
     }
 
+    @Test
     public void testReferrerProperties() {
         final Map<String, String> props = mPersistentIdentity.getReferrerProperties();
         assertEquals("REFERRER", props.get("referrer"));
@@ -58,7 +76,7 @@ public class PersistentIdentityTest extends AndroidTestCase {
         newPrefs.put("referrer", "BJORK");
         newPrefs.put("mystery", "BOO!");
         newPrefs.put("utm_term", "NEW TERM");
-        PersistentIdentity.writeReferrerPrefs(getContext(), TEST_REFERRER_PREFERENCES, newPrefs);
+        PersistentIdentity.writeReferrerPrefs(InstrumentationRegistry.getInstrumentation().getContext(), TEST_REFERRER_PREFERENCES, newPrefs);
 
         final Map<String, String> propsAfterChange = mPersistentIdentity.getReferrerProperties();
         assertFalse(propsAfterChange.containsKey("utm_medium"));
@@ -70,8 +88,9 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertEquals("BOO!", propsAfterChange.get("mystery"));
     }
 
+    @Test
     public void testUnsetEventsId() {
-        final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        final SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
         final String eventsId = mPersistentIdentity.getEventsDistinctId();
         assertTrue(Pattern.matches("^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$", eventsId));
@@ -87,8 +106,9 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertEquals("TEST ID TO SET", storedId);
     }
 
+    @Test
     public void testUnsetPeopleId() {
-        final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        final SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
         final String peopleId = mPersistentIdentity.getPeopleDistinctId();
         assertNull(peopleId);
@@ -101,6 +121,7 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertEquals("TEST ID TO SET", storedId);
     }
 
+    @Test
     public void testPushId() {
         final String pushId = mPersistentIdentity.getPushId();
         assertEquals("PUSH ID", pushId);
@@ -113,12 +134,13 @@ public class PersistentIdentityTest extends AndroidTestCase {
         final String storedId = mPersistentIdentity.getPushId();
         assertEquals("STORED PUSH ID", storedId);
 
-        final SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        final SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         assertEquals("STORED PUSH ID", testPreferences.getString("push_id", "FAIL"));
     }
 
+    @Test
     public void testGeneratedAnonymousId() {
-        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("events_distinct_id").commit();
 
         final String generatedAnonymousId = mPersistentIdentity.getAnonymousId();
@@ -132,8 +154,9 @@ public class PersistentIdentityTest extends AndroidTestCase {
         assertNotSame("anonymous id doesn't differ from eventsDistinctId post identify", generatedAnonymousId, mPersistentIdentity.getEventsDistinctId());
     }
 
+    @Test
     public void testHadPersistedDistinctId() {
-        SharedPreferences testPreferences = getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
         assertNotNull("events distinct id is not null");
         assertNull("no anonymous id yet", mPersistentIdentity.getAnonymousId());

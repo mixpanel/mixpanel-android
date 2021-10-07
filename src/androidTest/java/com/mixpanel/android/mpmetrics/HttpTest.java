@@ -3,7 +3,10 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.test.AndroidTestCase;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.LargeTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.RemoteService;
@@ -26,7 +29,15 @@ import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocketFactory;
 
-public class HttpTest extends AndroidTestCase {
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+@RunWith(AndroidJUnit4.class)
+public class HttpTest {
     private Future<SharedPreferences> mMockPreferences;
     private List<Object> mFlushResults, mDecideResults;
     private BlockingQueue<String> mPerformRequestCalls, mDecideCalls;
@@ -39,9 +50,10 @@ public class HttpTest extends AndroidTestCase {
     private static final String SUCCEED_TEXT = "Should Succeed";
     private static final String FAIL_TEXT = "Should Fail";
 
+    @Before
     public void setUp() {
         mFlushInterval = 2 * 1000;
-        mMockPreferences = new TestUtils.EmptyPreferences(getContext());
+        mMockPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
         mFlushResults = new ArrayList<Object>();
         mPerformRequestCalls = new LinkedBlockingQueue<String>();
         mDecideCalls = new LinkedBlockingQueue<String>();
@@ -101,7 +113,7 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        final MPConfig config = new MPConfig(new Bundle(), getContext()) {
+        final MPConfig config = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public String getDecideEndpoint() {
                 return "DECIDE ENDPOINT";
@@ -118,7 +130,7 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
                 mCleanupCalls.add("called");
@@ -135,7 +147,7 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
@@ -152,7 +164,7 @@ public class HttpTest extends AndroidTestCase {
             }
         };
 
-        mMetrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        mMetrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -160,6 +172,7 @@ public class HttpTest extends AndroidTestCase {
         };
     }
 
+    @Test
     public void testHTTPFailures() {
         try {
             runBasicSucceed();

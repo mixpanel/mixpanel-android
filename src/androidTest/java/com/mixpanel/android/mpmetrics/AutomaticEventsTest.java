@@ -5,7 +5,10 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.test.AndroidTestCase;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SmallTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
@@ -14,6 +17,13 @@ import com.mixpanel.android.util.RemoteService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Map;
@@ -29,7 +39,9 @@ import javax.net.ssl.SSLSocketFactory;
  * Created by sergioalonso on 5/16/17.
  */
 
-public class AutomaticEventsTest extends AndroidTestCase {
+@RunWith(AndroidJUnit4.class)
+@SmallTest
+public class AutomaticEventsTest {
 
     private MixpanelAPI mCleanMixpanelAPI;
     private static final String TOKEN = "Automatic Events Token";
@@ -44,10 +56,9 @@ public class AutomaticEventsTest extends AndroidTestCase {
     private MPDbAdapter mockAdapter;
     private CountDownLatch mMinRequestsLatch;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
+    @Before
+    public void setUp() {
+        mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
         mTrackedEvents = 0;
         mCanRunDecide = true;
         mMinRequestsLatch = new CountDownLatch(2); // First Time Open and Update
@@ -80,9 +91,9 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        getContext().deleteDatabase("mixpanel");
+        InstrumentationRegistry.getInstrumentation().getContext().deleteDatabase("mixpanel");
 
-        mockAdapter = new MPDbAdapter(getContext()) {
+        mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
                 if (token.equalsIgnoreCase(TOKEN)) {
@@ -102,7 +113,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages automaticAnalyticsMessages = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages automaticAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
 
             @Override
             protected RemoteService getPoster() {
@@ -140,7 +151,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        mCleanMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, false, null) {
+        mCleanMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null) {
 
             @Override
         /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
@@ -166,12 +177,12 @@ public class AutomaticEventsTest extends AndroidTestCase {
         };
     }
 
-    @Override
-    protected void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         mMinRequestsLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
-        super.tearDown();
     }
 
+    @Test
     public void testAutomaticOneInstance() throws InterruptedException {
         int calls = 3; // First Time Open, App Update, An Event One
         mLatch = new CountDownLatch(calls);
@@ -185,6 +196,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
+    @Test
     public void testDisableAutomaticEvents() throws InterruptedException {
         mCanRunDecide = false;
 
@@ -211,6 +223,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
     }
 
+    @Test
     public void testAutomaticMultipleInstances() throws InterruptedException {
         final String SECOND_TOKEN = "Automatic Events Token Two";
         mCanRunDecide = true;
@@ -243,7 +256,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
                 if (token.equalsIgnoreCase(SECOND_TOKEN)) {
@@ -262,7 +275,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages mpSecondAnalyticsMessages = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages mpSecondAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected RemoteService getPoster() {
                 return mpSecondPoster;
@@ -299,7 +312,7 @@ public class AutomaticEventsTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(getContext(), new TestUtils.EmptyPreferences(getContext()), SECOND_TOKEN) {
+        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), SECOND_TOKEN) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mpSecondAnalyticsMessages;
@@ -310,15 +323,15 @@ public class AutomaticEventsTest extends AndroidTestCase {
         assertEquals(initialCalls, mTrackedEvents);
 
         assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        mLatch = new CountDownLatch(MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls);
-        for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
+        mLatch = new CountDownLatch(MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls);
+        for (int i = 0; i < MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
         assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        for (int i = 0; i < MPConfig.getInstance(getContext()).getBulkUploadLimit() - initialCalls; i++) {
+        for (int i = 0; i < MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls; i++) {
             assertEquals("Track event " + i, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         }
 

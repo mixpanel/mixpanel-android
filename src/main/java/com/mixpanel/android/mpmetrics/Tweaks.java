@@ -1,6 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.support.annotation.IntDef;
+import androidx.annotation.IntDef;
 
 import com.mixpanel.android.util.MPLog;
 

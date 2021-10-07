@@ -72,5 +72,7 @@
             android:exported="false" />
 
         <receiver android:name="com.mixpanel.android.mpmetrics.MixpanelPushNotificationDismissedReceiver" />
+        <uses-library android:name="android.test.runner"
+            android:required="false" />
     </application>
 </manifest>

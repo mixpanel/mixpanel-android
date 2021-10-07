@@ -8,7 +8,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.test.AndroidTestCase;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.ImageStore;
@@ -29,12 +31,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import javax.net.ssl.SSLSocketFactory;
 
-public class DecideFunctionalTest extends AndroidTestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
-    public void setUp() throws InterruptedException {
-        final SharedPreferences referrerPreferences = getContext().getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
+@RunWith(AndroidJUnit4.class)
+public class DecideFunctionalTest {
+
+    @Before
+    public void setUp() {
+        final SharedPreferences referrerPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences("MIXPANEL_TEST_PREFERENCES", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = referrerPreferences.edit();
         editor.clear();
         editor.commit();
@@ -74,14 +86,14 @@ public class DecideFunctionalTest extends AndroidTestCase {
             }
         };
 
-        mMockConfig = new MPConfig(new Bundle(), getContext()) {
+        mMockConfig = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public boolean getAutoShowMixpanelUpdates() {
                 return false;
             }
         };
 
-        mMockMessages = new AnalyticsMessages(getContext()) {
+        mMockMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected RemoteService getPoster() {
                 return mMockPoster;
@@ -116,7 +128,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
         };
 
         try {
-            SystemInformation systemInformation = SystemInformation.getInstance(mContext);
+            SystemInformation systemInformation = SystemInformation.getInstance(InstrumentationRegistry.getInstrumentation().getContext());
 
             final StringBuilder queryBuilder = new StringBuilder();
             queryBuilder.append("&properties=");
@@ -131,11 +143,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         } catch (Exception e) {}
     }
 
+    @Test
     public void testDecideChecks() {
         // Should not make any requests on construction if the user has not been identified
         mExpectations.expect("ALWAYS WRONG", "ALWAYS WRONG");
 
-        MixpanelAPI api = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
+        MixpanelAPI api = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST TOKEN") {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mMockMessages;
@@ -217,11 +230,12 @@ public class DecideFunctionalTest extends AndroidTestCase {
         assertNull(api.getPeople().getNotificationIfAvailable());
     }
 
+    @Test
     public void testDecideChecksOnConstruction() {
         final String useToken = "TEST IDENTIFIED ON CONSTRUCTION";
 
         final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + useToken;
-        final SharedPreferences ret = getContext().getSharedPreferences(prefsName, Context.MODE_PRIVATE);
+        final SharedPreferences ret = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(prefsName, Context.MODE_PRIVATE);
         final SharedPreferences.Editor editor = ret.edit();
         editor.putString("people_distinct_id", "Present Before Construction");
         editor.commit();
@@ -235,7 +249,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
             "}"
         );
 
-        MixpanelAPI api = new MixpanelAPI(getContext(), mMockPreferences, useToken, false, null) {
+        MixpanelAPI api = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, useToken, false, null) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mMockMessages;
@@ -336,7 +350,7 @@ public class DecideFunctionalTest extends AndroidTestCase {
 
     private class MockMessages extends DecideMessages {
         public MockMessages(final String token, final OnNewResultsListener listener, final UpdatesFromMixpanel binder, HashSet<Integer> seenNotificationIds) {
-            super(getContext(), token, listener, binder, seenNotificationIds);
+            super(InstrumentationRegistry.getInstrumentation().getContext(), token, listener, binder, seenNotificationIds);
         }
 
         @Override

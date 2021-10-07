@@ -2,8 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.test.AndroidTestCase;
-import android.util.Log;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
@@ -12,6 +13,10 @@ import com.mixpanel.android.util.RemoteService;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -24,7 +29,14 @@ import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocketFactory;
 
-public class OptOutTest extends AndroidTestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+@RunWith(AndroidJUnit4.class)
+public class OptOutTest {
 
     private MixpanelAPI mMixpanelAPI;
     private static final String TOKEN = "Opt Out Test Token";
@@ -40,10 +52,9 @@ public class OptOutTest extends AndroidTestCase {
     private PersistentIdentity mPersistentIdentity;
     private static final int MAX_TIMEOUT_POLL = 6500;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mMockReferrerPreferences = new TestUtils.EmptyPreferences(getContext());
+    @Before
+    public void setUp() {
+        mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
 
         final RemoteService mockPoster = new HttpService() {
             @Override
@@ -72,7 +83,7 @@ public class OptOutTest extends AndroidTestCase {
         };
 
         mMockAdapter = getMockDBAdapter();
-        mAnalyticsMessages = new AnalyticsMessages(getContext()) {
+        mAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected RemoteService getPoster() {
                 return mockPoster;
@@ -85,15 +96,14 @@ public class OptOutTest extends AndroidTestCase {
         };
     }
 
-    @Override
-    protected void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         if (mPersistentIdentity != null) {
             mPersistentIdentity.clearPreferences();
             mPersistentIdentity.removeOptOutFlag(TOKEN);
             mPersistentIdentity = null;
         }
         mMockAdapter.deleteDB();
-        super.tearDown();
     }
 
     /**
@@ -105,9 +115,10 @@ public class OptOutTest extends AndroidTestCase {
      *
      * @throws InterruptedException
      */
+    @Test
     public void testOptOutDefaultFlag() throws InterruptedException {
         mCleanUpCalls = new CountDownLatch(2); // optOutTrack calls
-        mMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, true, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, true, null) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
@@ -134,9 +145,10 @@ public class OptOutTest extends AndroidTestCase {
      *
      * @throws InterruptedException
      */
+    @Test
     public void testHasOptOutTrackingOrNot() throws InterruptedException {
         mCleanUpCalls = new CountDownLatch(4); // optOutTrack calls
-        mMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, true, null) {
+        MixpanelAPI mixpanel = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TOKEN", true, null) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
@@ -148,13 +160,11 @@ public class OptOutTest extends AndroidTestCase {
                 return mAnalyticsMessages;
             }
         };
-
-        assertTrue(mMixpanelAPI.hasOptedOutTracking());
-        mMixpanelAPI.optInTracking();
-        assertFalse(mMixpanelAPI.hasOptedOutTracking());
-        mMixpanelAPI.optOutTracking();
-        assertTrue(mMixpanelAPI.hasOptedOutTracking());
-        assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        
+        mixpanel.optInTracking();
+        assertFalse(mixpanel.hasOptedOutTracking());
+        mixpanel.optOutTracking();
+        assertTrue(mixpanel.hasOptedOutTracking());
     }
 
     /**
@@ -166,9 +176,10 @@ public class OptOutTest extends AndroidTestCase {
      *
      * @throws InterruptedException
      */
+    @Test
     public void testPeopleUpdates() throws InterruptedException, JSONException {
         mCleanUpCalls = new CountDownLatch(2);
-        mMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN,false, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN,false, null) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
@@ -245,8 +256,9 @@ public class OptOutTest extends AndroidTestCase {
      *
      * @throws InterruptedException
      */
+    @Test
     public void testDropEventsAndOptInEvent() throws InterruptedException {
-        mMixpanelAPI = new TestUtils.CleanMixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN) {
+        mMixpanelAPI = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
@@ -282,8 +294,9 @@ public class OptOutTest extends AndroidTestCase {
     /**
      * Track calls before and after opting out
      */
+    @Test
     public void testTrackCalls() throws InterruptedException, JSONException {
-        mMixpanelAPI = new MixpanelAPI(getContext(), mMockReferrerPreferences, TOKEN, false, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
@@ -345,7 +358,7 @@ public class OptOutTest extends AndroidTestCase {
     }
 
     private MPDbAdapter getMockDBAdapter() {
-        return new MPDbAdapter(getContext()) {
+        return new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
 
             @Override
             public void cleanupAllEvents(Table table, String token) {

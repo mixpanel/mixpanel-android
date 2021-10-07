@@ -1,6 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.test.AndroidTestCase;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 
@@ -14,9 +15,18 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class DecideMessagesTest extends AndroidTestCase {
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-    @Override
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+@RunWith(AndroidJUnit4.class)
+public class DecideMessagesTest {
+
+    @Before
     public void setUp() throws JSONException, BadDecideObjectException {
 
         mListenerCalls = new LinkedBlockingQueue<String>();
@@ -67,7 +77,7 @@ public class DecideMessagesTest extends AndroidTestCase {
             }
         };
 
-        mDecideMessages = new DecideMessages(getContext(), "TEST TOKEN", mMockListener, mMockUpdates, new HashSet<Integer>());
+        mDecideMessages = new DecideMessages(InstrumentationRegistry.getInstrumentation().getContext(), "TEST TOKEN", mMockListener, mMockUpdates, new HashSet<Integer>());
         mSomeNotifications = new ArrayList<>();
         mSomeTriggeredNotifications = new ArrayList<>();
 
@@ -94,6 +104,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         mSomeVariants = new JSONArray(); // TODO need some variants
     }
 
+    @Test
     public void testTriggeredInapps() throws JSONException, BadDecideObjectException {
         mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
         assertNull(mDecideMessages.getNotification(false));
@@ -108,6 +119,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         assertNull(mDecideMessages.getNotification(testEvent2, false));
     }
 
+    @Test
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
 
         mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
@@ -141,6 +153,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         assertNull(mDecideMessages.getNotification(false));
     }
 
+    @Test
     public void testPops() {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
@@ -157,6 +170,7 @@ public class DecideMessagesTest extends AndroidTestCase {
         assertNull(shouldBeNullNotification);
     }
 
+    @Test
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
         mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);

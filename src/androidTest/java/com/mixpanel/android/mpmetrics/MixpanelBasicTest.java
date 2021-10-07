@@ -6,9 +6,10 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.test.AndroidTestCase;
-import android.test.mock.MockContext;
-import android.test.mock.MockPackageManager;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.LargeTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
@@ -19,6 +20,9 @@ import com.mixpanel.android.viewcrawler.UpdatesFromMixpanel;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -33,17 +37,27 @@ import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLSocketFactory;
 
-public class MixpanelBasicTest extends AndroidTestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-    @Override
-    protected void setUp() throws Exception {
-        mMockPreferences = new TestUtils.EmptyPreferences(getContext());
-        AnalyticsMessages messages = AnalyticsMessages.getInstance(getContext());
+@RunWith(AndroidJUnit4.class)
+@LargeTest
+public class MixpanelBasicTest {
+
+    @Before
+    public void setUp() throws Exception {
+        mMockPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
+        AnalyticsMessages messages = AnalyticsMessages.getInstance(InstrumentationRegistry.getInstrumentation().getContext());
         messages.hardKill();
         Thread.sleep(2000);
 
         try {
-            SystemInformation systemInformation = SystemInformation.getInstance(mContext);
+            SystemInformation systemInformation = SystemInformation.getInstance(InstrumentationRegistry.getInstrumentation().getContext());
 
             final StringBuilder queryBuilder = new StringBuilder();
             queryBuilder.append("&properties=");
@@ -58,13 +72,15 @@ public class MixpanelBasicTest extends AndroidTestCase {
         } catch (Exception e) {}
     } // end of setUp() method definition
 
+    @Test
     public void testVersionsMatch() {
         assertEquals(BuildConfig.MIXPANEL_VERSION, MPConfig.VERSION);
     }
 
+    @Test
     public void testGeneratedDistinctId() {
         String fakeToken = UUID.randomUUID().toString();
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, fakeToken);
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, fakeToken);
         String generatedId1 = mixpanel.getDistinctId();
         assertTrue(generatedId1 != null);
 
@@ -74,6 +90,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(generatedId1 != generatedId2);
     }
 
+    @Test
     public void testDeleteDB() {
         Map<String, String> beforeMap = new HashMap<String, String>();
         beforeMap.put("added", "before");
@@ -83,18 +100,18 @@ public class MixpanelBasicTest extends AndroidTestCase {
         afterMap.put("added", "after");
         JSONObject after = new JSONObject(afterMap);
 
-        MPDbAdapter adapter = new MPDbAdapter(getContext(), "DeleteTestDB");
+        MPDbAdapter adapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), "DeleteTestDB");
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.GROUPS, false);
         adapter.deleteDB();
 
         String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
-        assertEquals(emptyEventsData, null);
+        assertNull(emptyEventsData);
         String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
-        assertEquals(emptyPeopleData, null);
+        assertNull(emptyPeopleData);
         String[] emptyGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN", true);
-        assertEquals(emptyPeopleData, null);
+        assertNull(emptyGroupsData);
 
         adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
         adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
@@ -119,11 +136,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testLooperDestruction() {
-
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter explodingDb = new MPDbAdapter(getContext()) {
+        final MPDbAdapter explodingDb = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                 if (!isAutomatic) {
@@ -135,14 +152,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages explodingMessages = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages explodingMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             // This will throw inside of our worker thread.
             @Override
             public MPDbAdapter makeDbAdapter(Context context) {
                 return explodingDb;
             }
         };
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST TOKEN testLooperDisaster") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return explodingMessages;
@@ -155,7 +172,8 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
             mixpanel.track("event1", null);
             JSONObject found = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
-            assertNotNull(found);
+            assertNotNull("should found", found);
+
             Thread.sleep(1000);
             assertTrue(explodingMessages.isDead());
 
@@ -168,10 +186,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testEventOperations() throws JSONException {
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                 if (!isAutomatic) {
@@ -182,7 +201,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             // This will throw inside of our worker thread.
             @Override
             public MPDbAdapter makeDbAdapter(Context context) {
@@ -190,7 +209,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test event operations") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test event operations") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return eventOperationsMessages;
@@ -282,17 +301,18 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testPeopleOperations() throws JSONException {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST TOKEN testIdentifyAfterSet") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -347,7 +367,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         JSONObject trackChargeMessage = messages.get(8).getMessage().getJSONObject("$append");
         JSONObject transaction = trackChargeMessage.getJSONObject("$transactions");
-        assertEquals(100.0d, transaction.getDouble("$amount"));
+        assertEquals(100.0d, transaction.getDouble("$amount"), 0);
 
         JSONArray clearChargesMessage = messages.get(9).getMessage().getJSONArray("$unset");
         assertEquals(1, clearChargesMessage.length());
@@ -356,17 +376,18 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(messages.get(10).getMessage().has("$delete"));
     }
 
+    @Test
     public void testGroupOperations() throws JSONException {
         final List<AnalyticsMessages.GroupDescription> messages = new ArrayList<AnalyticsMessages.GroupDescription>();
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void groupMessage(GroupDescription heard) {
                 messages.add(heard);
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN testGroupOperations") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST TOKEN testGroupOperations") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -433,13 +454,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(deleteMessage.has("$delete"));
     }
 
+    @Test
     public void testIdentifyAfterSet() throws InterruptedException, JSONException {
         String token = "TEST TOKEN testIdentifyAfterSet";
         final List<AnalyticsMessages.MixpanelDescription> messages = new ArrayList<AnalyticsMessages.MixpanelDescription>();
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue();
         final BlockingQueue<JSONObject> peopleUpdates = new LinkedBlockingQueue();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -450,7 +472,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return super.addJSON(j, token, table, isAutomaticRecord);
             }
         };
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
@@ -469,7 +491,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, token) {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, token) {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -515,8 +537,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testIdentifyAndGetDistinctId() {
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Identify Test Token");
 
         String generatedId = metrics.getDistinctId();
         assertNotNull(generatedId);
@@ -542,8 +565,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals("People Id", setPeopleId);
     }
 
+    @Test
     public void testIdentifyAndCheckUserIDAndDeviceID() {
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Identify Test Token");
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Identify Test Token");
 
         String generatedId = metrics.getAnonymousId();
         assertNotNull(generatedId);
@@ -580,12 +604,13 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertNull(metrics.getUserId());
     }
 
+    @Test
     public void testMessageQueuing() {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<String>();
         final SynchronizedReference<Boolean> isIdentifiedRef = new SynchronizedReference<Boolean>();
         isIdentifiedRef.set(false);
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
                 try {
@@ -631,7 +656,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         };
 
 
-        final MPConfig mockConfig = new MPConfig(new Bundle(), getContext()) {
+        final MPConfig mockConfig = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int getFlushInterval() {
                 return -1;
@@ -666,7 +691,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             public boolean getDisableAppOpenEvent() { return true; }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
@@ -683,7 +708,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -800,9 +825,10 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testTrackCharge() {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -827,7 +853,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        MixpanelAPI api = new ListeningAPI(getContext(), mMockPreferences, "TRACKCHARGE TEST TOKEN");
+        MixpanelAPI api = new ListeningAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TRACKCHARGE TEST TOKEN");
         api.getPeople().identify("TRACKCHARGE PERSON");
 
         JSONObject props;
@@ -847,19 +873,20 @@ public class MixpanelBasicTest extends AndroidTestCase {
             JSONObject newTransaction = append.getJSONObject("$transactions");
             assertEquals(newTransaction.optString("Orange"), "Banana");
             assertEquals(newTransaction.optString("$time"), "Should override");
-            assertEquals(newTransaction.optDouble("$amount"), 2.13);
+            assertEquals(newTransaction.optDouble("$amount"), 2.13, 0);
         } catch (JSONException e) {
             fail("Transaction message had unexpected layout:\n" + message.toString());
         }
     }
 
+    @Test
     public void testTrackWithSavedDistinctId(){
         final String savedDistinctID = "saved_distinct_id";
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
-                if (!heard.isAutomatic() && !heard.getEventName().equals("$identify")) {
+                  if (!heard.isAutomatic() && !heard.getEventName().equals("$identify")) {
                     messages.add(heard);
                 }
             }
@@ -897,7 +924,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN");
         assertEquals(mpMetrics.getDistinctId(), savedDistinctID);
         mpMetrics.identify("new_user");
 
@@ -930,10 +957,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
         messages.clear();
     }
 
+    @Test
     public void testSetAddRemoveGroup(){
         final String savedDistinctID = "saved_distinct_id";
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic() &&
@@ -965,7 +993,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        TestMixpanelAPI mpMetrics = new TestMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN");
         mpMetrics.identify("new_user");
 
         int groupID = 42;
@@ -1065,10 +1093,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
         messages.clear();
     }
 
+    @Test
     public void testIdentifyCall() throws JSONException {
         String newDistinctId = "New distinct ID";
         final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1077,8 +1106,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Identify Call") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Identify Call") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -1100,10 +1128,11 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(messages.size(), 1);
     }
 
+    @Test
     public void testIdentifyResetCall() throws JSONException {
         String newDistinctId = "New distinct ID";
         final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1112,7 +1141,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Identify Call") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Identify Call") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -1141,8 +1170,9 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testPersistence() {
-        MixpanelAPI metricsOne = new MixpanelAPI(getContext(), mMockPreferences, "SAME TOKEN", false, null);
+        MixpanelAPI metricsOne = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN", false, null);
         metricsOne.reset();
 
         JSONObject props;
@@ -1161,7 +1191,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         // will get their values from the same persistent store.
 
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1200,7 +1230,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         }
 
-        MixpanelAPI differentToken = new ListeningAPI(getContext(), mMockPreferences, "DIFFERENT TOKEN");
+        MixpanelAPI differentToken = new ListeningAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "DIFFERENT TOKEN");
 
         differentToken.track("other event", null);
         differentToken.getPeople().set("other people prop", "Word"); // should be queued up.
@@ -1224,7 +1254,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
 
         messages.clear();
 
-        MixpanelAPI metricsTwo = new ListeningAPI(getContext(), mMockPreferences, "SAME TOKEN");
+        MixpanelAPI metricsTwo = new ListeningAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN");
 
         metricsTwo.track("eventname", null);
         metricsTwo.getPeople().set("people prop name", "Indeed");
@@ -1255,6 +1285,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         }
     }
 
+    @Test
     public void testTrackInThread() throws InterruptedException, JSONException {
         class TestThread extends Thread {
             BlockingQueue<JSONObject> mMessages;
@@ -1266,7 +1297,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
             @Override
             public void run() {
 
-                final MPDbAdapter dbMock = new MPDbAdapter(getContext()) {
+                final MPDbAdapter dbMock = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
                     @Override
                     public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
                         if (!isAutomatic) {
@@ -1277,14 +1308,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
                     }
                 };
 
-                final AnalyticsMessages analyticsMessages = new AnalyticsMessages(getContext()) {
+                final AnalyticsMessages analyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
                     @Override
                     public MPDbAdapter makeDbAdapter(Context context) {
                         return dbMock;
                     }
                 };
 
-                MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "TEST TOKEN") {
+                MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST TOKEN") {
                     @Override
                     protected AnalyticsMessages getAnalyticsMessages() {
                         return analyticsMessages;
@@ -1306,56 +1337,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertTrue(found.getJSONObject("properties").has("$bluetooth_version"));
     }
 
-    public void testConfiguration() {
-        final ApplicationInfo appInfo = new ApplicationInfo();
-        appInfo.metaData = new Bundle();
-        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 1);
-        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.FlushInterval", 2);
-        appInfo.metaData.putInt("com.mixpanel.android.MPConfig.DataExpiration", 3);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.AutoShowMixpanelUpdates", false);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableGestureBindingUI", true);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableEmulatorBindingUI", true);
-        appInfo.metaData.putBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
-
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "EVENTS ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.PeopleEndpoint", "PEOPLE ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.GroupsEndpoint", "GROUPS ENDPOINT");
-        appInfo.metaData.putString("com.mixpanel.android.MPConfig.DecideEndpoint", "DECIDE ENDPOINT");
-
-        final PackageManager packageManager = new MockPackageManager() {
-            @Override
-            public ApplicationInfo getApplicationInfo(String packageName, int flags) {
-                assertEquals(packageName, "TEST PACKAGE NAME");
-                assertTrue((flags & PackageManager.GET_META_DATA) == PackageManager.GET_META_DATA);
-                return appInfo;
-            }
-        };
-
-        final Context context = new MockContext() {
-            @Override
-            public String getPackageName() {
-                return "TEST PACKAGE NAME";
-            }
-
-            @Override
-            public PackageManager getPackageManager() {
-                return packageManager;
-            }
-        };
-
-        final MPConfig testConfig = MPConfig.readConfig(context);
-        assertEquals(1, testConfig.getBulkUploadLimit());
-        assertEquals(2, testConfig.getFlushInterval());
-        assertEquals(3, testConfig.getDataExpiration());
-        assertEquals(true, testConfig.getDisableEmulatorBindingUI());
-        assertEquals(true, testConfig.getDisableGestureBindingUI());
-        assertEquals(true, testConfig.getDisableAppOpenEvent());
-        assertEquals(false, testConfig.getAutoShowMixpanelUpdates());
-        assertEquals("EVENTS ENDPOINT", testConfig.getEventsEndpoint());
-        assertEquals("PEOPLE ENDPOINT", testConfig.getPeopleEndpoint());
-        assertEquals("DECIDE ENDPOINT", testConfig.getDecideEndpoint());
-    }
-
+    @Test
     public void test2XUrls() {
         final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
         assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@BANANAS.jpg");
@@ -1370,6 +1352,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
     }
 
+    @Test
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
@@ -1391,14 +1374,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected RemoteService getPoster() {
                 return mockPoster;
             }
         };
 
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Message Queuing") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Message Queuing") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                  return listener;
@@ -1410,11 +1393,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
         metrics.alias("new id", "old id");
     }
 
+    @Test
     public void testAnonymousPeopleUpdates() throws InterruptedException, JSONException {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
         final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -1426,14 +1410,14 @@ public class MixpanelBasicTest extends AndroidTestCase {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
             }
         };
 
-        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "testAnonymousPeopleUpdates") {
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates") {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return listener;
@@ -1462,12 +1446,12 @@ public class MixpanelBasicTest extends AndroidTestCase {
         assertEquals(0, anonymousUpdates.size());
     }
 
-
+    @Test
     public void testSessionMetadata() throws InterruptedException, JSONException {
         final BlockingQueue<JSONObject> storedJsons = new LinkedBlockingQueue<>();
         final BlockingQueue<AnalyticsMessages.EventDescription> eventsMessages = new LinkedBlockingQueue<>();
         final BlockingQueue<AnalyticsMessages.PeopleDescription> peopleMessages = new LinkedBlockingQueue<>();
-        final MPDbAdapter mockAdapter = new MPDbAdapter(getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
 
             @Override
             public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
@@ -1475,7 +1459,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return super.addJSON(j, token, table, isAutomaticRecord);
             }
         };
-        final AnalyticsMessages listener = new AnalyticsMessages(getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void eventsMessage(EventDescription eventDescription) {
                 if (!eventDescription.isAutomatic()) {
@@ -1495,7 +1479,7 @@ public class MixpanelBasicTest extends AndroidTestCase {
                 return mockAdapter;
             }
         };
-        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, "Test Session Metadata") {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Session Metadata") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
