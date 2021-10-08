@@ -1,5 +1,13 @@
 #
 
+## [v5.9.4](https://github.com/mixpanel/mixpanel-android/tree/v5.9.4) (2021-10-08)
+
+### Fixes
+
+- Fix java.lang.NoClassDefFoundError: Failed resolution of: Lorg/jacoco/agent/rt/internal\_8ff85ea/Offline [\#762](https://github.com/mixpanel/mixpanel-android/pull/762)
+
+#
+
 ## [v5.9.3](https://github.com/mixpanel/mixpanel-android/tree/v5.9.3) (2021-10-07)
 
 ### Fixes
@@ -39,6 +47,8 @@
 - Add a CHANGELOG placeholder [\#747](https://github.com/mixpanel/mixpanel-android/pull/747)
 - Add github workflow for auto release [\#745](https://github.com/mixpanel/mixpanel-android/pull/745)
 - Migrate to Github Actions for CI [\#743](https://github.com/mixpanel/mixpanel-android/pull/743)
+
+
 
 
 
