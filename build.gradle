@@ -60,7 +60,6 @@ android {
         }
         release {
             minifyEnabled false
-            testCoverageEnabled true
         }
     }
 }
