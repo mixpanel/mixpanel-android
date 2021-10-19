@@ -1,5 +1,18 @@
 #
 
+## [v5.9.5](https://github.com/mixpanel/mixpanel-android/tree/v5.9.5) (2021-10-19)
+
+### Enhancements
+
+- Add trailing slashes to request endpoint to in parity with iOS [\#765](https://github.com/mixpanel/mixpanel-android/pull/765)
+
+**Closed issues:**
+
+- Android 4 NullPointerException [\#763](https://github.com/mixpanel/mixpanel-android/issues/763)
+- Mixpanel 5.9.3 org/jacoco/agent/rt/internal\_8ff85ea/Offline [\#761](https://github.com/mixpanel/mixpanel-android/issues/761)
+
+#
+
 ## [v5.9.4](https://github.com/mixpanel/mixpanel-android/tree/v5.9.4) (2021-10-08)
 
 ### Fixes
@@ -47,6 +60,8 @@
 - Add a CHANGELOG placeholder [\#747](https://github.com/mixpanel/mixpanel-android/pull/747)
 - Add github workflow for auto release [\#745](https://github.com/mixpanel/mixpanel-android/pull/745)
 - Migrate to Github Actions for CI [\#743](https://github.com/mixpanel/mixpanel-android/pull/743)
+
+
 
 
 
