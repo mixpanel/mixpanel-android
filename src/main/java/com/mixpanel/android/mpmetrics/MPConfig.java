@@ -120,6 +120,9 @@ import javax.net.ssl.SSLSocketFactory;
  *
  *     <dt>com.mixpanel.android.MPConfig.NotificationChannelImportance</dt>
  *     <dd>An integer number. Importance of the notification channel (see https://developer.android.com/reference/android/app/NotificationManager.html). Defaults to 3 (IMPORTANCE_DEFAULT). Applicable only for Android 26 and above.</dd>
+ * 
+ *     <dt>com.mixpanel.android.MPConfig.BrazeIntegrationForceAlias</dt>
+ *     <dd>A boolean value. If true, the library will alias both the braze device and external IDs (if available) to the current distinct_id when the library is initialized and the Braze integration is enabled. Defaults to false</dd>
  * </dl>
  *
  */
@@ -251,6 +254,7 @@ public class MPConfig {
         mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
         mTestMode = metaData.getBoolean("com.mixpanel.android.MPConfig.TestMode", false);
         mNotificationChannelImportance = metaData.getInt("com.mixpanel.android.MPConfig.NotificationChannelImportance", 3); // NotificationManger.IMPORTANCE_DEFAULT
+        mBrazeIntegrationForceAlias = metaData.getBoolean("com.mixpanel.android.MPConfig.BrazeIntegrationForceAlias", false);
 
         Object dataExpirationMetaData = metaData.get("com.mixpanel.android.MPConfig.DataExpiration");
         long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
@@ -367,6 +371,10 @@ public class MPConfig {
 
     public boolean getTestMode() {
         return mTestMode;
+    }
+
+    public boolean getBrazeIntegrationForceAlias() {
+        return mBrazeIntegrationForceAlias;
     }
 
     // Preferred URL for tracking events
@@ -575,6 +583,7 @@ public class MPConfig {
                 "    NotificationChannelName: " + getNotificationChannelName() + "\n" +
                 "    NotificationChannelImportance: " + getNotificationChannelImportance() + "\n" +
                 "    FlushOnBackground: " + getFlushOnBackground() + "\n" +
+                "    BrazeIntegrationForceAlias " + getBrazeIntegrationForceAlias() + "\n" +
                 "    UseIpAddressForGeolocation: " + getUseIpAddressForGeolocation();
     }
 
@@ -607,6 +616,7 @@ public class MPConfig {
     private final int mNotificationChannelImportance;
     private final String mNotificationChannelId;
     private final String mNotificationChannelName;
+    private final boolean mBrazeIntegrationForceAlias;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;

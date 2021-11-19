@@ -16,10 +16,12 @@ import java.util.Set;
 
     private static final String LOGTAG = "MixpanelAPI.CnctInts";
     private static final int UA_MAX_RETRIES = 3;
+    private MPConfig mConfig;
 
     public ConnectIntegrations(MixpanelAPI mixpanel, Context context) {
         mMixpanel = mixpanel;
         mContext = context;
+        mConfig= MPConfig.getInstance(context);
     }
 
     public void reset() {
@@ -92,11 +94,15 @@ import java.util.Set;
             String externalUserId = (String) currentUser.getClass().getMethod("getUserId").invoke(currentUser);
 
             if (deviceId != null && !deviceId.isEmpty()) {
-                mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
+                if(mConfig.getBrazeIntegrationForceAlias()){
+                    mMixpanel.alias(deviceId, mMixpanel.getDistinctId());
+                }
                 mMixpanel.getPeople().set("$braze_device_id", deviceId);
             }
             if (externalUserId != null && !externalUserId.isEmpty()) {
-                mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
+                if(mConfig.getBrazeIntegrationForceAlias()){
+                    mMixpanel.alias(externalUserId, mMixpanel.getDistinctId());
+                }
                 mMixpanel.getPeople().set("$braze_external_id", externalUserId);
             }
         } catch (ClassNotFoundException e) {
