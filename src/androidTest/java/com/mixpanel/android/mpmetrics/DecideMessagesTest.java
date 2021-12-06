@@ -106,7 +106,7 @@ public class DecideMessagesTest {
 
     @Test
     public void testTriggeredInapps() throws JSONException, BadDecideObjectException {
-        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertNull(mDecideMessages.getNotification(false));
 
         final AnalyticsMessages.EventDescription testEvent1 = new AnalyticsMessages.EventDescription("test_event1", null, "");
@@ -114,7 +114,7 @@ public class DecideMessagesTest {
         assertNotNull(mDecideMessages.getNotification(testEvent1, false));
         assertNotNull(mDecideMessages.getNotification(testEvent2, false));
 
-        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(new ArrayList<InAppNotification>(), mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertNull(mDecideMessages.getNotification(testEvent1, false));
         assertNull(mDecideMessages.getNotification(testEvent2, false));
     }
@@ -122,7 +122,7 @@ public class DecideMessagesTest {
     @Test
     public void testDuplicateIds() throws JSONException, BadDecideObjectException {
 
-        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         final List<InAppNotification> fakeNotifications = new ArrayList<InAppNotification>(mSomeNotifications.size());
         for (final InAppNotification real: mSomeNotifications) {
@@ -136,7 +136,7 @@ public class DecideMessagesTest {
 
         assertNull(mDecideMessages.getNotification(false));
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         assertNull(mDecideMessages.getNotification(false));
 
@@ -146,7 +146,7 @@ public class DecideMessagesTest {
         final InAppNotification unseenNotification = new MiniInAppNotification(notificationNewIdDesc);
         fakeNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(fakeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         assertEquals(mDecideMessages.getNotification(false), unseenNotification);
 
@@ -158,7 +158,7 @@ public class DecideMessagesTest {
         final InAppNotification nullBeforeNotification = mDecideMessages.getNotification(false);
         assertNull(nullBeforeNotification);
 
-        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
 
         final InAppNotification n1 = mDecideMessages.getNotification(false);
         assertEquals(mSomeNotifications.get(0), n1);
@@ -173,12 +173,12 @@ public class DecideMessagesTest {
     @Test
     public void testListenerCalls() throws JSONException, BadDecideObjectException {
         assertNull(mListenerCalls.peek());
-        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
 
         // No new info means no new calls
-        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(mSomeNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertNull(mListenerCalls.peek());
 
         // New info means new calls
@@ -189,7 +189,7 @@ public class DecideMessagesTest {
         final List<InAppNotification> newNotifications = new ArrayList<InAppNotification>();
         newNotifications.add(unseenNotification);
 
-        mDecideMessages.reportResults(newNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled, null);
+        mDecideMessages.reportResults(newNotifications, mSomeTriggeredNotifications, mSomeBindings, mSomeVariants, mIsAutomaticEventsEnabled);
         assertEquals(mListenerCalls.poll(), "CALLED");
         assertNull(mListenerCalls.peek());
     }

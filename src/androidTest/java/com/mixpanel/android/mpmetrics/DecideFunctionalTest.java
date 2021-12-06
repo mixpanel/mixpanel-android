@@ -358,9 +358,8 @@ public class DecideFunctionalTest {
                                   List<InAppNotification> newTriggeredNotifications,
                                   JSONArray eventBindings,
                                   JSONArray variants,
-                                  boolean automaticEvents,
-                                  JSONArray integrations) {
-            super.reportResults(newNotifications, newTriggeredNotifications, eventBindings, variants, automaticEvents, integrations);
+                                  boolean automaticEvents) {
+            super.reportResults(newNotifications, newTriggeredNotifications, eventBindings, variants, automaticEvents);
             mExpectations.resolve();
         }
     }
