@@ -110,7 +110,7 @@ mixpanel.track("Sign Up", props);
 In addition to event data, you can also send [user profile data](https://developer.mixpanel.com/docs/android#storing-user-profiles). We recommend this after completing the quickstart guide.
 
 ## 4. Check for Success
-[Open up Live View in Mixpanel](http://mixpanel.com/report/live) to view incoming events. 
+[Open up the Events report (formerly Live View) in Mixpanel](http://mixpanel.com/report/events) to view incoming events. 
 
 Once data hits our API, it generally takes ~60 seconds for it to be processed, stored, and queryable in your project.
 
