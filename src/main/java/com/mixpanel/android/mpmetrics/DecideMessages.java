@@ -32,7 +32,6 @@ import java.util.Set;
         mNotificationIds = new HashSet<>(notificationIds);
         mUnseenEventTriggeredNotifications = new LinkedList<>();
         mVariants = null;
-        mIntegrations = new HashSet<String>();
     }
 
     public String getToken() {
@@ -56,8 +55,7 @@ import java.util.Set;
                                            List<InAppNotification> newTriggeredNotifications,
                                            JSONArray eventBindings,
                                            JSONArray variants,
-                                           boolean automaticEvents,
-                                           JSONArray integrations) {
+                                           boolean automaticEvents) {
         boolean newContent = false;
         int newVariantsLength = variants.length();
         boolean hasNewVariants = false;
@@ -127,21 +125,6 @@ import java.util.Set;
         }
         mAutomaticEventsEnabled = automaticEvents;
 
-        if (integrations != null) {
-            try {
-                HashSet<String> integrationsSet = new HashSet<String>();
-                for (int i = 0; i < integrations.length(); i++) {
-                    integrationsSet.add(integrations.getString(i));
-                }
-                if (!mIntegrations.equals(integrationsSet)) {
-                    mIntegrations = integrationsSet;
-                    newContent = true;
-                }
-            } catch(JSONException e) {
-                MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);
-            }
-        }
-
         MPLog.v(LOGTAG, "New Decide content has become available. " +
                     newNotifications.size() + " notifications and " +
                     variants.length() + " experiments have been added.");
@@ -205,7 +188,6 @@ import java.util.Set;
         return null;
     }
 
-    public synchronized Set<String> getIntegrations() { return mIntegrations; }
 
     // if a notification was failed to show, add it back to the unseen list so that we
     // won't lose it
@@ -248,7 +230,6 @@ import java.util.Set;
     private static final Set<Integer> mLoadedVariants = new HashSet<>();
     private Boolean mAutomaticEventsEnabled;
     private Context mContext;
-    private Set<String> mIntegrations;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";

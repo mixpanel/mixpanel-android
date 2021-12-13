@@ -432,7 +432,6 @@ public class MixpanelAPI {
         }
         mUpdatesListener = constructUpdatesListener();
         mDecideMessages = constructDecideUpdates(token, mUpdatesListener, mUpdatesFromMixpanel);
-        mConnectIntegrations = new ConnectIntegrations(this, mContext);
 
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
@@ -1281,7 +1280,6 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
         getAnalyticsMessages().clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
         identify(getDistinctId(), false);
-        mConnectIntegrations.reset();
         mUpdatesFromMixpanel.storeVariants(new JSONArray());
         mUpdatesFromMixpanel.applyPersistedUpdates();
         flush();
@@ -2802,7 +2800,6 @@ public class MixpanelAPI {
             for (final OnMixpanelUpdatesReceivedListener listener : mListeners) {
                 listener.onMixpanelUpdatesReceived();
             }
-            mConnectIntegrations.setupIntegrations(mDecideMessages.getIntegrations());
         }
 
         private final Set<OnMixpanelUpdatesReceivedListener> mListeners = Collections.newSetFromMap(new ConcurrentHashMap<OnMixpanelUpdatesReceivedListener, Boolean>());
@@ -3026,7 +3023,6 @@ public class MixpanelAPI {
     private final PersistentIdentity mPersistentIdentity;
     private final UpdatesListener mUpdatesListener;
     private final TrackingDebug mTrackingDebug;
-    private final ConnectIntegrations mConnectIntegrations;
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
