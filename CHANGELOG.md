@@ -1,5 +1,19 @@
 #
 
+## [v5.9.6](https://github.com/mixpanel/mixpanel-android/tree/v5.9.6) (2021-12-14)
+
+**Closed issues:**
+
+- java.lang.ClassNotFoundException when calling MixpanelAPI.getInstance in 5.9.3 [\#766](https://github.com/mixpanel/mixpanel-android/issues/766)
+- Please add trailing slashes to request endpoints in the Android SDK. [\#764](https://github.com/mixpanel/mixpanel-android/issues/764)
+
+**Merged pull requests:**
+
+- Remove integrations code for braze and airship [\#770](https://github.com/mixpanel/mixpanel-android/pull/770)
+- Readme change: rebrand for live view report to events report [\#767](https://github.com/mixpanel/mixpanel-android/pull/767)
+
+#
+
 ## [v5.9.5](https://github.com/mixpanel/mixpanel-android/tree/v5.9.5) (2021-10-19)
 
 ### Enhancements
@@ -60,6 +74,8 @@
 - Add a CHANGELOG placeholder [\#747](https://github.com/mixpanel/mixpanel-android/pull/747)
 - Add github workflow for auto release [\#745](https://github.com/mixpanel/mixpanel-android/pull/745)
 - Migrate to Github Actions for CI [\#743](https://github.com/mixpanel/mixpanel-android/pull/743)
+
+
 
 
 
