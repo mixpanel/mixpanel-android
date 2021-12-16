@@ -10,8 +10,6 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.DisplayMetrics;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
@@ -643,36 +641,6 @@ import javax.net.ssl.SSLSocketFactory;
                 ret.put("$manufacturer", Build.MANUFACTURER == null ? "UNKNOWN" : Build.MANUFACTURER);
                 ret.put("$brand", Build.BRAND == null ? "UNKNOWN" : Build.BRAND);
                 ret.put("$model", Build.MODEL == null ? "UNKNOWN" : Build.MODEL);
-
-                try {
-                    try {
-                        final int servicesAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(mContext);
-                        switch (servicesAvailable) {
-                            case ConnectionResult.SUCCESS:
-                                ret.put("$google_play_services", "available");
-                                break;
-                            case ConnectionResult.SERVICE_MISSING:
-                                ret.put("$google_play_services", "missing");
-                                break;
-                            case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
-                                ret.put("$google_play_services", "out of date");
-                                break;
-                            case ConnectionResult.SERVICE_DISABLED:
-                                ret.put("$google_play_services", "disabled");
-                                break;
-                            case ConnectionResult.SERVICE_INVALID:
-                                ret.put("$google_play_services", "invalid");
-                                break;
-                        }
-                    } catch (RuntimeException e) {
-                        // Turns out even checking for the service will cause explosions
-                        // unless we've set up meta-data
-                        ret.put("$google_play_services", "not configured");
-                    }
-
-                } catch (NoClassDefFoundError e) {
-                    ret.put("$google_play_services", "not included");
-                }
 
                 final DisplayMetrics displayMetrics = mSystemInformation.getDisplayMetrics();
                 ret.put("$screen_dpi", displayMetrics.densityDpi);
