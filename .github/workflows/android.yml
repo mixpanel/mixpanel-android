@@ -2,9 +2,9 @@ name: Mixpanel Android Pull Request and master branch CI
 
 on:
   push:
-    branches: [ master, 6.0.0.beta ]
+    branches: [ master, 6.0.0.beta, 6.0.0.rc ]
   pull_request:
-    branches: [ master, 6.0.0.beta ]
+    branches: [ master, 6.0.0.beta, 6.0.0.rc ]
 
 jobs:
   build:
