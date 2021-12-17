@@ -1330,21 +1330,6 @@ public class MixpanelBasicTest {
     }
 
     @Test
-    public void test2XUrls() {
-        final String twoXBalok = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first.jpg", "@BANANAS");
-        assertEquals(twoXBalok, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first@BANANAS.jpg");
-
-        final String nothingMatches = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..", "@BANANAS");
-        assertEquals(nothingMatches, "http://images.mxpnl.com/112690/1392337640909.49573.Balok_first..");
-
-        final String emptyMatch = InAppNotification.sizeSuffixUrl("", "@BANANAS");
-        assertEquals(emptyMatch, "");
-
-        final String nothingExtensionful = InAppNotification.sizeSuffixUrl("http://images.mxpnl.com/112690/", "@BANANAS");
-        assertEquals(nothingExtensionful, "http://images.mxpnl.com/112690/");
-    }
-
-    @Test
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
