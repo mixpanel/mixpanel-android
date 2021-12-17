@@ -12,11 +12,9 @@ import java.util.Set;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 /* package */ class DecideMessages {
-    public DecideMessages(Context context, String token, ConnectIntegrations connectIntegrations) {
+    public DecideMessages(Context context, String token) {
         mContext = context;
         mToken = token;
-        mIntegrations = new HashSet<String>();
-        mConnectIntegrations = connectIntegrations;
     }
 
     public String getToken() {
@@ -33,27 +31,11 @@ import java.util.Set;
         return mDistinctId;
     }
 
-    public synchronized void reportResults(boolean automaticEvents,
-                                           JSONArray integrations) {
+    public synchronized void reportResults(boolean automaticEvents) {
         if (mAutomaticEventsEnabled == null && !automaticEvents) {
             MPDbAdapter.getInstance(mContext).cleanupAutomaticEvents(mToken);
         }
         mAutomaticEventsEnabled = automaticEvents;
-
-        if (integrations != null) {
-            try {
-                HashSet<String> integrationsSet = new HashSet<String>();
-                for (int i = 0; i < integrations.length(); i++) {
-                    integrationsSet.add(integrations.getString(i));
-                }
-                if (!mIntegrations.equals(integrationsSet)) {
-                    mIntegrations = integrationsSet;
-                    mConnectIntegrations.setupIntegrations(mIntegrations);
-                }
-            } catch(JSONException e) {
-                MPLog.e(LOGTAG, "Got an integration id from " + integrations.toString() + " that wasn't an int", e);
-            }
-        }
     }
 
     public Boolean isAutomaticEventsEnabled() {
@@ -70,8 +52,6 @@ import java.util.Set;
     private final String mToken;
     private Boolean mAutomaticEventsEnabled;
     private final Context mContext;
-    private Set<String> mIntegrations;
-    private final ConnectIntegrations mConnectIntegrations;
 
     @SuppressWarnings("unused")
     private static final String LOGTAG = "MixpanelAPI.DecideUpdts";

@@ -151,8 +151,7 @@ public class MixpanelAPI {
         if (superProperties != null) {
             registerSuperProperties(superProperties);
         }
-        mConnectIntegrations = new ConnectIntegrations(this, mContext);
-        mDecideMessages = constructDecideUpdates(token, mConnectIntegrations);
+        mDecideMessages = constructDecideUpdates(token);
         // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
         // purpose of PersistentIdentity's laziness.
         String decideId = mPersistentIdentity.getPeopleDistinctId();
@@ -987,7 +986,6 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
         getAnalyticsMessages().clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
         identify(getDistinctId(), false);
-        mConnectIntegrations.reset();
         flush();
     }
 
@@ -1499,7 +1497,6 @@ public class MixpanelAPI {
         } else {
             MPLog.e(LOGTAG, "Your build version is below 14. This method will always return false.");
         }
-
         return false;
     }
 
@@ -1564,9 +1561,9 @@ public class MixpanelAPI {
         return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
     }
 
-    /* package */ DecideMessages constructDecideUpdates(final String token, ConnectIntegrations connectIntegrations) {
+    /* package */ DecideMessages constructDecideUpdates(final String token) {
 
-        return new DecideMessages(mContext, token, connectIntegrations);
+        return new DecideMessages(mContext, token);
     }
 
     /* package */ boolean sendAppOpen() {
@@ -2085,7 +2082,7 @@ public class MixpanelAPI {
     private static void registerAppLinksListeners(Context context, final MixpanelAPI mixpanel) {
         // Register a BroadcastReceiver to receive com.parse.bolts.measurement_event and track a call to mixpanel
         try {
-            final Class<?> clazz = Class.forName("android.support.v4.content.LocalBroadcastManager");
+            final Class<?> clazz = Class.forName("androidx.localbroadcastmanager.content.LocalBroadcastManager");
             final Method methodGetInstance = clazz.getMethod("getInstance", Context.class);
             final Method methodRegisterReceiver = clazz.getMethod("registerReceiver", BroadcastReceiver.class, IntentFilter.class);
             final Object localBroadcastManager = methodGetInstance.invoke(null, context);
@@ -2109,9 +2106,9 @@ public class MixpanelAPI {
         } catch (final InvocationTargetException e) {
             MPLog.d(APP_LINKS_LOGTAG, "Failed to invoke LocalBroadcastManager.registerReceiver() -- App Links tracking will not be enabled due to this exception", e);
         } catch (final ClassNotFoundException e) {
-            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking, add implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0': " + e.getMessage());
         } catch (final NoSuchMethodException e) {
-            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking android.support.v4 must be installed: " + e.getMessage());
+            MPLog.d(APP_LINKS_LOGTAG, "To enable App Links tracking, add implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0': " + e.getMessage());
         } catch (final IllegalAccessException e) {
             MPLog.d(APP_LINKS_LOGTAG, "App Links tracking will not be enabled due to this exception: " + e.getMessage());
         }
@@ -2152,7 +2149,6 @@ public class MixpanelAPI {
     private final PeopleImpl mPeople;
     private final Map<String, GroupImpl> mGroups;
     private final PersistentIdentity mPersistentIdentity;
-    private final ConnectIntegrations mConnectIntegrations;
     private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;

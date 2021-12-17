@@ -1,14 +1,28 @@
 package com.mixpanel.android.mpmetrics;
 
 
-import android.test.AndroidTestCase;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
-public class ResourceReaderTest extends AndroidTestCase {
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+@RunWith(AndroidJUnit4.class)
+public class ResourceReaderTest {
+
+    @Before
     public void setUp() {
-        mDrawables = new ResourceReader.Drawables(TEST_PACKAGE_NAME, getContext());
-        mIds = new ResourceReader.Ids(TEST_PACKAGE_NAME, getContext());
+        mDrawables = new ResourceReader.Drawables(TEST_PACKAGE_NAME, InstrumentationRegistry.getInstrumentation().getContext());
+        mIds = new ResourceReader.Ids(TEST_PACKAGE_NAME, InstrumentationRegistry.getInstrumentation().getContext());
     }
 
+    @Test
     public void testLocalIdExists() {
         assertTrue(mDrawables.knownIdName("TEST_DRAW_ZERO"));
         assertEquals(mDrawables.idFromName("TEST_DRAW_ZERO"), TEST_DRAW_ZERO);
@@ -19,6 +33,7 @@ public class ResourceReaderTest extends AndroidTestCase {
         assertEquals(mIds.nameForId(TEST_ID_ZERO), "TEST_ID_ZERO");
     }
 
+    @Test
     public void testSystemIdExists() {
         assertTrue(mDrawables.knownIdName("android:ic_lock_idle_alarm"));
         assertEquals(mDrawables.idFromName("android:ic_lock_idle_alarm"), android.R.drawable.ic_lock_idle_alarm);
@@ -29,6 +44,7 @@ public class ResourceReaderTest extends AndroidTestCase {
         assertEquals(mIds.nameForId(android.R.id.primary), "android:primary");
     }
 
+    @Test
     public void testIdDoesntExist() {
         assertFalse(mDrawables.knownIdName("NO_SUCH_ID"));
         assertNull(mDrawables.nameForId(0x7f098888));

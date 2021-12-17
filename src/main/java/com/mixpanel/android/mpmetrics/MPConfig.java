@@ -193,6 +193,7 @@ public class MPConfig {
         mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
         mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
 
+
         Object dataExpirationMetaData = metaData.get("com.mixpanel.android.MPConfig.DataExpiration");
         long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
         if (dataExpirationMetaData != null) {
