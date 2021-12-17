@@ -82,7 +82,6 @@ allprojects {
 dependencies {
     api 'com.android.installreferrer:installreferrer:2.2'
     implementation "androidx.annotation:annotation:1.1.0"
-    implementation 'androidx.multidex:multidex:2.0.1'
     
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.12'
