@@ -80,7 +80,6 @@ allprojects {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    api 'com.android.installreferrer:installreferrer:2.2'
     implementation "androidx.annotation:annotation:1.1.0"
     
     // AndroidJUnitRunner and JUnit Rules

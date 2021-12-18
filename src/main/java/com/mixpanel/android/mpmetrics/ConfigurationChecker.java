@@ -50,23 +50,4 @@ import java.util.concurrent.Future;
 
         return true;
     }
-
-    public static boolean checkInstallReferrerConfiguration(Future<SharedPreferences> referrerPrefs) {
-        try {
-            Class.forName("com.android.installreferrer.api.InstallReferrerStateListener");
-            if (referrerPrefs != null) {
-                SharedPreferences refPrefs = referrerPrefs.get();
-                if (refPrefs.getAll().size() == 0) {
-                    return true;
-                }
-            }
-        } catch (final ClassNotFoundException e) {
-            MPLog.d(LOGTAG, "Missing com.android.installreferrer dependency. Google Play Store referrer information won't be available.");
-        } catch (InterruptedException e) {
-            MPLog.w(LOGTAG, "Could not read referrer shared preferences.");
-        } catch (ExecutionException e) {
-            MPLog.w(LOGTAG, "Could not read referrer shared preferences.");
-        }
-        return false;
-    }
 }
