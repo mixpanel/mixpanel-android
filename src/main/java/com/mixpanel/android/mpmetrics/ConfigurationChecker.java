@@ -1,11 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import com.mixpanel.android.util.MPLog;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+
 
 /*
  * Copyright 2012 Google Inc.

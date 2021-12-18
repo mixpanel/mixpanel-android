@@ -2,13 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 
-import com.mixpanel.android.util.MPLog;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import java.util.HashSet;
-import java.util.Set;
 
 // Will be called from both customer threads and the Mixpanel worker thread.
 /* package */ class DecideMessages {
