@@ -80,11 +80,8 @@ allprojects {
 // pom! If you need a transitive dependency in the library, you'll
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
-    api 'com.google.firebase:firebase-messaging:17.3.4'
-    implementation("com.google.firebase:firebase-iid")
     api 'com.android.installreferrer:installreferrer:2.2'
     implementation "androidx.annotation:annotation:1.1.0"
-    implementation 'androidx.multidex:multidex:2.0.1'
     
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.12'
