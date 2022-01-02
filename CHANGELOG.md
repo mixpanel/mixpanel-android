@@ -1,12 +1,13 @@
 #
 
 ## [v6.0.0](https://github.com/mixpanel/mixpanel-android/tree/v6.0.0) (2022-01-02)
+- Remove Messages & Experiments feature, for more detail, please check this [post](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started):
 
 #
 
 ## [v6.0.0-beta2](https://github.com/mixpanel/mixpanel-android/tree/v6.0.0-beta2) (2021-12-18)
 
-Deprecate both the Mixpanel default property `$google_play_services`  and tracking Install Referrer in favor of not being marked as containing Ads. 
+- Deprecate both the Mixpanel default property `$google_play_services`  and tracking Install Referrer in favor of not being marked as containing Ads. 
 
 On Jan 1, 2022, we’ll remove the [Messages & Experiments](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started) feature from Mixpanel. For now, you can choose to opt into our beta version without the Messages & Experiments feature support.
 
