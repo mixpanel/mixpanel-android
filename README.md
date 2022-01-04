@@ -37,13 +37,9 @@ We publish builds of our library to the Maven central repository as an .aar file
 Add the following lines to the `dependencies` section in *app/build.gradle*
 
 ```gradle
-implementation "com.mixpanel.android:mixpanel-android:5.+"
+implementation "com.mixpanel.android:mixpanel-android:6.+"
 ```
-On Jan 1, 2022, we’ll remove the [Messages & Experiments](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started) feature from Mixpanel. For now, you can choose to opt in to our beta version without the Messages & Experiments feature support.
-
-```gradle
-implementation "com.mixpanel.android:mixpanel-android:6.0.0-beta+"
-```
+ 
 Once you've updated your build.gradle file, you can force Android Studio to sync with your new configuration by clicking the Sync Project with Gradle Files icon at the top of the window.
 
 ![Sync Android With Gradle](https://storage.googleapis.com/cdn-mxpnl-com/static/readme/android-sync-gradle.png)
