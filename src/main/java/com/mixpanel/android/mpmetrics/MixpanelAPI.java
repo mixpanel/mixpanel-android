@@ -516,7 +516,7 @@ public class MixpanelAPI {
     /**
      * Clears the event timing for an event.
      *
-     * @param eventName the name of the event to track with timing.
+     * @param eventName the name of the timed event to clear.
      */
     public void clearTimedEvent(final String eventName) {
         synchronized (mEventTimings) {
