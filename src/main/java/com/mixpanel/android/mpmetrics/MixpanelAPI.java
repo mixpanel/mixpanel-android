@@ -503,6 +503,29 @@ public class MixpanelAPI {
     }
 
     /**
+     * Clears all current event timings.
+     *
+     */
+    public void clearTimedEvents() {
+        synchronized (mEventTimings) {
+            mEventTimings.clear();
+            mPersistentIdentity.clearTimedEvents();
+        }
+    }
+
+    /**
+     * Clears the event timing for an event.
+     *
+     * @param eventName the name of the event to track with timing.
+     */
+    public void clearTimedEvent(final String eventName) {
+        synchronized (mEventTimings) {
+            mEventTimings.remove(eventName);
+            mPersistentIdentity.removeTimedEvent(eventName);
+        }
+    }
+
+    /**
      * Retrieves the time elapsed for the named event since timeEvent() was called.
      *
      * @param eventName the name of the event to be tracked that was previously called with timeEvent()
@@ -1007,7 +1030,7 @@ public class MixpanelAPI {
         mPersistentIdentity.clearPreferences();
         synchronized (mEventTimings) {
             mEventTimings.clear();
-            mPersistentIdentity.clearTimeEvents();
+            mPersistentIdentity.clearTimedEvents();
         }
         mPersistentIdentity.clearReferrerProperties();
         mPersistentIdentity.setOptOutTracking(true, mToken);
@@ -1996,7 +2019,7 @@ public class MixpanelAPI {
         synchronized (mEventTimings) {
             eventBegin = mEventTimings.get(eventName);
             mEventTimings.remove(eventName);
-            mPersistentIdentity.removeTimeEvent(eventName);
+            mPersistentIdentity.removeTimedEvent(eventName);
         }
 
         try {

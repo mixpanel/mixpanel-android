@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -1424,6 +1425,42 @@ public class MixpanelBasicTest {
     }
 
     @Test
+    public void testEventTiming() throws InterruptedException {
+        final int MAX_TIMEOUT_POLL = 6500;
+        Future<SharedPreferences> mMockReferrerPreferences;
+        final BlockingQueue<String> mStoredEvents = new LinkedBlockingQueue<>();
+        mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
+        MixpanelAPI mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TESTTOKEN", false, null) {
+            @Override
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
+                return mPersistentIdentity;
+            }
+
+        };
+
+        mMixpanelAPI.timeEvent("Time Event");
+        assertEquals(1, mPersistentIdentity.getTimeEvents().size());
+
+        mMixpanelAPI.track("Time Event");
+        assertEquals(0, mPersistentIdentity.getTimeEvents().size());
+        mMixpanelAPI.timeEvent("Time Event1");
+        mMixpanelAPI.timeEvent("Time Event2");
+        assertEquals(2, mPersistentIdentity.getTimeEvents().size());
+        mMixpanelAPI.clearTimedEvents();
+        assertEquals(0, mPersistentIdentity.getTimeEvents().size());
+        mMixpanelAPI.timeEvent("Time Event3");
+        mMixpanelAPI.timeEvent("Time Event4");
+        mMixpanelAPI.clearTimedEvent("Time Event3");
+        assertEquals(1, mPersistentIdentity.getTimeEvents().size());
+        assertTrue(mPersistentIdentity.getTimeEvents().containsKey("Time Event4"));
+        assertFalse(mPersistentIdentity.getTimeEvents().containsKey("Time Event3"));
+        mMixpanelAPI.clearTimedEvent(null);
+        assertEquals(1, mPersistentIdentity.getTimeEvents().size());
+    }
+
+
+    @Test
     public void testSessionMetadata() throws InterruptedException, JSONException {
         final BlockingQueue<JSONObject> storedJsons = new LinkedBlockingQueue<>();
         final BlockingQueue<AnalyticsMessages.EventDescription> eventsMessages = new LinkedBlockingQueue<>();
@@ -1525,4 +1562,6 @@ public class MixpanelBasicTest {
     private static final int POLL_WAIT_SECONDS = 10;
 
     private String mAppProperties;
+
+    private PersistentIdentity mPersistentIdentity;
 }

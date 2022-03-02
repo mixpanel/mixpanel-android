@@ -271,7 +271,7 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public void clearTimeEvents() {
+    public void clearTimedEvents() {
         try {
             final SharedPreferences prefs = mTimeEventsPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
@@ -304,7 +304,7 @@ import com.mixpanel.android.util.MPLog;
     }
 
     // access is synchronized outside (mEventTimings)
-    public void removeTimeEvent(String timeEventName) {
+    public void removeTimedEvent(String timeEventName) {
         try {
             final SharedPreferences prefs = mTimeEventsPreferences.get();
             final SharedPreferences.Editor editor = prefs.edit();
