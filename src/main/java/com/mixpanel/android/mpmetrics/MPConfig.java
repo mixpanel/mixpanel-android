@@ -210,24 +210,25 @@ public class MPConfig {
             }
         }
         mDataExpiration = dataExpirationLong;
+        boolean noUseIpAddressForGeolocationSetting = !metaData.containsKey("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation");
 
         String eventsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.EventsEndpoint");
         if (eventsEndpoint != null) {
-            setEventsEndpoint(eventsEndpoint);
+            setEventsEndpoint(noUseIpAddressForGeolocationSetting ? eventsEndpoint : getEndPointWithIpTrackingParam(eventsEndpoint, getUseIpAddressForGeolocation()));
         } else {
             setEventsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String peopleEndpoint = metaData.getString("com.mixpanel.android.MPConfig.PeopleEndpoint");
         if (peopleEndpoint != null) {
-            setPeopleEndpoint(peopleEndpoint);
+            setPeopleEndpoint(noUseIpAddressForGeolocationSetting ? peopleEndpoint : getEndPointWithIpTrackingParam(peopleEndpoint, getUseIpAddressForGeolocation()));
         } else {
             setPeopleEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         String groupsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.GroupsEndpoint");
         if (groupsEndpoint != null) {
-            setGroupsEndpoint(groupsEndpoint);
+            setGroupsEndpoint(noUseIpAddressForGeolocationSetting ? groupsEndpoint : getEndPointWithIpTrackingParam(groupsEndpoint, getUseIpAddressForGeolocation()));
         } else {
             setGroupsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
@@ -316,7 +317,7 @@ public class MPConfig {
     }
 
     private void setGroupsEndpointWithBaseURL(String baseURL) {
-        setGroupsEndpoint(baseURL + MPConstants.URL.GROUPS);
+        setGroupsEndpoint(getEndPointWithIpTrackingParam(baseURL + MPConstants.URL.GROUPS, getUseIpAddressForGeolocation()));
     }
 
     private void setGroupsEndpoint(String groupsEndpoint) {
@@ -360,6 +361,7 @@ public class MPConfig {
         mUseIpAddressForGeolocation = useIpAddressForGeolocation;
         setEventsEndpoint(getEndPointWithIpTrackingParam(getEventsEndpoint(), useIpAddressForGeolocation));
         setPeopleEndpoint(getEndPointWithIpTrackingParam(getPeopleEndpoint(), useIpAddressForGeolocation));
+        setGroupsEndpoint(getEndPointWithIpTrackingParam(getGroupsEndpoint(), useIpAddressForGeolocation));
     }
 
     public void setEnableLogging(boolean enableLogging) {
