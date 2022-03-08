@@ -548,10 +548,8 @@ public class MixpanelAPI {
      * Associate all future calls to {@link #track(String, JSONObject)} with the user identified by
      * the given distinct id.
      *
-     * <p>This call does not identify the user for People Analytics;
-     * to do that, see {@link People#identify(String)}. Mixpanel recommends using
-     * the same distinct_id for both calls, and using a distinct_id that is easy
-     * to associate with the given user, for example, a server-side account identifier.
+     * <p>This call also identify the user for People Analytics; If you do not wish to do so, please call
+     *
      *
      * <p>Calls to {@link #track(String, JSONObject)} made before corresponding calls to identify
      * will use an anonymous locally generated distinct id, which means it is best to call identify
@@ -566,13 +564,16 @@ public class MixpanelAPI {
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
      *
-     * @see People#identify(String)
      */
     public void identify(String distinctId) {
-        identify(distinctId, true);
+        identify(distinctId, true, true);
     }
 
-    private void identify(String distinctId, boolean markAsUserId) {
+    public void identify(String distinctId, boolean usePeople) {
+        identify(distinctId, true, usePeople);
+    }
+
+    private void identify(String distinctId, boolean markAsUserId, boolean usePeople) {
         if (hasOptedOutTracking()) return;
         if (distinctId == null) {
             MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
@@ -602,6 +603,10 @@ public class MixpanelAPI {
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Could not track $identify event");
                 }
+            }
+
+            if (usePeople) {
+                mPeople.identify_people(distinctId);
             }
         }
     }
@@ -1709,15 +1714,25 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             if (hasOptedOutTracking()) return;
+            MPLog.w(LOGTAG, "people.identify is deprecated and calling it is no longer necessary, " +
+                    "please use MixpanelAPI.identify() and set 'usePeople' to true instead");
             if (distinctId == null) {
                 MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
                 return;
             }
-            synchronized (mPersistentIdentity) {
-                mPersistentIdentity.setPeopleDistinctId(distinctId);
-                mDecideMessages.setDistinctId(distinctId);
+            if (distinctId != mPersistentIdentity.getEventsDistinctId()) {
+                MPLog.e(LOGTAG, "Can't identify with the distinct_id different from being set in MixpanelAPI.identify().");
+                return;
             }
-            pushWaitingPeopleRecord(distinctId);
+            identify_people(distinctId);
+         }
+
+         private void identify_people(String distinctId) {
+             synchronized (mPersistentIdentity) {
+                 mPersistentIdentity.setPeopleDistinctId(distinctId);
+                 mDecideMessages.setDistinctId(distinctId);
+             }
+             pushWaitingPeopleRecord(distinctId);
          }
 
         @Override
