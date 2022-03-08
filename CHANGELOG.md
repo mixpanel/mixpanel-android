@@ -1,5 +1,17 @@
 #
 
+## [v6.1.0](https://github.com/mixpanel/mixpanel-android/tree/v6.1.0) (2022-03-08)
+
+### Enhancements
+
+- Add clearTimedEvent\(\) and clearTimedEvents\(\) [\#779](https://github.com/mixpanel/mixpanel-android/pull/779)
+
+### Fixes
+
+- Fix `MPConfig.UseIpAddressForGeolocation` gets ignored  [\#780](https://github.com/mixpanel/mixpanel-android/pull/780)
+
+#
+
 ## [v6.0.0](https://github.com/mixpanel/mixpanel-android/tree/v6.0.0) (2022-01-02)
 - Remove Messages & Experiments feature, for more detail, please check this [post](https://mixpanel.com/blog/why-were-sunsetting-messaging-and-experiments/#:~:text=A%20year%20from%20now%2C%20on,offering%20discounts%20for%20getting%20started):
 
@@ -1338,6 +1350,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
