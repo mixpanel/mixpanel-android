@@ -545,11 +545,25 @@ public class MixpanelAPI {
     }
 
     /**
+     * Equivalent to {@link #identify(String, boolean)} with a true argument for usePeople.
+     *
+     * <p>By default, this method will also call {@link People#identify(String)}. If you do not want
+     * to do that, you must call {@link #identify(String, boolean)} with false for second argument.
+     * NOTE: This behavior changed in version 6.2.0, previously {@link People#identify(String)} had
+     * to be called separately.
+     *
+     * @param distinctId a string uniquely identifying this user. Events sent to
+     *     Mixpanel using the same disinct_id will be considered associated with the
+     *     same visitor/customer for retention and funnel reporting, so be sure that the given
+     *     value is globally unique for each individual user you intend to track.
+     */
+    public void identify(String distinctId) {
+        identify(distinctId, true, true);
+    }
+
+    /**
      * Associate all future calls to {@link #track(String, JSONObject)} with the user identified by
      * the given distinct id.
-     *
-     * <p>This call also identify the user for People Analytics; If you do not wish to do so, please call
-     *
      *
      * <p>Calls to {@link #track(String, JSONObject)} made before corresponding calls to identify
      * will use an anonymous locally generated distinct id, which means it is best to call identify
@@ -564,11 +578,10 @@ public class MixpanelAPI {
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
      *
+     * @param usePeople boolean indicating whether or not to also call
+     *      {@link People#identify(String)}
+     *
      */
-    public void identify(String distinctId) {
-        identify(distinctId, true, true);
-    }
-
     public void identify(String distinctId, boolean usePeople) {
         identify(distinctId, true, usePeople);
     }
