@@ -1727,14 +1727,14 @@ public class MixpanelAPI {
         @Override
         public void identify(String distinctId) {
             if (hasOptedOutTracking()) return;
-            MPLog.w(LOGTAG, "people.identify is deprecated and calling it is no longer necessary, " +
+            MPLog.w(LOGTAG, "People.identify() is deprecated and calling it is no longer necessary, " +
                     "please use MixpanelAPI.identify() and set 'usePeople' to true instead");
             if (distinctId == null) {
                 MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
                 return;
             }
             if (distinctId != mPersistentIdentity.getEventsDistinctId()) {
-                MPLog.e(LOGTAG, "Can't identify with the distinct_id different from being set in MixpanelAPI.identify().");
+                MPLog.e(LOGTAG, "Can't identify with a distinct_id different from the one being set by MixpanelAPI.identify().");
                 return;
             }
             identify_people(distinctId);
