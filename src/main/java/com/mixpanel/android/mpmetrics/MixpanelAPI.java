@@ -1255,7 +1255,7 @@ public class MixpanelAPI {
      *
      *      public void onCreate(Bundle saved) {
      *          mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL API TOKEN");
-     *          mMixpanel.getPeople().identify("A UNIQUE ID FOR THIS USER");
+     *          mMixpanel.identify("A UNIQUE ID FOR THIS USER");
      *          ...
      *      }
      *
@@ -1277,7 +1277,8 @@ public class MixpanelAPI {
      */
     public interface People {
         /**
-         * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
+         * NOTE: This method is deprecated. Please use {@link MixpanelAPI#identify(String)}
+         * instead. Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
          * {@link #append(String, Object)}, etc... with a particular People Analytics user.
          *
          * <p>All future calls to the People object will rely on this value to assign
