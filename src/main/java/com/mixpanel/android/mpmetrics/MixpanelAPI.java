@@ -546,13 +546,15 @@ public class MixpanelAPI {
     /**
      * Equivalent to {@link #identify(String, boolean)} with a true argument for usePeople.
      *
-     * <p>By default, this method will also call {@link People#identify(String)}. If you do not want
-     * to do that, you must call {@link #identify(String, boolean)} with false for second argument.
+     * <p>By default, this method will also associate future calls
+     * to {@link People#set(JSONObject)}, {@link People#increment(Map)}, {@link People#append(String, Object)}, etc...
+     * with a particular People Analytics user with the distinct id.
+     * If you do not want to do that, you must call {@link #identify(String, boolean)} with false for second argument.
      * NOTE: This behavior changed in version 6.2.0, previously {@link People#identify(String)} had
      * to be called separately.
      *
      * @param distinctId a string uniquely identifying this user. Events sent to
-     *     Mixpanel using the same disinct_id will be considered associated with the
+     *     Mixpanel or Users identified using the same distinct id will be considered associated with the
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
      */
@@ -573,7 +575,7 @@ public class MixpanelAPI {
      * your application.
      *
      * @param distinctId a string uniquely identifying this user. Events sent to
-     *     Mixpanel using the same disinct_id will be considered associated with the
+     *     Mixpanel using the same disinct id will be considered associated with the
      *     same visitor/customer for retention and funnel reporting, so be sure that the given
      *     value is globally unique for each individual user you intend to track.
      *
@@ -1268,24 +1270,15 @@ public class MixpanelAPI {
      */
     public interface People {
         /**
-         * Associate future calls to {@link #set(JSONObject)}, {@link #increment(Map)},
-         * {@link #append(String, Object)}, etc... with a particular People Analytics user.
-         *
          * @deprecated in 6.2.0
-         * NOTE: This method is deprecated. Please use {@link MixpanelAPI#identify(String)}
-         * instead.
+         * NOTE: This method is deprecated. Please use {@link MixpanelAPI#identify(String)} instead.
          *
-         * <p>All future calls to the People object will rely on this value to assign
-         * and increment properties. The user identification will persist across
-         * restarts of your application. We recommend calling
-         * People.identify as soon as you know the distinct id of the user.
          *
          * @param distinctId a String that uniquely identifies the user. Users identified with
          *     the same distinct id will be considered to be the same user in Mixpanel,
          *     across all platforms and devices. We recommend choosing a distinct id
          *     that is meaningful to your other systems (for example, a server-side account
-         *     identifier), and using the same distinct id for both calls to People.identify
-         *     and {@link MixpanelAPI#identify(String)}
+         *     identifier)
          *
          * @see MixpanelAPI#identify(String)
          */
