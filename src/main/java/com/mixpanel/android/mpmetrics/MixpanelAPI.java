@@ -1723,7 +1723,8 @@ public class MixpanelAPI {
                 return;
             }
             if (distinctId != mPersistentIdentity.getEventsDistinctId()) {
-                MPLog.w(LOGTAG, "Identifying with a distinct_id different from the one being set by MixpanelAPI.identify() is not recommended.");
+                MPLog.w(LOGTAG, "Identifying with a distinct_id different from the one being set by MixpanelAPI.identify() is not supported.");
+                return;
             }
             identify_people(distinctId);
          }
