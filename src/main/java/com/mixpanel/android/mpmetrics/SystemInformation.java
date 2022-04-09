@@ -104,52 +104,6 @@ import com.mixpanel.android.util.MPLog;
 
     public DisplayMetrics getDisplayMetrics() { return mDisplayMetrics; }
 
-    @SuppressLint("MissingPermission")
-    @SuppressWarnings("MissingPermission")
-    public String getPhoneRadioType(Context context) {
-        final PackageManager packageManager = context.getPackageManager();
-        final String packageName = context.getPackageName();
-
-        if (packageManager == null || packageName == null) {
-            return null;
-        }
-
-        if (PackageManager.PERMISSION_GRANTED != packageManager.checkPermission("android.permission.READ_PHONE_STATE", packageName)) {
-            MPLog.w(LOGTAG, "Permission READ_PHONE_STATE not granted. Property $radio will not be available.");
-            return null;
-        }
-
-        TelephonyManager telephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        if (null != telephonyManager) {
-            int networkType;
-            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                networkType = telephonyManager.getDataNetworkType();
-            } else {
-                networkType = telephonyManager.getNetworkType();
-            }
-            switch (networkType) {
-                case TelephonyManager.NETWORK_TYPE_1xRTT: return "1xRTT";
-                case TelephonyManager.NETWORK_TYPE_CDMA: return "CDMA";
-                case TelephonyManager.NETWORK_TYPE_EDGE: return "EDGE";
-                case TelephonyManager.NETWORK_TYPE_EHRPD: return "eHRPD";
-                case TelephonyManager.NETWORK_TYPE_EVDO_0: return "EVDO rev. 0";
-                case TelephonyManager.NETWORK_TYPE_EVDO_A: return "EVDO rev. A";
-                case TelephonyManager.NETWORK_TYPE_EVDO_B: return "EVDO rev. B";
-                case TelephonyManager.NETWORK_TYPE_GPRS: return "GPRS";
-                case TelephonyManager.NETWORK_TYPE_HSDPA: return "HSDPA";
-                case TelephonyManager.NETWORK_TYPE_HSPA: return "HSPA";
-                case TelephonyManager.NETWORK_TYPE_HSPAP: return "HSPA+";
-                case TelephonyManager.NETWORK_TYPE_HSUPA: return "HSUPA";
-                case TelephonyManager.NETWORK_TYPE_IDEN: return "iDen";
-                case TelephonyManager.NETWORK_TYPE_LTE: return "LTE";
-                case TelephonyManager.NETWORK_TYPE_UMTS: return "UMTS";
-                case TelephonyManager.NETWORK_TYPE_UNKNOWN: return "Unknown";
-                default: return null;
-            }
-        }
-        return null;
-    }
-
     // Note this is the *current*, not the canonical network, because it
     // doesn't require special permissions to access. Unreliable for CDMA phones,
     //
