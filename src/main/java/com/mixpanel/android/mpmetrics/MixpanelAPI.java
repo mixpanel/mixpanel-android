@@ -683,7 +683,7 @@ public class MixpanelAPI {
      *
      * @return The device id associated with event tracking
      */
-    protected String getAnonymousId() {
+    public String getAnonymousId() {
         return mPersistentIdentity.getAnonymousId();
     }
 
