@@ -17,6 +17,10 @@ public class MPLog {
         sMinLevel = minLevel;
     }
 
+    public static int getLevel() {
+        return sMinLevel;
+    }
+
     public static void v(String tag, String message) {
         if (shouldLog(VERBOSE)) {
             Log.v(tag, message);
