@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -24,6 +25,7 @@ import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -34,6 +36,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
+
+import static com.mixpanel.android.util.MPLog.DEBUG;
 
 
 /**
@@ -179,20 +183,7 @@ public class MixpanelAPI {
 
         if (!mPersistentIdentity.isFirstIntegration(mToken)) {
             try {
-                final JSONObject messageProps = new JSONObject();
-                messageProps.put("mp_lib", "Android");
-                messageProps.put("lib", "Android");
-                messageProps.put("distinct_id", token);
-                messageProps.put("$lib_version", MPConfig.VERSION);
-                messageProps.put("$user_id", token);
-                final AnalyticsMessages.EventDescription eventDescription =
-                        new AnalyticsMessages.EventDescription(
-                                "Integration",
-                                messageProps,
-                                "85053bf24bba75239b16a601d9387e17");
-                mMessages.eventsMessage(eventDescription);
-                mMessages.postToServer(new AnalyticsMessages.FlushDescription("85053bf24bba75239b16a601d9387e17", false));
-
+                sendHttpEvent("Integration", "85053bf24bba75239b16a601d9387e17", token, null, false);
                 mPersistentIdentity.setIsIntegrated(mToken);
             } catch (JSONException e) {
             }
@@ -204,12 +195,126 @@ public class MixpanelAPI {
                 messageProps.put(AutomaticEvents.VERSION_UPDATED, deviceInfo.get("$android_app_version"));
                 track(AutomaticEvents.APP_UPDATED, messageProps, true);
             } catch (JSONException e) {}
+        }
 
+        if (isDebuggingMode()) {
+            try {
+                if (mToken.length() == 32) { // Only track DevX when the token is valid
+                    trackMixpanelDevX();
+                }
+            } catch (JSONException e) {}
         }
 
         if (!mConfig.getDisableExceptionHandler()) {
             ExceptionHandler.init();
         }
+    }
+
+    private boolean isDebuggingMode() {
+        return (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    private void trackMixpanelDevX() throws JSONException {
+        trackDebugLaunch();
+        promptDevXSurvey();
+        trackMixpanelImplemented();
+    }
+
+    private void trackDebugLaunch() throws JSONException {
+        int debugInitCount = mPersistentIdentity.debugInitCount(mToken);
+        debugInitCount += 1;
+        mPersistentIdentity.setDebugInitCount(mToken, debugInitCount);
+        final JSONObject debugProps = new JSONObject();
+        debugProps.put("Debug Launch Count", debugInitCount);
+        sendHttpEvent("SDK Debug Launch", "metrics-1", mToken, debugProps, true);
+    }
+
+    private void promptDevXSurvey() throws JSONException {
+        final long mpSurveyShownDate = mPersistentIdentity.mpSurveyShownDateInMillis(mToken);
+        final Date now = new Date();
+        final long nowMillis = now.getTime();
+        long oneDayInMillis =  24 * 60 * 60 * 1000;
+        if ((nowMillis - mpSurveyShownDate) > oneDayInMillis) {
+            final JSONObject surveyProps = new JSONObject();
+            int logLevel = MPLog.getLevel();
+            MPLog.setLevel(DEBUG);
+            MPLog.d("", "\uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B ");
+            MPLog.d("MixpanelAPI.Messages", "Hi, Zihe & Jared here, please give feedback or tell us about the Mixpanel developer experience! Open -> https://www.mixpanel.com/devnps \uD83D\uDC4D \uD83D\uDC4E");
+            MPLog.setLevel(logLevel);
+
+            int surveyShownCount = mPersistentIdentity.surveyShownCount(mToken);
+            surveyShownCount += 1;
+            mPersistentIdentity.setSurveyShownCount(mToken, surveyShownCount);
+            surveyProps.put("Survey Shown Count", surveyShownCount);
+            sendHttpEvent("Dev NPS Survey Logged", "metrics-1", mToken, surveyProps, true);
+            mPersistentIdentity.setMPSurveyShownDate(mToken, nowMillis);
+        }
+    }
+
+    private void trackMixpanelImplemented() throws JSONException {
+        if (mPersistentIdentity.hasImplemented(mToken)) {
+            return;
+        }
+        int implementationScore = 0;
+        implementationScore += mPersistentIdentity.hasMPDebugTracked(mToken) ? 1 : 0;
+        implementationScore += mPersistentIdentity.hasMPDebugIdentified(mToken) ? 1 : 0;
+        implementationScore += mPersistentIdentity.hasMPDebugAliased(mToken) ? 1 : 0;
+        implementationScore += mPersistentIdentity.hasMPDebugUsedPeople(mToken) ? 1 : 0;
+
+        final JSONObject implementedProps = new JSONObject();
+        implementedProps.put("Tracked", mPersistentIdentity.hasMPDebugTracked(mToken));
+        implementedProps.put("Identified", mPersistentIdentity.hasMPDebugIdentified(mToken));
+        implementedProps.put("Aliased",  mPersistentIdentity.hasMPDebugAliased(mToken));
+        implementedProps.put("Used People", mPersistentIdentity.hasMPDebugUsedPeople(mToken));
+
+        if (implementationScore >= 3) {
+            sendHttpEvent("SDK Implemented", "metrics-1", mToken, implementedProps, true);
+            mPersistentIdentity.setHasImplemented(mToken);
+        }
+    }
+
+    private void sendHttpEvent(String eventName, String token, String distinctId, JSONObject properties, boolean updatePeople) throws JSONException {
+        final JSONObject superProperties = getSuperProperties();
+        String lib = null;
+        String libVersion = null;
+        try {
+            if (superProperties != null) {
+                lib = (String) superProperties.get("mp_lib");
+                libVersion = (String) superProperties.get("$lib_version");
+            }
+        } catch (JSONException e) {
+        }
+
+        final JSONObject messageProps = new JSONObject();
+        messageProps.put("mp_lib", null != lib ? lib : "Android");
+        messageProps.put("distinct_id", distinctId);
+        messageProps.put("$lib_version", null != libVersion ? libVersion : MPConfig.VERSION);
+        messageProps.put("DevX", true);
+        messageProps.put("Project Token", distinctId);
+        if (null != properties) {
+            final Iterator<?> propIter = properties.keys();
+            while (propIter.hasNext()) {
+                final String key = (String) propIter.next();
+                messageProps.put(key, properties.get(key));
+            }
+        }
+        final AnalyticsMessages.EventDescription eventDescription =
+                new AnalyticsMessages.EventDescription(
+                        eventName,
+                        messageProps,
+                        token);
+        mMessages.eventsMessage(eventDescription);
+
+        if (updatePeople) {
+            final JSONObject peopleMessageProps = new JSONObject();
+            final JSONObject addProperties = new JSONObject();
+            addProperties.put(eventName, 1);
+            peopleMessageProps.put("$add", addProperties);
+            peopleMessageProps.put("$token", token);
+            peopleMessageProps.put("$distinct_id", token);
+            mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(peopleMessageProps, token));
+        }
+        mMessages.postToServer(new AnalyticsMessages.FlushDescription(token, false));
     }
 
     /**
@@ -383,6 +488,15 @@ public class MixpanelAPI {
      */
     public void setEnableLogging(boolean enableLogging) {
         mConfig.setEnableLogging(enableLogging);
+        final JSONObject debugProps = new JSONObject();
+        if (isDebuggingMode()) {
+            try {
+                debugProps.put("Logging Enabled", enableLogging);
+                sendHttpEvent("Toggle SDK Logging", "metrics-1", mToken, debugProps, true);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -421,6 +535,9 @@ public class MixpanelAPI {
             j.put("alias", alias);
             j.put("original", original);
             track("$create_alias", j);
+            if (isDebuggingMode()) {
+                mPersistentIdentity.setHasMPDebugAliased(mToken);
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Failed to alias", e);
         }
@@ -479,6 +596,9 @@ public class MixpanelAPI {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
                     track("$identify", identifyPayload);
+                    if (isDebuggingMode()) {
+                        mPersistentIdentity.setHasMPDebugIdentified(mToken);
+                    }
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Could not track $identify event");
                 }
@@ -1847,6 +1967,12 @@ public class MixpanelAPI {
             }
             dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
 
+            if (((getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0)) {
+                if (properties instanceof JSONObject && !((JSONObject) properties).keys().next().startsWith("$ae_")) {
+                    mPersistentIdentity.setHasMPDebugUsedPeople(mToken);
+                }
+            }
+
             return dataObj;
         }
 
@@ -2069,6 +2195,11 @@ public class MixpanelAPI {
                     new AnalyticsMessages.EventDescription(eventName, messageProps,
                             mToken, isAutomaticEvent, mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
+            if (isDebuggingMode()) {
+                if (!eventName.startsWith("$")) {
+                    mPersistentIdentity.setHasMPDebugTracked(mToken);
+                }
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
