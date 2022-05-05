@@ -324,7 +324,7 @@ public class MixpanelBasicTest {
         Map<String, Object> mapObj2 = new HashMap<>();
         mapObj2.put("SET ONCE MAP STR", "SET ONCE MAP VALUE");
 
-        mixpanel.getPeople().identify("TEST IDENTITY");
+        mixpanel.identify("TEST IDENTITY");
 
         mixpanel.getPeople().set("SET NAME", "SET VALUE");
         mixpanel.getPeople().setMap(mapObj1);
@@ -513,7 +513,7 @@ public class MixpanelBasicTest {
         assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
         assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
-        people.identify("Personal Identity");
+        mixpanel.identify("Personal Identity");
         people.set("the prop identified", "prop value identified");
 
         assertEquals("prop value identified", peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("the prop identified"));
@@ -549,15 +549,11 @@ public class MixpanelBasicTest {
         String userId = metrics.getUserId();
         assertEquals("Events Id", userId);
 
-        String stillEmpty = metrics.getPeople().getDistinctId();
-        assertNull(stillEmpty);
-
-        metrics.getPeople().identify("People Id");
         String unchangedId = metrics.getDistinctId();
         assertEquals("Events Id", unchangedId);
 
         String setPeopleId = metrics.getPeople().getDistinctId();
-        assertEquals("People Id", setPeopleId);
+        assertEquals("Events Id", setPeopleId);
     }
 
     @Test
@@ -574,21 +570,17 @@ public class MixpanelBasicTest {
         String emptyId = metrics.getPeople().getDistinctId();
         assertNull(emptyId);
 
-        metrics.identify("Events Id");
+        metrics.identify("Distinct Id");
         String setId = metrics.getDistinctId();
-        assertEquals("Events Id", setId);
+        assertEquals("Distinct Id", setId);
         String anonymousIdAfterIdentify = metrics.getAnonymousId();
         assertEquals(anonymousIdAfterIdentify, generatedId);
 
-        String stillEmpty = metrics.getPeople().getDistinctId();
-        assertNull(stillEmpty);
-
-        metrics.getPeople().identify("People Id");
         String unchangedId = metrics.getDistinctId();
-        assertEquals("Events Id", unchangedId);
+        assertEquals("Distinct Id", unchangedId);
 
         String setPeopleId = metrics.getPeople().getDistinctId();
-        assertEquals("People Id", setPeopleId);
+        assertEquals("Distinct Id", setPeopleId);
 
         // once its reset we will only have generated id but user id should be null
         metrics.reset();
@@ -596,7 +588,6 @@ public class MixpanelBasicTest {
         assertNotNull(generatedId2);
         assertNotSame(generatedId, generatedId2);
         assertNotNull(metrics.getDistinctId());
-        assertNull(metrics.getUserId());
     }
 
     @Test
@@ -772,19 +763,22 @@ public class MixpanelBasicTest {
             assertEquals("next wave", nextWaveEvent.getString("event"));
 
             isIdentifiedRef.set(true);
-            metrics.getPeople().identify("PEOPLE ID");
+            metrics.identify("PEOPLE ID");
             metrics.getPeople().set("prop", "yup");
             metrics.flush();
 
             String peopleTable = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
-            assertEquals("TABLE " + MPDbAdapter.Table.PEOPLE.getName(), peopleTable);
-
+            assertEquals("TABLE " + MPDbAdapter.Table.EVENTS.getName(), peopleTable);
+            messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             expectedJSONMessage = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             JSONObject peopleMessage = new JSONObject(expectedJSONMessage);
 
             assertEquals("PEOPLE ID", peopleMessage.getString("$distinct_id"));
             assertEquals("yup", peopleMessage.getJSONObject("$set").getString("prop"));
 
+            messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             String peopleFlush = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
             assertEquals("SENT FLUSH PEOPLE_ENDPOINT", peopleFlush);
 
@@ -1177,7 +1171,6 @@ public class MixpanelBasicTest {
         metricsOne.clearSuperProperties();
         metricsOne.registerSuperProperties(props);
         metricsOne.identify("Expected Events Identity");
-        metricsOne.getPeople().identify("Expected People Identity");
 
         // We exploit the fact that any metrics object with the same token
         // will get their values from the same persistent store.
@@ -1271,7 +1264,7 @@ public class MixpanelBasicTest {
 
         try {
             String sentId = peopleMessage.getString("$distinct_id");
-            assertEquals("Expected People Identity", sentId);
+            assertEquals("Expected Events Identity", sentId);
         } catch (JSONException e) {
             fail("Event message has an unexpected shape: " + peopleMessage.toString());
         }
@@ -1411,7 +1404,7 @@ public class MixpanelBasicTest {
         assertEquals(0, anonymousUpdates.size());
         assertEquals(0, identifiedUpdates.size());
 
-        mixpanel.getPeople().identify("mixpanel_distinct_id");
+        mixpanel.identify("mixpanel_distinct_id");
         mixpanel.getPeople().set("firstPropertyIdentified", "firstValue");
         mixpanel.getPeople().increment("incrementPropertyIdentified", 3L);
         mixpanel.getPeople().append("appendPropertyIdentified", "appendPropertyValue");
@@ -1511,7 +1504,7 @@ public class MixpanelBasicTest {
         metrics.track("Third Event");
         metrics.track("Fourth Event");
 
-        metrics.getPeople().identify("Mixpanel");
+        metrics.identify("Mixpanel");
         metrics.getPeople().set("setProperty", "setValue");
         metrics.getPeople().append("appendProperty", "appendValue");
         metrics.getPeople().deleteUser();
@@ -1524,6 +1517,7 @@ public class MixpanelBasicTest {
 
             assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
         }
+        eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getSessionMetadata();
         assertNull(eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
         for (int i = 0; i < 3; i++) {
@@ -1544,6 +1538,7 @@ public class MixpanelBasicTest {
 
             assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
         }
+        storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
 
         for (int i = 0; i < 3; i++) {
             JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
