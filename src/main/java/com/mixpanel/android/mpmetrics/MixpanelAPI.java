@@ -290,6 +290,7 @@ public class MixpanelAPI {
         messageProps.put("distinct_id", distinctId);
         messageProps.put("$lib_version", null != libVersion ? libVersion : MPConfig.VERSION);
         messageProps.put("DevX", true);
+        messageProps.put("Project Token", distinctId);
         if (null != properties) {
             final Iterator<?> propIter = properties.keys();
             while (propIter.hasNext()) {
