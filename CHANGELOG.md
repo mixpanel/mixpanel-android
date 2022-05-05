@@ -1,5 +1,14 @@
 #
 
+## [v6.2.0](https://github.com/mixpanel/mixpanel-android/tree/v6.2.0) (2022-05-05)
+
+### Enhancements
+
+- Make `getAnonymousId` public. [\#784](https://github.com/mixpanel/mixpanel-android/pull/784)
+- Deprecating 'People.identify' and merge it into 'MixpanelAPI.identify' [\#781](https://github.com/mixpanel/mixpanel-android/pull/781)
+
+#
+
 ## [v6.1.1](https://github.com/mixpanel/mixpanel-android/tree/v6.1.1) (2022-04-11)
 
 ### Fixes
@@ -1358,6 +1367,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
