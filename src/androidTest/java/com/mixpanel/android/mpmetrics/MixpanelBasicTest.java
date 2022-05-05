@@ -952,7 +952,6 @@ public class MixpanelBasicTest {
 
     @Test
     public void testSetAddRemoveGroup(){
-        final String savedDistinctID = "saved_distinct_id";
         final List<Object> messages = new ArrayList<Object>();
         final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
