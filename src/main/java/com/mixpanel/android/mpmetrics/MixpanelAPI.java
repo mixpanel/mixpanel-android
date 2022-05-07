@@ -311,7 +311,7 @@ public class MixpanelAPI {
             addProperties.put(eventName, 1);
             peopleMessageProps.put("$add", addProperties);
             peopleMessageProps.put("$token", token);
-            peopleMessageProps.put("$distinct_id", token);
+            peopleMessageProps.put("$distinct_id", distinctId);
             mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(peopleMessageProps, token));
         }
         mMessages.postToServer(new AnalyticsMessages.FlushDescription(token, false));
