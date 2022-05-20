@@ -216,7 +216,6 @@ public class MixpanelAPI {
 
     private void trackMixpanelDevX() throws JSONException {
         trackDebugLaunch();
-        promptDevXSurvey();
         trackMixpanelImplemented();
     }
 
@@ -227,28 +226,6 @@ public class MixpanelAPI {
         final JSONObject debugProps = new JSONObject();
         debugProps.put("Debug Launch Count", debugInitCount);
         sendHttpEvent("SDK Debug Launch", "metrics-1", mToken, debugProps, true);
-    }
-
-    private void promptDevXSurvey() throws JSONException {
-        final long mpSurveyShownDate = mPersistentIdentity.mpSurveyShownDateInMillis(mToken);
-        final Date now = new Date();
-        final long nowMillis = now.getTime();
-        long oneDayInMillis =  24 * 60 * 60 * 1000;
-        if ((nowMillis - mpSurveyShownDate) > oneDayInMillis) {
-            final JSONObject surveyProps = new JSONObject();
-            int logLevel = MPLog.getLevel();
-            MPLog.setLevel(DEBUG);
-            MPLog.d("", "\uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B \uD83D\uDC4B ");
-            MPLog.d("MixpanelAPI.Messages", "Hi, Zihe & Jared here, please give feedback or tell us about the Mixpanel developer experience! Open -> https://www.mixpanel.com/devnps \uD83D\uDC4D \uD83D\uDC4E");
-            MPLog.setLevel(logLevel);
-
-            int surveyShownCount = mPersistentIdentity.surveyShownCount(mToken);
-            surveyShownCount += 1;
-            mPersistentIdentity.setSurveyShownCount(mToken, surveyShownCount);
-            surveyProps.put("Survey Shown Count", surveyShownCount);
-            sendHttpEvent("Dev NPS Survey Logged", "metrics-1", mToken, surveyProps, true);
-            mPersistentIdentity.setMPSurveyShownDate(mToken, nowMillis);
-        }
     }
 
     private void trackMixpanelImplemented() throws JSONException {
