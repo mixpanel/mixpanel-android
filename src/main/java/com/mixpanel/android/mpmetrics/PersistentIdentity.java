@@ -383,45 +383,12 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public synchronized long mpSurveyShownDateInMillis(String token) {
-        long mpSurveyShownDate = 0;
-        try {
-            SharedPreferences mixpanelPreferences = mMixpanelPreferences.get();
-            mpSurveyShownDate = mixpanelPreferences.getLong(token + MP_SURVEY_SHOWN_DATE_KEY, 0);
-        }  catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel from shared preferences.", e);
-        }
-        return mpSurveyShownDate;
-    }
-
-    public synchronized void setMPSurveyShownDate(String token, long date) {
-        try {
-            SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
-            mixpanelPreferencesEditor.putLong(token + MP_SURVEY_SHOWN_DATE_KEY, date);
-            writeEdits(mixpanelPreferencesEditor);
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
-        } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel from shared preferences.", e);
-        }
-    }
-
     public synchronized int debugInitCount(String token) {
         return getIntFlagValue(token, MP_DEBUG_INIT_COUNT_KEY);
     }
 
     public synchronized void setDebugInitCount(String token, int debugInitCount) {
         setIntFlagValue(token, MP_DEBUG_INIT_COUNT_KEY, debugInitCount);
-    }
-
-    public synchronized int surveyShownCount(String token) {
-        return getIntFlagValue(token, MP_SURVEY_SHOWN_COUNT_KEY);
-    }
-
-    public synchronized void setSurveyShownCount(String token, int surveyShownCount) {
-        setIntFlagValue(token, MP_SURVEY_SHOWN_COUNT_KEY, surveyShownCount);
     }
 
     public synchronized boolean hasImplemented(String token) {
