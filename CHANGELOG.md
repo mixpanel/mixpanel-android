@@ -1,5 +1,13 @@
 #
 
+## [v6.2.2](https://github.com/mixpanel/mixpanel-android/tree/v6.2.2) (2022-05-20)
+
+### Enhancements
+
+- remove survey [\#787](https://github.com/mixpanel/mixpanel-android/pull/787)
+
+#
+
 ## [v6.2.1](https://github.com/mixpanel/mixpanel-android/tree/v6.2.1) (2022-05-07)
 
 ### Fixes
@@ -1375,6 +1383,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
