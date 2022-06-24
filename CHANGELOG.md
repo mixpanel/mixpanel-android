@@ -2,6 +2,10 @@
 
 ## [v6.3.0](https://github.com/mixpanel/mixpanel-android/tree/v6.3.0) (2022-06-24)
 
+### Enhancements
+
+- use millisecond precision for event time property [\#791](https://github.com/mixpanel/mixpanel-android/pull/791)
+
 #
 
 ## [v6.2.2](https://github.com/mixpanel/mixpanel-android/tree/v6.2.2) (2022-05-20)
