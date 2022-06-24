@@ -2157,11 +2157,10 @@ public class MixpanelAPI {
             // Don't allow super properties or referral properties to override these fields,
             // but DO allow the caller to override them in their given properties.
             final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final long timeSeconds = (long) timeSecondsDouble;
             final String distinctId = getDistinctId();
             final String anonymousId = getAnonymousId();
             final String userId = getUserId();
-            messageProps.put("time", timeSeconds);
+            messageProps.put("time", System.currentTimeMillis());
             messageProps.put("distinct_id", distinctId);
             messageProps.put("$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
             if(anonymousId != null) {
