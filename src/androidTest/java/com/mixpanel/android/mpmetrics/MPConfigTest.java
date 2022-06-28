@@ -148,6 +148,6 @@ public class MPConfigTest {
     }
 
     private MixpanelAPI mixpanelApi(final MPConfig config) {
-        return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, false, null);
+        return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, false, null,null);
     }
 }

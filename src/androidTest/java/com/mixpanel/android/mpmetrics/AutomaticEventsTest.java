@@ -25,7 +25,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -153,12 +152,13 @@ public class AutomaticEventsTest {
         mCleanMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null) {
 
             @Override
-                /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+                String instanceKey = instanceName != null ? instanceName : token;
+                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
                 final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
                 ret.edit().clear().commit();
 
-                final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+                final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + instanceKey;
                 final SharedPreferences timeSharedPrefs = context.getSharedPreferences(timeEventsPrefsName, Context.MODE_PRIVATE);
                 timeSharedPrefs.edit().clear().commit();
 
@@ -166,7 +166,7 @@ public class AutomaticEventsTest {
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putInt("latest_version_code", -2).commit(); // -1 is the default value
 
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
             }
 
             @Override

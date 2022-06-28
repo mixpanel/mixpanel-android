@@ -2,8 +2,6 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -30,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -890,14 +887,15 @@ public class MixpanelBasicTest {
             }
 
             @Override
-            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
+            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+                String instanceKey = instanceName != null ? instanceName : token;
                 final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
-                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
                 final SharedPreferences loadstorePrefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
                 loadstorePrefs.edit().clear().putString("events_distinct_id", savedDistinctID).putString("people_distinct_id", savedDistinctID).commit();
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
                 }
 
             @Override
@@ -1196,12 +1194,13 @@ public class MixpanelBasicTest {
             }
 
             @Override
-        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-                final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+        /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+                String instanceKey = instanceName != null ? instanceName : token;
+            final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
-                mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).commit();
+                mpSharedPrefs.edit().clear().putBoolean(instanceKey, true).putBoolean("has_launched", true).commit();
 
-                return super.getPersistentIdentity(context, referrerPreferences, token);
+                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
             }
 
             @Override
@@ -1364,6 +1363,63 @@ public class MixpanelBasicTest {
     }
 
     @Test
+    public void testMultiInstancesWithInstanceName() throws InterruptedException, JSONException {
+        final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
+        final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
+
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
+            @Override
+            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+                if (table == Table.ANONYMOUS_PEOPLE) {
+                    anonymousUpdates.add(j);
+                } else if (table == Table.PEOPLE) {
+                    identifiedUpdates.add(j);
+                }
+                return super.addJSON(j, token, table, isAutomaticRecord);
+            }
+        };
+
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+        };
+
+        MixpanelAPI mixpanel1 = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates", "instance1") {
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+        MixpanelAPI mixpanel2 = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates", "instance2") {
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+        // mixpanel1 and mixpanel2 are treated as different instances because of the their instance names are different
+        assertTrue(!mixpanel1.getDistinctId().equals(mixpanel2.getDistinctId()));
+        mixpanel1.getPeople().set("firstProperty", "firstValue");
+        assertEquals("firstValue", anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstProperty"));
+        mixpanel1.identify("mixpanel_distinct_id");
+        mixpanel1.getPeople().set("firstPropertyIdentified", "firstValue");
+        assertEquals("firstValue", identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstPropertyIdentified"));
+        assertEquals(0, anonymousUpdates.size());
+        assertTrue(mixpanel1.getDistinctId().equals("mixpanel_distinct_id"));
+
+
+        mixpanel2.getPeople().set("firstProperty2", "firstValue2");
+        assertEquals("firstValue2", anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstProperty2"));
+        mixpanel2.identify("mixpanel_distinct_id2");
+        mixpanel2.getPeople().set("firstPropertyIdentified2", "firstValue2");
+        assertEquals("firstValue2", identifiedUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("firstPropertyIdentified2"));
+        assertEquals(0, anonymousUpdates.size());
+        assertTrue(!mixpanel1.getDistinctId().equals(mixpanel2.getDistinctId()));
+        assertTrue(mixpanel2.getDistinctId().equals("mixpanel_distinct_id2"));
+    }
+
+    @Test
     public void testAnonymousPeopleUpdates() throws InterruptedException, JSONException {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
         final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
@@ -1424,8 +1480,8 @@ public class MixpanelBasicTest {
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
         MixpanelAPI mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TESTTOKEN", false, null) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
                 return mPersistentIdentity;
             }
 
