@@ -7,10 +7,8 @@ import android.os.Message;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class TestUtils {
     public static byte[] bytes(String s) {
@@ -26,13 +24,18 @@ public class TestUtils {
             super(context, referrerPreferences, token, false, null);
         }
 
+        public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+            super(context, referrerPreferences, token, false, null, instanceName);
+        }
+
         @Override
-            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+            String instanceKey = instanceName != null ? instanceName : token;
+            final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
             ret.edit().clear().commit();
 
-            final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+            final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + instanceKey;
             final SharedPreferences timeSharedPrefs = context.getSharedPreferences(timeEventsPrefsName, Context.MODE_PRIVATE);
             timeSharedPrefs.edit().clear().commit();
 
@@ -40,7 +43,7 @@ public class TestUtils {
             final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
             mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).apply();
 
-            return super.getPersistentIdentity(context, referrerPreferences, token);
+            return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
         }
 
         @Override

@@ -25,7 +25,6 @@ import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -36,8 +35,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
-
-import static com.mixpanel.android.util.MPLog.DEBUG;
 
 
 /**
@@ -107,19 +104,28 @@ public class MixpanelAPI {
      */
     public static final String VERSION = MPConfig.VERSION;
 
+
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties);
+        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, null);
     }
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties) {
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
+        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, instanceName);
+    }
+
+    /**
+     * You shouldn't instantiate MixpanelAPI objects directly.
+     * Use MixpanelAPI.getInstance to get an instance.
+     */
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
@@ -145,7 +151,7 @@ public class MixpanelAPI {
 
         mSessionMetadata = new SessionMetadata();
         mMessages = getAnalyticsMessages();
-        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token);
+        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, instanceName);
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
@@ -321,7 +327,39 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token) {
-        return getInstance(context, token, false, null);
+        return getInstance(context, token, false, null, null);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     *     instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     *     in the settings dialog.
+     * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
+     *      It is useful when you want more than one Mixpanel instance under the same project token
+     * @return an instance of MixpanelAPI associated with your project
+     */
+    public static MixpanelAPI getInstance(Context context, String token, String instanceName) {
+        return getInstance(context, token, false, null, instanceName);
     }
 
     /**
@@ -353,7 +391,41 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault) {
-        return getInstance(context, token, optOutTrackingDefault, null);
+        return getInstance(context, token, optOutTrackingDefault, null, null);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     *     instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     *     in the settings dialog.
+     * @param optOutTrackingDefault Whether or not Mixpanel can start tracking by default. See
+     *     {@link #optOutTracking()}.
+     * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
+        It is useful when you want more than one Mixpanel instance under the same project token.
+     * @return an instance of MixpanelAPI associated with your project
+     */
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, String instanceName) {
+        return getInstance(context, token, optOutTrackingDefault, null, instanceName);
     }
 
     /**
@@ -384,7 +456,40 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties) {
-        return getInstance(context, token, false, superProperties);
+        return getInstance(context, token, false, superProperties, null);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     *     instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     *     in the settings dialog.
+     * @param superProperties A JSONObject containing super properties to register.
+     * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
+     *      It is useful when you want more than one Mixpanel instance under the same project token
+     * @return an instance of MixpanelAPI associated with your project
+     */
+    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String instanceName) {
+        return getInstance(context, token, false, superProperties, instanceName);
     }
 
     /**
@@ -414,9 +519,11 @@ public class MixpanelAPI {
      * @param optOutTrackingDefault Whether or not Mixpanel can start tracking by default. See
      *     {@link #optOutTracking()}.
      * @param superProperties A JSONObject containing super properties to register.
+     * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
+     *      It is useful when you want more than one Mixpanel instance under the same project token
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties) {
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
         if (null == token || null == context) {
             return null;
         }
@@ -426,16 +533,16 @@ public class MixpanelAPI {
             if (null == sReferrerPrefs) {
                 sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME, null);
             }
-
-            Map <Context, MixpanelAPI> instances = sInstanceMap.get(token);
+            String instanceKey = instanceName != null ? instanceName : token;
+            Map <Context, MixpanelAPI> instances = sInstanceMap.get(instanceKey);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
-                sInstanceMap.put(token, instances);
+                sInstanceMap.put(instanceKey, instances);
             }
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties, instanceName);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
@@ -1197,7 +1304,7 @@ public class MixpanelAPI {
     }
     /**
      * Will return true if the user has opted out from tracking. See {@link #optOutTracking()} and
-     * {@link MixpanelAPI#getInstance(Context, String, boolean, JSONObject)} for more information.
+     * {@link MixpanelAPI#getInstance(Context, String, boolean, JSONObject, String)} for more information.
      *
      * @return true if user has opted out from tracking. Defaults to false.
      */
@@ -1656,6 +1763,10 @@ public class MixpanelAPI {
     }
 
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
+        return getPersistentIdentity(context, referrerPreferences, token, null);
+    }
+
+    /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener = new SharedPreferencesLoader.OnPrefsLoadedListener() {
             @Override
             public void onPrefsLoaded(SharedPreferences preferences) {
@@ -1666,10 +1777,11 @@ public class MixpanelAPI {
             }
         };
 
-        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
+        String instanceKey = instanceName != null ? instanceName : token;
+        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
         final Future<SharedPreferences> storedPreferences = sPrefsLoader.loadPreferences(context, prefsName, listener);
 
-        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + token;
+        final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + instanceKey;
         final Future<SharedPreferences> timeEventsPrefs = sPrefsLoader.loadPreferences(context, timeEventsPrefsName, null);
 
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
