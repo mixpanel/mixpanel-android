@@ -1,5 +1,13 @@
 #
 
+## [v6.4.0](https://github.com/mixpanel/mixpanel-android/tree/v6.4.0) (2022-06-30)
+
+### Enhancements
+
+- Support defining multiple instances by specifying `instanceName` in `getInstance\(\)` [\#792](https://github.com/mixpanel/mixpanel-android/pull/792)
+
+#
+
 ## [v6.3.0](https://github.com/mixpanel/mixpanel-android/tree/v6.3.0) (2022-06-24)
 
 ### Enhancements
@@ -1391,6 +1399,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
