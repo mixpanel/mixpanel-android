@@ -110,6 +110,8 @@ In addition to event data, you can also send [user profile data](https://develop
 
 Once data hits our API, it generally takes ~60 seconds for it to be processed, stored, and queryable in your project.
 
+👋 👋  Tell us about the Mixpanel developer experience! [https://www.mixpanel.com/devnps](https://www.mixpanel.com/devnps) 👍  👎
+
 # FAQ
 **I want to stop tracking an event/event property in Mixpanel. Is that possible?**
 
