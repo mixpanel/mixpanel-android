@@ -1,5 +1,29 @@
 #
 
+## [v6.4.0](https://github.com/mixpanel/mixpanel-android/tree/v6.4.0) (2022-06-30)
+
+### Enhancements
+
+- Support defining multiple instances by specifying `instanceName` in `getInstance\(\)` [\#792](https://github.com/mixpanel/mixpanel-android/pull/792)
+
+This release adds the following APIs to MixpanelAPI:
+```
+/**
+...
+ * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
+   It is useful when you want more than one Mixpanel instance under the same project token.
+...
+**/
+```
+`getInstance(Context context, String token, String instanceName)`
+`getInstance(Context context, String token, boolean optOutTrackingDefault, String instanceName)`
+`getInstance(Context context, String token, JSONObject superProperties, String instanceName)`
+`getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName)`
+
+Please note: If you are going to add `instanceName` to `getInstance` on your existing implementation. `getInstance` will start using `instanceName` as the instance identifier rather than `token`, so you might lose some of the stored properties including the distinct Id under the `token`. We'd recommend using it when you need to create more than one instance under the same project token. You won't lose any events and user profile updates.
+
+#
+
 ## [v6.3.0](https://github.com/mixpanel/mixpanel-android/tree/v6.3.0) (2022-06-24)
 
 ### Enhancements
@@ -1391,6 +1415,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
