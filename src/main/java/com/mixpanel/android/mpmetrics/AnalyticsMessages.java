@@ -114,19 +114,11 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
-    public void postToServer(final FlushDescription flushDescription) {
+    public void postToServer(final MixpanelDescription flushDescription) {
         final Message m = Message.obtain();
         m.what = FLUSH_QUEUE;
         m.obj = flushDescription.getToken();
-        m.arg1 = flushDescription.shouldCheckDecide() ? 1 : 0;
-
-        mWorker.runMessage(m);
-    }
-
-    public void installDecideCheck(final DecideMessages check) {
-        final Message m = Message.obtain();
-        m.what = INSTALL_DECIDE_CHECK;
-        m.obj = check;
+        m.arg1 = 0;
 
         mWorker.runMessage(m);
     }
@@ -258,23 +250,6 @@ import javax.net.ssl.SSLSocketFactory;
         private final String mDistinctId;
     }
 
-    static class FlushDescription extends MixpanelDescription {
-        public FlushDescription(String token) {
-            this(token, true);
-        }
-
-        protected FlushDescription(String token, boolean checkDecide) {
-            super(token);
-            this.checkDecide = checkDecide;
-        }
-
-        public boolean shouldCheckDecide() {
-            return checkDecide;
-        }
-
-        private final boolean checkDecide;
-    }
-
     static class MixpanelMessageDescription extends MixpanelDescription {
         public MixpanelMessageDescription(String token, JSONObject message) {
             super(token);
@@ -375,12 +350,7 @@ import javax.net.ssl.SSLSocketFactory;
                 super(looper);
                 mDbAdapter = null;
                 mSystemInformation = SystemInformation.getInstance(mContext);
-                mDecideChecker = createDecideChecker();
                 mFlushInterval = mConfig.getFlushInterval();
-            }
-
-            protected DecideChecker createDecideChecker() {
-                return new DecideChecker(mContext, mConfig);
             }
 
             @Override
@@ -418,11 +388,6 @@ import javax.net.ssl.SSLSocketFactory;
                             logAboutMessageToMixpanel("Queuing event for sending later");
                             logAboutMessageToMixpanel("    " + message.toString());
                             token = eventDescription.getToken();
-
-                            DecideMessages decide = mDecideChecker.getDecideMessages(token);
-                            if (decide != null && eventDescription.isAutomatic() && !decide.shouldTrackAutomaticEvent()) {
-                                return;
-                            }
                             returnCode = mDbAdapter.addJSON(message, token, MPDbAdapter.Table.EVENTS, eventDescription.isAutomatic());
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
@@ -444,26 +409,7 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
                         token = (String) msg.obj;
-                        boolean shouldCheckDecide = msg.arg1 == 1;
                         sendAllData(mDbAdapter, token);
-                        if (shouldCheckDecide && SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
-                            try {
-                                mDecideChecker.runDecideCheck(token, getPoster());
-                            } catch (RemoteService.ServiceUnavailableException e) {
-                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
-                            }
-                        }
-                    } else if (msg.what == INSTALL_DECIDE_CHECK) {
-                        logAboutMessageToMixpanel("Installing a check for decide");
-                        final DecideMessages check = (DecideMessages) msg.obj;
-                        mDecideChecker.addDecideCheck(check);
-                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
-                            try {
-                                mDecideChecker.runDecideCheck(check.getToken(), getPoster());
-                            } catch (RemoteService.ServiceUnavailableException e) {
-                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
-                            }
-                        }
                     } else if (msg.what == EMPTY_QUEUES) {
                         final MixpanelDescription message = (MixpanelDescription) msg.obj;
                         token = message.getToken();
@@ -487,13 +433,6 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Flushing queue due to bulk upload limit (" + returnCode + ") for project " + token);
                         updateFlushFrequency();
                         sendAllData(mDbAdapter, token);
-                        if (SystemClock.elapsedRealtime() >= mDecideRetryAfter) {
-                            try {
-                                mDecideChecker.runDecideCheck(token, getPoster());
-                            } catch (RemoteService.ServiceUnavailableException e) {
-                                mDecideRetryAfter = SystemClock.elapsedRealtime() + e.getRetryAfter() * 1000;
-                            }
-                        }
                     } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE, token)) {
                         // The !hasMessages(FLUSH_QUEUE, token) check is a courtesy for the common case
                         // of delayed flushes already enqueued from inside of this thread.
@@ -542,11 +481,7 @@ import javax.net.ssl.SSLSocketFactory;
 
             private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
                 final RemoteService poster = getPoster();
-                DecideMessages decideMessages = mDecideChecker.getDecideMessages(token);
-                boolean includeAutomaticEvents = true;
-                if (decideMessages == null || decideMessages.isAutomaticEventsEnabled() == null) {
-                    includeAutomaticEvents = false;
-                }
+                boolean includeAutomaticEvents = mConfig.getTrackAutomaticEvents();
                 String[] eventsData = dbAdapter.generateDataString(table, token, includeAutomaticEvents);
                 Integer queueCount = 0;
                 if (eventsData != null) {
@@ -705,9 +640,7 @@ import javax.net.ssl.SSLSocketFactory;
             }
 
             private MPDbAdapter mDbAdapter;
-            private final DecideChecker mDecideChecker;
             private final long mFlushInterval;
-            private long mDecideRetryAfter;
             private long mTrackEngageRetryAfter;
             private int mFailedRetries;
         }// AnalyticsMessageHandler
@@ -757,7 +690,6 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
     private static final int REWRITE_EVENT_PROPERTIES = 8; // Update or add properties to existing queued events
-    private static final int INSTALL_DECIDE_CHECK = 12; // Run this DecideCheck at intervals until it isDestroyed()
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 

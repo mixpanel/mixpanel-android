@@ -47,11 +47,8 @@ public class AutomaticEventsTest {
     private static final int MAX_TIMEOUT_POLL = 6500;
     final private BlockingQueue<String> mPerformRequestEvents = new LinkedBlockingQueue<>();
     private Future<SharedPreferences> mMockReferrerPreferences;
-    private byte[] mDecideResponse;
     private int mTrackedEvents;
     private CountDownLatch mLatch = new CountDownLatch(1);
-    private boolean mCanRunDecide;
-    private boolean mCanRunSecondDecideInstance;
     private MPDbAdapter mockAdapter;
     private CountDownLatch mMinRequestsLatch;
 
@@ -59,18 +56,13 @@ public class AutomaticEventsTest {
     public void setUp() {
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
         mTrackedEvents = 0;
-        mCanRunDecide = true;
         mMinRequestsLatch = new CountDownLatch(2); // First Time Open and Update
+    }
+
+    private void setUpInstance(boolean trackAutomaticEvents) {
         final RemoteService mockPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
-
-                if (null == params) {
-                    if (mDecideResponse == null) {
-                        return TestUtils.bytes("{\"automatic_events\": true}");
-                    }
-                    return mDecideResponse;
-                }
 
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
@@ -90,7 +82,6 @@ public class AutomaticEventsTest {
         };
 
         InstrumentationRegistry.getInstrumentation().getContext().deleteDatabase("mixpanel");
-
         mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
@@ -131,17 +122,6 @@ public class AutomaticEventsTest {
                         final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
                         thread.start();
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
-                            @Override
-                            protected DecideChecker createDecideChecker() {
-                                return new DecideChecker(mContext, mConfig) {
-                                    @Override
-                                    public void runDecideCheck(String token, RemoteService poster) throws RemoteService.ServiceUnavailableException {
-                                        if (mCanRunDecide) {
-                                            super.runDecideCheck(token, poster);
-                                        }
-                                    }
-                                };
-                            }
                         };
                         return ret;
                     }
@@ -149,7 +129,7 @@ public class AutomaticEventsTest {
             }
         };
 
-        mCleanMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null) {
+        mCleanMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null, trackAutomaticEvents) {
 
             @Override
                 /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
@@ -185,6 +165,7 @@ public class AutomaticEventsTest {
     public void testAutomaticOneInstance() throws InterruptedException {
         int calls = 3; // First Time Open, App Update, An Event One
         mLatch = new CountDownLatch(calls);
+        setUpInstance(true);
         mCleanMixpanelAPI.track("An event One");
         mCleanMixpanelAPI.flush();
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
@@ -197,17 +178,13 @@ public class AutomaticEventsTest {
 
     @Test
     public void testDisableAutomaticEvents() throws InterruptedException {
-        mCanRunDecide = false;
-
-        mDecideResponse = TestUtils.bytes("{\"automatic_events\": false}");
-
         int calls = 3; // First Time Open, App Update, An Event Three
+        setUpInstance(false);
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An Event Three");
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(calls, mTrackedEvents);
 
-        mCanRunDecide = true;
         mCleanMixpanelAPI.track("Automatic Event Two", null, true); // dropped
         mCleanMixpanelAPI.track("Automatic Event Three", null, true); // dropped
         mCleanMixpanelAPI.track("Automatic Event Four", null, true); // dropped
@@ -215,7 +192,7 @@ public class AutomaticEventsTest {
         assertEquals("An Event Three", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        String[] noEvents = mockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN, true);
+        String[] noEvents = mockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN, false);
         assertNull(noEvents);
 
         mCleanMixpanelAPI.flush();
@@ -225,9 +202,8 @@ public class AutomaticEventsTest {
     @Test
     public void testAutomaticMultipleInstances() throws InterruptedException {
         final String SECOND_TOKEN = "Automatic Events Token Two";
-        mCanRunDecide = true;
-        mDecideResponse = TestUtils.bytes("{\"automatic_events\": true}");
         int initialCalls = 2;
+        setUpInstance(false);
         mLatch = new CountDownLatch(initialCalls);
         final CountDownLatch secondLatch = new CountDownLatch(initialCalls);
         final BlockingQueue<String> secondPerformedRequests = new LinkedBlockingQueue<>();
@@ -235,10 +211,6 @@ public class AutomaticEventsTest {
         final HttpService mpSecondPoster = new HttpService() {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
-                if (null == params) {
-                    return TestUtils.bytes("{\"automatic_events\": false}");
-                }
-
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
                 try {
@@ -293,17 +265,6 @@ public class AutomaticEventsTest {
                         final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
                         thread.start();
                         final Handler ret = new AnalyticsMessageHandler(thread.getLooper()) {
-                            @Override
-                            protected DecideChecker createDecideChecker() {
-                                return new DecideChecker(mContext, mConfig) {
-                                    @Override
-                                    public void runDecideCheck(String token, RemoteService poster) throws RemoteService.ServiceUnavailableException {
-                                        if (mCanRunSecondDecideInstance) {
-                                            super.runDecideCheck(token, poster);
-                                        }
-                                    }
-                                };
-                            }
                         };
                         return ret;
                     }
@@ -311,7 +272,7 @@ public class AutomaticEventsTest {
             }
         };
 
-        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), SECOND_TOKEN) {
+        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), SECOND_TOKEN, true) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mpSecondAnalyticsMessages;
@@ -321,7 +282,6 @@ public class AutomaticEventsTest {
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(initialCalls, mTrackedEvents);
 
-        assertTrue(secondLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         mLatch = new CountDownLatch(MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls);
         for (int i = 0; i < MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
@@ -338,7 +298,6 @@ public class AutomaticEventsTest {
 
         assertNull(secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        mCanRunSecondDecideInstance = true;
         mpSecondInstance.flush();
         mCleanMixpanelAPI.track("First Instance Event One");
         mpSecondInstance.track("Second Instance Event One");

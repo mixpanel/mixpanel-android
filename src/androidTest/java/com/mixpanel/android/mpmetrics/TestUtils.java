@@ -20,12 +20,16 @@ public class TestUtils {
     }
 
     public static class CleanMixpanelAPI extends MixpanelAPI {
+        public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final boolean trackAutomaticEvents) {
+            super(context, referrerPreferences, token, false, null, trackAutomaticEvents);
+        }
+
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            super(context, referrerPreferences, token, false, null);
+            super(context, referrerPreferences, token, false, null, false);
         }
 
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
-            super(context, referrerPreferences, token, false, null, instanceName);
+            super(context, referrerPreferences, token, false, null, instanceName, false);
         }
 
         @Override

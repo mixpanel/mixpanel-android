@@ -615,15 +615,6 @@ public class MixpanelBasicTest {
             @Override
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 final boolean isIdentified = isIdentifiedRef.get();
-                if (null == params) {
-                    if (isIdentified) {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=PEOPLE+ID" + mAppProperties, endpointUrl);
-                    } else {
-                        assertEquals("DECIDE_ENDPOINT?version=1&lib=android&token=Test+Message+Queuing&distinct_id=EVENTS+ID" + mAppProperties, endpointUrl);
-                    }
-                    return TestUtils.bytes("{}");
-                }
-
                 assertTrue(params.containsKey("data"));
                 final String decoded = Base64Coder.decodeString(params.get("data").toString());
 
@@ -663,11 +654,6 @@ public class MixpanelBasicTest {
             @Override
             public String getGroupsEndpoint() {
                 return "GROUPS_ENDPOINT";
-            }
-
-            @Override
-            public String getDecideEndpoint() {
-                return "DECIDE_ENDPOINT";
             }
 
             @Override
@@ -883,7 +869,7 @@ public class MixpanelBasicTest {
 
         class TestMixpanelAPI extends MixpanelAPI {
             public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, true);
             }
 
             @Override
@@ -963,7 +949,7 @@ public class MixpanelBasicTest {
 
         class TestMixpanelAPI extends MixpanelAPI {
             public TestMixpanelAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, true);
             }
 
             @Override
@@ -1156,7 +1142,7 @@ public class MixpanelBasicTest {
 
     @Test
     public void testPersistence() {
-        MixpanelAPI metricsOne = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN", false, null);
+        MixpanelAPI metricsOne = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "SAME TOKEN", false, null, true);
         metricsOne.reset();
 
         JSONObject props;
@@ -1190,7 +1176,7 @@ public class MixpanelBasicTest {
 
         class ListeningAPI extends MixpanelAPI {
             public ListeningAPI(Context c, Future<SharedPreferences> prefs, String token) {
-                super(c, prefs, token, false, null);
+                super(c, prefs, token, false, null, true);
             }
 
             @Override
@@ -1478,7 +1464,7 @@ public class MixpanelBasicTest {
         Future<SharedPreferences> mMockReferrerPreferences;
         final BlockingQueue<String> mStoredEvents = new LinkedBlockingQueue<>();
         mMockReferrerPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
-        MixpanelAPI mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TESTTOKEN", false, null) {
+        MixpanelAPI mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TESTTOKEN", false, null, true) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);

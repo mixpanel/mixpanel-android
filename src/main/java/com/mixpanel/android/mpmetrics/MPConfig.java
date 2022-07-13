@@ -73,12 +73,6 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.GroupsEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send group updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
  *
- *     <dt>com.mixpanel.android.MPConfig.DecideEndpoint</dt>
- *     <dd>A string URL. If present, the library will attempt to get the settings of enabling Mixpanel to automatically collect common mobile events from this url rather than the default Mixpanel endpoint.</dd>
- *
- *     <dt>com.mixpanel.android.MPConfig.DisableDecideChecker</dt>
- *     <dd>A boolean value. If true, the library will not query our decide endpoint for the settings of enabling Mixpanel to automatically collect common mobile events. Defaults to false.</dd>
- *
  *     <dt>com.mixpanel.android.MPConfig.MinimumSessionDuration</dt>
  *     <dd>An integer number. The minimum session duration (ms) that is tracked in automatic events. Defaults to 10000 (10 seconds).</dd>
  *
@@ -194,13 +188,11 @@ public class MPConfig {
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mMaximumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MaximumDatabaseLimit", Integer.MAX_VALUE); // 2 Gb
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
-        mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
         mDisableExceptionHandler = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableExceptionHandler", false);
         mMinSessionDuration = metaData.getInt("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
         mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
         mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
-
 
         Object dataExpirationMetaData = metaData.get("com.mixpanel.android.MPConfig.DataExpiration");
         long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
@@ -239,13 +231,6 @@ public class MPConfig {
             setGroupsEndpoint(noUseIpAddressForGeolocationSetting ? groupsEndpoint : getEndPointWithIpTrackingParam(groupsEndpoint, getUseIpAddressForGeolocation()));
         } else {
             setGroupsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
-        }
-
-        String decideEndpoint = metaData.getString("com.mixpanel.android.MPConfig.DecideEndpoint");
-        if (decideEndpoint != null) {
-            setDecideEndpoint(decideEndpoint);
-        } else {
-            setDecideEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
         MPLog.v(LOGTAG, toString());
@@ -298,12 +283,13 @@ public class MPConfig {
         return mEventsEndpoint;
     }
 
+    public boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
+
     // In parity with iOS SDK
     public void setServerURL(String serverURL) {
         setEventsEndpointWithBaseURL(serverURL);
         setPeopleEndpointWithBaseURL(serverURL);
         setGroupsEndpointWithBaseURL(serverURL);
-        setDecideEndpointWithBaseURL(serverURL);
     }
 
     private String getEndPointWithIpTrackingParam(String endPoint, boolean ifUseIpAddressForGeolocation) {
@@ -348,19 +334,6 @@ public class MPConfig {
         mGroupsEndpoint = groupsEndpoint;
     }
 
-    // Preferred URL for pulling decide data
-    public String getDecideEndpoint() {
-        return mDecideEndpoint;
-    }
-
-    private void setDecideEndpointWithBaseURL(String baseURL) {
-        setDecideEndpoint(baseURL + MPConstants.URL.DECIDE);
-    }
-
-    private void setDecideEndpoint(String decideEndpoint) {
-        mDecideEndpoint = decideEndpoint;
-    }
-
     public int getMinimumSessionDuration() {
         return mMinSessionDuration;
     }
@@ -371,10 +344,6 @@ public class MPConfig {
 
     public boolean getDisableExceptionHandler() {
         return mDisableExceptionHandler;
-    }
-
-    public boolean getDisableDecideChecker() {
-        return mDisableDecideChecker;
     }
 
     private boolean getUseIpAddressForGeolocation() {
@@ -393,6 +362,9 @@ public class MPConfig {
         MPLog.setLevel(DEBUG ? MPLog.VERBOSE : MPLog.NONE);
     }
 
+    public void setTrackAutomaticEvents(boolean trackAutomaticEvents) {
+        mTrackAutomaticEvents = trackAutomaticEvents;
+    }
     // Pre-configured package name for resources, if they differ from the application package name
     //
     // mContext.getPackageName() actually returns the "application id", which
@@ -439,6 +411,7 @@ public class MPConfig {
     @Override
     public String toString() {
         return "Mixpanel (" + VERSION + ") configured with:\n" +
+                "    TrackAutomaticEvents: " + getTrackAutomaticEvents() + "\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
                 "    FlushInterval " + getFlushBatchSize() + "\n" +
@@ -449,8 +422,6 @@ public class MPConfig {
                 "    EnableDebugLogging " + DEBUG + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
                 "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
-                "    DecideEndpoint " + getDecideEndpoint() + "\n" +
-                "    DisableDecideChecker " + getDisableDecideChecker() + "\n" +
                 "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
                 "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
                 "    DisableExceptionHandler: " + getDisableExceptionHandler() + "\n" +
@@ -463,13 +434,12 @@ public class MPConfig {
     private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private int mMaximumDatabaseLimit;
-    private final boolean mDisableDecideChecker;
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableExceptionHandler;
+    private boolean mTrackAutomaticEvents = true;
     private String mEventsEndpoint;
     private String mPeopleEndpoint;
     private String mGroupsEndpoint;
-    private String mDecideEndpoint;
     private int mFlushBatchSize;
 
     private final String mResourcePackageName;

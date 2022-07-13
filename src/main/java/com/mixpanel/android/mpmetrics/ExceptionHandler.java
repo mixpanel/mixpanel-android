@@ -40,13 +40,6 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
             }
         });
 
-        MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-            @Override
-            public void process(MixpanelAPI mixpanel) {
-                mixpanel.flushNoDecideCheck();
-            }
-        });
-
         if (mDefaultExceptionHandler != null) {
             mDefaultExceptionHandler.uncaughtException(t, e);
         } else {
