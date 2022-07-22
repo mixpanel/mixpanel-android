@@ -138,11 +138,11 @@ public class HttpTest {
             }
 
             @Override
-            protected boolean belowMemThreshold() {
+            protected boolean aboveMemThreshold() {
                 if (mForceOverMemThreshold) {
-                    return false;
+                    return true;
                 } else {
-                    return super.belowMemThreshold();
+                    return super.aboveMemThreshold();
                 }
             }
         };

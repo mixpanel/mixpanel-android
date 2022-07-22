@@ -584,6 +584,38 @@ public class MixpanelAPI {
     }
 
     /**
+     * Set maximum number of events/updates to send in a single network request
+     *
+     * @param flushBatchSize  int, the number of events to be flushed at a time, defaults to 50
+     */
+    public void setFlushBatchSize(int flushBatchSize) {
+        mConfig.setFlushBatchSize(flushBatchSize);
+    }
+
+    /**
+     * Get maximum number of events/updates to send in a single network request
+     */
+    public int getFlushBatchSize() {
+        return mConfig.getFlushBatchSize();
+    }
+
+    /**
+     * Set an integer number of bytes, the maximum size limit to the Mixpanel database.
+     *
+     * @param maximumDatabaseLimit an integer number of bytes, the maximum size limit to the Mixpanel database.
+     */
+    public void setMaximumDatabaseLimit(int maximumDatabaseLimit) {
+        mConfig.setMaximumDatabaseLimit(maximumDatabaseLimit);
+    }
+
+    /**
+     * Get  the maximum size limit to the Mixpanel database.
+     */
+    public int getMaximumDatabaseLimit() {
+        return mConfig.getMaximumDatabaseLimit();
+    }
+
+    /**
      * Set the base URL used for Mixpanel API requests.
      * Useful if you need to proxy Mixpanel requests. Defaults to https://api.mixpanel.com.
      * To route data to Mixpanel's EU servers, set to https://api-eu.mixpanel.com
@@ -593,6 +625,7 @@ public class MixpanelAPI {
     public void setServerURL(String serverURL) {
         mConfig.setServerURL(serverURL);
     }
+
 
     /**
      * This function creates a distinct_id alias from alias to original. If original is null, then it will create an alias
