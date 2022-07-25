@@ -174,11 +174,12 @@ import com.mixpanel.android.util.MPLog;
             }
         }
 
-        public boolean belowMemThreshold() {
+        public boolean aboveMemThreshold() {
             if (mDatabaseFile.exists()) {
-                return Math.max(mDatabaseFile.getUsableSpace(), mConfig.getMinimumDatabaseLimit()) >= mDatabaseFile.length();
+                return mDatabaseFile.length() > Math.max(mDatabaseFile.getUsableSpace(), mConfig.getMinimumDatabaseLimit()) ||
+                        mDatabaseFile.length() > mConfig.getMaximumDatabaseLimit();
             }
-            return true;
+            return false;
         }
 
         private void migrateTableFrom4To5(SQLiteDatabase db) {
@@ -316,8 +317,9 @@ import com.mixpanel.android.util.MPLog;
      */
     public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
         // we are aware of the race condition here, but what can we do..?
-        if (!this.belowMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+        if (this.aboveMemThreshold()) {
+            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                    "the data was over the maximum size limit so it was discarded");
             return DB_OUT_OF_MEMORY_ERROR;
         }
 
@@ -370,8 +372,9 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int pushAnonymousUpdatesToPeopleDb(String token, String distinctId) {
-        if (!this.belowMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+        if (this.aboveMemThreshold()) {
+            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                    "the data was over the maximum size limit so it was discarded");
             return DB_OUT_OF_MEMORY_ERROR;
         }
         Cursor selectCursor = null;
@@ -440,8 +443,9 @@ import com.mixpanel.android.util.MPLog;
      * on failure
      */
     /* package */ int rewriteEventDataWithProperties(Map<String, String> properties, String token) {
-        if (!this.belowMemThreshold()) {
-            MPLog.e(LOGTAG, "There is not enough space left on the device to store Mixpanel data, so data was discarded");
+        if (this.aboveMemThreshold()) {
+            MPLog.e(LOGTAG, "There is not enough space left on the device or " +
+                    "the data was over the maximum size limit so it was discarded");
             return DB_OUT_OF_MEMORY_ERROR;
         }
         Cursor selectCursor = null;
@@ -643,7 +647,7 @@ import com.mixpanel.android.util.MPLog;
                 queueCountQuery.append(" AND " + KEY_AUTOMATIC_DATA + " = 0");
             }
 
-            rawDataQuery.append("ORDER BY " + KEY_CREATED_AT + " ASC LIMIT 50");
+            rawDataQuery.append("ORDER BY " + KEY_CREATED_AT + " ASC LIMIT " + Integer.toString(mDb.mConfig.getFlushBatchSize()));
             c = db.rawQuery(rawDataQuery.toString(), null);
 
             queueCountCursor = db.rawQuery(queueCountQuery.toString(), null);
@@ -700,7 +704,7 @@ import com.mixpanel.android.util.MPLog;
     }
 
     /* For testing use only, do not call from in production code */
-    protected boolean belowMemThreshold() {
-        return mDb.belowMemThreshold();
+    protected boolean aboveMemThreshold() {
+        return mDb.aboveMemThreshold();
     }
 }

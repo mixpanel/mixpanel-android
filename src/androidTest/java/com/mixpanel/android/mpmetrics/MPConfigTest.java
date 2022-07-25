@@ -19,24 +19,6 @@ public class MPConfigTest {
     public static final String DISABLE_VIEW_CRAWLER_METADATA_KEY = "com.mixpanel.android.MPConfig.DisableViewCrawler";
 
     @Test
-    public void testSetServerURL() throws Exception {
-        final Bundle metaData = new Bundle();
-        MPConfig config = mpConfig(metaData);
-        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
-        // default Mixpanel endpoint
-        assertEquals("https://api.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
-        assertEquals("https://api.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
-        assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
-        assertEquals("https://api.mixpanel.com/decide", config.getDecideEndpoint());
-
-        mixpanelAPI.setServerURL("https://api-eu.mixpanel.com");
-        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
-        assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
-        assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
-        assertEquals("https://api-eu.mixpanel.com/decide", config.getDecideEndpoint());
-    }
-
-    @Test
     public void testSetUseIpAddressForGeolocation() {
         final Bundle metaData = new Bundle();
         metaData.putString("com.mixpanel.android.MPConfig.EventsEndpoint", "https://api.mixpanel.com/track/?ip=1");
@@ -102,6 +84,23 @@ public class MPConfigTest {
         assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
     }
 
+    public void testSetServerURL() throws Exception {
+        final Bundle metaData = new Bundle();
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+        // default Mixpanel endpoint
+        assertEquals("https://api.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://api.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://api.mixpanel.com/decide", config.getDecideEndpoint());
+
+        mixpanelAPI.setServerURL("https://api-eu.mixpanel.com");
+        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/decide", config.getDecideEndpoint());
+    }
+
     @Test
     public void testEndPointAndGeoSettingBothReadFromConfigFalse() {
         final Bundle metaData = new Bundle();
@@ -141,6 +140,46 @@ public class MPConfigTest {
         assertTrue(config.DEBUG);
         mixpanelAPI.setEnableLogging(false);
         assertFalse(config.DEBUG);
+    }
+
+
+
+    @Test
+    public void testSetFlushBatchSize() {
+        final Bundle metaData = new Bundle();
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+        mixpanelAPI.setFlushBatchSize(10);
+        assertEquals(10, config.getFlushBatchSize());
+        mixpanelAPI.setFlushBatchSize(100);
+        assertEquals(100, config.getFlushBatchSize());
+    }
+
+    @Test
+    public void testSetFlushBatchSize2() {
+        final Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.FlushBatchSize", 5);
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+        assertEquals(5, mixpanelAPI.getFlushBatchSize());
+    }
+
+    @Test
+    public void testSetMaximumDatabaseLimit() {
+        final Bundle metaData = new Bundle();
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+        mixpanelAPI.setMaximumDatabaseLimit(10000);
+        assertEquals(10000, config.getMaximumDatabaseLimit());
+    }
+
+    @Test
+    public void testSetMaximumDatabaseLimit2() {
+        final Bundle metaData = new Bundle();
+        metaData.putInt("com.mixpanel.android.MPConfig.MaximumDatabaseLimit", 100000000);
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+        assertEquals(100000000, mixpanelAPI.getMaximumDatabaseLimit());
     }
 
     private MPConfig mpConfig(final Bundle metaData) {

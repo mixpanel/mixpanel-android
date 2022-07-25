@@ -35,6 +35,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dt>com.mixpanel.android.MPConfig.FlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
  *
+ *     <dt>com.mixpanel.android.MPConfig.FlushBatchSize</dt>
+ *     <dd>Maximum number of events/updates to send in a single network request</dd>
+ *
  *     <dt>com.mixpanel.android.MPConfig.FlushOnBackground</dt>
  *     <dd>A boolean value. If false, the library will not flush the event and people queues when the app goes into the background. Defaults to true.</dd>
  *
@@ -48,6 +51,9 @@ import javax.net.ssl.SSLSocketFactory;
  *     <dd>An integer number of bytes. Mixpanel attempts to limit the size of its persistent data
  *          queue based on the storage capacity of the device, but will always allow queuing below this limit. Higher values
  *          will take up more storage even when user storage is very full.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.MaximumDatabaseLimit</dt>
+ *     <dd>An integer number of bytes, the maximum size limit to the Mixpanel database. </dd>
  *
  *     <dt>com.mixpanel.android.MPConfig.ResourcePackageName</dt>
  *     <dd>A string java package name. Defaults to the package name of the Application. Users should set if the package name of their R class is different from the application package name due to application id settings.</dd>
@@ -183,8 +189,10 @@ public class MPConfig {
 
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
+        mFlushBatchSize = metaData.getInt("com.mixpanel.android.MPConfig.FlushBatchSize", 50); // flush 50 events at a time by default
         mFlushOnBackground = metaData.getBoolean("com.mixpanel.android.MPConfig.FlushOnBackground", true);
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
+        mMaximumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MaximumDatabaseLimit", Integer.MAX_VALUE); // 2 Gb
         mResourcePackageName = metaData.getString("com.mixpanel.android.MPConfig.ResourcePackageName"); // default is null
         mDisableDecideChecker = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableDecideChecker", false);
         mDisableAppOpenEvent = metaData.getBoolean("com.mixpanel.android.MPConfig.DisableAppOpenEvent", true);
@@ -258,12 +266,28 @@ public class MPConfig {
         return mFlushOnBackground;
     }
 
+    // Maximum number of events/updates to send in a single network request
+    public int getFlushBatchSize() {
+        return mFlushBatchSize;
+    }
+
+
+    public void setFlushBatchSize(int flushBatchSize) {
+        mFlushBatchSize = flushBatchSize;
+    }
+
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
     public long getDataExpiration() {
         return mDataExpiration;
     }
 
     public int getMinimumDatabaseLimit() { return mMinimumDatabaseLimit; }
+
+    public int getMaximumDatabaseLimit() { return mMaximumDatabaseLimit; }
+
+    public void setMaximumDatabaseLimit(int maximumDatabaseLimit) {
+        mMaximumDatabaseLimit = maximumDatabaseLimit;
+    }
 
     public boolean getDisableAppOpenEvent() {
         return mDisableAppOpenEvent;
@@ -417,8 +441,10 @@ public class MPConfig {
         return "Mixpanel (" + VERSION + ") configured with:\n" +
                 "    BulkUploadLimit " + getBulkUploadLimit() + "\n" +
                 "    FlushInterval " + getFlushInterval() + "\n" +
+                "    FlushInterval " + getFlushBatchSize() + "\n" +
                 "    DataExpiration " + getDataExpiration() + "\n" +
                 "    MinimumDatabaseLimit " + getMinimumDatabaseLimit() + "\n" +
+                "    MaximumDatabaseLimit " + getMaximumDatabaseLimit() + "\n" +
                 "    DisableAppOpenEvent " + getDisableAppOpenEvent() + "\n" +
                 "    EnableDebugLogging " + DEBUG + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
@@ -436,6 +462,7 @@ public class MPConfig {
     private final boolean mFlushOnBackground;
     private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;
+    private int mMaximumDatabaseLimit;
     private final boolean mDisableDecideChecker;
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableExceptionHandler;
@@ -443,6 +470,7 @@ public class MPConfig {
     private String mPeopleEndpoint;
     private String mGroupsEndpoint;
     private String mDecideEndpoint;
+    private int mFlushBatchSize;
 
     private final String mResourcePackageName;
     private final int mMinSessionDuration;
