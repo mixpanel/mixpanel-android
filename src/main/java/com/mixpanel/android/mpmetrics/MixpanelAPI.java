@@ -594,6 +594,8 @@ public class MixpanelAPI {
 
     /**
      * Get maximum number of events/updates to send in a single network request
+     *
+     * @return the integer number of events to be flushed at a time
      */
     public int getFlushBatchSize() {
         return mConfig.getFlushBatchSize();
@@ -610,6 +612,8 @@ public class MixpanelAPI {
 
     /**
      * Get  the maximum size limit to the Mixpanel database.
+     *
+     * @return an integer number of bytes, the maximum size limit to the Mixpanel database.
      */
     public int getMaximumDatabaseLimit() {
         return mConfig.getMaximumDatabaseLimit();
