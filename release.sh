@@ -146,6 +146,7 @@ printf '\n\n\n'
 
 read -r -p "Does this look right to you? [y/n]: " key
 if [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+    git pull
     git commit -am "Update master with next snasphot version $nextSnapshotVersion"
     git push origin master
 else
