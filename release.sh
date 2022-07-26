@@ -54,6 +54,13 @@ restoreFiles () {
     git checkout -- README.md
 }
 
+read -r -p "Have you added label to all PRs and they have been merged into master? [y/n]: " key
+if ! [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+    printf "\nBummer! Aborting release...\n"
+    exit
+fi
+
+
 # find release version: if no args we grab gradle.properties without -SNAPSHOT
 if [ -z "$1" ]
   then
@@ -114,12 +121,12 @@ fi
 # remove backup files
 cleanUp
 
-# # upload library to maven
-# printf "\n\n${YELLOW}Uploading archives...${NC}\n"
-# if ! ./gradlew uploadArchives ; then
-#     printf "${RED}Err.. Seems there was a problem runing ./gradlew uploadArchives\n${NC}"
-#     abort
-# fi
+# upload library to maven
+printf "\n\n${YELLOW}Uploading archives...${NC}\n"
+if ! ./gradlew uploadArchives ; then
+    printf "${RED}Err.. Seems there was a problem runing ./gradlew uploadArchives\n${NC}"
+    abort
+fi
 
 read -r -p "Continue pushing to github? [y/n]: " key
 if ! [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -144,7 +151,7 @@ sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
 git --no-pager diff
 printf '\n\n\n'
 
-read -r -p "Does this look right to you? [y/n]: " key
+read -r -p "Does this look right to you and the github action for the release has finished? [y/n]: " key
 if [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
     git pull
     git commit -am "Update master with next snasphot version $nextSnapshotVersion"
