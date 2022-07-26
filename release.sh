@@ -12,18 +12,18 @@ RED='\033[0;31m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
 
-if [ ! -f gradle.properties ]; then
-    printf "${RED}gradle.properties was not found. Make sure you are running this script from its root folder${NC}\n" 
-    exit
-fi
-if [ ! -f ~/.gradle/gradle.properties.bak ]; then
-    printf "${RED}~/.gradle/gradle.properties.bak was not found${NC}\n" 
-    exit
-fi
-if [[ ! -z $(git status -s) ]]; then
-    printf "${RED}You have unstaged/untracked changes${NC}\n"
-    exit
-fi
+# if [ ! -f gradle.properties ]; then
+#     printf "${RED}gradle.properties was not found. Make sure you are running this script from its root folder${NC}\n" 
+#     exit
+# fi
+# if [ ! -f ~/.gradle/gradle.properties.bak ]; then
+#     printf "${RED}~/.gradle/gradle.properties.bak was not found${NC}\n" 
+#     exit
+# fi
+# if [[ ! -z $(git status -s) ]]; then
+#     printf "${RED}You have unstaged/untracked changes${NC}\n"
+#     exit
+# fi
 
 abort () {
     restoreFiles
@@ -114,12 +114,12 @@ fi
 # remove backup files
 cleanUp
 
-# upload library to maven
-printf "\n\n${YELLOW}Uploading archives...${NC}\n"
-if ! ./gradlew uploadArchives ; then
-    printf "${RED}Err.. Seems there was a problem runing ./gradlew uploadArchives\n${NC}"
-    abort
-fi
+# # upload library to maven
+# printf "\n\n${YELLOW}Uploading archives...${NC}\n"
+# if ! ./gradlew uploadArchives ; then
+#     printf "${RED}Err.. Seems there was a problem runing ./gradlew uploadArchives\n${NC}"
+#     abort
+# fi
 
 read -r -p "Continue pushing to github? [y/n]: " key
 if ! [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
@@ -130,7 +130,7 @@ fi
 printf "\n\n${YELLOW}Pushing changes...${NC}\n"
 git commit -am "New release: $releaseVersion"
 # push changes
-git push origin $releaseBranch
+git push origin $releaseBranchx
 
 # create new tag
 newTag=v$releaseVersion
