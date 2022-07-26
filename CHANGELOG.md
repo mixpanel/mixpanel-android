@@ -2,6 +2,35 @@
 
 ## [v6.5.0](https://github.com/mixpanel/mixpanel-android/tree/v6.5.0) (2022-07-26)
 
+### Enhancements
+
+- Add the following new configs for you to optimize the Mixpanel tracking:
+
+```   /**
+     * Set maximum number of events/updates to send in a single network request
+     *
+     * @param flushBatchSize  int, the number of events to be flushed at a time, defaults to 50
+     */
+    public void setFlushBatchSize(int flushBatchSize);
+
+    /**
+     * Set an integer number of bytes, the maximum size limit to the Mixpanel database.
+     *
+     * @param maximumDatabaseLimit an integer number of bytes, the maximum size limit to the Mixpanel database.
+     */
+    public void setMaximumDatabaseLimit(int maximumDatabaseLimit);
+```
+
+You can also set them in `AndroidManifest.xml`, i.e.
+```
+        <meta-data android:name="com.mixpanel.android.MPConfig.FlushBatchSize"
+            android:value="5" />
+
+        <meta-data android:name="com.mixpanel.android.MPConfig.MaximumDatabaseLimit"
+            android:value="100000000" />
+```
+
+
 #
 
 ## [v6.4.0](https://github.com/mixpanel/mixpanel-android/tree/v6.4.0) (2022-06-30)
