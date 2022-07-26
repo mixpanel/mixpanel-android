@@ -2,10 +2,6 @@
 
 ## [v6.5.1](https://github.com/mixpanel/mixpanel-android/tree/v6.5.1) (2022-07-26)
 
-#
-
-## [v6.5.0](https://github.com/mixpanel/mixpanel-android/tree/v6.5.0) (2022-07-26)
-
 ### Enhancements
 
 - Add the following new configs for you to optimize the Mixpanel tracking ( [\#795](https://github.com/mixpanel/mixpanel-android/pull/795)): 
