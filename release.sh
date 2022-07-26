@@ -54,7 +54,7 @@ restoreFiles () {
     git checkout -- README.md
 }
 
-read -r -p "Have you added label to all PRs and they have been merged into master? [y/n]: " key
+read -r -p "Have you added labels to all PRs and they have been merged into master? [y/n]: " key
 if ! [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
     printf "\nBummer! Aborting release...\n"
     exit
@@ -151,7 +151,7 @@ sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
 git --no-pager diff
 printf '\n\n\n'
 
-read -r -p "Does this look right to you and the github action for the release has finished? [y/n]: " key
+read -r -p "Does this look right to you and the github action 'Release' has finished? [y/n]: " key
 if [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
     git pull
     git commit -am "Update master with next snasphot version $nextSnapshotVersion"
