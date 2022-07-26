@@ -4,7 +4,7 @@
 
 ### Enhancements
 
-- Add the following new configs for you to optimize the Mixpanel tracking:
+- Add the following new configs for you to optimize the Mixpanel tracking ( [\#795](https://github.com/mixpanel/mixpanel-android/pull/795)): 
 
 ```   /**
      * Set maximum number of events/updates to send in a single network request
