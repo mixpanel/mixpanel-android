@@ -37,7 +37,7 @@ You can also set them in `AndroidManifest.xml`, i.e.
 
 ### Enhancements
 
-- Support defining multiple instances by specifying `instanceName` in `getInstance\(\)` [\#792](https://github.com/mixpanel/mixpanel-android/pull/792)
+- Support defining multiple instances by specifying `instanceName` in `getInstance` [\#792](https://github.com/mixpanel/mixpanel-android/pull/792)
 
 This release adds the following APIs to MixpanelAPI:
 ```
