@@ -84,18 +84,18 @@ public class AutomaticEventsTest {
         InstrumentationRegistry.getInstrumentation().getContext().deleteDatabase("mixpanel");
         mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+            public void cleanupEvents(String last_id, Table table, String token) {
                 if (token.equalsIgnoreCase(TOKEN)) {
-                    super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                    super.cleanupEvents(last_id, table, token);
                 }
             }
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 if (token.equalsIgnoreCase(TOKEN)) {
                     mTrackedEvents++;
                     mLatch.countDown();
-                    return super.addJSON(j, token, table, isAutomaticRecord);
+                    return super.addJSON(j, token, table);
                 }
 
                 return 1;
@@ -178,7 +178,7 @@ public class AutomaticEventsTest {
 
     @Test
     public void testDisableAutomaticEvents() throws InterruptedException {
-        int calls = 3; // First Time Open, App Update, An Event Three
+        int calls = 1;
         setUpInstance(false);
         mLatch = new CountDownLatch(calls);
         mCleanMixpanelAPI.track("An Event Three");
@@ -192,7 +192,7 @@ public class AutomaticEventsTest {
         assertEquals("An Event Three", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        String[] noEvents = mockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN, false);
+        String[] noEvents = mockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN);
         assertNull(noEvents);
 
         mCleanMixpanelAPI.flush();
@@ -203,8 +203,9 @@ public class AutomaticEventsTest {
     public void testAutomaticMultipleInstances() throws InterruptedException {
         final String SECOND_TOKEN = "Automatic Events Token Two";
         int initialCalls = 2;
-        setUpInstance(false);
+        setUpInstance(true);
         mLatch = new CountDownLatch(initialCalls);
+
         final CountDownLatch secondLatch = new CountDownLatch(initialCalls);
         final BlockingQueue<String> secondPerformedRequests = new LinkedBlockingQueue<>();
 
@@ -229,17 +230,17 @@ public class AutomaticEventsTest {
 
         final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+            public void cleanupEvents(String last_id, Table table, String token) {
                 if (token.equalsIgnoreCase(SECOND_TOKEN)) {
-                    super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                    super.cleanupEvents(last_id, table, token);
                 }
             }
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 if (token.equalsIgnoreCase(SECOND_TOKEN)) {
                     secondLatch.countDown();
-                    return super.addJSON(j, token, table, isAutomaticRecord);
+                    return super.addJSON(j, token, table);
                 }
 
                 return 1;
@@ -272,21 +273,21 @@ public class AutomaticEventsTest {
             }
         };
 
-        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), SECOND_TOKEN, true) {
+        MixpanelAPI mpSecondInstance = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), SECOND_TOKEN, false) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
                 return mpSecondAnalyticsMessages;
             }
         };
-
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(initialCalls, mTrackedEvents);
-
         mLatch = new CountDownLatch(MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls);
         for (int i = 0; i < MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()).getBulkUploadLimit() - initialCalls; i++) {
             mCleanMixpanelAPI.track("Track event " + i);
         }
+
         assertTrue(mLatch.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
+        mCleanMixpanelAPI.flush();
 
         assertEquals(AutomaticEvents.FIRST_OPEN, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(AutomaticEvents.APP_UPDATED, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
@@ -295,7 +296,6 @@ public class AutomaticEventsTest {
         }
 
         assertNull(mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-
         assertNull(secondPerformedRequests.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
         mpSecondInstance.flush();

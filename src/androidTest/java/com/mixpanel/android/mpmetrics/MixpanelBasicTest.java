@@ -98,34 +98,34 @@ public class MixpanelBasicTest {
         JSONObject after = new JSONObject(afterMap);
 
         MPDbAdapter adapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), "DeleteTestDB");
-        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
-        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
-        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.GROUPS, false);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.GROUPS);
         adapter.deleteDB();
 
-        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
+        String[] emptyEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN");
         assertNull(emptyEventsData);
-        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
+        String[] emptyPeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN");
         assertNull(emptyPeopleData);
-        String[] emptyGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN", true);
+        String[] emptyGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN");
         assertNull(emptyGroupsData);
 
-        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS, false);
-        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE, false);
-        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.GROUPS, false);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.EVENTS);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.PEOPLE);
+        adapter.addJSON(after, "ATOKEN", MPDbAdapter.Table.GROUPS);
 
         try {
-            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN", true);
+            String[] someEventsData = adapter.generateDataString(MPDbAdapter.Table.EVENTS, "ATOKEN");
             JSONArray someEvents = new JSONArray(someEventsData[1]);
             assertEquals(someEvents.length(), 1);
             assertEquals(someEvents.getJSONObject(0).get("added"), "after");
 
-            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN", true);
+            String[] somePeopleData = adapter.generateDataString(MPDbAdapter.Table.PEOPLE, "ATOKEN");
             JSONArray somePeople = new JSONArray(somePeopleData[1]);
             assertEquals(somePeople.length(), 1);
             assertEquals(somePeople.getJSONObject(0).get("added"), "after");
 
-            String[] someGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN", true);
+            String[] someGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN");
             JSONArray someGroups = new JSONArray(somePeopleData[1]);
             assertEquals(someGroups.length(), 1);
             assertEquals(someGroups.getJSONObject(0).get("added"), "after");        } catch (JSONException e) {
@@ -139,13 +139,9 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter explodingDb = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                if (!isAutomatic) {
-                    messages.add(message);
-                    throw new RuntimeException("BANG!");
-                }
-
-                return 0;
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+                messages.add(message);
+                throw new RuntimeException("BANG!");
             }
         };
 
@@ -189,10 +185,8 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                if (!isAutomatic) {
-                    messages.add(message);
-                }
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+                messages.add(message);
 
                 return 1;
             }
@@ -460,13 +454,13 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
                     anonymousUpdates.add(j);
                 } else if (table == Table.PEOPLE) {
                     peopleUpdates.add(j);
                 }
-                return super.addJSON(j, token, table, isAutomaticRecord);
+                return super.addJSON(j, token, table);
             }
         };
         final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
@@ -517,10 +511,10 @@ public class MixpanelBasicTest {
         assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
         assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
-        String[] storedAnonymous = mockAdapter.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token,false);
+        String[] storedAnonymous = mockAdapter.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
         assertNull(storedAnonymous);
 
-        String[] storedPeople = mockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, token,false);
+        String[] storedPeople = mockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, token);
         assertEquals(6, Integer.valueOf(storedPeople[2]).intValue());
         JSONArray data = new JSONArray(storedPeople[1]);
         for (int i=0; i < data.length(); i++) {
@@ -595,17 +589,15 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomaticEvent) {
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
                 try {
-                    if (!isAutomaticEvent) {
-                        messages.put("TABLE " + table.getName());
-                        messages.put(message.toString());
-                    }
+                    messages.put("TABLE " + table.getName());
+                    messages.put(message.toString());
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
 
-                return super.addJSON(message, token, table, isAutomaticEvent);
+                return super.addJSON(message, token, table);
             }
         };
         mockAdapter.cleanupEvents(Long.MAX_VALUE, MPDbAdapter.Table.EVENTS);
@@ -1269,10 +1261,8 @@ public class MixpanelBasicTest {
 
                 final MPDbAdapter dbMock = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
                     @Override
-                    public int addJSON(JSONObject message, String token, MPDbAdapter.Table table, boolean isAutomatic) {
-                        if (!isAutomatic) {
-                            mMessages.add(message);
-                        }
+                    public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+                        mMessages.add(message);
 
                         return 1;
                     }
@@ -1355,13 +1345,13 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
                     anonymousUpdates.add(j);
                 } else if (table == Table.PEOPLE) {
                     identifiedUpdates.add(j);
                 }
-                return super.addJSON(j, token, table, isAutomaticRecord);
+                return super.addJSON(j, token, table);
             }
         };
 
@@ -1412,13 +1402,13 @@ public class MixpanelBasicTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
                     anonymousUpdates.add(j);
                 } else if (table == Table.PEOPLE) {
                     identifiedUpdates.add(j);
                 }
-                return super.addJSON(j, token, table, isAutomaticRecord);
+                return super.addJSON(j, token, table);
             }
         };
 
@@ -1502,9 +1492,9 @@ public class MixpanelBasicTest {
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 storedJsons.add(j);
-                return super.addJSON(j, token, table, isAutomaticRecord);
+                return super.addJSON(j, token, table);
             }
         };
         final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {

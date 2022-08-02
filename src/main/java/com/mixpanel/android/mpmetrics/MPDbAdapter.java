@@ -311,11 +311,10 @@ import com.mixpanel.android.util.MPLog;
      * @param j the JSON to record
      * @param token token of the project
      * @param table the table to insert into, one of "events", "people", "groups" or "anonymous_people"
-     * @param isAutomaticRecord mark the record as an automatic event or not
      * @return the number of rows in the table, or DB_OUT_OF_MEMORY_ERROR/DB_UPDATE_ERROR
      * on failure
      */
-    public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+    public int addJSON(JSONObject j, String token, Table table) {
         // we are aware of the race condition here, but what can we do..?
         if (this.aboveMemThreshold()) {
             MPLog.e(LOGTAG, "There is not enough space left on the device or " +
@@ -334,7 +333,6 @@ import com.mixpanel.android.util.MPLog;
             final ContentValues cv = new ContentValues();
             cv.put(KEY_DATA, j.toString());
             cv.put(KEY_CREATED_AT, System.currentTimeMillis());
-            cv.put(KEY_AUTOMATIC_DATA, isAutomaticRecord);
             cv.put(KEY_TOKEN, token);
             db.insert(tableName, null, cv);
 
@@ -509,18 +507,14 @@ import com.mixpanel.android.util.MPLog;
      * Removes events with an _id <= last_id from table
      * @param last_id the last id to delete
      * @param table the table to remove events from, one of "events", "people", "groups" or "anonymous_people"
-     * @param includeAutomaticEvents whether or not automatic events should be included in the cleanup
      */
-    public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+    public void cleanupEvents(String last_id, Table table, String token) {
         final String tableName = table.getName();
 
         try {
             final SQLiteDatabase db = mDb.getWritableDatabase();
             StringBuffer deleteQuery = new StringBuffer("_id <= " + last_id + " AND " + KEY_TOKEN + " = '" + token + "'");
 
-            if (!includeAutomaticEvents) {
-                deleteQuery.append(" AND " + KEY_AUTOMATIC_DATA + "=0");
-            }
             db.delete(tableName, deleteQuery.toString(), null);
         } catch (final SQLiteException e) {
             MPLog.e(LOGTAG, "Could not clean sent Mixpanel records from " + tableName + ". Re-initializing database.", e);
@@ -586,35 +580,6 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    /**
-     * Removes automatic events.
-     * @param token token of the project you want to remove automatic events from
-     */
-    public synchronized void cleanupAutomaticEvents(String token) {
-        cleanupAutomaticEvents(Table.EVENTS, token);
-        cleanupAutomaticEvents(Table.PEOPLE, token);
-        cleanupAutomaticEvents(Table.GROUPS, token);
-    }
-
-    private void cleanupAutomaticEvents(Table table, String token) {
-        final String tableName = table.getName();
-
-        try {
-            final SQLiteDatabase db = mDb.getWritableDatabase();
-            db.delete(tableName, KEY_AUTOMATIC_DATA + " = 1 AND " + KEY_TOKEN + " = '" + token + "'", null);
-        } catch (final SQLiteException e) {
-            MPLog.e(LOGTAG, "Could not clean automatic Mixpanel records from " + tableName + ". Re-initializing database.", e);
-
-            // We assume that in general, the results of a SQL exception are
-            // unrecoverable, and could be associated with an oversized or
-            // otherwise unusable DB. Better to bomb it and get back on track
-            // than to leave it junked up (and maybe filling up the disk.)
-            mDb.deleteDatabase();
-        } finally {
-            mDb.close();
-        }
-    }
-
     public void deleteDB() {
         mDb.deleteDatabase();
     }
@@ -625,12 +590,11 @@ import com.mixpanel.android.util.MPLog;
      *
      * @param table the table to read the JSON from, one of "events", "people", or "groups"
      * @param token the token of the project you want to retrieve the records for
-     * @param includeAutomaticEvents whether or not it should include pre-track records
      * @return String array containing the maximum ID, the data string
      * representing the events (or null if none could be successfully retrieved) and the total
      * current number of events in the queue.
      */
-    public String[] generateDataString(Table table, String token, boolean includeAutomaticEvents) {
+    public String[] generateDataString(Table table, String token) {
         Cursor c = null;
         Cursor queueCountCursor = null;
         String data = null;
@@ -642,10 +606,7 @@ import com.mixpanel.android.util.MPLog;
         try {
             StringBuffer rawDataQuery = new StringBuffer("SELECT * FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
             StringBuffer queueCountQuery = new StringBuffer("SELECT COUNT(*) FROM " + tableName + " WHERE " + KEY_TOKEN + " = '" + token + "' ");
-            if (!includeAutomaticEvents) {
-                rawDataQuery.append("AND " + KEY_AUTOMATIC_DATA + " = 0 ");
-                queueCountQuery.append(" AND " + KEY_AUTOMATIC_DATA + " = 0");
-            }
+
 
             rawDataQuery.append("ORDER BY " + KEY_CREATED_AT + " ASC LIMIT " + Integer.toString(mDb.mConfig.getFlushBatchSize()));
             c = db.rawQuery(rawDataQuery.toString(), null);

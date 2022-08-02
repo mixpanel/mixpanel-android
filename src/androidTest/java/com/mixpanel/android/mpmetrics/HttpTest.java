@@ -109,9 +109,9 @@ public class HttpTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+            public void cleanupEvents(String last_id, Table table, String token) {
                 mCleanupCalls.add("called");
-                super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                super.cleanupEvents(last_id, table, token);
             }
 
             @Override
