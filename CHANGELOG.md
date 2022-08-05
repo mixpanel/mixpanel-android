@@ -1,5 +1,13 @@
 #
 
+## [v6.5.2](https://github.com/mixpanel/mixpanel-android/tree/v6.5.2) (2022-08-05)
+
+### Fixes
+
+- Fix the crash in DevX tracking in debugging mode [\#797](https://github.com/mixpanel/mixpanel-android/pull/797)
+
+#
+
 ## [v6.5.1](https://github.com/mixpanel/mixpanel-android/tree/v6.5.1) (2022-07-26)
 
 ### Enhancements
@@ -1448,6 +1456,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
