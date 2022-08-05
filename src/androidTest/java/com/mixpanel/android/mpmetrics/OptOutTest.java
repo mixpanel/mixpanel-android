@@ -116,7 +116,7 @@ public class OptOutTest {
     @Test
     public void testOptOutDefaultFlag() throws InterruptedException {
         mCleanUpCalls = new CountDownLatch(2); // optOutTrack calls
-        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, true, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, true, null, true) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
@@ -146,7 +146,7 @@ public class OptOutTest {
     @Test
     public void testHasOptOutTrackingOrNot() throws InterruptedException {
         mCleanUpCalls = new CountDownLatch(4); // optOutTrack calls
-        MixpanelAPI mixpanel = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TOKEN", true, null) {
+        MixpanelAPI mixpanel = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TOKEN", true, null, true) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
@@ -177,7 +177,7 @@ public class OptOutTest {
     @Test
     public void testPeopleUpdates() throws InterruptedException, JSONException {
         mCleanUpCalls = new CountDownLatch(2);
-        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN,false, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN,false, null, true) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
@@ -220,7 +220,7 @@ public class OptOutTest {
         }
         assertEquals(0, mStoredPeopleUpdates.size());
         mMockAdapter = getMockDBAdapter();
-        assertNotNull(mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN, true));
+        assertNotNull(mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN));
 
         mCleanUpCalls = new CountDownLatch(2);
         mMixpanelAPI.optOutTracking();
@@ -229,7 +229,7 @@ public class OptOutTest {
             String test = mStoredPeopleUpdates.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS);
             assertNotNull(test);
         }
-        String[] data = mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN, true);
+        String[] data = mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN);
         JSONArray pendingPeopleUpdatesArray = new JSONArray(data[1]);
         assertEquals(2, pendingPeopleUpdatesArray.length());
         assertTrue(pendingPeopleUpdatesArray.getJSONObject(0).has("$delete")); // deleteUser
@@ -238,7 +238,7 @@ public class OptOutTest {
         mMixpanelAPI.getPeople().increment("optOutPropertyIncrement", 1);
         mMixpanelAPI.getPeople().append("optOutPropertyAppend", "append");
 
-        data = mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN, true);
+        data = mMockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, TOKEN);
         pendingPeopleUpdatesArray = new JSONArray(data[1]);
         assertEquals(2, pendingPeopleUpdatesArray.length());
 
@@ -280,7 +280,7 @@ public class OptOutTest {
         mMixpanelAPI.optOutTracking();
         mMockAdapter = getMockDBAdapter();
         assertTrue(mCleanUpCalls.await(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
-        assertNull(mMockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN, true));
+        assertNull(mMockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN));
 
         mMixpanelAPI.optInTracking();
         assertEquals("$opt_in", mStoredEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
@@ -294,7 +294,7 @@ public class OptOutTest {
      */
     @Test
     public void testTrackCalls() throws InterruptedException, JSONException {
-        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null) {
+        mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null, true) {
             @Override
             PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
                 mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
@@ -334,7 +334,7 @@ public class OptOutTest {
         assertEquals("Time Event", mStoredEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertNull(mStoredEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        String[] data = mMockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN, true);
+        String[] data = mMockAdapter.generateDataString(MPDbAdapter.Table.EVENTS, TOKEN);
         JSONArray pendingEventsArray = new JSONArray(data[1]);
         assertEquals(3, pendingEventsArray.length());
         assertEquals("$opt_in", pendingEventsArray.getJSONObject(0).getString("event"));
@@ -352,7 +352,7 @@ public class OptOutTest {
     }
 
     private void forceFlush() {
-        mAnalyticsMessages.postToServer(new AnalyticsMessages.FlushDescription(TOKEN, false));
+        mAnalyticsMessages.postToServer(new AnalyticsMessages.MixpanelDescription(TOKEN));
     }
 
     private MPDbAdapter getMockDBAdapter() {
@@ -367,12 +367,12 @@ public class OptOutTest {
             }
 
             @Override
-            public int addJSON(JSONObject j, String token, Table table, boolean isAutomaticRecord) {
+            public int addJSON(JSONObject j, String token, Table table) {
                 int result = 1;
                 if (token.equalsIgnoreCase(TOKEN)) {
-                    result = super.addJSON(j, token, table, isAutomaticRecord);
+                    result = super.addJSON(j, token, table);
                     try {
-                        if (!isAutomaticRecord && Table.EVENTS == table) {
+                        if (Table.EVENTS == table) {
                             mStoredEvents.put(j.getString("event"));
                         } else if (Table.PEOPLE == table) {
                             mStoredPeopleUpdates.put(j.toString());
