@@ -32,18 +32,13 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
         MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
             @Override
             public void process(MixpanelAPI mixpanel) {
-                try {
-                    final JSONObject messageProp = new JSONObject();
-                    messageProp.put(AutomaticEvents.APP_CRASHED_REASON, e.toString());
-                    mixpanel.track(AutomaticEvents.APP_CRASHED, messageProp, true);
-                } catch (JSONException e) {}
-            }
-        });
-
-        MixpanelAPI.allInstances(new MixpanelAPI.InstanceProcessor() {
-            @Override
-            public void process(MixpanelAPI mixpanel) {
-                mixpanel.flushNoDecideCheck();
+                if (mixpanel.getTrackAutomaticEvents()) {
+                    try {
+                        final JSONObject messageProp = new JSONObject();
+                        messageProp.put(AutomaticEvents.APP_CRASHED_REASON, e.toString());
+                        mixpanel.track(AutomaticEvents.APP_CRASHED, messageProp, true);
+                    } catch (JSONException e) {}
+                }
             }
         });
 

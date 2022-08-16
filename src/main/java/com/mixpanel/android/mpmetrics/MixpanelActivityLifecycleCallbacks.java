@@ -53,7 +53,7 @@ import java.lang.ref.WeakReference;
                     mIsForeground = false;
                     try {
                         double sessionLength = System.currentTimeMillis() - sStartSessionTime;
-                        if (sessionLength >= mConfig.getMinimumSessionDuration() && sessionLength < mConfig.getSessionTimeoutDuration()) {
+                        if (sessionLength >= mConfig.getMinimumSessionDuration() && sessionLength < mConfig.getSessionTimeoutDuration() && mMpInstance.getTrackAutomaticEvents()) {
                             double elapsedTime = sessionLength / 1000;
                             double elapsedTimeRounded = Math.round(elapsedTime * 10.0) / 10.0;
                             JSONObject sessionProperties = new JSONObject();

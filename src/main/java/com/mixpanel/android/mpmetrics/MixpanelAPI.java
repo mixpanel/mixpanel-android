@@ -40,7 +40,7 @@ import java.util.concurrent.Future;
 /**
  * Core class for interacting with Mixpanel Analytics.
  *
- * <p>Call {@link #getInstance(Context, String)} with
+ * <p>Call {@link #getInstance(Context, String, boolean)} with
  * your main application activity and your Mixpanel API token as arguments
  * an to get an instance you can use to report how users are using your
  * application.
@@ -109,28 +109,29 @@ public class MixpanelAPI {
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, null);
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, boolean trackAutomaticEvents) {
+        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, null, trackAutomaticEvents);
     }
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, instanceName);
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
     }
 
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
      */
-    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
         mContext = context;
         mToken = token;
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
+        mTrackAutomaticEvents = trackAutomaticEvents;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
         deviceInfo.put("$android_lib_version", MPConfig.VERSION);
@@ -161,29 +162,17 @@ public class MixpanelAPI {
         if (superProperties != null) {
             registerSuperProperties(superProperties);
         }
-        mDecideMessages = constructDecideUpdates(token);
-        // TODO reading persistent identify immediately forces the lazy load of the preferences, and defeats the
-        // purpose of PersistentIdentity's laziness.
-        String decideId = mPersistentIdentity.getPeopleDistinctId();
-        if (null == decideId) {
-            decideId = mPersistentIdentity.getEventsDistinctId();
-        }
-        mDecideMessages.setDistinctId(decideId);
 
         final boolean dbExists = MPDbAdapter.getInstance(mContext).getDatabaseFile().exists();
 
         registerMixpanelActivityLifecycleCallbacks();
 
-        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken)) {
+        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken) && mTrackAutomaticEvents) {
             track(AutomaticEvents.FIRST_OPEN, null, true);
             mPersistentIdentity.setHasLaunched(mToken);
         }
 
-        if (!mConfig.getDisableDecideChecker()) {
-            mMessages.installDecideCheck(mDecideMessages);
-        }
-
-        if (sendAppOpen()) {
+        if (sendAppOpen() && mTrackAutomaticEvents) {
             track("$app_open", null);
         }
 
@@ -195,7 +184,7 @@ public class MixpanelAPI {
             }
         }
 
-        if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code"))) {
+        if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code")) && mTrackAutomaticEvents) {
             try {
                 final JSONObject messageProps = new JSONObject();
                 messageProps.put(AutomaticEvents.VERSION_UPDATED, deviceInfo.get("$android_app_version"));
@@ -297,7 +286,7 @@ public class MixpanelAPI {
             peopleMessageProps.put("$distinct_id", distinctId);
             mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(peopleMessageProps, token));
         }
-        mMessages.postToServer(new AnalyticsMessages.FlushDescription(token, false));
+        mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(token));
     }
 
     /**
@@ -324,10 +313,12 @@ public class MixpanelAPI {
      * @param context The application context you are tracking
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token) {
-        return getInstance(context, token, false, null, null);
+    public static MixpanelAPI getInstance(Context context, String token, boolean trackAutomaticEvents) {
+        return getInstance(context, token, false, null, null, trackAutomaticEvents);
     }
 
     /**
@@ -356,10 +347,12 @@ public class MixpanelAPI {
      *     in the settings dialog.
      * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
      *      It is useful when you want more than one Mixpanel instance under the same project token
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, String instanceName) {
-        return getInstance(context, token, false, null, instanceName);
+    public static MixpanelAPI getInstance(Context context, String token, String instanceName, boolean trackAutomaticEvents) {
+        return getInstance(context, token, false, null, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -388,10 +381,12 @@ public class MixpanelAPI {
      *     in the settings dialog.
      * @param optOutTrackingDefault Whether or not Mixpanel can start tracking by default. See
      *     {@link #optOutTracking()}.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault) {
-        return getInstance(context, token, optOutTrackingDefault, null, null);
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, boolean trackAutomaticEvents) {
+        return getInstance(context, token, optOutTrackingDefault, null, null, trackAutomaticEvents);
     }
 
     /**
@@ -422,10 +417,12 @@ public class MixpanelAPI {
      *     {@link #optOutTracking()}.
      * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
         It is useful when you want more than one Mixpanel instance under the same project token.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, String instanceName) {
-        return getInstance(context, token, optOutTrackingDefault, null, instanceName);
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, String instanceName, boolean trackAutomaticEvents) {
+        return getInstance(context, token, optOutTrackingDefault, null, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -453,10 +450,12 @@ public class MixpanelAPI {
      * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
      *     in the settings dialog.
      * @param superProperties A JSONObject containing super properties to register.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties) {
-        return getInstance(context, token, false, superProperties, null);
+    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, boolean trackAutomaticEvents) {
+        return getInstance(context, token, false, superProperties, null, trackAutomaticEvents);
     }
 
     /**
@@ -486,10 +485,12 @@ public class MixpanelAPI {
      * @param superProperties A JSONObject containing super properties to register.
      * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
      *      It is useful when you want more than one Mixpanel instance under the same project token
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String instanceName) {
-        return getInstance(context, token, false, superProperties, instanceName);
+    public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        return getInstance(context, token, false, superProperties, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -521,9 +522,11 @@ public class MixpanelAPI {
      * @param superProperties A JSONObject containing super properties to register.
      * @param instanceName The name you want to uniquely identify the Mixpanel Instance.
      *      It is useful when you want more than one Mixpanel instance under the same project token
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     *                             include app sessions, first app opens, app updated, etc.
      * @return an instance of MixpanelAPI associated with your project
      */
-    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName) {
+    public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
         if (null == token || null == context) {
             return null;
         }
@@ -542,7 +545,7 @@ public class MixpanelAPI {
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties, instanceName);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
@@ -631,6 +634,7 @@ public class MixpanelAPI {
     }
 
 
+    public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
     /**
      * This function creates a distinct_id alias from alias to original. If original is null, then it will create an alias
      * to the current events distinct_id, which may be the distinct_id randomly generated by the Mixpanel library
@@ -721,11 +725,6 @@ public class MixpanelAPI {
             if(markAsUserId) {
                 mPersistentIdentity.markEventsUserIdPresent();
             }
-            String decideId = mPersistentIdentity.getPeopleDistinctId();
-            if (null == decideId) {
-                decideId = mPersistentIdentity.getEventsDistinctId();
-            }
-            mDecideMessages.setDistinctId(decideId);
 
             if (!distinctId.equals(currentEventsDistinctId)) {
                 try {
@@ -901,7 +900,7 @@ public class MixpanelAPI {
      */
     public void flush() {
         if (hasOptedOutTracking()) return;
-        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken));
+        mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(mToken));
     }
 
     /**
@@ -1341,7 +1340,8 @@ public class MixpanelAPI {
     }
     /**
      * Will return true if the user has opted out from tracking. See {@link #optOutTracking()} and
-     * {@link MixpanelAPI#getInstance(Context, String, boolean, JSONObject, String)} for more information.
+     * {@link
+     * MixpanelAPI#getInstance(Context, String, boolean, JSONObject, String, boolean)} for more information.
      *
      * @return true if user has opted out from tracking. Defaults to false.
      */
@@ -1581,7 +1581,6 @@ public class MixpanelAPI {
 
         /**
          * Return an instance of Mixpanel people with a temporary distinct id.
-         * Instances returned by withIdentity will not check decide with the given distinctId.
          *
          * @param distinctId Unique identifier (distinct_id) that the people object will have
          *
@@ -1795,9 +1794,6 @@ public class MixpanelAPI {
         return AnalyticsMessages.getInstance(mContext);
     }
 
-    /* package */ DecideMessages getDecideMessages() {
-        return mDecideMessages;
-    }
 
     /* package */ PersistentIdentity getPersistentIdentity(final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
         return getPersistentIdentity(context, referrerPreferences, token, null);
@@ -1827,11 +1823,6 @@ public class MixpanelAPI {
         return new PersistentIdentity(referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
     }
 
-    /* package */ DecideMessages constructDecideUpdates(final String token) {
-
-        return new DecideMessages(mContext, token);
-    }
-
     /* package */ boolean sendAppOpen() {
         return !mConfig.getDisableAppOpenEvent();
     }
@@ -1858,7 +1849,6 @@ public class MixpanelAPI {
          private void identify_people(String distinctId) {
              synchronized (mPersistentIdentity) {
                  mPersistentIdentity.setPeopleDistinctId(distinctId);
-                 mDecideMessages.setDistinctId(distinctId);
              }
              pushWaitingPeopleRecord(distinctId);
          }
@@ -2274,14 +2264,8 @@ public class MixpanelAPI {
         }
     }// GroupImpl
 
-    ////////////////////////////////////////////////////
-    protected void flushNoDecideCheck() {
-        if (hasOptedOutTracking()) return;
-        mMessages.postToServer(new AnalyticsMessages.FlushDescription(mToken, false));
-    }
-
     protected void track(String eventName, JSONObject properties, boolean isAutomaticEvent) {
-        if (hasOptedOutTracking() || (isAutomaticEvent && !mDecideMessages.shouldTrackAutomaticEvent())) {
+        if (hasOptedOutTracking() || (isAutomaticEvent && !mTrackAutomaticEvents)) {
             return;
         }
 
@@ -2432,11 +2416,11 @@ public class MixpanelAPI {
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
+    private final Boolean mTrackAutomaticEvents;
     private final String mToken;
     private final PeopleImpl mPeople;
     private final Map<String, GroupImpl> mGroups;
     private final PersistentIdentity mPersistentIdentity;
-    private final DecideMessages mDecideMessages;
     private final Map<String, String> mDeviceInfo;
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;

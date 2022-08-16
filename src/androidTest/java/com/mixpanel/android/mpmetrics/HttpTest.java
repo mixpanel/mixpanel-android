@@ -39,8 +39,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public class HttpTest {
     private Future<SharedPreferences> mMockPreferences;
-    private List<Object> mFlushResults, mDecideResults;
-    private BlockingQueue<String> mPerformRequestCalls, mDecideCalls;
+    private List<Object> mFlushResults;
+    private BlockingQueue<String> mPerformRequestCalls;
     private List<String> mCleanupCalls;
     private MixpanelAPI mMetrics;
     private volatile int mFlushInterval;
@@ -56,9 +56,7 @@ public class HttpTest {
         mMockPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
         mFlushResults = new ArrayList<Object>();
         mPerformRequestCalls = new LinkedBlockingQueue<String>();
-        mDecideCalls = new LinkedBlockingQueue<String>();
         mCleanupCalls = new ArrayList<String>();
-        mDecideResults = new ArrayList<Object>();
         mForceOverMemThreshold = false;
 
         final RemoteService mockPoster = new HttpService() {
@@ -66,23 +64,6 @@ public class HttpTest {
             public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
                     throws ServiceUnavailableException, IOException {
                 try {
-                    if (null == params) {
-                        mDecideCalls.put(endpointUrl);
-
-                        if (mDecideResults.isEmpty()) {
-                            return TestUtils.bytes("{}");
-                        }
-
-                        final Object obj = mDecideResults.remove(0);
-                        if (obj instanceof IOException) {
-                            throw (IOException)obj;
-                        } else if (obj instanceof MalformedURLException) {
-                            throw (MalformedURLException)obj;
-                        } else if (obj instanceof ServiceUnavailableException) {
-                            throw (ServiceUnavailableException)obj;
-                        }
-                        return (byte[])obj;
-                    }
                     if (mFlushResults.isEmpty()) {
                         mFlushResults.add(TestUtils.bytes("1\n"));
                     }
@@ -114,10 +95,6 @@ public class HttpTest {
         };
 
         final MPConfig config = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
-            @Override
-            public String getDecideEndpoint() {
-                return "DECIDE ENDPOINT";
-            }
 
             @Override
             public String getEventsEndpoint() {
@@ -132,9 +109,9 @@ public class HttpTest {
 
         final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
             @Override
-            public void cleanupEvents(String last_id, Table table, String token, boolean includeAutomaticEvents) {
+            public void cleanupEvents(String last_id, Table table, String token) {
                 mCleanupCalls.add("called");
-                super.cleanupEvents(last_id, table, token, includeAutomaticEvents);
+                super.cleanupEvents(last_id, table, token);
             }
 
             @Override
