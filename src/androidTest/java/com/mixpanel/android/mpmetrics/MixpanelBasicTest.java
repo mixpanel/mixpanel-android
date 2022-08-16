@@ -292,8 +292,10 @@ public class MixpanelBasicTest {
         }
     }
 
+
+
     @Test
-    public void testPeopleOperations() throws JSONException {
+    public void testPeopleMessageOperations() throws JSONException {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
         final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {

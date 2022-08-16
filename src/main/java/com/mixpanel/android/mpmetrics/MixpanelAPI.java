@@ -2101,7 +2101,8 @@ public class MixpanelAPI {
             dataObj.put("$mp_metadata", mSessionMetadata.getMetadataForPeople());
 
             if (((getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0)) {
-                if (properties instanceof JSONObject && !((JSONObject) properties).keys().next().startsWith("$ae_")) {
+                if (properties instanceof JSONObject && ((JSONObject) properties).keys().hasNext()
+                        && !((JSONObject) properties).keys().next().startsWith("$ae_")) {
                     mPersistentIdentity.setHasMPDebugUsedPeople(mToken);
                 }
             }
