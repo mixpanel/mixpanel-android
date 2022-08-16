@@ -1,5 +1,13 @@
 #
 
+## [v7.0.0](https://github.com/mixpanel/mixpanel-android/tree/v7.0.0) (2022-08-16)
+
+### Enhancements
+
+- Add 'trackAutomaticEvents' as a required param in getInstance' and remove Mixpanel server api call for `Autotrack` setting [\#794](https://github.com/mixpanel/mixpanel-android/pull/794)
+
+#
+
 ## [v6.5.2](https://github.com/mixpanel/mixpanel-android/tree/v6.5.2) (2022-08-05)
 
 ### Fixes
@@ -1456,6 +1464,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
