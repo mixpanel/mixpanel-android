@@ -212,10 +212,12 @@ public class MixpanelBasicTest {
         JSONObject jsonObj3 = new JSONObject();
         JSONObject jsonObj4 = new JSONObject();
         JSONObject jsonObj5 = new JSONObject();
+
         Map<String, Object> mapObj1 = new HashMap<>();
         Map<String, Object> mapObj2 = new HashMap<>();
         Map<String, Object> mapObj3 = new HashMap<>();
         Map<String, Object> mapObj4 = new HashMap<>();
+        Map<String, Object> mapObj5 = new HashMap<>();
 
         jsonObj1.put("TRACK JSON STRING", "TRACK JSON STRING VALUE");
         jsonObj2.put("TRACK JSON INT", 1);
@@ -223,10 +225,12 @@ public class MixpanelBasicTest {
         jsonObj4.put("TRACK JSON STRING ONCE", "SHOULD NOT SEE ME");
         jsonObj5.put("TRACK JSON NULL", JSONObject.NULL);
 
+
         mapObj1.put("TRACK MAP STRING", "TRACK MAP STRING VALUE");
         mapObj2.put("TRACK MAP INT", 1);
         mapObj3.put("TRACK MAP STRING ONCE", "TRACK MAP STRING ONCE VALUE");
         mapObj4.put("TRACK MAP STRING ONCE", "SHOULD NOT SEE ME");
+        mapObj5.put("TRACK MAP CUSTOM OBJECT", mixpanel);
 
         try {
             JSONObject message;
@@ -287,12 +291,14 @@ public class MixpanelBasicTest {
             assertEquals("event8", message.getString("event"));
             properties = message.getJSONObject("properties");
             assertEquals(jsonObj5.get("TRACK JSON NULL"), properties.get("TRACK JSON NULL"));
+
+            mixpanel.trackMap("event contains custom object", mapObj5);
+            message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+            assertEquals("event contains custom object", message.getString("event"));
         } catch (InterruptedException e) {
             fail("Unexpected interruption");
         }
     }
-
-
 
     @Test
     public void testPeopleMessageOperations() throws JSONException {
