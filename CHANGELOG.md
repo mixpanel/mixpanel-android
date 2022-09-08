@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- Fix event being dropped if property value is custom object [\#798](https://github.com/mixpanel/mixpanel-android/pull/798)
+- Fix the event being dropped if its properties contains custom class object [\#798](https://github.com/mixpanel/mixpanel-android/pull/798)
 
 #
 
