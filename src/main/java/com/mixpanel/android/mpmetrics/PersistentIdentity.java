@@ -332,105 +332,6 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    private synchronized int getIntFlagValue(String token, String flagName) {
-        int intFlagValue = 0;
-        try {
-            SharedPreferences prefs = mMixpanelPreferences.get();
-            intFlagValue = prefs.getInt(token + flagName, 0);
-        }  catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel from shared preferences.", e);
-        }
-        return intFlagValue;
-    }
-
-    private synchronized void setIntFlagValue(String token, String flagName, int flagValue) {
-        try {
-            SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
-            mixpanelPreferencesEditor.putInt(token + flagName, flagValue);
-            writeEdits(mixpanelPreferencesEditor);
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
-        } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel from shared preferences.", e);
-        }
-    }
-
-    private synchronized boolean getBoolFlagValue(String token, String flagName) {
-        boolean boolFlagValue = false;
-        try {
-            SharedPreferences prefs = mMixpanelPreferences.get();
-            boolFlagValue = prefs.getBoolean(token + flagName, false);
-        }  catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel from shared preferences.", e);
-        }
-        return boolFlagValue;
-
-    }
-
-    private synchronized void setBooleanFlagValue(String token, String flagName, boolean flagValue) {
-        try {
-            SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
-            mixpanelPreferencesEditor.putBoolean(token + flagName, flagValue);
-            writeEdits(mixpanelPreferencesEditor);
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
-        } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel from shared preferences.", e);
-        }
-    }
-
-    public synchronized int debugInitCount(String token) {
-        return getIntFlagValue(token, MP_DEBUG_INIT_COUNT_KEY);
-    }
-
-    public synchronized void setDebugInitCount(String token, int debugInitCount) {
-        setIntFlagValue(token, MP_DEBUG_INIT_COUNT_KEY, debugInitCount);
-    }
-
-    public synchronized boolean hasImplemented(String token) {
-        return getBoolFlagValue(token, MP_HAS_IMPLEMENTED_KEY);
-    }
-
-    public synchronized void setHasImplemented(String token) {
-        setBooleanFlagValue(token, MP_HAS_IMPLEMENTED_KEY, true);
-    }
-
-    public synchronized boolean hasMPDebugTracked(String token) {
-        return getBoolFlagValue(token, MP_HAS_DEBUG_TRACKED_KEY);
-    }
-
-    public synchronized void setHasMPDebugTracked(String token) {
-        setBooleanFlagValue(token, MP_HAS_DEBUG_TRACKED_KEY, true);
-    }
-
-    public synchronized boolean hasMPDebugIdentified(String token) {
-        return getBoolFlagValue(token, MP_HAS_DEBUG_IDENTIFIED_KEY);
-    }
-
-    public synchronized void setHasMPDebugIdentified(String token) {
-        setBooleanFlagValue(token, MP_HAS_DEBUG_IDENTIFIED_KEY, true);
-    }
-
-    public synchronized boolean hasMPDebugAliased(String token) {
-        return getBoolFlagValue(token, MP_HAS_DEBUG_ALIASED_KEY);
-    }
-
-    public synchronized void setHasMPDebugAliased(String token) {
-        setBooleanFlagValue(token, MP_HAS_DEBUG_ALIASED_KEY, true);
-    }
-
-    public synchronized boolean hasMPDebugUsedPeople(String token) {
-        return getBoolFlagValue(token, MP_HAS_DEBUG_USED_PEOPLE_KEY);
-    }
-
-    public synchronized void setHasMPDebugUsedPeople(String token) {
-        setBooleanFlagValue(token, MP_HAS_DEBUG_USED_PEOPLE_KEY, true);
-    }
-
     public synchronized boolean isFirstIntegration(String token) {
         boolean firstLaunch = false;
         try {
@@ -740,12 +641,5 @@ import com.mixpanel.android.util.MPLog;
     private static final Object sReferrerPrefsLock = new Object();
     private static final String DELIMITER = ",";
     private static final String LOGTAG = "MixpanelAPI.PIdentity";
-
-    private static final String MP_DEBUG_INIT_COUNT_KEY = "mpDebugInitCount";
-    private static final String MP_HAS_IMPLEMENTED_KEY = "mpHasImplemented";
-    private static final String MP_HAS_DEBUG_TRACKED_KEY = "mpHasDebugTracked";
-    private static final String MP_HAS_DEBUG_IDENTIFIED_KEY = "mpHasDebugIdentified";
-    private static final String MP_HAS_DEBUG_ALIASED_KEY = "mpHasDebugAliased";
-    private static final String MP_HAS_DEBUG_USED_PEOPLE_KEY = "mpHasDebugUsedPeople";
 
 }
