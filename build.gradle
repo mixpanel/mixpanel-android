@@ -17,8 +17,7 @@ group = GROUP
 version = VERSION_NAME
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion '30.0.3'
+    compileSdkVersion 31
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
@@ -31,7 +30,7 @@ android {
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 30
+        targetSdkVersion 31
         multiDexEnabled true
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
