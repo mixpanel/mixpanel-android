@@ -74,7 +74,7 @@ events and properties to Mixpanel.
 At this point, you're ready to use the Mixpanel Android library inside Android Studio.
 
 ## 2. Initialize Mixpanel
-Once you've set up your build system or IDE to use the Mixpanel library, you can initialize it in your code by calling MixpanelAPI.getInstance with your application context and your Mixpanel project token. You can find your token in [project settings](https://mixpanel.com/settings/project).
+Once you've set up your build system or IDE to use the Mixpanel library, you can initialize it in your code by calling MixpanelAPI.getInstance with your application context, your Mixpanel project token and automatic events setting. You can find your token in [project settings](https://mixpanel.com/settings/project).
 
 ```java
 import com.mixpanel.android.mpmetrics.MixpanelAPI;
@@ -87,7 +87,8 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        MixpanelAPI mixpanel = MixpanelAPI.getInstance(this, "YOUR_TOKEN");
+        trackAutomaticEvents = true;
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(this, "YOUR_TOKEN", trackAutomaticEvents);
     }
 }
 ```
