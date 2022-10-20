@@ -1,5 +1,15 @@
 #
 
+## [v7.2.0](https://github.com/mixpanel/mixpanel-android/tree/v7.2.0) (2022-10-20)
+
+### Enhancements
+
+- Add the ability to remove residual image files left from the legacy SDK versions [\#804](https://github.com/mixpanel/mixpanel-android/pull/804)
+- Remove Mixpanel DevX internal tracking [\#802](https://github.com/mixpanel/mixpanel-android/pull/802)
+- Upgrade SDK version to 31 [\#801](https://github.com/mixpanel/mixpanel-android/pull/801)
+
+#
+
 ## [v7.0.1](https://github.com/mixpanel/mixpanel-android/tree/v7.0.1) (2022-09-08)
 
 ### Fixes
@@ -1472,6 +1482,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
