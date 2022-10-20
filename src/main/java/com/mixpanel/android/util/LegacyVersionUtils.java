@@ -2,6 +2,10 @@ package com.mixpanel.android.util;
 
 import java.io.File;
 
+
+/**
+ * A utility class for handling migration from legacy versions, internal use only in the Mixpanel library. Not thread-safe.
+ */
 public class LegacyVersionUtils {
     /**
      * Remove the residual image files produced from legacy SDK versions 5.x and older (from Messages and Experiments features)
