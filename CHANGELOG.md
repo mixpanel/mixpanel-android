@@ -5,6 +5,13 @@
 ### Enhancements
 
 - Add the ability to remove residual image files left from the legacy SDK versions [\#804](https://github.com/mixpanel/mixpanel-android/pull/804)
+
+To opt in, add this to `AndroidManifest.xml`. 
+```        
+<meta-data android:name="com.mixpanel.android.MPConfig.RemoveLegacyResidualFiles"
+            android:value="true" />
+```
+
 - Remove Mixpanel DevX internal tracking [\#802](https://github.com/mixpanel/mixpanel-android/pull/802)
 - Upgrade SDK version to 31 [\#801](https://github.com/mixpanel/mixpanel-android/pull/801)
 
