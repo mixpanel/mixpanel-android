@@ -81,6 +81,9 @@ import javax.net.ssl.SSLSocketFactory;
  *
  *     <dt>com.mixpanel.android.MPConfig.UseIpAddressForGeolocation</dt>
  *     <dd>A boolean value. If true, Mixpanel will automatically determine city, region and country data using the IP address of the client.Defaults to true.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.RemoveLegacyResidualFiles</dt>
+ *     <dd>A boolean value. If true, Mixpanel will remove the residual files from legacy versions such as images produced by deprecated Messages and Experiment features. Defaults to false.</dd>
  * </dl>
  *
  */
@@ -193,6 +196,7 @@ public class MPConfig {
         mMinSessionDuration = metaData.getInt("com.mixpanel.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
         mSessionTimeoutDuration = metaData.getInt("com.mixpanel.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
         mUseIpAddressForGeolocation = metaData.getBoolean("com.mixpanel.android.MPConfig.UseIpAddressForGeolocation", true);
+        mRemoveLegacyResidualFiles = metaData.getBoolean("com.mixpanel.android.MPConfig.RemoveLegacyResidualFiles", false);
 
         Object dataExpirationMetaData = metaData.get("com.mixpanel.android.MPConfig.DataExpiration");
         long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
@@ -350,6 +354,8 @@ public class MPConfig {
         return mUseIpAddressForGeolocation;
     }
 
+    public boolean getRemoveLegacyResidualFiles() { return mRemoveLegacyResidualFiles; }
+
     public void setUseIpAddressForGeolocation(boolean useIpAddressForGeolocation) {
         mUseIpAddressForGeolocation = useIpAddressForGeolocation;
         setEventsEndpoint(getEndPointWithIpTrackingParam(getEventsEndpoint(), useIpAddressForGeolocation));
@@ -446,6 +452,7 @@ public class MPConfig {
     private final int mMinSessionDuration;
     private final int mSessionTimeoutDuration;
     private boolean mUseIpAddressForGeolocation;
+    private final boolean mRemoveLegacyResidualFiles;
 
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;

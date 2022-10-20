@@ -14,12 +14,14 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 
+import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.DateFormat;
@@ -202,6 +204,10 @@ public class MixpanelAPI {
 
         if (!mConfig.getDisableExceptionHandler()) {
             ExceptionHandler.init();
+        }
+
+        if (mConfig.getRemoveLegacyResidualFiles()) {
+            LegacyVersionUtils.removeLegacyResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
         }
     }
 
