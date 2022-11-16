@@ -1,5 +1,13 @@
 #
 
+## [v7.2.1](https://github.com/mixpanel/mixpanel-android/tree/v7.2.1) (2022-11-16)
+
+### Fixes
+
+- Fix ANRs issue when opt in and remove residual image files left from the legacy SDK versions [\#807](https://github.com/mixpanel/mixpanel-android/pull/807)
+
+#
+
 ## [v7.2.0](https://github.com/mixpanel/mixpanel-android/tree/v7.2.0) (2022-10-20)
 
 ### Enhancements
@@ -1489,6 +1497,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
