@@ -8,13 +8,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 
-import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONArray;
@@ -199,7 +197,7 @@ public class MixpanelAPI {
         }
 
         if (mConfig.getRemoveLegacyResidualFiles()) {
-            LegacyVersionUtils.removeLegacyResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
+            mMessages.removeResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
         }
     }
 
