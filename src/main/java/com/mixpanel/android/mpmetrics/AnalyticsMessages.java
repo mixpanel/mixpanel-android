@@ -7,17 +7,18 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
-import android.os.SystemClock;
 import android.util.DisplayMetrics;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -136,6 +137,13 @@ import javax.net.ssl.SSLSocketFactory;
         m.what = REWRITE_EVENT_PROPERTIES;
         m.obj = updateEventsProperties;
 
+        mWorker.runMessage(m);
+    }
+
+    public void removeResidualImageFiles(File fileOrDirectory) {
+        final Message m = Message.obtain();
+        m.what = REMOVE_RESIDUAL_IMAGE_FILES;
+        m.obj = fileOrDirectory;
         mWorker.runMessage(m);
     }
 
@@ -424,6 +432,9 @@ import javax.net.ssl.SSLSocketFactory;
                             mHandler = null;
                             Looper.myLooper().quit();
                         }
+                    } else if (msg.what == REMOVE_RESIDUAL_IMAGE_FILES) {
+                        final File file = (File) msg.obj;
+                        LegacyVersionUtils.removeLegacyResidualImageFiles(file);
                     } else {
                         MPLog.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
                     }
@@ -689,6 +700,7 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
     private static final int REWRITE_EVENT_PROPERTIES = 8; // Update or add properties to existing queued events
+    private static final int REMOVE_RESIDUAL_IMAGE_FILES = 9; // Remove residual image files left from the legacy SDK versions
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 
