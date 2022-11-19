@@ -37,7 +37,7 @@ We publish builds of our library to the Maven central repository as an .aar file
 Add the following lines to the `dependencies` section in *app/build.gradle*
 
 ```gradle
-implementation "com.mixpanel.android:mixpanel-android:6.+"
+implementation "com.mixpanel.android:mixpanel-android:7.+"
 ```
  
 Once you've updated your build.gradle file, you can force Android Studio to sync with your new configuration by clicking the Sync Project with Gradle Files icon at the top of the window.
