@@ -93,7 +93,7 @@ public class PersistentIdentityTest {
         final SharedPreferences testPreferences = InstrumentationRegistry.getInstrumentation().getContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().clear().commit();
         final String eventsId = mPersistentIdentity.getEventsDistinctId();
-        assertTrue(Pattern.matches("^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$", eventsId));
+        assertTrue(Pattern.matches("^\\$device:[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$", eventsId));
 
         final String autoId = testPreferences.getString("events_distinct_id", "NOPE");
         assertEquals(autoId, eventsId);

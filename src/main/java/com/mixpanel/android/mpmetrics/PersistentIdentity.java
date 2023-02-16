@@ -536,7 +536,7 @@ import com.mixpanel.android.util.MPLog;
 
         if (mEventsDistinctId == null) {
             mAnonymousId = UUID.randomUUID().toString();
-            mEventsDistinctId = mAnonymousId;
+            mEventsDistinctId = "$device:" + mAnonymousId;
             mEventsUserIdPresent = false;
             writeIdentities();
         }
