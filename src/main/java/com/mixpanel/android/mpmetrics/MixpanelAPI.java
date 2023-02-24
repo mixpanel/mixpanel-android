@@ -627,7 +627,7 @@ public class MixpanelAPI {
      *     value is globally unique for each individual user you intend to track.
      */
     public void identify(String distinctId) {
-        identify(distinctId, true, true);
+        identify(distinctId, true);
     }
 
     /**
@@ -652,10 +652,6 @@ public class MixpanelAPI {
      *
      */
     public void identify(String distinctId, boolean usePeople) {
-        identify(distinctId, true, usePeople);
-    }
-
-    private void identify(String distinctId, boolean markAsUserId, boolean usePeople) {
         if (hasOptedOutTracking()) return;
         if (distinctId == null) {
             MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
@@ -663,13 +659,15 @@ public class MixpanelAPI {
         }
         synchronized (mPersistentIdentity) {
             String currentEventsDistinctId = mPersistentIdentity.getEventsDistinctId();
-            mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
-            mPersistentIdentity.setEventsDistinctId(distinctId);
-            if(markAsUserId) {
-                mPersistentIdentity.markEventsUserIdPresent();
-            }
-
             if (!distinctId.equals(currentEventsDistinctId)) {
+                if (distinctId.startsWith("$device:")) {
+                    MPLog.e(LOGTAG, "Can't identify with '$device:' distinct_id.");
+                    return;
+                }
+
+                mPersistentIdentity.setEventsDistinctId(distinctId);
+                mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
+                mPersistentIdentity.markEventsUserIdPresent();
                 try {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
@@ -1779,7 +1777,7 @@ public class MixpanelAPI {
                 MPLog.e(LOGTAG, "Can't identify with null distinct_id.");
                 return;
             }
-            if (distinctId != mPersistentIdentity.getEventsDistinctId()) {
+            if (!distinctId.equals(mPersistentIdentity.getEventsDistinctId())) {
                 MPLog.w(LOGTAG, "Identifying with a distinct_id different from the one being set by MixpanelAPI.identify() is not supported.");
                 return;
             }

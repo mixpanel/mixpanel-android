@@ -158,7 +158,7 @@ We'd also love for you to come and work with us! Check out our **[opening positi
 <a name="changelog"></a>
 # Changelog
 
-See [wiki page](https://github.com/mixpanel/mixpanel-android/wiki/Changelog).
+See [changelog](CHANGELOG.md).
 
 <a name="license"></a>
 # License

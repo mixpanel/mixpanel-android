@@ -36,11 +36,14 @@ import javax.net.ssl.SSLSocketFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.hamcrest.CoreMatchers.*;
 
 @RunWith(AndroidJUnit4.class)
 @LargeTest
@@ -79,12 +82,14 @@ public class MixpanelBasicTest {
         String fakeToken = UUID.randomUUID().toString();
         MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, fakeToken);
         String generatedId1 = mixpanel.getDistinctId();
-        assertTrue(generatedId1 != null);
+        assertThat(generatedId1, startsWith("$device:"));
+        assertEquals(generatedId1, "$device:" + mixpanel.getAnonymousId());
 
         mixpanel.reset();
         String generatedId2 = mixpanel.getDistinctId();
-        assertTrue(generatedId2 != null);
-        assertTrue(!generatedId1.equals(generatedId2));
+        assertThat(generatedId2, startsWith("$device:"));
+        assertEquals(generatedId2, "$device:" + mixpanel.getAnonymousId());
+        assertNotEquals(generatedId1, generatedId2);
     }
 
     @Test
@@ -512,6 +517,7 @@ public class MixpanelBasicTest {
         assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
         assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
+        String deviceId = mixpanel.getAnonymousId();
         mixpanel.identify("Personal Identity");
         people.set("the prop identified", "prop value identified");
 
@@ -528,6 +534,88 @@ public class MixpanelBasicTest {
         for (int i=0; i < data.length(); i++) {
             JSONObject j = data.getJSONObject(i);
             assertEquals("Personal Identity", j.getString("$distinct_id"));
+            assertEquals(deviceId, j.getString("$device_id"));
+        }
+    }
+
+    @Test
+    public void testIdentifyAfterSetToAnonymousId() throws InterruptedException, JSONException {
+        String token = "TEST TOKEN testIdentifyAfterSet";
+        final List<AnalyticsMessages.MixpanelDescription> messages = new ArrayList<AnalyticsMessages.MixpanelDescription>();
+        final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue();
+        final BlockingQueue<JSONObject> peopleUpdates = new LinkedBlockingQueue();
+
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
+            @Override
+            public int addJSON(JSONObject j, String token, Table table) {
+                if (table == Table.ANONYMOUS_PEOPLE) {
+                    anonymousUpdates.add(j);
+                } else if (table == Table.PEOPLE) {
+                    peopleUpdates.add(j);
+                }
+                return super.addJSON(j, token, table);
+            }
+        };
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
+            @Override
+            public void peopleMessage(PeopleDescription heard) {
+                messages.add(heard);
+                super.peopleMessage(heard);
+            }
+
+            @Override
+            public void pushAnonymousPeopleMessage(PushAnonymousPeopleDescription pushAnonymousPeopleDescription) {
+                messages.add(pushAnonymousPeopleDescription);
+                super.pushAnonymousPeopleMessage(pushAnonymousPeopleDescription);
+            }
+
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return mockAdapter;
+            }
+        };
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, token) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return listener;
+            }
+        };
+
+        MixpanelAPI.People people = mixpanel.getPeople();
+        people.increment("the prop", 0L);
+        people.append("the prop", 1);
+        people.set("the prop", 2);
+        people.increment("the prop", 3L);
+        people.append("the prop", 5);
+
+        assertEquals(0L, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("the prop"));
+        assertEquals(1, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").get("the prop"));
+        assertEquals(2, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").get("the prop"));
+        assertEquals(3L, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$add").getLong("the prop"));
+        assertEquals(5, anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$append").get("the prop"));
+        assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+        assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+
+        String deviceId = mixpanel.getAnonymousId();
+        mixpanel.identify(mixpanel.getDistinctId());
+        people.set("the prop identified", "prop value identified");
+        assertNull(mixpanel.getUserId());
+
+        assertEquals("prop value identified", peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$set").getString("the prop identified"));
+        assertNull(peopleUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+        assertNull(anonymousUpdates.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
+
+        String[] storedAnonymous = mockAdapter.generateDataString(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
+        assertNull(storedAnonymous);
+
+        String[] storedPeople = mockAdapter.generateDataString(MPDbAdapter.Table.PEOPLE, token);
+        assertEquals(6, Integer.valueOf(storedPeople[2]).intValue());
+        JSONArray data = new JSONArray(storedPeople[1]);
+        for (int i=0; i < data.length(); i++) {
+            JSONObject j = data.getJSONObject(i);
+            assertEquals("$device:" + deviceId, j.getString("$distinct_id"));
+            assertEquals(deviceId, j.getString("$device_id"));
         }
     }
 
@@ -536,23 +624,33 @@ public class MixpanelBasicTest {
         MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Identify Test Token");
 
         String generatedId = metrics.getDistinctId();
-        assertNotNull(generatedId);
+        assertThat(generatedId, startsWith("$device:"));
+        assertEquals(generatedId, "$device:" + metrics.getAnonymousId());
 
-        String emptyId = metrics.getPeople().getDistinctId();
-        assertNull(emptyId);
+        assertNull(metrics.getUserId());
+        assertNull(metrics.getPeople().getDistinctId());
 
         metrics.identify("Events Id");
-        String setId = metrics.getDistinctId();
-        assertEquals("Events Id", setId);
+        assertEquals("Events Id", metrics.getDistinctId());
+        assertEquals("Events Id", metrics.getUserId());
+        assertEquals("Events Id", metrics.getPeople().getDistinctId());
+    }
 
-        String userId = metrics.getUserId();
-        assertEquals("Events Id", userId);
+    @Test
+    public void testIdentifyToCurrentAnonymousDistinctId() {
+        MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Identify Test Token");
 
-        String unchangedId = metrics.getDistinctId();
-        assertEquals("Events Id", unchangedId);
+        String generatedId = metrics.getDistinctId();
+        assertThat(generatedId, startsWith("$device:"));
+        assertEquals(generatedId, "$device:" + metrics.getAnonymousId());
 
-        String setPeopleId = metrics.getPeople().getDistinctId();
-        assertEquals("Events Id", setPeopleId);
+        assertNull(metrics.getUserId());
+        assertNull(metrics.getPeople().getDistinctId());
+
+        metrics.identify(metrics.getDistinctId());
+        assertEquals(generatedId, metrics.getDistinctId());
+        assertNull(metrics.getUserId());
+        assertEquals(generatedId, metrics.getPeople().getDistinctId());
     }
 
     @Test
@@ -560,33 +658,24 @@ public class MixpanelBasicTest {
         MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Identify Test Token");
 
         String generatedId = metrics.getAnonymousId();
-        assertNotNull(generatedId);
+        assertNotNull(metrics.getAnonymousId());
         String eventsDistinctId = metrics.getDistinctId();
-        assertNotNull(eventsDistinctId);
-        assertEquals(eventsDistinctId, generatedId);
+        assertEquals("$device:" + generatedId, eventsDistinctId);
         assertNull(metrics.getUserId());
-
-        String emptyId = metrics.getPeople().getDistinctId();
-        assertNull(emptyId);
+        assertNull(metrics.getPeople().getDistinctId());
 
         metrics.identify("Distinct Id");
-        String setId = metrics.getDistinctId();
-        assertEquals("Distinct Id", setId);
-        String anonymousIdAfterIdentify = metrics.getAnonymousId();
-        assertEquals(anonymousIdAfterIdentify, generatedId);
-
-        String unchangedId = metrics.getDistinctId();
-        assertEquals("Distinct Id", unchangedId);
-
-        String setPeopleId = metrics.getPeople().getDistinctId();
-        assertEquals("Distinct Id", setPeopleId);
+        assertEquals("Distinct Id", metrics.getDistinctId());
+        assertEquals(generatedId, metrics.getAnonymousId());
+        assertEquals("Distinct Id", metrics.getPeople().getDistinctId());
 
         // once its reset we will only have generated id but user id should be null
         metrics.reset();
         String generatedId2 = metrics.getAnonymousId();
         assertNotNull(generatedId2);
         assertNotSame(generatedId, generatedId2);
-        assertNotNull(metrics.getDistinctId());
+        assertEquals("$device:" + generatedId2, metrics.getDistinctId());
+        assertNull(metrics.getUserId());
     }
 
     @Test
@@ -1121,10 +1210,13 @@ public class MixpanelBasicTest {
         oldDistinctIds.add(metrics.getDistinctId());
         metrics.identify(newDistinctId + "0");
         metrics.reset();
+
+        assertThat(oldDistinctIds, not(hasItem(metrics.getDistinctId())));
         oldDistinctIds.add(metrics.getDistinctId());
         metrics.identify(newDistinctId + "1");
         metrics.reset();
 
+        assertThat(oldDistinctIds, not(hasItem(metrics.getDistinctId())));
         oldDistinctIds.add(metrics.getDistinctId());
         metrics.identify(newDistinctId + "2");
 
