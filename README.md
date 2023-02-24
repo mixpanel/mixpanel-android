@@ -158,7 +158,7 @@ We'd also love for you to come and work with us! Check out our **[opening positi
 <a name="changelog"></a>
 # Changelog
 
-See [wiki page](CHANGELOG.md).
+See [changelog](CHANGELOG.md).
 
 <a name="license"></a>
 # License

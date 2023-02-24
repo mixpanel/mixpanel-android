@@ -14,7 +14,6 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.RemoteService;
 
-import org.hamcrest.CoreMatchers;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
