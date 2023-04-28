@@ -150,7 +150,6 @@ import com.mixpanel.android.util.MPLog;
         } catch (Exception e) {
             // something went wrong, don't crash, we can live without it
         }
-
         return isBluetoothEnabled;
     }
 
