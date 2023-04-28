@@ -147,10 +147,8 @@ import com.mixpanel.android.util.MPLog;
                     isBluetoothEnabled = bluetoothAdapter.isEnabled();
                 }
             }
-        } catch (SecurityException e) {
-            // do nothing since we don't have permissions
-        } catch (NoClassDefFoundError e) {
-            // Some phones doesn't have this class. Just ignore it
+        } catch (Exception e) {
+            // something went wrong, don't crash, we can live without it
         }
         return isBluetoothEnabled;
     }
