@@ -140,6 +140,11 @@ If your events are still not showing up after 60 seconds, check if you have opte
 ```
 
 <a name="i-want-to-know-more"></a>
+
+**Other common issues**
+
+[People.set throwing UnsupportedOperationException](https://github.com/mixpanel/mixpanel-android/issues/803)
+
 # I want to know more!
 
 No worries, here are some links that you will find useful:
