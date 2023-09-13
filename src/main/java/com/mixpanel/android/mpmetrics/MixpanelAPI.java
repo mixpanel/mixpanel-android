@@ -176,7 +176,7 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
-        if (!mPersistentIdentity.isFirstIntegration(mToken)) {
+        if (!mPersistentIdentity.isFirstIntegration(mToken) && !optOutTrackingDefault && !hasOptedOutTracking()) {
             try {
                 sendHttpEvent("Integration", "85053bf24bba75239b16a601d9387e17", token, null, false);
                 mPersistentIdentity.setIsIntegrated(mToken);
