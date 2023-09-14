@@ -1,5 +1,13 @@
 #
 
+## [v7.3.2](https://github.com/mixpanel/mixpanel-android/tree/v7.3.2) (2023-09-14)
+
+### Fixes
+
+- Fix integration event when opted out [\#819](https://github.com/mixpanel/mixpanel-android/pull/819)
+
+#
+
 ## [v7.3.0](https://github.com/mixpanel/mixpanel-android/tree/v7.3.0) (2023-03-02)
 
 ### Enhancements
@@ -1513,6 +1521,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
