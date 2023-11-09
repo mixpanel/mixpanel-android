@@ -841,6 +841,16 @@ public class MixpanelAPI {
         mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(mToken));
     }
 
+
+    /**
+     * Synchronized flush to make sure all events sent before continuing
+     * made exclusively for AppDome purposes
+    */
+    public void blockingFlush() {
+        if (hasOptedOutTracking()) return;
+        mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(mToken), true);
+    }
+
     /**
      * Returns a json object of the user's current super properties
      *

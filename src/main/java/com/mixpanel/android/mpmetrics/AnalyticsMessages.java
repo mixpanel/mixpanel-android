@@ -7,6 +7,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.os.Bundle;
 import android.util.DisplayMetrics;
 
 import com.mixpanel.android.util.Base64Coder;
@@ -26,6 +27,7 @@ import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import javax.net.ssl.SSLSocketFactory;
 
@@ -117,9 +119,28 @@ import javax.net.ssl.SSLSocketFactory;
 
     public void postToServer(final MixpanelDescription flushDescription) {
         final Message m = Message.obtain();
+        Bundle data = new Bundle();
+        data.putString("token", flushDescription.getToken());
+        m.setData(data);
         m.what = FLUSH_QUEUE;
-        m.obj = flushDescription.getToken();
         m.arg1 = 0;
+        m.arg2 = 0;
+
+        mWorker.runMessage(m);
+    }
+
+    public void postToServer(final MixpanelDescription flushDescription, boolean sync) {
+        if (!sync) {
+            postToServer(flushDescription);
+        }
+        final Message m = Message.obtain();
+        Bundle data = new Bundle();
+        data.putString("token", flushDescription.getToken());
+        m.setData(data);
+        m.what = FLUSH_QUEUE;
+        m.obj =  new CountDownLatch(1);
+        m.arg1 = 0;
+        m.arg2 = 1;
 
         mWorker.runMessage(m);
     }
@@ -341,6 +362,14 @@ import javax.net.ssl.SSLSocketFactory;
                     logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
                 } else {
                     mHandler.sendMessage(msg);
+                    if (msg.arg2 != 0) {
+                        try {
+                            CountDownLatch flushLatch = (CountDownLatch) msg.obj;
+                            flushLatch.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
                 }
             }
         }
@@ -416,8 +445,12 @@ import javax.net.ssl.SSLSocketFactory;
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        token = (String) msg.obj;
-                        sendAllData(mDbAdapter, token);
+                        token = msg.getData().getString("token");
+                        if (msg.arg2 != 0) {
+                            sendAllData(mDbAdapter, token, (CountDownLatch) msg.obj);
+                        } else {
+                            sendAllData(mDbAdapter, token);
+                        }
                     } else if (msg.what == EMPTY_QUEUES) {
                         final MixpanelDescription message = (MixpanelDescription) msg.obj;
                         token = message.getToken();
@@ -488,6 +521,19 @@ import javax.net.ssl.SSLSocketFactory;
                 sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
                 sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
                 sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
+            }
+
+            private void sendAllData(MPDbAdapter dbAdapter, String token, CountDownLatch flushLatch) {
+                final RemoteService poster = getPoster();
+                if (!poster.isOnline(mContext, mConfig.getOfflineMode())) {
+                    logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
+                    return;
+                }
+
+                sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
+                sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
+                flushLatch.countDown();
             }
 
             private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
