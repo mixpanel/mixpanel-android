@@ -87,7 +87,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        trackAutomaticEvents = true;
+        trackAutomaticEvents = false;
         MixpanelAPI mixpanel = MixpanelAPI.getInstance(this, "YOUR_TOKEN", trackAutomaticEvents);
     }
 }
