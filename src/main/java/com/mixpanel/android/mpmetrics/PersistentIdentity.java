@@ -433,6 +433,9 @@ import com.mixpanel.android.util.MPLog;
     public synchronized boolean getOptOutTracking(String token) {
         if (mIsUserOptOut == null) {
             readOptOutFlag(token);
+            if (mIsUserOptOut == null) {
+                mIsUserOptOut = false;
+            }
         }
 
         return mIsUserOptOut;
