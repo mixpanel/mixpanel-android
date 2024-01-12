@@ -1,5 +1,13 @@
 #
 
+## [v7.3.3](https://github.com/mixpanel/mixpanel-android/tree/v7.3.3) (2024-01-12)
+
+### Fixes
+
+- Fix the potential `NullPointException` crash from `getOptOutTracking` [\#824](https://github.com/mixpanel/mixpanel-android/pull/824)
+
+#
+
 ## [v7.3.2](https://github.com/mixpanel/mixpanel-android/tree/v7.3.2) (2023-09-14)
 
 ### Fixes
@@ -1521,6 +1529,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
