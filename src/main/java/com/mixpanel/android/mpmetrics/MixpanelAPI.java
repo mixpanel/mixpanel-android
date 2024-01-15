@@ -14,6 +14,8 @@ import android.os.Build;
 import android.os.Bundle;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.HttpService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -845,10 +847,20 @@ public class MixpanelAPI {
     /**
      * Synchronized flush to make sure all events sent before continuing
      * made exclusively for AppDome purposes
+     *
+     * @return HTTP status code / -1 if device is failed
     */
-    public void blockingFlush() {
-        if (hasOptedOutTracking()) return;
-        mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(mToken), true);
+    public int blockingFlush() {
+        if (hasOptedOutTracking())
+            return -1;
+
+        final RemoteService poster = new HttpService();
+        if (!poster.isOnline(mContext, mConfig.getOfflineMode())) {
+            MPLog.w(LOGTAG, "Not flushing data to Mixpanel because the device is not connected to the internet.");
+            return 503;
+        }
+
+        return mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(mToken), true);
     }
 
     /**

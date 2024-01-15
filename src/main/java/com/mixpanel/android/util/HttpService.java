@@ -88,10 +88,10 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+    public int performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
         MPLog.v(LOGTAG, "Attempting request to " + endpointUrl);
 
-        byte[] response = null;
+        int statusCode = -1;
 
         // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
         // libraries- The underlying library will attempt to reuse stale connections,
@@ -133,10 +133,7 @@ public class HttpService implements RemoteService {
                     out.close();
                     out = null;
                 }
-                in = connection.getInputStream();
-                response = slurp(in);
-                in.close();
-                in = null;
+                statusCode = connection.getResponseCode();
                 succeeded = true;
             } catch (final EOFException e) {
                 MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
@@ -162,7 +159,7 @@ public class HttpService implements RemoteService {
         if (retries >= 3) {
             MPLog.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
         }
-        return response;
+        return statusCode;
     }
 
     private static byte[] slurp(final InputStream inputStream)
