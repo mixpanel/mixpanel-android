@@ -17,7 +17,7 @@ group = GROUP
 version = VERSION_NAME
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion 33
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
@@ -30,11 +30,10 @@ android {
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 31
+        targetSdkVersion 33
         multiDexEnabled true
         testApplicationId "com.mixpanel.android.mpmetrics"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
         consumerProguardFiles 'proguard.txt'
 
         buildConfigField "String", "MIXPANEL_VERSION", "\"${version}\""
@@ -50,6 +49,8 @@ android {
         testOptions {
             execution 'ANDROIDX_TEST_ORCHESTRATOR'
         }
+
+
     }
     buildTypes {
         debug{
@@ -91,7 +92,6 @@ dependencies {
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
     androidTestUtil 'androidx.test:orchestrator:1.4.0'
     testImplementation "org.mockito:mockito-core:2.25.1"
-    
 }
 
 apply from: rootProject.file('maven.gradle')
