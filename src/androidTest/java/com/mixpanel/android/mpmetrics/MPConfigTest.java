@@ -140,19 +140,6 @@ public class MPConfigTest {
         assertFalse(config.DEBUG);
     }
 
-    @Test
-    public void testMulptipleConfigs() {
-        String fakeToken = UUID.randomUUID().toString();
-        MixpanelAPI mixpanel1 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken, false);
-        mixpanel1.setServerURL("https://api-eu.mixpanel.com");
-        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", mixpanel1.getEventEndpoint());
-
-        String fakeToken2 = UUID.randomUUID().toString();
-        MixpanelAPI mixpanel2 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken2, false);
-        mixpanel2.setServerURL("https://api.mixpanel.com");
-        assertEquals("https://api.mixpanel.com/track/?ip=1", mixpanel2.getEventEndpoint());
-        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", mixpanel1.getEventEndpoint());
-    }
 
     @Test
     public void testSetFlushBatchSize() {
@@ -173,6 +160,22 @@ public class MPConfigTest {
         final MixpanelAPI mixpanelAPI = mixpanelApi(config);
         assertEquals(5, mixpanelAPI.getFlushBatchSize());
     }
+
+    @Test
+    public void testSetFlushBatchSizeMulptipleConfigs() {
+        String fakeToken = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel1 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken, false);
+        mixpanel1.setFlushBatchSize(10);
+        assertEquals(10, mixpanel1.getFlushBatchSize());
+
+        String fakeToken2 = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel2 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken2, false);
+        mixpanel2.setFlushBatchSize(20);
+        assertEquals(20, mixpanel2.getFlushBatchSize());
+        // mixpanel2 should not overwrite the settings to mixpanel1
+        assertEquals(10, mixpanel1.getFlushBatchSize());
+    }
+
 
     @Test
     public void testSetMaximumDatabaseLimit() {
