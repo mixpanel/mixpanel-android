@@ -12,6 +12,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.UUID;
+
 @RunWith(AndroidJUnit4.class)
 public class MPConfigTest {
 
@@ -138,7 +140,19 @@ public class MPConfigTest {
         assertFalse(config.DEBUG);
     }
 
+    @Test
+    public void testMulptipleConfigs() {
+        String fakeToken = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel1 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken, false);
+        mixpanel1.setServerURL("https://api-eu.mixpanel.com");
+        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", mixpanel1.getEventEndpoint());
 
+        String fakeToken2 = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel2 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken2, false);
+        mixpanel2.setServerURL("https://api.mixpanel.com");
+        assertEquals("https://api.mixpanel.com/track/?ip=1", mixpanel2.getEventEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", mixpanel1.getEventEndpoint());
+    }
 
     @Test
     public void testSetFlushBatchSize() {

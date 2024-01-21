@@ -96,16 +96,27 @@ public class MPConfig {
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 
-    // Instances are safe to store, since they're immutable and always the same.
+    /**
+     * Retrieves a new instance of MPConfig with configuration settings loaded from the provided context.
+     * This method creates a new instance each time it is called, allowing for multiple configurations
+     * within the same application.
+     *
+     * Since version 7.4.0, MPConfig is no longer a Singleton, in favor of supporting multiple,
+     * distinct configurations for different Mixpanel instances. This change allows greater flexibility
+     * in scenarios where different parts of an application require different Mixpanel configurations,
+     * such as different endpoints or settings.
+     *
+     * It's important for users of this method to manage the lifecycle of the returned MPConfig instances
+     * themselves. Each call will result in a new configuration instance based on the application's
+     * metadata, and it's the responsibility of the caller to maintain any necessary references to these
+     * instances to use them later in their application.
+     *
+     * @param context The context used to load Mixpanel configuration. It's recommended to provide
+     *                an ApplicationContext to avoid potential memory leaks.
+     * @return A new instance of MPConfig with settings loaded from the context's application metadata.
+     */
     public static MPConfig getInstance(Context context) {
-        synchronized (sInstanceLock) {
-            if (null == sInstance) {
-                final Context appContext = context.getApplicationContext();
-                sInstance = readConfig(appContext);
-            }
-        }
-
-        return sInstance;
+        return readConfig(context.getApplicationContext());
     }
 
     /**
@@ -457,8 +468,5 @@ public class MPConfig {
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
     private OfflineMode mOfflineMode;
-
-    private static MPConfig sInstance;
-    private static final Object sInstanceLock = new Object();
     private static final String LOGTAG = "MixpanelAPI.Conf";
 }
