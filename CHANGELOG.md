@@ -2,6 +2,10 @@
 
 ## [v7.4.0](https://github.com/mixpanel/mixpanel-android/tree/v7.4.0) (2024-01-22)
 
+
+### Non-Singleton MPConfig Class
+In this release, we've introduced a significant change to the MPConfig class. Previously implemented as a singleton, MPConfig is now designed to provide instance-specific configurations. This change allows the creation of multiple MPConfig instances, each with potentially different configuration settings.  check the [docs](https://mixpanel.github.io/mixpanel-android/com/mixpanel/android/mpmetrics/MPConfig.html#getInstance(android.content.Context)) for more details
+
 ### Enhancements
 
 - bump target API level to 33 [\#826](https://github.com/mixpanel/mixpanel-android/pull/826)
