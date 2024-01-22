@@ -12,6 +12,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.UUID;
+
 @RunWith(AndroidJUnit4.class)
 public class MPConfigTest {
 
@@ -139,7 +141,6 @@ public class MPConfigTest {
     }
 
 
-
     @Test
     public void testSetFlushBatchSize() {
         final Bundle metaData = new Bundle();
@@ -159,6 +160,22 @@ public class MPConfigTest {
         final MixpanelAPI mixpanelAPI = mixpanelApi(config);
         assertEquals(5, mixpanelAPI.getFlushBatchSize());
     }
+
+    @Test
+    public void testSetFlushBatchSizeMulptipleConfigs() {
+        String fakeToken = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel1 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken, false);
+        mixpanel1.setFlushBatchSize(10);
+        assertEquals(10, mixpanel1.getFlushBatchSize());
+
+        String fakeToken2 = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel2 = MixpanelAPI.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), fakeToken2, false);
+        mixpanel2.setFlushBatchSize(20);
+        assertEquals(20, mixpanel2.getFlushBatchSize());
+        // mixpanel2 should not overwrite the settings to mixpanel1
+        assertEquals(10, mixpanel1.getFlushBatchSize());
+    }
+
 
     @Test
     public void testSetMaximumDatabaseLimit() {
