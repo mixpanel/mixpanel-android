@@ -163,7 +163,7 @@ public class MixpanelAPI {
             registerSuperProperties(superProperties);
         }
 
-        final boolean dbExists = MPDbAdapter.getInstance(mContext).getDatabaseFile().exists();
+        final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
 
         registerMixpanelActivityLifecycleCallbacks();
 
@@ -1729,7 +1729,7 @@ public class MixpanelAPI {
     // non-test client code.
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
-        return AnalyticsMessages.getInstance(mContext);
+        return AnalyticsMessages.getInstance(mContext, mConfig);
     }
 
 

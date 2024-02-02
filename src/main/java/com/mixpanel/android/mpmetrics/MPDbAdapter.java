@@ -110,10 +110,10 @@ import com.mixpanel.android.util.MPLog;
     private final MPDatabaseHelper mDb;
 
     private static class MPDatabaseHelper extends SQLiteOpenHelper {
-        MPDatabaseHelper(Context context, String dbName) {
+        MPDatabaseHelper(Context context, String dbName, MPConfig config) {
             super(context, dbName, null, DATABASE_VERSION);
             mDatabaseFile = context.getDatabasePath(dbName);
-            mConfig = MPConfig.getInstance(context);
+            mConfig = config;
             mContext = context;
         }
 
@@ -283,20 +283,20 @@ import com.mixpanel.android.util.MPLog;
         private final Context mContext;
     }
 
-    public MPDbAdapter(Context context) {
-        this(context, DATABASE_NAME);
+    public MPDbAdapter(Context context, MPConfig config) {
+        this(context, DATABASE_NAME, config);
     }
 
-    public MPDbAdapter(Context context, String dbName) {
-        mDb = new MPDatabaseHelper(context, dbName);
+    public MPDbAdapter(Context context, String dbName, MPConfig config) {
+        mDb = new MPDatabaseHelper(context, dbName, config);
     }
 
-    public static MPDbAdapter getInstance(Context context) {
+    public static MPDbAdapter getInstance(Context context, MPConfig config) {
         synchronized (sInstances) {
             final Context appContext = context.getApplicationContext();
             MPDbAdapter ret;
             if (! sInstances.containsKey(appContext)) {
-                ret = new MPDbAdapter(appContext);
+                ret = new MPDbAdapter(appContext, config);
                 sInstances.put(appContext, ret);
             } else {
                 ret = sInstances.get(appContext);

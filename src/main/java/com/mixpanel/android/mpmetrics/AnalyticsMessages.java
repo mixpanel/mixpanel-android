@@ -40,9 +40,9 @@ import javax.net.ssl.SSLSocketFactory;
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(final Context context) {
+    /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
-        mConfig = getConfig(context);
+        mConfig = config;
         mWorker = createWorker();
         getPoster().checkIsMixpanelBlocked();
     }
@@ -57,13 +57,16 @@ import javax.net.ssl.SSLSocketFactory;
      *
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
+     *
+     * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
+     *               
      */
-    public static AnalyticsMessages getInstance(final Context messageContext) {
+    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             if (! sInstances.containsKey(appContext)) {
-                ret = new AnalyticsMessages(appContext);
+                ret = new AnalyticsMessages(appContext, config);
                 sInstances.put(appContext, ret);
             } else {
                 ret = sInstances.get(appContext);
@@ -162,11 +165,7 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     protected MPDbAdapter makeDbAdapter(Context context) {
-        return MPDbAdapter.getInstance(context);
-    }
-
-    protected MPConfig getConfig(Context context) {
-        return MPConfig.getInstance(context);
+        return MPDbAdapter.getInstance(context, mConfig);
     }
 
     protected RemoteService getPoster() {

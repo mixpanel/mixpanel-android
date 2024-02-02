@@ -82,7 +82,7 @@ public class AutomaticEventsTest {
         };
 
         InstrumentationRegistry.getInstrumentation().getContext().deleteDatabase("mixpanel");
-        mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
+        mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token) {
                 if (token.equalsIgnoreCase(TOKEN)) {
@@ -102,7 +102,7 @@ public class AutomaticEventsTest {
             }
         };
 
-        final AnalyticsMessages automaticAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
+        final AnalyticsMessages automaticAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
 
             @Override
             protected RemoteService getPoster() {
@@ -228,7 +228,7 @@ public class AutomaticEventsTest {
             }
         };
 
-        final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
+        final MPDbAdapter mpSecondDbAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token) {
                 if (token.equalsIgnoreCase(SECOND_TOKEN)) {
@@ -247,7 +247,7 @@ public class AutomaticEventsTest {
             }
         };
 
-        final AnalyticsMessages mpSecondAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
+        final AnalyticsMessages mpSecondAnalyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
             @Override
             protected RemoteService getPoster() {
                 return mpSecondPoster;
