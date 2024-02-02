@@ -1,5 +1,13 @@
 #
 
+## [v7.4.1](https://github.com/mixpanel/mixpanel-android/tree/v7.4.1) (2024-02-02)
+
+### Fixes
+
+- Passing down the 'MPConfig' instance from the MixpanelAPI instance [\#827](https://github.com/mixpanel/mixpanel-android/pull/827)
+
+#
+
 ## [v7.4.0](https://github.com/mixpanel/mixpanel-android/tree/v7.4.0) (2024-01-22)
 
 
@@ -1542,6 +1550,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
