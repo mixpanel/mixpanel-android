@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- Passing down the 'MPConfig' instance from the MixpanelAPI instance [\#827](https://github.com/mixpanel/mixpanel-android/pull/827)
+- MPConfig instances created through MixpanelAPI are not being utilized when making API calls from AnalyticsMessages. [\#827](https://github.com/mixpanel/mixpanel-android/pull/827)
 
 #
 
