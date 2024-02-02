@@ -107,7 +107,7 @@ public class HttpTest {
             }
         };
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext()) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), config) {
             @Override
             public void cleanupEvents(String last_id, Table table, String token) {
                 mCleanupCalls.add("called");
@@ -124,7 +124,7 @@ public class HttpTest {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext()) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), config) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
@@ -135,10 +135,6 @@ public class HttpTest {
                 return mockPoster;
             }
 
-            @Override
-            protected MPConfig getConfig(Context context) {
-                return config;
-            }
         };
 
         mMetrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Message Queuing") {
