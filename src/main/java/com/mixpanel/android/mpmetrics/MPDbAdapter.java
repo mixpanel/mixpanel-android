@@ -5,6 +5,7 @@ import java.io.FilenameFilter;
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.annotation.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,7 +29,7 @@ import com.mixpanel.android.util.MPLog;
  */
 /* package */ class MPDbAdapter {
     private static final String LOGTAG = "MixpanelAPI.Database";
-    private static final Map<Context, MPDbAdapter> sInstances = new HashMap<>();
+    private static final Map<String, MPDbAdapter> sInstances = new HashMap<>();
 
     public enum Table {
         EVENTS ("events"),
@@ -284,7 +285,11 @@ import com.mixpanel.android.util.MPLog;
     }
 
     public MPDbAdapter(Context context, MPConfig config) {
-        this(context, DATABASE_NAME, config);
+        this(context, getDbName(config.getInstanceName()), config);
+    }
+
+    private static String getDbName(String instanceName) {
+        return (instanceName == null || instanceName.trim().isEmpty()) ? DATABASE_NAME : (DATABASE_NAME + "_" + instanceName);
     }
 
     public MPDbAdapter(Context context, String dbName, MPConfig config) {
@@ -295,11 +300,12 @@ import com.mixpanel.android.util.MPLog;
         synchronized (sInstances) {
             final Context appContext = context.getApplicationContext();
             MPDbAdapter ret;
-            if (! sInstances.containsKey(appContext)) {
+            String instanceName = config.getInstanceName();
+            if (!sInstances.containsKey(instanceName)) {
                 ret = new MPDbAdapter(appContext, config);
-                sInstances.put(appContext, ret);
+                sInstances.put(instanceName, ret);
             } else {
-                ret = sInstances.get(appContext);
+                ret = sInstances.get(instanceName);
             }
             return ret;
         }

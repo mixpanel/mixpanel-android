@@ -52,7 +52,7 @@ public class MixpanelBasicTest {
     @Before
     public void setUp() throws Exception {
         mMockPreferences = new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
-        AnalyticsMessages messages = AnalyticsMessages.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()));
+        AnalyticsMessages messages = AnalyticsMessages.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null));
         messages.hardKill();
         Thread.sleep(2000);
 
@@ -102,7 +102,7 @@ public class MixpanelBasicTest {
         afterMap.put("added", "after");
         JSONObject after = new JSONObject(afterMap);
 
-        MPDbAdapter adapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), "DeleteTestDB", MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext()));
+        MPDbAdapter adapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), "DeleteTestDB", MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null));
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.EVENTS);
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.PEOPLE);
         adapter.addJSON(before, "ATOKEN", MPDbAdapter.Table.GROUPS);
@@ -142,7 +142,7 @@ public class MixpanelBasicTest {
     public void testLooperDestruction() {
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter explodingDb = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter explodingDb = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
                 messages.add(message);
@@ -150,7 +150,7 @@ public class MixpanelBasicTest {
             }
         };
 
-        final AnalyticsMessages explodingMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages explodingMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             // This will throw inside of our worker thread.
             @Override
             public MPDbAdapter makeDbAdapter(Context context) {
@@ -188,7 +188,7 @@ public class MixpanelBasicTest {
     public void testEventOperations() throws JSONException {
         final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter eventOperationsAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
                 messages.add(message);
@@ -197,7 +197,7 @@ public class MixpanelBasicTest {
             }
         };
 
-        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages eventOperationsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             // This will throw inside of our worker thread.
             @Override
             public MPDbAdapter makeDbAdapter(Context context) {
@@ -309,7 +309,7 @@ public class MixpanelBasicTest {
     public void testPeopleMessageOperations() throws JSONException {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<AnalyticsMessages.PeopleDescription>();
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
@@ -384,7 +384,7 @@ public class MixpanelBasicTest {
     public void testGroupOperations() throws JSONException {
         final List<AnalyticsMessages.GroupDescription> messages = new ArrayList<AnalyticsMessages.GroupDescription>();
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void groupMessage(GroupDescription heard) {
                 messages.add(heard);
@@ -465,7 +465,7 @@ public class MixpanelBasicTest {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue();
         final BlockingQueue<JSONObject> peopleUpdates = new LinkedBlockingQueue();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -476,7 +476,7 @@ public class MixpanelBasicTest {
                 return super.addJSON(j, token, table);
             }
         };
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
@@ -545,7 +545,7 @@ public class MixpanelBasicTest {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue();
         final BlockingQueue<JSONObject> peopleUpdates = new LinkedBlockingQueue();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -556,7 +556,7 @@ public class MixpanelBasicTest {
                 return super.addJSON(j, token, table);
             }
         };
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void peopleMessage(PeopleDescription heard) {
                 messages.add(heard);
@@ -684,7 +684,7 @@ public class MixpanelBasicTest {
         final SynchronizedReference<Boolean> isIdentifiedRef = new SynchronizedReference<Boolean>();
         isIdentifiedRef.set(false);
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
                 try {
@@ -719,7 +719,7 @@ public class MixpanelBasicTest {
         };
 
 
-        final MPConfig mockConfig = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
+        final MPConfig mockConfig = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext(), null) {
             @Override
             public int getFlushInterval() {
                 return -1;
@@ -883,7 +883,7 @@ public class MixpanelBasicTest {
     @Test
     public void testTrackCharge() {
         final List<AnalyticsMessages.PeopleDescription> messages = new ArrayList<>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -938,7 +938,7 @@ public class MixpanelBasicTest {
     public void testTrackWithSavedDistinctId(){
         final String savedDistinctID = "saved_distinct_id";
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                   if (!heard.isAutomatic() && !heard.getEventName().equals("$identify")) {
@@ -1016,7 +1016,7 @@ public class MixpanelBasicTest {
     @Test
     public void testSetAddRemoveGroup(){
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic() &&
@@ -1152,7 +1152,7 @@ public class MixpanelBasicTest {
     public void testIdentifyCall() throws JSONException {
         String newDistinctId = "New distinct ID";
         final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1187,7 +1187,7 @@ public class MixpanelBasicTest {
     public void testIdentifyResetCall() throws JSONException {
         String newDistinctId = "New distinct ID";
         final List<AnalyticsMessages.EventDescription> messages = new ArrayList<AnalyticsMessages.EventDescription>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1248,7 +1248,7 @@ public class MixpanelBasicTest {
         // will get their values from the same persistent store.
 
         final List<Object> messages = new ArrayList<Object>();
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription heard) {
                 if (!heard.isAutomatic()) {
@@ -1355,7 +1355,7 @@ public class MixpanelBasicTest {
             @Override
             public void run() {
 
-                final MPDbAdapter dbMock = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+                final MPDbAdapter dbMock = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
                     @Override
                     public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
                         mMessages.add(message);
@@ -1364,7 +1364,7 @@ public class MixpanelBasicTest {
                     }
                 };
 
-                final AnalyticsMessages analyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+                final AnalyticsMessages analyticsMessages = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
                     @Override
                     public MPDbAdapter makeDbAdapter(Context context) {
                         return dbMock;
@@ -1415,7 +1415,7 @@ public class MixpanelBasicTest {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             protected RemoteService getPoster() {
                 return mockPoster;
@@ -1439,7 +1439,7 @@ public class MixpanelBasicTest {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
         final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -1451,7 +1451,7 @@ public class MixpanelBasicTest {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
@@ -1460,13 +1460,13 @@ public class MixpanelBasicTest {
 
         MixpanelAPI mixpanel1 = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates", "instance1") {
             @Override
-            AnalyticsMessages getAnalyticsMessages() {
+            protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
         MixpanelAPI mixpanel2 = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates", "instance2") {
             @Override
-            AnalyticsMessages getAnalyticsMessages() {
+            protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
@@ -1496,7 +1496,7 @@ public class MixpanelBasicTest {
         final BlockingQueue<JSONObject> anonymousUpdates = new LinkedBlockingQueue<JSONObject>();
         final BlockingQueue<JSONObject> identifiedUpdates = new LinkedBlockingQueue<JSONObject>();
 
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public int addJSON(JSONObject j, String token, Table table) {
                 if (table == Table.ANONYMOUS_PEOPLE) {
@@ -1508,7 +1508,7 @@ public class MixpanelBasicTest {
             }
         };
 
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             protected MPDbAdapter makeDbAdapter(Context context) {
                 return mockAdapter;
@@ -1517,7 +1517,7 @@ public class MixpanelBasicTest {
 
         MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "testAnonymousPeopleUpdates") {
             @Override
-            AnalyticsMessages getAnalyticsMessages() {
+            protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
         };
@@ -1585,7 +1585,7 @@ public class MixpanelBasicTest {
         final BlockingQueue<JSONObject> storedJsons = new LinkedBlockingQueue<>();
         final BlockingQueue<AnalyticsMessages.EventDescription> eventsMessages = new LinkedBlockingQueue<>();
         final BlockingQueue<AnalyticsMessages.PeopleDescription> peopleMessages = new LinkedBlockingQueue<>();
-        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final MPDbAdapter mockAdapter = new MPDbAdapter(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
 
             @Override
             public int addJSON(JSONObject j, String token, Table table) {
@@ -1593,7 +1593,7 @@ public class MixpanelBasicTest {
                 return super.addJSON(j, token, table);
             }
         };
-        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext())) {
+        final AnalyticsMessages listener = new AnalyticsMessages(InstrumentationRegistry.getInstrumentation().getContext(), MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
             @Override
             public void eventsMessage(EventDescription eventDescription) {
                 if (!eventDescription.isAutomatic()) {

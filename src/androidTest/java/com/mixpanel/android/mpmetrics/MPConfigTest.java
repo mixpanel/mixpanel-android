@@ -196,7 +196,7 @@ public class MPConfigTest {
     }
 
     private MPConfig mpConfig(final Bundle metaData) {
-        return new MPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext());
+        return new MPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext(), null);
     }
 
     private MixpanelAPI mixpanelApi(final MPConfig config) {
