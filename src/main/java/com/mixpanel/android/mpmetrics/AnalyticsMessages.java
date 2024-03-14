@@ -43,6 +43,7 @@ import javax.net.ssl.SSLSocketFactory;
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
         mConfig = config;
+        mInstanceName = config.getInstanceName();
         mWorker = createWorker();
         getPoster().checkIsMixpanelBlocked();
     }
@@ -65,11 +66,12 @@ import javax.net.ssl.SSLSocketFactory;
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
-            if (! sInstances.containsKey(appContext)) {
+            String instanceName = config.getInstanceName();
+            if (!sInstances.containsKey(instanceName)) {
                 ret = new AnalyticsMessages(appContext, config);
-                sInstances.put(appContext, ret);
+                sInstances.put(instanceName, ret);
             } else {
-                ret = sInstances.get(appContext);
+                ret = sInstances.get(instanceName);
             }
             return ret;
         }
@@ -686,6 +688,7 @@ import javax.net.ssl.SSLSocketFactory;
 
     // Used across thread boundaries
     private final Worker mWorker;
+    private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
 
@@ -703,6 +706,6 @@ import javax.net.ssl.SSLSocketFactory;
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 
-    private static final Map<Context, AnalyticsMessages> sInstances = new HashMap<Context, AnalyticsMessages>();
+    private static final Map<String, AnalyticsMessages> sInstances = new HashMap<>();
 
 }

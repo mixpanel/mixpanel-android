@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
@@ -115,8 +116,8 @@ public class MPConfig {
      *                an ApplicationContext to avoid potential memory leaks.
      * @return A new instance of MPConfig with settings loaded from the context's application metadata.
      */
-    public static MPConfig getInstance(Context context) {
-        return readConfig(context.getApplicationContext());
+    public static MPConfig getInstance(Context context, @Nullable String instanceName) {
+        return readConfig(context.getApplicationContext(), instanceName);
     }
 
     /**
@@ -171,7 +172,7 @@ public class MPConfig {
         mOfflineMode = offlineMode;
     }
 
-    /* package */ MPConfig(Bundle metaData, Context context) {
+    /* package */ MPConfig(Bundle metaData, Context context, String instanceName) {
 
         // By default, we use a clean, FACTORY default SSLSocket. In general this is the right
         // thing to do, and some other third party libraries change the
@@ -185,7 +186,7 @@ public class MPConfig {
             foundSSLFactory = null;
         }
         mSSLSocketFactory = foundSSLFactory;
-
+        mInstanceName = instanceName;
         DEBUG = metaData.getBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", false);
         if (DEBUG) {
             MPLog.setLevel(MPLog.VERBOSE);
@@ -288,6 +289,8 @@ public class MPConfig {
     public void setMaximumDatabaseLimit(int maximumDatabaseLimit) {
         mMaximumDatabaseLimit = maximumDatabaseLimit;
     }
+
+    public String getInstanceName() { return mInstanceName; }
 
     public boolean getDisableAppOpenEvent() {
         return mDisableAppOpenEvent;
@@ -411,7 +414,7 @@ public class MPConfig {
     ///////////////////////////////////////////////
 
     // Package access for testing only- do not call directly in library code
-    /* package */ static MPConfig readConfig(Context appContext) {
+    /* package */ static MPConfig readConfig(Context appContext, String instanceName) {
         final String packageName = appContext.getPackageName();
         try {
             final ApplicationInfo appInfo = appContext.getPackageManager().getApplicationInfo(packageName, PackageManager.GET_META_DATA);
@@ -419,7 +422,7 @@ public class MPConfig {
             if (null == configBundle) {
                 configBundle = new Bundle();
             }
-            return new MPConfig(configBundle, appContext);
+            return new MPConfig(configBundle, appContext, instanceName);
         } catch (final NameNotFoundException e) {
             throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
         }
@@ -451,6 +454,7 @@ public class MPConfig {
     private final long mDataExpiration;
     private final int mMinimumDatabaseLimit;
     private int mMaximumDatabaseLimit;
+    private String mInstanceName;
     private final boolean mDisableAppOpenEvent;
     private final boolean mDisableExceptionHandler;
     private boolean mTrackAutomaticEvents = true;

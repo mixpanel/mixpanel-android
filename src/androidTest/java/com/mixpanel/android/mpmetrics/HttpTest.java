@@ -94,7 +94,7 @@ public class HttpTest {
             }
         };
 
-        final MPConfig config = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext()) {
+        final MPConfig config = new MPConfig(new Bundle(), InstrumentationRegistry.getInstrumentation().getContext(), null) {
 
             @Override
             public String getEventsEndpoint() {

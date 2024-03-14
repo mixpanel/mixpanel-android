@@ -110,7 +110,7 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, boolean trackAutomaticEvents) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, null, trackAutomaticEvents);
+        this(context, referrerPreferences, token, MPConfig.getInstance(context, null), optOutTrackingDefault, superProperties, null, trackAutomaticEvents);
     }
 
     /**
@@ -118,7 +118,7 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
+        this(context, referrerPreferences, token, MPConfig.getInstance(context, instanceName), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -128,6 +128,7 @@ public class MixpanelAPI {
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
         mContext = context;
         mToken = token;
+        mInstanceName = instanceName;
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
@@ -2343,6 +2344,7 @@ public class MixpanelAPI {
     private final MPConfig mConfig;
     private final Boolean mTrackAutomaticEvents;
     private final String mToken;
+    private final String mInstanceName;
     private final PeopleImpl mPeople;
     private final Map<String, GroupImpl> mGroups;
     private final PersistentIdentity mPersistentIdentity;
