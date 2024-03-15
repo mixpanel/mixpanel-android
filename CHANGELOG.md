@@ -1,5 +1,13 @@
 #
 
+## [v7.4.2](https://github.com/mixpanel/mixpanel-android/tree/v7.4.2) (2024-03-15)
+
+### Enhancements
+
+- feat: Enable data separation for each MixPanel API instance [\#830](https://github.com/mixpanel/mixpanel-android/pull/830)
+
+#
+
 ## [v7.4.1](https://github.com/mixpanel/mixpanel-android/tree/v7.4.1) (2024-02-02)
 
 ### Fixes
@@ -1550,6 +1558,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
