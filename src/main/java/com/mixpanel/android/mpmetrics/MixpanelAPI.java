@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelServerCallback;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -580,6 +581,17 @@ public class MixpanelAPI {
         mConfig.setServerURL(serverURL);
     }
 
+    /**
+     * Set the base URL used for Mixpanel API requests.
+     * Useful if you need to proxy Mixpanel requests. Defaults to https://api.mixpanel.com.
+     * To route data to Mixpanel's EU servers, set to https://api-eu.mixpanel.com
+     *
+     * @param serverURL the base URL used for Mixpanel API requests
+     * @param callback the callback for mixpanel proxy server api headers and status
+     */
+    public void setServerURL(String serverURL, MixpanelServerCallback callback) {
+        mConfig.setServerURL(serverURL, callback);
+    }
 
     public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
     /**

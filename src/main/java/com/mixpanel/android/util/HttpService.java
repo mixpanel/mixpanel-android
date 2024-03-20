@@ -1,5 +1,7 @@
 package com.mixpanel.android.util;
 
+import static com.mixpanel.android.util.MPConstants.URL.MIXPANEL_API;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -88,7 +90,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+    public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
         MPLog.v(LOGTAG, "Attempting request to " + endpointUrl);
 
         byte[] response = null;
@@ -112,6 +114,15 @@ public class HttpService implements RemoteService {
                     ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
                 }
 
+                if (shouldProcessMixpanelCallback(endpointUrl) && callback != null) {
+                    Map<String,String> headers = callback.getHeaders();
+                    if (headers != null) {
+                        for (Map.Entry<String, String> entry : headers.entrySet()) {
+                            connection.setRequestProperty(entry.getKey(), entry.getValue());
+                        }
+                    }
+                }
+
                 connection.setConnectTimeout(2000);
                 connection.setReadTimeout(30000);
                 if (null != params) {
@@ -132,6 +143,9 @@ public class HttpService implements RemoteService {
                     bout = null;
                     out.close();
                     out = null;
+                }
+                if (shouldProcessMixpanelCallback(endpointUrl) && callback != null) {
+                    callback.onResponse(endpointUrl, connection.getResponseCode());
                 }
                 in = connection.getInputStream();
                 response = slurp(in);
@@ -163,6 +177,10 @@ public class HttpService implements RemoteService {
             MPLog.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
         }
         return response;
+    }
+
+    private static boolean shouldProcessMixpanelCallback(String endpointUrl) {
+        return !endpointUrl.toLowerCase().contains(MIXPANEL_API.toLowerCase());
     }
 
     private static byte[] slurp(final InputStream inputStream)

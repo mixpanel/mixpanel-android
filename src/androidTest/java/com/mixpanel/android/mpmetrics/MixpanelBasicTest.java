@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
+import com.mixpanel.android.util.MixpanelServerCallback;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
@@ -702,7 +703,7 @@ public class MixpanelBasicTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 final boolean isIdentified = isIdentifiedRef.get();
                 assertTrue(params.containsKey("data"));
                 final String decoded = Base64Coder.decodeString(params.get("data").toString());
@@ -1397,7 +1398,7 @@ public class MixpanelBasicTest {
     public void testAlias() {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 try {
                     assertTrue(params.containsKey("data"));
                     final String jsonData = Base64Coder.decodeString(params.get("data").toString());

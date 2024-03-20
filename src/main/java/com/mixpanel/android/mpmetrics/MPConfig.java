@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelServerCallback;
 import com.mixpanel.android.util.OfflineMode;
 
 import java.security.GeneralSecurityException;
@@ -303,6 +304,11 @@ public class MPConfig {
 
     public boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
 
+    public void setServerURL(String serverURL, MixpanelServerCallback callback) {
+        setServerURL(serverURL);
+        setMixpanelServerCallback(callback);
+    }
+
     // In parity with iOS SDK
     public void setServerURL(String serverURL) {
         setEventsEndpointWithBaseURL(serverURL);
@@ -413,6 +419,14 @@ public class MPConfig {
 
     ///////////////////////////////////////////////
 
+    public MixpanelServerCallback getMixpanelServerCallback() {
+        return this.serverCallbacks;
+    }
+
+    public void setMixpanelServerCallback(MixpanelServerCallback callback) {
+        this.serverCallbacks = callback;
+    }
+
     // Package access for testing only- do not call directly in library code
     /* package */ static MPConfig readConfig(Context appContext, String instanceName) {
         final String packageName = appContext.getPackageName();
@@ -472,5 +486,6 @@ public class MPConfig {
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
     private OfflineMode mOfflineMode;
+    private MixpanelServerCallback serverCallbacks = null;
     private static final String LOGTAG = "MixpanelAPI.Conf";
 }
