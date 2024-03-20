@@ -7,6 +7,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.os.Bundle;
 import android.util.DisplayMetrics;
 
 import com.mixpanel.android.util.Base64Coder;
@@ -26,6 +27,7 @@ import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import javax.net.ssl.SSLSocketFactory;
 
@@ -122,11 +124,42 @@ import javax.net.ssl.SSLSocketFactory;
 
     public void postToServer(final MixpanelDescription flushDescription) {
         final Message m = Message.obtain();
+        Bundle data = new Bundle();
+        data.putString("token", flushDescription.getToken());
+        m.setData(data);
         m.what = FLUSH_QUEUE;
-        m.obj = flushDescription.getToken();
         m.arg1 = 0;
+        m.arg2 = 0;
 
         mWorker.runMessage(m);
+    }
+
+    public Integer postToServer(final MixpanelDescription flushDescription, boolean sync) {
+        if (!sync) {
+            postToServer(flushDescription);
+            return -1;
+        }
+
+        final Message m = Message.obtain();
+        Bundle data = new Bundle();
+        data.putString("token", flushDescription.getToken());
+        m.setData(data);
+        m.what = FLUSH_QUEUE;
+        m.obj =  new CountDownLatch(1);
+        m.arg1 = 0;
+        m.arg2 = 1;
+
+        mWorker.runMessage(m);
+        Integer resultCode = data.getInt("returnCode");
+
+        logAboutMessageToMixpanel("Status Code Main Thread: " + resultCode);
+        logAboutMessageToMixpanel("bundle accessing from post to server: " + resultCode);
+
+        try {
+            return resultCode.intValue();
+        } catch(NullPointerException e) {
+            return -1;
+        }
     }
 
     public void emptyTrackingQueues(final MixpanelDescription mixpanelDescription) {
@@ -342,6 +375,14 @@ import javax.net.ssl.SSLSocketFactory;
                     logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
                 } else {
                     mHandler.sendMessage(msg);
+                    if (msg.arg2 != 0) {
+                        try {
+                            CountDownLatch flushLatch = (CountDownLatch) msg.obj;
+                            flushLatch.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
                 }
             }
         }
@@ -417,8 +458,12 @@ import javax.net.ssl.SSLSocketFactory;
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
                         updateFlushFrequency();
-                        token = (String) msg.obj;
-                        sendAllData(mDbAdapter, token);
+                        token = msg.getData().getString("token");
+                        int res = sendAllData(mDbAdapter, token);
+                        if (msg.arg2 != 0) {
+                            msg.getData().putInt("returnCode", res);
+                            ((CountDownLatch) msg.obj).countDown();
+                        }
                     } else if (msg.what == EMPTY_QUEUES) {
                         final MixpanelDescription message = (MixpanelDescription) msg.obj;
                         token = message.getToken();
@@ -479,25 +524,31 @@ import javax.net.ssl.SSLSocketFactory;
                 return mTrackEngageRetryAfter;
             }
 
-            private void sendAllData(MPDbAdapter dbAdapter, String token) {
+            private int sendAllData(MPDbAdapter dbAdapter, String token) {
                 final RemoteService poster = getPoster();
                 if (!poster.isOnline(mContext, mConfig.getOfflineMode())) {
                     logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
-                    return;
+                    return -1;
                 }
 
-                sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
-                sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
-                sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
+                int eventsSent = sendData(dbAdapter, token, MPDbAdapter.Table.EVENTS, mConfig.getEventsEndpoint());
+                int peopleSent = sendData(dbAdapter, token, MPDbAdapter.Table.PEOPLE, mConfig.getPeopleEndpoint());
+                int groupsSent = sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
+
+                logAboutMessageToMixpanel("Data flushed to Mixpanel successfully. Events sent: " + eventsSent + ", People sent: " + peopleSent + ", Groups sent: " + groupsSent);
+                return eventsSent;
             }
 
-            private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
+            private int sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
+
                 final RemoteService poster = getPoster();
                 String[] eventsData = dbAdapter.generateDataString(table, token);
                 Integer queueCount = 0;
                 if (eventsData != null) {
                     queueCount = Integer.valueOf(eventsData[2]);
                 }
+
+                int statusCode = -1; // Initialize with an invalid status code
 
                 while (eventsData != null && queueCount > 0) {
                     final String lastId = eventsData[0];
@@ -511,28 +562,22 @@ import javax.net.ssl.SSLSocketFactory;
                     }
 
                     boolean deleteEvents = true;
-                    byte[] response;
                     try {
                         final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
-                        response = poster.performRequest(url, params, socketFactory);
-                        if (null == response) {
+                        statusCode = poster.performRequest(url, params, socketFactory); // Update the status code
+                        if (-1 == statusCode) {
                             deleteEvents = false;
                             logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
                         } else {
                             deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
-                            String parsedResponse;
-                            try {
-                                parsedResponse = new String(response, "UTF-8");
-                            } catch (UnsupportedEncodingException e) {
-                                throw new RuntimeException("UTF not supported on this platform?", e);
-                            }
+
                             if (mFailedRetries > 0) {
                                 mFailedRetries = 0;
                                 removeMessages(FLUSH_QUEUE, token);
                             }
 
                             logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
-                            logAboutMessageToMixpanel("Response was " + parsedResponse);
+                            logAboutMessageToMixpanel("Response was " + statusCode);
                         }
                     } catch (final OutOfMemoryError e) {
                         MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
@@ -571,8 +616,9 @@ import javax.net.ssl.SSLSocketFactory;
                         queueCount = Integer.valueOf(eventsData[2]);
                     }
                 }
-            }
 
+                return statusCode; // Return the status code
+            }
             private JSONObject getDefaultEventProperties()
                     throws JSONException {
                 final JSONObject ret = new JSONObject();
