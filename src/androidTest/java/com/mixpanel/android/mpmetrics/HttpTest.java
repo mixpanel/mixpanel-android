@@ -5,10 +5,10 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.Base64Coder;
+import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.HttpService;
 
@@ -61,7 +61,7 @@ public class HttpTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, Map<String, Object> params, SSLSocketFactory socketFactory)
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory)
                     throws ServiceUnavailableException, IOException {
                 try {
                     if (mFlushResults.isEmpty()) {
