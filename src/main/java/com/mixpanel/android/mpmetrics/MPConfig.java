@@ -304,9 +304,9 @@ public class MPConfig {
 
     public boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
 
-    public void setServerURL(String serverURL, ProxyServerInteractor callback) {
+    public void setServerURL(String serverURL, ProxyServerInteractor interactor) {
         setServerURL(serverURL);
-        setProxyServerInteractor(callback);
+        setProxyServerInteractor(interactor);
     }
 
     // In parity with iOS SDK
@@ -423,8 +423,8 @@ public class MPConfig {
         return this.serverCallbacks;
     }
 
-    public void setProxyServerInteractor(ProxyServerInteractor callback) {
-        this.serverCallbacks = callback;
+    public void setProxyServerInteractor(ProxyServerInteractor interactor) {
+        this.serverCallbacks = interactor;
     }
 
     // Package access for testing only- do not call directly in library code

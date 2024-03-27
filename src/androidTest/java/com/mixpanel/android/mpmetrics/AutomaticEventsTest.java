@@ -63,7 +63,7 @@ public class AutomaticEventsTest {
     private void setUpInstance(boolean trackAutomaticEvents) {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory) {
 
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
@@ -212,7 +212,7 @@ public class AutomaticEventsTest {
 
         final HttpService mpSecondPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
                 try {

@@ -14,7 +14,7 @@ public interface RemoteService {
 
     void checkIsMixpanelBlocked();
 
-    byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory)
+    byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException;
 
     class ServiceUnavailableException extends Exception {

@@ -58,7 +58,7 @@ public class OptOutTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 if (params != null) {
                     final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                     assertTrue(params.containsKey("data"));
