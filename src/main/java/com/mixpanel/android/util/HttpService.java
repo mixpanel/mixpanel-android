@@ -90,7 +90,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
+    public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
         MPLog.v(LOGTAG, "Attempting request to " + endpointUrl);
 
         byte[] response = null;
@@ -114,8 +114,8 @@ public class HttpService implements RemoteService {
                     ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
                 }
 
-                if (shouldProcessMixpanelCallback(endpointUrl) && callback != null) {
-                    Map<String,String> headers = callback.getHeaders();
+                if (callback != null && isProxyRequest(endpointUrl)) {
+                    Map<String,String> headers = callback.getProxyRequestHeaders();
                     if (headers != null) {
                         for (Map.Entry<String, String> entry : headers.entrySet()) {
                             connection.setRequestProperty(entry.getKey(), entry.getValue());
@@ -144,8 +144,8 @@ public class HttpService implements RemoteService {
                     out.close();
                     out = null;
                 }
-                if (shouldProcessMixpanelCallback(endpointUrl) && callback != null) {
-                    callback.onResponse(endpointUrl, connection.getResponseCode());
+                if (callback != null && isProxyRequest(endpointUrl)) {
+                    callback.onProxyResponse(endpointUrl, connection.getResponseCode());
                 }
                 in = connection.getInputStream();
                 response = slurp(in);
@@ -179,7 +179,7 @@ public class HttpService implements RemoteService {
         return response;
     }
 
-    private static boolean shouldProcessMixpanelCallback(String endpointUrl) {
+    private static boolean isProxyRequest(String endpointUrl) {
         return !endpointUrl.toLowerCase().contains(MIXPANEL_API.toLowerCase());
     }
 

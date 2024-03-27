@@ -10,7 +10,7 @@ import androidx.annotation.Nullable;
 import com.mixpanel.android.BuildConfig;
 import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
-import com.mixpanel.android.util.MixpanelServerCallback;
+import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.OfflineMode;
 
 import java.security.GeneralSecurityException;
@@ -304,9 +304,9 @@ public class MPConfig {
 
     public boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
 
-    public void setServerURL(String serverURL, MixpanelServerCallback callback) {
+    public void setServerURL(String serverURL, ProxyServerInteractor callback) {
         setServerURL(serverURL);
-        setMixpanelServerCallback(callback);
+        setProxyServerInteractor(callback);
     }
 
     // In parity with iOS SDK
@@ -419,11 +419,11 @@ public class MPConfig {
 
     ///////////////////////////////////////////////
 
-    public MixpanelServerCallback getMixpanelServerCallback() {
+    public ProxyServerInteractor getMixpanelServerCallback() {
         return this.serverCallbacks;
     }
 
-    public void setMixpanelServerCallback(MixpanelServerCallback callback) {
+    public void setProxyServerInteractor(ProxyServerInteractor callback) {
         this.serverCallbacks = callback;
     }
 
@@ -486,6 +486,6 @@ public class MPConfig {
     // Mutable, with synchronized accessor and mutator
     private SSLSocketFactory mSSLSocketFactory;
     private OfflineMode mOfflineMode;
-    private MixpanelServerCallback serverCallbacks = null;
+    private ProxyServerInteractor serverCallbacks = null;
     private static final String LOGTAG = "MixpanelAPI.Conf";
 }

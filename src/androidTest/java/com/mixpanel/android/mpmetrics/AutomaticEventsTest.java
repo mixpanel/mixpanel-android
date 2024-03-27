@@ -12,7 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
-import com.mixpanel.android.util.MixpanelServerCallback;
+import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
@@ -63,7 +63,7 @@ public class AutomaticEventsTest {
     private void setUpInstance(boolean trackAutomaticEvents) {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
 
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
@@ -212,7 +212,7 @@ public class AutomaticEventsTest {
 
         final HttpService mpSecondPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, MixpanelServerCallback callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor callback, Map<String, Object> params, SSLSocketFactory socketFactory) {
                 final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                 assertTrue(params.containsKey("data"));
                 try {
