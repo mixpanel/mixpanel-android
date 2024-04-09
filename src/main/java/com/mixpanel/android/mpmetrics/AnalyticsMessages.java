@@ -514,7 +514,7 @@ import javax.net.ssl.SSLSocketFactory;
                     byte[] response;
                     try {
                         final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
-                        response = poster.performRequest(url, mConfig.getMixpanelServerCallback(), params, socketFactory);
+                        response = poster.performRequest(url, mConfig.getProxyServerInteractor(), params, socketFactory);
                         if (null == response) {
                             deleteEvents = false;
                             logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");

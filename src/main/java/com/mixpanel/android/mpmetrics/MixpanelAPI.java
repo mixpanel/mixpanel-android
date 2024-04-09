@@ -14,7 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 
 import com.mixpanel.android.util.MPLog;
-import com.mixpanel.android.util.MixpanelServerCallback;
+import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -589,7 +589,7 @@ public class MixpanelAPI {
      * @param serverURL the base URL used for Mixpanel API requests
      * @param callback the callback for mixpanel proxy server api headers and status
      */
-    public void setServerURL(String serverURL, MixpanelServerCallback callback) {
+    public void setServerURL(String serverURL, ProxyServerInteractor callback) {
         mConfig.setServerURL(serverURL, callback);
     }
 

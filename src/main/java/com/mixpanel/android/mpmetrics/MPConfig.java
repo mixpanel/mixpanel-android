@@ -419,7 +419,7 @@ public class MPConfig {
 
     ///////////////////////////////////////////////
 
-    public ProxyServerInteractor getMixpanelServerCallback() {
+    public ProxyServerInteractor getProxyServerInteractor() {
         return this.serverCallbacks;
     }
 
