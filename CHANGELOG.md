@@ -1,5 +1,13 @@
 #
 
+## [v7.5.0](https://github.com/mixpanel/mixpanel-android/tree/v7.5.0) (2024-04-09)
+
+### Enhancements
+
+- feat: add headers support for mixpanel proxy api calls [\#833](https://github.com/mixpanel/mixpanel-android/pull/833)
+
+#
+
 ## [v7.4.2](https://github.com/mixpanel/mixpanel-android/tree/v7.4.2) (2024-03-15)
 
 ### Enhancements
@@ -1558,6 +1566,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
