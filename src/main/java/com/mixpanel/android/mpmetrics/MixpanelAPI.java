@@ -178,14 +178,6 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
-        if (!mPersistentIdentity.isFirstIntegration(mToken) && !optOutTrackingDefault && !hasOptedOutTracking()) {
-            try {
-                sendHttpEvent("Integration", "85053bf24bba75239b16a601d9387e17", token, null, false);
-                mPersistentIdentity.setIsIntegrated(mToken);
-            } catch (JSONException e) {
-            }
-        }
-
         if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code")) && mTrackAutomaticEvents) {
             try {
                 final JSONObject messageProps = new JSONObject();
