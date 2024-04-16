@@ -178,14 +178,6 @@ public class MixpanelAPI {
             track("$app_open", null);
         }
 
-        if (!mPersistentIdentity.isFirstIntegration(mToken) && !optOutTrackingDefault && !hasOptedOutTracking()) {
-            try {
-                sendHttpEvent("Integration", "85053bf24bba75239b16a601d9387e17", token, null, false);
-                mPersistentIdentity.setIsIntegrated(mToken);
-            } catch (JSONException e) {
-            }
-        }
-
         if (mPersistentIdentity.isNewVersion(deviceInfo.get("$android_app_version_code")) && mTrackAutomaticEvents) {
             try {
                 final JSONObject messageProps = new JSONObject();
@@ -201,49 +193,6 @@ public class MixpanelAPI {
         if (mConfig.getRemoveLegacyResidualFiles()) {
             mMessages.removeResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
         }
-    }
-
-    private void sendHttpEvent(String eventName, String token, String distinctId, JSONObject properties, boolean updatePeople) throws JSONException {
-        final JSONObject superProperties = getSuperProperties();
-        String lib = null;
-        String libVersion = null;
-        try {
-            if (superProperties != null) {
-                lib = (String) superProperties.get("mp_lib");
-                libVersion = (String) superProperties.get("$lib_version");
-            }
-        } catch (JSONException e) {
-        }
-
-        final JSONObject messageProps = new JSONObject();
-        messageProps.put("mp_lib", null != lib ? lib : "Android");
-        messageProps.put("distinct_id", distinctId);
-        messageProps.put("$lib_version", null != libVersion ? libVersion : MPConfig.VERSION);
-        messageProps.put("Project Token", distinctId);
-        if (null != properties) {
-            final Iterator<?> propIter = properties.keys();
-            while (propIter.hasNext()) {
-                final String key = (String) propIter.next();
-                messageProps.put(key, properties.get(key));
-            }
-        }
-        final AnalyticsMessages.EventDescription eventDescription =
-                new AnalyticsMessages.EventDescription(
-                        eventName,
-                        messageProps,
-                        token);
-        mMessages.eventsMessage(eventDescription);
-
-        if (updatePeople) {
-            final JSONObject peopleMessageProps = new JSONObject();
-            final JSONObject addProperties = new JSONObject();
-            addProperties.put(eventName, 1);
-            peopleMessageProps.put("$add", addProperties);
-            peopleMessageProps.put("$token", token);
-            peopleMessageProps.put("$distinct_id", distinctId);
-            mMessages.peopleMessage(new AnalyticsMessages.PeopleDescription(peopleMessageProps, token));
-        }
-        mMessages.postToServer(new AnalyticsMessages.MixpanelDescription(token));
     }
 
     /**
