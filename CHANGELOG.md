@@ -8,10 +8,6 @@
 
 #
 
-## [v7.5.1](https://github.com/mixpanel/mixpanel-android/tree/v7.5.1) (2024-04-16)
-
-#
-
 ## [v7.4.2](https://github.com/mixpanel/mixpanel-android/tree/v7.4.2) (2024-03-15)
 
 ### Enhancements
