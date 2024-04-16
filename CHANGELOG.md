@@ -8,6 +8,14 @@
 
 #
 
+## [v7.5.0](https://github.com/mixpanel/mixpanel-android/tree/v7.5.0) (2024-04-09)
+
+### Enhancements
+
+- feat: add headers support for mixpanel proxy api calls [\#833](https://github.com/mixpanel/mixpanel-android/pull/833)
+
+#
+
 ## [v7.4.2](https://github.com/mixpanel/mixpanel-android/tree/v7.4.2) (2024-03-15)
 
 ### Enhancements
