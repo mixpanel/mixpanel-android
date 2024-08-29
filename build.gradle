@@ -81,7 +81,8 @@ allprojects {
 // have to change the bit in uploadArchives that marks all dependencies as optional.
 dependencies {
     implementation "androidx.annotation:annotation:1.1.0"
-    
+    implementation 'androidx.core:core:1.12.0'
+
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:core:1.4.0'
