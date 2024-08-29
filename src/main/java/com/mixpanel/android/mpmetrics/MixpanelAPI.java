@@ -196,11 +196,12 @@ public class MixpanelAPI {
         }
 
         BroadcastReceiver sessionReplayReceiver = new SessionReplayBroadcastReceiver(this);
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(SessionReplay.REGISTER_ACTION);
-        filter.addAction(SessionReplay.UNREGISTER_ACTION);
-        Context appCtx = mContext.getApplicationContext();
-        ContextCompat.registerReceiver(appCtx, sessionReplayReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
+        ContextCompat.registerReceiver(
+                mContext.getApplicationContext(),
+                sessionReplayReceiver,
+                SessionReplayBroadcastReceiver.INTENT_FILTER,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+        );
     }
 
     /**
