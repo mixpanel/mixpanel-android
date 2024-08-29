@@ -12,7 +12,9 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.core.content.ContextCompat;
 
+import com.mixpanel.android.util.MPConstants.SessionReplay;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
@@ -105,7 +107,6 @@ public class MixpanelAPI {
      */
     public static final String VERSION = MPConfig.VERSION;
 
-
     /**
      * You shouldn't instantiate MixpanelAPI objects directly.
      * Use MixpanelAPI.getInstance to get an instance.
@@ -193,6 +194,14 @@ public class MixpanelAPI {
         if (mConfig.getRemoveLegacyResidualFiles()) {
             mMessages.removeResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
         }
+
+        BroadcastReceiver sessionReplayReceiver = new SessionReplayBroadcastReceiver(this);
+        ContextCompat.registerReceiver(
+                mContext.getApplicationContext(),
+                sessionReplayReceiver,
+                SessionReplayBroadcastReceiver.INTENT_FILTER,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+        );
     }
 
     /**
