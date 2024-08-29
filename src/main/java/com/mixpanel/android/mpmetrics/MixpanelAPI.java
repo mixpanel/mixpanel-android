@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.core.content.ContextCompat;
 
+import com.mixpanel.android.util.MPConstants.SessionReplay;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
@@ -196,8 +197,8 @@ public class MixpanelAPI {
 
         BroadcastReceiver sessionReplayReceiver = new SessionReplayBroadcastReceiver(this);
         IntentFilter filter = new IntentFilter();
-        filter.addAction(SessionReplayBroadcastReceiver.REGISTER_ACTION);
-        filter.addAction(SessionReplayBroadcastReceiver.UNREGISTER_ACTION);
+        filter.addAction(SessionReplay.REGISTER_ACTION);
+        filter.addAction(SessionReplay.UNREGISTER_ACTION);
         Context appCtx = mContext.getApplicationContext();
         ContextCompat.registerReceiver(appCtx, sessionReplayReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     }
