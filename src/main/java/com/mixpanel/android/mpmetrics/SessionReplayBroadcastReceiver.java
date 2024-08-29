@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 
 import com.mixpanel.android.util.MPConstants.SessionReplay;
 import com.mixpanel.android.util.MPLog;
@@ -13,6 +14,12 @@ import java.util.HashMap;
 public class SessionReplayBroadcastReceiver extends BroadcastReceiver {
     private static final String LOGTAG = "SessionReplayBroadcastReceiver";
     private final MixpanelAPI sdkInstance;
+
+    public static final IntentFilter INTENT_FILTER = new IntentFilter();
+    static {
+        INTENT_FILTER.addAction(SessionReplay.REGISTER_ACTION);
+        INTENT_FILTER.addAction(SessionReplay.UNREGISTER_ACTION);
+    }
 
     public SessionReplayBroadcastReceiver(MixpanelAPI instance) {
         this.sdkInstance = instance;
