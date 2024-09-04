@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.mixpanel.android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
       This permission is required to allow the application to send events and properties to Mixpanel.
