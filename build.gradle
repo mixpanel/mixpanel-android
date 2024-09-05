@@ -77,9 +77,13 @@ allprojects {
     }
 }
 
-// Note- *all* dependencies are marked as optional in our final
-// pom! If you need a transitive dependency in the library, you'll
-// have to change the bit in uploadArchives that marks all dependencies as optional.
+configurations.all {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+    }
+}
+
 dependencies {
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'

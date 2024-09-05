@@ -8,32 +8,32 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-13
     steps:
     - name: Checkout the code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.1.7
     - name: Run Unit test
-      uses: reactivecircus/android-emulator-runner@v2.20.0
+      uses: reactivecircus/android-emulator-runner@v2.32.0
       with:
-        api-level: 30
-        profile: Nexus 6
+        api-level: 34
+        profile: Nexus 5X 
         arch: x86_64
         script: ./gradlew createDebugCoverageReport
     - name: Lint
       run:  ./gradlew lint
     - name: Upload test report
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: Unit Test Report
         path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/androidTests/connected
     - name: Upload test coverage report
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: Test Coverage Report
         path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/coverage/debug/
     - name: Upload lint report
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: Lint Report
         path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/lint-results.html
