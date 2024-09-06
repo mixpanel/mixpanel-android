@@ -186,6 +186,10 @@ tasks.register('install') {
     dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'publishDebugPublicationToMavenLocal'
 }
 
+tasks.register('publishRelease') {
+    dependsOn 'publishReleasePublicationToMavenRepository'
+}
+
 tasks.named('publishDebugPublicationToMavenLocal') {
     dependsOn 'androidJavadocsJar', 'androidSourcesJar', 'bundleDebugAar'
 }
