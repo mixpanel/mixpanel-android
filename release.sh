@@ -123,8 +123,8 @@ cleanUp
 
 # upload library to maven
 printf "\n\n${YELLOW}Uploading archives...${NC}\n"
-if ! ./gradlew signReleasePublication ; then
-    printf "${RED}Err.. Seems there was a problem runing ./gradlew signReleasePublication\n${NC}"
+if ! ./gradlew publishRelease ; then
+    printf "${RED}Err.. Seems there was a problem runing ./gradlew publishRelease\n${NC}"
     abort
 fi
 
