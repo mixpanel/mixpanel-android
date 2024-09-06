@@ -1,6 +1,4 @@
 include ":"
 rootProject.name = "mixpanel-android"
-include ":example"
 include ':mixpanel-android'
-include ':exampleapp'
 include ':mixpaneldemo'
