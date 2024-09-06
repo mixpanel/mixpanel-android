@@ -183,10 +183,6 @@ tasks.register("androidSourcesJar", Jar) {
 }
 
 tasks.register('install') {
-    dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'publishToMavenLocal'
-}
-
-tasks.register('installDebug') {
     dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'publishDebugPublicationToMavenLocal'
 }
 
@@ -195,7 +191,7 @@ tasks.named('publishDebugPublicationToMavenLocal') {
 }
 
 tasks.named('signReleasePublication') {
-    dependsOn 'androidJavadocsJar', 'androidSourcesJar', 'bundleReleaseAar'
+    dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'bundleReleaseAar'
 }
 
 def isReleaseBuild() {
