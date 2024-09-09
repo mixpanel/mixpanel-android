@@ -166,6 +166,7 @@ cleanUp
 
 # update documentation
 printf "\n\n${YELLOW}Updating documentation...${NC}\n\n"
+./gradlew androidJavadocsJar
 git checkout $docBranch
 git pull origin $docBranch
 cp -r build/docs/javadoc/* .
