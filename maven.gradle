@@ -173,6 +173,7 @@ tasks.register("androidJavadocs", Javadoc) {
 }
 
 tasks.register("androidJavadocsJar", Jar) {
+    dependsOn ':androidJavadocs'
     archiveClassifier.set('javadoc')
     from tasks.named("androidJavadocs").get().destinationDir
 }
@@ -182,11 +183,11 @@ tasks.register("androidSourcesJar", Jar) {
     from android.sourceSets.main.java.srcDirs
 }
 
-tasks.register('install') {
+tasks.register('install') { // for deploying snapshot build to local .m2 folder
     dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'publishDebugPublicationToMavenLocal'
 }
 
-tasks.register('publishRelease') {
+tasks.register('publishRelease') {  // for release
     dependsOn 'publishReleasePublicationToMavenRepository'
 }
 
@@ -196,10 +197,6 @@ tasks.named('publishDebugPublicationToMavenLocal') {
 
 tasks.named('signReleasePublication') {
     dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'bundleReleaseAar'
-}
-
-def isReleaseBuild() {
-    return !version.contains("SNAPSHOT")
 }
 
 def getRepositoryUsername() {
