@@ -8,15 +8,6 @@
 
 #
 
-## [v7.5.3](https://github.com/mixpanel/mixpanel-android/tree/v7.5.3) (2024-09-06)
-
-### Enhancements
-
-- upgrade to gradle 8+ and add a demo app [\#840](https://github.com/mixpanel/mixpanel-android/pull/840)
-- Add SessionReplayBroadcastReceiver [\#838](https://github.com/mixpanel/mixpanel-android/pull/838)
-
-#
-
 ## [v7.5.2](https://github.com/mixpanel/mixpanel-android/tree/v7.5.2) (2024-04-16)
 
 ### Enhancements
