@@ -31,7 +31,7 @@ android {
     }
 
     defaultConfig {
-        minSdk 23
+        minSdk 21
         targetSdk 34
         multiDexEnabled true
         android.buildFeatures.buildConfig true
