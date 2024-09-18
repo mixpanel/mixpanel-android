@@ -145,6 +145,16 @@ printf "\n\n${YELLOW}Creating new tag $newTag...${NC}\n"
 git tag $newTag
 git push origin $newTag
 
+# update documentation
+printf "\n\n${YELLOW}Updating documentation...${NC}\n\n"
+./gradlew androidJavadocsJar
+git checkout $docBranch
+git pull origin $docBranch
+cp -r build/docs/javadoc/* .
+git add .
+git commit -m "Update documentation for $releaseVersion"
+git push origin gh-pages
+
 # update next snapshot version
 printf "\n${YELLOW}Updating next snapshot version...${NC}\n"
 sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
@@ -164,15 +174,6 @@ fi
 # remove backup files
 cleanUp
 
-# update documentation
-printf "\n\n${YELLOW}Updating documentation...${NC}\n\n"
-./gradlew androidJavadocsJar
-git checkout $docBranch
-git pull origin $docBranch
-cp -r build/docs/javadoc/* .
-git add .
-git commit -m "Update documentation for $releaseVersion"
-git push origin gh-pages
 
 printf "\n${GREEN}All done! ¯\_(ツ)_/¯ \n"
 printf "Make sure you make a new release at https://github.com/mixpanel/mixpanel-android/releases/new\n"
