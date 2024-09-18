@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"com.mixpanel.android.mpmetrics"},{"l":"com.mixpanel.android.util"}]
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.mixpanel.android.mpmetrics"},{"l":"com.mixpanel.android.util"}];updateSearchResults();
