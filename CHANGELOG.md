@@ -1,10 +1,18 @@
 #
 
-## [v7.5.4](https://github.com/mixpanel/mixpanel-android/tree/v7.5.4) (2024-09-18)
+## [v7.5.2](https://github.com/mixpanel/mixpanel-android/tree/v7.5.2) (2024-04-16)
+
+### Enhancements
+
+- Remove Mixpanel internal tracking [\#835](https://github.com/mixpanel/mixpanel-android/pull/835)
 
 #
 
-## [v7.5.1](https://github.com/mixpanel/mixpanel-android/tree/v7.5.1) (2024-04-16)
+## [v7.5.0](https://github.com/mixpanel/mixpanel-android/tree/v7.5.0) (2024-04-09)
+
+### Enhancements
+
+- feat: add headers support for mixpanel proxy api calls [\#833](https://github.com/mixpanel/mixpanel-android/pull/833)
 
 #
 
