@@ -1,5 +1,13 @@
 #
 
+## [v8.0.0](https://github.com/mixpanel/mixpanel-android/tree/v8.0.0) (2024-09-18)
+
+### Enhancements
+
+- Set minSdk to 21, targetSdk to 34, Gradle upgraded to 8.1.4 and add a demo app! [\#845](https://github.com/mixpanel/mixpanel-android/pull/845)
+
+#
+
 ## [v7.5.3](https://github.com/mixpanel/mixpanel-android/tree/v7.5.3) (2024-09-06)
 
 ### Enhancements
@@ -1583,6 +1591,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
