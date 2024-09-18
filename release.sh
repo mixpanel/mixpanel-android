@@ -123,8 +123,8 @@ cleanUp
 
 # upload library to maven
 printf "\n\n${YELLOW}Uploading archives...${NC}\n"
-if ! ./gradlew uploadArchives ; then
-    printf "${RED}Err.. Seems there was a problem runing ./gradlew uploadArchives\n${NC}"
+if ! ./gradlew publishRelease ; then
+    printf "${RED}Err.. Seems there was a problem runing ./gradlew publishRelease\n${NC}"
     abort
 fi
 
@@ -166,6 +166,7 @@ cleanUp
 
 # update documentation
 printf "\n\n${YELLOW}Updating documentation...${NC}\n\n"
+./gradlew androidJavadocsJar
 git checkout $docBranch
 git pull origin $docBranch
 cp -r build/docs/javadoc/* .

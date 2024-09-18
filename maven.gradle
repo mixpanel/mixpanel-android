@@ -1,128 +1,170 @@
-apply plugin: 'maven'
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 group = GROUP
 version = VERSION_NAME
 
-uploadArchives {
-    repositories.mavenDeployer {
-        beforeDeployment {
-            MavenDeployment deployment -> signing.signPom(deployment)
-        }
-
-        pom.groupId = GROUP
-        pom.version = VERSION_NAME
-
-        pom.project {
-            name project.name
-            version VERSION_NAME
-            packaging POM_PACKAGING
-            description POM_DESCRIPTION
-            url POM_URL
-
-            scm {
-                url POM_SCM_URL
-                connection POM_SCM_CONNECTION
-                developerConnection POM_SCM_DEV_CONNECTION
+publishing {
+    publications {
+        release(MavenPublication) {
+            afterEvaluate {
+                from components.findByName('release')
             }
 
-            licenses {
-                license {
-                    name POM_LICENCE_NAME
-                    url POM_LICENCE_URL
-                    distribution POM_LICENCE_DIST
+            groupId = GROUP
+            artifactId = project.name
+            version = VERSION_NAME
+            artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+            artifact("$buildDir/libs/${project.name}-${version}-javadoc.jar") {
+                classifier "javadoc"
+            }
+            artifact("$buildDir/libs/${project.name}-${version}-sources.jar") {
+                classifier "sources"
+            }
+
+            pom {
+                name.set(project.name)
+                description.set(POM_DESCRIPTION)
+                url.set(POM_URL)
+                packaging = POM_PACKAGING
+
+                scm {
+                    url.set(POM_SCM_URL)
+                    connection.set(POM_SCM_CONNECTION)
+                    developerConnection.set(POM_SCM_DEV_CONNECTION)
+                }
+
+                licenses {
+                    license {
+                        name.set(POM_LICENCE_NAME)
+                        url.set(POM_LICENCE_URL)
+                        distribution.set(POM_LICENCE_DIST)
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set(POM_DEVELOPER_ID)
+                        name.set(POM_DEVELOPER_NAME)
+                        email.set(POM_DEVELOPER_EMAIL)
+                    }
+                }
+
+                withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    configurations.implementation.allDependencies.each { dep ->
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', dep.group)
+                        dependencyNode.appendNode('artifactId', dep.name)
+                        dependencyNode.appendNode('version', dep.version)
+                        dependencyNode.appendNode('scope', 'runtime')
+                        dependencyNode.appendNode('optional', 'true')
+                    }
                 }
             }
-            developers {
-                developer {
-                    id POM_DEVELOPER_ID
-                    name POM_DEVELOPER_NAME
-                    email POM_DEVELOPER_EMAIL
+        }
+        debug(MavenPublication) {
+            afterEvaluate {
+                from components.findByName('debug')
+            }
+
+            groupId = GROUP
+            artifactId = project.name
+            version = VERSION_NAME
+            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")
+            artifact("$buildDir/libs/${project.name}-${version}-javadoc.jar") {
+                classifier "javadoc"
+            }
+            artifact("$buildDir/libs/${project.name}-${version}-sources.jar") {
+                classifier "sources"
+            }
+
+            pom {
+                name.set(project.name)
+                description.set(POM_DESCRIPTION)
+                url.set(POM_URL)
+                packaging = POM_PACKAGING
+
+                scm {
+                    url.set(POM_SCM_URL)
+                    connection.set(POM_SCM_CONNECTION)
+                    developerConnection.set(POM_SCM_DEV_CONNECTION)
+                }
+
+                licenses {
+                    license {
+                        name.set(POM_LICENCE_NAME)
+                        url.set(POM_LICENCE_URL)
+                        distribution.set(POM_LICENCE_DIST)
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set(POM_DEVELOPER_ID)
+                        name.set(POM_DEVELOPER_NAME)
+                        email.set(POM_DEVELOPER_EMAIL)
+                    }
+                }
+
+                withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    configurations.implementation.allDependencies.each { dep ->
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', dep.group)
+                        dependencyNode.appendNode('artifactId', dep.name)
+                        dependencyNode.appendNode('version', dep.version)
+                    }
                 }
             }
         }
+    }
 
-        pom.whenConfigured { pom ->
-            pom.dependencies*.optional = true
+    repositories {
+        maven {
+            url = uri(RELEASE_REPOSITORY_URL)
+            credentials {
+                username = getRepositoryUsername()
+                password = getRepositoryPassword()
+            }
         }
-
-        /**
-         * In order to do nexus deploys, you'll need to setup a gradle.properties file in $HOME/.gradle
-         * with the following properties. You'll need the mixpanel.key file and then import it using GnuPG
-         * which will provide you with the keyId and the secring.gpg file
-         * signing.keyId=
-         * signing.password=
-         * signing.secretKeyRingFile=
-         *
-         * sonatypeRepo=https://oss.sonatype.org/service/local/staging/deploy/maven2/
-         * sonatypeUsername=
-         * sonatypePassword=
-         */
-        repository(url: RELEASE_REPOSITORY_URL) {
-            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-        }
-        snapshotRepository(url: SNAPSHOT_REPOSITORY_URL) {
-            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+        maven {
+            url = uri(SNAPSHOT_REPOSITORY_URL)
+            credentials {
+                username = getRepositoryUsername()
+                password = getRepositoryPassword()
+            }
         }
     }
 }
 
-task install(type: Upload, dependsOn: assemble) {
-    repositories.mavenInstaller {
-        configuration = configurations.archives
-
-        pom.groupId = GROUP
-        pom.version = VERSION_NAME
-
-        pom.project {
-            name project.name
-            version VERSION_NAME
-            packaging POM_PACKAGING
-            description POM_DESCRIPTION
-            url POM_URL
-
-            scm {
-                url POM_SCM_URL
-                connection POM_SCM_CONNECTION
-                developerConnection POM_SCM_DEV_CONNECTION
-            }
-
-            licenses {
-                license {
-                    name POM_LICENCE_NAME
-                    url POM_LICENCE_URL
-                    distribution POM_LICENCE_DIST
-                }
-            }
-            developers {
-                developer {
-                    id POM_DEVELOPER_ID
-                    name POM_DEVELOPER_NAME
-                    email POM_DEVELOPER_EMAIL
-                }
-            }
-        }
-    }
+signing {
+    sign publishing.publications.release
 }
 
-task androidJavadocs(type: Javadoc, dependsOn: ':assembleRelease') {
+tasks.register("androidJavadocs", Javadoc) {
+    dependsOn ':assembleRelease'
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
     classpath += project.files('build/generated/source/buildConfig/release')
     classpath += project.files(android.sourceSets.main.java.srcDirs)
-    source = android.sourceSets.main.java.sourceFiles
+    source = android.sourceSets.main.java.srcDirs
+
     android.libraryVariants.all { variant ->
         if (variant.name == 'release') {
-            owner.classpath += variant.javaCompileProvider.get().classpath
+            classpath += variant.javaCompileProvider.get().classpath
         }
     }
+
     exclude(
             '**/R.*',
             '**/util/Base64Coder.java',
             '**/util/HttpService.java',
             '**/util/RemoteService.java',
             '**/ResourceIds.java',
-            '**/ResourceReader.java',
+            '**/ResourceReader.java'
     )
+
     options {
         encoding = 'UTF-8'
         docEncoding = 'UTF-8'
@@ -130,28 +172,31 @@ task androidJavadocs(type: Javadoc, dependsOn: ':assembleRelease') {
     }
 }
 
-task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
-    classifier = 'javadoc'
-    from androidJavadocs.destinationDir
+tasks.register("androidJavadocsJar", Jar) {
+    dependsOn ':androidJavadocs'
+    archiveClassifier.set('javadoc')
+    from tasks.named("androidJavadocs").get().destinationDir
 }
 
-task androidSourcesJar(type: Jar) {
-    classifier = 'sources'
+tasks.register("androidSourcesJar", Jar) {
+    archiveClassifier.set('sources')
     from android.sourceSets.main.java.srcDirs
 }
 
-signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
-    sign configurations.archives
+tasks.register('install') { // for deploying snapshot build to local .m2 folder
+    dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'publishDebugPublicationToMavenLocal'
 }
 
-artifacts {
-    archives androidSourcesJar
-    archives androidJavadocsJar
+tasks.register('publishRelease') {  // for release
+    dependsOn 'publishReleasePublicationToMavenRepository'
 }
 
-def isReleaseBuild() {
-    return version.contains("SNAPSHOT") == false
+tasks.named('publishDebugPublicationToMavenLocal') {
+    dependsOn 'androidJavadocsJar', 'androidSourcesJar', 'bundleDebugAar'
+}
+
+tasks.named('signReleasePublication') {
+    dependsOn 'build', 'androidJavadocsJar', 'androidSourcesJar', 'bundleReleaseAar'
 }
 
 def getRepositoryUsername() {
