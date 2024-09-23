@@ -597,6 +597,9 @@ main, nav, header, footer, section {
     background-color:#4D7A97;
     color:#FFFFFF;
 }
+.result-item {
+    font-size:13px;
+}
 .ui-autocomplete {
     max-height:85%;
     max-width:65%;
@@ -615,11 +618,11 @@ ul.ui-autocomplete  li {
     clear:both;
     width:100%;
 }
+.result-highlight {
+    font-weight:bold;
+}
 .ui-autocomplete .result-item {
     font-size: inherit;
-}
-.ui-autocomplete .result-highlight {
-    font-weight:bold;
 }
 #search-input {
     background-image:url('resources/glass.png');
