@@ -1,5 +1,13 @@
 #
 
+## [v8.0.1](https://github.com/mixpanel/mixpanel-android/tree/v8.0.1) (2024-09-23)
+
+### Fixes
+
+- Only register Broadcast receiver on API Level 33+ and non-Instant Apps [\#847](https://github.com/mixpanel/mixpanel-android/pull/847)
+
+#
+
 ## [v8.0.0](https://github.com/mixpanel/mixpanel-android/tree/v8.0.0) (2024-09-18)
 
 ### Enhancements
@@ -1582,6 +1590,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
