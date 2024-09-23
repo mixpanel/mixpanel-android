@@ -195,13 +195,17 @@ public class MixpanelAPI {
             mMessages.removeResidualImageFiles(new File(mContext.getApplicationInfo().dataDir));
         }
 
-        BroadcastReceiver sessionReplayReceiver = new SessionReplayBroadcastReceiver(this);
-        ContextCompat.registerReceiver(
-                mContext.getApplicationContext(),
-                sessionReplayReceiver,
-                SessionReplayBroadcastReceiver.INTENT_FILTER,
-                ContextCompat.RECEIVER_NOT_EXPORTED
-        );
+        // Event tracking integration w/ Session Replay SDK requires Android 13 or higher.
+        // It is also NOT supported in "Instant" apps
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !context.getPackageManager().isInstantApp()) {
+            BroadcastReceiver sessionReplayReceiver = new SessionReplayBroadcastReceiver(this);
+            ContextCompat.registerReceiver(
+                    mContext.getApplicationContext(),
+                    sessionReplayReceiver,
+                    SessionReplayBroadcastReceiver.INTENT_FILTER,
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+            );
+        }
     }
 
     /**
