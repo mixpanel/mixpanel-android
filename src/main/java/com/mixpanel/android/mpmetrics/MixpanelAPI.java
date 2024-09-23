@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.core.content.ContextCompat;
 
-import com.mixpanel.android.util.MPConstants.SessionReplay;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
