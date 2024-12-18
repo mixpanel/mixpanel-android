@@ -11,13 +11,13 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
 import android.view.Display;
-import android.view.WindowManager;
 
 import com.mixpanel.android.util.MPLog;
 
@@ -88,7 +88,7 @@ import com.mixpanel.android.util.MPLog;
         mHasTelephony = foundTelephony;
         mDisplayMetrics = new DisplayMetrics();
 
-        Display display = ((WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        Display display = ((DisplayManager) mContext.getSystemService(Context.DISPLAY_SERVICE)).getDisplay(Display.DEFAULT_DISPLAY);
         display.getMetrics(mDisplayMetrics);
     }
 
