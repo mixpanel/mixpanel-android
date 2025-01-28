@@ -514,6 +514,24 @@ public class MixpanelAPI {
     }
 
     /**
+     * Set whether the request payload should be GZIP-compressed before being sent.
+     *
+     * @param shouldGzipRequestPayload boolean, true to enable GZIP compression, false otherwise.
+     */
+    public void setShouldGzipRequestPayload(boolean shouldGzipRequestPayload) {
+        mConfig.setShouldGzipRequestPayload(shouldGzipRequestPayload);
+    }
+
+    /**
+     * Get whether the request payload is currently set to be GZIP-compressed.
+     *
+     * @return boolean, whether GZIP compression is enabled
+     */
+    public boolean shouldGzipRequestPayload() {
+        return mConfig.shouldGzipRequestPayload();
+    }
+    
+    /**
      * Set an integer number of bytes, the maximum size limit to the Mixpanel database.
      *
      * @param maximumDatabaseLimit an integer number of bytes, the maximum size limit to the Mixpanel database.

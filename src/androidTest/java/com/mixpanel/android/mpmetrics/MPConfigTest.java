@@ -195,6 +195,32 @@ public class MPConfigTest {
         assertEquals(100000000, mixpanelAPI.getMaximumDatabaseLimit());
     }
 
+    @Test
+    public void testShouldGzipRequestPayload() {
+        final Bundle metaData = new Bundle();
+        metaData.putBoolean("com.mixpanel.android.MPConfig.GzipRequestPayload", true);
+        MPConfig mpConfig = mpConfig(metaData);
+        assertTrue(mpConfig.shouldGzipRequestPayload());
+
+        mpConfig.setShouldGzipRequestPayload(false);
+        assertFalse(mpConfig.shouldGzipRequestPayload());
+
+        mpConfig.setShouldGzipRequestPayload(true);
+        assertTrue(mpConfig.shouldGzipRequestPayload());
+
+        // assert false by default
+        MPConfig mpConfig2 = mpConfig(new Bundle());
+        assertFalse(mpConfig2.shouldGzipRequestPayload());
+
+        MixpanelAPI mixpanelAPI = mixpanelApi(mpConfig);
+
+        assertTrue(mixpanelAPI.shouldGzipRequestPayload());
+
+        mixpanelAPI.setShouldGzipRequestPayload(false);
+        assertFalse(mixpanelAPI.shouldGzipRequestPayload());
+
+    }
+
     private MPConfig mpConfig(final Bundle metaData) {
         return new MPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext(), null);
     }
