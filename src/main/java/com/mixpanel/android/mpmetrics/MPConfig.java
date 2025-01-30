@@ -200,6 +200,7 @@ public class MPConfig {
         mBulkUploadLimit = metaData.getInt("com.mixpanel.android.MPConfig.BulkUploadLimit", 40); // 40 records default
         mFlushInterval = metaData.getInt("com.mixpanel.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
         mFlushBatchSize = metaData.getInt("com.mixpanel.android.MPConfig.FlushBatchSize", 50); // flush 50 events at a time by default
+        shouldGzipRequestPayload = metaData.getBoolean("com.mixpanel.android.MPConfig.GzipRequestPayload", false);
         mFlushOnBackground = metaData.getBoolean("com.mixpanel.android.MPConfig.FlushOnBackground", true);
         mMinimumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
         mMaximumDatabaseLimit = metaData.getInt("com.mixpanel.android.MPConfig.MaximumDatabaseLimit", Integer.MAX_VALUE); // 2 Gb
@@ -277,6 +278,10 @@ public class MPConfig {
     public void setFlushBatchSize(int flushBatchSize) {
         mFlushBatchSize = flushBatchSize;
     }
+    public boolean shouldGzipRequestPayload() { return shouldGzipRequestPayload; }
+
+    public void setShouldGzipRequestPayload(Boolean shouldGzip) { shouldGzipRequestPayload = shouldGzip; }
+
 
     // Throw away records that are older than this in milliseconds. Should be below the server side age limit for events.
     public long getDataExpiration() {
@@ -476,6 +481,7 @@ public class MPConfig {
     private String mPeopleEndpoint;
     private String mGroupsEndpoint;
     private int mFlushBatchSize;
+    private boolean shouldGzipRequestPayload;
 
     private final String mResourcePackageName;
     private final int mMinSessionDuration;

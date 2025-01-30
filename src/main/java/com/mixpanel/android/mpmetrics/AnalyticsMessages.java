@@ -171,7 +171,7 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     protected RemoteService getPoster() {
-        return new HttpService();
+        return new HttpService(mConfig.shouldGzipRequestPayload());
     }
 
     ////////////////////////////////////////////////////

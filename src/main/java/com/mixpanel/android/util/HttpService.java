@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
@@ -27,10 +28,20 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class HttpService implements RemoteService {
 
+
+    private final boolean shouldGzipRequestPayload;
+
     private static boolean sIsMixpanelBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE = HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
+    public HttpService(boolean shouldGzipRequestPayload) {
+        this.shouldGzipRequestPayload = shouldGzipRequestPayload;
+    }
+
+    public HttpService() {
+        this(false);
+    }
     @Override
     public void checkIsMixpanelBlocked() {
         Thread t = new Thread(new Runnable() {
@@ -104,7 +115,7 @@ public class HttpService implements RemoteService {
         while (retries < 3 && !succeeded) {
             InputStream in = null;
             OutputStream out = null;
-            BufferedOutputStream bout = null;
+            OutputStream bout = null;
             HttpURLConnection connection = null;
 
             try {
@@ -131,12 +142,15 @@ public class HttpService implements RemoteService {
                         builder.appendQueryParameter(param.getKey(), param.getValue().toString());
                     }
                     String query = builder.build().getEncodedQuery();
-
-                    connection.setFixedLengthStreamingMode(query.getBytes().length);
+                    if (shouldGzipRequestPayload) {
+                        connection.setRequestProperty(CONTENT_ENCODING_HEADER, GZIP_CONTENT_TYPE_HEADER);
+                    } else {
+                        connection.setFixedLengthStreamingMode(query.getBytes().length);
+                    }
                     connection.setDoOutput(true);
                     connection.setRequestMethod("POST");
                     out = connection.getOutputStream();
-                    bout = new BufferedOutputStream(out);
+                    bout = getBufferedOutputStream(out);
                     bout.write(query.getBytes("UTF-8"));
                     bout.flush();
                     bout.close();
@@ -179,6 +193,14 @@ public class HttpService implements RemoteService {
         return response;
     }
 
+    private OutputStream getBufferedOutputStream(OutputStream out) throws IOException {
+        if(shouldGzipRequestPayload) {
+          return new GZIPOutputStream(new BufferedOutputStream(out), HTTP_OUTPUT_STREAM_BUFFER_SIZE);
+        } else {
+            return new BufferedOutputStream(out);
+        }
+    }
+
     private static boolean isProxyRequest(String endpointUrl) {
         return !endpointUrl.toLowerCase().contains(MIXPANEL_API.toLowerCase());
     }
@@ -199,4 +221,7 @@ public class HttpService implements RemoteService {
     }
 
     private static final String LOGTAG = "MixpanelAPI.Message";
+    private static final int HTTP_OUTPUT_STREAM_BUFFER_SIZE = 8192;
+    private static final String CONTENT_ENCODING_HEADER = "Content-Encoding";
+    private static final String GZIP_CONTENT_TYPE_HEADER = "gzip";
 }
