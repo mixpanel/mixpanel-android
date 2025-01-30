@@ -88,13 +88,13 @@ import com.mixpanel.android.util.MPLog;
         mHasTelephony = foundTelephony;
         mDisplayMetrics = new DisplayMetrics();
 
-        DisplayManager displayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+        DisplayManager displayManager = (DisplayManager) mContext.getSystemService(Context.DISPLAY_SERVICE);
         Display display = (displayManager != null) ? displayManager.getDisplay(Display.DEFAULT_DISPLAY) : null;
 
         if (display != null) {
             display.getMetrics(mDisplayMetrics);
         } else {
-            DisplayMetrics defaultMetrics = context.getResources().getDisplayMetrics();
+            DisplayMetrics defaultMetrics = mContext.getResources().getDisplayMetrics();
             mDisplayMetrics.setTo(defaultMetrics);
         }
     }
