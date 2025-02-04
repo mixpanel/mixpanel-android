@@ -1,5 +1,17 @@
 #
 
+## [v8.0.2](https://github.com/mixpanel/mixpanel-android/tree/v8.0.2) (2025-02-04)
+
+### Enhancements
+
+- feat: Enable GZIP compression for request payloads [\#852](https://github.com/mixpanel/mixpanel-android/pull/852)
+
+### Fixes
+
+- Use DisplayManager directly instead of using WindowManager [\#851](https://github.com/mixpanel/mixpanel-android/pull/851)
+
+#
+
 ## [v8.0.1](https://github.com/mixpanel/mixpanel-android/tree/v8.0.1) (2024-09-23)
 
 ### Fixes
@@ -1590,6 +1602,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
