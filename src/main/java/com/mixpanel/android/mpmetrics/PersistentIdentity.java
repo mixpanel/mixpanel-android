@@ -714,6 +714,7 @@ import com.mixpanel.android.util.MPLog;
     // Time events caching
     private Map<String, Long> mTimeEventsCache = null;
     private final Object mTimeEventsCacheLock = new Object();
+    private boolean mTimeEventsCacheLoading = false;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
