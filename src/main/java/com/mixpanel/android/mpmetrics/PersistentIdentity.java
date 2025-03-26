@@ -14,12 +14,13 @@ import org.json.JSONObject;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Looper;
 
 import com.mixpanel.android.util.MPLog;
 
 // In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
 @SuppressLint("CommitPrefEdits")
-/* package */ class PersistentIdentity {
+        /* package */ class PersistentIdentity {
     // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
     public static String getPeopleDistinctId(SharedPreferences storedPreferences) {
         return storedPreferences.getString("people_distinct_id", null);
@@ -55,6 +56,9 @@ import com.mixpanel.android.util.MPLog;
                 }
             }
         };
+
+        // Preload time events in the background to avoid main thread disk reads
+        preloadTimeEventsAsync();
     }
 
     // Super properties
@@ -278,30 +282,76 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.clear();
             writeEdits(editor);
+
+            // Clear cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.clear();
+                }
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to clear time events", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to clear time events", e.getCause());
         }
     }
 
     public Map<String, Long> getTimeEvents() {
-        Map<String, Long> timeEvents = new HashMap<>();
-
-        try {
-            final SharedPreferences prefs = mTimeEventsPreferences.get();
-
-            Map<String, ?> allEntries = prefs.getAll();
-            for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
-                timeEvents.put(entry.getKey(), Long.valueOf(entry.getValue().toString()));
+        // First check if cache is already loaded
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache != null) {
+                return new HashMap<>(mTimeEventsCache);
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
         }
 
-        return timeEvents;
+        // Detect if we're on the main thread
+        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+            // Running on main thread - return empty map and load asynchronously
+            final Map<String, Long> emptyMap = new HashMap<>();
+
+            new Thread(() -> {
+                loadTimeEventsCache();
+            }).start();
+
+            return emptyMap;
+        } else {
+            // Not on main thread - safe to load synchronously
+            return loadTimeEventsCache();
+        }
+    }
+
+    // Helper method to load time events
+    private Map<String, Long> loadTimeEventsCache() {
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache != null) {
+                return new HashMap<>(mTimeEventsCache);
+            }
+
+            mTimeEventsCache = new HashMap<>();
+
+            try {
+                final SharedPreferences prefs = mTimeEventsPreferences.get();
+                Map<String, ?> allEntries = prefs.getAll();
+                for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+                    mTimeEventsCache.put(entry.getKey(), Long.valueOf(entry.getValue().toString()));
+                }
+            } catch (InterruptedException e) {
+                MPLog.e(LOGTAG, "Failed to load time events", e);
+            } catch (ExecutionException e) {
+                MPLog.e(LOGTAG, "Failed to load time events", e.getCause());
+            }
+
+            return new HashMap<>(mTimeEventsCache);
+        }
+    }
+
+    // Method to explicitly preload the cache
+    public void preloadTimeEventsAsync() {
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache == null) {
+                new Thread(() -> loadTimeEventsCache()).start();
+            }
+        }
     }
 
     // access is synchronized outside (mEventTimings)
@@ -311,10 +361,17 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.remove(timeEventName);
             writeEdits(editor);
+
+            // Update cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.remove(timeEventName);
+                }
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to remove time event", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to remove time event", e.getCause());
         }
     }
 
@@ -325,10 +382,17 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putLong(timeEventName, timeEventTimestamp);
             writeEdits(editor);
+
+            // Update cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.put(timeEventName, timeEventTimestamp);
+                }
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to add time event", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to add time event", e.getCause());
         }
     }
 
@@ -640,9 +704,12 @@ import com.mixpanel.android.util.MPLog;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
 
+    // Time events caching
+    private Map<String, Long> mTimeEventsCache = null;
+    private final Object mTimeEventsCacheLock = new Object();
+
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
     private static final String DELIMITER = ",";
     private static final String LOGTAG = "MixpanelAPI.PIdentity";
-
 }
