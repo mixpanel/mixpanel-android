@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -47,13 +46,10 @@ import com.mixpanel.android.util.MPLog;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
-        mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-            @Override
-            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                synchronized (sReferrerPrefsLock) {
-                    readReferrerProperties();
-                    sReferrerPrefsDirty = false;
-                }
+        mReferrerChangeListener = (sharedPreferences, key) -> {
+            synchronized (sReferrerPrefsLock) {
+                readReferrerProperties();
+                sReferrerPrefsDirty = false;
             }
         };
 
@@ -269,9 +265,7 @@ import com.mixpanel.android.util.MPLog;
             writeEdits(prefsEdit);
             readSuperProperties();
             readIdentities();
-        } catch (final ExecutionException e) {
-            throw new RuntimeException(e.getCause());
-        } catch (final InterruptedException e) {
+        } catch (final ExecutionException | InterruptedException e) {
             throw new RuntimeException(e.getCause());
         }
     }
@@ -311,9 +305,7 @@ import com.mixpanel.android.util.MPLog;
                 // Only start a new thread if we're not already loading
                 if (!mTimeEventsCacheLoading) {
                     mTimeEventsCacheLoading = true;
-                    new Thread(() -> {
-                        loadTimeEventsCache();
-                    }).start();
+                    new Thread(this::loadTimeEventsCache).start();
                 }
 
                 return emptyMap;
@@ -356,7 +348,10 @@ import com.mixpanel.android.util.MPLog;
     public void preloadTimeEventsAsync() {
         synchronized (mTimeEventsCacheLock) {
             if (mTimeEventsCache == null) {
-                new Thread(() -> loadTimeEventsCache()).start();
+                if (!mTimeEventsCacheLoading) {
+                    mTimeEventsCacheLoading = true;
+                    new Thread(this::loadTimeEventsCache).start();
+                }
             }
         }
     }
@@ -403,31 +398,6 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public synchronized boolean isFirstIntegration(String token) {
-        boolean firstLaunch = false;
-        try {
-            SharedPreferences prefs = mMixpanelPreferences.get();
-            firstLaunch = prefs.getBoolean(token, false);
-        }  catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel from shared preferences.", e);
-        }
-        return firstLaunch;
-    }
-
-    public synchronized void setIsIntegrated(String token) {
-        try {
-            SharedPreferences.Editor mixpanelEditor = mMixpanelPreferences.get().edit();
-            mixpanelEditor.putBoolean(token, true);
-            writeEdits(mixpanelEditor);
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
-        } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel from shared preferences.", e);
-        }
-    }
-
     public synchronized boolean isNewVersion(String versionCode) {
         if (versionCode == null) {
             return false;
@@ -446,7 +416,7 @@ import com.mixpanel.android.util.MPLog;
                 }
             }
 
-            if (sPreviousVersionCode.intValue() < version.intValue()) {
+            if (sPreviousVersionCode < version) {
                 SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
                 mixpanelPreferencesEditor.putInt("latest_version_code", version);
                 writeEdits(mixpanelPreferencesEditor);
@@ -474,9 +444,7 @@ import com.mixpanel.android.util.MPLog;
                         setHasLaunched(token);
                     }
                 }
-            } catch (ExecutionException e) {
-                sIsFirstAppLaunch = false;
-            } catch (InterruptedException e) {
+            } catch (ExecutionException | InterruptedException e) {
                 sIsFirstAppLaunch = false;
             }
         }
@@ -545,7 +513,7 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void readReferrerProperties() {
-        mReferrerPropertiesCache = new HashMap<String, String>();
+        mReferrerPropertiesCache = new HashMap<>();
 
         try {
             final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
@@ -650,7 +618,7 @@ import com.mixpanel.android.util.MPLog;
         try {
             final SharedPreferences prefs = mMixpanelPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
-            prefsEditor.clear();
+            prefsEditor.remove("opt_out_" + token);
             writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             MPLog.e(LOGTAG, "Can't remove opt-out shared preferences.", e.getCause());
@@ -718,6 +686,5 @@ import com.mixpanel.android.util.MPLog;
 
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
-    private static final String DELIMITER = ",";
     private static final String LOGTAG = "MixpanelAPI.PIdentity";
 }
