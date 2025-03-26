@@ -302,21 +302,25 @@ import com.mixpanel.android.util.MPLog;
             if (mTimeEventsCache != null) {
                 return new HashMap<>(mTimeEventsCache);
             }
-        }
 
-        // Detect if we're on the main thread
-        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            // Running on main thread - return empty map and load asynchronously
-            final Map<String, Long> emptyMap = new HashMap<>();
+            // Detect if we're on the main thread
+            if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+                // Running on main thread - return empty map and load asynchronously
+                final Map<String, Long> emptyMap = new HashMap<>();
 
-            new Thread(() -> {
-                loadTimeEventsCache();
-            }).start();
+                // Only start a new thread if we're not already loading
+                if (!mTimeEventsCacheLoading) {
+                    mTimeEventsCacheLoading = true;
+                    new Thread(() -> {
+                        loadTimeEventsCache();
+                    }).start();
+                }
 
-            return emptyMap;
-        } else {
-            // Not on main thread - safe to load synchronously
-            return loadTimeEventsCache();
+                return emptyMap;
+            } else {
+                // Not on main thread - safe to load synchronously
+                return loadTimeEventsCache();
+            }
         }
     }
 
@@ -339,6 +343,9 @@ import com.mixpanel.android.util.MPLog;
                 MPLog.e(LOGTAG, "Failed to load time events", e);
             } catch (ExecutionException e) {
                 MPLog.e(LOGTAG, "Failed to load time events", e.getCause());
+            } finally {
+                // Reset the loading flag when done
+                mTimeEventsCacheLoading = false;
             }
 
             return new HashMap<>(mTimeEventsCache);
