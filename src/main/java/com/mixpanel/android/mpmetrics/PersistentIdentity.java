@@ -1,6 +1,5 @@
 package com.mixpanel.android.mpmetrics;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -14,12 +13,13 @@ import org.json.JSONObject;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Looper;
 
 import com.mixpanel.android.util.MPLog;
 
 // In order to use writeEdits, we have to suppress the linter's check for commit()/apply()
 @SuppressLint("CommitPrefEdits")
-/* package */ class PersistentIdentity {
+        /* package */ class PersistentIdentity {
     // Should ONLY be called from an OnPrefsLoadedListener (since it should NEVER be called concurrently)
     public static String getPeopleDistinctId(SharedPreferences storedPreferences) {
         return storedPreferences.getString("people_distinct_id", null);
@@ -46,15 +46,15 @@ import com.mixpanel.android.util.MPLog;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
-        mReferrerChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-            @Override
-            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                synchronized (sReferrerPrefsLock) {
-                    readReferrerProperties();
-                    sReferrerPrefsDirty = false;
-                }
+        mReferrerChangeListener = (sharedPreferences, key) -> {
+            synchronized (sReferrerPrefsLock) {
+                readReferrerProperties();
+                sReferrerPrefsDirty = false;
             }
         };
+
+        // Preload time events in the background to avoid main thread disk reads
+        preloadTimeEventsAsync();
     }
 
     // Super properties
@@ -265,9 +265,7 @@ import com.mixpanel.android.util.MPLog;
             writeEdits(prefsEdit);
             readSuperProperties();
             readIdentities();
-        } catch (final ExecutionException e) {
-            throw new RuntimeException(e.getCause());
-        } catch (final InterruptedException e) {
+        } catch (final ExecutionException | InterruptedException e) {
             throw new RuntimeException(e.getCause());
         }
     }
@@ -278,30 +276,84 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.clear();
             writeEdits(editor);
+
+            // Clear cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.clear();
+                }
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to clear time events", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to clear time events", e.getCause());
         }
     }
 
     public Map<String, Long> getTimeEvents() {
-        Map<String, Long> timeEvents = new HashMap<>();
-
-        try {
-            final SharedPreferences prefs = mTimeEventsPreferences.get();
-
-            Map<String, ?> allEntries = prefs.getAll();
-            for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
-                timeEvents.put(entry.getKey(), Long.valueOf(entry.getValue().toString()));
+        // First check if cache is already loaded
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache != null) {
+                return new HashMap<>(mTimeEventsCache);
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
 
-        return timeEvents;
+            // Detect if we're on the main thread
+            if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+                // Running on main thread - return empty map and load asynchronously
+                final Map<String, Long> emptyMap = new HashMap<>();
+
+                // Only start a new thread if we're not already loading
+                if (!mTimeEventsCacheLoading) {
+                    mTimeEventsCacheLoading = true;
+                    new Thread(this::loadTimeEventsCache).start();
+                }
+
+                return emptyMap;
+            } else {
+                // Not on main thread - safe to load synchronously
+                return loadTimeEventsCache();
+            }
+        }
+    }
+
+    // Helper method to load time events
+    private Map<String, Long> loadTimeEventsCache() {
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache != null) {
+                return new HashMap<>(mTimeEventsCache);
+            }
+
+            mTimeEventsCache = new HashMap<>();
+
+            try {
+                final SharedPreferences prefs = mTimeEventsPreferences.get();
+                Map<String, ?> allEntries = prefs.getAll();
+                for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+                    mTimeEventsCache.put(entry.getKey(), Long.valueOf(entry.getValue().toString()));
+                }
+            } catch (InterruptedException e) {
+                MPLog.e(LOGTAG, "Failed to load time events", e);
+            } catch (ExecutionException e) {
+                MPLog.e(LOGTAG, "Failed to load time events", e.getCause());
+            } finally {
+                // Reset the loading flag when done
+                mTimeEventsCacheLoading = false;
+            }
+
+            return new HashMap<>(mTimeEventsCache);
+        }
+    }
+
+    // Method to explicitly preload the cache
+    public void preloadTimeEventsAsync() {
+        synchronized (mTimeEventsCacheLock) {
+            if (mTimeEventsCache == null) {
+                if (!mTimeEventsCacheLoading) {
+                    mTimeEventsCacheLoading = true;
+                    new Thread(this::loadTimeEventsCache).start();
+                }
+            }
+        }
     }
 
     // access is synchronized outside (mEventTimings)
@@ -311,10 +363,17 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.remove(timeEventName);
             writeEdits(editor);
+
+            // Update cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.remove(timeEventName);
+                }
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to remove time event", e);
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            MPLog.e(LOGTAG, "Failed to remove time event", e.getCause());
         }
     }
 
@@ -325,35 +384,17 @@ import com.mixpanel.android.util.MPLog;
             final SharedPreferences.Editor editor = prefs.edit();
             editor.putLong(timeEventName, timeEventTimestamp);
             writeEdits(editor);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-    }
 
-    public synchronized boolean isFirstIntegration(String token) {
-        boolean firstLaunch = false;
-        try {
-            SharedPreferences prefs = mMixpanelPreferences.get();
-            firstLaunch = prefs.getBoolean(token, false);
-        }  catch (final ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel shared preferences.", e.getCause());
-        } catch (final InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't read internal Mixpanel from shared preferences.", e);
-        }
-        return firstLaunch;
-    }
-
-    public synchronized void setIsIntegrated(String token) {
-        try {
-            SharedPreferences.Editor mixpanelEditor = mMixpanelPreferences.get().edit();
-            mixpanelEditor.putBoolean(token, true);
-            writeEdits(mixpanelEditor);
-        } catch (ExecutionException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel shared preferences.", e.getCause());
+            // Update cache if initialized
+            synchronized (mTimeEventsCacheLock) {
+                if (mTimeEventsCache != null) {
+                    mTimeEventsCache.put(timeEventName, timeEventTimestamp);
+                }
+            }
         } catch (InterruptedException e) {
-            MPLog.e(LOGTAG, "Couldn't write internal Mixpanel from shared preferences.", e);
+            MPLog.e(LOGTAG, "Failed to add time event", e);
+        } catch (ExecutionException e) {
+            MPLog.e(LOGTAG, "Failed to add time event", e.getCause());
         }
     }
 
@@ -375,7 +416,7 @@ import com.mixpanel.android.util.MPLog;
                 }
             }
 
-            if (sPreviousVersionCode.intValue() < version.intValue()) {
+            if (sPreviousVersionCode < version) {
                 SharedPreferences.Editor mixpanelPreferencesEditor = mMixpanelPreferences.get().edit();
                 mixpanelPreferencesEditor.putInt("latest_version_code", version);
                 writeEdits(mixpanelPreferencesEditor);
@@ -403,9 +444,7 @@ import com.mixpanel.android.util.MPLog;
                         setHasLaunched(token);
                     }
                 }
-            } catch (ExecutionException e) {
-                sIsFirstAppLaunch = false;
-            } catch (InterruptedException e) {
+            } catch (ExecutionException | InterruptedException e) {
                 sIsFirstAppLaunch = false;
             }
         }
@@ -474,7 +513,7 @@ import com.mixpanel.android.util.MPLog;
 
     // All access should be synchronized on this
     private void readReferrerProperties() {
-        mReferrerPropertiesCache = new HashMap<String, String>();
+        mReferrerPropertiesCache = new HashMap<>();
 
         try {
             final SharedPreferences referrerPrefs = mLoadReferrerPreferences.get();
@@ -579,7 +618,7 @@ import com.mixpanel.android.util.MPLog;
         try {
             final SharedPreferences prefs = mMixpanelPreferences.get();
             final SharedPreferences.Editor prefsEditor = prefs.edit();
-            prefsEditor.clear();
+            prefsEditor.remove("opt_out_" + token);
             writeEdits(prefsEditor);
         } catch (final ExecutionException e) {
             MPLog.e(LOGTAG, "Can't remove opt-out shared preferences.", e.getCause());
@@ -640,9 +679,12 @@ import com.mixpanel.android.util.MPLog;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
 
+    // Time events caching
+    private Map<String, Long> mTimeEventsCache = null;
+    private final Object mTimeEventsCacheLock = new Object();
+    private boolean mTimeEventsCacheLoading = false;
+
     private static boolean sReferrerPrefsDirty = true;
     private static final Object sReferrerPrefsLock = new Object();
-    private static final String DELIMITER = ",";
     private static final String LOGTAG = "MixpanelAPI.PIdentity";
-
 }
