@@ -1,5 +1,13 @@
 #
 
+## [v8.0.3](https://github.com/mixpanel/mixpanel-android/tree/v8.0.3) (2025-03-31)
+
+### Fixes
+
+- Preload time events in the background to avoid main thread disk reads [\#853](https://github.com/mixpanel/mixpanel-android/pull/853)
+
+#
+
 ## [v8.0.2](https://github.com/mixpanel/mixpanel-android/tree/v8.0.2) (2025-02-04)
 
 ### Enhancements
