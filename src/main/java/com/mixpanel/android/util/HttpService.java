@@ -179,6 +179,9 @@ public class HttpService implements RemoteService {
                 } else {
                     throw e;
                 }
+            } catch (final Exception e) {
+                onNetworkError(endpointUrl, e);
+                throw e;
             }
             finally {
                 if (null != bout)
