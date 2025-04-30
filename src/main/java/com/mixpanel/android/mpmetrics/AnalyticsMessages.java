@@ -23,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -78,8 +77,8 @@ import javax.net.ssl.SSLSocketFactory;
         }
     }
 
-    public void setErrorListener(MixpanelNetworkErrorListener errorListener) {
-        mErrorListener = errorListener;
+    public void setNetworkErrorListener(MixpanelNetworkErrorListener errorListener) {
+        mNetworkErrorListener = errorListener;
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -176,7 +175,7 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     protected RemoteService getPoster() {
-        return new HttpService(mConfig.shouldGzipRequestPayload(), mErrorListener);
+        return new HttpService(mConfig.shouldGzipRequestPayload(), mNetworkErrorListener);
     }
 
     ////////////////////////////////////////////////////
@@ -542,20 +541,20 @@ import javax.net.ssl.SSLSocketFactory;
                     } catch (final OutOfMemoryError e) {
                         MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                     } catch (final MalformedURLException e) {
-                        if (mErrorListener != null) {
-                            mErrorListener.onNetworkError(url, e);
+                        if (mNetworkErrorListener != null) {
+                            mNetworkErrorListener.onNetworkError(url, e);
                         }
                         MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                     } catch (final RemoteService.ServiceUnavailableException e) {
-                        if (mErrorListener != null) {
-                            mErrorListener.onNetworkError(url, e);
+                        if (mNetworkErrorListener != null) {
+                            mNetworkErrorListener.onNetworkError(url, e);
                         }
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                         mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
                     } catch (final IOException e) {
-                        if (mErrorListener != null) {
-                            mErrorListener.onNetworkError(url, e);
+                        if (mNetworkErrorListener != null) {
+                            mNetworkErrorListener.onNetworkError(url, e);
                         }
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
@@ -702,7 +701,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
-    protected MixpanelNetworkErrorListener mErrorListener;
+    protected MixpanelNetworkErrorListener mNetworkErrorListener;
 
     // Messages for our thread
     private static final int ENQUEUE_PEOPLE = 0; // push given JSON message to people DB

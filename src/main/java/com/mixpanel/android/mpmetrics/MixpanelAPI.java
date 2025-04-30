@@ -578,8 +578,7 @@ public class MixpanelAPI {
      * @param listener
      */
     public void setNetworkErrorListener(MixpanelNetworkErrorListener listener) {
-        this.mNetworkErrorListener = listener;
-        AnalyticsMessages.getInstance(mContext, mConfig).setErrorListener(listener);
+        AnalyticsMessages.getInstance(mContext, mConfig).setNetworkErrorListener(listener);
     }
 
     public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
@@ -2353,7 +2352,6 @@ public class MixpanelAPI {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
-    private MixpanelNetworkErrorListener mNetworkErrorListener;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

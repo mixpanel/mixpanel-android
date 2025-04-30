@@ -30,15 +30,15 @@ public class HttpService implements RemoteService {
 
 
     private final boolean shouldGzipRequestPayload;
-    private MixpanelNetworkErrorListener errorListener;
+    private final MixpanelNetworkErrorListener networkErrorListener;
 
     private static boolean sIsMixpanelBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE = HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
-    public HttpService(boolean shouldGzipRequestPayload, MixpanelNetworkErrorListener errorListener) {
+    public HttpService(boolean shouldGzipRequestPayload, MixpanelNetworkErrorListener networkErrorListener) {
         this.shouldGzipRequestPayload = shouldGzipRequestPayload;
-        this.errorListener = errorListener;
+        this.networkErrorListener = networkErrorListener;
     }
 
     public HttpService() {
@@ -169,14 +169,14 @@ public class HttpService implements RemoteService {
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                if (this.errorListener != null) {
-                    this.errorListener.onNetworkError(endpointUrl, e);
+                if (this.networkErrorListener != null) {
+                    this.networkErrorListener.onNetworkError(endpointUrl, e);
                 }
                 MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 retries = retries + 1;
             } catch (final IOException e) {
-                if (this.errorListener != null) {
-                    this.errorListener.onNetworkError(endpointUrl, e);
+                if (this.networkErrorListener != null) {
+                    this.networkErrorListener.onNetworkError(endpointUrl, e);
                 }
                 if (connection != null && connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
