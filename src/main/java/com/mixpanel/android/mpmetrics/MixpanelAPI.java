@@ -15,6 +15,7 @@ import android.os.Bundle;
 import androidx.core.content.ContextCompat;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONArray;
@@ -570,6 +571,14 @@ public class MixpanelAPI {
      */
     public void setServerURL(String serverURL, ProxyServerInteractor callback) {
         mConfig.setServerURL(serverURL, callback);
+    }
+
+    /**
+     * Set the listener for network errors.
+     * @param listener
+     */
+    public void setNetworkErrorListener(MixpanelNetworkErrorListener listener) {
+        this.mNetworkErrorListener = listener;
     }
 
     public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
@@ -1721,7 +1730,7 @@ public class MixpanelAPI {
     // non-test client code.
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
-        return AnalyticsMessages.getInstance(mContext, mConfig);
+        return AnalyticsMessages.getInstance(mContext, mConfig, mNetworkErrorListener);
     }
 
 
@@ -2343,6 +2352,7 @@ public class MixpanelAPI {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
+    private MixpanelNetworkErrorListener mNetworkErrorListener;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

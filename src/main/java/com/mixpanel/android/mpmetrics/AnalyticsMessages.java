@@ -13,6 +13,7 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONException;
@@ -40,10 +41,11 @@ import javax.net.ssl.SSLSocketFactory;
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(final Context context, MPConfig config) {
+    /* package */ AnalyticsMessages(final Context context, MPConfig config, MixpanelNetworkErrorListener errorListener) {
         mContext = context;
         mConfig = config;
         mInstanceName = config.getInstanceName();
+        mErrorListener = errorListener;
         mWorker = createWorker();
         getPoster().checkIsMixpanelBlocked();
     }
@@ -62,13 +64,13 @@ import javax.net.ssl.SSLSocketFactory;
      * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
      *               
      */
-    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
+    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config, MixpanelNetworkErrorListener errorListener) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             String instanceName = config.getInstanceName();
             if (!sInstances.containsKey(instanceName)) {
-                ret = new AnalyticsMessages(appContext, config);
+                ret = new AnalyticsMessages(appContext, config, errorListener);
                 sInstances.put(instanceName, ret);
             } else {
                 ret = sInstances.get(instanceName);
@@ -171,7 +173,7 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     protected RemoteService getPoster() {
-        return new HttpService(mConfig.shouldGzipRequestPayload());
+        return new HttpService(mConfig.shouldGzipRequestPayload(), mErrorListener);
     }
 
     ////////////////////////////////////////////////////
@@ -537,15 +539,21 @@ import javax.net.ssl.SSLSocketFactory;
                     } catch (final OutOfMemoryError e) {
                         MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                     } catch (final MalformedURLException e) {
+                        if (mErrorListener != null) {
+                            mErrorListener.onNetworkError(url, e);
+                        }
                         MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                     } catch (final RemoteService.ServiceUnavailableException e) {
+                        if (mErrorListener != null) {
+                            mErrorListener.onNetworkError(url, e);
+                        }
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                         mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
-                    } catch (final SocketTimeoutException e) {
-                        logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                        deleteEvents = false;
                     } catch (final IOException e) {
+                        if (mErrorListener != null) {
+                            mErrorListener.onNetworkError(url, e);
+                        }
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                     }
@@ -691,6 +699,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
+    protected final MixpanelNetworkErrorListener mErrorListener;
 
     // Messages for our thread
     private static final int ENQUEUE_PEOPLE = 0; // push given JSON message to people DB
