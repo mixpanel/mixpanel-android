@@ -579,6 +579,7 @@ public class MixpanelAPI {
      */
     public void setNetworkErrorListener(MixpanelNetworkErrorListener listener) {
         this.mNetworkErrorListener = listener;
+        AnalyticsMessages.getInstance(mContext, mConfig).setErrorListener(listener);
     }
 
     public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
@@ -1730,7 +1731,7 @@ public class MixpanelAPI {
     // non-test client code.
 
     /* package */ AnalyticsMessages getAnalyticsMessages() {
-        return AnalyticsMessages.getInstance(mContext, mConfig, mNetworkErrorListener);
+        return AnalyticsMessages.getInstance(mContext, mConfig);
     }
 
 

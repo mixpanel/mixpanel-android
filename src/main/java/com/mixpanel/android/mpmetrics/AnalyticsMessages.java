@@ -41,11 +41,10 @@ import javax.net.ssl.SSLSocketFactory;
     /**
      * Do not call directly. You should call AnalyticsMessages.getInstance()
      */
-    /* package */ AnalyticsMessages(final Context context, MPConfig config, MixpanelNetworkErrorListener errorListener) {
+    /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
         mConfig = config;
         mInstanceName = config.getInstanceName();
-        mErrorListener = errorListener;
         mWorker = createWorker();
         getPoster().checkIsMixpanelBlocked();
     }
@@ -64,19 +63,23 @@ import javax.net.ssl.SSLSocketFactory;
      * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
      *               
      */
-    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config, MixpanelNetworkErrorListener errorListener) {
+    public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
         synchronized (sInstances) {
             final Context appContext = messageContext.getApplicationContext();
             AnalyticsMessages ret;
             String instanceName = config.getInstanceName();
             if (!sInstances.containsKey(instanceName)) {
-                ret = new AnalyticsMessages(appContext, config, errorListener);
+                ret = new AnalyticsMessages(appContext, config);
                 sInstances.put(instanceName, ret);
             } else {
                 ret = sInstances.get(instanceName);
             }
             return ret;
         }
+    }
+
+    public void setErrorListener(MixpanelNetworkErrorListener errorListener) {
+        mErrorListener = errorListener;
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -699,7 +702,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
-    protected final MixpanelNetworkErrorListener mErrorListener;
+    protected MixpanelNetworkErrorListener mErrorListener;
 
     // Messages for our thread
     private static final int ENQUEUE_PEOPLE = 0; // push given JSON message to people DB
