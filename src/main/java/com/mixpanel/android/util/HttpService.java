@@ -169,15 +169,11 @@ public class HttpService implements RemoteService {
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                if (this.networkErrorListener != null) {
-                    this.networkErrorListener.onNetworkError(endpointUrl, e);
-                }
+                onNetworkError(endpointUrl, e);
                 MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 retries = retries + 1;
             } catch (final IOException e) {
-                if (this.networkErrorListener != null) {
-                    this.networkErrorListener.onNetworkError(endpointUrl, e);
-                }
+                onNetworkError(endpointUrl, e);
                 if (connection != null && connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
@@ -199,6 +195,12 @@ public class HttpService implements RemoteService {
             MPLog.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
         }
         return response;
+    }
+
+    private void onNetworkError(String endpointUrl, Exception e) {
+        if (this.networkErrorListener != null) {
+            this.networkErrorListener.onNetworkError(endpointUrl, e);
+        }
     }
 
     private OutputStream getBufferedOutputStream(OutputStream out) throws IOException {

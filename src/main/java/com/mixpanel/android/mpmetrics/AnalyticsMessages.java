@@ -541,21 +541,15 @@ import javax.net.ssl.SSLSocketFactory;
                     } catch (final OutOfMemoryError e) {
                         MPLog.e(LOGTAG, "Out of memory when posting to " + url + ".", e);
                     } catch (final MalformedURLException e) {
-                        if (mNetworkErrorListener != null) {
-                            mNetworkErrorListener.onNetworkError(url, e);
-                        }
+                        onNetworkError(url, e);
                         MPLog.e(LOGTAG, "Cannot interpret " + url + " as a URL.", e);
                     } catch (final RemoteService.ServiceUnavailableException e) {
-                        if (mNetworkErrorListener != null) {
-                            mNetworkErrorListener.onNetworkError(url, e);
-                        }
+                        onNetworkError(url, e);
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                         mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
                     } catch (final IOException e) {
-                        if (mNetworkErrorListener != null) {
-                            mNetworkErrorListener.onNetworkError(url, e);
-                        }
+                        onNetworkError(url, e);
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                     }
@@ -580,6 +574,12 @@ import javax.net.ssl.SSLSocketFactory;
                     if (eventsData != null) {
                         queueCount = Integer.valueOf(eventsData[2]);
                     }
+                }
+            }
+
+            private void onNetworkError(String url, Exception e) {
+                if (mNetworkErrorListener != null) {
+                    mNetworkErrorListener.onNetworkError(url, e);
                 }
             }
 
