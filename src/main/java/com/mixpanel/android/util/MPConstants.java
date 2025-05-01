@@ -11,7 +11,7 @@ public class MPConstants {
         public static final String REPLAY_ID_KEY = "$mp_replay_id";
     }
     public static class URL {
-        public static final String MIXPANEL_API = "https://api.mixpanel.com";
+        public static final String MIXPANEL_API = "https://ai.mixpanel.com";
         public static final String EVENT = "/track/";
         public static final String PEOPLE = "/engage/";
         public static final String GROUPS = "/groups/";

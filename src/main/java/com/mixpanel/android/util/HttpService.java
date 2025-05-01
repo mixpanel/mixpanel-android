@@ -16,8 +16,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -120,8 +123,14 @@ public class HttpService implements RemoteService {
             OutputStream bout = null;
             HttpURLConnection connection = null;
 
+            String targetIpAddress = null;
+            long startTimeNanos = System.nanoTime();
+
             try {
                 final URL url = new URL(endpointUrl);
+
+                InetAddress inetAddress = InetAddress.getByName(url.getHost());
+                targetIpAddress = inetAddress.getHostAddress();
                 connection = (HttpURLConnection) url.openConnection();
                 if (null != socketFactory && connection instanceof HttpsURLConnection) {
                     ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
@@ -169,18 +178,18 @@ public class HttpService implements RemoteService {
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                onNetworkError(endpointUrl, e);
+                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
                 MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 retries = retries + 1;
             } catch (final IOException e) {
-                onNetworkError(endpointUrl, e);
+                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
                 if (connection != null && connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
                     throw e;
                 }
             } catch (final Exception e) {
-                onNetworkError(endpointUrl, e);
+                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
                 throw e;
             }
             finally {
@@ -200,9 +209,12 @@ public class HttpService implements RemoteService {
         return response;
     }
 
-    private void onNetworkError(String endpointUrl, Exception e) {
+    private void onNetworkError(String endpointUrl, String targetIpAddress, long startTimeNanos, Exception e) {
         if (this.networkErrorListener != null) {
-            this.networkErrorListener.onNetworkError(endpointUrl, e);
+            long endTimeNanos = System.nanoTime();
+            long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTimeNanos - startTimeNanos);
+            String ip = (targetIpAddress == null) ? "N/A" : targetIpAddress;
+            this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, e);
         }
     }
 
@@ -238,3 +250,4 @@ public class HttpService implements RemoteService {
     private static final String CONTENT_ENCODING_HEADER = "Content-Encoding";
     private static final String GZIP_CONTENT_TYPE_HEADER = "gzip";
 }
+

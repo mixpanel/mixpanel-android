@@ -22,8 +22,8 @@ class SimpleLoggingErrorListener : MixpanelNetworkErrorListener {
         private const val TAG = "MixpanelNetworkError"
     }
 
-    override fun onNetworkError(endpointUrl: String, exception: Exception) {
-        Log.w(TAG, "Mixpanel network error for endpoint: $endpointUrl")
+    override fun onNetworkError(endpointUrl: String, ipAddress: String, durationMillis: Long, exception: Exception) {
+        Log.w(TAG, "Mixpanel network error for endpoint: $endpointUrl (IP: $ipAddress, duration: $durationMillis ms)")
 
         when (exception) {
             // --- Specific SSL/TLS Issues ---
