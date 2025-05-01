@@ -234,7 +234,7 @@ public class HttpService implements RemoteService {
                     responseCode = connection.getResponseCode();
                     responseMessage = connection.getResponseMessage();
                 } catch (Exception respExc) {
-                    MPLog.w(LOGTAG,"Could not retrieve response code/message after error", respExc);
+                    MPLog.w(LOGTAG, "Could not retrieve response code/message after error", respExc);
                 }
             }
             long endTimeNanos = System.nanoTime();
