@@ -32,6 +32,7 @@ fun TrackingPage(navController: NavHostController) {
     val context = LocalContext.current
     val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
     mixpanel.setEnableLogging(true)
+    mixpanel.setShouldGzipRequestPayload(true)
     mixpanel.setNetworkErrorListener(SimpleLoggingErrorListener())
 
     val trackingActions = listOf(

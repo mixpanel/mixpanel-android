@@ -19,7 +19,9 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
 
@@ -52,11 +54,14 @@ public class HttpService implements RemoteService {
         Thread t = new Thread(new Runnable() {
             public void run() {
                 try {
-                    InetAddress apiMixpanelInet = InetAddress.getByName("api.mixpanel.com");
+                    long startTimeNanos = System.nanoTime();
+                    String host = "api.mixpanel.com";
+                    InetAddress apiMixpanelInet = InetAddress.getByName(host);
                     sIsMixpanelBlocked = apiMixpanelInet.isLoopbackAddress() ||
                             apiMixpanelInet.isAnyLocalAddress();
                     if (sIsMixpanelBlocked) {
                         MPLog.v(LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
+                        onNetworkError(null, host, apiMixpanelInet.getHostAddress(), startTimeNanos, -1, -1, new IOException(host + " is blocked"));
                     }
                 } catch (Exception e) {
                 }
@@ -120,11 +125,13 @@ public class HttpService implements RemoteService {
         while (retries < 3 && !succeeded) {
             InputStream in = null;
             OutputStream out = null;
-            OutputStream bout = null;
+            // OutputStream bout = null;
             HttpURLConnection connection = null;
 
             String targetIpAddress = null;
             long startTimeNanos = System.nanoTime();
+            long uncompressedBodySize = -1;
+            long compressedBodySize = -1;
 
             try {
                 final URL url = new URL(endpointUrl);
@@ -147,25 +154,35 @@ public class HttpService implements RemoteService {
 
                 connection.setConnectTimeout(2000);
                 connection.setReadTimeout(30000);
+
+                byte[] bodyBytesToSend = null;
                 if (null != params) {
                     Uri.Builder builder = new Uri.Builder();
                     for (Map.Entry<String, Object> param : params.entrySet()) {
                         builder.appendQueryParameter(param.getKey(), param.getValue().toString());
                     }
                     String query = builder.build().getEncodedQuery();
+                    byte[] originalBodyBytes = Objects.requireNonNull(query).getBytes(StandardCharsets.UTF_8);
+                    uncompressedBodySize = originalBodyBytes.length;
+
                     if (shouldGzipRequestPayload) {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
+                            gzipOut.write(originalBodyBytes);
+                        }
+                        bodyBytesToSend = baos.toByteArray();
+                        compressedBodySize = bodyBytesToSend.length;
                         connection.setRequestProperty(CONTENT_ENCODING_HEADER, GZIP_CONTENT_TYPE_HEADER);
+                        connection.setFixedLengthStreamingMode(compressedBodySize);
                     } else {
-                        connection.setFixedLengthStreamingMode(query.getBytes().length);
+                        bodyBytesToSend = originalBodyBytes;
+                        connection.setFixedLengthStreamingMode(uncompressedBodySize);
                     }
                     connection.setDoOutput(true);
                     connection.setRequestMethod("POST");
                     out = connection.getOutputStream();
-                    bout = getBufferedOutputStream(out);
-                    bout.write(query.getBytes("UTF-8"));
-                    bout.flush();
-                    bout.close();
-                    bout = null;
+                    out.write(bodyBytesToSend);
+                    out.flush();
                     out.close();
                     out = null;
                 }
@@ -178,23 +195,22 @@ public class HttpService implements RemoteService {
                 in = null;
                 succeeded = true;
             } catch (final EOFException e) {
-                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
                 MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
                 retries = retries + 1;
             } catch (final IOException e) {
-                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
                 if (connection != null && connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
                     throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
                     throw e;
                 }
             } catch (final Exception e) {
-                onNetworkError(endpointUrl, targetIpAddress, startTimeNanos, e);
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
                 throw e;
             }
             finally {
-                if (null != bout)
-                    try { bout.close(); } catch (final IOException e) {}
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, new Exception("test"));
                 if (null != out)
                     try { out.close(); } catch (final IOException e) {}
                 if (null != in)
@@ -209,12 +225,22 @@ public class HttpService implements RemoteService {
         return response;
     }
 
-    private void onNetworkError(String endpointUrl, String targetIpAddress, long startTimeNanos, Exception e) {
+    private void onNetworkError(HttpURLConnection connection, String endpointUrl, String targetIpAddress, long startTimeNanos, long uncompressedBodySize, long compressedBodySize, Exception e) {
         if (this.networkErrorListener != null) {
+            int responseCode = -1;
+            String responseMessage = "";
+            if (connection != null) {
+                try {
+                    responseCode = connection.getResponseCode();
+                    responseMessage = connection.getResponseMessage();
+                } catch (Exception respExc) {
+                    MPLog.w(LOGTAG,"Could not retrieve response code/message after error", respExc);
+                }
+            }
             long endTimeNanos = System.nanoTime();
             long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTimeNanos - startTimeNanos);
             String ip = (targetIpAddress == null) ? "N/A" : targetIpAddress;
-            this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, e);
+            this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, uncompressedBodySize, compressedBodySize, responseCode, responseMessage, e);
         }
     }
 
