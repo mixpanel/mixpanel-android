@@ -223,6 +223,8 @@ public class HttpService implements RemoteService {
 
     private void onNetworkError(HttpURLConnection connection, String endpointUrl, String targetIpAddress, long startTimeNanos, long uncompressedBodySize, long compressedBodySize, Exception e) {
         if (this.networkErrorListener != null) {
+            long endTimeNanos = System.nanoTime();
+            long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTimeNanos - startTimeNanos);
             int responseCode = -1;
             String responseMessage = "";
             if (connection != null) {
@@ -233,8 +235,6 @@ public class HttpService implements RemoteService {
                     MPLog.w(LOGTAG, "Could not retrieve response code/message after error", respExc);
                 }
             }
-            long endTimeNanos = System.nanoTime();
-            long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTimeNanos - startTimeNanos);
             String ip = (targetIpAddress == null) ? "N/A" : targetIpAddress;
             this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, uncompressedBodySize, compressedBodySize, responseCode, responseMessage, e);
         }
