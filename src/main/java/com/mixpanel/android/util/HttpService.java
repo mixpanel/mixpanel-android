@@ -16,9 +16,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
@@ -125,7 +123,6 @@ public class HttpService implements RemoteService {
         while (retries < 3 && !succeeded) {
             InputStream in = null;
             OutputStream out = null;
-            // OutputStream bout = null;
             HttpURLConnection connection = null;
 
             String targetIpAddress = null;
@@ -210,7 +207,6 @@ public class HttpService implements RemoteService {
                 throw e;
             }
             finally {
-                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, new Exception("test"));
                 if (null != out)
                     try { out.close(); } catch (final IOException e) {}
                 if (null != in)

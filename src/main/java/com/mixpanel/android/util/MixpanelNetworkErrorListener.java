@@ -6,7 +6,7 @@ public interface MixpanelNetworkErrorListener {
      * This method may be called on a background thread.
      *
      * @param endpointUrl The URL that failed.
-     * @param ipAddress The IP address resolved from the endpointUrl's hostname for this attempt (may be null if DNS lookup failed).
+     * @param ipAddress The IP address resolved from the endpointUrl's hostname for this attempt (may be "N/A" if DNS lookup failed).
      * @param durationMillis The approximate duration in milliseconds from the start of this specific connection attempt until the exception was thrown.
      * @param uncompressedBodySize The size in bytes of the request body *before* any compression.
      * Will be -1 if no body was sent.
