@@ -1,5 +1,13 @@
 #
 
+## [v8.1.0](https://github.com/mixpanel/mixpanel-android/tree/v8.1.0) (2025-05-02)
+
+### Enhancements
+
+- Add MixpanelNetworkErrorListener [\#857](https://github.com/mixpanel/mixpanel-android/pull/857)
+
+#
+
 ## [v8.0.3](https://github.com/mixpanel/mixpanel-android/tree/v8.0.3) (2025-03-31)
 
 ### Fixes
@@ -1610,6 +1618,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
