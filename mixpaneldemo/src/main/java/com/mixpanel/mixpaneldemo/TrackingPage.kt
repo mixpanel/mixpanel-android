@@ -31,6 +31,9 @@ fun TrackingPage(navController: NavHostController) {
     val dialogMessage = remember { mutableStateOf("") }
     val context = LocalContext.current
     val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
+    mixpanel.setEnableLogging(true)
+    mixpanel.setShouldGzipRequestPayload(true)
+    mixpanel.setNetworkErrorListener(SimpleLoggingErrorListener())
 
     val trackingActions = listOf(
         Triple("Track w/o Properties" ,"Event: \"Track Event!\"", {  println("Tracking without properties")
