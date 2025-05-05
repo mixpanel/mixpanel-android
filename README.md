@@ -4,7 +4,7 @@
 
 # Latest Version
 
-##### _March 31, 2025_ - [v8.0.3](https://github.com/mixpanel/mixpanel-android/releases/tag/v8.0.3)
+##### _May 02, 2025_ - [v8.1.0](https://github.com/mixpanel/mixpanel-android/releases/tag/v8.1.0)
 
 # Table of Contents
 

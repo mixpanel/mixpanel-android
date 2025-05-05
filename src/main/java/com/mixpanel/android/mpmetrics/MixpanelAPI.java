@@ -15,6 +15,7 @@ import android.os.Bundle;
 import androidx.core.content.ContextCompat;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONArray;
@@ -570,6 +571,14 @@ public class MixpanelAPI {
      */
     public void setServerURL(String serverURL, ProxyServerInteractor callback) {
         mConfig.setServerURL(serverURL, callback);
+    }
+
+    /**
+     * Set the listener for network errors.
+     * @param listener
+     */
+    public void setNetworkErrorListener(MixpanelNetworkErrorListener listener) {
+        AnalyticsMessages.getInstance(mContext, mConfig).setNetworkErrorListener(listener);
     }
 
     public Boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }

@@ -13,6 +13,7 @@ import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONException;
@@ -22,7 +23,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -75,6 +75,10 @@ import javax.net.ssl.SSLSocketFactory;
             }
             return ret;
         }
+    }
+
+    public void setNetworkErrorListener(MixpanelNetworkErrorListener errorListener) {
+        mNetworkErrorListener = errorListener;
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -171,7 +175,7 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     protected RemoteService getPoster() {
-        return new HttpService(mConfig.shouldGzipRequestPayload());
+        return new HttpService(mConfig.shouldGzipRequestPayload(), mNetworkErrorListener);
     }
 
     ////////////////////////////////////////////////////
@@ -542,9 +546,6 @@ import javax.net.ssl.SSLSocketFactory;
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
                         mTrackEngageRetryAfter = e.getRetryAfter() * 1000;
-                    } catch (final SocketTimeoutException e) {
-                        logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
-                        deleteEvents = false;
                     } catch (final IOException e) {
                         logAboutMessageToMixpanel("Cannot post message to " + url + ".", e);
                         deleteEvents = false;
@@ -691,6 +692,7 @@ import javax.net.ssl.SSLSocketFactory;
     private final String mInstanceName;
     protected final Context mContext;
     protected final MPConfig mConfig;
+    protected MixpanelNetworkErrorListener mNetworkErrorListener;
 
     // Messages for our thread
     private static final int ENQUEUE_PEOPLE = 0; // push given JSON message to people DB
