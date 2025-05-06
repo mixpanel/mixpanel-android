@@ -891,6 +891,13 @@ public class MixpanelAPI {
     }
 
     /**
+     * returns the token associated with this instance of Mixpanel
+     */
+    public String getToken() {
+        return mToken;
+    }
+
+    /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
      *
      * <p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,

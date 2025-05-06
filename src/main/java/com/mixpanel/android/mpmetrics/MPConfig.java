@@ -14,6 +14,8 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.OfflineMode;
 
 import java.security.GeneralSecurityException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -494,4 +496,14 @@ public class MPConfig {
     private OfflineMode mOfflineMode;
     private ProxyServerInteractor serverCallbacks = null;
     private static final String LOGTAG = "MixpanelAPI.Conf";
+
+    public boolean getFeatureFlagsEnabled() {
+        // TODO:
+        return true;
+    }
+
+    public Map<String, Object> getFlagsContext() {
+        // TODO:
+        return new HashMap<>();
+    }
 }
