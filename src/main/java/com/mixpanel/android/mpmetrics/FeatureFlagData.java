@@ -15,10 +15,9 @@ public class FeatureFlagData {
     }
 
     // Constructor for creating fallback instances
-    // Note: Defaulting value to key if null like in Swift might be less intuitive in Java. Defaulting to null.
-    FeatureFlagData(@NonNull String key) {
+    public FeatureFlagData(@NonNull String key) {
         this.key = key;
-        this.value = null; // Defaulting value to null if not provided
+        this.value = key; // Defaulting value to null if not provided
     }
 
     FeatureFlagData() {

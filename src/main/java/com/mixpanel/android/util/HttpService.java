@@ -8,6 +8,9 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -108,123 +111,198 @@ public class HttpService implements RemoteService {
         return onOfflineMode;
     }
 
+    /**
+     * Performs an HTTP POST request. Handles either URL-encoded parameters OR a raw byte request body.
+     * Includes support for custom headers and network error listening.
+     */
     @Override
-    public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory) throws ServiceUnavailableException, IOException {
-        MPLog.v(LOGTAG, "Attempting request to " + endpointUrl);
+    public byte[] performRequest(
+            @NonNull String endpointUrl,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> params,    // Use if requestBodyBytes is null
+            @Nullable Map<String, String> headers,
+            @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
+            @Nullable SSLSocketFactory socketFactory
+    ) throws ServiceUnavailableException, IOException {
 
+        MPLog.v(LOGTAG, "Attempting request to " + endpointUrl + (requestBodyBytes == null ? " (URL params)" : " (Raw Body)"));
         byte[] response = null;
-
-        // the while(retries) loop is a workaround for a bug in some Android HttpURLConnection
-        // libraries- The underlying library will attempt to reuse stale connections,
-        // meaning the second (or every other) attempt to connect fails with an EOFException.
-        // Apparently this nasty retry logic is the current state of the workaround art.
         int retries = 0;
         boolean succeeded = false;
+
         while (retries < 3 && !succeeded) {
             InputStream in = null;
-            OutputStream out = null;
+            OutputStream out = null; // Raw output stream
             HttpURLConnection connection = null;
 
+            // Variables for error listener reporting
             String targetIpAddress = null;
             long startTimeNanos = System.nanoTime();
             long uncompressedBodySize = -1;
-            long compressedBodySize = -1;
+            long compressedBodySize = -1; // Only set if gzip applied to params
 
             try {
+                // --- Connection Setup ---
                 final URL url = new URL(endpointUrl);
+                try { // Get IP Address for error reporting, but don't fail request if DNS fails here
+                    InetAddress inetAddress = InetAddress.getByName(url.getHost());
+                    targetIpAddress = inetAddress.getHostAddress();
+                } catch (Exception e) {
+                    MPLog.v(LOGTAG, "Could not resolve IP address for " + url.getHost(), e);
+                    targetIpAddress = "N/A"; // Default if lookup fails
+                }
 
-                InetAddress inetAddress = InetAddress.getByName(url.getHost());
-                targetIpAddress = inetAddress.getHostAddress();
                 connection = (HttpURLConnection) url.openConnection();
                 if (null != socketFactory && connection instanceof HttpsURLConnection) {
                     ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
                 }
+                connection.setConnectTimeout(2000);
+                connection.setReadTimeout(30000);
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
 
-                if (interactor != null && isProxyRequest(endpointUrl)) {
-                    Map<String,String> headers = interactor.getProxyRequestHeaders();
-                    if (headers != null) {
-                        for (Map.Entry<String, String> entry : headers.entrySet()) {
-                            connection.setRequestProperty(entry.getKey(), entry.getValue());
+                // --- Default Content-Type (can be overridden by headers map) ---
+                String contentType = (requestBodyBytes != null)
+                        ? "application/json; charset=utf-8" // Default for raw body
+                        : "application/x-www-form-urlencoded; charset=utf-8"; // Default for params
+
+                // --- Apply Custom Headers (and determine final Content-Type) ---
+                if (headers != null) {
+                    for (Map.Entry<String, String> entry : headers.entrySet()) {
+                        connection.setRequestProperty(entry.getKey(), entry.getValue());
+                        if (entry.getKey().equalsIgnoreCase("Content-Type")) {
+                            contentType = entry.getValue(); // Use explicit content type
                         }
                     }
                 }
+                connection.setRequestProperty("Content-Type", contentType);
 
-                connection.setConnectTimeout(2000);
-                connection.setReadTimeout(30000);
+                // Apply proxy headers AFTER custom headers
+                if (interactor != null && isProxyRequest(endpointUrl)) { /* ... Apply proxy headers ... */
+                    Map<String,String> proxyHeaders = interactor.getProxyRequestHeaders();
+                    if (proxyHeaders != null) {
+                        for (Map.Entry<String, String> entry : proxyHeaders.entrySet()) { connection.setRequestProperty(entry.getKey(), entry.getValue()); }
+                    }
+                }
 
-                byte[] bodyBytesToSend = null;
-                if (null != params) {
+                // --- Prepare and Write Body ---
+                byte[] bytesToWrite;
+                if (requestBodyBytes != null) {
+                    // --- Use Raw Body ---
+                    bytesToWrite = requestBodyBytes;
+                    uncompressedBodySize = bytesToWrite.length;
+                    connection.setFixedLengthStreamingMode(uncompressedBodySize);
+                    MPLog.v(LOGTAG, "Sending raw body of size: " + uncompressedBodySize);
+                } else if (params != null) {
+                    // --- Use URL Encoded Params ---
                     Uri.Builder builder = new Uri.Builder();
                     for (Map.Entry<String, Object> param : params.entrySet()) {
                         builder.appendQueryParameter(param.getKey(), param.getValue().toString());
                     }
                     String query = builder.build().getEncodedQuery();
-                    byte[] originalBodyBytes = Objects.requireNonNull(query).getBytes(StandardCharsets.UTF_8);
-                    uncompressedBodySize = originalBodyBytes.length;
+                    byte[] queryBytes = Objects.requireNonNull(query).getBytes(StandardCharsets.UTF_8);
+                    uncompressedBodySize = queryBytes.length;
+                    MPLog.v(LOGTAG, "Sending URL params (raw size): " + uncompressedBodySize);
 
                     if (shouldGzipRequestPayload) {
+                        // Apply GZIP specifically to the URL-encoded params
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
                         try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
-                            gzipOut.write(originalBodyBytes);
-                        }
-                        bodyBytesToSend = baos.toByteArray();
-                        compressedBodySize = bodyBytesToSend.length;
+                            gzipOut.write(queryBytes);
+                        } // try-with-resources ensures close
+                        bytesToWrite = baos.toByteArray();
+                        compressedBodySize = bytesToWrite.length;
                         connection.setRequestProperty(CONTENT_ENCODING_HEADER, GZIP_CONTENT_TYPE_HEADER);
                         connection.setFixedLengthStreamingMode(compressedBodySize);
+                        MPLog.v(LOGTAG, "Gzipping params, compressed size: " + compressedBodySize);
                     } else {
-                        bodyBytesToSend = originalBodyBytes;
+                        bytesToWrite = queryBytes;
                         connection.setFixedLengthStreamingMode(uncompressedBodySize);
                     }
-                    connection.setDoOutput(true);
-                    connection.setRequestMethod("POST");
-                    out = connection.getOutputStream();
-                    out.write(bodyBytesToSend);
-                    out.flush();
-                    out.close();
-                    out = null;
-                }
-                if (interactor != null && isProxyRequest(endpointUrl)) {
-                    interactor.onProxyResponse(endpointUrl, connection.getResponseCode());
-                }
-                in = connection.getInputStream();
-                response = slurp(in);
-                in.close();
-                in = null;
-                succeeded = true;
-            } catch (final EOFException e) {
-                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
-                MPLog.d(LOGTAG, "Failure to connect, likely caused by a known issue with Android lib. Retrying.");
-                retries = retries + 1;
-            } catch (final IOException e) {
-                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
-                if (connection != null && connection.getResponseCode() >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && connection.getResponseCode() <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) {
-                    throw new ServiceUnavailableException("Service Unavailable", connection.getHeaderField("Retry-After"));
                 } else {
-                    throw e;
+                    // No body and no params
+                    bytesToWrite = new byte[0];
+                    uncompressedBodySize = 0;
+                    connection.setFixedLengthStreamingMode(0);
+                    MPLog.v(LOGTAG, "Sending POST request with empty body.");
                 }
-            } catch (final Exception e) {
+
+                // Write the prepared bytes
+                out = new BufferedOutputStream(connection.getOutputStream());
+                out.write(bytesToWrite);
+                out.flush();
+                out.close(); // Close output stream before getting response
+                out = null;
+
+                // --- Process Response ---
+                int responseCode = connection.getResponseCode();
+                String responseMessage = connection.getResponseMessage(); // Get message for logging/errors
+                MPLog.v(LOGTAG, "Response Code: " + responseCode);
+                if (interactor != null && isProxyRequest(endpointUrl)) {
+                    interactor.onProxyResponse(endpointUrl, responseCode);
+                }
+
+                if (responseCode >= 200 && responseCode < 300) { // Success
+                    in = connection.getInputStream();
+                    response = slurp(in);
+                    succeeded = true;
+                } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
+                    // Report error via listener before throwing
+                    onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize,
+                            new ServiceUnavailableException("Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After")));
+                    // Now throw the exception
+                    throw new ServiceUnavailableException("Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After"));
+                } else { // Other errors (4xx etc.)
+                    MPLog.w(LOGTAG, "HTTP error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                    String errorBody = null;
+                    try { in = connection.getErrorStream(); if (in != null) { byte[] errorBytes = slurp(in); errorBody = new String(errorBytes, StandardCharsets.UTF_8); MPLog.w(LOGTAG, "Error Body: " + errorBody); }
+                    } catch (Exception e) { MPLog.w(LOGTAG, "Could not read error stream.", e); }
+                    // Report error via listener
+                    onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize,
+                            new IOException("HTTP error response: " + responseCode + " " + responseMessage + (errorBody != null ? " - Body: " + errorBody : "")));
+                    response = null; // Indicate failure with null response
+                    succeeded = true; // Mark as succeeded to stop retry loop for definitive HTTP errors
+                }
+
+            } catch (final EOFException e) {
+                // Report error BEFORE retry attempt
                 onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
+                MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying request to " + endpointUrl);
+                retries++;
+            } catch (final IOException e) { // Includes ServiceUnavailableException if thrown above
+                // Report error via listener
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
+                // Re-throw the original exception
                 throw e;
+            } catch (final Exception e) { // Catch any other unexpected exceptions
+                // Report error via listener
+                onNetworkError(connection, endpointUrl, targetIpAddress, startTimeNanos, uncompressedBodySize, compressedBodySize, e);
+                // Wrap and re-throw as IOException? Or handle differently?
+                // Let's wrap in IOException for consistency with method signature.
+                throw new IOException("Unexpected exception during network request", e);
+            } finally {
+                // Clean up resources
+                if (null != out) try { out.close(); } catch (final IOException e) { /* ignore */ }
+                if (null != in) try { in.close(); } catch (final IOException e) { /* ignore */ }
+                if (null != connection) connection.disconnect();
             }
-            finally {
-                if (null != out)
-                    try { out.close(); } catch (final IOException e) {}
-                if (null != in)
-                    try { in.close(); } catch (final IOException e) {}
-                if (null != connection)
-                    connection.disconnect();
-            }
+        } // End while loop
+
+        if (!succeeded) {
+            MPLog.e(LOGTAG, "Could not complete request to " + endpointUrl + " after " + retries + " retries.");
+            // Optionally report final failure via listener here if desired, though individual errors were already reported
+            throw new IOException("Request failed after multiple retries."); // Indicate final failure
         }
-        if (retries >= 3) {
-            MPLog.v(LOGTAG, "Could not connect to Mixpanel service after three retries.");
-        }
-        return response;
+
+        return response; // Can be null if a non-retriable HTTP error occurred
     }
+
 
     private void onNetworkError(HttpURLConnection connection, String endpointUrl, String targetIpAddress, long startTimeNanos, long uncompressedBodySize, long compressedBodySize, Exception e) {
         if (this.networkErrorListener != null) {
             long endTimeNanos = System.nanoTime();
-            long durationMillis = TimeUnit.NANOSECONDS.toMillis(endTimeNanos - startTimeNanos);
+            long durationNanos = Math.max(0, endTimeNanos - startTimeNanos);
+            long durationMillis = TimeUnit.NANOSECONDS.toMillis(durationNanos);
             int responseCode = -1;
             String responseMessage = "";
             if (connection != null) {
@@ -236,7 +314,13 @@ public class HttpService implements RemoteService {
                 }
             }
             String ip = (targetIpAddress == null) ? "N/A" : targetIpAddress;
-            this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, uncompressedBodySize, compressedBodySize, responseCode, responseMessage, e);
+            long finalUncompressedSize = Math.max(-1, uncompressedBodySize);
+            long finalCompressedSize = Math.max(-1, compressedBodySize);
+            try {
+                this.networkErrorListener.onNetworkError(endpointUrl, ip, durationMillis, finalUncompressedSize, finalCompressedSize, responseCode, responseMessage, e);
+            } catch(Exception listenerException) {
+                MPLog.e(LOGTAG, "Network error listener threw an exception", listenerException);
+            }
         }
     }
 

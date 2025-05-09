@@ -15,5 +15,6 @@ public class MPConstants {
         public static final String EVENT = "/track/";
         public static final String PEOPLE = "/engage/";
         public static final String GROUPS = "/groups/";
+        public static final String FLAGS = "/flags/";
     }
 }

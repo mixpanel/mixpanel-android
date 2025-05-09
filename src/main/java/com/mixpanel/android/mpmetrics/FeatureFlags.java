@@ -1,23 +1,20 @@
-package com.mixpanel.android.mpmetrics; // Assuming same package
+package com.mixpanel.android.mpmetrics;
 
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log; // Or use MPLog
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 import com.mixpanel.android.util.Base64Coder;
-import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.JsonUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -25,6 +22,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,18 +64,11 @@ class FlagsConfig {
  * from the main MixpanelAPI instance.
  */
 interface FeatureFlagDelegate {
-    @NonNull MPConfig getMPConfig(); // Assuming MPConfig holds token, FlagsConfig etc.
-    @NonNull String getDistinctId();
-    void track(String eventName, @Nullable JSONObject properties);
-    // Add other methods if needed (e.g., getting HttpService instance?)
-    @NonNull String getToken();
+    MPConfig getMPConfig();
+    String getDistinctId();
+    void track(String eventName, JSONObject properties);
+    String getToken();
 }
-
-// --- Callback Interface ---
-interface FlagCompletionCallback<T> {
-    void onComplete(T result);
-}
-
 
 // --- FeatureFlagManager ---
 
@@ -98,21 +89,19 @@ class FeatureFlagManager {
     private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
     // ---
 
-    private static final String FLAGS_ROUTE = "/flags/"; // API Endpoint path
-
     // Message codes for Handler
     private static final int MSG_FETCH_FLAGS_IF_NEEDED = 0;
     private static final int MSG_COMPLETE_FETCH = 1;
-    private static final int MSG_TRACK_FLAG_IF_NEEDED = 2;
+    // private static final int MSG_TRACK_FLAG_IF_NEEDED = 2;
     // Removed MSG_PERFORM_TRACKING_CALL - will call helper directly then dispatch to main
 
 
     public FeatureFlagManager(
-            @NonNull WeakReference<FeatureFlagDelegate> delegate,
+            @NonNull FeatureFlagDelegate delegate,
             @NonNull String serverUrl,
             @NonNull RemoteService httpService // Inject dependency
     ) {
-        mDelegate = delegate;
+        mDelegate = new WeakReference<>(delegate);
         mServerUrl = serverUrl; // Should likely come from MPConfig via delegate
         mHttpService = httpService;
 
@@ -123,6 +112,11 @@ class FeatureFlagManager {
 
         // Separate executor for network requests so they don't block the state queue
         mNetworkExecutor = Executors.newSingleThreadExecutor(); // Or use a shared pool if appropriate
+    }
+
+    @Nullable
+    private FeatureFlagDelegate getDelegate() {
+        return mDelegate.get(); // Returns null if MixpanelAPI has been GC'd
     }
 
     // --- Public Methods ---
@@ -460,13 +454,10 @@ class FeatureFlagManager {
 
     // Runs on Handler thread
     private void _fetchFlagsIfNeeded(@Nullable FlagCompletionCallback<Boolean> completion) {
-        // ...(Implementation from previous step - removed sync wrapper)...
         // It calls _performFetchRequest via mNetworkExecutor if needed.
-        // (Ensure implementation is correct as per previous step)
         var shouldStartFetch = false;
         final FeatureFlagDelegate delegate = mDelegate.get();
         final MPConfig config = (delegate != null) ? delegate.getMPConfig() : null;
-        // TODO: Get FlagsConfig properly from MPConfig
         final boolean enabled = (config != null) && config.getFeatureFlagsEnabled(); // Assuming method exists
 
         if (!enabled) {
@@ -573,77 +564,60 @@ class FeatureFlagManager {
 
         try {
             // 1. Build Request Body JSON
-            JSONObject contextJson = new JSONObject(contextMap); // Convert map to JSONObject
+            JSONObject contextJson = new JSONObject(contextMap);
             contextJson.put("distinct_id", distinctId);
             JSONObject requestJson = new JSONObject();
             requestJson.put("context", contextJson);
             String requestJsonString = requestJson.toString();
-            MPLog.v(LOGTAG, "Request JSON: " + requestJsonString);
+            MPLog.v(LOGTAG, "Request JSON Body: " + requestJsonString);
+            byte[] requestBodyBytes = requestJsonString.getBytes(StandardCharsets.UTF_8); // Get raw bytes
 
-            // 2. Base64 Encode Body for 'data' parameter (Matches AnalyticsMessages pattern)
-            String base64Body = Base64Coder.encodeString(requestJsonString);
 
-            // 3. Build Request Parameters Map for HttpService
-            Map<String, Object> params = new HashMap<>();
-            params.put("data", base64Body);
-            // Add other potential params like "verbose" if needed during debugging
-            // if (MPConfig.DEBUG) { params.put("verbose", "1"); }
-
-            // 4. Build Authorization Header
+            // 3. Build Headers
             String token = delegate.getToken(); // Assuming token is in MPConfig
             if (token == null || token.trim().isEmpty()) {
                 throw new IOException("Mixpanel token is missing or empty.");
             }
             String authString = token + ":";
             String base64Auth = Base64Coder.encodeString(authString);
-            // Note: HttpService doesn't have explicit header support in performRequest signature.
-            // We rely on the fact that HttpURLConnection might allow default headers
-            // or that the underlying mechanism handles Authorization if set globally?
-            // THIS IS A PROBLEM - HttpService needs to support setting headers,
-            // or we need a different approach.
-            // *Assumption*: For now, assume HttpService/underlying connection handles auth if configured,
-            // or that we might need to modify HttpService/RemoteService later.
-            // Let's log a warning.
-            MPLog.w(LOGTAG, "HttpService does not directly support custom headers. Authorization may not be sent correctly unless handled elsewhere.");
-            // Ideally, we'd add headers to the performRequest call.
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Basic " + base64Auth);
+            headers.put("Content-Type", "application/json; charset=utf-8"); // Explicitly set content type
 
-            // 5. Construct Endpoint URL
-            String endpointUrl = mServerUrl + FLAGS_ROUTE;
-
-            // 6. Perform Request
-            byte[] responseBytes = mHttpService.performRequest(
-                    endpointUrl,
-                    config.getProxyServerInteractor(), // Pass proxy interactor from config
-                    params,
-                    config.getSSLSocketFactory() // Pass SSL Factory from config
+            // 4. Perform Request
+            byte[] responseBytes = mHttpService.performRequest( // <-- Use consolidated method
+                    mServerUrl,
+                    config.getProxyServerInteractor(),
+                    null, // Pass null for params when sending raw body
+                    headers,
+                    requestBodyBytes, // Pass raw JSON body bytes
+                    config.getSSLSocketFactory()
             );
 
-            // 7. Process Response
+            // 5. Process Response
             if (responseBytes == null) {
-                // HttpService performRequest returns null for non-ServiceUnavailable IOExceptions or other errors
-                throw new IOException("HTTP Service returned null response");
-            }
-
-            try {
-                String responseString = new String(responseBytes, "UTF-8");
-                MPLog.v(LOGTAG, "Flags response: " + responseString);
-                responseJson = new JSONObject(responseString);
-                // Check for potential error field in response JSON if API defines one
-                if (responseJson.has("error")) {
-                    errorMessage = "Mixpanel API returned error: " + responseJson.getString("error");
-                    MPLog.e(LOGTAG, errorMessage);
+                errorMessage = "Received non-successful HTTP status or null response from flags endpoint.";
+                MPLog.w(LOGTAG, errorMessage);
+            } else {
+                try {
+                    String responseString = new String(responseBytes, "UTF-8");
+                    MPLog.v(LOGTAG, "Flags response: " + responseString);
+                    responseJson = new JSONObject(responseString);
+                    if (responseJson.has("error")) {
+                        errorMessage = "Mixpanel API returned error: " + responseJson.getString("error");
+                        MPLog.e(LOGTAG, errorMessage);
+                        // Keep success = false
+                    } else {
+                        success = true; // Parsed JSON successfully and no 'error' field
+                    }
+                } catch (UnsupportedEncodingException e) {
+                    throw new RuntimeException("UTF-8 not supported on this platform?", e); // Should not happen
+                } catch (JSONException e) {
+                    errorMessage = "Could not parse Mixpanel flags response";
+                    MPLog.e(LOGTAG, errorMessage, e);
                     // Keep success = false
-                } else {
-                    success = true; // Parsed JSON successfully and no 'error' field
                 }
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException("UTF-8 not supported on this platform?", e); // Should not happen
-            } catch (JSONException e) {
-                errorMessage = "Could not parse Mixpanel flags response";
-                MPLog.e(LOGTAG, errorMessage, e);
-                // Keep success = false
             }
-
         } catch (RemoteService.ServiceUnavailableException e) {
             success = false;
             errorMessage = "Mixpanel service unavailable";
@@ -652,7 +626,7 @@ class FeatureFlagManager {
             // For now, just fail the fetch completely for simplicity.
         } catch (MalformedURLException e) {
             success = false;
-            errorMessage = "Flags endpoint URL is malformed: " + mServerUrl + FLAGS_ROUTE;
+            errorMessage = "Flags endpoint URL is malformed: " + mServerUrl;
             MPLog.e(LOGTAG, errorMessage, e);
         } catch (IOException e) {
             success = false;
@@ -668,7 +642,7 @@ class FeatureFlagManager {
             MPLog.e(LOGTAG, errorMessage, e);
         }
 
-        // 8. Post result back to Handler thread
+        // 6. Post result back to Handler thread
         postResultToHandler(success, responseJson, errorMessage);
     }
 

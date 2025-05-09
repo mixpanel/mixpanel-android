@@ -12,11 +12,17 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
+import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.mpmetrics.FlagCompletionCallback;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -101,7 +107,7 @@ import java.util.concurrent.Future;
  * @see <a href="https://mixpanel.com/docs/people-analytics/android">getting started documentation for People Analytics</a>
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
-public class MixpanelAPI {
+public class MixpanelAPI implements FeatureFlagDelegate {
     /**
      * String version of the library.
      */
@@ -157,6 +163,15 @@ public class MixpanelAPI {
         mMessages = getAnalyticsMessages();
         mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, instanceName);
         mEventTimings = mPersistentIdentity.getTimeEvents();
+
+        mFeatureFlagManager = new FeatureFlagManager(
+                this, // MixpanelAPI is the delegate
+                mConfig.getFlagsEndpoint(), // Or wherever you get the base URL from MPConfig
+                // TODO: Get/create HttpService instance from MixpanelAPI/MPConfig. Do not create a new one.
+                getHttpService() // Example: Get the HttpService instance used by MixpanelAPI
+        );
+
+        mFeatureFlagManager.loadFlags();
 
         if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
             optOutTracking();
@@ -897,6 +912,10 @@ public class MixpanelAPI {
         return mToken;
     }
 
+    public MPConfig getMPConfig() {
+        return mConfig;
+    }
+
     /**
      * Register properties that will be sent with every subsequent call to {@link #track(String, JSONObject)}.
      *
@@ -1182,6 +1201,50 @@ public class MixpanelAPI {
         }
 
         return group;
+    }
+
+    public void loadFlags() {
+        mFeatureFlagManager.loadFlags();
+    }
+
+    public boolean areFeaturesReady() {
+        return mFeatureFlagManager.areFeaturesReady();
+    }
+
+    public FeatureFlagData getFeatureSync(@NonNull final String featureName, @NonNull final FeatureFlagData fallback) {
+        return mFeatureFlagManager.getFeatureSync(featureName, fallback);
+    }
+
+    public void getFeature(
+            @NonNull final String featureName,
+            @NonNull final FeatureFlagData fallback,
+            @NonNull final FlagCompletionCallback<FeatureFlagData> completion
+    ) {
+        mFeatureFlagManager.getFeature(featureName, fallback, completion);
+    }
+
+    public Object getFeatureDataSync(@NonNull String featureName, @Nullable Object fallbackValue) {
+        return mFeatureFlagManager.getFeatureDataSync(featureName, fallbackValue);
+    }
+
+    public void getFeatureData(
+            @NonNull String featureName,
+            @Nullable Object fallbackValue,
+            @NonNull FlagCompletionCallback<Object> completion
+    ) {
+        mFeatureFlagManager.getFeatureData(featureName, fallbackValue, completion);
+    }
+
+    public boolean isFeatureEnabledSync(@NonNull String featureName, boolean fallbackValue) {
+        return mFeatureFlagManager.isFeatureEnabledSync(featureName, fallbackValue);
+    }
+
+    public void isFeatureEnabled(
+            @NonNull String featureName,
+            boolean fallbackValue,
+            @NonNull FlagCompletionCallback<Boolean> completion
+    ) {
+        mFeatureFlagManager.isFeatureEnabled(featureName, fallbackValue, completion);
     }
 
     private String makeMapKey(String groupKey, Object groupID) {
@@ -2346,6 +2409,13 @@ public class MixpanelAPI {
         return mContext;
     }
 
+    private RemoteService getHttpService() {
+        if (this.mHttpService == null) {
+            this.mHttpService = new HttpService(false, null);
+        }
+        return this.mHttpService;
+    }
+
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
@@ -2359,6 +2429,8 @@ public class MixpanelAPI {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
+    private FeatureFlagManager mFeatureFlagManager;
+    private RemoteService mHttpService;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();
