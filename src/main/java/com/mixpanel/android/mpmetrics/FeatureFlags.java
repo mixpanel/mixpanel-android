@@ -73,7 +73,7 @@ interface FeatureFlagDelegate {
 // --- FeatureFlagManager ---
 
 class FeatureFlagManager {
-    private static final String LOGTAG = "MixpanelAPI.FeatureFlag"; // Logging tag
+    private static final String LOGTAG = "MixpanelAPI.FeatureFlag";
 
     private final WeakReference<FeatureFlagDelegate> mDelegate;
     private final String mServerUrl; // Base URL for API requests (e.g., api.mixpanel.com)
@@ -92,9 +92,6 @@ class FeatureFlagManager {
     // Message codes for Handler
     private static final int MSG_FETCH_FLAGS_IF_NEEDED = 0;
     private static final int MSG_COMPLETE_FETCH = 1;
-    // private static final int MSG_TRACK_FLAG_IF_NEEDED = 2;
-    // Removed MSG_PERFORM_TRACKING_CALL - will call helper directly then dispatch to main
-
 
     public FeatureFlagManager(
             @NonNull FeatureFlagDelegate delegate,
