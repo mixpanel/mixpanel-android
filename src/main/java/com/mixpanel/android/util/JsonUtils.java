@@ -25,7 +25,7 @@ public class JsonUtils {
 
     /**
      * Parses a JSON value obtained from org.json (like JSONObject.get() or JSONArray.get())
-     * into a standard Java Object (String, Boolean, Number, List<Object>, Map<String, Object>, or null).
+     * into a standard Java Object (String, Boolean, Number, {@code List<Object>}, {@code Map<String, Object>}, or null).
      * Handles JSONObject.NULL correctly.
      *
      * @param jsonValue The object retrieved from org.json library.
