@@ -120,8 +120,8 @@ public class JsonUtils {
 
         JSONObject flagsObject = null;
         try {
-            if (responseJson.has("flags") && !responseJson.isNull("flags")) {
-                flagsObject = responseJson.getJSONObject("flags");
+            if (responseJson.has(MPConstants.Flags.FLAGS_KEY) && !responseJson.isNull(MPConstants.Flags.FLAGS_KEY)) {
+                flagsObject = responseJson.getJSONObject(MPConstants.Flags.FLAGS_KEY);
             } else {
                 MPLog.w(LOGTAG, "Flags response JSON does not contain 'flags' key or it's null.");
                 return flagsMap; // No flags found
@@ -138,20 +138,19 @@ public class JsonUtils {
                     JSONObject flagDefinition = flagsObject.getJSONObject(featureName);
 
                     String variantKey = null;
-                    if (flagDefinition.has("variant_key") && !flagDefinition.isNull("variant_key")) {
-                        variantKey = flagDefinition.getString("variant_key");
+                    if (flagDefinition.has(MPConstants.Flags.VARIANT_KEY) && !flagDefinition.isNull(MPConstants.Flags.VARIANT_KEY)) {
+                        variantKey = flagDefinition.getString(MPConstants.Flags.VARIANT_KEY);
                     } else {
                         MPLog.w(LOGTAG, "Flag definition missing 'variant_key' for key: " + featureName);
                         continue; // Skip flags without a variant key
                     }
 
                     Object variantValue = null;
-                    if (flagDefinition.has("variant_value")) { // Check presence before getting
-                        Object rawValue = flagDefinition.get("variant_value"); // Get raw value (could be JSONObject.NULL)
+                    if (flagDefinition.has(MPConstants.Flags.VARIANT_VALUE)) { // Check presence before getting
+                        Object rawValue = flagDefinition.get(MPConstants.Flags.VARIANT_VALUE); // Get raw value (could be JSONObject.NULL)
                         variantValue = parseJsonValue(rawValue); // Parse it properly
                     } else {
                         MPLog.w(LOGTAG, "Flag definition missing 'variant_value' for key: " + featureName + ". Assuming null value.");
-                        variantValue = null; // Treat missing value as null
                     }
 
                     FeatureFlagData flagData = new FeatureFlagData(variantKey, variantValue);
@@ -167,19 +166,5 @@ public class JsonUtils {
         }
 
         return flagsMap;
-    }
-
-    // Optional: Helper to parse FlagsConfig context if needed elsewhere
-    @NonNull
-    public static Map<String, Object> parseFlagsContext(@Nullable JSONObject contextJson) {
-        if (contextJson == null) {
-            return new HashMap<>();
-        }
-        try {
-            return jsonObjectToMap(contextJson);
-        } catch (JSONException e) {
-            MPLog.e(LOGTAG, "Error parsing flags context JSON", e);
-            return new HashMap<>(); // Return empty on error
-        }
     }
 }

@@ -964,12 +964,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
-     * returns the token associated with this instance of Mixpanel
+     * Retrieves the Mixpanel project token.
+     *
+     * @return The Mixpanel project token currently being used.
      */
     public String getToken() {
         return mToken;
     }
 
+    /**
+     * Retrieves the Mixpanel configuration object.
+     *
+     * @return The current {@link MPConfig} object containing Mixpanel settings.
+     */
     public MPConfig getMPConfig() {
         return mConfig;
     }
@@ -1261,18 +1268,43 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         return group;
     }
 
+    /**
+     * Initiates the loading of feature flags from the Mixpanel server.
+     * This method typically triggers an asynchronous operation to fetch the latest flag definitions.
+     */
     public void loadFlags() {
         mFeatureFlagManager.loadFlags();
     }
 
+    /**
+     * Checks if the feature flags have been successfully loaded and are ready for use.
+     *
+     * @return {@code true} if feature flags are loaded and ready, {@code false} otherwise.
+     */
     public boolean areFeaturesReady() {
         return mFeatureFlagManager.areFeaturesReady();
     }
 
+    /**
+     * Synchronously retrieves the data for a specific feature flag.
+     * This method will block until the feature flag data is available or a timeout occurs.
+     *
+     * @param featureName The unique key name of the feature flag to retrieve. Must not be null.
+     * @param fallback The default {@link FeatureFlagData} to return if the flag is not found or an error occurs. Must not be null.
+     * @return The {@link FeatureFlagData} for the specified feature flag, or the fallback value if unavailable.
+     */
     public FeatureFlagData getFeatureSync(@NonNull final String featureName, @NonNull final FeatureFlagData fallback) {
         return mFeatureFlagManager.getFeatureSync(featureName, fallback);
     }
 
+    /**
+     * Asynchronously retrieves the data for a specific feature flag.
+     * The result, or fallback, is provided via a completion callback.
+     *
+     * @param featureName The unique key name of the feature flag to retrieve. Must not be null.
+     * @param fallback The default {@link FeatureFlagData} to use if the flag is not found or an error occurs. Must not be null.
+     * @param completion The callback function that will be invoked with the feature flag data or the fallback. Must not be null.
+     */
     public void getFeature(
             @NonNull final String featureName,
             @NonNull final FeatureFlagData fallback,
@@ -1281,10 +1313,28 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mFeatureFlagManager.getFeature(featureName, fallback, completion);
     }
 
+    /**
+     * Synchronously retrieves the raw data value associated with a specific feature flag.
+     * This could be a String, Number, Boolean, JSONArray, or JSONObject.
+     * This method will block until the feature flag data is available or a timeout occurs.
+     *
+     * @param featureName The unique key name of the feature flag. Must not be null.
+     * @param fallbackValue The default value to return if the flag is not found, not of the expected type, or an error occurs. Can be null.
+     * @return The raw data value of the feature flag, or the {@code fallbackValue} if unavailable.
+     */
     public Object getFeatureDataSync(@NonNull String featureName, @Nullable Object fallbackValue) {
         return mFeatureFlagManager.getFeatureDataSync(featureName, fallbackValue);
     }
 
+    /**
+     * Asynchronously retrieves the raw data value associated with a specific feature flag.
+     * The result, or fallback, is provided via a completion callback.
+     * This could be a String, Number, Boolean, JSONArray, or JSONObject.
+     *
+     * @param featureName The unique key name of the feature flag. Must not be null.
+     * @param fallbackValue The default value to use if the flag is not found, not of the expected type, or an error occurs. Can be null.
+     * @param completion The callback function that will be invoked with the feature flag's raw data or the {@code fallbackValue}. Must not be null.
+     */
     public void getFeatureData(
             @NonNull String featureName,
             @Nullable Object fallbackValue,
@@ -1293,10 +1343,26 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mFeatureFlagManager.getFeatureData(featureName, fallbackValue, completion);
     }
 
+    /**
+     * Synchronously checks if a specific feature flag is enabled.
+     * This method will block until the feature flag status is determined or a timeout occurs.
+     *
+     * @param featureName The unique key name of the feature flag. Must not be null.
+     * @param fallbackValue The default boolean value to return if the flag's status cannot be determined.
+     * @return {@code true} if the feature flag is enabled, {@code false} if it is disabled or if its status cannot be determined (in which case {@code fallbackValue} is returned).
+     */
     public boolean isFeatureEnabledSync(@NonNull String featureName, boolean fallbackValue) {
         return mFeatureFlagManager.isFeatureEnabledSync(featureName, fallbackValue);
     }
 
+    /**
+     * Asynchronously checks if a specific feature flag is enabled.
+     * The result, or fallback, is provided via a completion callback.
+     *
+     * @param featureName The unique key name of the feature flag. Must not be null.
+     * @param fallbackValue The default boolean value to use if the flag's status cannot be determined.
+     * @param completion The callback function that will be invoked with {@code true} if the flag is enabled, {@code false} otherwise (or the {@code fallbackValue}). Must not be null.
+     */
     public void isFeatureEnabled(
             @NonNull String featureName,
             boolean fallbackValue,

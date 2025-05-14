@@ -17,4 +17,9 @@ public class MPConstants {
         public static final String GROUPS = "/groups/";
         public static final String FLAGS = "/flags/";
     }
+    public static class Flags {
+        public static final String FLAGS_KEY = "flags";
+        public static final String VARIANT_KEY = "variant_key";
+        public static final String VARIANT_VALUE = "variant_value";
+    }
 }

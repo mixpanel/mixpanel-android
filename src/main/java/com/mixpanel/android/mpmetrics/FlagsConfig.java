@@ -7,7 +7,7 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlagsConfig {
+class FlagsConfig {
     public final boolean enabled;
     @NonNull public final JSONObject context;
 

@@ -64,9 +64,9 @@ public class MixpanelOptions {
 
     public static class Builder {
         private String instanceName;
-        private boolean optOutTrackingDefault = false; // Default value
+        private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
-        private boolean featureFlagsEnabled = false; // Default value
+        private boolean featureFlagsEnabled = false;
         private JSONObject featureFlagsContext = new JSONObject();
 
         public Builder() {

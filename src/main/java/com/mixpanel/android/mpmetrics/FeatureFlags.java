@@ -89,7 +89,6 @@ class FeatureFlagManager {
 
     /**
      * Asynchronously loads flags from the Mixpanel server if they haven't been loaded yet
-     * or if flags are disabled.
      */
     public void loadFlags() {
         // Send message to the handler thread to check and potentially fetch
@@ -633,7 +632,6 @@ class FeatureFlagManager {
 
         if (shouldCallDelegate) {
             MPLog.v(LOGTAG, "Triggering delegate call for tracking '" + featureName + "'.");
-            // CORRECTED Java Call Syntax:
             _performTrackingDelegateCall(featureName, feature); // No 'self.', no argument labels
             return true; // Tracking was needed and performed
         }
@@ -707,14 +705,6 @@ class FeatureFlagManager {
 
     // --- Boolean Evaluation Helper ---
     private boolean _evaluateBooleanFlag(String featureName, Object dataValue, boolean fallbackValue) {
-        // ... (Implementation from previous step) ...
         if (dataValue instanceof Boolean) { return (Boolean) dataValue; } MPLog.w(LOGTAG,"Flag value for "+featureName+" not boolean: "+dataValue); return fallbackValue;
     }
-
-    // --- JSON Parsing Utilities ---
-    // TODO: Implement helpers using org.json.*
-    // Example:
-    // private static Object parseJsonValue(Object jsonValue) throws JSONException { ... }
-    // private static Map<String, FeatureFlagData> parseFlagsResponse(JSONObject response) { ... }
-
 }

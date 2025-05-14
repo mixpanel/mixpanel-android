@@ -522,14 +522,4 @@ public class MPConfig {
     private OfflineMode mOfflineMode;
     private ProxyServerInteractor serverCallbacks = null;
     private static final String LOGTAG = "MixpanelAPI.Conf";
-
-    public boolean getFeatureFlagsEnabled() {
-        // TODO:
-        return true;
-    }
-
-    public Map<String, Object> getFlagsContext() {
-        // TODO:
-        return new HashMap<>();
-    }
 }

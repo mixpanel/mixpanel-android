@@ -24,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.mixpanel.android.mpmetrics.FeatureFlagData
 import com.mixpanel.android.mpmetrics.FlagCompletionCallback
-import com.mixpanel.android.mpmetrics.FlagsConfig
-import com.mixpanel.android.mpmetrics.MPConfig
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import com.mixpanel.android.mpmetrics.MixpanelOptions
 import org.json.JSONObject
