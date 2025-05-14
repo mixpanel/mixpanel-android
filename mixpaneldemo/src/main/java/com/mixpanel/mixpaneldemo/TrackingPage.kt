@@ -112,12 +112,12 @@ fun TrackingPage(navController: NavHostController) {
         // --- Feature Flag Actions ---
         Triple("Load Flags", "Action: Loading flags async...", {
             println(">>> Action: Loading flags")
-            mixpanel.loadFlags()
+            mixpanel.flags.loadFlags()
             // You might want to call getFeature async shortly after to see results
         }),
         Triple("Are Flags Ready?", "Action: Checking areFeaturesReady...", {
             println(">>> Action: Checking areFeaturesReady")
-            val ready = mixpanel.areFeaturesReady()
+            val ready = mixpanel.flags.areFlagsReady()
             println("areFeaturesReady Result: $ready")
             // Update dialog or state if needed based on 'ready'
             dialogMessage.value = "areFeaturesReady() returned: $ready"
@@ -125,13 +125,13 @@ fun TrackingPage(navController: NavHostController) {
         }),
         Triple("Get Feature Sync", "Action: Getting flag '$testFlagKeyString' sync...", {
             println(">>> Action: Getting feature sync '$testFlagKeyString'")
-            // Note: Fallback for getFeatureSync is FeatureFlagData type
-            val featureFlagData = mixpanel.getFeatureSync(testFlagKeyString, stringFallback)
+            // Note: Fallback for getVariantSync is FeatureFlagData type
+            val featureFlagData = mixpanel.flags.getVariantSync(testFlagKeyString, stringFallback)
             println("Sync Get Feature Result for '$testFlagKeyString':")
             println("  Key: ${featureFlagData.key}")
             println("  Value: ${featureFlagData.value}")
             // Also try a missing key
-            val missingData = mixpanel.getFeatureSync(testFlagKeyMissing, missingFallbackData)
+            val missingData = mixpanel.flags.getVariantSync(testFlagKeyMissing, missingFallbackData)
             println("Sync Get Feature Result for '$testFlagKeyMissing':")
             println("  Key: ${missingData.key}")
             println("  Value: ${missingData.value}")
@@ -139,7 +139,7 @@ fun TrackingPage(navController: NavHostController) {
         // --- NEW ---
         Triple("Get Feature Async", "Action: Getting flag '$testFlagKeyString' async...", {
             println(">>> Action: Getting feature async '$testFlagKeyString'")
-            mixpanel.getFeature(testFlagKeyString, stringFallback,
+            mixpanel.flags.getVariant(testFlagKeyString, stringFallback,
                 FlagCompletionCallback { result -> // Use SAM conversion for callback
                     println("Async Get Feature Result for '$testFlagKeyString':")
                     // FeatureFlagData result itself should not be null, but value inside can be
@@ -147,7 +147,7 @@ fun TrackingPage(navController: NavHostController) {
                     println("  Value: ${result.value}")
                 })
             // Also try a missing key async
-            mixpanel.getFeature(testFlagKeyMissing, missingFallbackData,
+            mixpanel.flags.getVariant(testFlagKeyMissing, missingFallbackData,
                 FlagCompletionCallback { result ->
                     println("Async Get Feature Result for '$testFlagKeyMissing':")
                     println("  Key: ${result.key}")
@@ -157,21 +157,21 @@ fun TrackingPage(navController: NavHostController) {
         Triple("Get Flag Data Sync", "Action: Getting data for '$testFlagKeyInt' sync...", {
             println(">>> Action: Getting feature data sync '$testFlagKeyInt'")
             val fallbackValue = -1 // Fallback for getFeatureDataSync is the value type
-            val value = mixpanel.getFeatureDataSync(testFlagKeyInt, fallbackValue)
+            val value = mixpanel.flags.getVariantValueSync(testFlagKeyInt, fallbackValue)
             println("Sync Get Data Result for '$testFlagKeyInt': $value (Type: ${value?.javaClass?.simpleName})")
             // Also try a missing key
-            val missingValue = mixpanel.getFeatureDataSync(testFlagKeyMissing, "missing_default")
+            val missingValue = mixpanel.flags.getVariantValueSync(testFlagKeyMissing, "missing_default")
             println("Sync Get Data Result for '$testFlagKeyMissing': $missingValue")
         }),
         Triple("Get Flag Data Async", "Action: Getting data for '$testFlagKeyInt' async...", {
             println(">>> Action: Getting feature data async '$testFlagKeyInt'")
             val fallbackValue = -1
-            mixpanel.getFeatureData(testFlagKeyInt, fallbackValue,
+            mixpanel.flags.getVariantValue(testFlagKeyInt, fallbackValue,
                 FlagCompletionCallback { value -> // SAM conversion
                     println("Async Get Data Result for '$testFlagKeyInt': $value (Type: ${value?.javaClass?.simpleName})")
                 })
             // Also try a missing key
-            mixpanel.getFeatureData(testFlagKeyMissing, "missing_default",
+            mixpanel.flags.getVariantValue(testFlagKeyMissing, "missing_default",
                 FlagCompletionCallback { value ->
                     println("Async Get Data Result for '$testFlagKeyMissing': $value")
                 })
@@ -179,29 +179,29 @@ fun TrackingPage(navController: NavHostController) {
         Triple("Is Enabled Sync", "Action: Checking '$testFlagKeyBool' sync...", {
             println(">>> Action: Checking feature enabled sync '$testFlagKeyBool'")
             val fallbackValue = false // Fallback for isEnabledSync is boolean
-            val isEnabled = mixpanel.isFeatureEnabledSync(testFlagKeyBool, fallbackValue)
+            val isEnabled = mixpanel.flags.isFlagEnabledSync(testFlagKeyBool, fallbackValue)
             println("Sync Is Enabled Result for '$testFlagKeyBool': $isEnabled")
             // Also try a missing key
-            val isMissingEnabled = mixpanel.isFeatureEnabledSync(testFlagKeyMissing, true) // Use different fallback
+            val isMissingEnabled = mixpanel.flags.isFlagEnabledSync(testFlagKeyMissing, true) // Use different fallback
             println("Sync Is Enabled Result for '$testFlagKeyMissing': $isMissingEnabled")
             // Try on a non-boolean flag
-            val isIntEnabled = mixpanel.isFeatureEnabledSync(testFlagKeyInt, true) // Should return fallback
+            val isIntEnabled = mixpanel.flags.isFlagEnabledSync(testFlagKeyInt, true) // Should return fallback
             println("Sync Is Enabled Result for '$testFlagKeyInt': $isIntEnabled")
         }),
         Triple("Is Enabled Async", "Action: Checking '$testFlagKeyBool' async...", {
             println(">>> Action: Checking feature enabled async '$testFlagKeyBool'")
             val fallbackValue = false
-            mixpanel.isFeatureEnabled(testFlagKeyBool, fallbackValue,
+            mixpanel.flags.isFlagEnabled(testFlagKeyBool, fallbackValue,
                 FlagCompletionCallback { isEnabled -> // SAM conversion
                     println("Async Is Enabled Result for '$testFlagKeyBool': $isEnabled")
                 })
             // Also try a missing key
-            mixpanel.isFeatureEnabled(testFlagKeyMissing, true, // Use different fallback
+            mixpanel.flags.isFlagEnabled(testFlagKeyMissing, true, // Use different fallback
                 FlagCompletionCallback { isEnabled ->
                     println("Async Is Enabled Result for '$testFlagKeyMissing': $isEnabled")
                 })
             // Try on a non-boolean flag
-            mixpanel.isFeatureEnabled(testFlagKeyInt, true, // Should return fallback
+            mixpanel.flags.isFlagEnabled(testFlagKeyInt, true, // Should return fallback
                 FlagCompletionCallback { isEnabled ->
                     println("Async Is Enabled Result for '$testFlagKeyInt': $isEnabled")
                 })

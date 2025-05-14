@@ -44,7 +44,7 @@ interface FeatureFlagDelegate {
     String getToken();
 }
 
-class FeatureFlagManager {
+class FeatureFlagManager implements MixpanelAPI.Flags {
     private static final String LOGTAG = "MixpanelAPI.FeatureFlag";
 
     private final WeakReference<FeatureFlagDelegate> mDelegate;
@@ -98,7 +98,7 @@ class FeatureFlagManager {
     /**
      * Returns true if flags are loaded and ready for synchronous access.
      */
-    public boolean areFeaturesReady() {
+    public boolean areFlagsReady() {
         synchronized (mLock) {
             return mFlags != null;
         }
@@ -118,9 +118,9 @@ class FeatureFlagManager {
      * @return The found FeatureFlagData or the fallback.
      */
     @NonNull
-    public FeatureFlagData getFeatureSync(@NonNull final String featureName, @NonNull final FeatureFlagData fallback) {
+    public FeatureFlagData getVariantSync(@NonNull final String featureName, @NonNull final FeatureFlagData fallback) {
         // 1. Check readiness first - don't block if flags aren't loaded.
-        if (!areFeaturesReady()) {
+        if (!areFlagsReady()) {
             MPLog.w(LOGTAG, "Flags not ready for getFeatureSync call for '" + featureName + "'. Returning fallback.");
             return fallback;
         }
@@ -176,9 +176,9 @@ class FeatureFlagManager {
      * @return The flag's value (Object or null) or the fallbackValue.
      */
     @Nullable
-    public Object getFeatureDataSync(@NonNull String featureName, @Nullable Object fallbackValue) {
+    public Object getVariantValueSync(@NonNull String featureName, @Nullable Object fallbackValue) {
         FeatureFlagData fallbackData = new FeatureFlagData("", fallbackValue);
-        FeatureFlagData resultData = getFeatureSync(featureName, fallbackData);
+        FeatureFlagData resultData = getVariantSync(featureName, fallbackData);
         // If getFeatureSync returned the *original* fallbackData, its value is fallbackValue.
         // If getFeatureSync returned a *real* flag, its value is resultData.value.
         return resultData.value;
@@ -193,8 +193,8 @@ class FeatureFlagManager {
      * @param fallbackValue The default boolean value if the flag is missing, not boolean, or not ready.
      * @return True if the flag evaluates to true, false otherwise or if fallbackValue is returned.
      */
-    public boolean isFeatureEnabledSync(@NonNull String featureName, boolean fallbackValue) {
-        Object dataValue = getFeatureDataSync(featureName, fallbackValue);
+    public boolean isFlagEnabledSync(@NonNull String featureName, boolean fallbackValue) {
+        Object dataValue = getVariantValueSync(featureName, fallbackValue);
         return _evaluateBooleanFlag(featureName, dataValue, fallbackValue);
     }
 
@@ -207,7 +207,7 @@ class FeatureFlagManager {
      * @param fallback    The FeatureFlagData instance to return if the flag is not found or fetch fails.
      * @param completion  The callback to receive the result.
      */
-    public void getFeature(
+    public void getVariant(
             @NonNull final String featureName,
             @NonNull final FeatureFlagData fallback,
             @NonNull final FlagCompletionCallback<FeatureFlagData> completion
@@ -244,8 +244,6 @@ class FeatureFlagManager {
 
 
             } else {
-                needsTracking = false;
-                featureData = null;
                 // --- Flags were NOT Ready ---
                 MPLog.i(LOGTAG, "Flags not ready, attempting fetch for getFeature call '" + featureName + "'...");
                 _fetchFlagsIfNeeded(success -> {
@@ -293,7 +291,7 @@ class FeatureFlagManager {
      * @param fallbackValue The default value to return if the flag is missing or fetch fails.
      * @param completion    The callback to receive the result value (Object or null).
      */
-    public void getFeatureData(
+    public void getVariantValue(
             @NonNull final String featureName,
             @Nullable final Object fallbackValue,
             @NonNull final FlagCompletionCallback<Object> completion
@@ -301,7 +299,7 @@ class FeatureFlagManager {
         // Create a fallback FeatureFlagData. Using empty key as it's not relevant here.
         FeatureFlagData fallbackData = new FeatureFlagData("", fallbackValue);
         // Call getFeature and extract the value in its completion handler
-        getFeature(featureName, fallbackData, result -> completion.onComplete(result.value));
+        getVariant(featureName, fallbackData, result -> completion.onComplete(result.value));
     }
 
 
@@ -314,14 +312,14 @@ class FeatureFlagManager {
      * @param fallbackValue The default boolean value if the flag is missing, not boolean, or fetch fails.
      * @param completion    The callback to receive the boolean result.
      */
-    public void isFeatureEnabled(
+    public void isFlagEnabled(
             @NonNull final String featureName,
             final boolean fallbackValue,
             @NonNull final FlagCompletionCallback<Boolean> completion
     ) {
         // Call getFeatureData, using the boolean fallbackValue as the data fallback too
         // (this ensures if the flag is missing, evaluateBoolean gets the intended fallback)
-        getFeatureData(featureName, fallbackValue, value -> {
+        getVariantValue(featureName, fallbackValue, value -> {
             // This completion runs on the main thread
             boolean isEnabled = _evaluateBooleanFlag(featureName, value, fallbackValue);
             completion.onComplete(isEnabled);

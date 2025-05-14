@@ -262,8 +262,8 @@ public class FeatureFlagManagerTest {
     // ---- Test Cases ----
 
     @Test
-    public void testAreFeaturesReady_initialState() {
-        assertFalse("Features should not be ready initially", mFeatureFlagManager.areFeaturesReady());
+    public void testAreFlagsReady_initialState() {
+        assertFalse("Features should not be ready initially", mFeatureFlagManager.areFlagsReady());
     }
 
     @Test
@@ -276,7 +276,7 @@ public class FeatureFlagManagerTest {
 
         CapturedRequest request = mMockRemoteService.takeRequest(100, TimeUnit.MILLISECONDS);
         assertNull("No network request should be made when flags are disabled", request);
-        assertFalse("areFeaturesReady should be false", mFeatureFlagManager.areFeaturesReady());
+        assertFalse("areFeaturesReady should be false", mFeatureFlagManager.areFlagsReady());
     }
 
     @Test
@@ -295,7 +295,7 @@ public class FeatureFlagManagerTest {
         // but for now, poll areFeaturesReady or wait a fixed time.
         boolean ready = false;
         for (int i = 0; i < 20; i++) { // Poll for up to 2 seconds
-            if (mFeatureFlagManager.areFeaturesReady()) {
+            if (mFeatureFlagManager.areFlagsReady()) {
                 ready = true;
                 break;
             }
@@ -319,73 +319,73 @@ public class FeatureFlagManagerTest {
         // Wait a bit to see if flags become ready (they shouldn't)
         Thread.sleep(500); // Enough time for the fetch attempt and failure processing
 
-        assertFalse("Flags should not be ready after failed fetch", mFeatureFlagManager.areFeaturesReady());
+        assertFalse("Flags should not be ready after failed fetch", mFeatureFlagManager.areFlagsReady());
         CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         assertNotNull("A network request should have been attempted", request);
     }
 
     @Test
-    public void testGetFeatureSync_flagsNotReady_returnsFallback() {
+    public void testGetVariantSync_flagsNotReady_returnsFallback() {
         setupFlagsConfig(true, null); // Enabled, but no flags loaded yet
-        assertFalse(mFeatureFlagManager.areFeaturesReady());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
 
         FeatureFlagData fallback = new FeatureFlagData("fb_key", "fb_value");
-        FeatureFlagData result = mFeatureFlagManager.getFeatureSync("my_flag", fallback);
+        FeatureFlagData result = mFeatureFlagManager.getVariantSync("my_flag", fallback);
 
         assertEquals("Should return fallback key", fallback.key, result.key);
         assertEquals("Should return fallback value", fallback.value, result.value);
     }
 
     @Test
-    public void testGetFeatureSync_flagsReady_flagExists() throws InterruptedException {
+    public void testGetVariantSync_flagsReady_flagExists() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("test_flag", new FeatureFlagData("variant_A", "hello"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
         // Wait for flags to load
-        for(int i=0; i<20 && !mFeatureFlagManager.areFeaturesReady(); ++i) Thread.sleep(100);
-        assertTrue(mFeatureFlagManager.areFeaturesReady());
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
 
         FeatureFlagData fallback = new FeatureFlagData("fallback_key", "fallback_value");
-        FeatureFlagData result = mFeatureFlagManager.getFeatureSync("test_flag", fallback);
+        FeatureFlagData result = mFeatureFlagManager.getVariantSync("test_flag", fallback);
 
         assertEquals("Should return actual flag key", "variant_A", result.key);
         assertEquals("Should return actual flag value", "hello", result.value);
     }
 
     @Test
-    public void testGetFeatureSync_flagsReady_flagMissing_returnsFallback() throws InterruptedException {
+    public void testGetVariantSync_flagsReady_flagMissing_returnsFallback() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("another_flag", new FeatureFlagData("variant_B", 123));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
-        for(int i=0; i<20 && !mFeatureFlagManager.areFeaturesReady(); ++i) Thread.sleep(100);
-        assertTrue(mFeatureFlagManager.areFeaturesReady());
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
 
         FeatureFlagData fallback = new FeatureFlagData("fb_key_sync", "fb_value_sync");
-        FeatureFlagData result = mFeatureFlagManager.getFeatureSync("non_existent_flag", fallback);
+        FeatureFlagData result = mFeatureFlagManager.getVariantSync("non_existent_flag", fallback);
 
         assertEquals("Should return fallback key", fallback.key, result.key);
         assertEquals("Should return fallback value", fallback.value, result.value);
     }
 
     @Test
-    public void testGetFeature_Async_flagsReady_flagExists() throws InterruptedException {
+    public void testGetVariant_Async_flagsReady_flagExists() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("async_flag", new FeatureFlagData("v_async", true));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
-        for(int i=0; i<20 && !mFeatureFlagManager.areFeaturesReady(); ++i) Thread.sleep(100);
-        assertTrue(mFeatureFlagManager.areFeaturesReady());
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
 
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
         FeatureFlagData fallback = new FeatureFlagData("fb", false);
 
-        mFeatureFlagManager.getFeature("async_flag", fallback, result -> {
+        mFeatureFlagManager.getVariant("async_flag", fallback, result -> {
             resultRef.set(result);
             latch.countDown();
         });
@@ -397,9 +397,9 @@ public class FeatureFlagManagerTest {
     }
 
     @Test
-    public void testGetFeature_Async_flagsNotReady_fetchSucceeds() throws InterruptedException {
+    public void testGetVariant_Async_flagsNotReady_fetchSucceeds() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject()); // Enabled for fetch
-        assertFalse(mFeatureFlagManager.areFeaturesReady());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
 
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("fetch_flag_async", new FeatureFlagData("fetched_variant", "fetched_value"));
@@ -410,7 +410,7 @@ public class FeatureFlagManagerTest {
         final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
         FeatureFlagData fallback = new FeatureFlagData("fb_fetch", "fb_val_fetch");
 
-        mFeatureFlagManager.getFeature("fetch_flag_async", fallback, result -> {
+        mFeatureFlagManager.getVariant("fetch_flag_async", fallback, result -> {
             resultRef.set(result);
             latch.countDown();
         });
@@ -419,29 +419,29 @@ public class FeatureFlagManagerTest {
         assertNotNull(resultRef.get());
         assertEquals("fetched_variant", resultRef.get().key);
         assertEquals("fetched_value", resultRef.get().value);
-        assertTrue(mFeatureFlagManager.areFeaturesReady());
+        assertTrue(mFeatureFlagManager.areFlagsReady());
     }
 
     @Test
-    public void testTracking_getFeatureSync_calledOnce() throws InterruptedException, JSONException {
+    public void testTracking_getVariantSync_calledOnce() throws InterruptedException, JSONException {
         setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("track_flag_sync", new FeatureFlagData("v_track_sync", "val"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
-        for(int i=0; i<20 && !mFeatureFlagManager.areFeaturesReady(); ++i) Thread.sleep(100);
-        assertTrue(mFeatureFlagManager.areFeaturesReady());
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
 
         mMockDelegate.resetTrackCalls();
         mMockDelegate.trackCalledLatch = new CountDownLatch(1);
 
         FeatureFlagData fallback = new FeatureFlagData("", null);
-        mFeatureFlagManager.getFeatureSync("track_flag_sync", fallback); // First call, should track
+        mFeatureFlagManager.getVariantSync("track_flag_sync", fallback); // First call, should track
         assertTrue("Track should have been called", mMockDelegate.trackCalledLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         assertEquals("Track should be called once", 1, mMockDelegate.trackCalls.size());
 
         // Second call, should NOT track again
-        mFeatureFlagManager.getFeatureSync("track_flag_sync", fallback);
+        mFeatureFlagManager.getVariantSync("track_flag_sync", fallback);
         // Allow some time for potential erroneous track call
         Thread.sleep(200);
         assertEquals("Track should still be called only once", 1, mMockDelegate.trackCalls.size());
@@ -453,9 +453,9 @@ public class FeatureFlagManagerTest {
     }
 
     @Test
-    public void testGetFeature_Async_flagsNotReady_fetchFails_returnsFallback() throws InterruptedException {
+    public void testGetVariant_Async_flagsNotReady_fetchFails_returnsFallback() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
-        assertFalse(mFeatureFlagManager.areFeaturesReady());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
 
         mMockRemoteService.addError(new IOException("Simulated fetch failure"));
 
@@ -463,7 +463,7 @@ public class FeatureFlagManagerTest {
         final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
         final FeatureFlagData fallback = new FeatureFlagData("fb_async_fail", "val_async_fail");
 
-        mFeatureFlagManager.getFeature("some_flag_on_fail", fallback, result -> {
+        mFeatureFlagManager.getVariant("some_flag_on_fail", fallback, result -> {
             resultRef.set(result);
             latch.countDown();
         });
@@ -472,7 +472,7 @@ public class FeatureFlagManagerTest {
         assertNotNull(resultRef.get());
         assertEquals(fallback.key, resultRef.get().key);
         assertEquals(fallback.value, resultRef.get().value);
-        assertFalse(mFeatureFlagManager.areFeaturesReady());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
         assertEquals(0, mMockDelegate.trackCalls.size()); // No tracking on fallback
     }
 

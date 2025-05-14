@@ -16,14 +16,12 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ContentInfoCompat;
 
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
-import com.mixpanel.android.mpmetrics.FlagCompletionCallback;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -1268,111 +1266,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         return group;
     }
 
-    /**
-     * Initiates the loading of feature flags from the Mixpanel server.
-     * This method typically triggers an asynchronous operation to fetch the latest flag definitions.
-     */
-    public void loadFlags() {
-        mFeatureFlagManager.loadFlags();
-    }
-
-    /**
-     * Checks if the feature flags have been successfully loaded and are ready for use.
-     *
-     * @return {@code true} if feature flags are loaded and ready, {@code false} otherwise.
-     */
-    public boolean areFeaturesReady() {
-        return mFeatureFlagManager.areFeaturesReady();
-    }
-
-    /**
-     * Synchronously retrieves the data for a specific feature flag.
-     * This method will block until the feature flag data is available or a timeout occurs.
-     *
-     * @param featureName The unique key name of the feature flag to retrieve. Must not be null.
-     * @param fallback The default {@link FeatureFlagData} to return if the flag is not found or an error occurs. Must not be null.
-     * @return The {@link FeatureFlagData} for the specified feature flag, or the fallback value if unavailable.
-     */
-    public FeatureFlagData getFeatureSync(@NonNull final String featureName, @NonNull final FeatureFlagData fallback) {
-        return mFeatureFlagManager.getFeatureSync(featureName, fallback);
-    }
-
-    /**
-     * Asynchronously retrieves the data for a specific feature flag.
-     * The result, or fallback, is provided via a completion callback.
-     *
-     * @param featureName The unique key name of the feature flag to retrieve. Must not be null.
-     * @param fallback The default {@link FeatureFlagData} to use if the flag is not found or an error occurs. Must not be null.
-     * @param completion The callback function that will be invoked with the feature flag data or the fallback. Must not be null.
-     */
-    public void getFeature(
-            @NonNull final String featureName,
-            @NonNull final FeatureFlagData fallback,
-            @NonNull final FlagCompletionCallback<FeatureFlagData> completion
-    ) {
-        mFeatureFlagManager.getFeature(featureName, fallback, completion);
-    }
-
-    /**
-     * Synchronously retrieves the raw data value associated with a specific feature flag.
-     * This could be a String, Number, Boolean, JSONArray, or JSONObject.
-     * This method will block until the feature flag data is available or a timeout occurs.
-     *
-     * @param featureName The unique key name of the feature flag. Must not be null.
-     * @param fallbackValue The default value to return if the flag is not found, not of the expected type, or an error occurs. Can be null.
-     * @return The raw data value of the feature flag, or the {@code fallbackValue} if unavailable.
-     */
-    public Object getFeatureDataSync(@NonNull String featureName, @Nullable Object fallbackValue) {
-        return mFeatureFlagManager.getFeatureDataSync(featureName, fallbackValue);
-    }
-
-    /**
-     * Asynchronously retrieves the raw data value associated with a specific feature flag.
-     * The result, or fallback, is provided via a completion callback.
-     * This could be a String, Number, Boolean, JSONArray, or JSONObject.
-     *
-     * @param featureName The unique key name of the feature flag. Must not be null.
-     * @param fallbackValue The default value to use if the flag is not found, not of the expected type, or an error occurs. Can be null.
-     * @param completion The callback function that will be invoked with the feature flag's raw data or the {@code fallbackValue}. Must not be null.
-     */
-    public void getFeatureData(
-            @NonNull String featureName,
-            @Nullable Object fallbackValue,
-            @NonNull FlagCompletionCallback<Object> completion
-    ) {
-        mFeatureFlagManager.getFeatureData(featureName, fallbackValue, completion);
-    }
-
-    /**
-     * Synchronously checks if a specific feature flag is enabled.
-     * This method will block until the feature flag status is determined or a timeout occurs.
-     *
-     * @param featureName The unique key name of the feature flag. Must not be null.
-     * @param fallbackValue The default boolean value to return if the flag's status cannot be determined.
-     * @return {@code true} if the feature flag is enabled, {@code false} if it is disabled or if its status cannot be determined (in which case {@code fallbackValue} is returned).
-     */
-    public boolean isFeatureEnabledSync(@NonNull String featureName, boolean fallbackValue) {
-        return mFeatureFlagManager.isFeatureEnabledSync(featureName, fallbackValue);
-    }
-
-    /**
-     * Asynchronously checks if a specific feature flag is enabled.
-     * The result, or fallback, is provided via a completion callback.
-     *
-     * @param featureName The unique key name of the feature flag. Must not be null.
-     * @param fallbackValue The default boolean value to use if the flag's status cannot be determined.
-     * @param completion The callback function that will be invoked with {@code true} if the flag is enabled, {@code false} otherwise (or the {@code fallbackValue}). Must not be null.
-     */
-    public void isFeatureEnabled(
-            @NonNull String featureName,
-            boolean fallbackValue,
-            @NonNull FlagCompletionCallback<Boolean> completion
-    ) {
-        mFeatureFlagManager.isFeatureEnabled(featureName, fallbackValue, completion);
-    }
-
     private String makeMapKey(String groupKey, Object groupID) {
         return groupKey + '_' + groupID;
+    }
+
+    /**
+     * Returns a {@link Flags} object that can be used to retrieve and manage
+     * feature flags from Mixpanel.
+     *
+     * @return an instance of {@link Flags} that allows you to access feature flag
+     * configurations for your project.
+     */
+    public Flags getFlags() {
+        return mFeatureFlagManager;
     }
 
     /**
@@ -1851,6 +1757,225 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          */
         void deleteGroup();
     }
+
+
+    /**
+     * Core interface for using Mixpanel Feature Flags.
+     * You can get an instance by calling {@link MixpanelAPI#getFlags()} (assuming such a method exists).
+     *
+     * <p>The Flags interface allows you to manage and retrieve feature flags defined in your Mixpanel project.
+     * Feature flags can be used to remotely configure your application's behavior, roll out new features
+     * gradually, or run A/B tests.
+     *
+     * <p>It's recommended to load flags early in your application's lifecycle, for example,
+     * in your main Application class or main Activity's {@code onCreate} method.
+     *
+     * <p>A typical use case for the Flags interface might look like this:
+     *
+     * <pre>
+     * {@code
+     *
+     * public class MainActivity extends Activity {
+     * MixpanelAPI mMixpanel;
+     * Flags mFlags;
+     *
+     * public void onCreate(Bundle saved) {
+     * super.onCreate(saved);
+     * MixanelOptions mpOptions = new MixpanelOptions.Builder().featureFlagsEnabled(true).build();
+     * mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL TOKEN", true, mpOptions);
+     * mFlags = mMixpanel.getFlags();
+     *
+     * // Asynchronously load flags
+     * mFlags.loadFlags();
+     *
+     * // Example of checking a flag asynchronously
+     * mFlags.isFlagEnabled("new-checkout-flow", false, isEnabled -> {
+     * if (isEnabled) {
+     * // Show new checkout flow
+     * } else {
+     * // Show old checkout flow
+     * }
+     * });
+     *
+     * // Example of getting a flag value synchronously after ensuring flags are ready
+     * if (mFlags.areFlagsReady()) {
+     * String buttonLabel = (String) mFlags.getVariantValueSync("home-button-label", "Default Label");
+     * // Use buttonLabel
+     * }
+     * }
+     * }
+     *
+     * }
+     * </pre>
+     *
+     * @see MixpanelAPI
+     */
+    public interface Flags {
+
+        // --- Public Methods ---
+
+        /**
+         * Asynchronously loads flags from the Mixpanel server if they haven't been loaded yet
+         * or if the cached flags have expired. This method will initiate a network request
+         * if necessary. Subsequent calls to get flag values (especially asynchronous ones)
+         * may trigger this load if flags are not yet available.
+         */
+        void loadFlags();
+
+        /**
+         * Returns true if flags have been successfully loaded from the server and are
+         * currently available for synchronous access. This is useful to check before
+         * calling synchronous flag retrieval methods like {@link #getVariantSync(String, FeatureFlagData)}
+         * to avoid them returning the fallback value immediately.
+         *
+         * @return true if flags are loaded and ready, false otherwise.
+         */
+        boolean areFlagsReady();
+
+        // --- Sync Flag Retrieval ---
+
+        /**
+         * Gets the complete feature flag data (key and value) synchronously.
+         *
+         * <p><b>IMPORTANT:</b> This method can block the calling thread if it needs to wait for
+         * flags to be loaded (though the provided implementation detail suggests it returns
+         * fallback immediately if not ready). It is strongly recommended NOT to call this
+         * from the main UI thread if {@link #areFlagsReady()} is false, as it could lead
+         * to ANR (Application Not Responding) issues if blocking were to occur.
+         *
+         * <p>If flags are not ready (i.e., {@link #areFlagsReady()} returns false), this method
+         * will return the provided {@code fallback} value immediately without attempting to
+         * fetch flags or block.
+         *
+         * @param featureName The unique name (key) of the feature flag to retrieve.
+         * @param fallback    The {@link FeatureFlagData} instance to return if the specified
+         * flag is not found in the loaded set, or if flags are not ready.
+         * This must not be null.
+         * @return The {@link FeatureFlagData} for the found feature flag, or the {@code fallback}
+         * if the flag is not found or flags are not ready.
+         */
+        @NonNull
+        FeatureFlagData getVariantSync(@NonNull String featureName, @NonNull FeatureFlagData fallback);
+
+        /**
+         * Gets the value of a specific feature flag synchronously.
+         *
+         * <p><b>IMPORTANT:</b> Similar to {@link #getVariantSync(String, FeatureFlagData)}, this method
+         * may involve blocking behavior if flags are being loaded. It's advised to check
+         * {@link #areFlagsReady()} first and avoid calling this on the main UI thread if flags
+         * might not be ready.
+         *
+         * <p>If flags are not ready, or if the specified {@code featureName} is not found,
+         * this method returns the {@code fallbackValue} immediately.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default value to return if the flag is not found,
+         * its value is null, or if flags are not ready. Can be null.
+         * @return The value of the feature flag (which could be a String, Boolean, Number, etc.),
+         * or the {@code fallbackValue}.
+         */
+        @Nullable
+        Object getVariantValueSync(@NonNull String featureName, @Nullable Object fallbackValue);
+
+        /**
+         * Checks if a specific feature flag is enabled synchronously. A flag is considered
+         * enabled if its value evaluates to {@code true}.
+         *
+         * <ul>
+         * <li>If the flag's value is a Boolean, it's returned directly.</li>
+         * <li>If the flag's value is a String, it's considered {@code true} if it equals (case-insensitive) "true" or "1".</li>
+         * <li>If the flag's value is a Number, it's considered {@code true} if it's non-zero.</li>
+         * <li>For other types, or if the flag is not found, it relies on the {@code fallbackValue}.</li>
+         * </ul>
+         *
+         * <p><b>IMPORTANT:</b> See warnings on {@link #getVariantSync(String, FeatureFlagData)} regarding
+         * potential blocking and the recommendation to check {@link #areFlagsReady()} first,
+         * especially when calling from the main UI thread.
+         *
+         * <p>Returns {@code fallbackValue} immediately if flags are not ready or the flag is not found.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default boolean value to return if the flag is not found,
+         * cannot be evaluated as a boolean, or if flags are not ready.
+         * @return {@code true} if the flag is present and evaluates to true, otherwise {@code false}
+         * (or the {@code fallbackValue}).
+         */
+        boolean isFlagEnabledSync(@NonNull String featureName, boolean fallbackValue);
+
+        // --- Async Flag Retrieval ---
+
+        /**
+         * Asynchronously gets the complete feature flag data (key and value).
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch from the
+         * Mixpanel server. The provided {@code completion} callback will be invoked on the
+         * main UI thread once the operation is complete.
+         *
+         * <p>If the fetch fails or the specific flag is not found after a successful fetch,
+         * the {@code fallback} data will be provided to the completion callback.
+         *
+         * @param featureName The unique name (key) of the feature flag to retrieve.
+         * @param fallback    The {@link FeatureFlagData} instance to return via the callback
+         * if the flag is not found or if the fetch operation fails.
+         * This must not be null.
+         * @param completion  The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the result (either the found {@link FeatureFlagData} or
+         * the {@code fallback}). This must not be null.
+         */
+        void getVariant(
+                @NonNull String featureName,
+                @NonNull FeatureFlagData fallback,
+                @NonNull FlagCompletionCallback<FeatureFlagData> completion
+        );
+
+        /**
+         * Asynchronously gets the value of a specific feature flag.
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch. The
+         * {@code completion} callback is invoked on the main UI thread with the flag's
+         * value or the {@code fallbackValue}.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default value to return via the callback if the flag is
+         * not found, its value is null, or if the fetch operation fails.
+         * Can be null.
+         * @param completion    The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the result (the flag's value or the {@code fallbackValue}).
+         * This must not be null.
+         */
+        void getVariantValue(
+                @NonNull String featureName,
+                @Nullable Object fallbackValue,
+                @NonNull FlagCompletionCallback<Object> completion
+        );
+
+
+        /**
+         * Asynchronously checks if a specific feature flag is enabled. The evaluation of
+         * "enabled" follows the same rules as {@link #isFlagEnabledSync(String, boolean)}.
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch. The
+         * {@code completion} callback is invoked on the main UI thread with the boolean result.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default boolean value to return via the callback if the flag
+         * is not found, cannot be evaluated as a boolean, or if the
+         * fetch operation fails.
+         * @param completion    The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the boolean result. This must not be null.
+         */
+        void isFlagEnabled(
+                @NonNull String featureName,
+                boolean fallbackValue,
+                @NonNull FlagCompletionCallback<Boolean> completion
+        );
+    }
+
+
+
+
+
+
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
