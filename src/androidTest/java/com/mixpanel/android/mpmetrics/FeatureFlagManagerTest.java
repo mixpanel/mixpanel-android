@@ -2,16 +2,12 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Looper; // For checking main thread
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.mixpanel.android.util.Base64Coder; // If needed for inspecting auth
-import com.mixpanel.android.util.HttpService; // For concrete type if not using interface everywhere
-import com.mixpanel.android.util.JsonUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.OfflineMode; // Assuming this exists
 import com.mixpanel.android.util.ProxyServerInteractor;
@@ -25,7 +21,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -207,8 +202,8 @@ public class FeatureFlagManagerTest {
 
         mFeatureFlagManager = new FeatureFlagManager(
                 mMockDelegate, // Pass delegate directly, manager will wrap in WeakReference
-                mTestConfig.getFlagsEndpoint(),
-                mMockRemoteService
+                mMockRemoteService,
+                new FlagsConfig(true, new JSONObject())
         );
         MPLog.setLevel(MPLog.VERBOSE); // Enable verbose logging for tests
     }
@@ -241,23 +236,11 @@ public class FeatureFlagManagerTest {
     }
 
     // Helper to simulate MPConfig having specific FlagsConfig
-    private void setupDelegateFlagsConfig(boolean enabled, @Nullable Map<String, Object> context) {
-        final Map<String, Object> finalContext = (context == null) ? new HashMap<>() : context;
+    private void setupFlagsConfig(boolean enabled, @Nullable JSONObject context) {
+        final JSONObject finalContext = (context == null) ? new JSONObject() : context;
         final FlagsConfig flagsConfig = new FlagsConfig(enabled, finalContext);
 
-        // Create a new MPConfig that returns our specific FlagsConfig
-        // This assumes MPConfig has methods to get these values
         mMockDelegate.configToReturn = new MPConfig(new Bundle(), mContext, TEST_TOKEN) {
-            @Override
-            public boolean getFeatureFlagsEnabled() {
-                return flagsConfig.enabled;
-            }
-
-            @Override
-            public Map<String, Object> getFlagsContext() {
-                return flagsConfig.context;
-            }
-
             @Override
             public String getEventsEndpoint() { // Ensure server URL source
                 return TEST_SERVER_URL + "/track/";
@@ -267,8 +250,13 @@ public class FeatureFlagManagerTest {
             public String getFlagsEndpoint() { // Ensure server URL source
                 return TEST_SERVER_URL + "/flags/";
             }
-            // Override other MPConfig methods if needed by FeatureFlagManager
         };
+
+        mFeatureFlagManager = new FeatureFlagManager(
+            mMockDelegate,
+            mMockRemoteService,
+            flagsConfig
+        );
     }
 
     // ---- Test Cases ----
@@ -280,7 +268,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testLoadFlags_whenDisabled_doesNotFetch() throws InterruptedException {
-        setupDelegateFlagsConfig(false, null); // Flags disabled
+        setupFlagsConfig(false, null); // Flags disabled
         mFeatureFlagManager.loadFlags();
 
         // Wait a bit to ensure no network call is attempted
@@ -293,7 +281,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testLoadFlags_whenEnabled_andFetchSucceeds_flagsBecomeReady() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>()); // Flags enabled
+        setupFlagsConfig(true, new JSONObject()); // Flags enabled
 
         Map<String, FeatureFlagData> testFlags = new HashMap<>();
         testFlags.put("flag1", new FeatureFlagData("v1", true));
@@ -323,7 +311,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testLoadFlags_whenEnabled_andFetchFails_flagsNotReady() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         mMockRemoteService.addError(new IOException("Network unavailable"));
 
         mFeatureFlagManager.loadFlags();
@@ -338,7 +326,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeatureSync_flagsNotReady_returnsFallback() {
-        setupDelegateFlagsConfig(true, null); // Enabled, but no flags loaded yet
+        setupFlagsConfig(true, null); // Enabled, but no flags loaded yet
         assertFalse(mFeatureFlagManager.areFeaturesReady());
 
         FeatureFlagData fallback = new FeatureFlagData("fb_key", "fb_value");
@@ -350,7 +338,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeatureSync_flagsReady_flagExists() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("test_flag", new FeatureFlagData("variant_A", "hello"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
@@ -368,7 +356,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeatureSync_flagsReady_flagMissing_returnsFallback() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("another_flag", new FeatureFlagData("variant_B", 123));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
@@ -385,7 +373,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeature_Async_flagsReady_flagExists() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("async_flag", new FeatureFlagData("v_async", true));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
@@ -410,7 +398,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeature_Async_flagsNotReady_fetchSucceeds() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>()); // Enabled for fetch
+        setupFlagsConfig(true, new JSONObject()); // Enabled for fetch
         assertFalse(mFeatureFlagManager.areFeaturesReady());
 
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
@@ -436,7 +424,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testTracking_getFeatureSync_calledOnce() throws InterruptedException, JSONException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         Map<String, FeatureFlagData> serverFlags = new HashMap<>();
         serverFlags.put("track_flag_sync", new FeatureFlagData("v_track_sync", "val"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
@@ -466,7 +454,7 @@ public class FeatureFlagManagerTest {
 
     @Test
     public void testGetFeature_Async_flagsNotReady_fetchFails_returnsFallback() throws InterruptedException {
-        setupDelegateFlagsConfig(true, new HashMap<>());
+        setupFlagsConfig(true, new JSONObject());
         assertFalse(mFeatureFlagManager.areFeaturesReady());
 
         mMockRemoteService.addError(new IOException("Simulated fetch failure"));

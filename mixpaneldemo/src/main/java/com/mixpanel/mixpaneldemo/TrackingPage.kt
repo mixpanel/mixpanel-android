@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.mixpanel.android.mpmetrics.FeatureFlagData
 import com.mixpanel.android.mpmetrics.FlagCompletionCallback
+import com.mixpanel.android.mpmetrics.FlagsConfig
+import com.mixpanel.android.mpmetrics.MPConfig
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import org.json.JSONObject
 
@@ -32,6 +34,8 @@ fun TrackingPage(navController: NavHostController) {
     val showDialog = remember { mutableStateOf(false) }
     val dialogMessage = remember { mutableStateOf("") }
     val context = LocalContext.current
+    val flagsConfig = FlagsConfig(true, mapOf("context_key" to "context_value"));
+    val mpConfig = MPConfig(flagsConfig)
     val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
     mixpanel.setEnableLogging(true)
     mixpanel.identify("demo_user")

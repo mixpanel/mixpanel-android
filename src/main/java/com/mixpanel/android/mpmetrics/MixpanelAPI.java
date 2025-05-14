@@ -16,6 +16,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ContentInfoCompat;
 
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
@@ -126,7 +127,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context, instanceName), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
+       this(context, referrerPreferences, token, MPConfig.getInstance(context, instanceName), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -134,9 +135,24 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        this(
+            context,
+            referrerPreferences,
+            token,
+            config,
+            new MixpanelOptions.Builder().optOutTrackingDefault(optOutTrackingDefault).superProperties(superProperties).instanceName(instanceName).build(),
+            trackAutomaticEvents
+        );
+    }
+
+    /**
+     * You shouldn't instantiate MixpanelAPI objects directly.
+     * Use MixpanelAPI.getInstance to get an instance.
+     */
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, MixpanelOptions options, boolean trackAutomaticEvents) {
         mContext = context;
         mToken = token;
-        mInstanceName = instanceName;
+        mInstanceName = options.getInstanceName();
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
@@ -161,24 +177,23 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         mSessionMetadata = new SessionMetadata();
         mMessages = getAnalyticsMessages();
-        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, instanceName);
+        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName());
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagManager = new FeatureFlagManager(
-                this, // MixpanelAPI is the delegate
-                mConfig.getFlagsEndpoint(), // Or wherever you get the base URL from MPConfig
-                // TODO: Get/create HttpService instance from MixpanelAPI/MPConfig. Do not create a new one.
-                getHttpService() // Example: Get the HttpService instance used by MixpanelAPI
+                this,
+                getHttpService(),
+                new FlagsConfig(options.areFeatureFlagsEnabled(), options.getFeatureFlagsContext())
         );
 
         mFeatureFlagManager.loadFlags();
 
-        if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
+        if (options.isOptOutTrackingDefault() && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
             optOutTracking();
         }
 
-        if (superProperties != null) {
-            registerSuperProperties(superProperties);
+        if (options.getSuperProperties() != null) {
+            registerSuperProperties(options.getSuperProperties());
         }
 
         final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
@@ -426,7 +441,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
         return getInstance(context, token, false, superProperties, instanceName, trackAutomaticEvents);
     }
-
     /**
      * Get the instance of MixpanelAPI associated with your Mixpanel project token.
      *
@@ -461,6 +475,50 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .instanceName(instanceName)
+                .optOutTrackingDefault(optOutTrackingDefault)
+                .superProperties(superProperties)
+                .build();
+        return getInstance(context, token, trackAutomaticEvents, options);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token
+     * and configured with the provided options.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel. This overload allows for more
+     * detailed configuration via the {@link MixpanelOptions} parameter.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token, true, options);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     * instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking.
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     * in the settings dialog.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     * such as app sessions, first app opens, app updates, etc.
+     * @param options An instance of {@link MixpanelOptions} to configure the MixpanelAPI instance.
+     * This allows setting options like {@code optOutTrackingDefault},
+     * {@code superProperties}, and {@code instanceName}. Other options within
+     * MixpanelOptions may be used by other SDK features if applicable.
+     * @return an instance of MixpanelAPI associated with your project and configured
+     * with the specified options.
+     */
+    public static MixpanelAPI getInstance(Context context, String token, boolean trackAutomaticEvents, MixpanelOptions options) {
         if (null == token || null == context) {
             return null;
         }
@@ -470,7 +528,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             if (null == sReferrerPrefs) {
                 sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME, null);
             }
-            String instanceKey = instanceName != null ? instanceName : token;
+            String instanceKey = options.getInstanceName() != null ? options.getInstanceName() : token;
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(instanceKey);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
@@ -479,7 +537,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, options.isOptOutTrackingDefault(), options.getSuperProperties(), options.getInstanceName(), trackAutomaticEvents);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
