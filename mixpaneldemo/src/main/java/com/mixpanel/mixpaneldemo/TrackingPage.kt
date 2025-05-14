@@ -27,6 +27,7 @@ import com.mixpanel.android.mpmetrics.FlagCompletionCallback
 import com.mixpanel.android.mpmetrics.FlagsConfig
 import com.mixpanel.android.mpmetrics.MPConfig
 import com.mixpanel.android.mpmetrics.MixpanelAPI
+import com.mixpanel.android.mpmetrics.MixpanelOptions
 import org.json.JSONObject
 
 @Composable
@@ -34,9 +35,11 @@ fun TrackingPage(navController: NavHostController) {
     val showDialog = remember { mutableStateOf(false) }
     val dialogMessage = remember { mutableStateOf("") }
     val context = LocalContext.current
-    val flagsConfig = FlagsConfig(true, mapOf("context_key" to "context_value"));
-    val mpConfig = MPConfig(flagsConfig)
-    val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
+    val flagsContext = JSONObject()
+    flagsContext.put("context_key", "context_value")
+    val mpOptionsBuilder = MixpanelOptions.Builder().featureFlagsEnabled(true).featureFlagsContext(flagsContext)
+    val mpOptions = mpOptionsBuilder.build()
+    val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true, mpOptions)
     mixpanel.setEnableLogging(true)
     mixpanel.identify("demo_user")
 //    mixpanel.setShouldGzipRequestPayload(true)

@@ -537,7 +537,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, options.isOptOutTrackingDefault(), options.getSuperProperties(), options.getInstanceName(), trackAutomaticEvents);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, MPConfig.getInstance(context, options.getInstanceName()), options, trackAutomaticEvents);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
