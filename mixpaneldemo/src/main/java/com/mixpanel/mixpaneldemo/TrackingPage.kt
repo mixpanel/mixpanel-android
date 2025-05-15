@@ -88,7 +88,7 @@ fun TrackingPage(navController: NavHostController) {
             println("Unregistering super property")
             mixpanel.unregisterSuperProperty("property_to_unregister")
             mixpanel.flush()
-        }),
+        })
     )
 
     Scaffold(
