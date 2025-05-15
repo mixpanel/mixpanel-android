@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.*
 import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
 
-const val MIXPANEL_PROJECT_TOKEN = "metrics-1"
+const val MIXPANEL_PROJECT_TOKEN = "YOUR_PROJECT_TOKEN"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
