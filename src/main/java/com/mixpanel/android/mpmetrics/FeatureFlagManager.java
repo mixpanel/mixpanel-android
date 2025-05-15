@@ -33,17 +33,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Interface for FeatureFlagManager to retrieve necessary data and trigger actions
- * from the main MixpanelAPI instance.
- */
-interface FeatureFlagDelegate {
-    MPConfig getMPConfig();
-    String getDistinctId();
-    void track(String eventName, JSONObject properties);
-    String getToken();
-}
-
 class FeatureFlagManager implements MixpanelAPI.Flags {
     private static final String LOGTAG = "MixpanelAPI.FeatureFlag";
 
