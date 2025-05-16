@@ -3,7 +3,7 @@ package com.mixpanel.android.util; // Or com.mixpanel.android.mpmetrics if prefe
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.mpmetrics.FeatureFlagData;
+import com.mixpanel.android.mpmetrics.MixpanelFlagVariant;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -111,8 +111,8 @@ public class JsonUtils {
      * Returns an empty map if parsing fails or the "flags" key is missing/invalid.
      */
     @NonNull
-    public static Map<String, FeatureFlagData> parseFlagsResponse(@Nullable JSONObject responseJson) {
-        Map<String, FeatureFlagData> flagsMap = new HashMap<>();
+    public static Map<String, MixpanelFlagVariant> parseFlagsResponse(@Nullable JSONObject responseJson) {
+        Map<String, MixpanelFlagVariant> flagsMap = new HashMap<>();
         if (responseJson == null) {
             MPLog.e(LOGTAG, "Cannot parse null flags response");
             return flagsMap;
@@ -153,7 +153,7 @@ public class JsonUtils {
                         MPLog.w(LOGTAG, "Flag definition missing 'variant_value' for key: " + featureName + ". Assuming null value.");
                     }
 
-                    FeatureFlagData flagData = new FeatureFlagData(variantKey, variantValue);
+                    MixpanelFlagVariant flagData = new MixpanelFlagVariant(variantKey, variantValue);
                     flagsMap.put(featureName, flagData);
 
                 } catch (JSONException e) {

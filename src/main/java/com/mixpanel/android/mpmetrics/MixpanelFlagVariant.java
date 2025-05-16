@@ -8,7 +8,7 @@ import androidx.annotation.Nullable;
  * This class stores the key and value of a specific variant for a feature flag.
  * It can be instantiated either by parsing an API response or by creating a fallback instance.
  */
-public class FeatureFlagData {
+public class MixpanelFlagVariant {
 
     /**
      * The key of the feature flag variant. This corresponds to the 'variant_key'
@@ -32,7 +32,7 @@ public class FeatureFlagData {
      * @param value The value of the feature flag variant. Corresponds to 'variant_value' from the API.
      * Can be Boolean, String, Number, JSONArray, JSONObject, or null.
      */
-    public FeatureFlagData(@NonNull String key, @Nullable Object value) {
+    public MixpanelFlagVariant(@NonNull String key, @Nullable Object value) {
         this.key = key;
         this.value = value;
     }
@@ -45,7 +45,7 @@ public class FeatureFlagData {
      *
      * @param keyAndValue The string value to be used as both the key and the value for this fallback. Cannot be null.
      */
-    public FeatureFlagData(@NonNull String keyAndValue) {
+    public MixpanelFlagVariant(@NonNull String keyAndValue) {
         this.key = keyAndValue; // Default key to the value itself
         this.value = keyAndValue;
     }
@@ -59,7 +59,7 @@ public class FeatureFlagData {
      * @param value The object value to be used for this fallback. Cannot be null.
      * This can be of type Boolean, String, Number, JSONArray, or JSONObject.
      */
-    public FeatureFlagData(@NonNull Object value) {
+    public MixpanelFlagVariant(@NonNull Object value) {
         this.key = "";
         this.value = value;
     }
@@ -69,7 +69,7 @@ public class FeatureFlagData {
      * The key is set to an empty string ("") and the value is set to null.
      * This constructor might be used internally or for specific default cases.
      */
-    FeatureFlagData() {
+    MixpanelFlagVariant() {
         this.key = "";
         this.value = null;
     }

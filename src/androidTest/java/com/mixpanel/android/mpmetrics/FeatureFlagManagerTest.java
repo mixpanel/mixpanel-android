@@ -215,10 +215,10 @@ public class FeatureFlagManagerTest {
     }
 
     // Helper method to create a valid flags JSON response string
-    private String createFlagsResponseJson(Map<String, FeatureFlagData> flags) {
+    private String createFlagsResponseJson(Map<String, MixpanelFlagVariant> flags) {
         JSONObject flagsObject = new JSONObject();
         try {
-            for (Map.Entry<String, FeatureFlagData> entry : flags.entrySet()) {
+            for (Map.Entry<String, MixpanelFlagVariant> entry : flags.entrySet()) {
                 JSONObject flagDef = new JSONObject();
                 flagDef.put("variant_key", entry.getValue().key);
                 // Need to handle different types for value properly
@@ -283,8 +283,8 @@ public class FeatureFlagManagerTest {
     public void testLoadFlags_whenEnabled_andFetchSucceeds_flagsBecomeReady() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject()); // Flags enabled
 
-        Map<String, FeatureFlagData> testFlags = new HashMap<>();
-        testFlags.put("flag1", new FeatureFlagData("v1", true));
+        Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+        testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
         String responseJson = createFlagsResponseJson(testFlags);
         mMockRemoteService.addResponse(responseJson.getBytes(StandardCharsets.UTF_8));
 
@@ -329,8 +329,8 @@ public class FeatureFlagManagerTest {
         setupFlagsConfig(true, null); // Enabled, but no flags loaded yet
         assertFalse(mFeatureFlagManager.areFlagsReady());
 
-        FeatureFlagData fallback = new FeatureFlagData("fb_key", "fb_value");
-        FeatureFlagData result = mFeatureFlagManager.getVariantSync("my_flag", fallback);
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb_key", "fb_value");
+        MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("my_flag", fallback);
 
         assertEquals("Should return fallback key", fallback.key, result.key);
         assertEquals("Should return fallback value", fallback.value, result.value);
@@ -339,16 +339,16 @@ public class FeatureFlagManagerTest {
     @Test
     public void testGetVariantSync_flagsReady_flagExists() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
-        Map<String, FeatureFlagData> serverFlags = new HashMap<>();
-        serverFlags.put("test_flag", new FeatureFlagData("variant_A", "hello"));
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("test_flag", new MixpanelFlagVariant("variant_A", "hello"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
         // Wait for flags to load
         for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
         assertTrue(mFeatureFlagManager.areFlagsReady());
 
-        FeatureFlagData fallback = new FeatureFlagData("fallback_key", "fallback_value");
-        FeatureFlagData result = mFeatureFlagManager.getVariantSync("test_flag", fallback);
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fallback_key", "fallback_value");
+        MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("test_flag", fallback);
 
         assertEquals("Should return actual flag key", "variant_A", result.key);
         assertEquals("Should return actual flag value", "hello", result.value);
@@ -357,15 +357,15 @@ public class FeatureFlagManagerTest {
     @Test
     public void testGetVariantSync_flagsReady_flagMissing_returnsFallback() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
-        Map<String, FeatureFlagData> serverFlags = new HashMap<>();
-        serverFlags.put("another_flag", new FeatureFlagData("variant_B", 123));
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("another_flag", new MixpanelFlagVariant("variant_B", 123));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
         for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
         assertTrue(mFeatureFlagManager.areFlagsReady());
 
-        FeatureFlagData fallback = new FeatureFlagData("fb_key_sync", "fb_value_sync");
-        FeatureFlagData result = mFeatureFlagManager.getVariantSync("non_existent_flag", fallback);
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb_key_sync", "fb_value_sync");
+        MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("non_existent_flag", fallback);
 
         assertEquals("Should return fallback key", fallback.key, result.key);
         assertEquals("Should return fallback value", fallback.value, result.value);
@@ -374,16 +374,16 @@ public class FeatureFlagManagerTest {
     @Test
     public void testGetVariant_Async_flagsReady_flagExists() throws InterruptedException {
         setupFlagsConfig(true, new JSONObject());
-        Map<String, FeatureFlagData> serverFlags = new HashMap<>();
-        serverFlags.put("async_flag", new FeatureFlagData("v_async", true));
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("async_flag", new MixpanelFlagVariant("v_async", true));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
         for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
         assertTrue(mFeatureFlagManager.areFlagsReady());
 
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
-        FeatureFlagData fallback = new FeatureFlagData("fb", false);
+        final AtomicReference<MixpanelFlagVariant> resultRef = new AtomicReference<>();
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", false);
 
         mFeatureFlagManager.getVariant("async_flag", fallback, result -> {
             resultRef.set(result);
@@ -401,14 +401,14 @@ public class FeatureFlagManagerTest {
         setupFlagsConfig(true, new JSONObject()); // Enabled for fetch
         assertFalse(mFeatureFlagManager.areFlagsReady());
 
-        Map<String, FeatureFlagData> serverFlags = new HashMap<>();
-        serverFlags.put("fetch_flag_async", new FeatureFlagData("fetched_variant", "fetched_value"));
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("fetch_flag_async", new MixpanelFlagVariant("fetched_variant", "fetched_value"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         // No loadFlags() call here, getFeature should trigger it
 
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
-        FeatureFlagData fallback = new FeatureFlagData("fb_fetch", "fb_val_fetch");
+        final AtomicReference<MixpanelFlagVariant> resultRef = new AtomicReference<>();
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb_fetch", "fb_val_fetch");
 
         mFeatureFlagManager.getVariant("fetch_flag_async", fallback, result -> {
             resultRef.set(result);
@@ -425,8 +425,8 @@ public class FeatureFlagManagerTest {
     @Test
     public void testTracking_getVariantSync_calledOnce() throws InterruptedException, JSONException {
         setupFlagsConfig(true, new JSONObject());
-        Map<String, FeatureFlagData> serverFlags = new HashMap<>();
-        serverFlags.put("track_flag_sync", new FeatureFlagData("v_track_sync", "val"));
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("track_flag_sync", new MixpanelFlagVariant("v_track_sync", "val"));
         mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
         mFeatureFlagManager.loadFlags();
         for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
@@ -435,7 +435,7 @@ public class FeatureFlagManagerTest {
         mMockDelegate.resetTrackCalls();
         mMockDelegate.trackCalledLatch = new CountDownLatch(1);
 
-        FeatureFlagData fallback = new FeatureFlagData("", null);
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("", null);
         mFeatureFlagManager.getVariantSync("track_flag_sync", fallback); // First call, should track
         assertTrue("Track should have been called", mMockDelegate.trackCalledLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         assertEquals("Track should be called once", 1, mMockDelegate.trackCalls.size());
@@ -460,8 +460,8 @@ public class FeatureFlagManagerTest {
         mMockRemoteService.addError(new IOException("Simulated fetch failure"));
 
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<FeatureFlagData> resultRef = new AtomicReference<>();
-        final FeatureFlagData fallback = new FeatureFlagData("fb_async_fail", "val_async_fail");
+        final AtomicReference<MixpanelFlagVariant> resultRef = new AtomicReference<>();
+        final MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb_async_fail", "val_async_fail");
 
         mFeatureFlagManager.getVariant("some_flag_on_fail", fallback, result -> {
             resultRef.set(result);

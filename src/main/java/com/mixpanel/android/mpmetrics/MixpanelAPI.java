@@ -1825,7 +1825,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         /**
          * Returns true if flags have been successfully loaded from the server and are
          * currently available for synchronous access. This is useful to check before
-         * calling synchronous flag retrieval methods like {@link #getVariantSync(String, FeatureFlagData)}
+         * calling synchronous flag retrieval methods like {@link #getVariantSync(String, MixpanelFlagVariant)}
          * to avoid them returning the fallback value immediately.
          *
          * @return true if flags are loaded and ready, false otherwise.
@@ -1848,19 +1848,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * fetch flags or block.
          *
          * @param featureName The unique name (key) of the feature flag to retrieve.
-         * @param fallback    The {@link FeatureFlagData} instance to return if the specified
+         * @param fallback    The {@link MixpanelFlagVariant} instance to return if the specified
          * flag is not found in the loaded set, or if flags are not ready.
          * This must not be null.
-         * @return The {@link FeatureFlagData} for the found feature flag, or the {@code fallback}
+         * @return The {@link MixpanelFlagVariant} for the found feature flag, or the {@code fallback}
          * if the flag is not found or flags are not ready.
          */
         @NonNull
-        FeatureFlagData getVariantSync(@NonNull String featureName, @NonNull FeatureFlagData fallback);
+        MixpanelFlagVariant getVariantSync(@NonNull String featureName, @NonNull MixpanelFlagVariant fallback);
 
         /**
          * Gets the value of a specific feature flag synchronously.
          *
-         * <p><b>IMPORTANT:</b> Similar to {@link #getVariantSync(String, FeatureFlagData)}, this method
+         * <p><b>IMPORTANT:</b> Similar to {@link #getVariantSync(String, MixpanelFlagVariant)}, this method
          * may involve blocking behavior if flags are being loaded. It's advised to check
          * {@link #areFlagsReady()} first and avoid calling this on the main UI thread if flags
          * might not be ready.
@@ -1888,7 +1888,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * <li>For other types, or if the flag is not found, it relies on the {@code fallbackValue}.</li>
          * </ul>
          *
-         * <p><b>IMPORTANT:</b> See warnings on {@link #getVariantSync(String, FeatureFlagData)} regarding
+         * <p><b>IMPORTANT:</b> See warnings on {@link #getVariantSync(String, MixpanelFlagVariant)} regarding
          * potential blocking and the recommendation to check {@link #areFlagsReady()} first,
          * especially when calling from the main UI thread.
          *
@@ -1915,17 +1915,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * the {@code fallback} data will be provided to the completion callback.
          *
          * @param featureName The unique name (key) of the feature flag to retrieve.
-         * @param fallback    The {@link FeatureFlagData} instance to return via the callback
+         * @param fallback    The {@link MixpanelFlagVariant} instance to return via the callback
          * if the flag is not found or if the fetch operation fails.
          * This must not be null.
          * @param completion  The {@link FlagCompletionCallback} that will be invoked on the main
-         * thread with the result (either the found {@link FeatureFlagData} or
+         * thread with the result (either the found {@link MixpanelFlagVariant} or
          * the {@code fallback}). This must not be null.
          */
         void getVariant(
                 @NonNull String featureName,
-                @NonNull FeatureFlagData fallback,
-                @NonNull FlagCompletionCallback<FeatureFlagData> completion
+                @NonNull MixpanelFlagVariant fallback,
+                @NonNull FlagCompletionCallback<MixpanelFlagVariant> completion
         );
 
         /**
