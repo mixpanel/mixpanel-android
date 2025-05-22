@@ -740,6 +740,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 mPersistentIdentity.setEventsDistinctId(distinctId);
                 mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
                 mPersistentIdentity.markEventsUserIdPresent();
+                mFeatureFlagManager.loadFlags();
                 try {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
@@ -1900,7 +1901,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * @return {@code true} if the flag is present and evaluates to true, otherwise {@code false}
          * (or the {@code fallbackValue}).
          */
-        boolean isFlagEnabledSync(@NonNull String featureName, boolean fallbackValue);
+        boolean isEnabledSync(@NonNull String featureName, boolean fallbackValue);
 
         // --- Async Flag Retrieval ---
 
@@ -1952,7 +1953,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         /**
          * Asynchronously checks if a specific feature flag is enabled. The evaluation of
-         * "enabled" follows the same rules as {@link #isFlagEnabledSync(String, boolean)}.
+         * "enabled" follows the same rules as {@link #isEnabledSync(String, boolean)}.
          *
          * <p>If flags are not currently loaded, this method will trigger a fetch. The
          * {@code completion} callback is invoked on the main UI thread with the boolean result.
@@ -1964,7 +1965,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * @param completion    The {@link FlagCompletionCallback} that will be invoked on the main
          * thread with the boolean result. This must not be null.
          */
-        void isFlagEnabled(
+        void isEnabled(
                 @NonNull String featureName,
                 boolean fallbackValue,
                 @NonNull FlagCompletionCallback<Boolean> completion
@@ -2658,7 +2659,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         return mContext;
     }
 
-    private RemoteService getHttpService() {
+    RemoteService getHttpService() {
         if (this.mHttpService == null) {
             this.mHttpService = new HttpService(false, null);
         }

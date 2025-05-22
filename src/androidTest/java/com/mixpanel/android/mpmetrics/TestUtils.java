@@ -21,11 +21,13 @@ public class TestUtils {
 
     public static class CleanMixpanelAPI extends MixpanelAPI {
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final boolean trackAutomaticEvents) {
-            super(context, referrerPreferences, token, false, null, trackAutomaticEvents);
+            super(context, referrerPreferences, token, MPConfig.getInstance(context, null), 
+                  new MixpanelOptions.Builder().featureFlagsEnabled(true).build(), trackAutomaticEvents);
         }
 
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            super(context, referrerPreferences, token, false, null, false);
+            super(context, referrerPreferences, token, MPConfig.getInstance(context, null), 
+                  new MixpanelOptions.Builder().featureFlagsEnabled(true).build(), false);
         }
 
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {

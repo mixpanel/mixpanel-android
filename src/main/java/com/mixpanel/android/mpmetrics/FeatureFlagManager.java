@@ -182,7 +182,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
      * @param fallbackValue The default boolean value if the flag is missing, not boolean, or not ready.
      * @return True if the flag evaluates to true, false otherwise or if fallbackValue is returned.
      */
-    public boolean isFlagEnabledSync(@NonNull String flagName, boolean fallbackValue) {
+    public boolean isEnabledSync(@NonNull String flagName, boolean fallbackValue) {
         Object variantValue = getVariantValueSync(flagName, fallbackValue);
         return _evaluateBooleanFlag(flagName, variantValue, fallbackValue);
     }
@@ -301,7 +301,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
      * @param fallbackValue The default boolean value if the flag is missing, not boolean, or fetch fails.
      * @param completion    The callback to receive the boolean result.
      */
-    public void isFlagEnabled(
+    public void isEnabled(
             @NonNull final String flagName,
             final boolean fallbackValue,
             @NonNull final FlagCompletionCallback<Boolean> completion

@@ -476,8 +476,198 @@ public class FeatureFlagManagerTest {
         assertEquals(0, mMockDelegate.trackCalls.size()); // No tracking on fallback
     }
 
-    // TODO: More tests for getFeatureDataSync, isFeatureEnabledSync
-    // TODO: More tests for getFeatureData (async), isFeatureEnabled (async)
+    @Test
+    public void testIsEnabledSync_flagsReady_flagExistsWithBooleanTrue() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("bool_flag_true", new MixpanelFlagVariant("enabled", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        boolean result = mFeatureFlagManager.isEnabledSync("bool_flag_true", false);
+        assertTrue("Should return true when flag value is true", result);
+    }
+
+    @Test
+    public void testIsEnabledSync_flagsReady_flagExistsWithBooleanFalse() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("bool_flag_false", new MixpanelFlagVariant("disabled", false));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        boolean result = mFeatureFlagManager.isEnabledSync("bool_flag_false", true);
+        assertFalse("Should return false when flag value is false", result);
+    }
+
+    @Test
+    public void testIsEnabledSync_flagsReady_flagDoesNotExist_returnsFallback() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("other_flag", new MixpanelFlagVariant("v1", "value"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        boolean result = mFeatureFlagManager.isEnabledSync("missing_bool_flag", true);
+        assertTrue("Should return fallback value (true) when flag doesn't exist", result);
+
+        boolean result2 = mFeatureFlagManager.isEnabledSync("missing_bool_flag", false);
+        assertFalse("Should return fallback value (false) when flag doesn't exist", result2);
+    }
+
+    @Test
+    public void testIsEnabledSync_flagsNotReady_returnsFallback() {
+        setupFlagsConfig(true, null);
+        assertFalse(mFeatureFlagManager.areFlagsReady());
+
+        boolean result = mFeatureFlagManager.isEnabledSync("any_flag", true);
+        assertTrue("Should return fallback value (true) when flags not ready", result);
+
+        boolean result2 = mFeatureFlagManager.isEnabledSync("any_flag", false);
+        assertFalse("Should return fallback value (false) when flags not ready", result2);
+    }
+
+    @Test
+    public void testIsEnabledSync_flagsReady_nonBooleanValue_returnsFallback() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("string_flag", new MixpanelFlagVariant("v1", "not_a_boolean"));
+        serverFlags.put("number_flag", new MixpanelFlagVariant("v2", 123));
+        serverFlags.put("null_flag", new MixpanelFlagVariant("v3", null));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        assertTrue("String value should return fallback true", mFeatureFlagManager.isEnabledSync("string_flag", true));
+        assertFalse("String value should return fallback false", mFeatureFlagManager.isEnabledSync("string_flag", false));
+        
+        assertTrue("Number value should return fallback true", mFeatureFlagManager.isEnabledSync("number_flag", true));
+        assertFalse("Number value should return fallback false", mFeatureFlagManager.isEnabledSync("number_flag", false));
+        
+        assertTrue("Null value should return fallback true", mFeatureFlagManager.isEnabledSync("null_flag", true));
+        assertFalse("Null value should return fallback false", mFeatureFlagManager.isEnabledSync("null_flag", false));
+    }
+
+    @Test
+    public void testIsEnabled_Async_flagsReady_booleanTrue() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("async_bool_true", new MixpanelFlagVariant("v_true", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Boolean> resultRef = new AtomicReference<>();
+
+        mFeatureFlagManager.isEnabled("async_bool_true", false, result -> {
+            resultRef.set(result);
+            latch.countDown();
+        });
+
+        assertTrue("Callback should complete within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull(resultRef.get());
+        assertTrue("Should return true for boolean true flag", resultRef.get());
+    }
+
+    @Test
+    public void testIsEnabled_Async_flagsReady_booleanFalse() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("async_bool_false", new MixpanelFlagVariant("v_false", false));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Boolean> resultRef = new AtomicReference<>();
+
+        mFeatureFlagManager.isEnabled("async_bool_false", true, result -> {
+            resultRef.set(result);
+            latch.countDown();
+        });
+
+        assertTrue("Callback should complete within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull(resultRef.get());
+        assertFalse("Should return false for boolean false flag", resultRef.get());
+    }
+
+    @Test
+    public void testIsEnabled_Async_flagsNotReady_fetchSucceeds() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
+
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("fetch_bool_flag", new MixpanelFlagVariant("fetched", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Boolean> resultRef = new AtomicReference<>();
+
+        mFeatureFlagManager.isEnabled("fetch_bool_flag", false, result -> {
+            resultRef.set(result);
+            latch.countDown();
+        });
+
+        assertTrue("Callback should complete within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+        assertNotNull(resultRef.get());
+        assertTrue("Should return true after successful fetch", resultRef.get());
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+    }
+
+    @Test
+    public void testIsEnabled_Async_nonBooleanValue_returnsFallback() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("string_async", new MixpanelFlagVariant("v_str", "hello"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        mFeatureFlagManager.loadFlags();
+        for(int i = 0; i<20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+        assertTrue(mFeatureFlagManager.areFlagsReady());
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Boolean> resultRef = new AtomicReference<>();
+
+        mFeatureFlagManager.isEnabled("string_async", true, result -> {
+            resultRef.set(result);
+            latch.countDown();
+        });
+
+        assertTrue("Callback should complete within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull(resultRef.get());
+        assertTrue("Should return fallback (true) for non-boolean value", resultRef.get());
+    }
+
+    @Test
+    public void testIsEnabled_Async_fetchFails_returnsFallback() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
+
+        mMockRemoteService.addError(new IOException("Network error"));
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Boolean> resultRef = new AtomicReference<>();
+
+        mFeatureFlagManager.isEnabled("fail_flag", true, result -> {
+            resultRef.set(result);
+            latch.countDown();
+        });
+
+        assertTrue("Callback should complete within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+        assertNotNull(resultRef.get());
+        assertTrue("Should return fallback (true) when fetch fails", resultRef.get());
+        assertFalse(mFeatureFlagManager.areFlagsReady());
+    }
+
     // TODO: Test concurrent calls to loadFlags
     // TODO: Test concurrent calls to getFeature when flags are not ready
     // TODO: Test request body construction in _performFetchRequest (via MockRemoteService)

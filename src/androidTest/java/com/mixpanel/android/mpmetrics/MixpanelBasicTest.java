@@ -24,6 +24,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1171,26 +1173,67 @@ public class MixpanelBasicTest {
             }
         };
 
+        // Track calls to the flags endpoint
+        final List<String> flagsEndpointCalls = new ArrayList<>();
+        
         MixpanelAPI metrics = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "Test Identify Call") {
             @Override
             protected AnalyticsMessages getAnalyticsMessages() {
                 return listener;
             }
+            
+            @Override
+            protected RemoteService getHttpService() {
+                // Return a mock RemoteService that tracks calls to the flags endpoint
+                return new HttpService() {
+                    @Override
+                    public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor,
+                                                 Map<String, Object> params, Map<String, String> headers,
+                                                 byte[] requestBodyBytes, SSLSocketFactory socketFactory) 
+                            throws ServiceUnavailableException, IOException {
+                        // Track calls to the flags endpoint
+                        if (endpointUrl != null && endpointUrl.contains("/flags/")) {
+                            flagsEndpointCalls.add(endpointUrl);
+                        }
+                        // Return empty flags response
+                        return "{\"flags\":{}}".getBytes();
+                    }
+                };
+            }
         };
+        
         String oldDistinctId = metrics.getDistinctId();
+        
+        // Clear any flags calls from constructor
+        flagsEndpointCalls.clear();
+        
+        // First identify should trigger loadFlags since distinctId changes
         metrics.identify(newDistinctId);
+        
+        // Give the async flag loading some time to execute
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        
+        // Second and third identify should NOT trigger loadFlags since distinctId doesn't change
         metrics.identify(newDistinctId);
         metrics.identify(newDistinctId);
 
-        assertEquals(messages.size(), 1);
+        // Verify that only one $identify event was tracked
+        assertEquals(1, messages.size());
         AnalyticsMessages.EventDescription identifyEventDescription = messages.get(0);
-        assertEquals(identifyEventDescription.getEventName(), "$identify");
+        assertEquals("$identify", identifyEventDescription.getEventName());
         String newDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("distinct_id");
         String anonDistinctIdIdentifyTrack = identifyEventDescription.getProperties().getString("$anon_distinct_id");
 
-        assertEquals(newDistinctIdIdentifyTrack, newDistinctId);
-        assertEquals(anonDistinctIdIdentifyTrack, oldDistinctId);
-        assertEquals(messages.size(), 1);
+        assertEquals(newDistinctId, newDistinctIdIdentifyTrack);
+        assertEquals(oldDistinctId, anonDistinctIdIdentifyTrack);
+        
+        // Assert that loadFlags was called (flags endpoint was hit) when distinctId changed
+        assertTrue("loadFlags should have been called when distinctId changed", 
+                  flagsEndpointCalls.size() >= 1);
     }
 
     @Test
