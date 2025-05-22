@@ -13,6 +13,7 @@ import com.mixpanel.android.util.OfflineMode; // Assuming this exists
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
@@ -30,7 +31,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.lang.reflect.Field;
 
 import javax.net.ssl.SSLSocketFactory;
 
@@ -668,8 +671,528 @@ public class FeatureFlagManagerTest {
         assertFalse(mFeatureFlagManager.areFlagsReady());
     }
 
-    // TODO: Test concurrent calls to loadFlags
-    // TODO: Test concurrent calls to getFeature when flags are not ready
-    // TODO: Test request body construction in _performFetchRequest (via MockRemoteService)
-    // TODO: Test FlagsConfig context usage
+    @Test
+    public void testConcurrentLoadFlagsCalls() throws InterruptedException {
+        // Setup with flags enabled
+        setupFlagsConfig(true, new JSONObject());
+        
+        // Track number of network requests made
+        final AtomicInteger requestCount = new AtomicInteger(0);
+        
+        // Prepare response data
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("concurrent_flag", new MixpanelFlagVariant("test_variant", "test_value"));
+        
+        // Create a custom MockRemoteService that counts requests and introduces delay
+        MockRemoteService customMockService = new MockRemoteService() {
+            @Override
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor,
+                                         Map<String, Object> params, Map<String, String> headers,
+                                         byte[] requestBodyBytes, SSLSocketFactory socketFactory) 
+                    throws ServiceUnavailableException, IOException {
+                // Count the request
+                requestCount.incrementAndGet();
+                
+                // Introduce a delay to simulate network latency
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                // Return the prepared response
+                return super.performRequest(endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+            }
+        };
+        
+        // Add response to the custom mock service
+        customMockService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Use reflection to set the custom mock service
+        try {
+            Field httpServiceField = FeatureFlagManager.class.getDeclaredField("mHttpService");
+            httpServiceField.setAccessible(true);
+            httpServiceField.set(mFeatureFlagManager, customMockService);
+        } catch (Exception e) {
+            fail("Failed to set mock http service: " + e.getMessage());
+        }
+        
+        // Number of concurrent threads
+        final int threadCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(threadCount);
+        final List<Thread> threads = new ArrayList<>();
+        final AtomicInteger successCount = new AtomicInteger(0);
+        
+        // Create multiple threads that will call loadFlags concurrently
+        for (int i = 0; i < threadCount; i++) {
+            Thread thread = new Thread(() -> {
+                try {
+                    // Wait for signal to start all threads simultaneously
+                    startLatch.await();
+                    // Call loadFlags
+                    mFeatureFlagManager.loadFlags();
+                    successCount.incrementAndGet();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+        
+        // Start all threads at the same time
+        startLatch.countDown();
+        
+        // Wait for all threads to complete
+        assertTrue("All threads should complete within timeout", 
+                   completionLatch.await(5000, TimeUnit.MILLISECONDS));
+        
+        // Wait a bit more for all loadFlags operations to complete
+        Thread.sleep(500);
+        
+        // Verify results
+        assertEquals("All threads should have completed successfully", threadCount, successCount.get());
+        
+        // Only one network request should have been made despite multiple concurrent calls
+        // This verifies that loadFlags properly handles concurrent calls
+        assertEquals("Should only make one network request for concurrent loadFlags calls", 
+                     1, requestCount.get());
+        
+        // Verify flags are ready
+        assertTrue("Flags should be ready after concurrent loads", mFeatureFlagManager.areFlagsReady());
+        
+        // Test accessing the flag synchronously
+        MixpanelFlagVariant variant = mFeatureFlagManager.getVariantSync("concurrent_flag", 
+                                                                         new MixpanelFlagVariant("default"));
+        assertNotNull("Flag variant should not be null", variant);
+        assertEquals("test_variant", variant.key);
+        assertEquals("test_value", variant.value);
+    }
+
+    @Test
+    public void testConcurrentGetVariantCalls_whenFlagsNotReady() throws InterruptedException {
+        // Setup with flags enabled
+        setupFlagsConfig(true, new JSONObject());
+        
+        // Prepare response data that will be delayed
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("concurrent_get_flag1", new MixpanelFlagVariant("variant1", "value1"));
+        serverFlags.put("concurrent_get_flag2", new MixpanelFlagVariant("variant2", "value2"));
+        serverFlags.put("concurrent_get_flag3", new MixpanelFlagVariant("variant3", "value3"));
+        
+        // Create a mock service that introduces significant delay to simulate slow network
+        final AtomicInteger requestCount = new AtomicInteger(0);
+        MockRemoteService delayedMockService = new MockRemoteService() {
+            @Override
+            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor,
+                                         Map<String, Object> params, Map<String, String> headers,
+                                         byte[] requestBodyBytes, SSLSocketFactory socketFactory) 
+                    throws ServiceUnavailableException, IOException {
+                requestCount.incrementAndGet();
+                // Introduce significant delay to ensure getVariant calls happen before flags are ready
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return super.performRequest(endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+            }
+        };
+        
+        // Add response to the mock service
+        delayedMockService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Use reflection to set the custom mock service
+        try {
+            Field httpServiceField = FeatureFlagManager.class.getDeclaredField("mHttpService");
+            httpServiceField.setAccessible(true);
+            httpServiceField.set(mFeatureFlagManager, delayedMockService);
+        } catch (Exception e) {
+            fail("Failed to set mock http service: " + e.getMessage());
+        }
+        
+        // Trigger loadFlags which will be delayed
+        mFeatureFlagManager.loadFlags();
+        
+        // Verify flags are not ready yet
+        assertFalse("Flags should not be ready immediately after loadFlags", mFeatureFlagManager.areFlagsReady());
+        
+        // Number of concurrent threads calling getVariant
+        final int threadCount = 20;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch completionLatch = new CountDownLatch(threadCount);
+        final List<Thread> threads = new ArrayList<>();
+        final Map<Integer, MixpanelFlagVariant> results = new HashMap<>();
+        final AtomicInteger successCount = new AtomicInteger(0);
+        
+        // Create multiple threads that will call getVariant concurrently while flags are loading
+        for (int i = 0; i < threadCount; i++) {
+            final int threadIndex = i;
+            final String flagName = "concurrent_get_flag" + ((i % 3) + 1); // Rotate through 3 different flags
+            final MixpanelFlagVariant fallback = new MixpanelFlagVariant("fallback" + threadIndex, "fallback_value" + threadIndex);
+            
+            Thread thread = new Thread(() -> {
+                try {
+                    // Wait for signal to start all threads simultaneously
+                    startLatch.await();
+                    
+                    // Use async getVariant with callback
+                    final CountDownLatch variantLatch = new CountDownLatch(1);
+                    final AtomicReference<MixpanelFlagVariant> variantRef = new AtomicReference<>();
+                    
+                    mFeatureFlagManager.getVariant(flagName, fallback, variant -> {
+                        variantRef.set(variant);
+                        variantLatch.countDown();
+                    });
+                    
+                    // Wait for callback
+                    if (variantLatch.await(2000, TimeUnit.MILLISECONDS)) {
+                        results.put(threadIndex, variantRef.get());
+                        successCount.incrementAndGet();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    completionLatch.countDown();
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+        
+        // Start all threads at the same time (while flags are still loading)
+        startLatch.countDown();
+        
+        // Wait for all threads to complete
+        assertTrue("All threads should complete within timeout", 
+                   completionLatch.await(3000, TimeUnit.MILLISECONDS));
+        
+        // Verify results
+        assertEquals("All threads should have completed successfully", threadCount, successCount.get());
+        
+        // Only one network request should have been made
+        assertEquals("Should only make one network request", 1, requestCount.get());
+        
+        // Verify flags are now ready
+        assertTrue("Flags should be ready after all getVariant calls complete", mFeatureFlagManager.areFlagsReady());
+        
+        // Verify all threads got the correct values (not fallbacks)
+        for (int i = 0; i < threadCount; i++) {
+            MixpanelFlagVariant result = results.get(i);
+            assertNotNull("Thread " + i + " should have a result", result);
+            
+            int flagIndex = (i % 3) + 1;
+            String expectedKey = "variant" + flagIndex;
+            String expectedValue = "value" + flagIndex;
+            
+            assertEquals("Thread " + i + " should have correct variant key", expectedKey, result.key);
+            assertEquals("Thread " + i + " should have correct variant value", expectedValue, result.value);
+            
+            // Verify it's not the fallback
+            assertNotEquals("Thread " + i + " should not have fallback key", "fallback" + i, result.key);
+        }
+    }
+
+    @Test
+    public void testRequestBodyConstruction_performFetchRequest() throws InterruptedException, JSONException {
+        // Setup with flags enabled and specific context data
+        JSONObject contextData = new JSONObject();
+        contextData.put("$os", "Android");
+        contextData.put("$os_version", "13");
+        contextData.put("custom_property", "test_value");
+        setupFlagsConfig(true, contextData);
+        
+        // Set distinct ID for the request
+        mMockDelegate.distinctIdToReturn = "test_user_123";
+        
+        // Create response data
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("test_flag", new MixpanelFlagVariant("variant_a", "value_a"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger loadFlags to initiate the request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture the request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Verify the endpoint URL
+        assertTrue("URL should contain /flags endpoint", capturedRequest.endpointUrl.contains("/flags"));
+        
+        // Parse and verify the request body
+        assertNotNull("Request should have body", capturedRequest.requestBodyBytes);
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        assertNotNull("Request body should be valid JSON", requestBody);
+        
+        // Log the actual request body for debugging
+        MPLog.v("FeatureFlagManagerTest", "Request body: " + requestBody.toString());
+        
+        // Verify context is included
+        assertTrue("Request should contain context", requestBody.has("context"));
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify distinct_id is in the context
+        assertTrue("Context should contain distinct_id", requestContext.has("distinct_id"));
+        assertEquals("Context should contain correct distinct_id", 
+                     "test_user_123", requestContext.getString("distinct_id"));
+        
+        // Verify the context contains the expected properties from FlagsConfig
+        assertEquals("Context should contain $os", "Android", requestContext.getString("$os"));
+        assertEquals("Context should contain $os_version", "13", requestContext.getString("$os_version"));
+        assertEquals("Context should contain custom_property", "test_value", requestContext.getString("custom_property"));
+        
+        // Verify headers
+        assertNotNull("Request should have headers", capturedRequest.headers);
+        assertEquals("Content-Type should be application/json with charset", 
+                     "application/json; charset=utf-8", capturedRequest.headers.get("Content-Type"));
+        
+        // Wait for flags to be ready
+        for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); i++) {
+            Thread.sleep(100);
+        }
+        assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+    }
+    
+    @Test
+    public void testRequestBodyConstruction_withNullContext() throws InterruptedException, JSONException {
+        // Setup with flags enabled but null context
+        setupFlagsConfig(true, null);
+        
+        // Set distinct ID
+        mMockDelegate.distinctIdToReturn = "user_456";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Parse request body
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        
+        // Verify context exists
+        assertTrue("Request should contain context", requestBody.has("context"));
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify distinct_id is in context
+        assertEquals("Context should contain correct distinct_id", "user_456", requestContext.getString("distinct_id"));
+        
+        // When FlagsConfig context is null, the context object should only contain distinct_id
+        assertEquals("Context should only contain distinct_id when FlagsConfig context is null", 
+                     1, requestContext.length());
+    }
+    
+    @Test
+    public void testRequestBodyConstruction_withEmptyDistinctId() throws InterruptedException, JSONException {
+        // Setup with flags enabled
+        setupFlagsConfig(true, new JSONObject());
+        
+        // Set empty distinct ID
+        mMockDelegate.distinctIdToReturn = "";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Parse request body
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        
+        // Verify context exists
+        assertTrue("Request should contain context", requestBody.has("context"));
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify distinct_id is included in context even when empty
+        assertTrue("Context should contain distinct_id field", requestContext.has("distinct_id"));
+        assertEquals("Context should contain empty distinct_id", "", requestContext.getString("distinct_id"));
+    }
+
+    @Test
+    public void testFlagsConfigContextUsage_initialContext() throws InterruptedException, JSONException {
+        // Test that initial context from FlagsConfig is properly used
+        JSONObject initialContext = new JSONObject();
+        initialContext.put("app_version", "1.0.0");
+        initialContext.put("platform", "Android");
+        initialContext.put("custom_prop", "initial_value");
+        
+        setupFlagsConfig(true, initialContext);
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("test_flag", new MixpanelFlagVariant("v1", "value1"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify all initial context properties are included
+        assertEquals("app_version should be preserved", "1.0.0", requestContext.getString("app_version"));
+        assertEquals("platform should be preserved", "Android", requestContext.getString("platform"));
+        assertEquals("custom_prop should be preserved", "initial_value", requestContext.getString("custom_prop"));
+        
+        // Verify distinct_id is added to context
+        assertTrue("distinct_id should be added to context", requestContext.has("distinct_id"));
+    }
+    
+    @Test
+    public void testFlagsConfigContextUsage_contextMerging() throws InterruptedException, JSONException {
+        // Test that distinct_id doesn't override existing context properties
+        JSONObject initialContext = new JSONObject();
+        initialContext.put("distinct_id", "should_be_overridden");  // This should be overridden
+        initialContext.put("user_type", "premium");
+        initialContext.put("$os", "Android");
+        
+        setupFlagsConfig(true, initialContext);
+        
+        // Set a different distinct_id via delegate
+        mMockDelegate.distinctIdToReturn = "actual_distinct_id";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify distinct_id from delegate overrides the one in initial context
+        assertEquals("distinct_id should be from delegate, not initial context", 
+                     "actual_distinct_id", requestContext.getString("distinct_id"));
+        
+        // Verify other properties are preserved
+        assertEquals("user_type should be preserved", "premium", requestContext.getString("user_type"));
+        assertEquals("$os should be preserved", "Android", requestContext.getString("$os"));
+    }
+    
+    @Test
+    public void testFlagsConfigContextUsage_emptyContext() throws InterruptedException, JSONException {
+        // Test behavior with empty context object
+        JSONObject emptyContext = new JSONObject();
+        setupFlagsConfig(true, emptyContext);
+        
+        mMockDelegate.distinctIdToReturn = "test_user";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Context should only contain distinct_id when initial context is empty
+        assertEquals("Context should only contain distinct_id", 1, requestContext.length());
+        assertEquals("distinct_id should be present", "test_user", requestContext.getString("distinct_id"));
+    }
+    
+    @Test
+    public void testFlagsConfigContextUsage_complexNestedContext() throws InterruptedException, JSONException {
+        // Test that complex nested objects in context are preserved
+        JSONObject nestedObj = new JSONObject();
+        nestedObj.put("city", "San Francisco");
+        nestedObj.put("country", "USA");
+        
+        JSONObject initialContext = new JSONObject();
+        initialContext.put("location", nestedObj);
+        initialContext.put("features_enabled", new JSONArray().put("feature1").put("feature2"));
+        initialContext.put("is_beta", true);
+        initialContext.put("score", 95.5);
+        
+        setupFlagsConfig(true, initialContext);
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify complex nested structures are preserved
+        JSONObject locationInRequest = requestContext.getJSONObject("location");
+        assertEquals("city should be preserved", "San Francisco", locationInRequest.getString("city"));
+        assertEquals("country should be preserved", "USA", locationInRequest.getString("country"));
+        
+        JSONArray featuresInRequest = requestContext.getJSONArray("features_enabled");
+        assertEquals("features array length should be preserved", 2, featuresInRequest.length());
+        assertEquals("feature1 should be preserved", "feature1", featuresInRequest.getString(0));
+        assertEquals("feature2 should be preserved", "feature2", featuresInRequest.getString(1));
+        
+        assertTrue("is_beta should be preserved", requestContext.getBoolean("is_beta"));
+        assertEquals("score should be preserved", 95.5, requestContext.getDouble("score"), 0.001);
+        
+        // And distinct_id should still be added
+        assertTrue("distinct_id should be added", requestContext.has("distinct_id"));
+    }
+    
+    @Test
+    public void testFlagsConfigContextUsage_specialCharactersInContext() throws InterruptedException, JSONException {
+        // Test that special characters and unicode in context are handled properly
+        JSONObject initialContext = new JSONObject();
+        initialContext.put("emoji", "🚀🎉");
+        initialContext.put("special_chars", "!@#$%^&*()_+-=[]{}|;':\",./<>?");
+        initialContext.put("unicode", "你好世界");
+        initialContext.put("newline", "line1\nline2");
+        
+        setupFlagsConfig(true, initialContext);
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("flag", new MixpanelFlagVariant("v", "val"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+        JSONObject requestContext = requestBody.getJSONObject("context");
+        
+        // Verify special characters are preserved correctly
+        assertEquals("emoji should be preserved", "🚀🎉", requestContext.getString("emoji"));
+        assertEquals("special_chars should be preserved", 
+                     "!@#$%^&*()_+-=[]{}|;':\",./<>?", requestContext.getString("special_chars"));
+        assertEquals("unicode should be preserved", "你好世界", requestContext.getString("unicode"));
+        assertEquals("newline should be preserved", "line1\nline2", requestContext.getString("newline"));
+    }
 }
