@@ -149,8 +149,8 @@ public class HttpService implements RemoteService {
                     }
                 }
 
-                connection.setConnectTimeout(2000);
-                connection.setReadTimeout(30000);
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(60000);
 
                 byte[] bodyBytesToSend = null;
                 if (null != params) {
