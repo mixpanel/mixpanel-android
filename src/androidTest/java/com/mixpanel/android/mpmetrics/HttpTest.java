@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -61,8 +63,15 @@ public class HttpTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory)
-                    throws ServiceUnavailableException, IOException {
+            public byte[] performRequest(
+                    @NonNull String endpointUrl,
+                    @Nullable ProxyServerInteractor interactor,
+                    @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
+                    @Nullable Map<String, String> headers,
+                    @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
+                    @Nullable SSLSocketFactory socketFactory)
+                    throws ServiceUnavailableException, IOException
+            {
                 try {
                     if (mFlushResults.isEmpty()) {
                         mFlushResults.add(TestUtils.bytes("1\n"));

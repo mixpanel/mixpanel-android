@@ -8,3 +8,4 @@ docs
 .idea
 build/
 .gradle/
+CLAUDE.md

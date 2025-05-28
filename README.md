@@ -152,6 +152,8 @@ No worries, here are some links that you will find useful:
 * **[Android integration video tutorial](https://www.youtube.com/watch?v=KcpOa93eSVs)**
 * **[Full API Reference](http://mixpanel.github.io/mixpanel-android/index.html)**
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mixpanel/mixpanel-android)
+
 Have any questions? Reach out to [support@mixpanel.com](mailto:support@mixpanel.com) to speak to someone smart, quickly.
 
 <a name="want-to-contribute"></a>

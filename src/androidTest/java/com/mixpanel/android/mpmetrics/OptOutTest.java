@@ -3,6 +3,8 @@ package com.mixpanel.android.mpmetrics;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -58,7 +60,14 @@ public class OptOutTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(String endpointUrl, ProxyServerInteractor interactor, Map<String, Object> params, SSLSocketFactory socketFactory) {
+            public byte[] performRequest(
+                    @NonNull String endpointUrl,
+                    @Nullable ProxyServerInteractor interactor,
+                    @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
+                    @Nullable Map<String, String> headers,
+                    @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
+                    @Nullable SSLSocketFactory socketFactory)
+            {
                 if (params != null) {
                     final String jsonData = Base64Coder.decodeString(params.get("data").toString());
                     assertTrue(params.containsKey("data"));

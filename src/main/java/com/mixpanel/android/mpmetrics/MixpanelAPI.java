@@ -12,11 +12,16 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
+import com.mixpanel.android.util.RemoteService;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -101,7 +106,7 @@ import java.util.concurrent.Future;
  * @see <a href="https://mixpanel.com/docs/people-analytics/android">getting started documentation for People Analytics</a>
  * @see <a href="https://github.com/mixpanel/sample-android-mixpanel-integration">The Mixpanel Android sample application</a>
  */
-public class MixpanelAPI {
+public class MixpanelAPI implements FeatureFlagDelegate {
     /**
      * String version of the library.
      */
@@ -120,7 +125,7 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
-        this(context, referrerPreferences, token, MPConfig.getInstance(context, instanceName), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
+       this(context, referrerPreferences, token, MPConfig.getInstance(context, instanceName), optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
     }
 
     /**
@@ -128,9 +133,24 @@ public class MixpanelAPI {
      * Use MixpanelAPI.getInstance to get an instance.
      */
     MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        this(
+            context,
+            referrerPreferences,
+            token,
+            config,
+            new MixpanelOptions.Builder().optOutTrackingDefault(optOutTrackingDefault).superProperties(superProperties).instanceName(instanceName).build(),
+            trackAutomaticEvents
+        );
+    }
+
+    /**
+     * You shouldn't instantiate MixpanelAPI objects directly.
+     * Use MixpanelAPI.getInstance to get an instance.
+     */
+    MixpanelAPI(Context context, Future<SharedPreferences> referrerPreferences, String token, MPConfig config, MixpanelOptions options, boolean trackAutomaticEvents) {
         mContext = context;
         mToken = token;
-        mInstanceName = instanceName;
+        mInstanceName = options.getInstanceName();
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
@@ -155,15 +175,23 @@ public class MixpanelAPI {
 
         mSessionMetadata = new SessionMetadata();
         mMessages = getAnalyticsMessages();
-        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, instanceName);
+        mPersistentIdentity = getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName());
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
-        if (optOutTrackingDefault && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
+        mFeatureFlagManager = new FeatureFlagManager(
+                this,
+                getHttpService(),
+                new FlagsConfig(options.areFeatureFlagsEnabled(), options.getFeatureFlagsContext())
+        );
+
+        mFeatureFlagManager.loadFlags();
+
+        if (options.isOptOutTrackingDefault() && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
             optOutTracking();
         }
 
-        if (superProperties != null) {
-            registerSuperProperties(superProperties);
+        if (options.getSuperProperties() != null) {
+            registerSuperProperties(options.getSuperProperties());
         }
 
         final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
@@ -411,7 +439,6 @@ public class MixpanelAPI {
     public static MixpanelAPI getInstance(Context context, String token, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
         return getInstance(context, token, false, superProperties, instanceName, trackAutomaticEvents);
     }
-
     /**
      * Get the instance of MixpanelAPI associated with your Mixpanel project token.
      *
@@ -446,6 +473,50 @@ public class MixpanelAPI {
      * @return an instance of MixpanelAPI associated with your project
      */
     public static MixpanelAPI getInstance(Context context, String token, boolean optOutTrackingDefault, JSONObject superProperties, String instanceName, boolean trackAutomaticEvents) {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .instanceName(instanceName)
+                .optOutTrackingDefault(optOutTrackingDefault)
+                .superProperties(superProperties)
+                .build();
+        return getInstance(context, token, trackAutomaticEvents, options);
+    }
+
+    /**
+     * Get the instance of MixpanelAPI associated with your Mixpanel project token
+     * and configured with the provided options.
+     *
+     * <p>Use getInstance to get a reference to a shared
+     * instance of MixpanelAPI you can use to send events
+     * and People Analytics updates to Mixpanel. This overload allows for more
+     * detailed configuration via the {@link MixpanelOptions} parameter.</p>
+     * <p>getInstance is thread safe, but the returned instance is not,
+     * and may be shared with other callers of getInstance.
+     * The best practice is to call getInstance, and use the returned MixpanelAPI,
+     * object from a single thread (probably the main UI thread of your application).</p>
+     * <p>If you do choose to track events from multiple threads in your application,
+     * you should synchronize your calls on the instance itself, like so:</p>
+     * <pre>
+     * {@code
+     * MixpanelAPI instance = MixpanelAPI.getInstance(context, token, true, options);
+     * synchronized(instance) { // Only necessary if the instance will be used in multiple threads.
+     * instance.track(...)
+     * }
+     * }
+     * </pre>
+     *
+     * @param context The application context you are tracking.
+     * @param token Your Mixpanel project token. You can get your project token on the Mixpanel web site,
+     * in the settings dialog.
+     * @param trackAutomaticEvents Whether or not to collect common mobile events
+     * such as app sessions, first app opens, app updates, etc.
+     * @param options An instance of {@link MixpanelOptions} to configure the MixpanelAPI instance.
+     * This allows setting options like {@code optOutTrackingDefault},
+     * {@code superProperties}, and {@code instanceName}. Other options within
+     * MixpanelOptions may be used by other SDK features if applicable.
+     * @return an instance of MixpanelAPI associated with your project and configured
+     * with the specified options.
+     */
+    public static MixpanelAPI getInstance(Context context, String token, boolean trackAutomaticEvents, MixpanelOptions options) {
         if (null == token || null == context) {
             return null;
         }
@@ -455,7 +526,7 @@ public class MixpanelAPI {
             if (null == sReferrerPrefs) {
                 sReferrerPrefs = sPrefsLoader.loadPreferences(context, MPConfig.REFERRER_PREFS_NAME, null);
             }
-            String instanceKey = instanceName != null ? instanceName : token;
+            String instanceKey = options.getInstanceName() != null ? options.getInstanceName() : token;
             Map <Context, MixpanelAPI> instances = sInstanceMap.get(instanceKey);
             if (null == instances) {
                 instances = new HashMap<Context, MixpanelAPI>();
@@ -464,7 +535,7 @@ public class MixpanelAPI {
 
             MixpanelAPI instance = instances.get(appContext);
             if (null == instance && ConfigurationChecker.checkBasicConfiguration(appContext)) {
-                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, optOutTrackingDefault, superProperties, instanceName, trackAutomaticEvents);
+                instance = new MixpanelAPI(appContext, sReferrerPrefs, token, MPConfig.getInstance(context, options.getInstanceName()), options, trackAutomaticEvents);
                 registerAppLinksListeners(context, instance);
                 instances.put(appContext, instance);
             }
@@ -669,6 +740,7 @@ public class MixpanelAPI {
                 mPersistentIdentity.setEventsDistinctId(distinctId);
                 mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
                 mPersistentIdentity.markEventsUserIdPresent();
+                mFeatureFlagManager.loadFlags();
                 try {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
@@ -888,6 +960,24 @@ public class MixpanelAPI {
      */
     protected String getUserId() {
         return mPersistentIdentity.getEventsUserId();
+    }
+
+    /**
+     * Retrieves the Mixpanel project token.
+     *
+     * @return The Mixpanel project token currently being used.
+     */
+    public String getToken() {
+        return mToken;
+    }
+
+    /**
+     * Retrieves the Mixpanel configuration object.
+     *
+     * @return The current {@link MPConfig} object containing Mixpanel settings.
+     */
+    public MPConfig getMPConfig() {
+        return mConfig;
     }
 
     /**
@@ -1179,6 +1269,17 @@ public class MixpanelAPI {
 
     private String makeMapKey(String groupKey, Object groupID) {
         return groupKey + '_' + groupID;
+    }
+
+    /**
+     * Returns a {@link Flags} object that can be used to retrieve and manage
+     * feature flags from Mixpanel.
+     *
+     * @return an instance of {@link Flags} that allows you to access feature flag
+     * configurations for your project.
+     */
+    public Flags getFlags() {
+        return mFeatureFlagManager;
     }
 
     /**
@@ -1657,6 +1758,225 @@ public class MixpanelAPI {
          */
         void deleteGroup();
     }
+
+
+    /**
+     * Core interface for using Mixpanel Feature Flags.
+     * You can get an instance by calling {@link MixpanelAPI#getFlags()} (assuming such a method exists).
+     *
+     * <p>The Flags interface allows you to manage and retrieve feature flags defined in your Mixpanel project.
+     * Feature flags can be used to remotely configure your application's behavior, roll out new features
+     * gradually, or run A/B tests.
+     *
+     * <p>It's recommended to load flags early in your application's lifecycle, for example,
+     * in your main Application class or main Activity's {@code onCreate} method.
+     *
+     * <p>A typical use case for the Flags interface might look like this:
+     *
+     * <pre>
+     * {@code
+     *
+     * public class MainActivity extends Activity {
+     * MixpanelAPI mMixpanel;
+     * Flags mFlags;
+     *
+     * public void onCreate(Bundle saved) {
+     * super.onCreate(saved);
+     * MixanelOptions mpOptions = new MixpanelOptions.Builder().featureFlagsEnabled(true).build();
+     * mMixpanel = MixpanelAPI.getInstance(this, "YOUR MIXPANEL TOKEN", true, mpOptions);
+     * mFlags = mMixpanel.getFlags();
+     *
+     * // Asynchronously load flags
+     * mFlags.loadFlags();
+     *
+     * // Example of checking a flag asynchronously
+     * mFlags.isFlagEnabled("new-checkout-flow", false, isEnabled -> {
+     * if (isEnabled) {
+     * // Show new checkout flow
+     * } else {
+     * // Show old checkout flow
+     * }
+     * });
+     *
+     * // Example of getting a flag value synchronously after ensuring flags are ready
+     * if (mFlags.areFlagsReady()) {
+     * String buttonLabel = (String) mFlags.getVariantValueSync("home-button-label", "Default Label");
+     * // Use buttonLabel
+     * }
+     * }
+     * }
+     *
+     * }
+     * </pre>
+     *
+     * @see MixpanelAPI
+     */
+    public interface Flags {
+
+        // --- Public Methods ---
+
+        /**
+         * Asynchronously loads flags from the Mixpanel server if they haven't been loaded yet
+         * or if the cached flags have expired. This method will initiate a network request
+         * if necessary. Subsequent calls to get flag values (especially asynchronous ones)
+         * may trigger this load if flags are not yet available.
+         */
+        void loadFlags();
+
+        /**
+         * Returns true if flags have been successfully loaded from the server and are
+         * currently available for synchronous access. This is useful to check before
+         * calling synchronous flag retrieval methods like {@link #getVariantSync(String, MixpanelFlagVariant)}
+         * to avoid them returning the fallback value immediately.
+         *
+         * @return true if flags are loaded and ready, false otherwise.
+         */
+        boolean areFlagsReady();
+
+        // --- Sync Flag Retrieval ---
+
+        /**
+         * Gets the complete feature flag data (key and value) synchronously.
+         *
+         * <p><b>IMPORTANT:</b> This method can block the calling thread if it needs to wait for
+         * flags to be loaded (though the provided implementation detail suggests it returns
+         * fallback immediately if not ready). It is strongly recommended NOT to call this
+         * from the main UI thread if {@link #areFlagsReady()} is false, as it could lead
+         * to ANR (Application Not Responding) issues if blocking were to occur.
+         *
+         * <p>If flags are not ready (i.e., {@link #areFlagsReady()} returns false), this method
+         * will return the provided {@code fallback} value immediately without attempting to
+         * fetch flags or block.
+         *
+         * @param featureName The unique name (key) of the feature flag to retrieve.
+         * @param fallback    The {@link MixpanelFlagVariant} instance to return if the specified
+         * flag is not found in the loaded set, or if flags are not ready.
+         * This must not be null.
+         * @return The {@link MixpanelFlagVariant} for the found feature flag, or the {@code fallback}
+         * if the flag is not found or flags are not ready.
+         */
+        @NonNull
+        MixpanelFlagVariant getVariantSync(@NonNull String featureName, @NonNull MixpanelFlagVariant fallback);
+
+        /**
+         * Gets the value of a specific feature flag synchronously.
+         *
+         * <p><b>IMPORTANT:</b> Similar to {@link #getVariantSync(String, MixpanelFlagVariant)}, this method
+         * may involve blocking behavior if flags are being loaded. It's advised to check
+         * {@link #areFlagsReady()} first and avoid calling this on the main UI thread if flags
+         * might not be ready.
+         *
+         * <p>If flags are not ready, or if the specified {@code featureName} is not found,
+         * this method returns the {@code fallbackValue} immediately.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default value to return if the flag is not found,
+         * its value is null, or if flags are not ready. Can be null.
+         * @return The value of the feature flag (which could be a String, Boolean, Number, etc.),
+         * or the {@code fallbackValue}.
+         */
+        @Nullable
+        Object getVariantValueSync(@NonNull String featureName, @Nullable Object fallbackValue);
+
+        /**
+         * Checks if a specific feature flag is enabled synchronously. A flag is considered
+         * enabled if its value evaluates to {@code true}.
+         *
+         * <ul>
+         * <li>If the flag's value is a Boolean, it's returned directly.</li>
+         * <li>If the flag's value is a String, it's considered {@code true} if it equals (case-insensitive) "true" or "1".</li>
+         * <li>If the flag's value is a Number, it's considered {@code true} if it's non-zero.</li>
+         * <li>For other types, or if the flag is not found, it relies on the {@code fallbackValue}.</li>
+         * </ul>
+         *
+         * <p><b>IMPORTANT:</b> See warnings on {@link #getVariantSync(String, MixpanelFlagVariant)} regarding
+         * potential blocking and the recommendation to check {@link #areFlagsReady()} first,
+         * especially when calling from the main UI thread.
+         *
+         * <p>Returns {@code fallbackValue} immediately if flags are not ready or the flag is not found.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default boolean value to return if the flag is not found,
+         * cannot be evaluated as a boolean, or if flags are not ready.
+         * @return {@code true} if the flag is present and evaluates to true, otherwise {@code false}
+         * (or the {@code fallbackValue}).
+         */
+        boolean isEnabledSync(@NonNull String featureName, boolean fallbackValue);
+
+        // --- Async Flag Retrieval ---
+
+        /**
+         * Asynchronously gets the complete feature flag data (key and value).
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch from the
+         * Mixpanel server. The provided {@code completion} callback will be invoked on the
+         * main UI thread once the operation is complete.
+         *
+         * <p>If the fetch fails or the specific flag is not found after a successful fetch,
+         * the {@code fallback} data will be provided to the completion callback.
+         *
+         * @param featureName The unique name (key) of the feature flag to retrieve.
+         * @param fallback    The {@link MixpanelFlagVariant} instance to return via the callback
+         * if the flag is not found or if the fetch operation fails.
+         * This must not be null.
+         * @param completion  The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the result (either the found {@link MixpanelFlagVariant} or
+         * the {@code fallback}). This must not be null.
+         */
+        void getVariant(
+                @NonNull String featureName,
+                @NonNull MixpanelFlagVariant fallback,
+                @NonNull FlagCompletionCallback<MixpanelFlagVariant> completion
+        );
+
+        /**
+         * Asynchronously gets the value of a specific feature flag.
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch. The
+         * {@code completion} callback is invoked on the main UI thread with the flag's
+         * value or the {@code fallbackValue}.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default value to return via the callback if the flag is
+         * not found, its value is null, or if the fetch operation fails.
+         * Can be null.
+         * @param completion    The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the result (the flag's value or the {@code fallbackValue}).
+         * This must not be null.
+         */
+        void getVariantValue(
+                @NonNull String featureName,
+                @Nullable Object fallbackValue,
+                @NonNull FlagCompletionCallback<Object> completion
+        );
+
+
+        /**
+         * Asynchronously checks if a specific feature flag is enabled. The evaluation of
+         * "enabled" follows the same rules as {@link #isEnabledSync(String, boolean)}.
+         *
+         * <p>If flags are not currently loaded, this method will trigger a fetch. The
+         * {@code completion} callback is invoked on the main UI thread with the boolean result.
+         *
+         * @param featureName   The unique name (key) of the feature flag.
+         * @param fallbackValue The default boolean value to return via the callback if the flag
+         * is not found, cannot be evaluated as a boolean, or if the
+         * fetch operation fails.
+         * @param completion    The {@link FlagCompletionCallback} that will be invoked on the main
+         * thread with the boolean result. This must not be null.
+         */
+        void isEnabled(
+                @NonNull String featureName,
+                boolean fallbackValue,
+                @NonNull FlagCompletionCallback<Boolean> completion
+        );
+    }
+
+
+
+
+
+
 
     /**
      * Attempt to register MixpanelActivityLifecycleCallbacks to the application's event lifecycle.
@@ -2339,6 +2659,13 @@ public class MixpanelAPI {
         return mContext;
     }
 
+    RemoteService getHttpService() {
+        if (this.mHttpService == null) {
+            this.mHttpService = new HttpService(false, null);
+        }
+        return this.mHttpService;
+    }
+
     private final Context mContext;
     private final AnalyticsMessages mMessages;
     private final MPConfig mConfig;
@@ -2352,6 +2679,8 @@ public class MixpanelAPI {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
+    private FeatureFlagManager mFeatureFlagManager;
+    private RemoteService mHttpService;
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap = new HashMap<String, Map<Context, MixpanelAPI>>();

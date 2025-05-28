@@ -14,6 +14,8 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.OfflineMode;
 
 import java.security.GeneralSecurityException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -74,6 +76,9 @@ import javax.net.ssl.SSLSocketFactory;
  *
  *     <dt>com.mixpanel.android.MPConfig.GroupsEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send group updates to this endpoint rather than to the default Mixpanel endpoint.</dd>
+ *
+ *     <dt>com.mixpanel.android.MPConfig.FlagsEndpoint</dt>
+ *     <dd>A string URL. If present, the library will attempt to fetch feature flags from this endpoint rather than to the default Mixpanel endpoint.</dd>
  *
  *     <dt>com.mixpanel.android.MPConfig.MinimumSessionDuration</dt>
  *     <dd>An integer number. The minimum session duration (ms) that is tracked in automatic events. Defaults to 10000 (10 seconds).</dd>
@@ -251,6 +256,13 @@ public class MPConfig {
             setGroupsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
         }
 
+        String flagsEndpoint = metaData.getString("com.mixpanel.android.MPConfig.FlagsEndpoint");
+        if (flagsEndpoint != null) {
+            setFlagsEndpoint(flagsEndpoint);
+        } else {
+            setFlagsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
+        }
+
         MPLog.v(LOGTAG, toString());
     }
 
@@ -307,6 +319,10 @@ public class MPConfig {
         return mEventsEndpoint;
     }
 
+    public String getFlagsEndpoint() {
+        return mFlagsEndpoint;
+    }
+
     public boolean getTrackAutomaticEvents() { return mTrackAutomaticEvents; }
 
     public void setServerURL(String serverURL, ProxyServerInteractor interactor) {
@@ -319,6 +335,7 @@ public class MPConfig {
         setEventsEndpointWithBaseURL(serverURL);
         setPeopleEndpointWithBaseURL(serverURL);
         setGroupsEndpointWithBaseURL(serverURL);
+        setFlagsEndpointWithBaseURL(serverURL);
     }
 
     private String getEndPointWithIpTrackingParam(String endPoint, boolean ifUseIpAddressForGeolocation) {
@@ -361,6 +378,14 @@ public class MPConfig {
 
     private void setGroupsEndpoint(String groupsEndpoint) {
         mGroupsEndpoint = groupsEndpoint;
+    }
+
+    private void setFlagsEndpointWithBaseURL(String baseURL) {
+        setFlagsEndpoint(baseURL + MPConstants.URL.FLAGS);
+    }
+
+    private void setFlagsEndpoint(String flagsEndpoint) {
+        mFlagsEndpoint = flagsEndpoint;
     }
 
     public int getMinimumSessionDuration() {
@@ -461,6 +486,8 @@ public class MPConfig {
                 "    EnableDebugLogging " + DEBUG + "\n" +
                 "    EventsEndpoint " + getEventsEndpoint() + "\n" +
                 "    PeopleEndpoint " + getPeopleEndpoint() + "\n" +
+                "    GroupsEndpoint " + getGroupsEndpoint() + "\n" +
+                "    FlagsEndpoint " + getFlagsEndpoint() + "\n" +
                 "    MinimumSessionDuration: " + getMinimumSessionDuration() + "\n" +
                 "    SessionTimeoutDuration: " + getSessionTimeoutDuration() + "\n" +
                 "    DisableExceptionHandler: " + getDisableExceptionHandler() + "\n" +
@@ -480,6 +507,7 @@ public class MPConfig {
     private String mEventsEndpoint;
     private String mPeopleEndpoint;
     private String mGroupsEndpoint;
+    private String mFlagsEndpoint;
     private int mFlushBatchSize;
     private boolean shouldGzipRequestPayload;
 
