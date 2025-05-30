@@ -3,12 +3,15 @@ package com.mixpanel.android.mpmetrics;
 import org.json.JSONObject;
 
 /**
- * Interface for FeatureFlagManager to retrieve necessary data and trigger actions
- * from the main MixpanelAPI instance.
+ * Interface for FeatureFlagManager to retrieve necessary data and trigger actions from the main
+ * MixpanelAPI instance.
  */
 interface FeatureFlagDelegate {
-    MPConfig getMPConfig();
-    String getDistinctId();
-    void track(String eventName, JSONObject properties);
-    String getToken();
+  MPConfig getMPConfig();
+
+  String getDistinctId();
+
+  void track(String eventName, JSONObject properties);
+
+  String getToken();
 }
