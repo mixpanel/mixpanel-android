@@ -53,6 +53,15 @@ if [ ! -f ~/.zshrc ] || ! grep -q "starship init" ~/.zshrc; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 fi
 
+# Setup Gradle
+echo "📦 Setting up Gradle..."
+if [ -f "./gradlew" ]; then
+    chmod +x ./gradlew
+    ./gradlew --version
+    # Pre-download dependencies
+    ./gradlew dependencies --no-daemon || true
+fi
+
 # Create helper scripts
 echo "📝 Creating helper scripts..."
 

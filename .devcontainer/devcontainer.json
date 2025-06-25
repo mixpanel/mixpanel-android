@@ -64,8 +64,7 @@
   "remoteEnv": {
     "ANDROID_HOME": "/usr/local/lib/android/sdk",
     "ANDROID_SDK_ROOT": "/usr/local/lib/android/sdk",
-    "PATH": "${containerEnv:PATH}:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin",
-    "GRADLE_USER_HOME": "/workspace/.gradle"
+    "PATH": "${containerEnv:PATH}:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin"
   },
   
   "updateRemoteUserUID": true,
