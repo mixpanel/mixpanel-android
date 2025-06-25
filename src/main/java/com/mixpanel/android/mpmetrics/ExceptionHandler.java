@@ -54,8 +54,9 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
             Thread.sleep(SLEEP_TIMEOUT_MS);
         } catch (InterruptedException e1) {
             e1.printStackTrace();
+            Thread.currentThread().interrupt(); // Restore the interrupted status
         }
+        // Finish all activities and exit the application gracefully
         android.os.Process.killProcess(android.os.Process.myPid());
-        System.exit(10);
     }
 }
