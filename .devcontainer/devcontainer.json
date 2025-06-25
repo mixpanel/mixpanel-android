@@ -56,8 +56,14 @@
   },
   
   "mounts": [
-    "source=android-sdk-cache,target=/home/vscode/android-sdk,type=volume"
+    "source=android-sdk-cache,target=/opt/android,type=volume"
   ],
+  
+  "remoteEnv": {
+    "ANDROID_HOME": "/opt/android",
+    "ANDROID_SDK_ROOT": "/opt/android",
+    "PATH": "${containerEnv:PATH}:/opt/android/cmdline-tools/latest/bin:/opt/android/platform-tools:/opt/android/tools/bin"
+  },
   
   "updateRemoteUserUID": true,
   "remoteUser": "vscode"

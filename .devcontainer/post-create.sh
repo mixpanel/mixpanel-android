@@ -57,44 +57,48 @@ fi
 
 # Android SDK setup
 echo "📦 Setting up Android SDK..."
-# Find the Android SDK location
-if [ -n "$ANDROID_SDK_ROOT" ]; then
-    ANDROID_HOME="$ANDROID_SDK_ROOT"
-elif [ -d "/home/vscode/android-sdk" ]; then
-    ANDROID_HOME="/home/vscode/android-sdk"
-elif [ -d "/opt/android" ]; then
-    ANDROID_HOME="/opt/android"
+# The Android SDK is installed at /opt/android by the feature
+ANDROID_HOME="/opt/android"
+export ANDROID_HOME
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin"
+
+echo "  Android SDK location: $ANDROID_HOME"
+
+# Fix Android SDK directory permissions
+echo "  Fixing Android SDK permissions..."
+sudo chown -R vscode:vscode "$ANDROID_HOME"
+sudo chmod -R 755 "$ANDROID_HOME"
+
+# Create necessary directories
+mkdir -p "$ANDROID_HOME/.android"
+mkdir -p "$ANDROID_HOME/licenses"
+sudo chown -R vscode:vscode "$ANDROID_HOME/.android"
+sudo chown -R vscode:vscode "$ANDROID_HOME/licenses"
+
+# Accept licenses and install required components
+if command -v sdkmanager &> /dev/null; then
+    echo "  Accepting Android licenses..."
+    yes | sdkmanager --licenses > /dev/null 2>&1 || true
+    echo "  Installing Android SDK components..."
+    # Install build-tools 35.0.0 as required by Android Gradle Plugin 8.10.0
+    sdkmanager "platforms;android-34" "build-tools;35.0.0" "platform-tools" || true
+else
+    echo "⚠️  sdkmanager not found in PATH"
 fi
 
-if [ -n "$ANDROID_HOME" ]; then
-    echo "  Android SDK found at: $ANDROID_HOME"
-    export ANDROID_HOME
-    export ANDROID_SDK_ROOT="$ANDROID_HOME"
-    export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
-    
-    # Fix Android SDK directory permissions
-    if [ -d "$ANDROID_HOME" ]; then
-        echo "  Fixing Android SDK directory permissions..."
-        sudo chown -R vscode:vscode "$ANDROID_HOME"
-        sudo chmod -R 755 "$ANDROID_HOME"
-    fi
-    
-    # Accept licenses and install required components
-    if command -v sdkmanager &> /dev/null; then
-        echo "  Accepting Android licenses..."
-        yes | sdkmanager --licenses > /dev/null 2>&1 || true
-        echo "  Installing Android SDK components..."
-        sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
-    fi
-    
-    # Add to shell profile
-    if ! grep -q "ANDROID_HOME" ~/.zshrc; then
-        echo "export ANDROID_HOME=$ANDROID_HOME" >> ~/.zshrc
-        echo "export ANDROID_SDK_ROOT=$ANDROID_HOME" >> ~/.zshrc
-        echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools" >> ~/.zshrc
-    fi
-else
-    echo "⚠️  Android SDK not found"
+# Add to shell profile
+if ! grep -q "ANDROID_HOME" ~/.zshrc; then
+    echo "export ANDROID_HOME=$ANDROID_HOME" >> ~/.zshrc
+    echo "export ANDROID_SDK_ROOT=$ANDROID_HOME" >> ~/.zshrc
+    echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/tools/bin" >> ~/.zshrc
+fi
+
+# Also add to bashrc for non-interactive shells
+if ! grep -q "ANDROID_HOME" ~/.bashrc; then
+    echo "export ANDROID_HOME=$ANDROID_HOME" >> ~/.bashrc
+    echo "export ANDROID_SDK_ROOT=$ANDROID_HOME" >> ~/.bashrc
+    echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/tools/bin" >> ~/.bashrc
 fi
 
 # Setup Gradle
