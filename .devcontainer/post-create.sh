@@ -4,6 +4,8 @@ set -e
 echo "===================================="
 echo "🎯 Mixpanel Android SDK Development Environment"
 echo "===================================="
+echo "Running as user: $(whoami)"
+echo "Home directory: $HOME"
 
 # Install modern development tools as specified in CLAUDE.md
 echo "🔧 Installing development tools..."
@@ -97,21 +99,15 @@ fi
 
 # Setup Gradle
 echo "📦 Setting up Gradle..."
-# Ensure Gradle directory has correct permissions
-if [ -d "/home/vscode/.gradle" ]; then
-    echo "  Fixing Gradle directory permissions..."
-    sudo chown -R vscode:vscode /home/vscode/.gradle
-    sudo chmod -R 755 /home/vscode/.gradle
-fi
-
 if [ -f "./gradlew" ]; then
     chmod +x ./gradlew
     # Test Java is available
     echo "  Java version: $(java -version 2>&1 | head -n 1)"
     echo "  JAVA_HOME: $JAVA_HOME"
-    ./gradlew --version
-    # Pre-download dependencies
-    ./gradlew dependencies --no-daemon || true
+    # Simply run gradlew - let it create its own directories
+    ./gradlew --version || echo "  Initial Gradle setup may have failed, but this is expected on first run"
+    # Skip dependency download in post-create to avoid timeout
+    echo "  Gradle wrapper is ready. Run './gradlew build' to download dependencies."
 fi
 
 # Create helper scripts

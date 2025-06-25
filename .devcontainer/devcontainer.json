@@ -56,7 +56,6 @@
   },
   
   "mounts": [
-    "source=mixpanel-android-gradle-cache,target=/home/vscode/.gradle,type=volume",
     "source=android-sdk-cache,target=/home/vscode/android-sdk,type=volume"
   ],
   
