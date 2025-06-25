@@ -53,24 +53,51 @@ if [ ! -f ~/.zshrc ] || ! grep -q "starship init" ~/.zshrc; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 fi
 
-# Setup Java environment
-echo "☕ Setting up Java environment..."
-export JAVA_HOME="/usr/lib/jvm/msopenjdk-21-amd64"
-export PATH="$JAVA_HOME/bin:$PATH"
+# Android SDK setup
+echo "📦 Setting up Android SDK..."
+# Find the Android SDK location
+if [ -n "$ANDROID_SDK_ROOT" ]; then
+    ANDROID_HOME="$ANDROID_SDK_ROOT"
+elif [ -d "/home/vscode/android-sdk" ]; then
+    ANDROID_HOME="/home/vscode/android-sdk"
+elif [ -d "/opt/android" ]; then
+    ANDROID_HOME="/opt/android"
+fi
+
+if [ -n "$ANDROID_HOME" ]; then
+    echo "  Android SDK found at: $ANDROID_HOME"
+    export ANDROID_HOME
+    export ANDROID_SDK_ROOT="$ANDROID_HOME"
+    export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
+    
+    # Accept licenses and install required components
+    if command -v sdkmanager &> /dev/null; then
+        echo "  Accepting Android licenses..."
+        yes | sdkmanager --licenses > /dev/null 2>&1 || true
+        echo "  Installing Android SDK components..."
+        sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
+    fi
+    
+    # Add to shell profile
+    if ! grep -q "ANDROID_HOME" ~/.zshrc; then
+        echo "export ANDROID_HOME=$ANDROID_HOME" >> ~/.zshrc
+        echo "export ANDROID_SDK_ROOT=$ANDROID_HOME" >> ~/.zshrc
+        echo "export PATH=\$PATH:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools" >> ~/.zshrc
+    fi
+else
+    echo "⚠️  Android SDK not found"
+fi
 
 # Setup Gradle
 echo "📦 Setting up Gradle..."
 if [ -f "./gradlew" ]; then
     chmod +x ./gradlew
+    # Test Java is available
+    echo "  Java version: $(java -version 2>&1 | head -n 1)"
+    echo "  JAVA_HOME: $JAVA_HOME"
     ./gradlew --version
     # Pre-download dependencies
     ./gradlew dependencies --no-daemon || true
-fi
-
-# Add Java configuration to shell profile
-if ! grep -q "JAVA_HOME" ~/.zshrc; then
-    echo "export JAVA_HOME=/usr/lib/jvm/msopenjdk-21-amd64" >> ~/.zshrc
-    echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> ~/.zshrc
 fi
 
 # Create helper scripts
@@ -105,10 +132,11 @@ chmod +x ~/connect-adb.sh
 echo ""
 echo "🔍 Environment verification:"
 echo "  Java version: $(java -version 2>&1 | head -n 1)"
-echo "  Java Home: $JAVA_HOME"
+echo "  Java Home: ${JAVA_HOME:-'Auto-detected by system'}"
 echo "  Gradle wrapper: $(./gradlew --version 2>/dev/null | grep 'Gradle' | head -n 1 || echo 'Not found in current directory')"
-echo "  Android SDK: $ANDROID_HOME"
+echo "  Android SDK: ${ANDROID_HOME:-'Not configured'}"
 echo "  ADB: $(which adb 2>/dev/null || echo 'Not found')"
+echo "  SDKManager: $(which sdkmanager 2>/dev/null || echo 'Not found')"
 echo ""
 echo "===================================="
 echo "✅ Development environment ready!"

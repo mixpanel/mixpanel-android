@@ -1,8 +1,13 @@
 {
-  "name": "Mixpanel Android SDK - GitHub Codespaces",
-  "image": "mcr.microsoft.com/devcontainers/java:1-21",
+  "name": "Mixpanel Android SDK",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   
   "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installMaven": "false",
+      "installGradle": "false"
+    },
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "configureZshAsDefaultShell": true,
@@ -11,11 +16,7 @@
       "userGid": 1000
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/CASL0/devcontainer-features/android-sdk:1": {
-      "buildToolsVersion": "34.0.0",
-      "platformVersion": "34",
-      "cmdlineToolsVersion": "11076708"
-    }
+    "ghcr.io/akhildevelops/devcontainer-features/android-cli:0": {}
   },
   
   "postCreateCommand": "bash .devcontainer/post-create.sh",
@@ -24,14 +25,7 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "java.jdt.ls.java.home": "/usr/lib/jvm/msopenjdk-21-amd64",
-        "java.configuration.runtimes": [
-          {
-            "name": "JavaSE-21",
-            "path": "/usr/lib/jvm/msopenjdk-21-amd64",
-            "default": true
-          }
-        ],
+        "java.configuration.updateBuildConfiguration": "automatic",
         "terminal.integrated.defaultProfile.linux": "zsh",
         "editor.formatOnSave": true,
         "editor.rulers": [120],
@@ -61,11 +55,10 @@
     }
   },
   
-  "remoteEnv": {
-    "ANDROID_HOME": "/usr/local/lib/android/sdk",
-    "ANDROID_SDK_ROOT": "/usr/local/lib/android/sdk",
-    "PATH": "${containerEnv:PATH}:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin"
-  },
+  "mounts": [
+    "source=mixpanel-android-gradle-cache,target=/home/vscode/.gradle,type=volume",
+    "source=android-sdk-cache,target=/home/vscode/android-sdk,type=volume"
+  ],
   
   "updateRemoteUserUID": true,
   "remoteUser": "vscode"
