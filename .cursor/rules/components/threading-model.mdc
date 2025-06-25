@@ -1,0 +1,180 @@
+# Threading Model Rules - Background Processing
+
+**Description**: Rules for thread management and asynchronous operations
+**Glob**: src/main/java/**/AnalyticsMessages.java,src/main/java/**/Worker.java,src/main/java/**/*Handler.java
+
+## HandlerThread Usage
+
+**ALWAYS** use HandlerThread for background work:
+```java
+// CORRECT
+protected Handler restartWorkerThread() {
+    HandlerThread thread = new HandlerThread(
+        "com.mixpanel.android.AnalyticsWorker",
+        Process.THREAD_PRIORITY_BACKGROUND
+    );
+    thread.start();
+    
+    Handler handler = new AnalyticsMessageHandler(thread.getLooper());
+    return handler;
+}
+
+// INCORRECT
+protected void startWorker() {
+    new Thread(() -> {
+        // Direct thread usage
+    }).start();
+}
+```
+
+## Message-Based Communication
+
+**ALWAYS** use Messages for thread communication:
+```java
+// CORRECT
+public void track(EventDescription event) {
+    Message msg = Message.obtain();
+    msg.what = ENQUEUE_EVENTS;
+    msg.obj = event;
+    mWorker.runMessage(msg);
+}
+
+// INCORRECT
+public void track(EventDescription event) {
+    mWorkerThread.processEvent(event); // Direct method call
+}
+```
+
+## Message Handler Pattern
+
+**ALWAYS** handle all message types:
+```java
+// CORRECT
+private class AnalyticsMessageHandler extends Handler {
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case ENQUEUE_EVENTS:
+                EventDescription event = (EventDescription) msg.obj;
+                handleEventDescription(event);
+                break;
+            case FLUSH_QUEUE:
+                handleFlushQueue();
+                break;
+            case KILL_WORKER:
+                handleKillWorker();
+                break;
+            default:
+                MPLog.e(LOGTAG, "Unknown message type: " + msg.what);
+        }
+    }
+}
+
+// INCORRECT - Missing cases
+public void handleMessage(Message msg) {
+    if (msg.what == ENQUEUE_EVENTS) {
+        // Only handles one type
+    }
+}
+```
+
+## Thread Safety
+
+**ALWAYS** synchronize shared state access:
+```java
+// CORRECT
+private final Object mHandlerLock = new Object();
+private Handler mHandler;
+
+public void postToWorker(Runnable task) {
+    synchronized (mHandlerLock) {
+        if (mHandler == null) {
+            mHandler = restartWorkerThread();
+        }
+        mHandler.post(task);
+    }
+}
+
+// INCORRECT
+if (mHandler == null) {
+    mHandler = restartWorkerThread(); // Race condition
+}
+```
+
+## Worker Lifecycle
+
+**ALWAYS** handle worker thread lifecycle properly:
+```java
+// CORRECT
+public void kill() {
+    synchronized (mHandlerLock) {
+        if (mHandler != null) {
+            mHandler.getLooper().quit();
+            mHandler = null;
+        }
+    }
+}
+
+// INCORRECT
+public void kill() {
+    mHandler = null; // Thread leak
+}
+```
+
+## Delayed Operations
+
+**ALWAYS** use Handler for delays:
+```java
+// CORRECT
+mHandler.postDelayed(() -> {
+    flushQueue();
+}, mConfig.getFlushInterval());
+
+// INCORRECT
+Thread.sleep(mConfig.getFlushInterval()); // Blocks thread
+```
+
+## Main Thread Operations
+
+**ALWAYS** post UI operations to main thread:
+```java
+// CORRECT
+if (Looper.myLooper() != Looper.getMainLooper()) {
+    mMainHandler.post(() -> {
+        showNotification();
+    });
+} else {
+    showNotification();
+}
+
+// INCORRECT
+showNotification(); // May not be on main thread
+```
+
+## Message Pooling
+
+**ALWAYS** use Message.obtain():
+```java
+// CORRECT
+Message msg = Message.obtain();
+msg.what = FLUSH_QUEUE;
+msg.arg1 = force ? 1 : 0;
+
+// INCORRECT
+Message msg = new Message(); // Creates new instance
+```
+
+## Thread Priority
+
+**ALWAYS** set appropriate thread priority:
+```java
+// CORRECT
+HandlerThread thread = new HandlerThread(
+    "WorkerThread",
+    Process.THREAD_PRIORITY_BACKGROUND
+);
+
+// INCORRECT
+HandlerThread thread = new HandlerThread("WorkerThread");
+// Default priority
+```

@@ -1,0 +1,162 @@
+# Architecture Principles - Mixpanel Android SDK
+
+**Description**: System design rules that maintain architectural integrity
+**Glob**: src/main/java/**/*.java
+
+## Public API Design
+
+**ALWAYS** route public API calls through MixpanelAPI:
+```java
+// CORRECT - Public API in MixpanelAPI
+public class MixpanelAPI {
+    public void track(String event, JSONObject properties) {
+        // Implementation
+    }
+}
+
+// INCORRECT - Exposing internals
+public class AnalyticsMessages {
+    public void sendEvent(String event) {
+        // Should not be public
+    }
+}
+```
+
+## Threading Model
+
+**ALWAYS** use HandlerThread for background work:
+```java
+// CORRECT
+HandlerThread thread = new HandlerThread(
+    "com.mixpanel.android.AnalyticsWorker",
+    Process.THREAD_PRIORITY_BACKGROUND
+);
+
+// INCORRECT
+new Thread(() -> {
+    // Direct thread creation
+}).start();
+```
+
+**ALWAYS** use message passing for thread communication:
+```java
+// CORRECT
+Message msg = Message.obtain();
+msg.what = ENQUEUE_EVENTS;
+msg.obj = eventDescription;
+mWorker.runMessage(msg);
+
+// INCORRECT
+mWorker.processEventDirectly(event);
+```
+
+## Singleton Pattern
+
+**ALWAYS** implement token-based singleton:
+```java
+// CORRECT
+private static final Map<String, MixpanelAPI> sInstances = new HashMap<>();
+
+public static MixpanelAPI getInstance(Context context, String token) {
+    synchronized (sInstancesLock) {
+        MixpanelAPI instance = sInstances.get(token);
+        if (instance == null) {
+            instance = new MixpanelAPI(context, token);
+            sInstances.put(token, instance);
+        }
+        return instance;
+    }
+}
+
+// INCORRECT - Simple singleton
+private static MixpanelAPI sInstance;
+```
+
+## Context Usage
+
+**ALWAYS** use application context for SDK operations:
+```java
+// CORRECT
+Context appContext = context.getApplicationContext();
+mContext = appContext;
+
+// INCORRECT
+mContext = context; // Could be Activity
+```
+
+## Data Flow
+
+**ALWAYS** follow the established data flow:
+```
+MixpanelAPI → AnalyticsMessages → MPDbAdapter → HttpService
+```
+
+**NEVER** bypass layers:
+```java
+// INCORRECT
+public void track(String event) {
+    // Don't call HttpService directly
+    mHttpService.sendEvent(event);
+}
+```
+
+## Configuration Hierarchy
+
+**ALWAYS** respect configuration precedence:
+```java
+// CORRECT order: Runtime > Manifest > Defaults
+if (options != null && options.flushInterval != null) {
+    return options.flushInterval;
+}
+if (manifestValue != -1) {
+    return manifestValue;
+}
+return DEFAULT_FLUSH_INTERVAL;
+```
+
+## Database Access
+
+**ALWAYS** access database through MPDbAdapter:
+```java
+// CORRECT
+mDbAdapter.addJSON(event, token, Table.EVENTS);
+
+// INCORRECT
+SQLiteDatabase db = getWritableDatabase();
+db.insert("events", null, values);
+```
+
+## Builder Pattern
+
+**ALWAYS** use builder for complex configurations:
+```java
+// CORRECT
+MixpanelOptions options = new MixpanelOptions.Builder()
+    .flushInterval(30000)
+    .trackAutomaticEvents(false)
+    .build();
+
+// INCORRECT
+MixpanelOptions options = new MixpanelOptions();
+options.flushInterval = 30000;
+```
+
+## Interface Segregation
+
+**ALWAYS** separate concerns into focused interfaces:
+```java
+// CORRECT
+public interface People {
+    void set(String property, Object value);
+}
+
+public interface Group {
+    void set(String property, Object value);
+}
+
+// INCORRECT
+public interface Analytics {
+    void setPeopleProperty(String property, Object value);
+    void setGroupProperty(String property, Object value);
+}
+```

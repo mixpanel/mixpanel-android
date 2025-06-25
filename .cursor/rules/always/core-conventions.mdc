@@ -1,0 +1,145 @@
+# Core Conventions - Mixpanel Android SDK
+
+**Description**: Universal coding standards that apply to all Java code in the SDK
+**Glob**: src/main/java/**/*.java
+
+## Visibility Rules
+
+**ALWAYS** use package-private visibility for internal classes:
+```java
+// CORRECT
+class InternalHelper {
+    // Not exposed in public API
+}
+
+// INCORRECT
+public class InternalHelper {
+    // Unnecessarily public
+}
+```
+
+**ALWAYS** make fields private with 'm' prefix:
+```java
+// CORRECT
+private final Context mContext;
+private final String mToken;
+
+// INCORRECT
+public Context context;
+protected String token;
+```
+
+## Thread Safety
+
+**ALWAYS** use synchronized blocks over methods:
+```java
+// CORRECT
+public void updateState() {
+    synchronized (mLock) {
+        // Critical section
+    }
+}
+
+// INCORRECT
+public synchronized void updateState() {
+    // Over-synchronization
+}
+```
+
+**ALWAYS** use separate lock objects:
+```java
+// CORRECT
+private final Object mSuperPropertiesLock = new Object();
+private final Object mEventsLock = new Object();
+
+// INCORRECT
+synchronized (this) {
+    // Using 'this' as lock
+}
+```
+
+## Error Handling
+
+**NEVER** let exceptions crash the host app:
+```java
+// CORRECT
+try {
+    riskyOperation();
+} catch (Exception e) {
+    MPLog.e(LOGTAG, "Operation failed", e);
+    // Continue gracefully
+}
+
+// INCORRECT
+public void track(String event) throws JSONException {
+    // Throwing exceptions to caller
+}
+```
+
+**ALWAYS** check for null defensively:
+```java
+// CORRECT
+if (null != value) {
+    processValue(value);
+}
+
+// INCORRECT
+processValue(value); // Assumes non-null
+```
+
+## Field Declaration
+
+**ALWAYS** make fields final when possible:
+```java
+// CORRECT
+private final Context mContext;
+private final Map<String, String> mDeviceInfo;
+
+// INCORRECT
+private Context mContext; // Mutable unnecessarily
+```
+
+## Resource Management
+
+**ALWAYS** clean up resources in finally blocks:
+```java
+// CORRECT
+Cursor cursor = null;
+try {
+    cursor = db.query(...);
+    // Use cursor
+} finally {
+    if (cursor != null) {
+        cursor.close();
+    }
+}
+
+// INCORRECT
+Cursor cursor = db.query(...);
+// No cleanup
+```
+
+## Constants
+
+**ALWAYS** use CAPS_WITH_UNDERSCORES for constants:
+```java
+// CORRECT
+private static final String LOGTAG = "MixpanelAPI";
+private static final int FLUSH_INTERVAL = 60000;
+
+// INCORRECT
+private static final String LogTag = "MixpanelAPI";
+private static final int flushInterval = 60000;
+```
+
+## Comments and Documentation
+
+**NEVER** use inline comments for obvious code:
+```java
+// INCORRECT
+mToken = token; // Set the token
+
+// CORRECT - Only document non-obvious behavior
+// Defensive copy to prevent external modification
+mProperties = new JSONObject(properties.toString());
+```

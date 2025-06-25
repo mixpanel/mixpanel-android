@@ -1,0 +1,170 @@
+# Android-Specific Patterns
+
+**Description**: Rules for Android SDK development best practices
+**Glob**: src/main/java/**/*.java
+
+## Context Management
+
+**ALWAYS** use application context in SDK:
+```java
+// CORRECT
+public static MixpanelAPI getInstance(Context context, String token) {
+    Context appContext = context.getApplicationContext();
+    return new MixpanelAPI(appContext, token);
+}
+
+// INCORRECT
+public static MixpanelAPI getInstance(Context context, String token) {
+    return new MixpanelAPI(context, token); // May leak Activity
+}
+```
+
+## Lifecycle Integration
+
+**ALWAYS** use ActivityLifecycleCallbacks for API 14+:
+```java
+// CORRECT
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+    Application app = (Application) appContext;
+    app.registerActivityLifecycleCallbacks(
+        new MixpanelActivityLifecycleCallbacks(this)
+    );
+}
+
+// INCORRECT - Manual lifecycle tracking
+```
+
+## SharedPreferences
+
+**ALWAYS** namespace preferences:
+```java
+// CORRECT
+private static final String PREFERENCES_NAME = 
+    "com.mixpanel.android.mpmetrics.MixpanelAPI_";
+
+SharedPreferences prefs = context.getSharedPreferences(
+    PREFERENCES_NAME + token, 
+    Context.MODE_PRIVATE
+);
+
+// INCORRECT
+SharedPreferences prefs = context.getSharedPreferences(
+    "mixpanel_prefs", // Not namespaced
+    Context.MODE_PRIVATE
+);
+```
+
+## Permission Checks
+
+**ALWAYS** check permissions defensively:
+```java
+// CORRECT
+if (PackageManager.PERMISSION_GRANTED == 
+    context.checkCallingOrSelfPermission(Manifest.permission.BLUETOOTH)) {
+    // Use Bluetooth feature
+}
+
+// INCORRECT
+// Assume permission is granted
+BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+```
+
+## Resource Loading
+
+**NEVER** use R.class in library:
+```java
+// CORRECT - Dynamic resource lookup
+int resourceId = resources.getIdentifier(
+    resourceName, 
+    "drawable", 
+    context.getPackageName()
+);
+if (resourceId != 0) {
+    return resources.getDrawable(resourceId);
+}
+
+// INCORRECT
+return resources.getDrawable(R.drawable.icon);
+```
+
+## Build Version Checks
+
+**ALWAYS** check SDK version for new APIs:
+```java
+// CORRECT
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+    // Use API 24+ feature
+    locale = resources.getConfiguration().getLocales().get(0);
+} else {
+    // Fallback for older versions
+    locale = resources.getConfiguration().locale;
+}
+
+// INCORRECT
+locale = resources.getConfiguration().getLocales().get(0); // Crashes on < N
+```
+
+## Manifest Configuration
+
+**ALWAYS** read meta-data safely:
+```java
+// CORRECT
+try {
+    ApplicationInfo appInfo = packageManager.getApplicationInfo(
+        packageName, 
+        PackageManager.GET_META_DATA
+    );
+    if (appInfo.metaData != null) {
+        boolean debugMode = appInfo.metaData.getBoolean(
+            "com.mixpanel.android.MPConfig.EnableDebugLogging", 
+            false
+        );
+    }
+} catch (NameNotFoundException e) {
+    // Use defaults
+}
+
+// INCORRECT - Assumes meta-data exists
+```
+
+## ProGuard Configuration
+
+**ALWAYS** provide consumer ProGuard rules:
+```proguard
+# CORRECT - In proguard.txt
+-keep class com.mixpanel.android.** { *; }
+-dontwarn com.mixpanel.android.**
+
+# Keep required classes
+-keep class com.mixpanel.android.mpmetrics.MixpanelAPI { *; }
+```
+
+## Database Path
+
+**ALWAYS** use proper database directory:
+```java
+// CORRECT
+File dbFile = context.getDatabasePath(databaseName);
+File dbDir = dbFile.getParentFile();
+if (!dbDir.exists()) {
+    dbDir.mkdirs();
+}
+
+// INCORRECT
+File dbFile = new File("/data/data/" + packageName + "/databases/db");
+```
+
+## Network State
+
+**ALWAYS** check connectivity before network operations:
+```java
+// CORRECT
+ConnectivityManager cm = (ConnectivityManager) 
+    context.getSystemService(Context.CONNECTIVITY_SERVICE);
+NetworkInfo network = cm.getActiveNetworkInfo();
+if (network != null && network.isConnected()) {
+    // Perform network operation
+}
+
+// INCORRECT - Assume network available
+```

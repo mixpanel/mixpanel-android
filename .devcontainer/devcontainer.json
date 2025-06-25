@@ -1,0 +1,79 @@
+{
+  "name": "Mixpanel Android SDK",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installMaven": "false",
+      "installGradle": "false"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "username": "vscode",
+      "userUid": 1000,
+      "userGid": 1000
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/akhildevelops/devcontainer-features/android-cli:0": {}
+  },
+  
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.formatOnSave": true,
+        "editor.rulers": [120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
+      },
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "naco-siren.gradle-language",
+        "redhat.java",
+        "eamodio.gitlens",
+        "EditorConfig.EditorConfig",
+        "fwcd.kotlin",
+        "esbenp.prettier-vscode",
+        "usernamehw.errorlens"
+      ]
+    },
+    "codespaces": {
+      "openInClient": "vscode"
+    }
+  },
+  
+  "forwardPorts": [5037],
+  "portsAttributes": {
+    "5037": {
+      "label": "ADB Server",
+      "onAutoForward": "notify",
+      "protocol": "tcp"
+    }
+  },
+  
+  "mounts": [
+    "source=android-sdk-cache,target=/opt/android,type=volume"
+  ],
+  
+  "remoteEnv": {
+    "ANDROID_HOME": "/opt/android",
+    "ANDROID_SDK_ROOT": "/opt/android",
+    "PATH": "${containerEnv:PATH}:/opt/android/cmdline-tools/latest/bin:/opt/android/platform-tools:/opt/android/tools/bin"
+  },
+  
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  
+  "updateRemoteUserUID": true,
+  "remoteUser": "vscode"
+}

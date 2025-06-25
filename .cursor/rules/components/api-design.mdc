@@ -1,0 +1,159 @@
+# API Design Rules - Public SDK Interface
+
+**Description**: Rules for designing and maintaining the public API surface
+**Glob**: src/main/java/**/MixpanelAPI.java,src/main/java/**/People.java,src/main/java/**/Group.java
+
+## Method Overloading
+
+**ALWAYS** provide convenience overloads:
+```java
+// CORRECT - Progressive disclosure
+public void track(String eventName) {
+    track(eventName, null);
+}
+
+public void track(String eventName, JSONObject properties) {
+    track(eventName, properties, false);
+}
+
+public void track(String eventName, JSONObject properties, boolean isAutomatic) {
+    // Full implementation
+}
+
+// INCORRECT - Single complex method
+public void track(String eventName, JSONObject properties, 
+                 boolean isAutomatic, String token, long timestamp) {
+    // Too many parameters
+}
+```
+
+## Fluent Interfaces
+
+**ALWAYS** use fluent pattern for People/Group operations:
+```java
+// CORRECT
+public interface People {
+    People set(String property, Object value);
+    People increment(String property, double by);
+    People append(String property, Object value);
+}
+
+// Usage: mixpanel.getPeople().set("name", "John").increment("purchases", 1);
+
+// INCORRECT
+public interface People {
+    void set(String property, Object value);
+    void increment(String property, double by);
+}
+```
+
+## Parameter Validation
+
+**ALWAYS** validate gracefully without exceptions:
+```java
+// CORRECT
+public void identify(String distinctId) {
+    if (distinctId == null) {
+        MPLog.e(LOGTAG, "Cannot identify with null ID");
+        return;
+    }
+    if (distinctId.length() == 0) {
+        MPLog.e(LOGTAG, "Cannot identify with empty ID");
+        return;
+    }
+    // Process identification
+}
+
+// INCORRECT
+public void identify(String distinctId) {
+    Preconditions.checkNotNull(distinctId); // Throws
+}
+```
+
+## Return Values
+
+**ALWAYS** prefer void for fire-and-forget operations:
+```java
+// CORRECT
+public void track(String eventName) {
+    // No return value needed
+}
+
+// INCORRECT
+public boolean track(String eventName) {
+    // Don't make users check returns
+}
+```
+
+## Deprecation
+
+**ALWAYS** provide migration path:
+```java
+// CORRECT
+/**
+ * @deprecated Use {@link #track(String, JSONObject)} instead
+ */
+@Deprecated
+public void trackEvent(String eventName) {
+    track(eventName, null);
+}
+
+// INCORRECT
+@Deprecated // No explanation or alternative
+public void trackEvent(String eventName) {
+}
+```
+
+## Naming Conventions
+
+**ALWAYS** use clear, action-oriented names:
+```java
+// CORRECT
+public void track(String eventName);
+public void identify(String distinctId);
+public void reset();
+public void flush();
+
+// INCORRECT
+public void event(String name);
+public void id(String id);
+public void clear();
+public void send();
+```
+
+## Optional Parameters
+
+**ALWAYS** accept null for optional parameters:
+```java
+// CORRECT
+/**
+ * @param properties Additional properties, may be null
+ */
+public void track(String eventName, JSONObject properties) {
+    JSONObject props = properties != null ? properties : new JSONObject();
+}
+
+// INCORRECT
+public void track(String eventName, @NonNull JSONObject properties) {
+    // Forces users to pass empty object
+}
+```
+
+## Synchronous Design
+
+**ALWAYS** design APIs to be non-blocking:
+```java
+// CORRECT
+public void track(String eventName) {
+    // Queue for background processing
+    Message msg = Message.obtain();
+    msg.obj = new EventDescription(eventName);
+    mWorker.runMessage(msg);
+}
+
+// INCORRECT
+public void track(String eventName) {
+    // Blocking network call
+    httpService.sendEventSynchronously(eventName);
+}
+```

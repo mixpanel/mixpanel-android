@@ -1,0 +1,190 @@
+# Adding Features Workflow
+
+**Description**: Step-by-step rules for adding new features to the SDK
+**Glob**: src/main/java/**/*.java
+
+## Step 1: API Design First
+
+**ALWAYS** start with public API design:
+```java
+// In MixpanelAPI.java
+public void newFeature(String param1, JSONObject properties) {
+    if (!hasOptedOut()) {
+        try {
+            // Validate inputs
+            if (param1 == null || param1.length() == 0) {
+                MPLog.e(LOGTAG, "Invalid param1 for newFeature");
+                return;
+            }
+            
+            // Queue for processing
+            Message msg = Message.obtain();
+            msg.what = NEW_FEATURE_MESSAGE;
+            msg.obj = new NewFeatureDescription(param1, properties, mToken);
+            mMessages.enqueueMessage(msg);
+            
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Exception in newFeature", e);
+        }
+    }
+}
+```
+
+## Step 2: Message Type Definition
+
+**ALWAYS** create message description class:
+```java
+// In AnalyticsMessages.java
+public static final class NewFeatureDescription {
+    private final String param1;
+    private final JSONObject properties;
+    private final String token;
+    
+    public NewFeatureDescription(String param1, JSONObject properties, String token) {
+        this.param1 = param1;
+        this.properties = properties;
+        this.token = token;
+    }
+    
+    // Only getters
+}
+
+// Add message constant
+private static final int NEW_FEATURE_MESSAGE = 20;
+```
+
+## Step 3: Handler Implementation
+
+**ALWAYS** handle in worker thread:
+```java
+// In AnalyticsMessageHandler
+@Override
+public void handleMessage(Message msg) {
+    switch (msg.what) {
+        case NEW_FEATURE_MESSAGE:
+            NewFeatureDescription desc = (NewFeatureDescription) msg.obj;
+            processNewFeature(desc);
+            break;
+    }
+}
+
+private void processNewFeature(NewFeatureDescription desc) {
+    // Implementation
+}
+```
+
+## Step 4: Configuration Support
+
+**ALWAYS** add configuration options:
+```java
+// In MPConfig.java
+private final boolean mNewFeatureEnabled;
+
+// In constructor
+mNewFeatureEnabled = metaData.getBoolean(
+    "com.mixpanel.android.MPConfig.NewFeatureEnabled", 
+    true // default
+);
+
+// In MixpanelOptions.Builder
+public Builder newFeatureEnabled(boolean enabled) {
+    this.newFeatureEnabled = enabled;
+    return this;
+}
+```
+
+## Step 5: Database Support (if needed)
+
+**ONLY IF** persisting new data type:
+```java
+// In MPDbAdapter.Table enum
+NEW_FEATURE("new_feature", 
+    DatabaseHelper.NEW_FEATURE_TABLE, 
+    "Database out of memory for new feature data.");
+
+// In DatabaseHelper
+static final String NEW_FEATURE_TABLE = 
+    "CREATE TABLE new_feature (" +
+    "_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+    "data TEXT NOT NULL, " +
+    "created_at INTEGER NOT NULL)";
+
+// Handle migration
+@Override
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    if (oldVersion < NEW_VERSION) {
+        db.execSQL(NEW_FEATURE_TABLE);
+    }
+}
+```
+
+## Step 6: Testing
+
+**ALWAYS** add instrumented tests:
+```java
+@Test
+public void testNewFeature() throws Exception {
+    // Basic test
+    mMixpanel.newFeature("test", null);
+    
+    String message = mMessages.poll(2, TimeUnit.SECONDS);
+    assertNotNull("NewFeature message should be queued", message);
+    
+    JSONObject parsed = new JSONObject(message);
+    assertEquals("test", parsed.getString("param1"));
+}
+
+@Test
+public void testNewFeatureWithProperties() throws Exception {
+    JSONObject props = new JSONObject();
+    props.put("key", "value");
+    
+    mMixpanel.newFeature("test", props);
+    // Verify properties included
+}
+
+@Test
+public void testNewFeatureInvalidInput() throws Exception {
+    // Should handle gracefully
+    mMixpanel.newFeature(null, null);
+    mMixpanel.newFeature("", null);
+    
+    // No crash expected
+}
+```
+
+## Step 7: Documentation
+
+**ALWAYS** add comprehensive JavaDoc:
+```java
+/**
+ * Brief description of the new feature.
+ *
+ * <p>Detailed explanation of what it does and when to use it.
+ *
+ * <p>Example usage:
+ * <pre>
+ * {@code
+ * MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, TOKEN);
+ * JSONObject properties = new JSONObject();
+ * properties.put("key", "value");
+ * mixpanel.newFeature("example", properties);
+ * }
+ * </pre>
+ *
+ * @param param1 Description of first parameter
+ * @param properties Optional properties to include, may be null
+ * @since 8.3.0
+ */
+public void newFeature(String param1, JSONObject properties) {
+```
+
+## Common Mistakes to Avoid
+
+**NEVER** throw exceptions from public API
+**NEVER** block the calling thread
+**NEVER** access network/disk on main thread
+**NEVER** hold Activity references
+**NEVER** skip null checks
+**NEVER** forget thread synchronization
+**NEVER** break backwards compatibility

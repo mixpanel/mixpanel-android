@@ -1,0 +1,191 @@
+# Database Layer Rules - SQLite Persistence
+
+**Description**: Rules for database operations and data persistence
+**Glob**: src/main/java/**/MPDbAdapter.java,src/main/java/**/DatabaseHelper.java
+
+## Table Management
+
+**ALWAYS** use enum for table definitions:
+```java
+// CORRECT
+public enum Table {
+    EVENTS("events", DatabaseHelper.EVENTS_TABLE, DB_OUT_OF_MEMORY_ERROR),
+    PEOPLE("people", DatabaseHelper.PEOPLE_TABLE, DB_OUT_OF_MEMORY_ERROR);
+    
+    private final String mTableName;
+    
+    Table(String name, String createStatement, String errorMessage) {
+        mTableName = name;
+    }
+}
+
+// INCORRECT
+public static final String EVENTS_TABLE = "events";
+public static final String PEOPLE_TABLE = "people";
+```
+
+## Database Upgrades
+
+**ALWAYS** handle version migrations safely:
+```java
+// CORRECT
+@Override
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    if (oldVersion < 2) {
+        // Add column safely
+        db.execSQL("ALTER TABLE events ADD COLUMN automatic INTEGER DEFAULT 0");
+    }
+    if (oldVersion < 3) {
+        // Create new table
+        db.execSQL(GROUPS_TABLE);
+    }
+}
+
+// INCORRECT
+@Override
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    // Don't drop user data!
+    db.execSQL("DROP TABLE IF EXISTS events");
+    onCreate(db);
+}
+```
+
+## Cursor Management
+
+**ALWAYS** close cursors in finally blocks:
+```java
+// CORRECT
+public String[] generateDataString(Table table, String token, int limit) {
+    Cursor cursor = null;
+    try {
+        cursor = getDatabase().query(
+            table.getName(),
+            null,
+            "token = ?",
+            new String[]{token},
+            null, null,
+            "created_at ASC",
+            String.valueOf(limit)
+        );
+        // Process cursor
+    } catch (SQLException e) {
+        MPLog.e(LOGTAG, "generateDataString " + table.getName(), e);
+        return null;
+    } finally {
+        if (cursor != null) {
+            cursor.close();
+        }
+    }
+}
+
+// INCORRECT
+Cursor cursor = db.query(...);
+// No try-finally
+```
+
+## Transaction Handling
+
+**ALWAYS** use transactions for bulk operations:
+```java
+// CORRECT
+public int addJSON(JSONObject data, String token, Table table) {
+    SQLiteDatabase db = getDatabase();
+    db.beginTransaction();
+    try {
+        ContentValues values = new ContentValues();
+        values.put("data", data.toString());
+        values.put("created_at", System.currentTimeMillis());
+        values.put("token", token);
+        
+        db.insert(table.getName(), null, values);
+        db.setTransactionSuccessful();
+        return 1;
+    } finally {
+        db.endTransaction();
+    }
+}
+
+// INCORRECT - No transaction
+db.insert(table, null, values);
+```
+
+## Error Handling
+
+**ALWAYS** catch and log database errors:
+```java
+// CORRECT
+try {
+    db = mDatabaseHelper.getWritableDatabase();
+} catch (SQLiteException e) {
+    MPLog.e(LOGTAG, "Could not open database", e);
+    return null;
+}
+
+// INCORRECT
+db = mDatabaseHelper.getWritableDatabase(); // Can throw
+```
+
+## Data Cleanup
+
+**ALWAYS** implement automatic data pruning:
+```java
+// CORRECT
+public void cleanupEvents(long timeLimit, Table table) {
+    try {
+        SQLiteDatabase db = getDatabase();
+        db.delete(
+            table.getName(),
+            "created_at <= ?",
+            new String[]{String.valueOf(timeLimit)}
+        );
+    } catch (SQLException e) {
+        MPLog.e(LOGTAG, "cleanupEvents", e);
+    }
+}
+
+// INCORRECT - No cleanup strategy
+```
+
+## Prepared Statements
+
+**ALWAYS** use parameterized queries:
+```java
+// CORRECT
+cursor = db.query(
+    table,
+    columns,
+    "token = ? AND created_at > ?",
+    new String[]{token, String.valueOf(timestamp)},
+    null, null, null
+);
+
+// INCORRECT - SQL injection risk
+String query = "SELECT * FROM " + table + 
+               " WHERE token = '" + token + "'";
+cursor = db.rawQuery(query, null);
+```
+
+## Database Locking
+
+**ALWAYS** minimize lock duration:
+```java
+// CORRECT
+public int getEventCount(String token) {
+    // Quick read operation
+    Cursor cursor = null;
+    try {
+        cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM events WHERE token = ?",
+            new String[]{token}
+        );
+        if (cursor.moveToFirst()) {
+            return cursor.getInt(0);
+        }
+    } finally {
+        if (cursor != null) cursor.close();
+    }
+    return 0;
+}
+
+// INCORRECT - Long-running operation holding lock
+```
