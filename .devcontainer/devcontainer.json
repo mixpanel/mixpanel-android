@@ -38,7 +38,10 @@
         "naco-siren.gradle-language",
         "redhat.java",
         "eamodio.gitlens",
-        "EditorConfig.EditorConfig"
+        "EditorConfig.EditorConfig",
+        "fwcd.kotlin",
+        "esbenp.prettier-vscode",
+        "usernamehw.errorlens"
       ]
     },
     "codespaces": {
@@ -63,6 +66,12 @@
     "ANDROID_HOME": "/opt/android",
     "ANDROID_SDK_ROOT": "/opt/android",
     "PATH": "${containerEnv:PATH}:/opt/android/cmdline-tools/latest/bin:/opt/android/platform-tools:/opt/android/tools/bin"
+  },
+  
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
   },
   
   "updateRemoteUserUID": true,
