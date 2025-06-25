@@ -156,21 +156,6 @@ No worries, here are some links that you will find useful:
 
 Have any questions? Reach out to [support@mixpanel.com](mailto:support@mixpanel.com) to speak to someone smart, quickly.
 
-## AI Assistant Configuration
-
-This project includes AI assistant configuration for:
-- **Claude Code**: Run `/user:context` for deep code analysis
-- **Cursor**: MDC rules in `.cursor/rules/`
-- **GitHub Copilot**: Instructions in `.github/copilot-instructions.md`
-- **OpenAI Codex**: Cloud agent instructions in `AGENTS.md`
-
-See [AI Assistant Setup Guide](AI-ASSISTANT-SETUP.md) for details on how these work together.
-
-### Using Codex for Complex Tasks
-1. Review task categories in AGENTS.md
-2. Submit tasks via chatgpt.com/codex
-3. Review PRs carefully before merging
-
 <a name="want-to-contribute"></a>
 # Want to Contribute?
 
