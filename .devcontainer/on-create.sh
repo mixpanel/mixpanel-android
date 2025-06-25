@@ -16,12 +16,18 @@ fi
 
 # Pre-download Gradle wrapper and dependencies
 echo "📦 Pre-downloading Gradle dependencies..."
-cd /workspace
-if [ -f "./gradlew" ]; then
-    chmod +x ./gradlew
-    ./gradlew --version
-    # Download dependencies without building
-    ./gradlew dependencies --no-daemon || true
+# Use the workspace folder environment variable or current directory
+WORKSPACE_DIR="${WORKSPACE_FOLDER:-${PWD}}"
+if [ -d "$WORKSPACE_DIR" ]; then
+    cd "$WORKSPACE_DIR"
+    if [ -f "./gradlew" ]; then
+        chmod +x ./gradlew
+        ./gradlew --version
+        # Download dependencies without building
+        ./gradlew dependencies --no-daemon || true
+    fi
+else
+    echo "⚠️  Workspace directory not found, skipping Gradle setup"
 fi
 
 echo "✅ Codespace creation complete!"
