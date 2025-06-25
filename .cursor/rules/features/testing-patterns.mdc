@@ -1,0 +1,191 @@
+# Testing Patterns - Instrumented Tests Only
+
+**Description**: Rules for writing Android instrumented tests
+**Glob**: src/androidTest/java/**/*.java
+
+## Test Setup
+
+**ALWAYS** use proper test annotations:
+```java
+// CORRECT
+@RunWith(AndroidJUnit4.class)
+@LargeTest
+public class MixpanelFeatureTest {
+    @Before
+    public void setUp() throws Exception {
+        // Setup
+    }
+    
+    @Test
+    public void testFeature() {
+        // Test
+    }
+    
+    @After
+    public void tearDown() {
+        // Cleanup
+    }
+}
+
+// INCORRECT
+public class MixpanelFeatureTest extends TestCase {
+    // Old JUnit 3 style
+}
+```
+
+## Context Handling
+
+**ALWAYS** use instrumentation context:
+```java
+// CORRECT
+@Before
+public void setUp() {
+    mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+}
+
+// INCORRECT
+mContext = InstrumentationRegistry.getContext(); // Test context
+```
+
+## Async Testing
+
+**ALWAYS** use BlockingQueue for async verification:
+```java
+// CORRECT
+private BlockingQueue<String> mMessages;
+
+@Before
+public void setUp() {
+    mMessages = new LinkedBlockingQueue<>();
+    mMixpanel = TestUtils.createMixpanelApiWithMockedMessages(
+        mContext, mMessages
+    );
+}
+
+@Test
+public void testAsyncOperation() throws Exception {
+    mMixpanel.track("Event");
+    
+    String message = mMessages.poll(2, TimeUnit.SECONDS);
+    assertNotNull("Expected message within timeout", message);
+}
+
+// INCORRECT
+@Test
+public void testAsyncOperation() {
+    mMixpanel.track("Event");
+    Thread.sleep(1000); // Arbitrary delay
+    // Verify somehow
+}
+```
+
+## Preference Cleanup
+
+**ALWAYS** clear preferences in setUp:
+```java
+// CORRECT
+@Before
+public void setUp() {
+    // Clear all test preferences
+    SharedPreferences prefs = mContext.getSharedPreferences(
+        "com.mixpanel.android.mpmetrics.MixpanelAPI_" + TEST_TOKEN,
+        Context.MODE_PRIVATE
+    );
+    prefs.edit().clear().commit();
+}
+
+// INCORRECT - Leaves state between tests
+```
+
+## Database Testing
+
+**ALWAYS** test with real database:
+```java
+// CORRECT
+@Test
+public void testDatabaseOperations() {
+    MPDbAdapter db = new MPDbAdapter(mContext);
+    
+    // Test with real SQLite
+    JSONObject event = new JSONObject();
+    event.put("event", "Test");
+    
+    int count = db.addJSON(event, "token", MPDbAdapter.Table.EVENTS);
+    assertEquals(1, count);
+    
+    // Clean up
+    db.cleanupEvents(System.currentTimeMillis() + 1000, MPDbAdapter.Table.EVENTS);
+}
+
+// INCORRECT - Mocking database
+```
+
+## Thread Safety Testing
+
+**ALWAYS** test concurrent access:
+```java
+// CORRECT
+@Test
+public void testConcurrentAccess() throws Exception {
+    final int THREAD_COUNT = 10;
+    final CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
+    
+    for (int i = 0; i < THREAD_COUNT; i++) {
+        new Thread(() -> {
+            mMixpanel.track("Concurrent Event");
+            latch.countDown();
+        }).start();
+    }
+    
+    assertTrue(latch.await(5, TimeUnit.SECONDS));
+    
+    // Verify all events recorded
+    Thread.sleep(500);
+    List<String> messages = new ArrayList<>();
+    mMessages.drainTo(messages);
+    assertEquals(THREAD_COUNT, messages.size());
+}
+```
+
+## Test Utilities
+
+**ALWAYS** use TestUtils helpers:
+```java
+// CORRECT
+mMixpanel = TestUtils.createMixpanelApiWithMockedMessages(
+    mContext, mMessages, false
+);
+
+Future<SharedPreferences> referrerPrefs = 
+    new TestUtils.EmptyPreferences(mContext);
+
+// INCORRECT - Creating test instances manually
+```
+
+## Assertion Messages
+
+**ALWAYS** provide descriptive assertion messages:
+```java
+// CORRECT
+assertNotNull("Event message should be queued", message);
+assertEquals("Event name should match", "TestEvent", eventName);
+assertTrue("Flush should complete within timeout", 
+    flushLatch.await(5, TimeUnit.SECONDS));
+
+// INCORRECT
+assertNotNull(message);
+assertEquals("TestEvent", eventName);
+```
+
+## Timeout Handling
+
+**ALWAYS** use reasonable timeouts:
+```java
+// CORRECT
+String message = mMessages.poll(2, TimeUnit.SECONDS);
+// 2 seconds is reasonable for local operations
+
+// INCORRECT
+String message = mMessages.poll(100, TimeUnit.MILLISECONDS);
+// Too short, may be flaky
+```

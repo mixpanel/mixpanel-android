@@ -1,0 +1,220 @@
+# Debugging Issues Workflow
+
+**Description**: Rules and patterns for debugging SDK issues
+**Glob**: src/**/*.java
+
+## Enable Debug Logging
+
+**FIRST** enable verbose logging:
+```java
+// In app initialization
+MixpanelAPI.enableDebugLogging();
+
+// Or via manifest
+<meta-data 
+    android:name="com.mixpanel.android.MPConfig.EnableDebugLogging"
+    android:value="true" />
+```
+
+## Common Issue Patterns
+
+### Events Not Appearing
+
+**CHECK** these in order:
+```java
+// 1. Verify token is correct
+MPLog.v(LOGTAG, "Using token: " + mToken);
+
+// 2. Check if opted out
+if (hasOptedOut()) {
+    MPLog.v(LOGTAG, "User has opted out");
+    return;
+}
+
+// 3. Verify event queued
+MPLog.v(LOGTAG, "Queuing event: " + eventName);
+
+// 4. Check database storage
+MPLog.v(LOGTAG, "Events in database: " + getEventCount());
+
+// 5. Monitor flush attempts
+MPLog.v(LOGTAG, "Attempting flush to: " + mConfig.getEventsEndpoint());
+
+// 6. Check network response
+MPLog.v(LOGTAG, "Flush response: " + responseCode);
+```
+
+### Memory Leaks
+
+**ALWAYS** check for Context leaks:
+```java
+// WRONG - Leaks Activity
+private Context mContext; // Could be Activity
+
+// CORRECT - Application context
+private final Context mContext;
+mContext = context.getApplicationContext();
+
+// Check WeakReferences
+if (mActivity.get() == null) {
+    MPLog.d(LOGTAG, "Activity was garbage collected");
+}
+```
+
+### Threading Issues
+
+**ADD** thread verification:
+```java
+// Log current thread
+MPLog.v(LOGTAG, "Running on thread: " + 
+    Thread.currentThread().getName());
+
+// Verify main thread operations
+if (Looper.myLooper() != Looper.getMainLooper()) {
+    MPLog.e(LOGTAG, "UI operation not on main thread!");
+}
+
+// Check worker thread
+if (mHandler == null) {
+    MPLog.e(LOGTAG, "Worker thread not initialized");
+}
+```
+
+### Database Issues
+
+**DEBUG** database operations:
+```java
+// Log database operations
+MPLog.v(LOGTAG, "Adding to " + table.getName() + 
+    " table, current size: " + getTableSize(table));
+
+// Check for corruption
+try {
+    db.rawQuery("SELECT COUNT(*) FROM " + table.getName(), null);
+} catch (SQLiteException e) {
+    MPLog.e(LOGTAG, "Database corrupted", e);
+}
+
+// Monitor cleanup
+MPLog.v(LOGTAG, "Cleaning events older than: " + 
+    new Date(timeLimit));
+```
+
+### Configuration Issues
+
+**VERIFY** configuration hierarchy:
+```java
+// Log configuration source
+if (options != null && options.flushInterval != null) {
+    MPLog.v(LOGTAG, "Using runtime flush interval: " + 
+        options.flushInterval);
+} else if (manifestValue != -1) {
+    MPLog.v(LOGTAG, "Using manifest flush interval: " + 
+        manifestValue);
+} else {
+    MPLog.v(LOGTAG, "Using default flush interval: " + 
+        DEFAULT_FLUSH_INTERVAL);
+}
+```
+
+## Debug Helpers
+
+### Add Temporary Logging
+
+```java
+// Temporary verbose logging
+private static final boolean TEMP_DEBUG = true;
+
+if (TEMP_DEBUG) {
+    MPLog.v(LOGTAG, "State: " + getCurrentState());
+    MPLog.v(LOGTAG, "Queue size: " + getQueueSize());
+}
+```
+
+### Assertion Checks
+
+```java
+// Development assertions
+if (BuildConfig.DEBUG) {
+    if (mContext == null) {
+        throw new IllegalStateException("Context is null!");
+    }
+}
+```
+
+### Timing Analysis
+
+```java
+// Performance debugging
+long startTime = System.currentTimeMillis();
+performOperation();
+long duration = System.currentTimeMillis() - startTime;
+MPLog.v(LOGTAG, "Operation took: " + duration + "ms");
+```
+
+## Network Debugging
+
+**LOG** all network operations:
+```java
+// Request details
+MPLog.v(LOGTAG, "POST " + url);
+MPLog.v(LOGTAG, "Payload: " + data);
+MPLog.v(LOGTAG, "Content-Length: " + data.length());
+
+// Response details
+MPLog.v(LOGTAG, "Response: " + connection.getResponseCode());
+MPLog.v(LOGTAG, "Response message: " + connection.getResponseMessage());
+
+// Error stream
+if (responseCode >= 400) {
+    String error = readStream(connection.getErrorStream());
+    MPLog.e(LOGTAG, "Error response: " + error);
+}
+```
+
+## Testing Utilities
+
+### Force Operations
+
+```java
+// Force immediate flush
+public void forceFlush() {
+    MPLog.v(LOGTAG, "Forcing flush");
+    Message msg = Message.obtain();
+    msg.what = FLUSH_QUEUE;
+    msg.arg1 = 1; // Force flag
+    mWorker.runMessage(msg);
+}
+
+// Clear all data
+public void clearAllData() {
+    MPLog.w(LOGTAG, "Clearing all data!");
+    mDbAdapter.deleteDB();
+    mPersistentIdentity.clearPreferences();
+}
+```
+
+### State Inspection
+
+```java
+// Dump current state
+public void dumpState() {
+    MPLog.v(LOGTAG, "=== Mixpanel State Dump ===");
+    MPLog.v(LOGTAG, "Token: " + mToken);
+    MPLog.v(LOGTAG, "Distinct ID: " + getDistinctId());
+    MPLog.v(LOGTAG, "Events queued: " + getEventCount());
+    MPLog.v(LOGTAG, "People queued: " + getPeopleCount());
+    MPLog.v(LOGTAG, "Opted out: " + hasOptedOut());
+    MPLog.v(LOGTAG, "========================");
+}
+```
+
+## Production Debugging
+
+**NEVER** leave debug code in production:
+```java
+// Remove before release
+// MPLog.setLevel(MPLog.LogLevel.VERBOSE);
+// TEMP_DEBUG = false;
+// Remove force methods
+```

@@ -1,0 +1,179 @@
+# Code Quality Standards - Mixpanel Android SDK
+
+**Description**: Quality standards for maintainable, performant SDK code
+**Glob**: src/main/java/**/*.java
+
+## Defensive Programming
+
+**ALWAYS** validate inputs without throwing exceptions:
+```java
+// CORRECT
+public void track(String eventName, JSONObject properties) {
+    if (eventName == null || eventName.length() == 0) {
+        MPLog.e(LOGTAG, "Invalid event name");
+        return;
+    }
+    // Process event
+}
+
+// INCORRECT
+public void track(String eventName, JSONObject properties) {
+    Objects.requireNonNull(eventName); // Throws NPE
+}
+```
+
+## Memory Management
+
+**ALWAYS** use WeakReference for callbacks and activities:
+```java
+// CORRECT
+private final WeakReference<Activity> mActivity;
+
+public void performAction() {
+    Activity activity = mActivity.get();
+    if (activity != null && !activity.isFinishing()) {
+        // Use activity
+    }
+}
+
+// INCORRECT
+private final Activity mActivity; // Strong reference
+```
+
+## Immutability
+
+**ALWAYS** make data objects immutable:
+```java
+// CORRECT
+public static final class EventDescription {
+    private final String eventName;
+    private final JSONObject properties;
+    
+    public EventDescription(String eventName, JSONObject properties) {
+        this.eventName = eventName;
+        this.properties = properties;
+    }
+    
+    // Only getters, no setters
+}
+
+// INCORRECT
+public class EventDescription {
+    private String eventName;
+    public void setEventName(String name) { } // Mutable
+}
+```
+
+## Performance
+
+**ALWAYS** use lazy initialization for expensive objects:
+```java
+// CORRECT
+private MPDbAdapter mDb;
+
+private MPDbAdapter getDb() {
+    if (mDb == null) {
+        mDb = new MPDbAdapter(mContext);
+    }
+    return mDb;
+}
+
+// INCORRECT
+public MixpanelAPI(Context context) {
+    mDb = new MPDbAdapter(context); // Eager initialization
+}
+```
+
+**ALWAYS** batch database operations:
+```java
+// CORRECT
+db.beginTransaction();
+try {
+    for (Event event : events) {
+        db.insert(...);
+    }
+    db.setTransactionSuccessful();
+} finally {
+    db.endTransaction();
+}
+
+// INCORRECT
+for (Event event : events) {
+    db.insert(...); // Individual transactions
+}
+```
+
+## JSON Handling
+
+**ALWAYS** handle JSONException gracefully:
+```java
+// CORRECT
+try {
+    properties.put("key", value);
+} catch (JSONException e) {
+    MPLog.e(LOGTAG, "Failed to add property", e);
+}
+
+// INCORRECT
+properties.put("key", value); // Uncaught exception
+```
+
+## Logging
+
+**ALWAYS** use MPLog for debugging:
+```java
+// CORRECT
+MPLog.v(LOGTAG, "Processing event: " + eventName);
+
+// INCORRECT
+System.out.println("Processing event: " + eventName);
+Log.d("MixpanelAPI", "Processing event: " + eventName);
+```
+
+## Static Nested Classes
+
+**ALWAYS** use static nested classes for data holders:
+```java
+// CORRECT
+public static class EventDescription {
+    // No implicit reference to outer class
+}
+
+// INCORRECT
+public class EventDescription {
+    // Holds reference to outer class
+}
+```
+
+## Method Length
+
+**ALWAYS** keep methods focused and short:
+```java
+// CORRECT
+public void track(String event, JSONObject properties) {
+    validateEvent(event);
+    enrichProperties(properties);
+    queueEvent(event, properties);
+}
+
+private void validateEvent(String event) { }
+private void enrichProperties(JSONObject properties) { }
+private void queueEvent(String event, JSONObject properties) { }
+
+// INCORRECT - Method doing too much
+public void track(String event, JSONObject properties) {
+    // 100+ lines of validation, enrichment, queuing
+}
+```
+
+## No Reflection
+
+**NEVER** use reflection for core functionality:
+```java
+// INCORRECT
+Method method = obj.getClass().getMethod("track", String.class);
+method.invoke(obj, "event");
+
+// CORRECT
+obj.track("event");
+```

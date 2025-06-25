@@ -1,0 +1,79 @@
+{
+  "name": "Mixpanel Android SDK - GitHub Codespaces",
+  "image": "mcr.microsoft.com/devcontainers/java:1-17",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "username": "vscode",
+      "userUid": 1000,
+      "userGid": 1000
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/CASL0/devcontainer-features/android-sdk:1": {
+      "buildToolsVersion": "34.0.0",
+      "platformVersion": "34",
+      "cmdlineToolsVersion": "11076708"
+    }
+  },
+  
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.jdt.ls.java.home": "/usr/lib/jvm/msopenjdk-17-amd64",
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-17",
+            "path": "/usr/lib/jvm/msopenjdk-17-amd64",
+            "default": true
+          }
+        ],
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.formatOnSave": true,
+        "editor.rulers": [120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
+      },
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "naco-siren.gradle-language",
+        "redhat.java",
+        "eamodio.gitlens",
+        "EditorConfig.EditorConfig"
+      ]
+    },
+    "codespaces": {
+      "openInClient": "vscode"
+    }
+  },
+  
+  "forwardPorts": [5037],
+  "portsAttributes": {
+    "5037": {
+      "label": "ADB Server",
+      "onAutoForward": "notify",
+      "protocol": "tcp"
+    }
+  },
+  
+  "remoteEnv": {
+    "ANDROID_HOME": "/usr/local/lib/android/sdk",
+    "ANDROID_SDK_ROOT": "/usr/local/lib/android/sdk",
+    "PATH": "${containerEnv:PATH}:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin",
+    "GRADLE_USER_HOME": "/workspace/.gradle"
+  },
+  
+  "hostRequirements": {
+    "cpus": 8,
+    "memory": "16gb",
+    "storage": "64gb"
+  },
+  
+  "updateRemoteUserUID": true,
+  "remoteUser": "vscode"
+}

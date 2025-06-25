@@ -1,0 +1,144 @@
+name: "Copilot Setup Steps"
+
+# This workflow defines the setup steps for GitHub Copilot's ephemeral development environment
+# It runs on workflow dispatch and when this file is changed to validate the configuration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest  # Android SDK builds require Linux
+    
+    permissions:
+      contents: read  # Required for checkout
+    
+    # Allow up to 30 minutes for the full Android SDK setup and dependency installation
+    timeout-minutes: 30
+    
+    steps:
+      # Check out repository code
+      # No Git LFS needed (no .gitattributes file detected)
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper Gradle builds
+      
+      # Set up Java 17 as required by the project
+      # build.gradle specifies JavaVersion.VERSION_17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+      
+      # Set up Android SDK
+      # Required for building the Android library and running instrumented tests
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'  # Latest stable
+      
+      # Cache Gradle dependencies and build outputs
+      # Significantly speeds up subsequent builds
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            build
+            mixpaneldemo/build
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      # Install Android SDK components
+      # Matches compileSdk 34 and build tools from build.gradle
+      - name: Install Android SDK components
+        run: |
+          echo "Installing Android SDK components..."
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "extras;google;m2repository" \
+            "extras;android;m2repository"
+      
+      # Grant execute permission to Gradle wrapper
+      # Required for running Gradle commands
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      
+      # Download dependencies and verify setup
+      # This pre-downloads all dependencies to speed up development
+      - name: Download dependencies
+        run: |
+          ./gradlew dependencies --no-daemon
+          ./gradlew :mixpaneldemo:dependencies --no-daemon
+      
+      # Run a quick build to verify everything is set up correctly
+      # This catches any configuration issues early
+      - name: Verify build setup
+        run: ./gradlew assembleDebug --no-daemon
+      
+      # Install additional development tools
+      # These tools are referenced in CLAUDE.md and improve the development experience
+      - name: Install development tools
+        run: |
+          # Install ripgrep for fast code searching (preferred over grep)
+          curl -LO https://github.com/BurntSushi/ripgrep/releases/download/14.1.0/ripgrep_14.1.0-1_amd64.deb
+          sudo dpkg -i ripgrep_14.1.0-1_amd64.deb
+          
+          # Install fd for fast file finding (preferred over find)
+          curl -LO https://github.com/sharkdp/fd/releases/download/v9.0.0/fd_9.0.0_amd64.deb
+          sudo dpkg -i fd_9.0.0_amd64.deb
+          
+          # Install bat for better file viewing (preferred over cat)
+          curl -LO https://github.com/sharkdp/bat/releases/download/v0.24.0/bat_0.24.0_amd64.deb
+          sudo dpkg -i bat_0.24.0_amd64.deb
+          
+          # Clean up downloaded packages
+          rm -f *.deb
+      
+      # Set up environment for running instrumented tests
+      # The SDK uses instrumented tests exclusively (no unit tests)
+      - name: Set up test environment
+        run: |
+          # Create AVD directory if it doesn't exist
+          mkdir -p ~/.android/avd
+          
+          # Set environment variables for Android testing
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> $GITHUB_ENV
+      
+      # Pre-compile test classes to catch issues early
+      # This ensures the test environment is properly configured
+      - name: Compile test classes
+        run: |
+          ./gradlew compileDebugAndroidTestSources --no-daemon
+          ./gradlew :mixpaneldemo:compileDebugAndroidTestSources --no-daemon
+      
+      # Print environment information for debugging
+      # Helpful for troubleshooting setup issues
+      - name: Print environment info
+        run: |
+          echo "Java version:"
+          java -version
+          echo ""
+          echo "Gradle version:"
+          ./gradlew --version
+          echo ""
+          echo "Android SDK location:"
+          echo $ANDROID_HOME
+          echo ""
+          echo "Installed SDK packages:"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list_installed
