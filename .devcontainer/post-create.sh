@@ -70,6 +70,13 @@ if [ -n "$ANDROID_HOME" ]; then
     export ANDROID_SDK_ROOT="$ANDROID_HOME"
     export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"
     
+    # Fix Android SDK directory permissions
+    if [ -d "$ANDROID_HOME" ]; then
+        echo "  Fixing Android SDK directory permissions..."
+        sudo chown -R vscode:vscode "$ANDROID_HOME"
+        sudo chmod -R 755 "$ANDROID_HOME"
+    fi
+    
     # Accept licenses and install required components
     if command -v sdkmanager &> /dev/null; then
         echo "  Accepting Android licenses..."
@@ -90,6 +97,13 @@ fi
 
 # Setup Gradle
 echo "📦 Setting up Gradle..."
+# Ensure Gradle directory has correct permissions
+if [ -d "/home/vscode/.gradle" ]; then
+    echo "  Fixing Gradle directory permissions..."
+    sudo chown -R vscode:vscode /home/vscode/.gradle
+    sudo chmod -R 755 /home/vscode/.gradle
+fi
+
 if [ -f "./gradlew" ]; then
     chmod +x ./gradlew
     # Test Java is available
