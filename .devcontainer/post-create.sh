@@ -53,6 +53,11 @@ if [ ! -f ~/.zshrc ] || ! grep -q "starship init" ~/.zshrc; then
     echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 fi
 
+# Setup Java environment
+echo "☕ Setting up Java environment..."
+export JAVA_HOME="/usr/lib/jvm/msopenjdk-21-amd64"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 # Setup Gradle
 echo "📦 Setting up Gradle..."
 if [ -f "./gradlew" ]; then
@@ -60,6 +65,12 @@ if [ -f "./gradlew" ]; then
     ./gradlew --version
     # Pre-download dependencies
     ./gradlew dependencies --no-daemon || true
+fi
+
+# Add Java configuration to shell profile
+if ! grep -q "JAVA_HOME" ~/.zshrc; then
+    echo "export JAVA_HOME=/usr/lib/jvm/msopenjdk-21-amd64" >> ~/.zshrc
+    echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> ~/.zshrc
 fi
 
 # Create helper scripts
@@ -94,6 +105,7 @@ chmod +x ~/connect-adb.sh
 echo ""
 echo "🔍 Environment verification:"
 echo "  Java version: $(java -version 2>&1 | head -n 1)"
+echo "  Java Home: $JAVA_HOME"
 echo "  Gradle wrapper: $(./gradlew --version 2>/dev/null | grep 'Gradle' | head -n 1 || echo 'Not found in current directory')"
 echo "  Android SDK: $ANDROID_HOME"
 echo "  ADB: $(which adb 2>/dev/null || echo 'Not found')"

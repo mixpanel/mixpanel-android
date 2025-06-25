@@ -1,6 +1,6 @@
 {
   "name": "Mixpanel Android SDK - GitHub Codespaces",
-  "image": "mcr.microsoft.com/devcontainers/java:1-17",
+  "image": "mcr.microsoft.com/devcontainers/java:1-21",
   
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -24,11 +24,11 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "java.jdt.ls.java.home": "/usr/lib/jvm/msopenjdk-17-amd64",
+        "java.jdt.ls.java.home": "/usr/lib/jvm/msopenjdk-21-amd64",
         "java.configuration.runtimes": [
           {
-            "name": "JavaSE-17",
-            "path": "/usr/lib/jvm/msopenjdk-17-amd64",
+            "name": "JavaSE-21",
+            "path": "/usr/lib/jvm/msopenjdk-21-amd64",
             "default": true
           }
         ],
