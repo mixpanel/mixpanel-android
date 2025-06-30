@@ -45,6 +45,7 @@ jobs:
           echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> ~/.gradle/gradle.properties
           echo "signing.password=$SIGNING_PASSWORD" >> ~/.gradle/gradle.properties
           echo "signing.secretKeyRingFile=$HOME/.gnupg/secring.gpg" >> ~/.gradle/gradle.properties
+          mkdir -p ~/.gnupg
           echo "$SIGNING_KEY" | base64 --decode > ~/.gnupg/secring.gpg
           
       - name: Configure Portal credentials
@@ -83,7 +84,7 @@ jobs:
           
           # Call the manual upload endpoint
           curl -X POST \
-            -H "Authorization: Bearer $AUTH_HEADER" \
+            -H "Authorization: Basic $AUTH_HEADER" \
             "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}"
           
       - name: Summary

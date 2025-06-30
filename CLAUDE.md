@@ -97,6 +97,11 @@ The SDK now publishes via the new Maven Central Portal (replacing OSSRH):
      centralPortalToken=<your-token-username>
      centralPortalPassword=<your-token-password>
      ```
+   - **Security Note**: For enhanced security, consider using encrypted storage options instead of plain text:
+     - Environment variables: `export CENTRAL_PORTAL_TOKEN=...`
+     - gradle-credentials-plugin for encrypted storage
+     - System keychain integration (e.g., macOS Keychain, Windows Credential Store)
+     - CI/CD secret management systems
 
 2. **Publishing Process**:
    - The release script uses the OSSRH Staging API for compatibility
