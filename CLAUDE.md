@@ -8,9 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build the library
 ./gradlew build
 
-# Run unit tests
-./gradlew test
-
 # Run instrumented tests (requires Android device/emulator)
 ./gradlew connectedAndroidTest
 
@@ -38,9 +35,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No unit tests**: The SDK uses instrumented tests only for real device validation
 - **Instrumented tests**: Located in `/src/androidTest/` (require Android device/emulator)
   - Use AndroidJUnit4 runner
-  - Test pattern: `./gradlew connectedAndroidTest --tests "*TestClassName*"`
   - BlockingQueue pattern for async testing
   - TestUtils provides mock implementations
+
+### Test Commands
+
+```bash
+# Run all instrumented tests
+./gradlew connectedAndroidTest
+
+# Run specific test class (use -P flag for instrumentation arguments)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.HttpTest
+
+# Run specific test method
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.HttpTest#testRequestWithRetry
+
+# Run tests excluding a specific class
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.notClass=com.mixpanel.android.mpmetrics.HttpTest
+
+# Run tests with coverage report
+./gradlew createDebugCoverageReport
+
+# Clean and run tests
+./gradlew clean connectedAndroidTest
+```
+
+**Note**: The instrumentation runner arguments use fully qualified class names (not wildcards). The syntax is `-Pandroid.testInstrumentationRunnerArguments.class=<fully.qualified.ClassName>` for running specific tests.
 
 ## Architecture Overview
 

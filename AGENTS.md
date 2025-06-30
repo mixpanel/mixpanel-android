@@ -139,6 +139,13 @@ Before submitting any PR, you MUST:
 ```bash
 # Run all instrumented tests (requires device/emulator)
 ./gradlew connectedAndroidTest
+
+# Run specific test class
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+
+# Run specific test method
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testEventQueuing
+
 # All tests must pass
 ```
 

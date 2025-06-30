@@ -280,8 +280,11 @@ public void testBulkEventPerformance() {
 # Run all tests
 ./gradlew connectedAndroidTest
 
-# Run specific test class
-./gradlew connectedAndroidTest --tests="*.MixpanelBasicTest"
+# Run specific test class (use full class name)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+
+# Run specific test method
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testEventQueuing
 
 # Run with coverage
 ./gradlew createDebugCoverageReport

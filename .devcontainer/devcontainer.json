@@ -16,7 +16,10 @@
       "userGid": 1000
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/akhildevelops/devcontainer-features/android-cli:0": {}
+    "ghcr.io/akhildevelops/devcontainer-features/android-cli:0": {},
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    }
   },
   
   "postCreateCommand": "bash .devcontainer/post-create.sh",
@@ -53,8 +56,7 @@
   "portsAttributes": {
     "5037": {
       "label": "ADB Server",
-      "onAutoForward": "notify",
-      "protocol": "tcp"
+      "onAutoForward": "notify"
     }
   },
   

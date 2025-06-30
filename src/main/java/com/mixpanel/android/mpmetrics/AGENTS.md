@@ -116,13 +116,16 @@ This directory contains the heart of the Mixpanel Android SDK:
 For ANY change in this directory:
 
 ```bash
-# Minimum test run
-./gradlew connectedAndroidTest --tests "com.mixpanel.android.mpmetrics.*"
+# Minimum test run - all tests
+./gradlew connectedAndroidTest
 
-# Specific component tests
-./gradlew connectedAndroidTest --tests "*MixpanelBasicTest"
-./gradlew connectedAndroidTest --tests "*MPDbAdapterTest"
-./gradlew connectedAndroidTest --tests "*AnalyticsMessagesTest"
+# Specific component tests (use full class names)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MPDbAdapterTest
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.AnalyticsMessagesTest
+
+# Run specific test method
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testTrackCharge
 ```
 
 ## Do NOT Modify Without Approval

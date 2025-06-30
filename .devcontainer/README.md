@@ -30,8 +30,12 @@ This approach provides the best performance since Codespaces don't support hardw
    # Start Android emulator or connect device
    adb start-server
    
-   # Connect to Codespace with ADB tunnel
-   gh cs ssh -c YOUR_CODESPACE_NAME -- -R 5037:localhost:5037
+   # List your codespaces to get the full name
+   gh cs list
+   
+   # Connect to Codespace with ADB tunnel (use full codespace name)
+   gh cs ssh -c FULL_CODESPACE_NAME -- -R 5037:localhost:5037
+   # Example: gh cs ssh -c verbose-winner-gg9r5vqp7gc9pw4 -- -R 5037:localhost:5037
    ```
 
 3. **In the Codespace terminal**:
@@ -44,6 +48,9 @@ This approach provides the best performance since Codespaces don't support hardw
    
    # Run instrumented tests
    ./gradlew connectedAndroidTest
+   
+   # Run specific test class
+   ./gradlew connectedAndroidTest --tests "*MixpanelBasicTest"
    ```
 
 ## Configuration Details
@@ -76,9 +83,12 @@ For faster Codespace creation, configure prebuilds in your repository settings:
 ### ADB Connection Issues
 If `adb devices` shows no devices:
 1. Ensure emulator/device is running locally
-2. Run `adb start-server` locally
-3. Check the SSH tunnel is active
-4. Try `adb kill-server` and `adb start-server` in Codespace
+2. Run `adb start-server` locally  
+3. Make sure you're using the full codespace name (use `gh cs list` to find it)
+4. Check the SSH tunnel is active
+5. Try `adb kill-server` and `adb start-server` in Codespace
+
+Note: The error "Failed to start Emulator console for 5554" is harmless and can be ignored.
 
 ### Build Issues
 - Clear Gradle cache: `./gradlew clean`
@@ -91,6 +101,39 @@ If `adb devices` shows no devices:
 2. **Build locally**: `./gradlew assembleDebug`
 3. **Run tests**: `./gradlew connectedAndroidTest`
 4. **Install on device**: `./gradlew installDebug`
+
+### Running the Demo App
+
+```bash
+# Build and install the demo app
+./gradlew :mixpaneldemo:installDebug
+
+# Launch the demo app
+adb shell am start -n com.mixpanel.mixpaneldemo/.MainActivity
+
+# Or do both in one command
+./gradlew :mixpaneldemo:installDebug && adb shell am start -n com.mixpanel.mixpaneldemo/.MainActivity
+```
+
+### Viewing Logs
+
+```bash
+# View Mixpanel SDK logs
+adb logcat -s MixpanelAPI:*
+
+# View all demo app logs
+adb logcat | grep com.mixpanel.mixpaneldemo
+```
+
+### Opening Codespace in Different IDEs
+
+```bash
+# Open in VS Code (default)
+gh cs code -c FULL_CODESPACE_NAME
+
+# Open in JetBrains IDE (requires JetBrains Gateway)
+gh cs code -c FULL_CODESPACE_NAME --ide jetbrains
+```
 
 ## Notes
 
