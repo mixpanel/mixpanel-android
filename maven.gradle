@@ -201,9 +201,17 @@ tasks.named('signReleasePublication') {
 }
 
 def getRepositoryUsername() {
+    // Support both old OSSRH credentials and new Portal tokens
+    if (hasProperty('centralPortalToken')) {
+        return centralPortalToken
+    }
     return hasProperty('sonatypeUsername') ? sonatypeUsername : ""
 }
 
 def getRepositoryPassword() {
+    // Support both old OSSRH credentials and new Portal tokens
+    if (hasProperty('centralPortalPassword')) {
+        return centralPortalPassword
+    }
     return hasProperty('sonatypePassword') ? sonatypePassword : ""
 }

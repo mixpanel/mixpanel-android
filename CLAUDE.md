@@ -84,6 +84,30 @@ The project uses semantic versioning (X.Y.Z) and publishes to Maven Central:
 - Release script: `./release.sh [version]`
 - Published as: `com.mixpanel.android:mixpanel-android:X.Y.Z`
 
+### Maven Central Portal Setup
+
+The SDK now publishes via the new Maven Central Portal (replacing OSSRH):
+
+1. **Generate Portal Tokens**:
+   - Log in to https://central.sonatype.com with your OSSRH credentials
+   - Navigate to your account settings
+   - Generate a user token (username and password pair)
+   - Store these securely in `~/.gradle/gradle.properties`:
+     ```
+     centralPortalToken=<your-token-username>
+     centralPortalPassword=<your-token-password>
+     ```
+
+2. **Publishing Process**:
+   - The release script uses the OSSRH Staging API for compatibility
+   - After running `./release.sh`, deployments appear at https://central.sonatype.com/publishing/deployments
+   - Manual release to Maven Central is required from the Portal UI
+
+3. **GitHub Actions**:
+   - Portal tokens should be stored as repository secrets:
+     - `CENTRAL_PORTAL_TOKEN` (the token username)
+     - `CENTRAL_PORTAL_PASSWORD` (the token password)
+
 ## Project Configuration
 
 - Min SDK: 21

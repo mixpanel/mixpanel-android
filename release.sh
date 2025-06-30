@@ -137,7 +137,7 @@ fi
 printf "\n\n${YELLOW}Pushing changes...${NC}\n"
 git commit -am "New release: $releaseVersion"
 # push changes
-git push origin $releaseBranchx
+git push origin $releaseBranch
 
 # create new tag
 newTag=v$releaseVersion
@@ -178,6 +178,6 @@ cleanUp
 printf "\n${GREEN}All done! ¯\_(ツ)_/¯ \n"
 printf "Make sure you make a new release at https://github.com/mixpanel/mixpanel-android/releases/new\n"
 printf "Also, do not forget to update our CHANGELOG (https://github.com/mixpanel/mixpanel-android/wiki/Changelog)\n"
-printf "And finally, release the library from https://oss.sonatype.org/index.html\n\n${NC}"
+printf "And finally, release the library from https://central.sonatype.com/publishing/deployments\n\n${NC}"
 
 quit

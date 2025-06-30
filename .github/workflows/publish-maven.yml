@@ -1,0 +1,100 @@
+name: Publish to Maven Central
+
+on:
+  workflow_dispatch:
+    inputs:
+      publishing_type:
+        description: 'Publishing type for the deployment'
+        required: true
+        default: 'user_managed'
+        type: choice
+        options:
+          - user_managed
+          - automatic
+          - portal_api
+      version_override:
+        description: 'Version to publish (leave empty to use gradle.properties VERSION_NAME)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    name: Publish to Maven Central Portal
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+        
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        
+      - name: Configure signing
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> ~/.gradle/gradle.properties
+          echo "signing.password=$SIGNING_PASSWORD" >> ~/.gradle/gradle.properties
+          echo "signing.secretKeyRingFile=$HOME/.gnupg/secring.gpg" >> ~/.gradle/gradle.properties
+          echo "$SIGNING_KEY" | base64 --decode > ~/.gnupg/secring.gpg
+          
+      - name: Configure Portal credentials
+        env:
+          CENTRAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+        run: |
+          echo "centralPortalToken=$CENTRAL_TOKEN" >> ~/.gradle/gradle.properties
+          echo "centralPortalPassword=$CENTRAL_PASSWORD" >> ~/.gradle/gradle.properties
+          
+      - name: Override version if specified
+        if: inputs.version_override != ''
+        run: |
+          sed -i "s/VERSION_NAME=.*/VERSION_NAME=${{ inputs.version_override }}/" gradle.properties
+          echo "Updated version to: ${{ inputs.version_override }}"
+          
+      - name: Build artifacts
+        run: |
+          ./gradlew clean build
+          ./gradlew androidJavadocsJar androidSourcesJar
+          
+      - name: Publish to Maven Central Portal
+        run: ./gradlew publishRelease
+        
+      - name: Upload to Portal with publishing type
+        if: inputs.publishing_type != 'user_managed'
+        env:
+          CENTRAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+        run: |
+          # Get the namespace from gradle.properties
+          NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
+          
+          # Create basic auth header
+          AUTH_HEADER=$(echo -n "$CENTRAL_TOKEN:$CENTRAL_PASSWORD" | base64)
+          
+          # Call the manual upload endpoint
+          curl -X POST \
+            -H "Authorization: Bearer $AUTH_HEADER" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}"
+          
+      - name: Summary
+        run: |
+          echo "## Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Publishing Type**: ${{ inputs.publishing_type }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.publishing_type }}" == "user_managed" ]; then
+            echo "- **Next Steps**: Go to https://central.sonatype.com/publishing/deployments to manually release" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ inputs.publishing_type }}" == "automatic" ]; then
+            echo "- **Status**: Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: Deployment uploaded, use Portal API to check status" >> $GITHUB_STEP_SUMMARY
+          fi
