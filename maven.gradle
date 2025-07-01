@@ -123,14 +123,9 @@ publishing {
 
     repositories {
         maven {
-            url = uri(RELEASE_REPOSITORY_URL)
-            credentials {
-                username = getRepositoryUsername()
-                password = getRepositoryPassword()
-            }
-        }
-        maven {
-            url = uri(SNAPSHOT_REPOSITORY_URL)
+            def releasesRepoUrl = uri(RELEASE_REPOSITORY_URL)
+            def snapshotsRepoUrl = uri(SNAPSHOT_REPOSITORY_URL)
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             credentials {
                 username = getRepositoryUsername()
                 password = getRepositoryPassword()
@@ -140,6 +135,7 @@ publishing {
 }
 
 signing {
+    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publishReleasePublicationToMavenRepository") }
     sign publishing.publications.release
 }
 
