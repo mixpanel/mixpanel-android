@@ -188,6 +188,10 @@ git add .
 git commit -m "Update documentation for $releaseVersion"
 git push origin gh-pages
 
+printf "\n${YELLOW}Checking out $releaseBranch to update snapshot version...${NC}\n"
+git checkout $releaseBranch
+git pull origin $releaseBranch
+
 # update next snapshot version
 printf "\n${YELLOW}Updating next snapshot version...${NC}\n"
 sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
