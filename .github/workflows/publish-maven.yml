@@ -52,11 +52,11 @@ jobs:
           
       - name: Configure Portal credentials
         env:
-          CENTRAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
-          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          CENTRAL_PORTAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
         run: |
-          echo "centralPortalToken=$CENTRAL_TOKEN" >> ~/.gradle/gradle.properties
-          echo "centralPortalPassword=$CENTRAL_PASSWORD" >> ~/.gradle/gradle.properties
+          echo "centralPortalToken=$CENTRAL_PORTAL_TOKEN" >> ~/.gradle/gradle.properties
+          echo "centralPortalPassword=$CENTRAL_PORTAL_PASSWORD" >> ~/.gradle/gradle.properties
           
       - name: Override version if specified
         if: inputs.version_override != ''
@@ -74,14 +74,14 @@ jobs:
         
       - name: Upload to Maven Central Portal
         env:
-          CENTRAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
-          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          CENTRAL_PORTAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
         run: |
           # Get the namespace from gradle.properties
           NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
           
           # Create Bearer auth token (as per docs)
-          AUTH_TOKEN=$(echo -n "$CENTRAL_TOKEN:$CENTRAL_PASSWORD" | base64)
+          AUTH_TOKEN=$(echo -n "$CENTRAL_PORTAL_TOKEN:$CENTRAL_PORTAL_PASSWORD" | base64)
           
           # Call the manual upload endpoint
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
