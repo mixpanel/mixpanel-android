@@ -170,7 +170,6 @@ The SDK now publishes via the new Maven Central Portal (replacing OSSRH):
 - Prepared statements for performance
 - Automatic cleanup based on data age
 
-For detailed patterns and examples, see:
-- `.claude/context/discovered-patterns.md`
-- `.claude/context/architecture/system-design.md`
-- `.claude/context/workflows/`
+## Memories
+
+- Ensured CLAUDE.md accurately reflects the most recent changes

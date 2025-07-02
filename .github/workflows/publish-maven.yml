@@ -11,7 +11,6 @@ on:
         options:
           - user_managed
           - automatic
-          - portal_api
       version_override:
         description: 'Version to publish (leave empty to use gradle.properties VERSION_NAME)'
         required: false
@@ -70,8 +69,7 @@ jobs:
       - name: Publish to Maven Central Portal
         run: ./gradlew publishRelease
         
-      - name: Upload to Portal with publishing type
-        if: inputs.publishing_type != 'user_managed'
+      - name: Upload to Maven Central Portal
         env:
           CENTRAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
@@ -79,23 +77,49 @@ jobs:
           # Get the namespace from gradle.properties
           NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
           
-          # Create basic auth header
-          AUTH_HEADER=$(echo -n "$CENTRAL_TOKEN:$CENTRAL_PASSWORD" | base64)
+          # Create Bearer auth token (as per docs)
+          AUTH_TOKEN=$(echo -n "$CENTRAL_TOKEN:$CENTRAL_PASSWORD" | base64)
           
           # Call the manual upload endpoint
-          curl -X POST \
-            -H "Authorization: Basic $AUTH_HEADER" \
-            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $AUTH_TOKEN" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "204" ]; then
+            echo "Error: Portal upload failed with HTTP $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          echo "Success! Deployment uploaded to Portal."
           
       - name: Summary
         run: |
+          VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
           echo "## Publishing Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "- **Publishing Type**: ${{ inputs.publishing_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.publishing_type }}" == "user_managed" ]; then
-            echo "- **Next Steps**: Go to https://central.sonatype.com/publishing/deployments to manually release" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ inputs.publishing_type }}" == "automatic" ]; then
-            echo "- **Status**: Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "1. Go to [Maven Central Portal Deployments](https://central.sonatype.com/publishing/deployments)" >> $GITHUB_STEP_SUMMARY
+            echo "2. Find your deployment (version $VERSION)" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review and click 'Publish' to release to Maven Central" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⏱️ **Timeline**:" >> $GITHUB_STEP_SUMMARY
+            echo "- Validation: 15-30 minutes" >> $GITHUB_STEP_SUMMARY
+            echo "- Portal search: 1-2 hours" >> $GITHUB_STEP_SUMMARY
+            echo "- Maven Central sync: 2-4 hours" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- **Status**: Deployment uploaded, use Portal API to check status" >> $GITHUB_STEP_SUMMARY
+            echo "### Status" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⏱️ **Timeline**:" >> $GITHUB_STEP_SUMMARY
+            echo "- Validation and release: 15-30 minutes" >> $GITHUB_STEP_SUMMARY
+            echo "- Portal search: 1-2 hours" >> $GITHUB_STEP_SUMMARY
+            echo "- Maven Central sync: 2-4 hours" >> $GITHUB_STEP_SUMMARY
           fi
