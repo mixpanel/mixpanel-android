@@ -84,9 +84,23 @@ The project uses semantic versioning (X.Y.Z) and publishes to Maven Central:
 - Release script: `./release.sh [version]`
 - Published as: `com.mixpanel.android:mixpanel-android:X.Y.Z`
 
+### Automated Release Process
+The `release.sh` script handles the complete release workflow:
+1. Updates version in gradle.properties and README.md
+2. Builds and publishes artifacts to OSSRH staging
+3. Automatically uploads to Maven Central Portal (requires env vars)
+4. Creates git tag and updates documentation
+5. Updates to next snapshot version
+
+**Required Environment Variables**:
+```bash
+export CENTRAL_PORTAL_TOKEN=<your-portal-username>
+export CENTRAL_PORTAL_PASSWORD=<your-portal-password>
+```
+
 ### Maven Central Portal Setup
 
-The SDK now publishes via the new Maven Central Portal (replacing OSSRH):
+The SDK publishes via the new Maven Central Portal:
 
 1. **Generate Portal Tokens**:
    - Log in to https://central.sonatype.com with your OSSRH credentials
@@ -104,14 +118,27 @@ The SDK now publishes via the new Maven Central Portal (replacing OSSRH):
      - CI/CD secret management systems
 
 2. **Publishing Process**:
-   - The release script uses the OSSRH Staging API for compatibility
-   - After running `./release.sh`, deployments appear at https://central.sonatype.com/publishing/deployments
-   - Manual release to Maven Central is required from the Portal UI
+   - Artifacts are uploaded to OSSRH staging API: `https://ossrh-staging-api.central.sonatype.com/`
+   - The Portal upload is triggered via the manual API endpoint
+   - Deployments appear at https://central.sonatype.com/publishing/deployments
+   - Manual release to Maven Central is required from the Portal UI (unless using automatic publishing)
 
 3. **GitHub Actions**:
+   - Use the `publish-maven.yml` workflow for automated publishing
    - Portal tokens should be stored as repository secrets:
      - `CENTRAL_PORTAL_TOKEN` (the token username)
      - `CENTRAL_PORTAL_PASSWORD` (the token password)
+   - Publishing types available:
+     - `user_managed`: Manual release from Portal UI (default)
+     - `automatic`: Auto-release if validation passes
+
+4. **Manual Portal Upload** (if automation fails):
+   ```bash
+   AUTH_TOKEN=$(echo -n "username:password" | base64)
+   curl -X POST \
+     -H "Authorization: Bearer $AUTH_TOKEN" \
+     "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.mixpanel.android?publishing_type=user_managed"
+   ```
 
 ## Project Configuration
 

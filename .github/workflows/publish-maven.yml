@@ -16,6 +16,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     name: Publish to Maven Central Portal
