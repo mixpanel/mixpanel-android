@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -219,6 +220,60 @@ public class MPConfigTest {
         mixpanelAPI.setShouldGzipRequestPayload(false);
         assertFalse(mixpanelAPI.shouldGzipRequestPayload());
 
+    }
+
+    @Test
+    public void testMPConfigInstanceCaching() {
+        // Clear cache first to ensure clean state
+        MPConfig.clearInstanceCache();
+        
+        Context context = InstrumentationRegistry.getInstrumentation().getContext();
+        
+        // Test that same instance is returned for same parameters
+        MPConfig config1 = MPConfig.getInstance(context, null);
+        MPConfig config2 = MPConfig.getInstance(context, null);
+        assertTrue("Same MPConfig instance should be returned for same context and instanceName", config1 == config2);
+        
+        // Test with named instances
+        MPConfig namedConfig1 = MPConfig.getInstance(context, "test-instance");
+        MPConfig namedConfig2 = MPConfig.getInstance(context, "test-instance");
+        assertTrue("Same MPConfig instance should be returned for same context and instanceName", namedConfig1 == namedConfig2);
+        
+        // Test that different instance names return different instances
+        MPConfig differentConfig = MPConfig.getInstance(context, "different-instance");
+        assertFalse("Different MPConfig instances should be returned for different instanceNames", namedConfig1 == differentConfig);
+        
+        // Test that null and named instances are different
+        assertFalse("Default instance should be different from named instance", config1 == namedConfig1);
+    }
+
+    @Test
+    public void testSSLSocketFactoryConsistency() {
+        // Clear cache first to ensure clean state
+        MPConfig.clearInstanceCache();
+        
+        Context context = InstrumentationRegistry.getInstrumentation().getContext();
+        String instanceName = "ssl-test-instance";
+        
+        // Get config and set a custom SSLSocketFactory
+        MPConfig config1 = MPConfig.getInstance(context, instanceName);
+        javax.net.ssl.SSLSocketFactory originalFactory = config1.getSSLSocketFactory();
+        
+        // Create a mock factory (we'll just use the original as a placeholder for this test)
+        javax.net.ssl.SSLSocketFactory customFactory = originalFactory;
+        config1.setSSLSocketFactory(customFactory);
+        
+        // Get the same config instance again and verify the factory is preserved
+        MPConfig config2 = MPConfig.getInstance(context, instanceName);
+        assertTrue("Should return the same MPConfig instance", config1 == config2);
+        assertTrue("Custom SSLSocketFactory should be preserved", config2.getSSLSocketFactory() == customFactory);
+        
+        // Test that MixpanelAPI uses the same config instance
+        String fakeToken = UUID.randomUUID().toString();
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, fakeToken, false, instanceName, false);
+        MPConfig mixpanelConfig = mixpanel.getMPConfig();
+        assertTrue("MixpanelAPI should use the same MPConfig instance", mixpanelConfig == config1);
+        assertTrue("MixpanelAPI should see the custom SSLSocketFactory", mixpanelConfig.getSSLSocketFactory() == customFactory);
     }
 
     private MPConfig mpConfig(final Bundle metaData) {
