@@ -105,7 +105,7 @@ public class MPConfig {
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 
     // Cache for MPConfig instances to ensure the same instance is returned for the same context + instanceName combination
-    private static final Map<String, MPConfig> sInstanceCache = new ConcurrentHashMap<String, MPConfig>();
+    private static final Map<String, MPConfig> sInstanceCache = new ConcurrentHashMap<>();
     
     // Lock object for synchronizing cache operations
     private static final Object sInstanceCacheLock = new Object();
