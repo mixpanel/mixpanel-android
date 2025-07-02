@@ -136,22 +136,7 @@ public class MPConfig {
         final String packageName = appContext.getPackageName();
         final String cacheKey = packageName + ":" + (instanceName != null ? instanceName : "default");
         
-        MPConfig cachedInstance = sInstanceCache.get(cacheKey);
-        if (cachedInstance != null) {
-            return cachedInstance;
-        }
-        
-        synchronized (sInstanceCacheLock) {
-            // Double-check locking pattern
-            cachedInstance = sInstanceCache.get(cacheKey);
-            if (cachedInstance != null) {
-                return cachedInstance;
-            }
-            
-            cachedInstance = readConfig(appContext, instanceName);
-            sInstanceCache.put(cacheKey, cachedInstance);
-            return cachedInstance;
-        }
+        return sInstanceCache.computeIfAbsent(cacheKey, key -> readConfig(appContext, instanceName));
     }
 
     /**
