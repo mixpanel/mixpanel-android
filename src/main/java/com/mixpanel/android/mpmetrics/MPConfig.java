@@ -16,6 +16,7 @@ import com.mixpanel.android.util.OfflineMode;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
@@ -103,27 +104,54 @@ public class MPConfig {
     // Name for persistent storage of app referral SharedPreferences
     /* package */ static final String REFERRER_PREFS_NAME = "com.mixpanel.android.mpmetrics.ReferralInfo";
 
+    // Cache for MPConfig instances to ensure the same instance is returned for the same context + instanceName combination
+    private static final Map<String, MPConfig> sInstanceCache = new ConcurrentHashMap<String, MPConfig>();
+    
+    // Lock object for synchronizing cache operations
+    private static final Object sInstanceCacheLock = new Object();
+
     /**
-     * Retrieves a new instance of MPConfig with configuration settings loaded from the provided context.
-     * This method creates a new instance each time it is called, allowing for multiple configurations
-     * within the same application.
+     * Retrieves an instance of MPConfig with configuration settings loaded from the provided context.
+     * Since version 7.4.0, this method now caches instances based on the context package name and 
+     * instance name combination, ensuring that the same MPConfig instance is returned for identical 
+     * parameters. This change addresses issues where setting properties like SSLSocketFactory on 
+     * retrieved instances would not affect the instances used internally by MixpanelAPI.
      *
-     * Since version 7.4.0, MPConfig is no longer a Singleton, in favor of supporting multiple,
-     * distinct configurations for different Mixpanel instances. This change allows greater flexibility
-     * in scenarios where different parts of an application require different Mixpanel configurations,
-     * such as different endpoints or settings.
+     * The caching behavior allows for multiple configurations within the same application while 
+     * ensuring consistency between instances retrieved by user code and those used internally.
+     * Each unique combination of application context and instance name will result in a single,
+     * shared MPConfig instance.
      *
-     * It's important for users of this method to manage the lifecycle of the returned MPConfig instances
-     * themselves. Each call will result in a new configuration instance based on the application's
-     * metadata, and it's the responsibility of the caller to maintain any necessary references to these
-     * instances to use them later in their application.
+     * It's important for users of this method to understand that the returned MPConfig instances
+     * are now cached and shared. Changes made to configuration properties will affect all code
+     * that retrieves the same instance.
      *
      * @param context The context used to load Mixpanel configuration. It's recommended to provide
      *                an ApplicationContext to avoid potential memory leaks.
-     * @return A new instance of MPConfig with settings loaded from the context's application metadata.
+     * @param instanceName The instance name for this configuration. Use null for default instance.
+     * @return A cached instance of MPConfig with settings loaded from the context's application metadata.
      */
     public static MPConfig getInstance(Context context, @Nullable String instanceName) {
-        return readConfig(context.getApplicationContext(), instanceName);
+        final Context appContext = context.getApplicationContext();
+        final String packageName = appContext.getPackageName();
+        final String cacheKey = packageName + ":" + (instanceName != null ? instanceName : "default");
+        
+        MPConfig cachedInstance = sInstanceCache.get(cacheKey);
+        if (cachedInstance != null) {
+            return cachedInstance;
+        }
+        
+        synchronized (sInstanceCacheLock) {
+            // Double-check locking pattern
+            cachedInstance = sInstanceCache.get(cacheKey);
+            if (cachedInstance != null) {
+                return cachedInstance;
+            }
+            
+            cachedInstance = readConfig(appContext, instanceName);
+            sInstanceCache.put(cacheKey, cachedInstance);
+            return cachedInstance;
+        }
     }
 
     /**
@@ -469,6 +497,13 @@ public class MPConfig {
             return new MPConfig(configBundle, appContext, instanceName);
         } catch (final NameNotFoundException e) {
             throw new RuntimeException("Can't configure Mixpanel with package name " + packageName, e);
+        }
+    }
+
+    // Package access for testing only- clears the instance cache
+    /* package */ static void clearInstanceCache() {
+        synchronized (sInstanceCacheLock) {
+            sInstanceCache.clear();
         }
     }
 
