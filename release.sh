@@ -128,6 +128,39 @@ if ! ./gradlew publishRelease ; then
     abort
 fi
 
+# Upload to Maven Central Portal
+printf "\n${YELLOW}Uploading to Maven Central Portal...${NC}\n"
+
+# Check for Portal credentials
+if [ -z "$CENTRAL_PORTAL_TOKEN" ] || [ -z "$CENTRAL_PORTAL_PASSWORD" ]; then
+    printf "${RED}Error: CENTRAL_PORTAL_TOKEN and CENTRAL_PORTAL_PASSWORD environment variables must be set${NC}\n"
+    printf "${ORANGE}Please set these variables and run the manual upload command:\n"
+    printf "curl -X POST -H \"Authorization: Bearer \$(echo -n \"TOKEN:PASSWORD\" | base64)\" \\\n"
+    printf "  \"https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.mixpanel.android?publishing_type=user_managed\"${NC}\n\n"
+    abort
+fi
+
+# Create auth token
+AUTH_TOKEN=$(echo -n "$CENTRAL_PORTAL_TOKEN:$CENTRAL_PORTAL_PASSWORD" | base64)
+
+# Upload to Portal
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+  -H "Authorization: Bearer $AUTH_TOKEN" \
+  "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.mixpanel.android?publishing_type=user_managed")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+BODY=$(echo "$RESPONSE" | sed '$d')
+
+if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "204" ]; then
+    printf "${RED}Error: Portal upload failed with HTTP $HTTP_CODE${NC}\n"
+    printf "${ORANGE}Response: $BODY${NC}\n"
+    printf "\n${ORANGE}The artifacts were published to staging, but not uploaded to the Portal.\n"
+    printf "You can manually upload using the command above.${NC}\n\n"
+    abort
+fi
+
+printf "${GREEN}Success! Deployment uploaded to Portal.${NC}\n"
+
 read -r -p "Continue pushing to github? [y/n]: " key
 if ! [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
     abort
@@ -137,7 +170,7 @@ fi
 printf "\n\n${YELLOW}Pushing changes...${NC}\n"
 git commit -am "New release: $releaseVersion"
 # push changes
-git push origin $releaseBranchx
+git push origin $releaseBranch
 
 # create new tag
 newTag=v$releaseVersion
@@ -155,6 +188,10 @@ git add .
 git commit -m "Update documentation for $releaseVersion"
 git push origin gh-pages
 
+printf "\n${YELLOW}Checking out $releaseBranch to update snapshot version...${NC}\n"
+git checkout $releaseBranch
+git pull origin $releaseBranch
+
 # update next snapshot version
 printf "\n${YELLOW}Updating next snapshot version...${NC}\n"
 sed -i.bak 's,^\(VERSION_NAME=\).*,\1'$nextSnapshotVersion',' gradle.properties
@@ -164,7 +201,7 @@ printf '\n\n\n'
 read -r -p "Does this look right to you and the github action 'Release' has finished? [y/n]: " key
 if [[ "$key" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
     git pull
-    git commit -am "Update master with next snasphot version $nextSnapshotVersion"
+    git commit -am "Update master with next snapshot version $nextSnapshotVersion"
     git push origin master
 else
     printf "${ORANGE}Make sure to update gradle.properties manually.${NC}\n"
@@ -178,6 +215,6 @@ cleanUp
 printf "\n${GREEN}All done! ¯\_(ツ)_/¯ \n"
 printf "Make sure you make a new release at https://github.com/mixpanel/mixpanel-android/releases/new\n"
 printf "Also, do not forget to update our CHANGELOG (https://github.com/mixpanel/mixpanel-android/wiki/Changelog)\n"
-printf "And finally, release the library from https://oss.sonatype.org/index.html\n\n${NC}"
+printf "And finally, release the library from https://central.sonatype.com/publishing/deployments\n\n${NC}"
 
 quit
