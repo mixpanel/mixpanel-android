@@ -9,6 +9,7 @@ import org.json.JSONObject;
 interface FeatureFlagDelegate {
     MPConfig getMPConfig();
     String getDistinctId();
+    String getAnonymousId();
     void track(String eventName, JSONObject properties);
     String getToken();
 }

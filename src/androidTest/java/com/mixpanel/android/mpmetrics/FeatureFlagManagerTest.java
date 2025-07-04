@@ -74,6 +74,7 @@ public class FeatureFlagManagerTest {
     private static class MockFeatureFlagDelegate implements FeatureFlagDelegate {
         MPConfig configToReturn;
         String distinctIdToReturn = TEST_DISTINCT_ID;
+        String anonymousIdToReturn = "test_anonymous_id";
         String tokenToReturn = TEST_TOKEN;
         List<TrackCall> trackCalls = new ArrayList<>();
         CountDownLatch trackCalledLatch; // Optional: for tests waiting for track
@@ -99,6 +100,11 @@ public class FeatureFlagManagerTest {
         @Override
         public String getDistinctId() {
             return distinctIdToReturn;
+        }
+
+        @Override
+        public String getAnonymousId() {
+            return anonymousIdToReturn;
         }
 
         @Override
@@ -940,6 +946,11 @@ public class FeatureFlagManagerTest {
         assertEquals("Context should contain correct distinct_id", 
                      "test_user_123", requestContext.getString("distinct_id"));
         
+        // Verify device_id is in the context
+        assertTrue("Context should contain device_id", requestContext.has("device_id"));
+        assertEquals("Context should contain correct device_id", 
+                     "test_anonymous_id", requestContext.getString("device_id"));
+        
         // Verify the context contains the expected properties from FlagsConfig
         assertEquals("Context should contain $os", "Android", requestContext.getString("$os"));
         assertEquals("Context should contain $os_version", "13", requestContext.getString("$os_version"));
@@ -962,8 +973,9 @@ public class FeatureFlagManagerTest {
         // Setup with flags enabled but null context
         setupFlagsConfig(true, null);
         
-        // Set distinct ID
+        // Set distinct ID and anonymous ID
         mMockDelegate.distinctIdToReturn = "user_456";
+        mMockDelegate.anonymousIdToReturn = "device_789";
         
         // Create response
         Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
@@ -987,9 +999,13 @@ public class FeatureFlagManagerTest {
         // Verify distinct_id is in context
         assertEquals("Context should contain correct distinct_id", "user_456", requestContext.getString("distinct_id"));
         
-        // When FlagsConfig context is null, the context object should only contain distinct_id
-        assertEquals("Context should only contain distinct_id when FlagsConfig context is null", 
-                     1, requestContext.length());
+        // Verify device_id is in context
+        assertTrue("Context should contain device_id", requestContext.has("device_id"));
+        assertEquals("Context should contain correct device_id", "device_789", requestContext.getString("device_id"));
+        
+        // When FlagsConfig context is null, the context object should only contain distinct_id and device_id
+        assertEquals("Context should only contain distinct_id and device_id when FlagsConfig context is null", 
+                     2, requestContext.length());
     }
     
     @Test
@@ -999,6 +1015,7 @@ public class FeatureFlagManagerTest {
         
         // Set empty distinct ID
         mMockDelegate.distinctIdToReturn = "";
+        mMockDelegate.anonymousIdToReturn = "device_empty_test";
         
         // Create response
         Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
@@ -1022,6 +1039,10 @@ public class FeatureFlagManagerTest {
         // Verify distinct_id is included in context even when empty
         assertTrue("Context should contain distinct_id field", requestContext.has("distinct_id"));
         assertEquals("Context should contain empty distinct_id", "", requestContext.getString("distinct_id"));
+        
+        // Verify device_id is included in context
+        assertTrue("Context should contain device_id field", requestContext.has("device_id"));
+        assertEquals("Context should contain correct device_id", "device_empty_test", requestContext.getString("device_id"));
     }
 
     @Test
@@ -1114,9 +1135,11 @@ public class FeatureFlagManagerTest {
         JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
         JSONObject requestContext = requestBody.getJSONObject("context");
         
-        // Context should only contain distinct_id when initial context is empty
-        assertEquals("Context should only contain distinct_id", 1, requestContext.length());
+        // Context should only contain distinct_id and device_id when initial context is empty
+        assertEquals("Context should only contain distinct_id and device_id", 2, requestContext.length());
         assertEquals("distinct_id should be present", "test_user", requestContext.getString("distinct_id"));
+        assertTrue("device_id should be present", requestContext.has("device_id"));
+        assertEquals("device_id should be present", "test_anonymous_id", requestContext.getString("device_id"));
     }
     
     @Test

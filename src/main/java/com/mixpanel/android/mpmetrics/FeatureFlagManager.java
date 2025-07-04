@@ -444,6 +444,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
         final MPConfig config = delegate.getMPConfig();
         final String distinctId = delegate.getDistinctId();
+        final String deviceId = delegate.getAnonymousId();
 
         if (distinctId == null) {
             MPLog.w(LOGTAG, "Distinct ID is null. Cannot fetch flags.");
@@ -456,6 +457,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             // 1. Build Request Body JSON
             JSONObject contextJson = new JSONObject(mFlagsConfig.context.toString());
             contextJson.put("distinct_id", distinctId);
+            contextJson.put("device_id", deviceId);
             JSONObject requestJson = new JSONObject();
             requestJson.put("context", contextJson);
             String requestJsonString = requestJson.toString();
