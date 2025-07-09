@@ -457,7 +457,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             // 1. Build Request Body JSON
             JSONObject contextJson = new JSONObject(mFlagsConfig.context.toString());
             contextJson.put("distinct_id", distinctId);
-            contextJson.put("device_id", deviceId);
+            if (deviceId != null) {
+                contextJson.put("device_id", deviceId);
+            }
             JSONObject requestJson = new JSONObject();
             requestJson.put("context", contextJson);
             String requestJsonString = requestJson.toString();
