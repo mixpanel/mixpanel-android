@@ -459,6 +459,18 @@ public class FeatureFlagManagerTest {
         assertEquals("$experiment_started", call.eventName);
         assertEquals("track_flag_sync", call.properties.getString("Experiment name"));
         assertEquals("v_track_sync", call.properties.getString("Variant name"));
+        assertEquals("feature_flag", call.properties.getString("$experiment_type"));
+
+        // Verify that timing properties are included
+        assertTrue("timeLastFetched should be present", call.properties.has("timeLastFetched"));
+        assertTrue("fetchLatencyMs should be present", call.properties.has("fetchLatencyMs"));
+
+        // Verify that timing values are reasonable
+        long timeLastFetched = call.properties.getLong("timeLastFetched");
+        long fetchLatencyMs = call.properties.getLong("fetchLatencyMs");
+        assertTrue("timeLastFetched should be positive", timeLastFetched > 0);
+        assertTrue("fetchLatencyMs should be non-negative", fetchLatencyMs >= 0);
+        assertTrue("fetchLatencyMs should be reasonable (< 5 seconds)", fetchLatencyMs < 5000);
     }
 
     @Test

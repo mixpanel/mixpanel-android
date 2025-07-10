@@ -49,6 +49,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     private final Set<String> mTrackedFlags = new HashSet<>();
     private boolean mIsFetching = false;
     private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
+    // Track last fetch time and latency for $experiment_started event
+    private volatile long mTimeLastFetched = 0L;
+    private volatile long mFetchLatencyMs = 0L;
     // ---
 
     // Message codes for Handler
@@ -430,6 +433,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
      * back to the mHandler thread via MSG_COMPLETE_FETCH.
      */
     private void _performFetchRequest() {
+        long fetchStart = System.currentTimeMillis();
         MPLog.v(LOGTAG, "Performing fetch request on thread: " + Thread.currentThread().getName());
         boolean success = false;
         JSONObject responseJson = null; // To hold parsed successful response
@@ -531,6 +535,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             MPLog.e(LOGTAG, errorMessage, e);
         }
 
+        long fetchEnd = System.currentTimeMillis();
+        mTimeLastFetched = fetchEnd;
+        mFetchLatencyMs = fetchEnd - fetchStart;
         // 6. Post result back to Handler thread
         postResultToHandler(success, responseJson, errorMessage);
     }
@@ -629,6 +636,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             properties.put("Experiment name", flagName);
             properties.put("Variant name", variant.key); // Use the variant key
             properties.put("$experiment_type", "feature_flag");
+            properties.put("timeLastFetched", mTimeLastFetched);
+            properties.put("fetchLatencyMs", mFetchLatencyMs);
         } catch (JSONException e) {
             MPLog.e(LOGTAG, "Failed to create JSON properties for $experiment_started event", e);
             return; // Don't track if properties failed
