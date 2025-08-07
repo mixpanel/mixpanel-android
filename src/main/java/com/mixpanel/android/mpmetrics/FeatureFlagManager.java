@@ -57,11 +57,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    */
   private static class FetchTiming {
     private static final long NEVER_FETCHED = -1L;
-    private static final long MAX_REASONABLE_LATENCY_MS = 60000L; // 60 seconds
 
     final long timeLastFetched;
     final long fetchLatencyMs;
 
+    /**
+     * Creates a FetchTiming instance.
+     *
+     * @param timeLastFetched Absolute timestamp from System.currentTimeMillis()
+     * @param fetchLatencyMs Elapsed time in milliseconds (should be calculated using
+     *     System.nanoTime())
+     */
     private FetchTiming(long timeLastFetched, long fetchLatencyMs) {
       this.timeLastFetched = timeLastFetched;
       this.fetchLatencyMs = fetchLatencyMs;
@@ -69,14 +75,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     static FetchTiming neverFetched() {
       return new FetchTiming(NEVER_FETCHED, NEVER_FETCHED);
-    }
-
-    static FetchTiming create(long fetchStart, long fetchEnd) {
-      long timeLastFetched = fetchEnd;
-      // Protect against clock changes and cap at reasonable maximum
-      long latency = fetchEnd - fetchStart;
-      long fetchLatencyMs = Math.min(Math.max(0, latency), MAX_REASONABLE_LATENCY_MS);
-      return new FetchTiming(timeLastFetched, fetchLatencyMs);
     }
 
     boolean hasBeenFetched() {
@@ -261,7 +259,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             new Handler(Looper.getMainLooper())
                 .post(
                     () -> { // Block B: User completion and subsequent tracking logic, runs on Main
-                            // Thread
+                      // Thread
                       completion.onComplete(result);
                       if (flagVariant != null && needsTracking) {
                         MPLog.v(LOGTAG, "Tracking needed for '" + flagName + "'.");
@@ -311,7 +309,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                           new Handler(Looper.getMainLooper())
                               .post(
                                   () -> { // Block D: User completion and subsequent tracking, runs
-                                          // on Main Thread
+                                    // on Main Thread
                                     completion.onComplete(finalResult);
                                     if (fetchedVariant != null && tracked) {
                                       _performTrackingDelegateCall(flagName, finalResult);
@@ -491,7 +489,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * MSG_COMPLETE_FETCH.
    */
   private void _performFetchRequest() {
-    long fetchStart = System.currentTimeMillis();
+    long fetchStartNanos = System.nanoTime(); // For measuring elapsed time
+    long fetchStartMillis = System.currentTimeMillis(); // For absolute timestamp
     MPLog.v(LOGTAG, "Performing fetch request on thread: " + Thread.currentThread().getName());
     boolean success = false;
     JSONObject responseJson = null; // To hold parsed successful response
@@ -593,9 +592,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       MPLog.e(LOGTAG, errorMessage, e);
     }
 
-    long fetchEnd = System.currentTimeMillis();
-    // Update fetch timing atomically
-    mFetchTiming = FetchTiming.create(fetchStart, fetchEnd);
+    long fetchEndNanos = System.nanoTime();
+    long fetchEndMillis = System.currentTimeMillis();
+
+    // Calculate latency using nanoTime (convert to milliseconds)
+    long fetchLatencyMs = (fetchEndNanos - fetchStartNanos) / 1_000_000;
+
+    // Update fetch timing atomically with absolute timestamp and accurate latency
+    mFetchTiming = new FetchTiming(fetchEndMillis, fetchLatencyMs);
     // 6. Post result back to Handler thread
     postResultToHandler(success, responseJson, errorMessage);
   }
