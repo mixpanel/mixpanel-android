@@ -18,7 +18,10 @@ jobs:
         api-level: 34
         profile: Nexus 5X 
         arch: x86_64
-        script: ./gradlew createDebugCoverageReport
+        script: |
+          adb wait-for-device
+          adb shell 'while [[ $(getprop sys.boot_completed) != "1" ]]; do sleep 1; done;'
+          ./gradlew createDebugCoverageReport
     - name: Lint
       run:  ./gradlew lint
     - name: Upload test report
