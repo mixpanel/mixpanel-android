@@ -276,18 +276,20 @@ public void testBulkEventPerformance() {
 
 ## Running Tests
 
+**IMPORTANT**: Run tests from the main module (not :mixpaneldemo). Use `:connectedAndroidTest` to run tests from the library module.
+
 ```bash
-# Run all tests
-./gradlew connectedAndroidTest
+# Run all tests (from main module)
+./gradlew :connectedAndroidTest
 
-# Run specific test class
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+# Run specific test class (from main module)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
 
-# Run specific test method within a class
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testMethodName
+# Run specific test method within a class (from main module)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testMethodName
 
-# Run multiple test methods within a class (comma-separated)
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testMethod1,testMethod2
+# Run multiple test methods within a class (comma-separated, from main module)
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testMethod1,testMethod2
 
 # Run with coverage
 ./gradlew createDebugCoverageReport

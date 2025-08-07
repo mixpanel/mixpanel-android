@@ -57,6 +57,10 @@ mWorker.runMessage(msg);
 - Use `BlockingQueue` for async verification
 - Test with real SQLite, not mocks
 - Always provide timeout for async operations
+- **IMPORTANT**: Run tests from main module using `:connectedAndroidTest`
+  - All tests: `./gradlew :connectedAndroidTest`
+  - Specific class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
+  - Specific method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
 
 ## API Design
 ```java

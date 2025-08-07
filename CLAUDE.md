@@ -38,10 +38,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No unit tests**: The SDK uses instrumented tests only for real device validation
 - **Instrumented tests**: Located in `/src/androidTest/` (require Android device/emulator)
   - Use AndroidJUnit4 runner
-  - Run all tests: `./gradlew connectedAndroidTest`
-  - Run specific test class: `./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
-  - Run specific test method: `./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
-  - Run multiple test methods: `./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2`
+  - **IMPORTANT**: Run tests from the main module (not :mixpaneldemo) using `:connectedAndroidTest`
+  - Run all tests: `./gradlew :connectedAndroidTest`
+  - Run specific test class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
+  - Run specific test method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
+  - Run multiple test methods: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2`
   - BlockingQueue pattern for async testing
   - TestUtils provides mock implementations
 
