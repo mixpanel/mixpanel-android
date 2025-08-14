@@ -146,11 +146,8 @@ public void testDatabaseOperations() throws Exception {
 # Run all tests in this directory
 ./gradlew connectedAndroidTest
 
-# Run specific test class (use full class name)
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
-
-# Run specific test method
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testEventQueuing
+# Run specific test class
+./gradlew connectedAndroidTest --tests "*.MixpanelBasicTest"
 
 # Run with coverage
 ./gradlew createDebugCoverageReport

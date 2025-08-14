@@ -62,45 +62,6 @@ mWorker.runMessage(msg);
   - Specific class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
   - Specific method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
 
-### Test Commands
-```bash
-# Run all instrumented tests
-./gradlew connectedAndroidTest
-
-# Run specific test class (use full class name)
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
-
-# Run specific test method
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testEventQueuing
-
-# Run tests with coverage
-./gradlew createDebugCoverageReport
-```
-
-### Test Pattern Example
-```java
-@RunWith(AndroidJUnit4.class)
-@LargeTest
-public class FeatureTest {
-    private BlockingQueue<String> mMessages;
-    
-    @Before
-    public void setUp() {
-        mMessages = new LinkedBlockingQueue<>();
-        // Setup test instance
-    }
-    
-    @Test
-    public void testAsyncOperation() throws Exception {
-        // Perform operation
-        mMixpanel.track("Event");
-        
-        // Wait for async completion
-        String message = mMessages.poll(2, TimeUnit.SECONDS);
-        assertNotNull("Should receive message", message);
-    }
-}
-
 ## API Design
 ```java
 // Progressive disclosure through overloading
