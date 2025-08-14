@@ -32,7 +32,6 @@ public class HttpService implements RemoteService {
   private final boolean shouldGzipRequestPayload;
   private final MixpanelNetworkErrorListener networkErrorListener;
   private final String failoverBaseUrl;
-  private boolean shouldUseFailover = false;
 
   private static boolean sIsMixpanelBlocked;
   private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
@@ -154,6 +153,7 @@ public class HttpService implements RemoteService {
     byte[] response = null;
     int retries = 0;
     boolean succeeded = false;
+    boolean primaryFailed = false;
 
     while (retries < 3 && !succeeded) {
       InputStream in = null;
@@ -168,8 +168,9 @@ public class HttpService implements RemoteService {
 
       try {
         // --- Connection Setup ---
+        // Use failover URL if primary has failed and failover is configured
         String requestUrl =
-            shouldUseFailover && failoverBaseUrl != null
+            (primaryFailed && failoverBaseUrl != null && !failoverBaseUrl.trim().isEmpty())
                 ? getUrlWithFailoverHost(endpointUrl)
                 : endpointUrl;
 
@@ -210,7 +211,7 @@ public class HttpService implements RemoteService {
 
         // Apply proxy headers AFTER custom headers
         if (interactor != null && isProxyRequest(endpointUrl)) {
-            /* ... Apply proxy headers ... */
+          /* ... Apply proxy headers ... */
           Map<String, String> proxyHeaders = interactor.getProxyRequestHeaders();
           if (proxyHeaders != null) {
             for (Map.Entry<String, String> entry : proxyHeaders.entrySet()) {
@@ -286,6 +287,9 @@ public class HttpService implements RemoteService {
         } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE
             && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
           // Report error via listener before throwing
+          ServiceUnavailableException serviceException =
+              new ServiceUnavailableException(
+                  "Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After"));
           onNetworkError(
               connection,
               endpointUrl,
@@ -293,12 +297,19 @@ public class HttpService implements RemoteService {
               startTimeNanos,
               uncompressedBodySize,
               compressedBodySize,
-              new ServiceUnavailableException(
-                  "Service Unavailable: " + responseCode,
-                  connection.getHeaderField("Retry-After")));
-          // Now throw the exception
-          throw new ServiceUnavailableException(
-              "Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After"));
+              serviceException);
+
+          // If we haven't tried failover yet and it's configured, retry with failover
+          if (!primaryFailed && failoverBaseUrl != null && !failoverBaseUrl.trim().isEmpty()) {
+            primaryFailed = true;
+            MPLog.d(
+                LOGTAG, "Primary endpoint returned 5xx error, will try failover on next attempt");
+            retries++;
+            // Continue the loop to retry with failover
+          } else {
+            // Throw the exception if no failover or failover also failed
+            throw serviceException;
+          }
         } else { // Other errors (4xx etc.)
           MPLog.w(
               LOGTAG,
@@ -343,6 +354,11 @@ public class HttpService implements RemoteService {
             compressedBodySize,
             e);
         MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying request to " + endpointUrl);
+        // Mark primary as failed if we haven't switched to failover yet
+        if (!primaryFailed && failoverBaseUrl != null && !failoverBaseUrl.trim().isEmpty()) {
+          primaryFailed = true;
+          MPLog.d(LOGTAG, "Primary endpoint failed, will try failover on next attempt");
+        }
         retries++;
       } catch (final IOException e) { // Includes ServiceUnavailableException if thrown above
         // Report error via listener
@@ -354,8 +370,19 @@ public class HttpService implements RemoteService {
             uncompressedBodySize,
             compressedBodySize,
             e);
-        // Re-throw the original exception
-        throw e;
+
+        // If we haven't tried failover yet and it's configured, retry with failover
+        if (!primaryFailed && failoverBaseUrl != null && !failoverBaseUrl.trim().isEmpty()) {
+          primaryFailed = true;
+          MPLog.d(
+              LOGTAG,
+              "Primary endpoint failed with IOException, will try failover on next attempt");
+          retries++;
+          // Continue the loop to retry with failover
+        } else {
+          // Re-throw the original exception if no failover or failover also failed
+          throw e;
+        }
       } catch (final Exception e) { // Catch any other unexpected exceptions
         // Report error via listener
         onNetworkError(

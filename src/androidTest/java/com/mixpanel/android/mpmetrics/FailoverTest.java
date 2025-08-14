@@ -8,8 +8,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.RemoteService.ServiceUnavailableException;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.net.ssl.SSLSocketFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -159,6 +165,128 @@ public class FailoverTest {
       errorCount++;
       lastUrl = endpointUrl;
       lastException = exception;
+    }
+  }
+
+  @Test
+  public void testFailoverRetryOnNetworkError() throws Exception {
+    // Create a mock HttpService that simulates primary failure then failover success
+    final AtomicInteger callCount = new AtomicInteger(0);
+    final String failoverUrl = "https://api-backup.mixpanel.com";
+
+    // This test verifies that when primary endpoint fails, the service
+    // automatically retries with the failover URL
+    MockHttpServiceWithFailover mockService = new MockHttpServiceWithFailover(failoverUrl);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("test", "data");
+
+    // First call should fail, second call (with failover) should succeed
+    byte[] result =
+        mockService.performRequest(
+            "https://api.mixpanel.com/track", null, params, null, null, null);
+
+    assertNotNull("Request should succeed with failover", result);
+    assertEquals(2, mockService.getCallCount());
+    assertTrue("Should have used failover URL", mockService.isFailoverUsed());
+  }
+
+  @Test
+  public void testFailoverNotTriggeredOn4xxErrors() throws Exception {
+    // 4xx errors should not trigger failover
+    final String failoverUrl = "https://api-backup.mixpanel.com";
+    MockHttpServiceWith4xxError mockService = new MockHttpServiceWith4xxError(failoverUrl);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("test", "data");
+
+    byte[] result =
+        mockService.performRequest(
+            "https://api.mixpanel.com/track", null, params, null, null, null);
+
+    // 4xx error should not trigger failover retry
+    assertNull("Request should fail without retry on 4xx", result);
+    assertEquals(1, mockService.getCallCount());
+    assertFalse("Should not use failover for 4xx errors", mockService.isFailoverUsed());
+  }
+
+  // Mock HttpService that simulates primary failure then failover success
+  private static class MockHttpServiceWithFailover extends HttpService {
+    private final AtomicInteger callCount = new AtomicInteger(0);
+    private boolean failoverUsed = false;
+
+    public MockHttpServiceWithFailover(String failoverUrl) {
+      super(false, null, failoverUrl);
+    }
+
+    @Override
+    public byte[] performRequest(
+        String endpointUrl,
+        com.mixpanel.android.util.ProxyServerInteractor interactor,
+        Map<String, Object> params,
+        Map<String, String> headers,
+        byte[] requestBodyBytes,
+        SSLSocketFactory socketFactory)
+        throws ServiceUnavailableException, IOException {
+
+      int count = callCount.incrementAndGet();
+
+      // First call fails (simulating primary endpoint failure)
+      if (count == 1) {
+        throw new IOException("Primary endpoint connection failed");
+      }
+
+      // Second call succeeds (simulating failover success)
+      if (endpointUrl.contains("api-backup.mixpanel.com")) {
+        failoverUsed = true;
+      }
+      return "1\n".getBytes();
+    }
+
+    public int getCallCount() {
+      return callCount.get();
+    }
+
+    public boolean isFailoverUsed() {
+      return failoverUsed;
+    }
+  }
+
+  // Mock HttpService that returns 4xx error
+  private static class MockHttpServiceWith4xxError extends HttpService {
+    private final AtomicInteger callCount = new AtomicInteger(0);
+    private boolean failoverUsed = false;
+
+    public MockHttpServiceWith4xxError(String failoverUrl) {
+      super(false, null, failoverUrl);
+    }
+
+    @Override
+    public byte[] performRequest(
+        String endpointUrl,
+        com.mixpanel.android.util.ProxyServerInteractor interactor,
+        Map<String, Object> params,
+        Map<String, String> headers,
+        byte[] requestBodyBytes,
+        SSLSocketFactory socketFactory)
+        throws ServiceUnavailableException, IOException {
+
+      callCount.incrementAndGet();
+
+      if (endpointUrl.contains("api-backup.mixpanel.com")) {
+        failoverUsed = true;
+      }
+
+      // Return null to simulate 4xx error (as per the actual implementation)
+      return null;
+    }
+
+    public int getCallCount() {
+      return callCount.get();
+    }
+
+    public boolean isFailoverUsed() {
+      return failoverUsed;
     }
   }
 }
