@@ -31,7 +31,7 @@ public class HttpService implements RemoteService {
 
   private final boolean shouldGzipRequestPayload;
   private final MixpanelNetworkErrorListener networkErrorListener;
-  private String backupHost;
+  private String mBackupHost;
 
   private static boolean sIsMixpanelBlocked;
   private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
@@ -44,7 +44,7 @@ public class HttpService implements RemoteService {
       String backupHost) {
     this.shouldGzipRequestPayload = shouldGzipRequestPayload;
     this.networkErrorListener = networkErrorListener;
-    this.backupHost = backupHost;
+    this.mBackupHost = backupHost;
   }
 
   public HttpService(
@@ -57,7 +57,7 @@ public class HttpService implements RemoteService {
   }
 
   public void setBackupHost(String backupHost) {
-    this.backupHost = backupHost;
+    this.mBackupHost = backupHost;
   }
 
   @Override
@@ -154,8 +154,8 @@ public class HttpService implements RemoteService {
             endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
 
     // On failure, try backup if configured
-    if (response == null && backupHost != null && !backupHost.isEmpty()) {
-      String backupUrl = replaceHost(endpointUrl, backupHost);
+    if (response == null && mBackupHost != null && !mBackupHost.isEmpty()) {
+      String backupUrl = replaceHost(endpointUrl, mBackupHost);
       MPLog.v(LOGTAG, "Primary request failed, trying backup: " + backupUrl);
       response =
           performRequestInternal(
@@ -245,7 +245,7 @@ public class HttpService implements RemoteService {
 
         // Apply proxy headers AFTER custom headers
         if (interactor != null && isProxyRequest(endpointUrl)) {
-            /* ... Apply proxy headers ... */
+          /* ... Apply proxy headers ... */
           Map<String, String> proxyHeaders = interactor.getProxyRequestHeaders();
           if (proxyHeaders != null) {
             for (Map.Entry<String, String> entry : proxyHeaders.entrySet()) {

@@ -167,7 +167,7 @@ import org.json.JSONObject;
     return MPDbAdapter.getInstance(context, mConfig);
   }
 
-  private HttpService mHttpService;
+  private volatile HttpService mHttpService;
 
   protected RemoteService getPoster() {
     if (mHttpService == null) {
@@ -735,7 +735,7 @@ import org.json.JSONObject;
       4; // push anonymous people DB updates to people DB
   private static final int KILL_WORKER =
       5; // Hard-kill the worker thread, discarding all events on the event queue. This is for
-         // testing, or disasters.
+  // testing, or disasters.
   private static final int EMPTY_QUEUES =
       6; // Remove any local (and pending to be flushed) events or people/group updates from the db
   private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
