@@ -193,6 +193,35 @@ public class BackupHostTest {
         "host1.com".equals(finalHost) || "host2.com".equals(finalHost));
   }
 
+  /** Test the public MixpanelAPI.setBackupHost() runtime configuration API */
+  @Test
+  public void testMixpanelAPISetBackupHost() throws Exception {
+    // Create a MixpanelAPI instance
+    MixpanelAPI mixpanel = MixpanelAPI.getInstance(mContext, "test_token", false);
+
+    // Set backup host using the public API
+    mixpanel.setBackupHost(BACKUP_HOST);
+
+    // Get the config instance via reflection to verify it was set
+    java.lang.reflect.Field configField = MixpanelAPI.class.getDeclaredField("mConfig");
+    configField.setAccessible(true);
+    MPConfig config = (MPConfig) configField.get(mixpanel);
+
+    assertEquals("Backup host should be set via MixpanelAPI", BACKUP_HOST, config.getBackupHost());
+
+    // Test updating to a different backup host
+    String newBackupHost = "secondary.backup.host";
+    mixpanel.setBackupHost(newBackupHost);
+    assertEquals("Backup host should be updated", newBackupHost, config.getBackupHost());
+
+    // Test clearing backup host
+    mixpanel.setBackupHost(null);
+    assertNull("Backup host should be cleared", config.getBackupHost());
+
+    // Clean up
+    mixpanel.flush();
+  }
+
   /** Test URL host replacement using reflection */
   @Test
   public void testHostReplacement() throws Exception {
