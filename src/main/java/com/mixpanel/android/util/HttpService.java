@@ -19,7 +19,6 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -167,14 +166,13 @@ public class HttpService implements RemoteService {
       long uncompressedBodySize = -1;
       long compressedBodySize = -1; // Only set if gzip applied to params
 
-      // Use failover URL if flag is set and we have a failover URL
-      String requestUrl =
-          (shouldUseFailover && failoverBaseUrl != null)
-              ? getUrlWithFailoverHost(endpointUrl)
-              : endpointUrl;
-
       try {
         // --- Connection Setup ---
+        String requestUrl =
+            shouldUseFailover && failoverBaseUrl != null
+                ? getUrlWithFailoverHost(endpointUrl)
+                : endpointUrl;
+
         final URL url = new URL(requestUrl);
         try { // Get IP Address for error reporting, but don't fail request if DNS fails here
           InetAddress inetAddress = InetAddress.getByName(url.getHost());
@@ -285,17 +283,12 @@ public class HttpService implements RemoteService {
           in = connection.getInputStream();
           response = slurp(in);
           succeeded = true;
-          // Reset failover flag on successful request
-          if (shouldUseFailover) {
-            shouldUseFailover = false;
-            MPLog.v(LOGTAG, "Request succeeded, resetting failover flag");
-          }
         } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE
             && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
           // Report error via listener before throwing
           onNetworkError(
               connection,
-              requestUrl,
+              endpointUrl,
               targetIpAddress,
               startTimeNanos,
               uncompressedBodySize,
@@ -309,7 +302,7 @@ public class HttpService implements RemoteService {
         } else { // Other errors (4xx etc.)
           MPLog.w(
               LOGTAG,
-              "HTTP error " + responseCode + " (" + responseMessage + ") for URL: " + requestUrl);
+              "HTTP error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
           String errorBody = null;
           try {
             in = connection.getErrorStream();
@@ -324,7 +317,7 @@ public class HttpService implements RemoteService {
           // Report error via listener
           onNetworkError(
               connection,
-              requestUrl,
+              endpointUrl,
               targetIpAddress,
               startTimeNanos,
               uncompressedBodySize,
@@ -343,19 +336,19 @@ public class HttpService implements RemoteService {
         // Report error BEFORE retry attempt
         onNetworkError(
             connection,
-            requestUrl,
+            endpointUrl,
             targetIpAddress,
             startTimeNanos,
             uncompressedBodySize,
             compressedBodySize,
             e);
-        MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying request to " + requestUrl);
+        MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying request to " + endpointUrl);
         retries++;
       } catch (final IOException e) { // Includes ServiceUnavailableException if thrown above
         // Report error via listener
         onNetworkError(
             connection,
-            requestUrl,
+            endpointUrl,
             targetIpAddress,
             startTimeNanos,
             uncompressedBodySize,
@@ -367,7 +360,7 @@ public class HttpService implements RemoteService {
         // Report error via listener
         onNetworkError(
             connection,
-            requestUrl,
+            endpointUrl,
             targetIpAddress,
             startTimeNanos,
             uncompressedBodySize,
@@ -398,8 +391,6 @@ public class HttpService implements RemoteService {
       MPLog.e(
           LOGTAG,
           "Could not complete request to " + endpointUrl + " after " + retries + " retries.");
-      // Reset failover flag for next request attempt
-      shouldUseFailover = false;
       // Optionally report final failure via listener here if desired, though individual errors were
       // already reported
       throw new IOException("Request failed after multiple retries."); // Indicate final failure
@@ -416,12 +407,6 @@ public class HttpService implements RemoteService {
       long uncompressedBodySize,
       long compressedBodySize,
       Exception e) {
-    // Set flag to use failover on next retry if we have a failover URL configured
-    if (failoverBaseUrl != null && !failoverBaseUrl.trim().isEmpty() && !shouldUseFailover) {
-      shouldUseFailover = true;
-      MPLog.v(LOGTAG, "Network error occurred, will use failover URL on next retry");
-    }
-
     if (this.networkErrorListener != null) {
       long endTimeNanos = System.nanoTime();
       long durationNanos = Math.max(0, endTimeNanos - startTimeNanos);
@@ -455,8 +440,30 @@ public class HttpService implements RemoteService {
     }
   }
 
+  private OutputStream getBufferedOutputStream(OutputStream out) throws IOException {
+    if (shouldGzipRequestPayload) {
+      return new GZIPOutputStream(new BufferedOutputStream(out), HTTP_OUTPUT_STREAM_BUFFER_SIZE);
+    } else {
+      return new BufferedOutputStream(out);
+    }
+  }
+
   private static boolean isProxyRequest(String endpointUrl) {
-    return !endpointUrl.toLowerCase(Locale.ROOT).contains(MIXPANEL_API.toLowerCase(Locale.ROOT));
+    return !endpointUrl.toLowerCase().contains(MIXPANEL_API.toLowerCase());
+  }
+
+  private static byte[] slurp(final InputStream inputStream) throws IOException {
+    final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+    int nRead;
+    byte[] data = new byte[8192];
+
+    while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+      buffer.write(data, 0, nRead);
+    }
+
+    buffer.flush();
+    return buffer.toByteArray();
   }
 
   private String getUrlWithFailoverHost(String originalUrl) {
@@ -481,21 +488,8 @@ public class HttpService implements RemoteService {
     }
   }
 
-  private static byte[] slurp(final InputStream inputStream) throws IOException {
-    final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-
-    int nRead;
-    byte[] data = new byte[8192];
-
-    while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-      buffer.write(data, 0, nRead);
-    }
-
-    buffer.flush();
-    return buffer.toByteArray();
-  }
-
   private static final String LOGTAG = "MixpanelAPI.Message";
+  private static final int HTTP_OUTPUT_STREAM_BUFFER_SIZE = 8192;
   private static final String CONTENT_ENCODING_HEADER = "Content-Encoding";
   private static final String GZIP_CONTENT_TYPE_HEADER = "gzip";
 }

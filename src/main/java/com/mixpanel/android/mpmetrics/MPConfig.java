@@ -84,10 +84,6 @@ import javax.net.ssl.SSLSocketFactory;
  *   <dt>com.mixpanel.android.MPConfig.RemoveLegacyResidualFiles
  *   <dd>A boolean value. If true, Mixpanel will remove the residual files from legacy versions such
  *       as images produced by deprecated Messages and Experiment features. Defaults to false.
- *   <dt>com.mixpanel.android.MPConfig.FailoverServerURL
- *   <dd>A string URL. If present, the library will attempt to failover to this server when the
- *       primary server fails. The host portion of this URL will be used to replace the host in the
- *       endpoint URLs during retry attempts.
  * </dl>
  */
 public class MPConfig {
@@ -294,7 +290,7 @@ public class MPConfig {
       setFlagsEndpointWithBaseURL(MPConstants.URL.MIXPANEL_API);
     }
 
-    // Read failover server URL from manifest
+    // Failover server URL configuration
     mFailoverServerURL = metaData.getString("com.mixpanel.android.MPConfig.FailoverServerURL");
 
     MPLog.v(LOGTAG, toString());
@@ -622,6 +618,7 @@ public class MPConfig {
   private String mFlagsEndpoint;
   private int mFlushBatchSize;
   private boolean shouldGzipRequestPayload;
+  private String mFailoverServerURL;
 
   private final String mResourcePackageName;
   private final int mMinSessionDuration;
@@ -632,7 +629,6 @@ public class MPConfig {
   // Mutable, with synchronized accessor and mutator
   private SSLSocketFactory mSSLSocketFactory;
   private OfflineMode mOfflineMode;
-  private String mFailoverServerURL;
   private ProxyServerInteractor serverCallbacks = null;
   private static final String LOGTAG = "MixpanelAPI.Conf";
 }

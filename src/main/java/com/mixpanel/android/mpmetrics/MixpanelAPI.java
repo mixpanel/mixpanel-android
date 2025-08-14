@@ -720,9 +720,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
   }
 
   /**
-   * Set the failover server URL for Mixpanel API requests. When the primary server fails, the SDK
-   * will automatically retry requests using this failover URL. The host portion of the failover URL
-   * will be used to replace the host in the endpoint URLs.
+   * Set a failover server URL to use when the primary Mixpanel servers are unreachable. When
+   * network errors occur with the primary servers, the SDK will automatically retry requests using
+   * this failover URL. The host portion of the failover URL will be used to replace the host in the
+   * endpoint URLs.
    *
    * @param failoverServerURL the base URL to use as a failover when the primary server fails
    */
