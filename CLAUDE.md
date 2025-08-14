@@ -8,6 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build the library
 ./gradlew build
 
+# Run unit tests
+./gradlew test
+
 # Run instrumented tests (requires Android device/emulator)
 ./gradlew connectedAndroidTest
 
@@ -35,32 +38,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No unit tests**: The SDK uses instrumented tests only for real device validation
 - **Instrumented tests**: Located in `/src/androidTest/` (require Android device/emulator)
   - Use AndroidJUnit4 runner
+  - **IMPORTANT**: Run tests from the main module (not :mixpaneldemo) using `:connectedAndroidTest`
+  - Run all tests: `./gradlew :connectedAndroidTest`
+  - Run specific test class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
+  - Run specific test method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
+  - Run multiple test methods: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2`
   - BlockingQueue pattern for async testing
   - TestUtils provides mock implementations
-
-### Test Commands
-
-```bash
-# Run all instrumented tests
-./gradlew connectedAndroidTest
-
-# Run specific test class (use -P flag for instrumentation arguments)
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.HttpTest
-
-# Run specific test method
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.HttpTest#testRequestWithRetry
-
-# Run tests excluding a specific class
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.notClass=com.mixpanel.android.mpmetrics.HttpTest
-
-# Run tests with coverage report
-./gradlew createDebugCoverageReport
-
-# Clean and run tests
-./gradlew clean connectedAndroidTest
-```
-
-**Note**: The instrumentation runner arguments use fully qualified class names (not wildcards). The syntax is `-Pandroid.testInstrumentationRunnerArguments.class=<fully.qualified.ClassName>` for running specific tests.
 
 ## Architecture Overview
 
@@ -103,6 +87,62 @@ The project uses semantic versioning (X.Y.Z) and publishes to Maven Central:
 - Version is defined in `gradle.properties` as `VERSION_NAME`
 - Release script: `./release.sh [version]`
 - Published as: `com.mixpanel.android:mixpanel-android:X.Y.Z`
+
+### Automated Release Process
+The `release.sh` script handles the complete release workflow:
+1. Updates version in gradle.properties and README.md
+2. Builds and publishes artifacts to OSSRH staging
+3. Automatically uploads to Maven Central Portal (requires env vars)
+4. Creates git tag and updates documentation
+5. Updates to next snapshot version
+
+**Required Environment Variables**:
+```bash
+export CENTRAL_PORTAL_TOKEN=<your-portal-username>
+export CENTRAL_PORTAL_PASSWORD=<your-portal-password>
+```
+
+### Maven Central Portal Setup
+
+The SDK publishes via the new Maven Central Portal:
+
+1. **Generate Portal Tokens**:
+   - Log in to https://central.sonatype.com with your OSSRH credentials
+   - Navigate to your account settings
+   - Generate a user token (username and password pair)
+   - Store these securely in `~/.gradle/gradle.properties`:
+     ```
+     centralPortalToken=<your-token-username>
+     centralPortalPassword=<your-token-password>
+     ```
+   - **Security Note**: For enhanced security, consider using encrypted storage options instead of plain text:
+     - Environment variables: `export CENTRAL_PORTAL_TOKEN=...`
+     - gradle-credentials-plugin for encrypted storage
+     - System keychain integration (e.g., macOS Keychain, Windows Credential Store)
+     - CI/CD secret management systems
+
+2. **Publishing Process**:
+   - Artifacts are uploaded to OSSRH staging API: `https://ossrh-staging-api.central.sonatype.com/`
+   - The Portal upload is triggered via the manual API endpoint
+   - Deployments appear at https://central.sonatype.com/publishing/deployments
+   - Manual release to Maven Central is required from the Portal UI (unless using automatic publishing)
+
+3. **GitHub Actions**:
+   - Use the `publish-maven.yml` workflow for automated publishing
+   - Portal tokens should be stored as repository secrets:
+     - `CENTRAL_PORTAL_TOKEN` (the token username)
+     - `CENTRAL_PORTAL_PASSWORD` (the token password)
+   - Publishing types available:
+     - `user_managed`: Manual release from Portal UI (default)
+     - `automatic`: Auto-release if validation passes
+
+4. **Manual Portal Upload** (if automation fails):
+   ```bash
+   AUTH_TOKEN=$(echo -n "username:password" | base64)
+   curl -X POST \
+     -H "Authorization: Bearer $AUTH_TOKEN" \
+     "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/com.mixpanel.android?publishing_type=user_managed"
+   ```
 
 ## Project Configuration
 
@@ -161,7 +201,6 @@ The project uses semantic versioning (X.Y.Z) and publishes to Maven Central:
 - Prepared statements for performance
 - Automatic cleanup based on data age
 
-For detailed patterns and examples, see:
-- `.claude/context/discovered-patterns.md`
-- `.claude/context/architecture/system-design.md`
-- `.claude/context/workflows/`
+## Memories
+
+- Ensured CLAUDE.md accurately reflects the most recent changes

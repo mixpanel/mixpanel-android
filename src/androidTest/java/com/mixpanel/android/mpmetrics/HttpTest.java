@@ -41,14 +41,14 @@ public class HttpTest {
   private MixpanelAPI mMetrics;
   private volatile int mFlushInterval;
   private volatile boolean mForceOverMemThreshold;
-  private static final long POLL_WAIT_MAX_MILLISECONDS = 3500;
+  private static final long POLL_WAIT_MAX_MILLISECONDS = 1000; // Reduced from 3500ms
   private static final TimeUnit DEFAULT_TIMEUNIT = TimeUnit.MILLISECONDS;
   private static final String SUCCEED_TEXT = "Should Succeed";
   private static final String FAIL_TEXT = "Should Fail";
 
   @Before
   public void setUp() {
-    mFlushInterval = 2 * 1000;
+    mFlushInterval = 100; // Reduced from 2000ms for faster tests
     mMockPreferences =
         new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext());
     mFlushResults = new ArrayList<Object>();
@@ -143,12 +143,6 @@ public class HttpTest {
           protected RemoteService getPoster() {
             return mockPoster;
           }
-
-          @Override
-          public long getTrackEngageRetryAfter() {
-            // Mock retry interval to 1000ms instead of actual exponential backoff
-            return 1000;
-          }
         };
 
     mMetrics =
@@ -164,33 +158,20 @@ public class HttpTest {
   }
 
   @Test
-  public void testHTTPFailures() {
-    try {
-      runBasicSucceed();
-      runIOException();
-      runMalformedURLException();
-      runServiceUnavailableException(null);
-      runServiceUnavailableException("10");
-      runServiceUnavailableException("40");
-      runDoubleServiceUnavailableException();
-      runBasicSucceed();
-      runMemoryTest();
-    } catch (InterruptedException e) {
-      throw new RuntimeException("Test was interrupted.");
-    }
-  }
-
-  public void runBasicSucceed() throws InterruptedException {
+  public void testBasicSucceed() throws InterruptedException {
     mCleanupCalls.clear();
     mMetrics.track(SUCCEED_TEXT, null);
     waitForFlushInternval();
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
     assertEquals(null, mPerformRequestCalls.poll());
+    // Wait a bit for cleanup to complete
+    waitForCleanup(1);
     assertEquals(1, mCleanupCalls.size());
   }
 
-  public void runIOException() throws InterruptedException {
+  @Test
+  public void testIOException() throws InterruptedException {
     mCleanupCalls.clear();
     mFlushResults.add(new IOException());
     mMetrics.track(SUCCEED_TEXT, null);
@@ -207,6 +188,7 @@ public class HttpTest {
 
     waitForBackOffTimeInterval();
 
+    waitForCleanup(1);
     assertEquals(1, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -217,12 +199,14 @@ public class HttpTest {
 
     waitForFlushInternval();
 
+    waitForCleanup(2);
     assertEquals(2, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
-  public void runMalformedURLException() throws InterruptedException {
+  @Test
+  public void testMalformedURLException() throws InterruptedException {
     mCleanupCalls.clear();
     mFlushResults.add(new MalformedURLException());
     mMetrics.track(SUCCEED_TEXT, null);
@@ -240,6 +224,7 @@ public class HttpTest {
 
     waitForFlushInternval();
 
+    waitForCleanup(2);
     assertEquals(2, mCleanupCalls.size());
     assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
     assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -249,12 +234,28 @@ public class HttpTest {
 
     waitForFlushInternval();
 
+    waitForCleanup(3);
     assertEquals(3, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
-  private void runServiceUnavailableException(String retryAfterSeconds)
+  @Test
+  public void testServiceUnavailableException() throws InterruptedException {
+    runServiceUnavailableExceptionWithRetryAfter(null);
+  }
+
+  @Test
+  public void testServiceUnavailableExceptionWithRetryAfter10() throws InterruptedException {
+    runServiceUnavailableExceptionWithRetryAfter("10");
+  }
+
+  @Test
+  public void testServiceUnavailableExceptionWithRetryAfter40() throws InterruptedException {
+    runServiceUnavailableExceptionWithRetryAfter("40");
+  }
+
+  private void runServiceUnavailableExceptionWithRetryAfter(String retryAfterSeconds)
       throws InterruptedException {
     mCleanupCalls.clear();
     mFlushResults.add(new RemoteService.ServiceUnavailableException("", retryAfterSeconds));
@@ -272,6 +273,7 @@ public class HttpTest {
 
     waitForBackOffTimeInterval();
 
+    waitForCleanup(1);
     assertEquals(1, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -282,12 +284,14 @@ public class HttpTest {
 
     waitForFlushInternval();
 
+    waitForCleanup(2);
     assertEquals(2, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
-  private void runDoubleServiceUnavailableException() throws InterruptedException {
+  @Test
+  public void testDoubleServiceUnavailableException() throws InterruptedException {
     mCleanupCalls.clear();
     mFlushResults.add(new RemoteService.ServiceUnavailableException("", ""));
     mFlushResults.add(new RemoteService.ServiceUnavailableException("", ""));
@@ -310,6 +314,7 @@ public class HttpTest {
 
     waitForBackOffTimeInterval();
 
+    waitForCleanup(3);
     assertEquals(3, mCleanupCalls.size());
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
@@ -320,7 +325,8 @@ public class HttpTest {
     assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
-  private void runMemoryTest() throws InterruptedException {
+  @Test
+  public void testMemoryThreshold() throws InterruptedException {
     mForceOverMemThreshold = true;
     mCleanupCalls.clear();
     mMetrics.track(FAIL_TEXT, null);
@@ -334,17 +340,46 @@ public class HttpTest {
     assertEquals(
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
     assertEquals(null, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
+    waitForCleanup(1);
     assertEquals(1, mCleanupCalls.size());
   }
 
   private void waitForBackOffTimeInterval() throws InterruptedException {
     long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
     Thread.sleep(waitForMs);
-    Thread.sleep(1500);
+    // Poll for completion with shorter intervals instead of fixed 1500ms wait
+    pollForCompletion(200);
   }
 
   private void waitForFlushInternval() throws InterruptedException {
     Thread.sleep(mFlushInterval);
-    Thread.sleep(1500);
+    // Poll for completion with shorter intervals instead of fixed 1500ms wait
+    pollForCompletion(200);
+  }
+
+  private void pollForCompletion(long maxWaitMs) throws InterruptedException {
+    // Poll in 10ms intervals up to maxWaitMs
+    long endTime = System.currentTimeMillis() + maxWaitMs;
+    while (System.currentTimeMillis() < endTime) {
+      // Check if the queue has been processed
+      // If we have pending items to verify, give it time
+      if (mPerformRequestCalls.isEmpty() && mCleanupCalls.isEmpty()) {
+        // Give a small buffer for any final processing
+        Thread.sleep(10);
+        return;
+      }
+      Thread.sleep(10);
+    }
+  }
+
+  private void waitForCleanup(int expectedCount) throws InterruptedException {
+    // Poll for cleanup to reach expected count
+    long endTime = System.currentTimeMillis() + 500; // Wait up to 500ms for cleanup
+    while (System.currentTimeMillis() < endTime) {
+      if (mCleanupCalls.size() >= expectedCount) {
+        return;
+      }
+      Thread.sleep(10);
+    }
   }
 }

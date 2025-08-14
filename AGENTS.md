@@ -138,15 +138,15 @@ Before submitting any PR, you MUST:
 ### 2. Test Validation
 ```bash
 # Run all instrumented tests (requires device/emulator)
-./gradlew connectedAndroidTest
+# IMPORTANT: Run from main module, not :mixpaneldemo
+./gradlew :connectedAndroidTest
+# All tests must pass
 
 # Run specific test class
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName
 
 # Run specific test method
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest#testEventQueuing
-
-# All tests must pass
+./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName
 ```
 
 ### 3. Code Style Check
