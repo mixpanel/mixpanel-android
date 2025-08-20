@@ -138,6 +138,8 @@ public class HttpService implements RemoteService {
     /**
      * Performs an HTTP POST request. Handles either URL-encoded parameters OR a raw byte request
      * body. Includes support for custom headers and network error listening.
+     * Each attempt tries primary host first, then backup host on ANY failure.
+     * Retries up to 3 times if both primary and backup fail.
      */
     @Override
     public byte[] performRequest(
@@ -148,21 +150,60 @@ public class HttpService implements RemoteService {
             @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
             @Nullable SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException {
-        // Try primary URL first
-        byte[] response =
-                performRequestInternal(
+        
+        int retries = 0;
+        Exception lastException = null;
+        
+        while (retries < 3) {
+            // Try primary host first
+            try {
+                byte[] response = performSingleRequest(
                         endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
-
-        // On server error (5xx), try backup host if configured
-        if (response == null && mBackupHost != null && !mBackupHost.isEmpty()) {
-            String backupUrl = replaceHost(endpointUrl, mBackupHost);
-            MPLog.v(LOGTAG, "Primary request failed with server error, trying backup: " + backupUrl);
-            response =
-                    performRequestInternal(
-                            backupUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+                if (response != null) {
+                    return response;
+                }
+            } catch (Exception primaryException) {
+                MPLog.v(LOGTAG, "Primary request failed: " + primaryException.getMessage());
+                lastException = primaryException;
+                
+                // On ANY failure with primary, try backup host if configured
+                if (mBackupHost != null && !mBackupHost.isEmpty()) {
+                    String backupUrl = replaceHost(endpointUrl, mBackupHost);
+                    MPLog.v(LOGTAG, "Primary failed, trying backup: " + backupUrl);
+                    
+                    try {
+                        byte[] response = performSingleRequest(
+                                backupUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+                        if (response != null) {
+                            return response;
+                        }
+                    } catch (Exception backupException) {
+                        MPLog.w(LOGTAG, "Backup also failed: " + backupException.getMessage());
+                        lastException = backupException;
+                    }
+                }
+            }
+            
+            // Both primary and backup failed, increment retry counter
+            retries++;
+            if (retries < 3) {
+                MPLog.d(LOGTAG, "Attempt " + retries + " failed, retrying...");
+            }
         }
-
-        return response;
+        
+        // All retries exhausted
+        MPLog.e(LOGTAG, "Request to " + endpointUrl + " failed after " + retries + " attempts");
+        
+        // Throw the appropriate exception type
+        if (lastException instanceof ServiceUnavailableException) {
+            throw (ServiceUnavailableException) lastException;
+        } else if (lastException instanceof IOException) {
+            throw (IOException) lastException;
+        } else if (lastException != null) {
+            throw new IOException("Request failed after " + retries + " attempts", lastException);
+        } else {
+            throw new IOException("Request failed after " + retries + " attempts");
+        }
     }
 
     private String replaceHost(String url, String newHost) {
@@ -177,7 +218,7 @@ public class HttpService implements RemoteService {
         }
     }
 
-    private byte[] performRequestInternal(
+    private byte[] performSingleRequest(
             @NonNull String endpointUrl,
             @Nullable ProxyServerInteractor interactor,
             @Nullable Map<String, Object> params,
@@ -192,21 +233,17 @@ public class HttpService implements RemoteService {
                         + endpointUrl
                         + (requestBodyBytes == null ? " (URL params)" : " (Raw Body)"));
         byte[] response = null;
-        int retries = 0;
-        boolean succeeded = false;
+        InputStream in = null;
+        OutputStream out = null; // Raw output stream
+        HttpURLConnection connection = null;
 
-        while (retries < 3 && !succeeded) {
-            InputStream in = null;
-            OutputStream out = null; // Raw output stream
-            HttpURLConnection connection = null;
+        // Variables for error listener reporting
+        String targetIpAddress = null;
+        long startTimeNanos = System.nanoTime();
+        long uncompressedBodySize = -1;
+        long compressedBodySize = -1; // Only set if gzip applied to params
 
-            // Variables for error listener reporting
-            String targetIpAddress = null;
-            long startTimeNanos = System.nanoTime();
-            long uncompressedBodySize = -1;
-            long compressedBodySize = -1; // Only set if gzip applied to params
-
-            try {
+        try {
                 // --- Connection Setup ---
                 final URL url = new URL(endpointUrl);
                 try { // Get IP Address for error reporting, but don't fail request if DNS fails here
@@ -317,12 +354,14 @@ public class HttpService implements RemoteService {
                 if (responseCode >= 200 && responseCode < 300) { // Success
                     in = connection.getInputStream();
                     response = slurp(in);
-                    succeeded = true;
                 } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE
                         && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
                     MPLog.w(
                             LOGTAG,
                             "Server error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                    ServiceUnavailableException serviceException = new ServiceUnavailableException(
+                            "Service Unavailable: " + responseCode,
+                            connection.getHeaderField("Retry-After"));
                     // Report error via listener
                     onNetworkError(
                             connection,
@@ -331,12 +370,9 @@ public class HttpService implements RemoteService {
                             startTimeNanos,
                             uncompressedBodySize,
                             compressedBodySize,
-                            new ServiceUnavailableException(
-                                    "Service Unavailable: " + responseCode,
-                                    connection.getHeaderField("Retry-After")));
-                    // Return null to trigger backup host failover
-                    response = null;
-                    succeeded = true; // Stop retry loop, will try backup host
+                            serviceException);
+                    // Throw exception to trigger backup host failover
+                    throw serviceException;
                 } else { // Other errors (4xx etc.)
                     MPLog.w(
                             LOGTAG,
@@ -372,7 +408,7 @@ public class HttpService implements RemoteService {
                 }
 
             } catch (final EOFException e) {
-                // Report error BEFORE retry attempt
+                // Report error
                 onNetworkError(
                         connection,
                         endpointUrl,
@@ -381,8 +417,8 @@ public class HttpService implements RemoteService {
                         uncompressedBodySize,
                         compressedBodySize,
                         e);
-                MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying request to " + endpointUrl);
-                retries++;
+                MPLog.d(LOGTAG, "EOFException, likely network issue for request to " + endpointUrl);
+                throw new IOException("EOFException during network request", e);
             } catch (final IOException e) { // Includes ServiceUnavailableException if thrown above
                 // Report error via listener
                 onNetworkError(
@@ -424,18 +460,8 @@ public class HttpService implements RemoteService {
                     }
                 if (null != connection) connection.disconnect();
             }
-        } // End while loop
 
-        if (!succeeded) {
-            MPLog.e(
-                    LOGTAG,
-                    "Could not complete request to " + endpointUrl + " after " + retries + " retries.");
-            // Optionally report final failure via listener here if desired, though individual errors were
-            // already reported
-            throw new IOException("Request failed after multiple retries."); // Indicate final failure
-        }
-
-        return response; // Can be null if a non-retriable HTTP error occurred
+        return response;
     }
 
     private void onNetworkError(
