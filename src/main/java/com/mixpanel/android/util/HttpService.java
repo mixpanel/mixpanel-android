@@ -153,33 +153,76 @@ public class HttpService implements RemoteService {
         
         int retries = 0;
         Exception lastException = null;
+        boolean lastWasClientError = false;
         
         while (retries < 3) {
             // Try primary host first
+            byte[] primaryResponse = null;
+            boolean primaryFailed = false;
+            
             try {
-                byte[] response = performSingleRequest(
+                primaryResponse = performSingleRequest(
                         endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
-                if (response != null) {
-                    return response;
+                // Treat null response as failure
+                if (primaryResponse == null) {
+                    MPLog.v(LOGTAG, "Primary request returned null response");
+                    primaryFailed = true;
+                    lastException = new IOException("Primary host returned null response");
+                } else {
+                    // Success! Return the valid response
+                    return primaryResponse;
                 }
-            } catch (Exception primaryException) {
-                MPLog.v(LOGTAG, "Primary request failed: " + primaryException.getMessage());
-                lastException = primaryException;
+            } catch (IOException e) {
+                // Check if it's a client error (4xx) - these should not trigger backup
+                String message = e.getMessage();
+                if (message != null && message.contains("Client error:")) {
+                    MPLog.w(LOGTAG, "Client error from primary host, not attempting backup: " + message);
+                    lastWasClientError = true;
+                    throw e; // Throw immediately, don't retry client errors
+                }
                 
-                // On ANY failure with primary, try backup host if configured
-                if (mBackupHost != null && !mBackupHost.isEmpty()) {
-                    String backupUrl = replaceHost(endpointUrl, mBackupHost);
+                MPLog.v(LOGTAG, "Primary request failed: " + e.getMessage());
+                primaryFailed = true;
+                lastException = e;
+            } catch (Exception e) {
+                MPLog.v(LOGTAG, "Primary request failed with exception: " + e.getMessage());
+                primaryFailed = true;
+                lastException = e;
+            }
+            
+            // If primary failed (and it wasn't a client error), try backup host if configured
+            if (primaryFailed && mBackupHost != null && !mBackupHost.isEmpty()) {
+                String backupUrl = replaceHost(endpointUrl, mBackupHost);
+                if (backupUrl.equals(endpointUrl)) {
+                    // URL replacement failed, skip backup attempt
+                    MPLog.w(LOGTAG, "Failed to replace host for backup, skipping backup attempt");
+                } else {
                     MPLog.v(LOGTAG, "Primary failed, trying backup: " + backupUrl);
                     
                     try {
-                        byte[] response = performSingleRequest(
+                        byte[] backupResponse = performSingleRequest(
                                 backupUrl, interactor, params, headers, requestBodyBytes, socketFactory);
-                        if (response != null) {
-                            return response;
+                        // Treat null response as failure
+                        if (backupResponse == null) {
+                            MPLog.w(LOGTAG, "Backup request returned null response");
+                            lastException = new IOException("Backup host returned null response");
+                        } else {
+                            // Backup succeeded!
+                            return backupResponse;
                         }
-                    } catch (Exception backupException) {
-                        MPLog.w(LOGTAG, "Backup also failed: " + backupException.getMessage());
-                        lastException = backupException;
+                    } catch (IOException e) {
+                        // Check if it's a client error from backup
+                        String message = e.getMessage();
+                        if (message != null && message.contains("Client error:")) {
+                            MPLog.w(LOGTAG, "Client error from backup host: " + message);
+                            lastWasClientError = true;
+                            throw e; // Throw immediately, don't retry client errors
+                        }
+                        MPLog.w(LOGTAG, "Backup also failed: " + e.getMessage());
+                        lastException = e;
+                    } catch (Exception e) {
+                        MPLog.w(LOGTAG, "Backup failed with exception: " + e.getMessage());
+                        lastException = e;
                     }
                 }
             }
@@ -188,6 +231,13 @@ public class HttpService implements RemoteService {
             retries++;
             if (retries < 3) {
                 MPLog.d(LOGTAG, "Attempt " + retries + " failed, retrying...");
+                // Add a small delay before retry to avoid hammering the servers
+                try {
+                    Thread.sleep(100 * retries); // Progressive backoff: 100ms, 200ms, 300ms
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             }
         }
         
