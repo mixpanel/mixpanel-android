@@ -172,14 +172,12 @@ public class HttpService implements RemoteService {
                     // Success! Return the valid response
                     return primaryResponse;
                 }
+            } catch (ClientErrorException e) {
+                // Client errors (4xx) should not trigger backup host failover
+                MPLog.w(LOGTAG, "Client error from primary host, not attempting backup: " + e.getMessage());
+                lastWasClientError = true;
+                throw e; // Throw immediately, don't retry client errors
             } catch (IOException e) {
-                // Check if it's a client error (4xx) - these should not trigger backup
-                String message = e.getMessage();
-                if (message != null && message.contains("Client error:")) {
-                    MPLog.w(LOGTAG, "Client error from primary host, not attempting backup: " + message);
-                    lastWasClientError = true;
-                    throw e; // Throw immediately, don't retry client errors
-                }
                 
                 MPLog.v(LOGTAG, "Primary request failed: " + e.getMessage());
                 primaryFailed = true;
@@ -210,14 +208,12 @@ public class HttpService implements RemoteService {
                             // Backup succeeded!
                             return backupResponse;
                         }
+                    } catch (ClientErrorException e) {
+                        // Client errors from backup host also should not be retried
+                        MPLog.w(LOGTAG, "Client error from backup host: " + e.getMessage());
+                        lastWasClientError = true;
+                        throw e; // Throw immediately, don't retry client errors
                     } catch (IOException e) {
-                        // Check if it's a client error from backup
-                        String message = e.getMessage();
-                        if (message != null && message.contains("Client error:")) {
-                            MPLog.w(LOGTAG, "Client error from backup host: " + message);
-                            lastWasClientError = true;
-                            throw e; // Throw immediately, don't retry client errors
-                        }
                         MPLog.w(LOGTAG, "Backup also failed: " + e.getMessage());
                         lastException = e;
                     } catch (Exception e) {
@@ -453,8 +449,7 @@ public class HttpService implements RemoteService {
                                             + responseMessage
                                             + (errorBody != null ? " - Body: " + errorBody : "")));
                     // For client errors (4xx), throw exception immediately - backup host won't help
-                    throw new IOException(
-                            "Client error: " + responseCode + " " + responseMessage);
+                    throw new ClientErrorException(responseCode, responseMessage);
                 }
 
             } catch (final EOFException e) {

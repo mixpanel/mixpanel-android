@@ -58,4 +58,22 @@ public interface RemoteService {
 
         private final int mRetryAfter;
     }
+    
+    /**
+     * Exception thrown when the server returns a 4xx client error.
+     * These errors should not trigger backup host failover since they
+     * indicate issues with the request itself, not server availability.
+     */
+    class ClientErrorException extends IOException {
+        private final int responseCode;
+        
+        public ClientErrorException(int responseCode, String message) {
+            super("Client error " + responseCode + ": " + message);
+            this.responseCode = responseCode;
+        }
+        
+        public int getResponseCode() {
+            return responseCode;
+        }
+    }
 }
