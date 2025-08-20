@@ -97,8 +97,9 @@ public class HttpServiceBackupTest {
   }
 
   /**
-   * Test that backup host is used only when primary fails Since we can't easily mock the internal
-   * network calls, we'll test the logic by verifying the replacement happens correctly
+   * Test URL replacement logic for backup host failover.
+   * Note: This test verifies the URL replacement mechanism works correctly.
+   * The actual failover logic (triggered on 5xx errors) is tested via integration tests.
    */
   @Test
   public void testBackupHostLogic() throws Exception {

@@ -153,10 +153,10 @@ public class HttpService implements RemoteService {
                 performRequestInternal(
                         endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
 
-        // On failure, try backup if configured
+        // On server error (5xx), try backup host if configured
         if (response == null && mBackupHost != null && !mBackupHost.isEmpty()) {
             String backupUrl = replaceHost(endpointUrl, mBackupHost);
-            MPLog.v(LOGTAG, "Primary request failed, trying backup: " + backupUrl);
+            MPLog.v(LOGTAG, "Primary request failed with server error, trying backup: " + backupUrl);
             response =
                     performRequestInternal(
                             backupUrl, interactor, params, headers, requestBodyBytes, socketFactory);
@@ -320,7 +320,10 @@ public class HttpService implements RemoteService {
                     succeeded = true;
                 } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE
                         && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
-                    // Report error via listener before throwing
+                    MPLog.w(
+                            LOGTAG,
+                            "Server error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                    // Report error via listener
                     onNetworkError(
                             connection,
                             endpointUrl,
@@ -331,13 +334,13 @@ public class HttpService implements RemoteService {
                             new ServiceUnavailableException(
                                     "Service Unavailable: " + responseCode,
                                     connection.getHeaderField("Retry-After")));
-                    // Now throw the exception
-                    throw new ServiceUnavailableException(
-                            "Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After"));
+                    // Return null to trigger backup host failover
+                    response = null;
+                    succeeded = true; // Stop retry loop, will try backup host
                 } else { // Other errors (4xx etc.)
                     MPLog.w(
                             LOGTAG,
-                            "HTTP error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                            "Client error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
                     String errorBody = null;
                     try {
                         in = connection.getErrorStream();
@@ -363,8 +366,9 @@ public class HttpService implements RemoteService {
                                             + " "
                                             + responseMessage
                                             + (errorBody != null ? " - Body: " + errorBody : "")));
-                    response = null; // Indicate failure with null response
-                    succeeded = true; // Mark as succeeded to stop retry loop for definitive HTTP errors
+                    // For client errors (4xx), throw exception immediately - backup host won't help
+                    throw new IOException(
+                            "Client error: " + responseCode + " " + responseMessage);
                 }
 
             } catch (final EOFException e) {
