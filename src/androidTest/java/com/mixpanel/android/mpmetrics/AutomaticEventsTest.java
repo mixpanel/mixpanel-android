@@ -65,7 +65,7 @@ public class AutomaticEventsTest {
     private void setUpInstance(boolean trackAutomaticEvents) {
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(
+            public RemoteService.RequestResult performRequest(
                     @NonNull String endpointUrl,
                     @Nullable ProxyServerInteractor interactor,
                     @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -82,7 +82,7 @@ public class AutomaticEventsTest {
                         mPerformRequestEvents.put(jsonArray.getJSONObject(i).getString("event"));
                         mMinRequestsLatch.countDown();
                     }
-                    return TestUtils.bytes("1\n");
+                    return RemoteService.RequestResult.success(TestUtils.bytes("1\n"), endpointUrl);
                 } catch (JSONException e) {
                     throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {
@@ -221,7 +221,7 @@ public class AutomaticEventsTest {
 
         final HttpService mpSecondPoster = new HttpService() {
             @Override
-            public byte[] performRequest(
+            public RemoteService.RequestResult performRequest(
                     @NonNull String endpointUrl,
                     @Nullable ProxyServerInteractor interactor,
                     @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -236,7 +236,7 @@ public class AutomaticEventsTest {
                     for (int i = 0; i < jsonArray.length(); i++) {
                         secondPerformedRequests.put(jsonArray.getJSONObject(i).getString("event"));
                     }
-                    return TestUtils.bytes("1\n");
+                    return RemoteService.RequestResult.success(TestUtils.bytes("1\n"), endpointUrl);
                 } catch (JSONException e) {
                     throw new RuntimeException("Malformed data passed to test mock", e);
                 } catch (InterruptedException e) {

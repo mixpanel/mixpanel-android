@@ -60,7 +60,7 @@ public class OptOutTest {
 
         final RemoteService mockPoster = new HttpService() {
             @Override
-            public byte[] performRequest(
+            public RemoteService.RequestResult performRequest(
                     @NonNull String endpointUrl,
                     @Nullable ProxyServerInteractor interactor,
                     @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -77,7 +77,7 @@ public class OptOutTest {
                         for (int i = 0; i < jsonArray.length(); i++) {
                             mPerformRequestEvents.put(jsonArray.getJSONObject(i).toString());
                         }
-                        return TestUtils.bytes("1\n");
+                        return RemoteService.RequestResult.success(TestUtils.bytes("1\n"), endpointUrl);
                     } catch (JSONException e) {
                         throw new RuntimeException("Malformed data passed to test mock", e);
                     } catch (InterruptedException e) {
@@ -86,7 +86,7 @@ public class OptOutTest {
 
                 }
 
-                return TestUtils.bytes("{\"automatic_events\": false}");
+                return RemoteService.RequestResult.success(TestUtils.bytes("{\"automatic_events\": false}"), endpointUrl);
             }
         };
 

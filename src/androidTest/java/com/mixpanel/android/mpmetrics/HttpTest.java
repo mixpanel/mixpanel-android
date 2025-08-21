@@ -59,7 +59,7 @@ public class HttpTest {
     final RemoteService mockPoster =
         new HttpService() {
           @Override
-          public byte[] performRequest(
+          public RemoteService.RequestResult performRequest(
               @NonNull String endpointUrl,
               @Nullable ProxyServerInteractor interactor,
               @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -89,7 +89,7 @@ public class HttpTest {
               JSONObject event = msg.getJSONObject(0);
               mPerformRequestCalls.put(event.getString("event"));
 
-              return (byte[]) obj;
+              return RemoteService.RequestResult.success((byte[]) obj, endpointUrl);
             } catch (JSONException e) {
               throw new RuntimeException("Malformed data passed to test mock", e);
             } catch (InterruptedException e) {

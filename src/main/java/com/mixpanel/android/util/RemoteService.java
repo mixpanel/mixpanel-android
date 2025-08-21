@@ -27,11 +27,11 @@ public interface RemoteService {
      * @param requestBodyBytes Optional raw byte array for the request body. If non-null, this is sent directly,
      * and the 'params' map is ignored for the body content. Ensure Content-Type header is set.
      * @param socketFactory    Optional custom SSLSocketFactory.
-     * @return The response body as a byte array, or null if the request failed with a non-retriable HTTP error code.
+     * @return A RequestResult containing the response body, actual URL used, and success status.
      * @throws ServiceUnavailableException If the server returned a 5xx error with a Retry-After header.
      * @throws IOException                For network errors or non-5xx HTTP errors where reading failed.
      */
-    byte[] performRequest(
+    RequestResult performRequest(
             @NonNull String endpointUrl,
             @Nullable ProxyServerInteractor interactor,
             @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -74,6 +74,64 @@ public interface RemoteService {
         
         public int getResponseCode() {
             return responseCode;
+        }
+    }
+    
+    /**
+     * Encapsulates the result of a request attempt.
+     * Used to track which URL succeeded and provide response data.
+     */
+    class RequestResult {
+        private final byte[] response;
+        private final Exception exception;
+        private final boolean isClientError;
+        private final boolean success;
+        private final String requestUrl;
+
+        // Constructor for successful request
+        public RequestResult(byte[] response, String requestUrl) {
+            this.response = response;
+            this.requestUrl = requestUrl;
+            this.exception = null;
+            this.isClientError = false;
+            this.success = true;
+        }
+
+        // Constructor for failed request
+        public RequestResult(Exception exception, boolean isClientError, String requestUrl) {
+            this.response = null;
+            this.requestUrl = requestUrl;
+            this.exception = exception;
+            this.isClientError = isClientError;
+            this.success = false;
+        }
+
+        public static RequestResult success(byte[] response, String requestUrl) {
+            return new RequestResult(response, requestUrl);
+        }
+
+        public static RequestResult failure(Exception exception, boolean isClientError, String requestUrl) {
+            return new RequestResult(exception, isClientError, requestUrl);
+        }
+
+        public byte[] getResponse() {
+            return response;
+        }
+
+        public Exception getException() {
+            return exception;
+        }
+
+        public boolean isClientError() {
+            return isClientError;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getRequestUrl() {
+            return requestUrl;
         }
     }
 }

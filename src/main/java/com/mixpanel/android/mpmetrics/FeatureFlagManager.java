@@ -539,7 +539,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       headers.put("Content-Type", "application/json; charset=utf-8"); // Explicitly set content type
 
       // 4. Perform Request
-      byte[] responseBytes =
+      RemoteService.RequestResult result =
           mHttpService.performRequest( // <-- Use consolidated method
               mFlagsEndpoint,
               config.getProxyServerInteractor(),
@@ -547,6 +547,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
               headers,
               requestBodyBytes, // Pass raw JSON body bytes
               config.getSSLSocketFactory());
+      byte[] responseBytes = result.getResponse();
 
       // 5. Process Response
       if (responseBytes == null) {

@@ -142,7 +142,7 @@ public class HttpService implements RemoteService {
      * Retries up to 3 times if both primary and backup fail.
      */
     @Override
-    public byte[] performRequest(
+    public RequestResult performRequest(
             @NonNull String endpointUrl,
             @Nullable ProxyServerInteractor interactor,
             @Nullable Map<String, Object> params, // Use if requestBodyBytes is null
@@ -156,11 +156,11 @@ public class HttpService implements RemoteService {
         
         while (retries < 3) {
             // Try primary host first
-            RequestResult primaryResult = tryRequestWithHost(
+            InternalRequestResult primaryResult = tryRequestWithHost(
                     endpointUrl, "Primary", interactor, params, headers, requestBodyBytes, socketFactory);
             
             if (primaryResult.success) {
-                return primaryResult.response;
+                return RequestResult.success(primaryResult.response, primaryResult.requestUrl);
             }
             
             // If it was a client error, throw immediately without retrying
@@ -180,11 +180,11 @@ public class HttpService implements RemoteService {
                 } else {
                     MPLog.v(LOGTAG, "Primary failed, trying backup: " + backupUrl);
                     
-                    RequestResult backupResult = tryRequestWithHost(
+                    InternalRequestResult backupResult = tryRequestWithHost(
                             backupUrl, "Backup", interactor, params, headers, requestBodyBytes, socketFactory);
                     
                     if (backupResult.success) {
-                        return backupResult.response;
+                        return RequestResult.success(backupResult.response, backupResult.requestUrl);
                     }
                     
                     // If backup had client error, throw immediately
@@ -240,7 +240,7 @@ public class HttpService implements RemoteService {
     }
 
     /**
-     * Attempts a single request to the specified URL and returns a RequestResult.
+     * Attempts a single request to the specified URL and returns an InternalRequestResult.
      * This helper method encapsulates the try/catch logic for both primary and backup host attempts.
      * 
      * @param url The URL to send the request to
@@ -250,9 +250,9 @@ public class HttpService implements RemoteService {
      * @param headers The request headers (can be null)
      * @param requestBodyBytes The raw request body (can be null)
      * @param socketFactory The SSL socket factory (can be null)
-     * @return RequestResult containing the response or error information
+     * @return InternalRequestResult containing the response or error information
      */
-    private RequestResult tryRequestWithHost(
+    private InternalRequestResult tryRequestWithHost(
             @NonNull String url,
             @NonNull String hostLabel,
             @Nullable ProxyServerInteractor interactor,
@@ -268,23 +268,23 @@ public class HttpService implements RemoteService {
             // Treat null response as failure
             if (response == null) {
                 MPLog.v(LOGTAG, hostLabel + " request returned null response");
-                return RequestResult.failure(
+                return InternalRequestResult.failure(
                         new IOException(hostLabel + " host returned null response"), 
-                        false);
+                        false, url);
             } else {
-                // Success! Return the valid response
-                return RequestResult.success(response);
+                // Success! Return the valid response with the URL
+                return InternalRequestResult.success(response, url);
             }
         } catch (ClientErrorException e) {
             // Client errors (4xx) should not trigger backup host failover
             MPLog.w(LOGTAG, "Client error from " + hostLabel + " host, not attempting backup: " + e.getMessage());
-            return RequestResult.failure(e, true);
+            return InternalRequestResult.failure(e, true, url);
         } catch (IOException e) {
             MPLog.v(LOGTAG, hostLabel + " request failed: " + e.getMessage());
-            return RequestResult.failure(e, false);
+            return InternalRequestResult.failure(e, false, url);
         } catch (Exception e) {
             MPLog.v(LOGTAG, hostLabel + " request failed with exception: " + e.getMessage());
-            return RequestResult.failure(e, false);
+            return InternalRequestResult.failure(e, false, url);
         }
     }
 
@@ -606,37 +606,41 @@ public class HttpService implements RemoteService {
     private static final String GZIP_CONTENT_TYPE_HEADER = "gzip";
 
     /**
-     * Helper class to encapsulate the result of a request attempt.
+     * Internal helper class to encapsulate the result of a request attempt.
      * Used to avoid duplicate try/catch blocks for primary and backup host attempts.
+     * This is separate from the public RequestResult in RemoteService interface.
      */
-    private static class RequestResult {
+    private static class InternalRequestResult {
         final byte[] response;
         final Exception exception;
         final boolean isClientError;
         final boolean success;
+        final String requestUrl;
 
         // Constructor for successful request
-        private RequestResult(byte[] response) {
+        private InternalRequestResult(byte[] response, String requestUrl) {
             this.response = response;
+            this.requestUrl = requestUrl;
             this.exception = null;
             this.isClientError = false;
             this.success = true;
         }
 
         // Constructor for failed request
-        private RequestResult(Exception exception, boolean isClientError) {
+        private InternalRequestResult(Exception exception, boolean isClientError, String requestUrl) {
             this.response = null;
+            this.requestUrl = requestUrl;
             this.exception = exception;
             this.isClientError = isClientError;
             this.success = false;
         }
 
-        static RequestResult success(byte[] response) {
-            return new RequestResult(response);
+        static InternalRequestResult success(byte[] response, String requestUrl) {
+            return new InternalRequestResult(response, requestUrl);
         }
 
-        static RequestResult failure(Exception exception, boolean isClientError) {
-            return new RequestResult(exception, isClientError);
+        static InternalRequestResult failure(Exception exception, boolean isClientError, String requestUrl) {
+            return new InternalRequestResult(exception, isClientError, requestUrl);
         }
     }
 }

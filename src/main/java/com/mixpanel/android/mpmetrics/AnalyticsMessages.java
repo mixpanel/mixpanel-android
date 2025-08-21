@@ -545,16 +545,19 @@ import org.json.JSONObject;
                     }
 
                     boolean deleteEvents = true;
-                    byte[] response;
+                    RemoteService.RequestResult result;
                     try {
                         final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
-                        response =
+                        result =
                                 poster.performRequest(
                                         url, mConfig.getProxyServerInteractor(), params, null, null, socketFactory);
+                        byte[] response = result.getResponse();
+                        String actualUrl = result.getRequestUrl(); // Get the actual URL that succeeded
+                        
                         if (null == response) {
                             deleteEvents = false;
                             logAboutMessageToMixpanel(
-                                    "Response was null, unexpected failure posting to " + url + ".");
+                                    "Response was null, unexpected failure posting to " + actualUrl + ".");
                         } else {
                             deleteEvents =
                                     true; // Delete events on any successful post, regardless of 1 or 0 response
@@ -569,7 +572,7 @@ import org.json.JSONObject;
                                 removeMessages(FLUSH_QUEUE, token);
                             }
 
-                            logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                            logAboutMessageToMixpanel("Successfully posted to " + actualUrl + ": \n" + rawMessage);
                             logAboutMessageToMixpanel("Response was " + parsedResponse);
                         }
                     } catch (final OutOfMemoryError e) {

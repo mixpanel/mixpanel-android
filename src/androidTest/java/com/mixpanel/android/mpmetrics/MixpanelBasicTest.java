@@ -851,7 +851,7 @@ public class MixpanelBasicTest {
     final RemoteService mockPoster =
         new HttpService() {
           @Override
-          public byte[] performRequest(
+          public RemoteService.RequestResult performRequest(
               @NonNull String endpointUrl,
               @Nullable ProxyServerInteractor interactor,
               @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -869,7 +869,7 @@ public class MixpanelBasicTest {
               throw new RuntimeException(e);
             }
 
-            return TestUtils.bytes("1\n");
+            return RemoteService.RequestResult.success(TestUtils.bytes("1\n"), endpointUrl);
           }
         };
 
@@ -1386,7 +1386,7 @@ public class MixpanelBasicTest {
             // Return a mock RemoteService that tracks calls to the flags endpoint
             return new HttpService() {
               @Override
-              public byte[] performRequest(
+              public RemoteService.RequestResult performRequest(
                   String endpointUrl,
                   ProxyServerInteractor interactor,
                   Map<String, Object> params,
@@ -1399,7 +1399,7 @@ public class MixpanelBasicTest {
                   flagsEndpointCalls.add(endpointUrl);
                 }
                 // Return empty flags response
-                return "{\"flags\":{}}".getBytes();
+                return RemoteService.RequestResult.success("{\"flags\":{}}".getBytes(), endpointUrl);
               }
             };
           }
@@ -1708,7 +1708,7 @@ public class MixpanelBasicTest {
     final RemoteService mockPoster =
         new HttpService() {
           @Override
-          public byte[] performRequest(
+          public RemoteService.RequestResult performRequest(
               @NonNull String endpointUrl,
               @Nullable ProxyServerInteractor interactor,
               @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
@@ -1728,7 +1728,7 @@ public class MixpanelBasicTest {
             } catch (JSONException e) {
               throw new RuntimeException("Malformed data passed to test mock", e);
             }
-            return TestUtils.bytes("1\n");
+            return RemoteService.RequestResult.success(TestUtils.bytes("1\n"), endpointUrl);
           }
         };
 
