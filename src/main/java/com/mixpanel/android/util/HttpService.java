@@ -153,43 +153,26 @@ public class HttpService implements RemoteService {
         
         int retries = 0;
         Exception lastException = null;
-        boolean lastWasClientError = false;
         
         while (retries < 3) {
             // Try primary host first
-            byte[] primaryResponse = null;
-            boolean primaryFailed = false;
+            RequestResult primaryResult = tryRequestWithHost(
+                    endpointUrl, "Primary", interactor, params, headers, requestBodyBytes, socketFactory);
             
-            try {
-                primaryResponse = performSingleRequest(
-                        endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
-                // Treat null response as failure
-                if (primaryResponse == null) {
-                    MPLog.v(LOGTAG, "Primary request returned null response");
-                    primaryFailed = true;
-                    lastException = new IOException("Primary host returned null response");
-                } else {
-                    // Success! Return the valid response
-                    return primaryResponse;
-                }
-            } catch (ClientErrorException e) {
-                // Client errors (4xx) should not trigger backup host failover
-                MPLog.w(LOGTAG, "Client error from primary host, not attempting backup: " + e.getMessage());
-                lastWasClientError = true;
-                throw e; // Throw immediately, don't retry client errors
-            } catch (IOException e) {
-                
-                MPLog.v(LOGTAG, "Primary request failed: " + e.getMessage());
-                primaryFailed = true;
-                lastException = e;
-            } catch (Exception e) {
-                MPLog.v(LOGTAG, "Primary request failed with exception: " + e.getMessage());
-                primaryFailed = true;
-                lastException = e;
+            if (primaryResult.success) {
+                return primaryResult.response;
             }
             
+            // If it was a client error, throw immediately without retrying
+            if (primaryResult.isClientError) {
+                throw (ClientErrorException) primaryResult.exception;
+            }
+            
+            // Primary failed, update last exception
+            lastException = primaryResult.exception;
+            
             // If primary failed (and it wasn't a client error), try backup host if configured
-            if (primaryFailed && mBackupHost != null && !mBackupHost.isEmpty()) {
+            if (mBackupHost != null && !mBackupHost.isEmpty()) {
                 String backupUrl = replaceHost(endpointUrl, mBackupHost);
                 if (backupUrl.equals(endpointUrl)) {
                     // URL replacement failed, skip backup attempt
@@ -197,29 +180,21 @@ public class HttpService implements RemoteService {
                 } else {
                     MPLog.v(LOGTAG, "Primary failed, trying backup: " + backupUrl);
                     
-                    try {
-                        byte[] backupResponse = performSingleRequest(
-                                backupUrl, interactor, params, headers, requestBodyBytes, socketFactory);
-                        // Treat null response as failure
-                        if (backupResponse == null) {
-                            MPLog.w(LOGTAG, "Backup request returned null response");
-                            lastException = new IOException("Backup host returned null response");
-                        } else {
-                            // Backup succeeded!
-                            return backupResponse;
-                        }
-                    } catch (ClientErrorException e) {
-                        // Client errors from backup host also should not be retried
-                        MPLog.w(LOGTAG, "Client error from backup host: " + e.getMessage());
-                        lastWasClientError = true;
-                        throw e; // Throw immediately, don't retry client errors
-                    } catch (IOException e) {
-                        MPLog.w(LOGTAG, "Backup also failed: " + e.getMessage());
-                        lastException = e;
-                    } catch (Exception e) {
-                        MPLog.w(LOGTAG, "Backup failed with exception: " + e.getMessage());
-                        lastException = e;
+                    RequestResult backupResult = tryRequestWithHost(
+                            backupUrl, "Backup", interactor, params, headers, requestBodyBytes, socketFactory);
+                    
+                    if (backupResult.success) {
+                        return backupResult.response;
                     }
+                    
+                    // If backup had client error, throw immediately
+                    if (backupResult.isClientError) {
+                        throw (ClientErrorException) backupResult.exception;
+                    }
+                    
+                    // Backup also failed, update last exception
+                    lastException = backupResult.exception;
+                    MPLog.w(LOGTAG, "Backup also failed: " + backupResult.exception.getMessage());
                 }
             }
             
@@ -261,6 +236,55 @@ public class HttpService implements RemoteService {
         } catch (Exception e) {
             MPLog.e(LOGTAG, "Failed to replace host", e);
             return url;
+        }
+    }
+
+    /**
+     * Attempts a single request to the specified URL and returns a RequestResult.
+     * This helper method encapsulates the try/catch logic for both primary and backup host attempts.
+     * 
+     * @param url The URL to send the request to
+     * @param hostLabel A label for logging ("primary" or "backup")
+     * @param interactor The proxy server interactor (can be null)
+     * @param params The request parameters (can be null)
+     * @param headers The request headers (can be null)
+     * @param requestBodyBytes The raw request body (can be null)
+     * @param socketFactory The SSL socket factory (can be null)
+     * @return RequestResult containing the response or error information
+     */
+    private RequestResult tryRequestWithHost(
+            @NonNull String url,
+            @NonNull String hostLabel,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> params,
+            @Nullable Map<String, String> headers,
+            @Nullable byte[] requestBodyBytes,
+            @Nullable SSLSocketFactory socketFactory) {
+        
+        try {
+            byte[] response = performSingleRequest(
+                    url, interactor, params, headers, requestBodyBytes, socketFactory);
+            
+            // Treat null response as failure
+            if (response == null) {
+                MPLog.v(LOGTAG, hostLabel + " request returned null response");
+                return RequestResult.failure(
+                        new IOException(hostLabel + " host returned null response"), 
+                        false);
+            } else {
+                // Success! Return the valid response
+                return RequestResult.success(response);
+            }
+        } catch (ClientErrorException e) {
+            // Client errors (4xx) should not trigger backup host failover
+            MPLog.w(LOGTAG, "Client error from " + hostLabel + " host, not attempting backup: " + e.getMessage());
+            return RequestResult.failure(e, true);
+        } catch (IOException e) {
+            MPLog.v(LOGTAG, hostLabel + " request failed: " + e.getMessage());
+            return RequestResult.failure(e, false);
+        } catch (Exception e) {
+            MPLog.v(LOGTAG, hostLabel + " request failed with exception: " + e.getMessage());
+            return RequestResult.failure(e, false);
         }
     }
 
@@ -580,4 +604,39 @@ public class HttpService implements RemoteService {
     private static final int HTTP_OUTPUT_STREAM_BUFFER_SIZE = 8192;
     private static final String CONTENT_ENCODING_HEADER = "Content-Encoding";
     private static final String GZIP_CONTENT_TYPE_HEADER = "gzip";
+
+    /**
+     * Helper class to encapsulate the result of a request attempt.
+     * Used to avoid duplicate try/catch blocks for primary and backup host attempts.
+     */
+    private static class RequestResult {
+        final byte[] response;
+        final Exception exception;
+        final boolean isClientError;
+        final boolean success;
+
+        // Constructor for successful request
+        private RequestResult(byte[] response) {
+            this.response = response;
+            this.exception = null;
+            this.isClientError = false;
+            this.success = true;
+        }
+
+        // Constructor for failed request
+        private RequestResult(Exception exception, boolean isClientError) {
+            this.response = null;
+            this.exception = exception;
+            this.isClientError = isClientError;
+            this.success = false;
+        }
+
+        static RequestResult success(byte[] response) {
+            return new RequestResult(response);
+        }
+
+        static RequestResult failure(Exception exception, boolean isClientError) {
+            return new RequestResult(exception, isClientError);
+        }
+    }
 }
