@@ -2040,26 +2040,31 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     /**
      * Check if this is the first launch and track the first open event asynchronously.
      * This avoids disk I/O on the main thread which would trigger StrictMode violations.
+     * Uses the SDK's message passing pattern to queue work to the background HandlerThread.
      */
     private void checkFirstLaunchAsync() {
         if (!mTrackAutomaticEvents) {
             return;
         }
         
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
-                    if (mPersistentIdentity.isFirstLaunch(dbExists, mToken)) {
-                        track(AutomaticEvents.FIRST_OPEN, null, true);
-                        mPersistentIdentity.setHasLaunched(mToken);
-                    }
-                } catch (Exception e) {
-                    MPLog.e(LOGTAG, "Failed to check first launch", e);
-                }
-            }
-        }).start();
+        // Use message passing pattern to check first launch on background thread
+        mMessages.checkFirstLaunchMessage(new AnalyticsMessages.FirstLaunchDescription(mToken, this));
+    }
+    
+    /**
+     * Package-private method for checking if this is the first launch.
+     * Called from the background thread via message passing.
+     */
+    boolean isFirstLaunch(boolean dbExists) {
+        return mPersistentIdentity.isFirstLaunch(dbExists, mToken);
+    }
+    
+    /**
+     * Package-private method for setting that the app has launched.
+     * Called from the background thread via message passing.
+     */
+    void setHasLaunched() {
+        mPersistentIdentity.setHasLaunched(mToken);
     }
 
     /**

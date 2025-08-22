@@ -149,6 +149,13 @@ import org.json.JSONObject;
         mWorker.runMessage(m);
     }
 
+    public void checkFirstLaunchMessage(final FirstLaunchDescription firstLaunchDescription) {
+        final Message m = Message.obtain();
+        m.what = CHECK_FIRST_LAUNCH;
+        m.obj = firstLaunchDescription;
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         final Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -263,6 +270,19 @@ import org.json.JSONObject;
         }
 
         private final String mDistinctId;
+    }
+
+    static class FirstLaunchDescription extends MixpanelDescription {
+        public FirstLaunchDescription(String token, MixpanelAPI mixpanelInstance) {
+            super(token);
+            this.mMixpanelInstance = mixpanelInstance;
+        }
+
+        public MixpanelAPI getMixpanelInstance() {
+            return mMixpanelInstance;
+        }
+
+        private final MixpanelAPI mMixpanelInstance;
     }
 
     static class MixpanelMessageDescription extends MixpanelDescription {
@@ -460,6 +480,20 @@ import org.json.JSONObject;
                     } else if (msg.what == REMOVE_RESIDUAL_IMAGE_FILES) {
                         final File file = (File) msg.obj;
                         LegacyVersionUtils.removeLegacyResidualImageFiles(file);
+                    } else if (msg.what == CHECK_FIRST_LAUNCH) {
+                        final FirstLaunchDescription firstLaunchDescription = (FirstLaunchDescription) msg.obj;
+                        final MixpanelAPI mixpanel = firstLaunchDescription.getMixpanelInstance();
+                        
+                        // Check if this is the first launch (this does disk I/O, so it's safe on background thread)
+                        try {
+                            final boolean dbExists = mDbAdapter.getDatabaseFile().exists();
+                            if (mixpanel.isFirstLaunch(dbExists)) {
+                                mixpanel.track(AutomaticEvents.FIRST_OPEN, null, true);
+                                mixpanel.setHasLaunched();
+                            }
+                        } catch (Exception e) {
+                            MPLog.e(LOGTAG, "Failed to check first launch", e);
+                        }
                     } else {
                         MPLog.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
                     }
@@ -746,6 +780,8 @@ import org.json.JSONObject;
             8; // Update or add properties to existing queued events
     private static final int REMOVE_RESIDUAL_IMAGE_FILES =
             9; // Remove residual image files left from the legacy SDK versions
+    private static final int CHECK_FIRST_LAUNCH = 
+            10; // Check if this is the first launch and track the event
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 
