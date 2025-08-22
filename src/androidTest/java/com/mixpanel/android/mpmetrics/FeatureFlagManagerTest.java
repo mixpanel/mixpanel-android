@@ -141,7 +141,7 @@ public class FeatureFlagManagerTest {
     }
 
     @Override
-    public byte[] performRequest(
+    public RemoteService.RequestResult performRequest(
         @NonNull String endpointUrl,
         @Nullable ProxyServerInteractor interactor,
         @Nullable Map<String, Object> params,
@@ -167,7 +167,7 @@ public class FeatureFlagManagerTest {
         if (result instanceof RuntimeException) { // For other test exceptions
           throw (RuntimeException) result;
         }
-        return (byte[]) result;
+        return RemoteService.RequestResult.success((byte[]) result, endpointUrl);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IOException("MockRemoteService interrupted.", e);
@@ -775,7 +775,7 @@ public class FeatureFlagManagerTest {
     MockRemoteService customMockService =
         new MockRemoteService() {
           @Override
-          public byte[] performRequest(
+          public RemoteService.RequestResult performRequest(
               String endpointUrl,
               ProxyServerInteractor interactor,
               Map<String, Object> params,
@@ -888,7 +888,7 @@ public class FeatureFlagManagerTest {
     MockRemoteService delayedMockService =
         new MockRemoteService() {
           @Override
-          public byte[] performRequest(
+          public RemoteService.RequestResult performRequest(
               String endpointUrl,
               ProxyServerInteractor interactor,
               Map<String, Object> params,

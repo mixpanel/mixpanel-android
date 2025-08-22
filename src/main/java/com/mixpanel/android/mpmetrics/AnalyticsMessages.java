@@ -8,17 +8,12 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.DisplayMetrics;
-
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.LegacyVersionUtils;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.RemoteService;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -26,20 +21,18 @@ import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
 import javax.net.ssl.SSLSocketFactory;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Manage communication of events with the internal database and the Mixpanel servers.
  *
- * <p>This class straddles the thread boundary between user threads and
- * a logical Mixpanel thread.
+ * <p>This class straddles the thread boundary between user threads and a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
 
-    /**
-     * Do not call directly. You should call AnalyticsMessages.getInstance()
-     */
+    /** Do not call directly. You should call AnalyticsMessages.getInstance() */
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
         mContext = context;
         mConfig = config;
@@ -53,14 +46,11 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     /**
-     * Use this to get an instance of AnalyticsMessages instead of creating one directly
-     * for yourself.
+     * Use this to get an instance of AnalyticsMessages instead of creating one directly for yourself.
      *
-     * @param messageContext should be the Main Activity of the application
-     *     associated with these messages.
-     *
+     * @param messageContext should be the Main Activity of the application associated with these
+     *     messages.
      * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
-     *               
      */
     public static AnalyticsMessages getInstance(final Context messageContext, MPConfig config) {
         synchronized (sInstances) {
@@ -107,7 +97,8 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     // Must be thread safe.
-    public void pushAnonymousPeopleMessage(final PushAnonymousPeopleDescription pushAnonymousPeopleDescription) {
+    public void pushAnonymousPeopleMessage(
+            final PushAnonymousPeopleDescription pushAnonymousPeopleDescription) {
         final Message m = Message.obtain();
         m.what = PUSH_ANONYMOUS_PEOPLE_RECORDS;
         m.obj = pushAnonymousPeopleDescription;
@@ -116,7 +107,8 @@ import javax.net.ssl.SSLSocketFactory;
     }
 
     // Must be thread safe.
-    public void clearAnonymousUpdatesMessage(final MixpanelDescription clearAnonymousUpdatesDescription) {
+    public void clearAnonymousUpdatesMessage(
+            final MixpanelDescription clearAnonymousUpdatesDescription) {
         final Message m = Message.obtain();
         m.what = CLEAR_ANONYMOUS_UPDATES;
         m.obj = clearAnonymousUpdatesDescription;
@@ -141,7 +133,8 @@ import javax.net.ssl.SSLSocketFactory;
         mWorker.runMessage(m);
     }
 
-    public void updateEventProperties(final UpdateEventsPropertiesDescription updateEventsProperties) {
+    public void updateEventProperties(
+            final UpdateEventsPropertiesDescription updateEventsProperties) {
         final Message m = Message.obtain();
         m.what = REWRITE_EVENT_PROPERTIES;
         m.obj = updateEventsProperties;
@@ -174,24 +167,33 @@ import javax.net.ssl.SSLSocketFactory;
         return MPDbAdapter.getInstance(context, mConfig);
     }
 
+    private volatile HttpService mHttpService;
+
     protected RemoteService getPoster() {
-        return new HttpService(mConfig.shouldGzipRequestPayload(), mNetworkErrorListener);
+        if (mHttpService == null) {
+            mHttpService =
+                    new HttpService(
+                            mConfig.shouldGzipRequestPayload(), mNetworkErrorListener, mConfig.getBackupHost());
+        } else {
+            // Update backup host in case it changed at runtime
+            mHttpService.setBackupHost(mConfig.getBackupHost());
+        }
+        return mHttpService;
     }
 
     ////////////////////////////////////////////////////
 
     static class EventDescription extends MixpanelMessageDescription {
-        public EventDescription(String eventName,
-                                JSONObject properties,
-                                String token) {
+        public EventDescription(String eventName, JSONObject properties, String token) {
             this(eventName, properties, token, false, new JSONObject());
         }
 
-        public EventDescription(String eventName,
-                                JSONObject properties,
-                                String token,
-                                boolean isAutomatic,
-                                JSONObject sessionMetada) {
+        public EventDescription(
+                String eventName,
+                JSONObject properties,
+                String token,
+                boolean isAutomatic,
+                JSONObject sessionMetada) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
@@ -275,8 +277,13 @@ import javax.net.ssl.SSLSocketFactory;
                     } catch (AssertionError e) {
                         // see https://github.com/mixpanel/mixpanel-android/issues/567
                         message.remove(jsonKey);
-                        MPLog.e(LOGTAG, "Removing people profile property from update (see https://github.com/mixpanel/mixpanel-android/issues/567)", e);
-                    } catch (JSONException e) {}
+                        MPLog.e(
+                                LOGTAG,
+                                "Removing people profile property from update (see"
+                                        + " https://github.com/mixpanel/mixpanel-android/issues/567)",
+                                e);
+                    } catch (JSONException e) {
+                    }
                 }
             }
             this.mMessage = message;
@@ -288,7 +295,6 @@ import javax.net.ssl.SSLSocketFactory;
 
         private final JSONObject mMessage;
     }
-
 
     static class UpdateEventsPropertiesDescription extends MixpanelDescription {
         private final Map<String, String> mProps;
@@ -334,13 +340,13 @@ import javax.net.ssl.SSLSocketFactory;
         }
 
         public boolean isDead() {
-            synchronized(mHandlerLock) {
+            synchronized (mHandlerLock) {
                 return mHandler == null;
             }
         }
 
         public void runMessage(Message msg) {
-            synchronized(mHandlerLock) {
+            synchronized (mHandlerLock) {
                 if (mHandler == null) {
                     // We died under suspicious circumstances. Don't try to send any more events.
                     logAboutMessageToMixpanel("Dead mixpanel worker dropping a message: " + msg.what);
@@ -353,7 +359,9 @@ import javax.net.ssl.SSLSocketFactory;
         // NOTE that the returned worker will run FOREVER, unless you send a hard kill
         // (which you really shouldn't)
         protected Handler restartWorkerThread() {
-            final HandlerThread thread = new HandlerThread("com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
+            final HandlerThread thread =
+                    new HandlerThread(
+                            "com.mixpanel.android.AnalyticsWorker", Process.THREAD_PRIORITY_BACKGROUND);
             thread.start();
             return new AnalyticsMessageHandler(thread.getLooper());
         }
@@ -370,8 +378,10 @@ import javax.net.ssl.SSLSocketFactory;
             public void handleMessage(Message msg) {
                 if (mDbAdapter == null) {
                     mDbAdapter = makeDbAdapter(mContext);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.EVENTS);
-                    mDbAdapter.cleanupEvents(System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.PEOPLE);
+                    mDbAdapter.cleanupEvents(
+                            System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.EVENTS);
+                    mDbAdapter.cleanupEvents(
+                            System.currentTimeMillis() - mConfig.getDataExpiration(), MPDbAdapter.Table.PEOPLE);
                 }
 
                 try {
@@ -380,7 +390,10 @@ import javax.net.ssl.SSLSocketFactory;
 
                     if (msg.what == ENQUEUE_PEOPLE) {
                         final PeopleDescription message = (PeopleDescription) msg.obj;
-                        final MPDbAdapter.Table peopleTable = message.isAnonymous() ? MPDbAdapter.Table.ANONYMOUS_PEOPLE : MPDbAdapter.Table.PEOPLE;
+                        final MPDbAdapter.Table peopleTable =
+                                message.isAnonymous()
+                                        ? MPDbAdapter.Table.ANONYMOUS_PEOPLE
+                                        : MPDbAdapter.Table.PEOPLE;
 
                         logAboutMessageToMixpanel("Queuing people record for sending later");
                         logAboutMessageToMixpanel("    " + message.toString());
@@ -406,7 +419,8 @@ import javax.net.ssl.SSLSocketFactory;
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
                     } else if (msg.what == PUSH_ANONYMOUS_PEOPLE_RECORDS) {
-                        final PushAnonymousPeopleDescription pushAnonymousPeopleDescription = (PushAnonymousPeopleDescription) msg.obj;
+                        final PushAnonymousPeopleDescription pushAnonymousPeopleDescription =
+                                (PushAnonymousPeopleDescription) msg.obj;
                         final String distinctId = pushAnonymousPeopleDescription.getDistinctId();
                         token = pushAnonymousPeopleDescription.getToken();
                         returnCode = mDbAdapter.pushAnonymousUpdatesToPeopleDb(token, distinctId);
@@ -415,8 +429,11 @@ import javax.net.ssl.SSLSocketFactory;
                         token = mixpanelDescription.getToken();
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
                     } else if (msg.what == REWRITE_EVENT_PROPERTIES) {
-                        final UpdateEventsPropertiesDescription description = (UpdateEventsPropertiesDescription) msg.obj;
-                        int updatedEvents = mDbAdapter.rewriteEventDataWithProperties(description.getProperties(), description.getToken());
+                        final UpdateEventsPropertiesDescription description =
+                                (UpdateEventsPropertiesDescription) msg.obj;
+                        int updatedEvents =
+                                mDbAdapter.rewriteEventDataWithProperties(
+                                        description.getProperties(), description.getToken());
                         MPLog.d(LOGTAG, updatedEvents + " stored events were updated with new properties.");
                     } else if (msg.what == FLUSH_QUEUE) {
                         logAboutMessageToMixpanel("Flushing queue due to scheduled or forced flush");
@@ -431,8 +448,11 @@ import javax.net.ssl.SSLSocketFactory;
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.GROUPS, token);
                         mDbAdapter.cleanupAllEvents(MPDbAdapter.Table.ANONYMOUS_PEOPLE, token);
                     } else if (msg.what == KILL_WORKER) {
-                        MPLog.w(LOGTAG, "Worker received a hard kill. Dumping all events and force-killing. Thread id " + Thread.currentThread().getId());
-                        synchronized(mHandlerLock) {
+                        MPLog.w(
+                                LOGTAG,
+                                "Worker received a hard kill. Dumping all events and force-killing. Thread id "
+                                        + Thread.currentThread().getId());
+                        synchronized (mHandlerLock) {
                             mDbAdapter.deleteDB();
                             mHandler = null;
                             Looper.myLooper().quit();
@@ -445,8 +465,15 @@ import javax.net.ssl.SSLSocketFactory;
                     }
 
                     ///////////////////////////
-                    if ((returnCode >= mConfig.getBulkUploadLimit() || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR) && mFailedRetries <= 0 && token != null) {
-                        logAboutMessageToMixpanel("Flushing queue due to bulk upload limit (" + returnCode + ") for project " + token);
+                    if ((returnCode >= mConfig.getBulkUploadLimit()
+                            || returnCode == MPDbAdapter.DB_OUT_OF_MEMORY_ERROR)
+                            && mFailedRetries <= 0
+                            && token != null) {
+                        logAboutMessageToMixpanel(
+                                "Flushing queue due to bulk upload limit ("
+                                        + returnCode
+                                        + ") for project "
+                                        + token);
                         updateFlushFrequency();
                         sendAllData(mDbAdapter, token);
                     } else if (returnCode > 0 && !hasMessages(FLUSH_QUEUE, token)) {
@@ -456,7 +483,8 @@ import javax.net.ssl.SSLSocketFactory;
                         // a flush right here, so we may end up with two flushes
                         // in our queue, but we're OK with that.
 
-                        logAboutMessageToMixpanel("Queue depth " + returnCode + " - Adding flush in " + mFlushInterval);
+                        logAboutMessageToMixpanel(
+                                "Queue depth " + returnCode + " - Adding flush in " + mFlushInterval);
                         if (mFlushInterval >= 0) {
                             final Message flushMessage = Message.obtain();
                             flushMessage.what = FLUSH_QUEUE;
@@ -477,7 +505,7 @@ import javax.net.ssl.SSLSocketFactory;
                         }
                     }
                 }
-            }// handleMessage
+            } // handleMessage
 
             protected long getTrackEngageRetryAfter() {
                 return mTrackEngageRetryAfter;
@@ -486,7 +514,8 @@ import javax.net.ssl.SSLSocketFactory;
             private void sendAllData(MPDbAdapter dbAdapter, String token) {
                 final RemoteService poster = getPoster();
                 if (!poster.isOnline(mContext, mConfig.getOfflineMode())) {
-                    logAboutMessageToMixpanel("Not flushing data to Mixpanel because the device is not connected to the internet.");
+                    logAboutMessageToMixpanel(
+                            "Not flushing data to Mixpanel because the device is not connected to the internet.");
                     return;
                 }
 
@@ -495,7 +524,8 @@ import javax.net.ssl.SSLSocketFactory;
                 sendData(dbAdapter, token, MPDbAdapter.Table.GROUPS, mConfig.getGroupsEndpoint());
             }
 
-            private void sendData(MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
+            private void sendData(
+                    MPDbAdapter dbAdapter, String token, MPDbAdapter.Table table, String url) {
                 final RemoteService poster = getPoster();
                 String[] eventsData = dbAdapter.generateDataString(table, token);
                 Integer queueCount = 0;
@@ -515,15 +545,22 @@ import javax.net.ssl.SSLSocketFactory;
                     }
 
                     boolean deleteEvents = true;
-                    byte[] response;
+                    RemoteService.RequestResult result;
                     try {
                         final SSLSocketFactory socketFactory = mConfig.getSSLSocketFactory();
-                        response = poster.performRequest(url, mConfig.getProxyServerInteractor(), params, null, null, socketFactory);
+                        result =
+                                poster.performRequest(
+                                        url, mConfig.getProxyServerInteractor(), params, null, null, socketFactory);
+                        byte[] response = result.getResponse();
+                        String actualUrl = result.getRequestUrl(); // Get the actual URL that succeeded
+                        
                         if (null == response) {
                             deleteEvents = false;
-                            logAboutMessageToMixpanel("Response was null, unexpected failure posting to " + url + ".");
+                            logAboutMessageToMixpanel(
+                                    "Response was null, unexpected failure posting to " + actualUrl + ".");
                         } else {
-                            deleteEvents = true; // Delete events on any successful post, regardless of 1 or 0 response
+                            deleteEvents =
+                                    true; // Delete events on any successful post, regardless of 1 or 0 response
                             String parsedResponse;
                             try {
                                 parsedResponse = new String(response, "UTF-8");
@@ -535,7 +572,7 @@ import javax.net.ssl.SSLSocketFactory;
                                 removeMessages(FLUSH_QUEUE, token);
                             }
 
-                            logAboutMessageToMixpanel("Successfully posted to " + url + ": \n" + rawMessage);
+                            logAboutMessageToMixpanel("Successfully posted to " + actualUrl + ": \n" + rawMessage);
                             logAboutMessageToMixpanel("Response was " + parsedResponse);
                         }
                     } catch (final OutOfMemoryError e) {
@@ -556,14 +593,17 @@ import javax.net.ssl.SSLSocketFactory;
                         dbAdapter.cleanupEvents(lastId, table, token);
                     } else {
                         removeMessages(FLUSH_QUEUE, token);
-                        mTrackEngageRetryAfter = Math.max((long)Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
-                        mTrackEngageRetryAfter = Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
+                        mTrackEngageRetryAfter =
+                                Math.max((long) Math.pow(2, mFailedRetries) * 60000, mTrackEngageRetryAfter);
+                        mTrackEngageRetryAfter =
+                                Math.min(mTrackEngageRetryAfter, 10 * 60 * 1000); // limit 10 min
                         final Message flushMessage = Message.obtain();
                         flushMessage.what = FLUSH_QUEUE;
                         flushMessage.obj = token;
                         sendMessageDelayed(flushMessage, mTrackEngageRetryAfter);
                         mFailedRetries++;
-                        logAboutMessageToMixpanel("Retrying this batch of events in " + mTrackEngageRetryAfter + " ms");
+                        logAboutMessageToMixpanel(
+                                "Retrying this batch of events in " + mTrackEngageRetryAfter + " ms");
                         break;
                     }
 
@@ -574,8 +614,7 @@ import javax.net.ssl.SSLSocketFactory;
                 }
             }
 
-            private JSONObject getDefaultEventProperties()
-                    throws JSONException {
+            private JSONObject getDefaultEventProperties() throws JSONException {
                 final JSONObject ret = new JSONObject();
 
                 ret.put("mp_lib", "android");
@@ -600,47 +639,42 @@ import javax.net.ssl.SSLSocketFactory;
                     ret.put("$app_version_string", applicationVersionName);
                 }
 
-                 final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
-                 if (null != applicationVersionCode) {
+                final Integer applicationVersionCode = mSystemInformation.getAppVersionCode();
+                if (null != applicationVersionCode) {
                     final String applicationVersion = String.valueOf(applicationVersionCode);
                     ret.put("$app_release", applicationVersion);
                     ret.put("$app_build_number", applicationVersion);
                 }
 
                 final Boolean hasNFC = mSystemInformation.hasNFC();
-                if (null != hasNFC)
-                    ret.put("$has_nfc", hasNFC.booleanValue());
+                if (null != hasNFC) ret.put("$has_nfc", hasNFC.booleanValue());
 
                 final Boolean hasTelephony = mSystemInformation.hasTelephony();
-                if (null != hasTelephony)
-                    ret.put("$has_telephone", hasTelephony.booleanValue());
+                if (null != hasTelephony) ret.put("$has_telephone", hasTelephony.booleanValue());
 
                 final String carrier = mSystemInformation.getCurrentNetworkOperator();
-                if (null != carrier && !carrier.trim().isEmpty())
-                    ret.put("$carrier", carrier);
+                if (null != carrier && !carrier.trim().isEmpty()) ret.put("$carrier", carrier);
 
                 final Boolean isWifi = mSystemInformation.isWifiConnected();
-                if (null != isWifi)
-                    ret.put("$wifi", isWifi.booleanValue());
+                if (null != isWifi) ret.put("$wifi", isWifi.booleanValue());
 
                 final Boolean isBluetoothEnabled = mSystemInformation.isBluetoothEnabled();
-                if (isBluetoothEnabled != null)
-                    ret.put("$bluetooth_enabled", isBluetoothEnabled);
+                if (isBluetoothEnabled != null) ret.put("$bluetooth_enabled", isBluetoothEnabled);
 
                 final String bluetoothVersion = mSystemInformation.getBluetoothVersion();
-                if (bluetoothVersion != null)
-                    ret.put("$bluetooth_version", bluetoothVersion);
+                if (bluetoothVersion != null) ret.put("$bluetooth_version", bluetoothVersion);
 
                 return ret;
             }
 
-            private JSONObject prepareEventObject(EventDescription eventDescription) throws JSONException {
+            private JSONObject prepareEventObject(EventDescription eventDescription)
+                    throws JSONException {
                 final JSONObject eventObj = new JSONObject();
                 final JSONObject eventProperties = eventDescription.getProperties();
                 final JSONObject sendProperties = getDefaultEventProperties();
                 sendProperties.put("token", eventDescription.getToken());
                 if (eventProperties != null) {
-                    for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext();) {
+                    for (final Iterator<?> iter = eventProperties.keys(); iter.hasNext(); ) {
                         final String key = (String) iter.next();
                         sendProperties.put(key, eventProperties.get(key));
                     }
@@ -655,7 +689,7 @@ import javax.net.ssl.SSLSocketFactory;
             private final long mFlushInterval;
             private long mTrackEngageRetryAfter;
             private int mFailedRetries;
-        }// AnalyticsMessageHandler
+        } // AnalyticsMessageHandler
 
         private void updateFlushFrequency() {
             final long now = System.currentTimeMillis();
@@ -685,6 +719,7 @@ import javax.net.ssl.SSLSocketFactory;
     public long getTrackEngageRetryAfter() {
         return ((Worker.AnalyticsMessageHandler) mWorker.mHandler).getTrackEngageRetryAfter();
     }
+
     /////////////////////////////////////////////////////////
 
     // Used across thread boundaries
@@ -699,15 +734,20 @@ import javax.net.ssl.SSLSocketFactory;
     private static final int ENQUEUE_EVENTS = 1; // push given JSON message to events DB
     private static final int FLUSH_QUEUE = 2; // submit events, people, and groups data
     private static final int ENQUEUE_GROUP = 3; // push given JSON message to groups DB
-    private static final int PUSH_ANONYMOUS_PEOPLE_RECORDS = 4; // push anonymous people DB updates to people DB
-    private static final int KILL_WORKER = 5; // Hard-kill the worker thread, discarding all events on the event queue. This is for testing, or disasters.
-    private static final int EMPTY_QUEUES = 6; // Remove any local (and pending to be flushed) events or people/group updates from the db
+    private static final int PUSH_ANONYMOUS_PEOPLE_RECORDS =
+            4; // push anonymous people DB updates to people DB
+    private static final int KILL_WORKER =
+            5; // Hard-kill the worker thread, discarding all events on the event queue. This is for
+    // testing, or disasters.
+    private static final int EMPTY_QUEUES =
+            6; // Remove any local (and pending to be flushed) events or people/group updates from the db
     private static final int CLEAR_ANONYMOUS_UPDATES = 7; // Remove anonymous people updates from DB
-    private static final int REWRITE_EVENT_PROPERTIES = 8; // Update or add properties to existing queued events
-    private static final int REMOVE_RESIDUAL_IMAGE_FILES = 9; // Remove residual image files left from the legacy SDK versions
+    private static final int REWRITE_EVENT_PROPERTIES =
+            8; // Update or add properties to existing queued events
+    private static final int REMOVE_RESIDUAL_IMAGE_FILES =
+            9; // Remove residual image files left from the legacy SDK versions
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 
     private static final Map<String, AnalyticsMessages> sInstances = new HashMap<>();
-
 }

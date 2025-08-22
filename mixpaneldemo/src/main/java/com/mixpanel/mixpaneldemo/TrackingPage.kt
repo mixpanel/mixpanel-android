@@ -34,6 +34,8 @@ fun TrackingPage(navController: NavHostController) {
     mixpanel.setEnableLogging(true)
     mixpanel.setShouldGzipRequestPayload(true)
     mixpanel.setNetworkErrorListener(SimpleLoggingErrorListener())
+    mixpanel.setServerURL("https://api.mixpanel-fail.com")
+    mixpanel.setBackupHost("api.mixpanel.com")
 
     val trackingActions = listOf(
         Triple("Track w/o Properties" ,"Event: \"Track Event!\"", {  println("Tracking without properties")
