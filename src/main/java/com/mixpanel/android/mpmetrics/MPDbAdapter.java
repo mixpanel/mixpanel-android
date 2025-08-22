@@ -113,9 +113,20 @@ import com.mixpanel.android.util.MPLog;
     private static class MPDatabaseHelper extends SQLiteOpenHelper {
         MPDatabaseHelper(Context context, String dbName, MPConfig config) {
             super(context, dbName, null, DATABASE_VERSION);
-            mDatabaseFile = context.getDatabasePath(dbName);
+            mDatabaseFile = null; // Defer initialization to avoid disk I/O on main thread
+            mDatabaseName = dbName;
             mConfig = config;
             mContext = context;
+        }
+
+        /**
+         * Lazily get the database file, initializing if needed
+         */
+        private synchronized File getDatabaseFile() {
+            if (mDatabaseFile == null) {
+                mDatabaseFile = mContext.getDatabasePath(mDatabaseName);
+            }
+            return mDatabaseFile;
         }
 
         /**
@@ -123,7 +134,7 @@ import com.mixpanel.android.util.MPLog;
          */
         public void deleteDatabase() {
             close();
-            mDatabaseFile.delete();
+            getDatabaseFile().delete();
         }
 
         @Override
@@ -176,9 +187,10 @@ import com.mixpanel.android.util.MPLog;
         }
 
         public boolean aboveMemThreshold() {
-            if (mDatabaseFile.exists()) {
-                return mDatabaseFile.length() > Math.max(mDatabaseFile.getUsableSpace(), mConfig.getMinimumDatabaseLimit()) ||
-                        mDatabaseFile.length() > mConfig.getMaximumDatabaseLimit();
+            File dbFile = getDatabaseFile();
+            if (dbFile.exists()) {
+                return dbFile.length() > Math.max(dbFile.getUsableSpace(), mConfig.getMinimumDatabaseLimit()) ||
+                        dbFile.length() > mConfig.getMaximumDatabaseLimit();
             }
             return false;
         }
@@ -279,7 +291,8 @@ import com.mixpanel.android.util.MPLog;
             }
         }
 
-        private final File mDatabaseFile;
+        private File mDatabaseFile;
+        private final String mDatabaseName;
         private final MPConfig mConfig;
         private final Context mContext;
     }
@@ -667,7 +680,7 @@ import com.mixpanel.android.util.MPLog;
     }
 
     public File getDatabaseFile() {
-        return mDb.mDatabaseFile;
+        return mDb.getDatabaseFile();
     }
 
     /* For testing use only, do not call from in production code */

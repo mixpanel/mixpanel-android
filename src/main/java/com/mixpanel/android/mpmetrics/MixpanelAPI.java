@@ -233,14 +233,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             registerSuperProperties(options.getSuperProperties());
         }
 
-        final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
+        // Check first launch asynchronously to avoid disk I/O on main thread
+        checkFirstLaunchAsync();
 
         registerMixpanelActivityLifecycleCallbacks();
-
-        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken) && mTrackAutomaticEvents) {
-            track(AutomaticEvents.FIRST_OPEN, null, true);
-            mPersistentIdentity.setHasLaunched(mToken);
-        }
 
         if (sendAppOpen() && mTrackAutomaticEvents) {
             track("$app_open", null);
@@ -2039,6 +2035,31 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 @NonNull String featureName,
                 boolean fallbackValue,
                 @NonNull FlagCompletionCallback<Boolean> completion);
+    }
+
+    /**
+     * Check if this is the first launch and track the first open event asynchronously.
+     * This avoids disk I/O on the main thread which would trigger StrictMode violations.
+     */
+    private void checkFirstLaunchAsync() {
+        if (!mTrackAutomaticEvents) {
+            return;
+        }
+        
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
+                    if (mPersistentIdentity.isFirstLaunch(dbExists, mToken)) {
+                        track(AutomaticEvents.FIRST_OPEN, null, true);
+                        mPersistentIdentity.setHasLaunched(mToken);
+                    }
+                } catch (Exception e) {
+                    MPLog.e(LOGTAG, "Failed to check first launch", e);
+                }
+            }
+        }).start();
     }
 
     /**
