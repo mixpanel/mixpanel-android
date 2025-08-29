@@ -40,6 +40,26 @@ public interface RemoteService {
             @Nullable SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException;
 
+    /**
+     * Performs an HTTP GET request with query parameters.
+     *
+     * @param endpointUrl      The target URL.
+     * @param interactor       Optional proxy interactor.
+     * @param queryParams      Query parameters to be URL-encoded and appended to the URL.
+     * @param headers          Optional map of custom headers (e.g., Authorization).
+     * @param socketFactory    Optional custom SSLSocketFactory.
+     * @return The response body as a byte array, or null if the request failed with a non-retriable HTTP error code.
+     * @throws ServiceUnavailableException If the server returned a 5xx error with a Retry-After header.
+     * @throws IOException                For network errors or non-5xx HTTP errors where reading failed.
+     */
+    byte[] performRequestGet(
+            @NonNull String endpointUrl,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> queryParams,
+            @Nullable Map<String, String> headers,
+            @Nullable SSLSocketFactory socketFactory)
+            throws ServiceUnavailableException, IOException;
+
     class ServiceUnavailableException extends Exception {
         public ServiceUnavailableException(String message, String strRetryAfter) {
             super(message);

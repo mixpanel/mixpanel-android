@@ -69,6 +69,32 @@ public class FeatureFlagManagerTest {
             if (requestBodyBytes == null) return null;
             return new JSONObject(new String(requestBodyBytes, StandardCharsets.UTF_8));
         }
+
+        public boolean isGetRequest() {
+            return requestBodyBytes == null;
+        }
+
+        public Map<String, String> getQueryParams() {
+            if (!endpointUrl.contains("?")) return new HashMap<>();
+            
+            String queryString = endpointUrl.substring(endpointUrl.indexOf("?") + 1);
+            Map<String, String> params = new HashMap<>();
+            String[] pairs = queryString.split("&");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split("=", 2);
+                if (keyValue.length == 2) {
+                    try {
+                        params.put(
+                            java.net.URLDecoder.decode(keyValue[0], "UTF-8"),
+                            java.net.URLDecoder.decode(keyValue[1], "UTF-8")
+                        );
+                    } catch (Exception e) {
+                        // Skip malformed parameters
+                    }
+                }
+            }
+            return params;
+        }
     }
 
     private static class MockFeatureFlagDelegate implements FeatureFlagDelegate {
@@ -182,6 +208,38 @@ public class FeatureFlagManagerTest {
 
         public void addResponse(JSONObject responseJson) {
             mResults.offer(responseJson.toString().getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public byte[] performRequestGet(
+                @NonNull String endpointUrl,
+                @Nullable ProxyServerInteractor interactor,
+                @Nullable Map<String, Object> queryParams,
+                @Nullable Map<String, String> headers,
+                @Nullable SSLSocketFactory socketFactory)
+                throws ServiceUnavailableException, IOException {
+
+            mCapturedRequests.offer(new CapturedRequest(endpointUrl, headers, null));
+
+            try {
+                Object result = mResults.poll(FeatureFlagManagerTest.ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                if (result == null) {
+                    throw new IOException("MockRemoteService timed out waiting for a result to be queued.");
+                }
+                if (result instanceof IOException) {
+                    throw (IOException) result;
+                }
+                if (result instanceof ServiceUnavailableException) {
+                    throw (ServiceUnavailableException) result;
+                }
+                if (result instanceof RuntimeException) {
+                    throw (RuntimeException) result;
+                }
+                return (byte[]) result;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("MockRemoteService interrupted.", e);
+            }
         }
 
         public void addError(Exception e) {
@@ -1229,5 +1287,159 @@ public class FeatureFlagManagerTest {
                      "!@#$%^&*()_+-=[]{}|;':\",./<>?", requestContext.getString("special_chars"));
         assertEquals("unicode should be preserved", "你好世界", requestContext.getString("unicode"));
         assertEquals("newline should be preserved", "line1\nline2", requestContext.getString("newline"));
+    }
+
+    @Test
+    public void testGetRequest_verifyMethod() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("get_test_flag", new MixpanelFlagVariant("v1", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        assertTrue("Request should be a GET request", capturedRequest.isGetRequest());
+        assertTrue("URL should contain query parameters", capturedRequest.endpointUrl.contains("?"));
+    }
+
+    @Test
+    public void testGetRequest_queryParameters() throws InterruptedException, JSONException {
+        // Setup with context data
+        JSONObject contextData = new JSONObject();
+        contextData.put("test_key", "test_value");
+        setupFlagsConfig(true, contextData);
+        
+        mMockDelegate.distinctIdToReturn = "user_123";
+        mMockDelegate.anonymousIdToReturn = "device_456";
+        mMockDelegate.tokenToReturn = "test_token_789";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("query_test_flag", new MixpanelFlagVariant("v1", "value1"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Get query parameters
+        Map<String, String> queryParams = capturedRequest.getQueryParams();
+        
+        // Verify required parameters
+        assertTrue("Should have context parameter", queryParams.containsKey("context"));
+        assertTrue("Should have token parameter", queryParams.containsKey("token"));
+        assertTrue("Should have sdk parameter", queryParams.containsKey("sdk"));
+        assertTrue("Should have sdk_version parameter", queryParams.containsKey("sdk_version"));
+        
+        // Verify values
+        assertEquals("Token should match", "test_token_789", queryParams.get("token"));
+        assertEquals("SDK should be android", "android", queryParams.get("sdk"));
+        assertEquals("SDK version should match MPConfig.VERSION", MPConfig.VERSION, queryParams.get("sdk_version"));
+        
+        // Verify context contains expected data
+        String contextParam = queryParams.get("context");
+        assertNotNull("Context parameter should not be null", contextParam);
+        JSONObject context = new JSONObject(contextParam);
+        assertEquals("Context should contain distinct_id", "user_123", context.getString("distinct_id"));
+        assertEquals("Context should contain device_id", "device_456", context.getString("device_id"));
+        assertEquals("Context should contain test_key", "test_value", context.getString("test_key"));
+    }
+
+    @Test
+    public void testGetRequest_noContentTypeHeader() throws InterruptedException {
+        setupFlagsConfig(true, new JSONObject());
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("header_test_flag", new MixpanelFlagVariant("v1", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Verify headers
+        assertNotNull("Request should have headers", capturedRequest.headers);
+        assertTrue("Should have Authorization header", capturedRequest.headers.containsKey("Authorization"));
+        assertFalse("Should NOT have Content-Type header for GET request", 
+                   capturedRequest.headers.containsKey("Content-Type"));
+        
+        // Verify Authorization header format
+        String authHeader = capturedRequest.headers.get("Authorization");
+        assertTrue("Authorization should start with 'Basic '", authHeader.startsWith("Basic "));
+    }
+
+    @Test
+    public void testGetRequest_withNullDeviceId() throws InterruptedException, JSONException {
+        setupFlagsConfig(true, new JSONObject());
+        
+        mMockDelegate.distinctIdToReturn = "user_without_device";
+        mMockDelegate.anonymousIdToReturn = null; // No device ID
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("null_device_flag", new MixpanelFlagVariant("v1", "value1"));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Get context from query parameters
+        Map<String, String> queryParams = capturedRequest.getQueryParams();
+        String contextParam = queryParams.get("context");
+        JSONObject context = new JSONObject(contextParam);
+        
+        // Verify context
+        assertEquals("Context should contain distinct_id", "user_without_device", context.getString("distinct_id"));
+        assertFalse("Context should NOT contain device_id when it's null", context.has("device_id"));
+    }
+
+    @Test
+    public void testGetRequest_urlEncoding() throws InterruptedException, JSONException {
+        // Setup with context that has special characters
+        JSONObject contextData = new JSONObject();
+        contextData.put("special", "hello world & other chars");
+        contextData.put("unicode", "测试");
+        setupFlagsConfig(true, contextData);
+        
+        mMockDelegate.distinctIdToReturn = "user with spaces";
+        
+        // Create response
+        Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+        serverFlags.put("encoding_test", new MixpanelFlagVariant("v1", true));
+        mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+        
+        // Trigger request
+        mFeatureFlagManager.loadFlags();
+        
+        // Capture and verify request
+        CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
+        assertNotNull("Request should have been made", capturedRequest);
+        
+        // Get context from query parameters (this tests URL decoding)
+        Map<String, String> queryParams = capturedRequest.getQueryParams();
+        String contextParam = queryParams.get("context");
+        JSONObject context = new JSONObject(contextParam);
+        
+        // Verify special characters are properly encoded/decoded
+        assertEquals("Special characters should be preserved", "user with spaces", context.getString("distinct_id"));
+        assertEquals("Special context should be preserved", "hello world & other chars", context.getString("special"));
+        assertEquals("Unicode should be preserved", "测试", context.getString("unicode"));
     }
 }

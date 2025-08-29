@@ -458,21 +458,26 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         }
 
         try {
-            // 1. Build Request Body JSON
+            // 1. Build context object for query parameters
             JSONObject contextJson = new JSONObject(mFlagsConfig.context.toString());
             contextJson.put("distinct_id", distinctId);
             if (deviceId != null) {
                 contextJson.put("device_id", deviceId);
             }
-            JSONObject requestJson = new JSONObject();
-            requestJson.put("context", contextJson);
-            String requestJsonString = requestJson.toString();
-            MPLog.v(LOGTAG, "Request JSON Body: " + requestJsonString);
-            byte[] requestBodyBytes = requestJsonString.getBytes(StandardCharsets.UTF_8); // Get raw bytes
 
+            // 2. Build query parameters for GET request
+            Map<String, Object> queryParams = new HashMap<>();
+            queryParams.put("context", contextJson.toString());
+            queryParams.put("token", delegate.getToken());
+            queryParams.put("sdk", "android");
+            queryParams.put("sdk_version", MPConfig.VERSION);
 
-            // 3. Build Headers
-            String token = delegate.getToken(); // Assuming token is in MPConfig
+            MPLog.v(LOGTAG, "Request query params: context=" + contextJson.toString() + 
+                    ", token=" + delegate.getToken() + 
+                    ", sdk=android, sdk_version=" + MPConfig.VERSION);
+
+            // 3. Build Headers (no Content-Type needed for GET)
+            String token = delegate.getToken();
             if (token == null || token.trim().isEmpty()) {
                 throw new IOException("Mixpanel token is missing or empty.");
             }
@@ -480,15 +485,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             String base64Auth = Base64Coder.encodeString(authString);
             Map<String, String> headers = new HashMap<>();
             headers.put("Authorization", "Basic " + base64Auth);
-            headers.put("Content-Type", "application/json; charset=utf-8"); // Explicitly set content type
 
-            // 4. Perform Request
-            byte[] responseBytes = mHttpService.performRequest( // <-- Use consolidated method
+            // 4. Perform GET Request
+            byte[] responseBytes = mHttpService.performRequestGet(
                     mFlagsEndpoint,
                     config.getProxyServerInteractor(),
-                    null, // Pass null for params when sending raw body
+                    queryParams,
                     headers,
-                    requestBodyBytes, // Pass raw JSON body bytes
                     config.getSSLSocketFactory()
             );
 

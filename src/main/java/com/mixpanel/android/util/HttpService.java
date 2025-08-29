@@ -300,6 +300,136 @@ public class HttpService implements RemoteService {
         return response; // Can be null if a non-retriable HTTP error occurred
     }
 
+    /**
+     * Performs an HTTP GET request with query parameters.
+     */
+    @Override
+    public byte[] performRequestGet(
+            @NonNull String endpointUrl,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> queryParams,
+            @Nullable Map<String, String> headers,
+            @Nullable SSLSocketFactory socketFactory
+    ) throws ServiceUnavailableException, IOException {
+
+        // Build URL with query parameters
+        String fullUrl = endpointUrl;
+        if (queryParams != null && !queryParams.isEmpty()) {
+            Uri.Builder uriBuilder = Uri.parse(endpointUrl).buildUpon();
+            for (Map.Entry<String, Object> param : queryParams.entrySet()) {
+                uriBuilder.appendQueryParameter(param.getKey(), param.getValue().toString());
+            }
+            fullUrl = uriBuilder.build().toString();
+        }
+
+        MPLog.v(LOGTAG, "Attempting GET request to " + fullUrl);
+        byte[] response = null;
+        int retries = 0;
+        boolean succeeded = false;
+
+        while (retries < 3 && !succeeded) {
+            InputStream in = null;
+            HttpURLConnection connection = null;
+
+            // Variables for error listener reporting
+            String targetIpAddress = null;
+            long startTimeNanos = System.nanoTime();
+
+            try {
+                // --- Connection Setup ---
+                final URL url = new URL(fullUrl);
+                try { // Get IP Address for error reporting
+                    InetAddress inetAddress = InetAddress.getByName(url.getHost());
+                    targetIpAddress = inetAddress.getHostAddress();
+                } catch (Exception e) {
+                    MPLog.v(LOGTAG, "Could not resolve IP address for " + url.getHost(), e);
+                    targetIpAddress = "N/A";
+                }
+
+                connection = (HttpURLConnection) url.openConnection();
+                if (null != socketFactory && connection instanceof HttpsURLConnection) {
+                    ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
+                }
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(60000);
+                connection.setRequestMethod("GET");
+                connection.setDoOutput(false); // GET request should not have output
+
+                // --- Apply Custom Headers ---
+                if (headers != null) {
+                    for (Map.Entry<String, String> entry : headers.entrySet()) {
+                        connection.setRequestProperty(entry.getKey(), entry.getValue());
+                    }
+                }
+
+                // Apply proxy headers AFTER custom headers
+                if (interactor != null && isProxyRequest(fullUrl)) {
+                    Map<String,String> proxyHeaders = interactor.getProxyRequestHeaders();
+                    if (proxyHeaders != null) {
+                        for (Map.Entry<String, String> entry : proxyHeaders.entrySet()) {
+                            connection.setRequestProperty(entry.getKey(), entry.getValue());
+                        }
+                    }
+                }
+
+                // --- Process Response ---
+                int responseCode = connection.getResponseCode();
+                String responseMessage = connection.getResponseMessage();
+                MPLog.v(LOGTAG, "GET Response Code: " + responseCode);
+                if (interactor != null && isProxyRequest(fullUrl)) {
+                    interactor.onProxyResponse(fullUrl, responseCode);
+                }
+
+                if (responseCode >= 200 && responseCode < 300) { // Success
+                    in = connection.getInputStream();
+                    response = slurp(in);
+                    succeeded = true;
+                } else if (responseCode >= MIN_UNAVAILABLE_HTTP_RESPONSE_CODE && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
+                    onNetworkError(connection, fullUrl, targetIpAddress, startTimeNanos, 0, 0,
+                            new ServiceUnavailableException("Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After")));
+                    throw new ServiceUnavailableException("Service Unavailable: " + responseCode, connection.getHeaderField("Retry-After"));
+                } else { // Other errors (4xx etc.)
+                    MPLog.w(LOGTAG, "HTTP error " + responseCode + " (" + responseMessage + ") for URL: " + fullUrl);
+                    String errorBody = null;
+                    try {
+                        in = connection.getErrorStream();
+                        if (in != null) {
+                            byte[] errorBytes = slurp(in);
+                            errorBody = new String(errorBytes, StandardCharsets.UTF_8);
+                            MPLog.w(LOGTAG, "Error Body: " + errorBody);
+                        }
+                    } catch (Exception e) {
+                        MPLog.w(LOGTAG, "Could not read error stream.", e);
+                    }
+                    onNetworkError(connection, fullUrl, targetIpAddress, startTimeNanos, 0, 0,
+                            new IOException("HTTP error response: " + responseCode + " " + responseMessage + (errorBody != null ? " - Body: " + errorBody : "")));
+                    response = null;
+                    succeeded = true; // Stop retry loop for definitive HTTP errors
+                }
+
+            } catch (final EOFException e) {
+                onNetworkError(connection, fullUrl, targetIpAddress, startTimeNanos, 0, 0, e);
+                MPLog.d(LOGTAG, "EOFException, likely network issue. Retrying GET request to " + fullUrl);
+                retries++;
+            } catch (final IOException e) {
+                onNetworkError(connection, fullUrl, targetIpAddress, startTimeNanos, 0, 0, e);
+                throw e;
+            } catch (final Exception e) {
+                onNetworkError(connection, fullUrl, targetIpAddress, startTimeNanos, 0, 0, e);
+                throw new IOException("Unexpected exception during GET request", e);
+            } finally {
+                if (null != in) try { in.close(); } catch (final IOException e) { /* ignore */ }
+                if (null != connection) connection.disconnect();
+            }
+        }
+
+        if (!succeeded) {
+            MPLog.e(LOGTAG, "Could not complete GET request to " + fullUrl + " after " + retries + " retries.");
+            throw new IOException("GET request failed after multiple retries.");
+        }
+
+        return response;
+    }
 
     private void onNetworkError(HttpURLConnection connection, String endpointUrl, String targetIpAddress, long startTimeNanos, long uncompressedBodySize, long compressedBodySize, Exception e) {
         if (this.networkErrorListener != null) {
