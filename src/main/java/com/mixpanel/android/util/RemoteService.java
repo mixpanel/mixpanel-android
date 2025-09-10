@@ -13,6 +13,10 @@ import javax.net.ssl.SSLSocketFactory;
 
 
 public interface RemoteService {
+    enum HttpMethod {
+        GET, POST
+    }
+
     boolean isOnline(Context context, OfflineMode offlineMode);
 
     void checkIsMixpanelBlocked();
@@ -37,6 +41,31 @@ public interface RemoteService {
             @Nullable Map<String, Object> params, // Used only if requestBodyBytes is null
             @Nullable Map<String, String> headers,
             @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
+            @Nullable SSLSocketFactory socketFactory)
+            throws ServiceUnavailableException, IOException;
+
+    /**
+     * Performs an HTTP request with the specified method. For GET requests, parameters go in query string.
+     * For POST requests, parameters can go in body (URL-encoded or JSON) or query string based on requestBodyBytes.
+     *
+     * @param method           The HTTP method to use (GET or POST).
+     * @param endpointUrl      The target URL.
+     * @param interactor       Optional proxy interactor.
+     * @param params           Parameters (query string for GET, body for POST if requestBodyBytes is null).
+     * @param headers          Optional map of custom headers (e.g., Authorization, Content-Type).
+     * @param requestBodyBytes Optional raw byte array for POST request body. If non-null, params are ignored for body.
+     * @param socketFactory    Optional custom SSLSocketFactory.
+     * @return A RequestResult containing the response body, actual URL used, and success status.
+     * @throws ServiceUnavailableException If the server returned a 5xx error with a Retry-After header.
+     * @throws IOException                For network errors or non-5xx HTTP errors where reading failed.
+     */
+    RequestResult performRequest(
+            @NonNull HttpMethod method,
+            @NonNull String endpointUrl,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> params,
+            @Nullable Map<String, String> headers,
+            @Nullable byte[] requestBodyBytes,
             @Nullable SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException;
 

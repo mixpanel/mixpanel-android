@@ -13,6 +13,7 @@ import com.mixpanel.android.util.OfflineMode; // Assuming this exists
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -64,6 +65,32 @@ public class FeatureFlagManagerTest {
     public JSONObject getRequestBodyAsJson() throws JSONException {
       if (requestBodyBytes == null) return null;
       return new JSONObject(new String(requestBodyBytes, StandardCharsets.UTF_8));
+    }
+
+    public Map<String, String> getQueryParameters() throws JSONException, UnsupportedEncodingException {
+      Map<String, String> params = new HashMap<>();
+      if (endpointUrl.contains("?")) {
+        String query = endpointUrl.substring(endpointUrl.indexOf("?") + 1);
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+          String[] keyValue = pair.split("=", 2);
+          if (keyValue.length == 2) {
+            String key = java.net.URLDecoder.decode(keyValue[0], "UTF-8");
+            String value = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
+            params.put(key, value);
+          }
+        }
+      }
+      return params;
+    }
+
+    public JSONObject getContextFromQueryParams() throws JSONException, UnsupportedEncodingException {
+      Map<String, String> params = getQueryParameters();
+      String contextString = params.get("context");
+      if (contextString != null) {
+        return new JSONObject(contextString);
+      }
+      return null;
     }
   }
 
@@ -142,6 +169,20 @@ public class FeatureFlagManagerTest {
 
     @Override
     public RemoteService.RequestResult performRequest(
+        @NonNull String endpointUrl,
+        @Nullable ProxyServerInteractor interactor,
+        @Nullable Map<String, Object> params,
+        @Nullable Map<String, String> headers,
+        @Nullable byte[] requestBodyBytes,
+        @Nullable SSLSocketFactory socketFactory)
+        throws ServiceUnavailableException, IOException {
+      // Delegate to new method with POST as default for backward compatibility
+      return performRequest(RemoteService.HttpMethod.POST, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+    }
+
+    @Override
+    public RemoteService.RequestResult performRequest(
+        @NonNull RemoteService.HttpMethod method,
         @NonNull String endpointUrl,
         @Nullable ProxyServerInteractor interactor,
         @Nullable Map<String, Object> params,
@@ -1046,17 +1087,17 @@ public class FeatureFlagManagerTest {
     assertTrue(
         "URL should contain /flags endpoint", capturedRequest.endpointUrl.contains("/flags"));
 
-    // Parse and verify the request body
-    assertNotNull("Request should have body", capturedRequest.requestBodyBytes);
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    assertNotNull("Request body should be valid JSON", requestBody);
+    // Parse and verify the query parameters (GET request)
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    assertNotNull("Query parameters should be present", queryParams);
 
-    // Log the actual request body for debugging
-    MPLog.v("FeatureFlagManagerTest", "Request body: " + requestBody.toString());
+    // Log the actual URL for debugging
+    MPLog.v("FeatureFlagManagerTest", "Request URL: " + capturedRequest.endpointUrl);
 
-    // Verify context is included
-    assertTrue("Request should contain context", requestBody.has("context"));
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    // Verify context is included in query parameters
+    assertTrue("Request should contain context parameter", queryParams.containsKey("context"));
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify distinct_id is in the context
     assertTrue("Context should contain distinct_id", requestContext.has("distinct_id"));
@@ -1081,12 +1122,20 @@ public class FeatureFlagManagerTest {
         "test_value",
         requestContext.getString("custom_property"));
 
+    // Verify the new query parameters are included
+    assertTrue("Request should contain token parameter", queryParams.containsKey("token"));
+    assertEquals("Token should match", TEST_TOKEN, queryParams.get("token"));
+    
+    assertTrue("Request should contain mp_lib parameter", queryParams.containsKey("mp_lib"));
+    assertEquals("mp_lib should be android", "android", queryParams.get("mp_lib"));
+    
+    assertTrue("Request should contain $lib_version parameter", queryParams.containsKey("$lib_version"));
+    assertNotNull("$lib_version should not be null", queryParams.get("$lib_version"));
+
     // Verify headers
     assertNotNull("Request should have headers", capturedRequest.headers);
-    assertEquals(
-        "Content-Type should be application/json with charset",
-        "application/json; charset=utf-8",
-        capturedRequest.headers.get("Content-Type"));
+    assertTrue("Request should have Authorization header", capturedRequest.headers.containsKey("Authorization"));
+    assertFalse("GET request should not have Content-Type header", capturedRequest.headers.containsKey("Content-Type"));
 
     // Wait for flags to be ready
     for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); i++) {
@@ -1118,12 +1167,14 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     assertNotNull("Request should have been made", capturedRequest);
 
-    // Parse request body
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+    // Parse query parameters (GET request)
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    assertNotNull("Query parameters should be present", queryParams);
 
-    // Verify context exists
-    assertTrue("Request should contain context", requestBody.has("context"));
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    // Verify context exists in query parameters
+    assertTrue("Request should contain context parameter", queryParams.containsKey("context"));
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify distinct_id is in context
     assertEquals(
@@ -1169,12 +1220,14 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     assertNotNull("Request should have been made", capturedRequest);
 
-    // Parse request body
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
+    // Parse query parameters (GET request)
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    assertNotNull("Query parameters should be present", queryParams);
 
-    // Verify context exists
-    assertTrue("Request should contain context", requestBody.has("context"));
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    // Verify context exists in query parameters
+    assertTrue("Request should contain context parameter", queryParams.containsKey("context"));
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify distinct_id is included in context even when empty
     assertTrue("Context should contain distinct_id field", requestContext.has("distinct_id"));
@@ -1213,8 +1266,8 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     assertNotNull("Request should have been made", capturedRequest);
 
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
 
     // Verify all initial context properties are included
     assertEquals(
@@ -1254,8 +1307,8 @@ public class FeatureFlagManagerTest {
 
     // Capture and verify request
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
 
     // Verify distinct_id from delegate overrides the one in initial context
     assertEquals(
@@ -1288,8 +1341,8 @@ public class FeatureFlagManagerTest {
 
     // Capture and verify request
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
 
     // Context should only contain distinct_id and device_id when initial context is empty
     assertEquals(
@@ -1328,8 +1381,8 @@ public class FeatureFlagManagerTest {
 
     // Capture and verify request
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
 
     // Verify complex nested structures are preserved
     JSONObject locationInRequest = requestContext.getJSONObject("location");
@@ -1371,8 +1424,8 @@ public class FeatureFlagManagerTest {
 
     // Capture and verify request
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
-    JSONObject requestBody = capturedRequest.getRequestBodyAsJson();
-    JSONObject requestContext = requestBody.getJSONObject("context");
+    Map<String, String> queryParams = capturedRequest.getQueryParameters();
+    JSONObject requestContext = capturedRequest.getContextFromQueryParams();
 
     // Verify special characters are preserved correctly
     assertEquals("emoji should be preserved", "🚀🎉", requestContext.getString("emoji"));

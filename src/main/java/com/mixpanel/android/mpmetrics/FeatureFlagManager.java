@@ -515,20 +515,23 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
 
     try {
-      // 1. Build Request Body JSON
+      // 1. Build Query Parameters
       JSONObject contextJson = new JSONObject(mFlagsConfig.context.toString());
       contextJson.put("distinct_id", distinctId);
       if (deviceId != null) {
         contextJson.put("device_id", deviceId);
       }
-      JSONObject requestJson = new JSONObject();
-      requestJson.put("context", contextJson);
-      String requestJsonString = requestJson.toString();
-      MPLog.v(LOGTAG, "Request JSON Body: " + requestJsonString);
-      byte[] requestBodyBytes = requestJsonString.getBytes(StandardCharsets.UTF_8); // Get raw bytes
+      
+      Map<String, Object> params = new HashMap<>();
+      params.put("context", contextJson.toString());
+      params.put("token", delegate.getToken());
+      params.put("mp_lib", "android");
+      params.put("$lib_version", MPConfig.VERSION);
+      
+      MPLog.v(LOGTAG, "Request query parameters: " + params.toString());
 
-      // 3. Build Headers
-      String token = delegate.getToken(); // Assuming token is in MPConfig
+      // 2. Build Headers
+      String token = delegate.getToken();
       if (token == null || token.trim().isEmpty()) {
         throw new IOException("Mixpanel token is missing or empty.");
       }
@@ -536,20 +539,20 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       String base64Auth = Base64Coder.encodeString(authString);
       Map<String, String> headers = new HashMap<>();
       headers.put("Authorization", "Basic " + base64Auth);
-      headers.put("Content-Type", "application/json; charset=utf-8"); // Explicitly set content type
 
-      // 4. Perform Request
+      // 3. Perform GET Request
       RemoteService.RequestResult result =
-          mHttpService.performRequest( // <-- Use consolidated method
+          mHttpService.performRequest(
+              RemoteService.HttpMethod.GET,
               mFlagsEndpoint,
               config.getProxyServerInteractor(),
-              null, // Pass null for params when sending raw body
+              params,
               headers,
-              requestBodyBytes, // Pass raw JSON body bytes
+              null, // No request body for GET requests
               config.getSSLSocketFactory());
       byte[] responseBytes = result.getResponse();
 
-      // 5. Process Response
+      // 4. Process Response
       if (responseBytes == null) {
         errorMessage = "Received non-successful HTTP status or null response from flags endpoint.";
         MPLog.w(LOGTAG, errorMessage);
@@ -601,7 +604,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     // Update fetch timing atomically with absolute timestamp and accurate latency
     mFetchTiming = new FetchTiming(fetchEndMillis, fetchLatencyMs);
-    // 6. Post result back to Handler thread
+    // 5. Post result back to Handler thread
     postResultToHandler(success, responseJson, errorMessage);
   }
 
