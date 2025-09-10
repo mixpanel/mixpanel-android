@@ -1059,7 +1059,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testRequestBodyConstruction_performFetchRequest()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Setup with flags enabled and specific context data
     JSONObject contextData = new JSONObject();
     contextData.put("$os", "Android");
@@ -1146,7 +1146,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testRequestBodyConstruction_withNullContext()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Setup with flags enabled but null context
     setupFlagsConfig(true, null);
 
@@ -1199,7 +1199,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testRequestBodyConstruction_withEmptyDistinctId()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Setup with flags enabled
     setupFlagsConfig(true, new JSONObject());
 
@@ -1244,7 +1244,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFlagsConfigContextUsage_initialContext()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Test that initial context from FlagsConfig is properly used
     JSONObject initialContext = new JSONObject();
     initialContext.put("app_version", "1.0.0");
@@ -1284,7 +1284,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFlagsConfigContextUsage_contextMerging()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Test that distinct_id doesn't override existing context properties
     JSONObject initialContext = new JSONObject();
     initialContext.put("distinct_id", "should_be_overridden"); // This should be overridden
@@ -1323,7 +1323,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFlagsConfigContextUsage_emptyContext()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Test behavior with empty context object
     JSONObject emptyContext = new JSONObject();
     setupFlagsConfig(true, emptyContext);
@@ -1356,7 +1356,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFlagsConfigContextUsage_complexNestedContext()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Test that complex nested objects in context are preserved
     JSONObject nestedObj = new JSONObject();
     nestedObj.put("city", "San Francisco");
@@ -1403,7 +1403,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFlagsConfigContextUsage_specialCharactersInContext()
-      throws InterruptedException, JSONException {
+      throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Test that special characters and unicode in context are handled properly
     JSONObject initialContext = new JSONObject();
     initialContext.put("emoji", "🚀🎉");
