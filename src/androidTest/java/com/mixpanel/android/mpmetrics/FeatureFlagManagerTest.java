@@ -15,6 +15,8 @@ import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
+import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,8 +77,8 @@ public class FeatureFlagManagerTest {
         for (String pair : pairs) {
           String[] keyValue = pair.split("=", 2);
           if (keyValue.length == 2) {
-            String key = java.net.URLDecoder.decode(keyValue[0], "UTF-8");
-            String value = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
+            String key = URLDecoder.decode(keyValue[0], "UTF-8");
+            String value = URLDecoder.decode(keyValue[1], "UTF-8");
             params.put(key, value);
           }
         }
@@ -87,7 +89,7 @@ public class FeatureFlagManagerTest {
     public JSONObject getContextFromQueryParams() throws JSONException, UnsupportedEncodingException {
       Map<String, String> params = getQueryParameters();
       String contextString = params.get("context");
-      if (contextString != null) {
+      if (contextString != null && !contextString.trim().isEmpty()) {
         return new JSONObject(contextString);
       }
       return null;
@@ -191,7 +193,34 @@ public class FeatureFlagManagerTest {
         @Nullable SSLSocketFactory socketFactory)
         throws ServiceUnavailableException, IOException {
 
-      mCapturedRequests.offer(new CapturedRequest(endpointUrl, headers, requestBodyBytes));
+      // Build URL with query parameters for GET requests (mimic real HttpService behavior)
+      String fullUrl = endpointUrl;
+      if (method == RemoteService.HttpMethod.GET && params != null && !params.isEmpty()) {
+        StringBuilder queryBuilder = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+          if (!first) {
+            queryBuilder.append("&");
+          }
+          first = false;
+
+          try {
+            String key = URLEncoder.encode(entry.getKey(), "UTF-8");
+            String value = URLEncoder.encode(entry.getValue().toString(), "UTF-8");
+            queryBuilder.append(key).append("=").append(value);
+          } catch (java.io.UnsupportedEncodingException e) {
+            throw new IOException("URL encoding failed", e);
+          }
+        }
+
+        // Append query string to URL
+        String queryString = queryBuilder.toString();
+        if (!queryString.isEmpty()) {
+          fullUrl += (endpointUrl.contains("?") ? "&" : "?") + queryString;
+        }
+      }
+
+      mCapturedRequests.offer(new CapturedRequest(fullUrl, headers, requestBodyBytes));
 
       try {
         Object result =
@@ -351,7 +380,7 @@ public class FeatureFlagManagerTest {
     CapturedRequest request =
         mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     assertNotNull("A network request should have been made", request);
-    assertTrue("Endpoint should be for flags", request.endpointUrl.endsWith("/flags/"));
+    assertTrue("Endpoint should be for flags", request.endpointUrl.split("\\?")[0].endsWith("/flags/"));
   }
 
   @Test
@@ -817,6 +846,7 @@ public class FeatureFlagManagerTest {
         new MockRemoteService() {
           @Override
           public RemoteService.RequestResult performRequest(
+              RemoteService.HttpMethod method,
               String endpointUrl,
               ProxyServerInteractor interactor,
               Map<String, Object> params,
@@ -836,7 +866,7 @@ public class FeatureFlagManagerTest {
 
             // Return the prepared response
             return super.performRequest(
-                endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+                method, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
           }
         };
 
@@ -930,6 +960,7 @@ public class FeatureFlagManagerTest {
         new MockRemoteService() {
           @Override
           public RemoteService.RequestResult performRequest(
+              RemoteService.HttpMethod method,
               String endpointUrl,
               ProxyServerInteractor interactor,
               Map<String, Object> params,
@@ -945,7 +976,7 @@ public class FeatureFlagManagerTest {
               Thread.currentThread().interrupt();
             }
             return super.performRequest(
-                endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+                method, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
           }
         };
 
@@ -1268,6 +1299,7 @@ public class FeatureFlagManagerTest {
 
     Map<String, String> queryParams = capturedRequest.getQueryParameters();
     JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify all initial context properties are included
     assertEquals(
@@ -1309,6 +1341,7 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     Map<String, String> queryParams = capturedRequest.getQueryParameters();
     JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify distinct_id from delegate overrides the one in initial context
     assertEquals(
@@ -1343,6 +1376,7 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     Map<String, String> queryParams = capturedRequest.getQueryParameters();
     JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Context should only contain distinct_id and device_id when initial context is empty
     assertEquals(
@@ -1383,6 +1417,7 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     Map<String, String> queryParams = capturedRequest.getQueryParameters();
     JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify complex nested structures are preserved
     JSONObject locationInRequest = requestContext.getJSONObject("location");
@@ -1426,6 +1461,7 @@ public class FeatureFlagManagerTest {
     CapturedRequest capturedRequest = mMockRemoteService.takeRequest(1000, TimeUnit.MILLISECONDS);
     Map<String, String> queryParams = capturedRequest.getQueryParameters();
     JSONObject requestContext = capturedRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
 
     // Verify special characters are preserved correctly
     assertEquals("emoji should be preserved", "🚀🎉", requestContext.getString("emoji"));
