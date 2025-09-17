@@ -18,6 +18,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
@@ -150,6 +151,20 @@ public class HttpService implements RemoteService {
             @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
             @Nullable SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException {
+        // Delegate to new method with POST as default for backward compatibility
+        return performRequest(HttpMethod.POST, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+    }
+
+    @Override
+    public RequestResult performRequest(
+            @NonNull HttpMethod method,
+            @NonNull String endpointUrl,
+            @Nullable ProxyServerInteractor interactor,
+            @Nullable Map<String, Object> params,
+            @Nullable Map<String, String> headers,
+            @Nullable byte[] requestBodyBytes,
+            @Nullable SSLSocketFactory socketFactory)
+            throws ServiceUnavailableException, IOException {
         
         int retries = 0;
         Exception lastException = null;
@@ -157,7 +172,7 @@ public class HttpService implements RemoteService {
         while (retries < 3) {
             // Try primary host first
             InternalRequestResult primaryResult = tryRequestWithHost(
-                    endpointUrl, "Primary", interactor, params, headers, requestBodyBytes, socketFactory);
+                    method, endpointUrl, "Primary", interactor, params, headers, requestBodyBytes, socketFactory);
             
             if (primaryResult.success) {
                 return RequestResult.success(primaryResult.response, primaryResult.requestUrl);
@@ -181,7 +196,7 @@ public class HttpService implements RemoteService {
                     MPLog.v(LOGTAG, "Primary failed, trying backup: " + backupUrl);
                     
                     InternalRequestResult backupResult = tryRequestWithHost(
-                            backupUrl, "Backup", interactor, params, headers, requestBodyBytes, socketFactory);
+                            method, backupUrl, "Backup", interactor, params, headers, requestBodyBytes, socketFactory);
                     
                     if (backupResult.success) {
                         return RequestResult.success(backupResult.response, backupResult.requestUrl);
@@ -213,7 +228,7 @@ public class HttpService implements RemoteService {
         }
         
         // All retries exhausted
-        MPLog.e(LOGTAG, "Request to " + endpointUrl + " failed after " + retries + " attempts");
+        MPLog.e(LOGTAG, method + " request to " + endpointUrl + " failed after " + retries + " attempts");
         
         // Throw the appropriate exception type
         if (lastException instanceof ServiceUnavailableException) {
@@ -221,11 +236,12 @@ public class HttpService implements RemoteService {
         } else if (lastException instanceof IOException) {
             throw (IOException) lastException;
         } else if (lastException != null) {
-            throw new IOException("Request failed after " + retries + " attempts", lastException);
+            throw new IOException(method + " request failed after " + retries + " attempts", lastException);
         } else {
-            throw new IOException("Request failed after " + retries + " attempts");
+            throw new IOException(method + " request failed after " + retries + " attempts");
         }
     }
+
 
     private String replaceHost(String url, String newHost) {
         try {
@@ -253,6 +269,7 @@ public class HttpService implements RemoteService {
      * @return InternalRequestResult containing the response or error information
      */
     private InternalRequestResult tryRequestWithHost(
+            @NonNull HttpMethod method,
             @NonNull String url,
             @NonNull String hostLabel,
             @Nullable ProxyServerInteractor interactor,
@@ -263,7 +280,7 @@ public class HttpService implements RemoteService {
         
         try {
             byte[] response = performSingleRequest(
-                    url, interactor, params, headers, requestBodyBytes, socketFactory);
+                    method, url, interactor, params, headers, requestBodyBytes, socketFactory);
             
             // Treat null response as failure
             if (response == null) {
@@ -288,7 +305,9 @@ public class HttpService implements RemoteService {
         }
     }
 
+
     private byte[] performSingleRequest(
+            @NonNull HttpMethod method,
             @NonNull String endpointUrl,
             @Nullable ProxyServerInteractor interactor,
             @Nullable Map<String, Object> params,
@@ -297,11 +316,34 @@ public class HttpService implements RemoteService {
             @Nullable SSLSocketFactory socketFactory)
             throws ServiceUnavailableException, IOException {
 
+        // Build URL with query parameters for GET requests or when POST has no body
+        String fullUrl = endpointUrl;
+        if (method == HttpMethod.GET && params != null && !params.isEmpty()) {
+            StringBuilder queryBuilder = new StringBuilder();
+            boolean first = true;
+            for (Map.Entry<String, Object> entry : params.entrySet()) {
+                if (!first) {
+                    queryBuilder.append("&");
+                }
+                first = false;
+                
+                String key = URLEncoder.encode(entry.getKey(), "UTF-8");
+                String value = URLEncoder.encode(entry.getValue().toString(), "UTF-8");
+                queryBuilder.append(key).append("=").append(value);
+            }
+            
+            // Append query string to URL
+            String queryString = queryBuilder.toString();
+            if (!queryString.isEmpty()) {
+                fullUrl += (endpointUrl.contains("?") ? "&" : "?") + queryString;
+            }
+        }
+
         MPLog.v(
                 LOGTAG,
-                "Attempting request to "
-                        + endpointUrl
-                        + (requestBodyBytes == null ? " (URL params)" : " (Raw Body)"));
+                "Attempting " + method + " request to " + fullUrl
+                        + (method == HttpMethod.POST && requestBodyBytes != null ? " (Raw Body)" : 
+                           method == HttpMethod.POST && params != null ? " (URL params)" : ""));
         byte[] response = null;
         InputStream in = null;
         OutputStream out = null; // Raw output stream
@@ -315,7 +357,7 @@ public class HttpService implements RemoteService {
 
         try {
                 // --- Connection Setup ---
-                final URL url = new URL(endpointUrl);
+                final URL url = new URL(fullUrl);
                 try { // Get IP Address for error reporting, but don't fail request if DNS fails here
                     InetAddress inetAddress = InetAddress.getByName(url.getHost());
                     targetIpAddress = inetAddress.getHostAddress();
@@ -330,14 +372,17 @@ public class HttpService implements RemoteService {
                 }
                 connection.setConnectTimeout(2000);
                 connection.setReadTimeout(30000);
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
+                connection.setRequestMethod(method.toString());
+                connection.setDoOutput(method == HttpMethod.POST && (requestBodyBytes != null || params != null));
 
-                // --- Default Content-Type (can be overridden by headers map) ---
-                String contentType =
-                        (requestBodyBytes != null)
-                                ? "application/json; charset=utf-8" // Default for raw body
-                                : "application/x-www-form-urlencoded; charset=utf-8"; // Default for params
+                // --- Handle Content-Type for POST requests ---
+                String contentType = null;
+                if (method == HttpMethod.POST) {
+                    // Default Content-Type for POST (can be overridden by headers map)
+                    contentType = (requestBodyBytes != null)
+                            ? "application/json; charset=utf-8" // Default for raw body
+                            : "application/x-www-form-urlencoded; charset=utf-8"; // Default for params
+                }
 
                 // --- Apply Custom Headers (and determine final Content-Type) ---
                 if (headers != null) {
@@ -348,7 +393,11 @@ public class HttpService implements RemoteService {
                         }
                     }
                 }
-                connection.setRequestProperty("Content-Type", contentType);
+                
+                // Only set Content-Type for POST requests
+                if (method == HttpMethod.POST && contentType != null) {
+                    connection.setRequestProperty("Content-Type", contentType);
+                }
 
                 // Apply proxy headers AFTER custom headers
                 if (interactor != null && isProxyRequest(endpointUrl)) {
@@ -364,54 +413,56 @@ public class HttpService implements RemoteService {
                 connection.setConnectTimeout(15000);
                 connection.setReadTimeout(60000);
 
-                // --- Prepare and Write Body ---
-                byte[] bytesToWrite;
-                if (requestBodyBytes != null) {
-                    // --- Use Raw Body ---
-                    bytesToWrite = requestBodyBytes;
-                    uncompressedBodySize = bytesToWrite.length;
-                    connection.setFixedLengthStreamingMode(uncompressedBodySize);
-                    MPLog.v(LOGTAG, "Sending raw body of size: " + uncompressedBodySize);
-                } else if (params != null) {
-                    // --- Use URL Encoded Params ---
-                    Uri.Builder builder = new Uri.Builder();
-                    for (Map.Entry<String, Object> param : params.entrySet()) {
-                        builder.appendQueryParameter(param.getKey(), param.getValue().toString());
-                    }
-                    String query = builder.build().getEncodedQuery();
-                    byte[] queryBytes = Objects.requireNonNull(query).getBytes(StandardCharsets.UTF_8);
-                    uncompressedBodySize = queryBytes.length;
-                    MPLog.v(LOGTAG, "Sending URL params (raw size): " + uncompressedBodySize);
-
-                    if (shouldGzipRequestPayload) {
-                        // Apply GZIP specifically to the URL-encoded params
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
-                            gzipOut.write(queryBytes);
-                        } // try-with-resources ensures close
-                        bytesToWrite = baos.toByteArray();
-                        compressedBodySize = bytesToWrite.length;
-                        connection.setRequestProperty(CONTENT_ENCODING_HEADER, GZIP_CONTENT_TYPE_HEADER);
-                        connection.setFixedLengthStreamingMode(compressedBodySize);
-                        MPLog.v(LOGTAG, "Gzipping params, compressed size: " + compressedBodySize);
-                    } else {
-                        bytesToWrite = queryBytes;
+                // --- Prepare and Write Body (only for POST requests) ---
+                if (method == HttpMethod.POST) {
+                    byte[] bytesToWrite;
+                    if (requestBodyBytes != null) {
+                        // --- Use Raw Body ---
+                        bytesToWrite = requestBodyBytes;
+                        uncompressedBodySize = bytesToWrite.length;
                         connection.setFixedLengthStreamingMode(uncompressedBodySize);
-                    }
-                } else {
-                    // No body and no params
-                    bytesToWrite = new byte[0];
-                    uncompressedBodySize = 0;
-                    connection.setFixedLengthStreamingMode(0);
-                    MPLog.v(LOGTAG, "Sending POST request with empty body.");
-                }
+                        MPLog.v(LOGTAG, "Sending raw body of size: " + uncompressedBodySize);
+                    } else if (params != null) {
+                        // --- Use URL Encoded Params ---
+                        Uri.Builder builder = new Uri.Builder();
+                        for (Map.Entry<String, Object> param : params.entrySet()) {
+                            builder.appendQueryParameter(param.getKey(), param.getValue().toString());
+                        }
+                        String query = builder.build().getEncodedQuery();
+                        byte[] queryBytes = Objects.requireNonNull(query).getBytes(StandardCharsets.UTF_8);
+                        uncompressedBodySize = queryBytes.length;
+                        MPLog.v(LOGTAG, "Sending URL params (raw size): " + uncompressedBodySize);
 
-                // Write the prepared bytes
-                out = new BufferedOutputStream(connection.getOutputStream());
-                out.write(bytesToWrite);
-                out.flush();
-                out.close(); // Close output stream before getting response
-                out = null;
+                        if (shouldGzipRequestPayload) {
+                            // Apply GZIP specifically to the URL-encoded params
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
+                                gzipOut.write(queryBytes);
+                            } // try-with-resources ensures close
+                            bytesToWrite = baos.toByteArray();
+                            compressedBodySize = bytesToWrite.length;
+                            connection.setRequestProperty(CONTENT_ENCODING_HEADER, GZIP_CONTENT_TYPE_HEADER);
+                            connection.setFixedLengthStreamingMode(compressedBodySize);
+                            MPLog.v(LOGTAG, "Gzipping params, compressed size: " + compressedBodySize);
+                        } else {
+                            bytesToWrite = queryBytes;
+                            connection.setFixedLengthStreamingMode(uncompressedBodySize);
+                        }
+                    } else {
+                        // No body and no params
+                        bytesToWrite = new byte[0];
+                        uncompressedBodySize = 0;
+                        connection.setFixedLengthStreamingMode(0);
+                        MPLog.v(LOGTAG, "Sending POST request with empty body.");
+                    }
+
+                    // Write the prepared bytes
+                    out = new BufferedOutputStream(connection.getOutputStream());
+                    out.write(bytesToWrite);
+                    out.flush();
+                    out.close(); // Close output stream before getting response
+                    out = null;
+                }
 
                 // --- Process Response ---
                 int responseCode = connection.getResponseCode();
@@ -428,14 +479,14 @@ public class HttpService implements RemoteService {
                         && responseCode <= MAX_UNAVAILABLE_HTTP_RESPONSE_CODE) { // Server Error 5xx
                     MPLog.w(
                             LOGTAG,
-                            "Server error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                            "Server error " + responseCode + " (" + responseMessage + ") for URL: " + fullUrl);
                     ServiceUnavailableException serviceException = new ServiceUnavailableException(
                             "Service Unavailable: " + responseCode,
                             connection.getHeaderField("Retry-After"));
                     // Report error via listener
                     onNetworkError(
                             connection,
-                            endpointUrl,
+                            fullUrl,
                             targetIpAddress,
                             startTimeNanos,
                             uncompressedBodySize,
@@ -446,7 +497,7 @@ public class HttpService implements RemoteService {
                 } else { // Other errors (4xx etc.)
                     MPLog.w(
                             LOGTAG,
-                            "Client error " + responseCode + " (" + responseMessage + ") for URL: " + endpointUrl);
+                            "Client error " + responseCode + " (" + responseMessage + ") for URL: " + fullUrl);
                     String errorBody = null;
                     try {
                         in = connection.getErrorStream();
@@ -461,7 +512,7 @@ public class HttpService implements RemoteService {
                     // Report error via listener
                     onNetworkError(
                             connection,
-                            endpointUrl,
+                            fullUrl,
                             targetIpAddress,
                             startTimeNanos,
                             uncompressedBodySize,
@@ -480,19 +531,19 @@ public class HttpService implements RemoteService {
                 // Report error
                 onNetworkError(
                         connection,
-                        endpointUrl,
+                        fullUrl,
                         targetIpAddress,
                         startTimeNanos,
                         uncompressedBodySize,
                         compressedBodySize,
                         e);
-                MPLog.d(LOGTAG, "EOFException, likely network issue for request to " + endpointUrl);
+                MPLog.d(LOGTAG, "EOFException, likely network issue for request to " + fullUrl);
                 throw new IOException("EOFException during network request", e);
             } catch (final IOException e) { // Includes ServiceUnavailableException if thrown above
                 // Report error via listener
                 onNetworkError(
                         connection,
-                        endpointUrl,
+                        fullUrl,
                         targetIpAddress,
                         startTimeNanos,
                         uncompressedBodySize,
@@ -504,7 +555,7 @@ public class HttpService implements RemoteService {
                 // Report error via listener
                 onNetworkError(
                         connection,
-                        endpointUrl,
+                        fullUrl,
                         targetIpAddress,
                         startTimeNanos,
                         uncompressedBodySize,

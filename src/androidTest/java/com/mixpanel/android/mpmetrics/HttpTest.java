@@ -67,6 +67,19 @@ public class HttpTest {
               @Nullable byte[] requestBodyBytes, // If provided, send this as raw body
               @Nullable SSLSocketFactory socketFactory)
               throws ServiceUnavailableException, IOException {
+            return performRequest(RemoteService.HttpMethod.POST, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+          }
+
+          @Override
+          public RemoteService.RequestResult performRequest(
+              @NonNull RemoteService.HttpMethod method,
+              @NonNull String endpointUrl,
+              @Nullable ProxyServerInteractor interactor,
+              @Nullable Map<String, Object> params,
+              @Nullable Map<String, String> headers,
+              @Nullable byte[] requestBodyBytes,
+              @Nullable SSLSocketFactory socketFactory)
+              throws ServiceUnavailableException, IOException {
             try {
               if (mFlushResults.isEmpty()) {
                 mFlushResults.add(TestUtils.bytes("1\n"));

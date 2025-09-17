@@ -1394,6 +1394,20 @@ public class MixpanelBasicTest {
                   byte[] requestBodyBytes,
                   SSLSocketFactory socketFactory)
                   throws ServiceUnavailableException, IOException {
+                // Delegate to the new method signature with POST as default
+                return performRequest(RemoteService.HttpMethod.POST, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+              }
+
+              @Override
+              public RemoteService.RequestResult performRequest(
+                  RemoteService.HttpMethod method,
+                  String endpointUrl,
+                  ProxyServerInteractor interactor,
+                  Map<String, Object> params,
+                  Map<String, String> headers,
+                  byte[] requestBodyBytes,
+                  SSLSocketFactory socketFactory)
+                  throws ServiceUnavailableException, IOException {
                 // Track calls to the flags endpoint
                 if (endpointUrl != null && endpointUrl.contains("/flags/")) {
                   flagsEndpointCalls.add(endpointUrl);
