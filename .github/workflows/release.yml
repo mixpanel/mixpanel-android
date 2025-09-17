@@ -42,7 +42,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
-          force: true
+          force: false
       - name: "Prepare for the Github Release"
         id: generate-release-changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.2
