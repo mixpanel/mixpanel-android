@@ -1,5 +1,13 @@
 #
 
+## [v8.2.3](https://github.com/mixpanel/mixpanel-android/tree/v8.2.3) (2025-09-17)
+
+### Enhancements
+
+- Refactor HTTP service to use enum for HTTP methods and switch feature flags to GET requests [\#873](https://github.com/mixpanel/mixpanel-android/pull/873)
+
+#
+
 ## [v8.2.2](https://github.com/mixpanel/mixpanel-android/tree/v8.2.2) (2025-08-22)
 
 ### Enhancements
