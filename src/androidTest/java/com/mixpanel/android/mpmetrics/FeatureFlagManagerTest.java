@@ -303,6 +303,18 @@ public class FeatureFlagManagerTest {
         } else {
           flagDef.put("variant_value", entry.getValue().value);
         }
+
+        // Add optional experiment parameters if they exist
+        if (entry.getValue().experimentID != null) {
+          flagDef.put("experiment_id", entry.getValue().experimentID);
+        }
+        if (entry.getValue().isExperimentActive != null) {
+          flagDef.put("is_experiment_active", entry.getValue().isExperimentActive);
+        }
+        if (entry.getValue().isQATester != null) {
+          flagDef.put("is_qa_tester", entry.getValue().isQATester);
+        }
+
         flagsObject.put(entry.getKey(), flagDef);
       }
       return new JSONObject().put("flags", flagsObject).toString();
@@ -1700,5 +1712,39 @@ public class FeatureFlagManagerTest {
 
     // In practice, our test should complete much faster
     assertTrue("Test fetch should be fast in practice", fetchLatencyMs < 5000);
+  }
+
+  @Test
+  public void testOptionalParametersInTracking_WithAllFields_ShouldIncludeInProperties() throws Exception {
+    // Create flag variant with all experiment parameters
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("test_tracking_flag", new MixpanelFlagVariant("variant_c", "tracking_value", "exp_789", true, true));
+
+    mMockRemoteService.addResponse(createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+
+    // Wait for flags to be ready
+    for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); ++i) {
+      Thread.sleep(100);
+    }
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    // Setup tracking expectation
+    mMockDelegate.resetTrackCalls();
+    mMockDelegate.trackCalledLatch = new CountDownLatch(1);
+
+    // Get variant to trigger tracking
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fallback", "fallback_value");
+    mFeatureFlagManager.getVariantSync("test_tracking_flag", fallback);
+
+    // Wait for tracking call
+    assertTrue("Track should be called", mMockDelegate.trackCalledLatch.await(5, TimeUnit.SECONDS));
+    assertEquals("Track should be called exactly once", 1, mMockDelegate.trackCalls.size());
+
+    // Verify tracking properties include optional parameters
+    MockFeatureFlagDelegate.TrackCall call = mMockDelegate.trackCalls.get(0);
+    assertEquals("ExperimentID should be included", "exp_789", call.properties.getString("experimentID"));
+    assertTrue("IsExperimentActive should be included", call.properties.getBoolean("isExperimentActive"));
+    assertTrue("IsQATester should be included", call.properties.getBoolean("isQATester"));
   }
 }
