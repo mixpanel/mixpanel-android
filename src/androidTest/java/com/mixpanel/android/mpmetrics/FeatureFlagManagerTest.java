@@ -1743,8 +1743,8 @@ public class FeatureFlagManagerTest {
 
     // Verify tracking properties include optional parameters
     MockFeatureFlagDelegate.TrackCall call = mMockDelegate.trackCalls.get(0);
-    assertEquals("ExperimentID should be included", "exp_789", call.properties.getString("experimentID"));
-    assertTrue("IsExperimentActive should be included", call.properties.getBoolean("isExperimentActive"));
-    assertTrue("IsQATester should be included", call.properties.getBoolean("isQATester"));
+    assertEquals("ExperimentID should be included", "exp_789", call.properties.getString("$experiment_id"));
+    assertTrue("IsExperimentActive should be included", call.properties.getBoolean("$is_experiment_active"));
+    assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
 }

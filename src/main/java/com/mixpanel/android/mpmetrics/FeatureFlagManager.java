@@ -713,13 +713,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
 
       if (variant.experimentID != null) {
-        properties.put("experimentID", variant.experimentID);
+        properties.put("$experiment_id", variant.experimentID);
       }
       if (variant.isExperimentActive != null) {
-        properties.put("isExperimentActive", variant.isExperimentActive);
+        properties.put("$is_experiment_active", variant.isExperimentActive);
       }
       if (variant.isQATester != null) {
-        properties.put("isQATester", variant.isQATester);
+        properties.put("$is_qa_tester", variant.isQATester);
       }
     } catch (JSONException e) {
       MPLog.e(LOGTAG, "Failed to create JSON properties for $experiment_started event", e);
