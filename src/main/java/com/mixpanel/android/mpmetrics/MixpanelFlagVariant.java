@@ -44,7 +44,7 @@ public class MixpanelFlagVariant {
     public final Boolean isQATester;
 
     /**
-     * Constructs a {@code FeatureFlagData} object when parsing an API response.
+     * Constructs a {@code MixpanelFlagVariant} object when parsing an API response.
      *
      * @param key The key of the feature flag variant. Corresponds to 'variant_key' from the API. Cannot be null.
      * @param value The value of the feature flag variant. Corresponds to 'variant_value' from the API.
@@ -59,7 +59,7 @@ public class MixpanelFlagVariant {
     }
 
     /**
-     * Constructs a {@code FeatureFlagData} object when parsing an API response with optional experiment fields.
+     * Constructs a {@code MixpanelFlagVariant} object when parsing an API response with optional experiment fields.
      *
      * @param key The key of the feature flag variant. Corresponds to 'variant_key' from the API. Cannot be null.
      * @param value The value of the feature flag variant. Corresponds to 'variant_value' from the API.
@@ -77,7 +77,7 @@ public class MixpanelFlagVariant {
     }
 
     /**
-     * Constructs a {@code FeatureFlagData} object for creating fallback instances.
+     * Constructs a {@code MixpanelFlagVariant} object for creating fallback instances.
      * In this case, the provided {@code keyAndValue} is used as both the key and the value
      * for the feature flag data. This is typically used when a flag is not found
      * and a default string value needs to be returned.
@@ -93,7 +93,7 @@ public class MixpanelFlagVariant {
     }
 
     /**
-     * Constructs a {@code FeatureFlagData} object for creating fallback instances.
+     * Constructs a {@code MixpanelFlagVariant} object for creating fallback instances.
      * In this version, the key is set to an empty string (""), and the provided {@code value}
      * is used as the value for the feature flag data. This is typically used when a
      * flag is not found or an error occurs, and a default value needs to be provided.
@@ -110,7 +110,7 @@ public class MixpanelFlagVariant {
     }
 
     /**
-     * Default constructor that initializes an empty {@code FeatureFlagData} object.
+     * Default constructor that initializes an empty {@code MixpanelFlagVariant} object.
      * The key is set to an empty string ("") and the value is set to null.
      * This constructor might be used internally or for specific default cases.
      */
