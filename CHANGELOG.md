@@ -1,5 +1,13 @@
 #
 
+## [v8.2.4](https://github.com/mixpanel/mixpanel-android/tree/v8.2.4) (2025-09-24)
+
+### Enhancements
+
+- Add experiment properties to feature flag exposure tracking [\#875](https://github.com/mixpanel/mixpanel-android/pull/875)
+
+#
+
 ## [v8.2.3](https://github.com/mixpanel/mixpanel-android/tree/v8.2.3) (2025-09-17)
 
 ### Enhancements
