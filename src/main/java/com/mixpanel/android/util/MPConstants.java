@@ -21,5 +21,8 @@ public class MPConstants {
         public static final String FLAGS_KEY = "flags";
         public static final String VARIANT_KEY = "variant_key";
         public static final String VARIANT_VALUE = "variant_value";
+        public static final String EXPERIMENT_ID = "experiment_id";
+        public static final String IS_EXPERIMENT_ACTIVE = "is_experiment_active";
+        public static final String IS_QA_TESTER = "is_qa_tester";
     }
 }

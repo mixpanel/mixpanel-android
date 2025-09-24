@@ -153,7 +153,23 @@ public class JsonUtils {
                         MPLog.w(LOGTAG, "Flag definition missing 'variant_value' for key: " + featureName + ". Assuming null value.");
                     }
 
-                    MixpanelFlagVariant flagData = new MixpanelFlagVariant(variantKey, variantValue);
+                    // Parse optional experiment tracking fields
+                    String experimentID = null;
+                    if (flagDefinition.has(MPConstants.Flags.EXPERIMENT_ID) && !flagDefinition.isNull(MPConstants.Flags.EXPERIMENT_ID)) {
+                        experimentID = flagDefinition.getString(MPConstants.Flags.EXPERIMENT_ID);
+                    }
+
+                    Boolean isExperimentActive = null;
+                    if (flagDefinition.has(MPConstants.Flags.IS_EXPERIMENT_ACTIVE) && !flagDefinition.isNull(MPConstants.Flags.IS_EXPERIMENT_ACTIVE)) {
+                        isExperimentActive = flagDefinition.getBoolean(MPConstants.Flags.IS_EXPERIMENT_ACTIVE);
+                    }
+
+                    Boolean isQATester = null;
+                    if (flagDefinition.has(MPConstants.Flags.IS_QA_TESTER) && !flagDefinition.isNull(MPConstants.Flags.IS_QA_TESTER)) {
+                        isQATester = flagDefinition.getBoolean(MPConstants.Flags.IS_QA_TESTER);
+                    }
+
+                    MixpanelFlagVariant flagData = new MixpanelFlagVariant(variantKey, variantValue, experimentID, isExperimentActive, isQATester);
                     flagsMap.put(featureName, flagData);
 
                 } catch (JSONException e) {
