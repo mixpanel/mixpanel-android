@@ -11,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Check-out"
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: "Update Release CHANGELOG"
         id: update-release-changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.2
@@ -33,12 +36,12 @@ jobs:
           verbose: true
       - name: Commit CHANGELOG Changes
         run: |
-          git add .
-          git config user.name "zihe.jia"
-          git config user.email "zihe.jia@mixpanel.com"
-          git commit -m "Update CHANGELOG"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "Update CHANGELOG for version ${GITHUB_REF#refs/tags/}"
       - name: Push CHANGELOG changes
-        uses: ad-m/github-push-action@v0.6.0
+        uses: ad-m/github-push-action@v0.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
