@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: ubuntu-24.04-arm
     steps:
     - name: Checkout the code
       uses: actions/checkout@v4.1.7
@@ -16,8 +16,7 @@ jobs:
       uses: reactivecircus/android-emulator-runner@v2.32.0
       with:
         api-level: 34
-        profile: Nexus 5X 
-        arch: x86_64
+        arch: arm64-v8a
         script: ./gradlew createDebugCoverageReport
     - name: Lint
       run:  ./gradlew lint
@@ -26,17 +25,17 @@ jobs:
       if: always()
       with:
         name: Unit Test Report
-        path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/androidTests/connected
+        path: build/reports/androidTests/connected
     - name: Upload test coverage report
       uses: actions/upload-artifact@v4
       with:
         name: Test Coverage Report
-        path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/coverage/debug/
+        path: build/reports/coverage/debug/
     - name: Upload lint report
       uses: actions/upload-artifact@v4
       with:
         name: Lint Report
-        path: /Users/runner/work/mixpanel-android/mixpanel-android/build/reports/lint-results.html
+        path: build/reports/lint-results.html
     - name: Android docs
       run:  ./gradlew --info androidJavadocs
 
