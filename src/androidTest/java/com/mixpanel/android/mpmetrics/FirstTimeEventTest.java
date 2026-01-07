@@ -18,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -112,23 +113,27 @@ public class FirstTimeEventTest {
                     javax.net.ssl.SSLSocketFactory socketFactory)
                     throws ServiceUnavailableException, java.io.IOException {
 
-                // Capture recording API calls
-                if (endpointUrl.contains("/first-time-events")) {
-                    JSONObject body = requestBodyBytes != null ?
-                            new JSONObject(new String(requestBodyBytes, StandardCharsets.UTF_8)) :
-                            new JSONObject();
-                    mRecordingCalls.add(new RecordingAPICall(endpointUrl, body, headers));
+                try {
+                    // Capture recording API calls
+                    if (endpointUrl.contains("/first-time-events")) {
+                        JSONObject body = requestBodyBytes != null ?
+                                new JSONObject(new String(requestBodyBytes, StandardCharsets.UTF_8)) :
+                                new JSONObject();
+                        mRecordingCalls.add(new RecordingAPICall(endpointUrl, body, headers));
+                        return createSuccessResult("{}");
+                    }
+
+                    // Mock flags fetch response
+                    if (endpointUrl.contains("/flags")) {
+                        RequestResult result = createSuccessResult(createFlagsResponse());
+                        mFlagLoadComplete.offer(true);  // Signal that flags have loaded
+                        return result;
+                    }
+
                     return createSuccessResult("{}");
+                } catch (Exception e) {
+                    throw new IOException("Error in mock HTTP service", e);
                 }
-
-                // Mock flags fetch response
-                if (endpointUrl.contains("/flags")) {
-                    RequestResult result = createSuccessResult(createFlagsResponse());
-                    mFlagLoadComplete.offer(true);  // Signal that flags have loaded
-                    return result;
-                }
-
-                return createSuccessResult("{}");
             }
 
             private RequestResult createSuccessResult(String responseBody) {
