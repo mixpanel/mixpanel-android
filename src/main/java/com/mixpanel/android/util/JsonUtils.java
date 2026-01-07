@@ -104,6 +104,59 @@ public class JsonUtils {
 
 
     /**
+     * Parses a single flag variant from a JSONObject.
+     *
+     * @param flagDefinition The JSONObject containing the flag variant definition.
+     * @return A MixpanelFlagVariant object, or null if parsing fails.
+     */
+    @Nullable
+    public static MixpanelFlagVariant parseFlagVariant(@Nullable JSONObject flagDefinition) {
+        if (flagDefinition == null) {
+            MPLog.e(LOGTAG, "Cannot parse null flag definition");
+            return null;
+        }
+
+        try {
+            String variantKey = null;
+            if (flagDefinition.has(MPConstants.Flags.VARIANT_KEY) && !flagDefinition.isNull(MPConstants.Flags.VARIANT_KEY)) {
+                variantKey = flagDefinition.getString(MPConstants.Flags.VARIANT_KEY);
+            } else {
+                MPLog.w(LOGTAG, "Flag definition missing 'variant_key'");
+                return null;
+            }
+
+            Object variantValue = null;
+            if (flagDefinition.has(MPConstants.Flags.VARIANT_VALUE)) {
+                Object rawValue = flagDefinition.get(MPConstants.Flags.VARIANT_VALUE);
+                variantValue = parseJsonValue(rawValue);
+            } else {
+                MPLog.w(LOGTAG, "Flag definition missing 'variant_value'. Assuming null value.");
+            }
+
+            // Parse optional experiment tracking fields
+            String experimentID = null;
+            if (flagDefinition.has(MPConstants.Flags.EXPERIMENT_ID) && !flagDefinition.isNull(MPConstants.Flags.EXPERIMENT_ID)) {
+                experimentID = flagDefinition.getString(MPConstants.Flags.EXPERIMENT_ID);
+            }
+
+            Boolean isExperimentActive = null;
+            if (flagDefinition.has(MPConstants.Flags.IS_EXPERIMENT_ACTIVE) && !flagDefinition.isNull(MPConstants.Flags.IS_EXPERIMENT_ACTIVE)) {
+                isExperimentActive = flagDefinition.getBoolean(MPConstants.Flags.IS_EXPERIMENT_ACTIVE);
+            }
+
+            Boolean isQATester = null;
+            if (flagDefinition.has(MPConstants.Flags.IS_QA_TESTER) && !flagDefinition.isNull(MPConstants.Flags.IS_QA_TESTER)) {
+                isQATester = flagDefinition.getBoolean(MPConstants.Flags.IS_QA_TESTER);
+            }
+
+            return new MixpanelFlagVariant(variantKey, variantValue, experimentID, isExperimentActive, isQATester);
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Error parsing flag variant", e);
+            return null;
+        }
+    }
+
+    /**
      * Parses the "flags" object from a /flags API response JSONObject.
      *
      * @param responseJson The root JSONObject from the API response.
@@ -136,41 +189,13 @@ public class JsonUtils {
                         continue; // Skip null flag definitions
                     }
                     JSONObject flagDefinition = flagsObject.getJSONObject(featureName);
+                    MixpanelFlagVariant flagData = parseFlagVariant(flagDefinition);
 
-                    String variantKey = null;
-                    if (flagDefinition.has(MPConstants.Flags.VARIANT_KEY) && !flagDefinition.isNull(MPConstants.Flags.VARIANT_KEY)) {
-                        variantKey = flagDefinition.getString(MPConstants.Flags.VARIANT_KEY);
+                    if (flagData != null) {
+                        flagsMap.put(featureName, flagData);
                     } else {
-                        MPLog.w(LOGTAG, "Flag definition missing 'variant_key' for key: " + featureName);
-                        continue; // Skip flags without a variant key
+                        MPLog.w(LOGTAG, "Failed to parse flag definition for key: " + featureName);
                     }
-
-                    Object variantValue = null;
-                    if (flagDefinition.has(MPConstants.Flags.VARIANT_VALUE)) { // Check presence before getting
-                        Object rawValue = flagDefinition.get(MPConstants.Flags.VARIANT_VALUE); // Get raw value (could be JSONObject.NULL)
-                        variantValue = parseJsonValue(rawValue); // Parse it properly
-                    } else {
-                        MPLog.w(LOGTAG, "Flag definition missing 'variant_value' for key: " + featureName + ". Assuming null value.");
-                    }
-
-                    // Parse optional experiment tracking fields
-                    String experimentID = null;
-                    if (flagDefinition.has(MPConstants.Flags.EXPERIMENT_ID) && !flagDefinition.isNull(MPConstants.Flags.EXPERIMENT_ID)) {
-                        experimentID = flagDefinition.getString(MPConstants.Flags.EXPERIMENT_ID);
-                    }
-
-                    Boolean isExperimentActive = null;
-                    if (flagDefinition.has(MPConstants.Flags.IS_EXPERIMENT_ACTIVE) && !flagDefinition.isNull(MPConstants.Flags.IS_EXPERIMENT_ACTIVE)) {
-                        isExperimentActive = flagDefinition.getBoolean(MPConstants.Flags.IS_EXPERIMENT_ACTIVE);
-                    }
-
-                    Boolean isQATester = null;
-                    if (flagDefinition.has(MPConstants.Flags.IS_QA_TESTER) && !flagDefinition.isNull(MPConstants.Flags.IS_QA_TESTER)) {
-                        isQATester = flagDefinition.getBoolean(MPConstants.Flags.IS_QA_TESTER);
-                    }
-
-                    MixpanelFlagVariant flagData = new MixpanelFlagVariant(variantKey, variantValue, experimentID, isExperimentActive, isQATester);
-                    flagsMap.put(featureName, flagData);
 
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error parsing individual flag definition for key: " + featureName, e);

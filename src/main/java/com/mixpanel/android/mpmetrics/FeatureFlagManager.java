@@ -38,6 +38,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private final WeakReference<FeatureFlagDelegate> mDelegate;
   private final FlagsConfig mFlagsConfig;
   private final String mFlagsEndpoint; // e.g. https://api.mixpanel.com/flags/
+  private final String mFlagsRecordingEndpoint; // e.g. https://api.mixpanel.com/flags/
   private final RemoteService mHttpService; // Use RemoteService interface
   private final FeatureFlagHandler mHandler; // For serializing state access and operations
   private final ExecutorService
@@ -99,6 +100,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       @NonNull FlagsConfig flagsConfig) {
     mDelegate = new WeakReference<>(delegate);
     mFlagsEndpoint = delegate.getMPConfig().getFlagsEndpoint();
+    mFlagsRecordingEndpoint = delegate.getMPConfig().getFlagsRecordingEndpoint();
     mHttpService = httpService;
     mFlagsConfig = flagsConfig;
 
@@ -885,9 +887,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
 
     try {
-      // Build endpoint URL
-      String apiHost = delegate.getMPConfig().getServerURL();
-      String endpoint = apiHost + "/flags/" + def.flagId + "/first-time-events";
+      // Build endpoint URL using the flags recording endpoint
+      String endpoint = mFlagsRecordingEndpoint + def.flagId + "/first-time-events";
 
       // Build request body
       JSONObject body = new JSONObject();
@@ -921,7 +922,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       if (result.isSuccess()) {
         MPLog.v(LOGTAG, "First-time event recorded successfully: " + def.getCompositeKey());
       } else {
-        MPLog.w(LOGTAG, "Recording API returned non-success: " + result.getStatusCode());
+        MPLog.w(LOGTAG, "Recording API returned non-success response");
       }
     } catch (Exception e) {
       MPLog.w(LOGTAG, "Failed to record first-time event: " + e.getMessage());
