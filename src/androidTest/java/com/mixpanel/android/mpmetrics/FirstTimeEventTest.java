@@ -347,18 +347,29 @@ public class FirstTimeEventTest {
     }
 
     @Test
-    public void testComplexJsonLogicFilters() throws Exception {
-        // Test complex AND/OR JsonLogic filters
-        // This would require creating a more complex mock response with nested filters
-        // Skipped in this basic test suite, but would test scenarios like:
-        // {"and": [{"==": [{"var": "properties.category"}, "electronics"]},
-        //          {">": [{"var": "properties.price"}, 100]}]}
-    }
+    public void testActivationProducesExpectedVariantValues() throws Exception {
+        // Load flags - test_flag starts with variant_key="control", variant_value=false
+        mMixpanel.getFlags().loadFlags();
+        Boolean flagsLoaded = mFlagLoadComplete.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Flags should load successfully", flagsLoaded);
 
-    @Test
-    public void testJsonLogicEvaluationError_NoActivation() throws Exception {
-        // If JsonLogic evaluation throws an error, event should not activate
-        // This is handled by the fail-safe catch block in FirstTimeEventChecker
-        // Difficult to test without injecting invalid JsonLogic, but the implementation handles it
+        // Verify initial variant before activation
+        MixpanelFlagVariant fallback = new MixpanelFlagVariant("fallback", "default");
+        MixpanelFlagVariant initialVariant = mMixpanel.getFlags().getVariantSync("test_flag", fallback);
+        assertEquals("Initial variant key should be 'control'", "control", initialVariant.key);
+        assertEquals("Initial variant value should be false", false, initialVariant.value);
+
+        // Track Purchase event to activate first-time event
+        mMixpanel.track("Purchase");
+
+        // Wait for recording API call to confirm activation
+        RecordingAPICall call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
+        assertNotNull("First-time event should activate and record", call);
+        assertEquals("hash_1", call.body.getString("first_time_event_hash"));
+
+        // Verify variant has been updated to pending variant values
+        MixpanelFlagVariant activatedVariant = mMixpanel.getFlags().getVariantSync("test_flag", fallback);
+        assertEquals("Activated variant key should be 'treatment' from pending variant", "treatment", activatedVariant.key);
+        assertEquals("Activated variant value should be true from pending variant", true, activatedVariant.value);
     }
 }
