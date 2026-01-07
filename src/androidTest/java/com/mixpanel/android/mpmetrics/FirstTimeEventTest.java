@@ -6,7 +6,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.MPConstants;
+import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.RemoteService.HttpMethod;
+import com.mixpanel.android.util.RemoteService.ServiceUnavailableException;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -68,13 +71,35 @@ public class FirstTimeEventTest {
         return new RemoteService() {
             @Override
             public RequestResult performRequest(
-                    HttpMethod method,
                     String endpointUrl,
-                    ProxyServerInteractor proxyInteractor,
+                    ProxyServerInteractor interactor,
                     Map<String, Object> params,
                     Map<String, String> headers,
                     byte[] requestBodyBytes,
-                    javax.net.ssl.SSLSocketFactory sslFactory) throws Exception {
+                    javax.net.ssl.SSLSocketFactory socketFactory)
+                    throws ServiceUnavailableException, java.io.IOException {
+                // Delegate to the 7-parameter version with POST as default
+                return performRequest(
+                    HttpMethod.POST,
+                    endpointUrl,
+                    interactor,
+                    params,
+                    headers,
+                    requestBodyBytes,
+                    socketFactory
+                );
+            }
+
+            @Override
+            public RequestResult performRequest(
+                    HttpMethod method,
+                    String endpointUrl,
+                    ProxyServerInteractor interactor,
+                    Map<String, Object> params,
+                    Map<String, String> headers,
+                    byte[] requestBodyBytes,
+                    javax.net.ssl.SSLSocketFactory socketFactory)
+                    throws ServiceUnavailableException, java.io.IOException {
 
                 // Capture recording API calls
                 if (endpointUrl.contains("/first-time-events")) {
@@ -96,22 +121,10 @@ public class FirstTimeEventTest {
             }
 
             private RequestResult createSuccessResult(String responseBody) {
-                return new RequestResult() {
-                    @Override
-                    public boolean isSuccess() {
-                        return true;
-                    }
-
-                    @Override
-                    public byte[] getResponse() {
-                        return responseBody.getBytes(StandardCharsets.UTF_8);
-                    }
-
-                    @Override
-                    public int getStatusCode() {
-                        return 200;
-                    }
-                };
+                return RequestResult.success(
+                    responseBody.getBytes(StandardCharsets.UTF_8),
+                    "mock-url"
+                );
             }
 
             private String createFlagsResponse() throws Exception {
