@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -221,8 +222,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         this,
                         getHttpService(),
                         new FlagsConfig(options.areFeatureFlagsEnabled(), options.getFeatureFlagsContext()));
-
-        mFeatureFlagManager.loadFlags();
 
         if (options.isOptOutTrackingDefault()
                 && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
@@ -825,7 +824,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 mPersistentIdentity.setEventsDistinctId(distinctId);
                 mPersistentIdentity.setAnonymousIdIfAbsent(currentEventsDistinctId);
                 mPersistentIdentity.markEventsUserIdPresent();
-                mFeatureFlagManager.loadFlags();
+                // Ensure app has previously launched in foreground before network call.
+                if (mHasAppForegrounded.get()) {
+                    mFeatureFlagManager.loadFlags();
+                }
                 try {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
@@ -2093,6 +2095,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     /* package */ void onForeground() {
         mSessionMetadata.initSession();
+        // Ensure app has previously launched in foreground before network call.
+        mHasAppForegrounded.set(true);
+        if (mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+            mFeatureFlagManager.loadFlags();
+        }
     }
 
     // Package-level access. Used (at least) by MixpanelFCMMessagingService
@@ -2798,6 +2805,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final SessionMetadata mSessionMetadata;
     private FeatureFlagManager mFeatureFlagManager;
     private RemoteService mHttpService;
+    // Flag to track if app has entered foreground
+    private final AtomicBoolean mHasAppForegrounded = new AtomicBoolean(false);
+    // Flag to track if initial feature flags load has been initiated
+    private final AtomicBoolean mInitialFeatureFlagLoad = new AtomicBoolean(false);
 
     // Maps each token to a singleton MixpanelAPI instance
     private static final Map<String, Map<Context, MixpanelAPI>> sInstanceMap =

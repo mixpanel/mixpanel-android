@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -1358,8 +1359,8 @@ public class MixpanelBasicTest {
         new ArrayList<AnalyticsMessages.EventDescription>();
     final AnalyticsMessages listener =
         new AnalyticsMessages(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+            InstrumentationRegistry.getInstrumentation().getTargetContext(),
+            MPConfig.getInstance(InstrumentationRegistry.getInstrumentation().getTargetContext(), null)) {
           @Override
           public void eventsMessage(EventDescription heard) {
             if (!heard.isAutomatic()) {
@@ -1371,9 +1372,10 @@ public class MixpanelBasicTest {
     // Track calls to the flags endpoint
     final List<String> flagsEndpointCalls = new ArrayList<>();
 
+    // Create MixpanelAPI first to register lifecycle callbacks before launching activity
     MixpanelAPI metrics =
         new TestUtils.CleanMixpanelAPI(
-            InstrumentationRegistry.getInstrumentation().getContext(),
+            InstrumentationRegistry.getInstrumentation().getTargetContext(),
             mMockPreferences,
             "Test Identify Call") {
           @Override
@@ -1424,36 +1426,39 @@ public class MixpanelBasicTest {
     // Clear any flags calls from constructor
     flagsEndpointCalls.clear();
 
-    // First identify should trigger loadFlags since distinctId changes
-    metrics.identify(newDistinctId);
+    // Launch an activity to bring the app to foreground, which triggers onForeground()
+    try (ActivityScenario<TestActivity> scenario = ActivityScenario.launch(TestActivity.class)) {
+      // First identify should trigger loadFlags since distinctId changes
+      metrics.identify(newDistinctId);
 
-    // Give the async flag loading some time to execute
-    try {
-      Thread.sleep(500);
-    } catch (InterruptedException e) {
-      // Ignore
+      // Give the async flag loading some time to execute
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        // Ignore
+      }
+
+      // Second and third identify should NOT trigger loadFlags since distinctId doesn't change
+      metrics.identify(newDistinctId);
+      metrics.identify(newDistinctId);
+
+      // Verify that only one $identify event was tracked
+      assertEquals(1, messages.size());
+      AnalyticsMessages.EventDescription identifyEventDescription = messages.get(0);
+      assertEquals("$identify", identifyEventDescription.getEventName());
+      String newDistinctIdIdentifyTrack =
+          identifyEventDescription.getProperties().getString("distinct_id");
+      String anonDistinctIdIdentifyTrack =
+          identifyEventDescription.getProperties().getString("$anon_distinct_id");
+
+      assertEquals(newDistinctId, newDistinctIdIdentifyTrack);
+      assertEquals(oldDistinctId, anonDistinctIdIdentifyTrack);
+
+      // Assert that loadFlags was called (flags endpoint was hit) when distinctId changed
+      assertTrue(
+          "loadFlags should have been called when distinctId changed",
+          flagsEndpointCalls.size() >= 1);
     }
-
-    // Second and third identify should NOT trigger loadFlags since distinctId doesn't change
-    metrics.identify(newDistinctId);
-    metrics.identify(newDistinctId);
-
-    // Verify that only one $identify event was tracked
-    assertEquals(1, messages.size());
-    AnalyticsMessages.EventDescription identifyEventDescription = messages.get(0);
-    assertEquals("$identify", identifyEventDescription.getEventName());
-    String newDistinctIdIdentifyTrack =
-        identifyEventDescription.getProperties().getString("distinct_id");
-    String anonDistinctIdIdentifyTrack =
-        identifyEventDescription.getProperties().getString("$anon_distinct_id");
-
-    assertEquals(newDistinctId, newDistinctIdIdentifyTrack);
-    assertEquals(oldDistinctId, anonDistinctIdIdentifyTrack);
-
-    // Assert that loadFlags was called (flags endpoint was hit) when distinctId changed
-    assertTrue(
-        "loadFlags should have been called when distinctId changed",
-        flagsEndpointCalls.size() >= 1);
   }
 
   @Test
