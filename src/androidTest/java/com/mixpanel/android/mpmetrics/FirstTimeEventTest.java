@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.mixpanel.android.util.MPConstants;
+import com.mixpanel.android.util.OfflineMode;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import com.mixpanel.android.util.RemoteService.HttpMethod;
@@ -69,6 +70,16 @@ public class FirstTimeEventTest {
      */
     private RemoteService createMockHttpService() {
         return new RemoteService() {
+            @Override
+            public boolean isOnline(Context context, OfflineMode offlineMode) {
+                return true; // Assume online for tests
+            }
+
+            @Override
+            public void checkIsMixpanelBlocked() {
+                // No-op for tests
+            }
+
             @Override
             public RequestResult performRequest(
                     String endpointUrl,
