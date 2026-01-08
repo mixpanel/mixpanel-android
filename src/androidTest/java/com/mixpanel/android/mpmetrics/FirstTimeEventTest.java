@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import android.content.Context;
 
+import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -14,6 +15,7 @@ import com.mixpanel.android.util.RemoteService.ServiceUnavailableException;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,6 +40,7 @@ public class FirstTimeEventTest {
     private BlockingQueue<JSONObject> mTrackedEvents;
     private BlockingQueue<Boolean> mFlagLoadComplete;
     private MixpanelAPI mMixpanel;
+    private ActivityScenario<TestActivity> mActivityScenario;
 
     /**
      * Captures recording API calls for verification.
@@ -56,14 +59,26 @@ public class FirstTimeEventTest {
 
     @Before
     public void setUp() throws Exception {
-        mContext = InstrumentationRegistry.getInstrumentation().getContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         mRecordingCalls = new LinkedBlockingQueue<>();
         mTrackedEvents = new LinkedBlockingQueue<>();
         mFlagLoadComplete = new LinkedBlockingQueue<>();
 
         // Create MixpanelAPI instance with mock HTTP service
+        // This must be done before launching the activity so lifecycle callbacks are registered
         TestUtils.cleanUpMixpanelData(mContext);
         mMixpanel = TestUtils.createMixpanelAPIWithMockHttpService(mContext, createMockHttpService());
+
+        // Launch an activity to bring the app to foreground, which triggers onForeground()
+        // This is required for feature flags to load (see commit a55681bb)
+        mActivityScenario = ActivityScenario.launch(TestActivity.class);
+    }
+
+    @After
+    public void tearDown() {
+        if (mActivityScenario != null) {
+            mActivityScenario.close();
+        }
     }
 
     /**
