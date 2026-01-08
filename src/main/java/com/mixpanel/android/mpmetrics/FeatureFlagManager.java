@@ -665,22 +665,27 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mFetchCompletionCallbacks = new ArrayList<>();
 
     if (success && flagsResponseJson != null) {
-      Map<String, MixpanelFlagVariant> newFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
+      try {
+        Map<String, MixpanelFlagVariant> newFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
 
-      // Parse pending first-time events
-      Map<String, FirstTimeEventDefinition> newPendingEvents = parsePendingFirstTimeEvents(flagsResponseJson);
+        // Parse pending first-time events
+        Map<String, FirstTimeEventDefinition> newPendingEvents = parsePendingFirstTimeEvents(flagsResponseJson);
 
-      // Merge with activated events to preserve session state
-      mergeWithActivatedEvents(newFlags, newPendingEvents);
+        // Merge with activated events to preserve session state
+        mergeWithActivatedEvents(newFlags, newPendingEvents);
 
-      // Update state
-      synchronized (mLock) {
-        mFlags = Collections.unmodifiableMap(newFlags);
+        // Update state
+        synchronized (mLock) {
+          mFlags = Collections.unmodifiableMap(newFlags);
+        }
+        mPendingFirstTimeEvents = newPendingEvents;
+
+        MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded, " +
+                newPendingEvents.size() + " pending first-time events.");
+      } catch (Exception e) {
+        MPLog.e(LOGTAG, "Unexpected error parsing flags response", e);
+        success = false;  // Mark as failure so callbacks receive correct status
       }
-      mPendingFirstTimeEvents = newPendingEvents;
-
-      MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded, " +
-              newPendingEvents.size() + " pending first-time events.");
     } else {
       MPLog.w(
           LOGTAG,

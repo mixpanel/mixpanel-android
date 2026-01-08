@@ -107,13 +107,14 @@ public class JsonUtils {
      * Parses a single flag variant from a JSONObject.
      *
      * @param flagDefinition The JSONObject containing the flag variant definition.
-     * @return A MixpanelFlagVariant object, or null if parsing fails.
+     * @return A MixpanelFlagVariant object.
+     * @throws JSONException if parsing fails or required fields are missing.
      */
-    @Nullable
-    public static MixpanelFlagVariant parseFlagVariant(@Nullable JSONObject flagDefinition) {
+    @NonNull
+    public static MixpanelFlagVariant parseFlagVariant(@Nullable JSONObject flagDefinition) throws JSONException {
         if (flagDefinition == null) {
             MPLog.e(LOGTAG, "Cannot parse null flag definition");
-            return null;
+            throw new JSONException("Cannot parse null flag definition");
         }
 
         try {
@@ -121,8 +122,8 @@ public class JsonUtils {
             if (flagDefinition.has(MPConstants.Flags.VARIANT_KEY) && !flagDefinition.isNull(MPConstants.Flags.VARIANT_KEY)) {
                 variantKey = flagDefinition.getString(MPConstants.Flags.VARIANT_KEY);
             } else {
-                MPLog.w(LOGTAG, "Flag definition missing 'variant_key'");
-                return null;
+                MPLog.w(LOGTAG, "Flag definition missing required 'variant_key' field");
+                throw new JSONException("Flag variant missing required 'variant_key' field");
             }
 
             Object variantValue = null;
@@ -152,7 +153,7 @@ public class JsonUtils {
             return new MixpanelFlagVariant(variantKey, variantValue, experimentID, isExperimentActive, isQATester);
         } catch (JSONException e) {
             MPLog.e(LOGTAG, "Error parsing flag variant", e);
-            return null;
+            throw e;  // Rethrow instead of returning null
         }
     }
 
@@ -190,12 +191,7 @@ public class JsonUtils {
                     }
                     JSONObject flagDefinition = flagsObject.getJSONObject(featureName);
                     MixpanelFlagVariant flagData = parseFlagVariant(flagDefinition);
-
-                    if (flagData != null) {
-                        flagsMap.put(featureName, flagData);
-                    } else {
-                        MPLog.w(LOGTAG, "Failed to parse flag definition for key: " + featureName);
-                    }
+                    flagsMap.put(featureName, flagData);
 
                 } catch (JSONException e) {
                     MPLog.e(LOGTAG, "Error parsing individual flag definition for key: " + featureName, e);
