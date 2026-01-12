@@ -223,8 +223,13 @@ import com.mixpanel.android.util.MPLog;
     }
 
     /**
-     * Sets a custom device ID. Must be called before first identity access.
+     * Sets a custom device ID to be used instead of a generated UUID.
      * Once set, this ID is preserved across clearPreferences() calls.
+     *
+     * <p>This method should be called before first identity access (e.g., before
+     * getEventsDistinctId() or getAnonymousId()). If called after identities have
+     * already been loaded, the custom ID will be stored but will only take effect
+     * after the next clearPreferences() call triggers identity reinitialization.
      *
      * @param customDeviceId The custom device ID, or null to use UUID
      */
