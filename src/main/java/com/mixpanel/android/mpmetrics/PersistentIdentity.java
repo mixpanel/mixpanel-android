@@ -294,9 +294,11 @@ import com.mixpanel.android.util.MPLog;
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
 
-        // Preserve custom device ID if one was set
-        String preservedCustomId = mHasCustomDeviceId ? mCustomDeviceId : null;
-        boolean hadCustomId = mHasCustomDeviceId;
+        // Preserve custom device ID across the clear operation.
+        // These are in-memory fields not stored in SharedPreferences, but we
+        // save and restore them explicitly to guard against future changes.
+        final String preservedCustomId = mCustomDeviceId;
+        final boolean preservedHasCustomId = mHasCustomDeviceId;
 
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
@@ -305,11 +307,9 @@ import com.mixpanel.android.util.MPLog;
             writeEdits(prefsEdit);
             readSuperProperties();
 
-            // Restore custom device ID before reading identities
-            if (hadCustomId && preservedCustomId != null) {
-                mCustomDeviceId = preservedCustomId;
-                mHasCustomDeviceId = true;
-            }
+            // Restore custom device ID state before reading identities
+            mCustomDeviceId = preservedCustomId;
+            mHasCustomDeviceId = preservedHasCustomId;
 
             readIdentities();
         } catch (final ExecutionException | InterruptedException e) {
