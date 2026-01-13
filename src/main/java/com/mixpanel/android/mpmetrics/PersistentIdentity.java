@@ -38,11 +38,12 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
-    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences, Future<SharedPreferences> timeEventsPreferences, Future<SharedPreferences> mixpanelPreferences) {
+    public PersistentIdentity(Future<SharedPreferences> referrerPreferences, Future<SharedPreferences> storedPreferences, Future<SharedPreferences> timeEventsPreferences, Future<SharedPreferences> mixpanelPreferences, DeviceIdProvider deviceIdProvider) {
         mLoadReferrerPreferences = referrerPreferences;
         mLoadStoredPreferences = storedPreferences;
         mTimeEventsPreferences = timeEventsPreferences;
         mMixpanelPreferences = mixpanelPreferences;
+        mDeviceIdProvider = deviceIdProvider;
         mSuperPropertiesCache = null;
         mReferrerPropertiesCache = null;
         mIdentitiesLoaded = false;
@@ -55,6 +56,13 @@ import com.mixpanel.android.util.MPLog;
 
         // Preload time events in the background to avoid main thread disk reads
         preloadTimeEventsAsync();
+
+        // Load identities eagerly when a custom device ID provider is set
+        // This ensures the provider is called during initialization (matching Swift SDK behavior)
+        // and provides consistent identity state from the start
+        if (mDeviceIdProvider != null) {
+            readIdentities();
+        }
     }
 
     // Super properties
@@ -555,6 +563,28 @@ import com.mixpanel.android.util.MPLog;
         }
     }
 
+    /**
+     * Generates a device ID, using the custom provider if set.
+     * Falls back to random UUID if provider returns empty, null, or throws.
+     */
+    private String generateDeviceId() {
+        if (mDeviceIdProvider != null) {
+            try {
+                String providedId = mDeviceIdProvider.getDeviceId();
+                if (providedId != null) {
+                    providedId = providedId.trim();
+                    if (!providedId.isEmpty()) {
+                        return providedId;
+                    }
+                }
+                MPLog.w(LOGTAG, "deviceIdProvider returned null or empty string, using default device ID");
+            } catch (Exception e) {
+                MPLog.e(LOGTAG, "deviceIdProvider threw exception, using default device ID", e);
+            }
+        }
+        return UUID.randomUUID().toString();
+    }
+
     // All access should be synchronized on this
     private void readIdentities() {
         SharedPreferences prefs = null;
@@ -577,10 +607,20 @@ import com.mixpanel.android.util.MPLog;
         mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
 
         if (mEventsDistinctId == null) {
-            mAnonymousId = UUID.randomUUID().toString();
+            // No persisted identity - use provider or generate new
+            mAnonymousId = generateDeviceId();
             mEventsDistinctId = "$device:" + mAnonymousId;
             mEventsUserIdPresent = false;
             writeIdentities();
+        } else if (mDeviceIdProvider != null && mAnonymousId != null && !mAnonymousId.isEmpty()) {
+            // Persisted identity exists - check for provider mismatch
+            String providerValue = generateDeviceId();
+            if (!providerValue.equals(mAnonymousId)) {
+                MPLog.e(LOGTAG,
+                        "deviceIdProvider returned '" + providerValue + "' but existing anonymousId is '" +
+                        mAnonymousId + "'. Using persisted value to preserve identity continuity. " +
+                        "If you intended to change the device ID, call reset() after initialization.");
+            }
         }
         mIdentitiesLoaded = true;
     }
@@ -666,6 +706,7 @@ import com.mixpanel.android.util.MPLog;
     private final Future<SharedPreferences> mTimeEventsPreferences;
     private final Future<SharedPreferences> mMixpanelPreferences;
     private final SharedPreferences.OnSharedPreferenceChangeListener mReferrerChangeListener;
+    private final DeviceIdProvider mDeviceIdProvider;
     private JSONObject mSuperPropertiesCache;
     private final Object mSuperPropsLock = new Object();
     private Map<String, String> mReferrerPropertiesCache;

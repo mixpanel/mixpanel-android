@@ -141,8 +141,8 @@ public class OptOutTest {
         mCleanUpCalls = new CountDownLatch(2); // optOutTrack calls
         mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, true, null, true) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
                 return mPersistentIdentity;
             }
 
@@ -171,8 +171,8 @@ public class OptOutTest {
         mCleanUpCalls = new CountDownLatch(4); // optOutTrack calls
         MixpanelAPI mixpanel = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, "TOKEN", true, null, true) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
                 return mPersistentIdentity;
             }
 
@@ -202,8 +202,8 @@ public class OptOutTest {
         mCleanUpCalls = new CountDownLatch(2);
         mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN,false, null, true) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
                 return mPersistentIdentity;
             }
 
@@ -281,8 +281,8 @@ public class OptOutTest {
     public void testDropEventsAndOptInEvent() throws InterruptedException {
         mMixpanelAPI = new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
                 return mPersistentIdentity;
             }
 
@@ -319,8 +319,8 @@ public class OptOutTest {
     public void testTrackCalls() throws InterruptedException, JSONException {
         mMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null, true) {
             @Override
-            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName) {
-                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            PersistentIdentity getPersistentIdentity(Context context, Future<SharedPreferences> referrerPreferences, String token, String instanceName, DeviceIdProvider deviceIdProvider) {
+                mPersistentIdentity = super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
                 return mPersistentIdentity;
             }
 
