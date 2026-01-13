@@ -2,6 +2,8 @@ package com.mixpanel.android.mpmetrics;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
+import androidx.annotation.Nullable;
+
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONObject;
@@ -69,6 +71,7 @@ public class MixpanelOptions {
      *
      * @return The configured {@link DeviceIdProvider}, or null for default behavior.
      */
+    @Nullable
     public DeviceIdProvider getDeviceIdProvider() {
         return deviceIdProvider;
     }

@@ -56,13 +56,6 @@ import com.mixpanel.android.util.MPLog;
 
         // Preload time events in the background to avoid main thread disk reads
         preloadTimeEventsAsync();
-
-        // Load identities eagerly when a custom device ID provider is set
-        // This ensures the provider is called during initialization (matching Swift SDK behavior)
-        // and provides consistent identity state from the start
-        if (mDeviceIdProvider != null) {
-            readIdentities();
-        }
     }
 
     // Super properties
@@ -606,18 +599,23 @@ import com.mixpanel.android.util.MPLog;
         mAnonymousId = prefs.getString("anonymous_id", null);
         mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
 
+        // Get provider value once (if provider exists) to avoid calling provider multiple times
+        String providerDeviceId = null;
+        if (mDeviceIdProvider != null) {
+            providerDeviceId = generateDeviceId();
+        }
+
         if (mEventsDistinctId == null) {
-            // No persisted identity - use provider or generate new
-            mAnonymousId = generateDeviceId();
+            // No persisted identity - use provider value or generate UUID
+            mAnonymousId = (providerDeviceId != null) ? providerDeviceId : UUID.randomUUID().toString();
             mEventsDistinctId = "$device:" + mAnonymousId;
             mEventsUserIdPresent = false;
             writeIdentities();
-        } else if (mDeviceIdProvider != null && mAnonymousId != null && !mAnonymousId.isEmpty()) {
-            // Persisted identity exists - check for provider mismatch
-            String providerValue = generateDeviceId();
-            if (!providerValue.equals(mAnonymousId)) {
+        } else if (providerDeviceId != null && mAnonymousId != null && !mAnonymousId.isEmpty()) {
+            // Persisted identity exists - check for provider mismatch (using cached value)
+            if (!providerDeviceId.equals(mAnonymousId)) {
                 MPLog.e(LOGTAG,
-                        "deviceIdProvider returned '" + providerValue + "' but existing anonymousId is '" +
+                        "deviceIdProvider returned '" + providerDeviceId + "' but existing anonymousId is '" +
                         mAnonymousId + "'. Using persisted value to preserve identity continuity. " +
                         "If you intended to change the device ID, call reset() after initialization.");
             }

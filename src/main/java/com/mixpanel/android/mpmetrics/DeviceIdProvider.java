@@ -37,6 +37,7 @@ package com.mixpanel.android.mpmetrics;
  *     .build();
  * }</pre>
  */
+@FunctionalInterface
 public interface DeviceIdProvider {
     /**
      * Provides a device ID for Mixpanel tracking.

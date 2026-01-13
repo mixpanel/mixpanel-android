@@ -13,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,6 +46,15 @@ public class MixpanelDeviceIdProviderTest {
         Thread.sleep(500);
     }
 
+    @After
+    public void tearDown() throws Exception {
+        // Clean up any singleton instances
+        AnalyticsMessages messages = AnalyticsMessages.getInstance(
+                mContext, MPConfig.getInstance(mContext, null));
+        messages.hardKill();
+        Thread.sleep(200);
+    }
+
     private void clearPreferencesForToken(String token) {
         String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + token;
         SharedPreferences prefs = mContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
@@ -64,10 +74,10 @@ public class MixpanelDeviceIdProviderTest {
     // ========================================================================
 
     /**
-     * Test 1.1: Verify provider is called during initialization and value is used
+     * Test 1.1: Verify provider is called on first identity access (lazy loading) and value is used
      */
     @Test
-    public void testDeviceIdProviderIsCalledOnInitialization() {
+    public void testDeviceIdProviderIsCalledOnFirstAccess() {
         final AtomicInteger callCount = new AtomicInteger(0);
         final String customDeviceId = "custom-device-id-12345";
         String token = UUID.randomUUID().toString();
@@ -83,8 +93,14 @@ public class MixpanelDeviceIdProviderTest {
         MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(
                 mContext, mMockPreferences, token, options);
 
-        assertTrue("deviceIdProvider should be called during initialization", callCount.get() >= 1);
-        assertEquals("anonymousId should be set from provider", customDeviceId, mixpanel.getAnonymousId());
+        // Provider should not be called until first identity access (lazy loading)
+        assertEquals("deviceIdProvider should not be called until first access", 0, callCount.get());
+
+        // Trigger lazy load by accessing identity
+        String anonymousId = mixpanel.getAnonymousId();
+
+        assertTrue("deviceIdProvider should be called on first access", callCount.get() >= 1);
+        assertEquals("anonymousId should be set from provider", customDeviceId, anonymousId);
         assertEquals("distinctId should use provider value with prefix",
                 "$device:" + customDeviceId, mixpanel.getDistinctId());
     }
