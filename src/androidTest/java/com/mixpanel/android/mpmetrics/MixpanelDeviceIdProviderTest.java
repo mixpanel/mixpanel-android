@@ -377,8 +377,11 @@ public class MixpanelDeviceIdProviderTest {
         MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(
                 mContext, mMockPreferences, token, options);
 
+        // Trigger lazy loading by accessing identity
+        String anonymousId = mixpanel.getAnonymousId();
+
         assertTrue("Provider should be called when no persisted identity", callCount.get() >= 1);
-        assertEquals("fresh-device-id", mixpanel.getAnonymousId());
+        assertEquals("fresh-device-id", anonymousId);
     }
 
     // ========================================================================
