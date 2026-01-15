@@ -148,8 +148,8 @@ The SDK publishes via the new Maven Central Portal:
 
 - Min SDK: 21
 - Target/Compile SDK: 34
-- Android Gradle Plugin: 8.10.0
-- Kotlin: 1.9.0
+- Android Gradle Plugin: 8.13.2
+- Kotlin: 2.1.0
 
 ## Key Patterns and Conventions
 
