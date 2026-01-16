@@ -4,9 +4,9 @@ buildscript {
         google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.13.2'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0'
-        classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.1.0'
+        classpath 'com.android.tools.build:gradle:9.0.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10'
+        classpath 'org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.2.10'
     }
 }
 
@@ -26,13 +26,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    lintOptions {
-        abortOnError false
-    }
 
     defaultConfig {
         minSdk 21
-        targetSdk 34
         multiDexEnabled true
         android.buildFeatures.buildConfig true
         testApplicationId "com.mixpanel.android.mpmetrics"
@@ -56,11 +52,19 @@ android {
     buildTypes {
         debug{
             minifyEnabled false
-            testCoverageEnabled true
+            enableUnitTestCoverage true
+            enableAndroidTestCoverage true
         }
         release {
             minifyEnabled false
         }
+    }
+    lint {
+        abortOnError false
+        targetSdk 34
+    }
+    testOptions {
+        targetSdk 34
     }
 }
 
