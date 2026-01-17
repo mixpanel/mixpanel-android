@@ -59,7 +59,7 @@ public class PersistentIdentityTest {
         Future<SharedPreferences> timeEventsLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_TIME_EVENTS_PREFERENCES, null);
         Future<SharedPreferences> mixpanelLoader = loader.loadPreferences(InstrumentationRegistry.getInstrumentation().getContext(), TEST_MIXPANEL_PREFERENCES, null);
 
-        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader, mixpanelLoader);
+        mPersistentIdentity = new PersistentIdentity(referrerLoader, testLoader, timeEventsLoader, mixpanelLoader, null);
     }
 
     @Test

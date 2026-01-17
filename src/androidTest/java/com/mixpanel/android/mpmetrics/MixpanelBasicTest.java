@@ -1137,7 +1137,8 @@ public class MixpanelBasicTest {
           final Context context,
           final Future<SharedPreferences> referrerPreferences,
           final String token,
-          final String instanceName) {
+          final String instanceName,
+          final DeviceIdProvider deviceIdProvider) {
         String instanceKey = instanceName != null ? instanceName : token;
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
@@ -1157,7 +1158,7 @@ public class MixpanelBasicTest {
             .putString("events_distinct_id", savedDistinctID)
             .putString("people_distinct_id", savedDistinctID)
             .commit();
-        return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+        return super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
       }
 
       @Override
@@ -1570,7 +1571,8 @@ public class MixpanelBasicTest {
           final Context context,
           final Future<SharedPreferences> referrerPreferences,
           final String token,
-          final String instanceName) {
+          final String instanceName,
+          final DeviceIdProvider deviceIdProvider) {
         String instanceKey = instanceName != null ? instanceName : token;
         final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
         final SharedPreferences mpSharedPrefs =
@@ -1582,7 +1584,7 @@ public class MixpanelBasicTest {
             .putBoolean("has_launched", true)
             .commit();
 
-        return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+        return super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
       }
 
       @Override
@@ -1993,9 +1995,10 @@ public class MixpanelBasicTest {
               Context context,
               Future<SharedPreferences> referrerPreferences,
               String token,
-              String instanceName) {
+              String instanceName,
+              DeviceIdProvider deviceIdProvider) {
             mPersistentIdentity =
-                super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+                super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
             return mPersistentIdentity;
           }
         };

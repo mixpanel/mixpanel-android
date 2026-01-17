@@ -155,7 +155,7 @@ public class AutomaticEventsTest {
         mCleanMixpanelAPI = new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockReferrerPreferences, TOKEN, false, null, trackAutomaticEvents) {
 
             @Override
-                /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+                /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName, final DeviceIdProvider deviceIdProvider) {
                 String instanceKey = instanceName != null ? instanceName : token;
                 final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
                 final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
@@ -169,7 +169,7 @@ public class AutomaticEventsTest {
                 final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
                 mpSharedPrefs.edit().clear().putInt("latest_version_code", -2).commit(); // -1 is the default value
 
-                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
             }
 
             @Override
