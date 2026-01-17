@@ -2661,6 +2661,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                             isAutomaticEvent,
                             mSessionMetadata.getMetadataForEvent());
             mMessages.eventsMessage(eventDescription);
+
+            // Check first-time event targeting conditions
+            if (mFeatureFlagManager != null) {
+                mFeatureFlagManager.checkFirstTimeEvent(eventName, messageProps);
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
