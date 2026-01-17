@@ -1,5 +1,13 @@
 #
 
+## [v8.2.5](https://github.com/mixpanel/mixpanel-android/tree/v8.2.5) (2026-01-16)
+
+### Fixes
+- Fix release workflow push rejection issue [\#876](https://github.com/mixpanel/mixpanel-android/pull/876)
+- fix: Delay Feature Flag networking call until the app has been foregrounded [\#877](https://github.com/mixpanel/mixpanel-android/pull/877)
+- chore: upgrade to AGP 9.0.0, Gradle 9.1.0, and Kotlin 2.2.10 [\881](https://github.com/mixpanel/mixpanel-android/pull/881)
+- delete outdated acceptance directory [\882](https://github.com/mixpanel/mixpanel-android/pull/882)
+  
 ## [v8.2.4](https://github.com/mixpanel/mixpanel-android/tree/v8.2.4) (2025-09-24)
 
 ### Enhancements
