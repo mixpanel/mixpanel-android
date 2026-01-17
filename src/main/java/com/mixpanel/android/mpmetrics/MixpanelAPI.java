@@ -12,6 +12,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -232,14 +233,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             registerSuperProperties(options.getSuperProperties());
         }
 
-        final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
+        // Check first launch asynchronously to avoid disk I/O on main thread
+        checkFirstLaunchAsync();
 
         registerMixpanelActivityLifecycleCallbacks();
-
-        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken) && mTrackAutomaticEvents) {
-            track(AutomaticEvents.FIRST_OPEN, null, true);
-            mPersistentIdentity.setHasLaunched(mToken);
-        }
 
         if (sendAppOpen() && mTrackAutomaticEvents) {
             track("$app_open", null);
@@ -2041,6 +2038,52 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 @NonNull String featureName,
                 boolean fallbackValue,
                 @NonNull FlagCompletionCallback<Boolean> completion);
+    }
+
+    /**
+     * Check if this is the first launch and track the first open event asynchronously.
+     * This avoids disk I/O on the main thread which would trigger StrictMode violations.
+     * Uses the SDK's message passing pattern when on main thread, or executes synchronously
+     * when already on a background thread.
+     */
+    private void checkFirstLaunchAsync() {
+        if (!mTrackAutomaticEvents) {
+            return;
+        }
+        
+        // Only defer to async if we're on the main thread to avoid StrictMode violations
+        if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
+            // Use message passing pattern to check first launch on background thread
+            mMessages.checkFirstLaunchMessage(new AnalyticsMessages.FirstLaunchDescription(mToken, this));
+        } else {
+            // We're already on a background thread, safe to check synchronously
+            // This ensures tests and background initializations work correctly
+            try {
+                final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
+                if (mPersistentIdentity.isFirstLaunch(dbExists, mToken)) {
+                    track(AutomaticEvents.FIRST_OPEN, null, true);
+                    mPersistentIdentity.setHasLaunched(mToken);
+                }
+            } catch (Exception e) {
+                MPLog.e(LOGTAG, "Failed to check first launch", e);
+            }
+        }
+    }
+    
+    /**
+     * Package-private method for checking if this is the first launch.
+     * Called from the background thread via message passing.
+     */
+    boolean isFirstLaunch(boolean dbExists) {
+        return mPersistentIdentity.isFirstLaunch(dbExists, mToken);
+    }
+    
+    /**
+     * Package-private method for setting that the app has launched.
+     * Called from the background thread via message passing.
+     */
+    void setHasLaunched() {
+        mPersistentIdentity.setHasLaunched(mToken);
     }
 
     /**
