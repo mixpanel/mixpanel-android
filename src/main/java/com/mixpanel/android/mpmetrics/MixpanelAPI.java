@@ -215,6 +215,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mMessages = getAnalyticsMessages();
         mPersistentIdentity =
                 getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName());
+
+        // Set custom device ID before any identity access
+        String customDeviceId = options.getDeviceId();
+        if (customDeviceId != null) {
+            mPersistentIdentity.setCustomDeviceId(customDeviceId);
+        }
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagManager =
