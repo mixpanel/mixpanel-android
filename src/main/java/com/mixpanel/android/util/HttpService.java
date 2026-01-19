@@ -69,7 +69,7 @@ public class HttpService implements RemoteService {
                             public void run() {
                                 try {
                                     long startTimeNanos = System.nanoTime();
-                                    String host = "api.mixpanel.com";
+                                    String host = "api-js.mixpanel.com";
                                     InetAddress apiMixpanelInet = InetAddress.getByName(host);
                                     sIsMixpanelBlocked =
                                             apiMixpanelInet.isLoopbackAddress() || apiMixpanelInet.isAnyLocalAddress();
