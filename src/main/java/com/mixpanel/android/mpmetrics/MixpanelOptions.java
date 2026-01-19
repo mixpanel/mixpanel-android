@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
@@ -13,6 +14,8 @@ public class MixpanelOptions {
     private final JSONObject superProperties;
     private final boolean featureFlagsEnabled;
     private final JSONObject featureFlagsContext;
+    private final String serverURL;
+    private final ProxyServerInteractor proxyServerInteractor;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -20,6 +23,8 @@ public class MixpanelOptions {
         this.superProperties = builder.superProperties;
         this.featureFlagsEnabled = builder.featureFlagsEnabled;
         this.featureFlagsContext = builder.featureFlagsContext;
+        this.serverURL = builder.serverURL;
+        this.proxyServerInteractor = builder.proxyServerInteractor;
     }
 
     public String getInstanceName() {
@@ -62,12 +67,32 @@ public class MixpanelOptions {
         }
     }
 
+    /**
+     * Returns the server URL configured for this Mixpanel instance.
+     *
+     * @return The server URL, or null if not configured (will use default).
+     */
+    public String getServerURL() {
+        return serverURL;
+    }
+
+    /**
+     * Returns the proxy server interactor configured for this Mixpanel instance.
+     *
+     * @return The ProxyServerInteractor, or null if not configured.
+     */
+    public ProxyServerInteractor getProxyServerInteractor() {
+        return proxyServerInteractor;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
         private boolean featureFlagsEnabled = false;
         private JSONObject featureFlagsContext = new JSONObject();
+        private String serverURL;
+        private ProxyServerInteractor proxyServerInteractor;
 
         public Builder() {
         }
@@ -150,6 +175,39 @@ public class MixpanelOptions {
                     this.featureFlagsContext = null;
                 }
             }
+            return this;
+        }
+
+        /**
+         * Sets the base URL used for Mixpanel API requests. Useful if you need to proxy
+         * Mixpanel requests or route data to Mixpanel's EU servers.
+         *
+         * <p>Defaults to https://api.mixpanel.com. To route data to Mixpanel's EU servers,
+         * set to https://api-eu.mixpanel.com
+         *
+         * <p>Setting this at initialization time ensures the ad-blocker check uses
+         * the correct host.
+         *
+         * @param serverURL The base URL used for Mixpanel API requests
+         *     (e.g., "https://api-eu.mixpanel.com" or "https://my-proxy.example.com").
+         * @return This Builder instance for chaining.
+         */
+        public Builder serverURL(String serverURL) {
+            this.serverURL = serverURL;
+            return this;
+        }
+
+        /**
+         * Sets the proxy server interactor for handling proxy-specific headers and responses.
+         *
+         * <p>This is useful when using a custom proxy server that requires additional
+         * authentication headers or needs to process responses differently.
+         *
+         * @param proxyServerInteractor The interactor to handle proxy server communication.
+         * @return This Builder instance for chaining.
+         */
+        public Builder proxyServerInteractor(ProxyServerInteractor proxyServerInteractor) {
+            this.proxyServerInteractor = proxyServerInteractor;
             return this;
         }
 

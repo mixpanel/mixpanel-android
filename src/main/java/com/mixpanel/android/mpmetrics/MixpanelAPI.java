@@ -190,6 +190,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
+
+        // Apply serverURL from options before AnalyticsMessages is created
+        // This ensures the ad-blocker check uses the correct host
+        if (options.getServerURL() != null) {
+            mConfig.setServerURL(options.getServerURL(), options.getProxyServerInteractor());
+        }
+
         mTrackAutomaticEvents = trackAutomaticEvents;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -706,7 +713,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * https://api-eu.mixpanel.com
      *
      * @param serverURL the base URL used for Mixpanel API requests
+     * @deprecated Use {@link MixpanelOptions.Builder#serverURL(String)} instead when calling
+     *     {@link #getInstance(Context, String, boolean, MixpanelOptions)}.
+     *     Setting serverURL at initialization time ensures the ad-blocker check uses the correct host.
      */
+    @Deprecated
     public void setServerURL(String serverURL) {
         mConfig.setServerURL(serverURL);
     }
@@ -718,7 +729,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param serverURL the base URL used for Mixpanel API requests
      * @param callback the callback for mixpanel proxy server api headers and status
+     * @deprecated Use {@link MixpanelOptions.Builder#serverURL(String)} and
+     *     {@link MixpanelOptions.Builder#proxyServerInteractor(ProxyServerInteractor)} instead when calling
+     *     {@link #getInstance(Context, String, boolean, MixpanelOptions)}.
+     *     Setting serverURL at initialization time ensures the ad-blocker check uses the correct host.
      */
+    @Deprecated
     public void setServerURL(String serverURL, ProxyServerInteractor callback) {
         mConfig.setServerURL(serverURL, callback);
     }

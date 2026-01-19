@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -181,14 +182,30 @@ import org.json.JSONObject;
 
     protected RemoteService getPoster() {
         if (mHttpService == null) {
+            String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
             mHttpService =
                     new HttpService(
-                            mConfig.shouldGzipRequestPayload(), mNetworkErrorListener, mConfig.getBackupHost());
+                            mConfig.shouldGzipRequestPayload(),
+                            mNetworkErrorListener,
+                            mConfig.getBackupHost(),
+                            serverHost);
         } else {
             // Update backup host in case it changed at runtime
             mHttpService.setBackupHost(mConfig.getBackupHost());
         }
         return mHttpService;
+    }
+
+    /**
+     * Extracts the host from a URL string.
+     * Falls back to the default Mixpanel API host if extraction fails.
+     */
+    private String extractHostFromUrl(String urlString) {
+        try {
+            return new URL(urlString).getHost();
+        } catch (Exception e) {
+            return "api.mixpanel.com";
+        }
     }
 
     ////////////////////////////////////////////////////
