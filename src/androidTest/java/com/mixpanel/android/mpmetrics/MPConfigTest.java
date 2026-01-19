@@ -242,11 +242,6 @@ public class MPConfigTest {
     }
 
     @Test
-    public void testServerURLWithProxyInteractor() {
-        // todo: find a way to test the proxy interactor method calls
-    }
-
-    @Test
     public void testServerURLDefaultWhenNotSet() {
         MixpanelOptions options = new MixpanelOptions.Builder()
                 .build();
