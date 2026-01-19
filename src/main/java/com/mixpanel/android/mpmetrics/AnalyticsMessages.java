@@ -196,6 +196,7 @@ import org.json.JSONObject;
         try {
             return new URL(urlString).getHost();
         } catch (Exception e) {
+            MPLog.e(LOGTAG, "Could not extract host from URL " + urlString, e);
             return DEFAULT_SERVER_HOST;
         }
     }
