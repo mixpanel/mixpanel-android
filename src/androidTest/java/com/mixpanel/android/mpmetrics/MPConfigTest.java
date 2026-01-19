@@ -257,6 +257,7 @@ public class MPConfigTest {
         assertEquals("https://api.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
         assertEquals("https://api.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
         assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://api.mixpanel.com/flags/", config.getFlagsEndpoint());
     }
 
     private MPConfig mpConfig(final Bundle metaData) {
