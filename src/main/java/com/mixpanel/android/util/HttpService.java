@@ -30,9 +30,12 @@ import javax.net.ssl.SSLSocketFactory;
 /** An HTTP utility class for internal use in the Mixpanel library. Not thread-safe. */
 public class HttpService implements RemoteService {
 
+    private static final String DEFAULT_SERVER_HOST = "api.mixpanel.com";
+
     private final boolean shouldGzipRequestPayload;
     private final MixpanelNetworkErrorListener networkErrorListener;
     private String mBackupHost;
+    private String mServerHost;
 
     private static boolean sIsMixpanelBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
@@ -42,19 +45,28 @@ public class HttpService implements RemoteService {
     public HttpService(
             boolean shouldGzipRequestPayload,
             MixpanelNetworkErrorListener networkErrorListener,
-            String backupHost) {
+            String backupHost,
+            String serverHost) {
         this.shouldGzipRequestPayload = shouldGzipRequestPayload;
         this.networkErrorListener = networkErrorListener;
         this.mBackupHost = backupHost;
+        this.mServerHost = (serverHost != null && !serverHost.isEmpty()) ? serverHost : DEFAULT_SERVER_HOST;
+    }
+
+    public HttpService(
+            boolean shouldGzipRequestPayload,
+            MixpanelNetworkErrorListener networkErrorListener,
+            String backupHost) {
+        this(shouldGzipRequestPayload, networkErrorListener, backupHost, null);
     }
 
     public HttpService(
             boolean shouldGzipRequestPayload, MixpanelNetworkErrorListener networkErrorListener) {
-        this(shouldGzipRequestPayload, networkErrorListener, null);
+        this(shouldGzipRequestPayload, networkErrorListener, null, null);
     }
 
     public HttpService() {
-        this(false, null, null);
+        this(false, null, null, null);
     }
 
     public void setBackupHost(String backupHost) {
@@ -63,13 +75,13 @@ public class HttpService implements RemoteService {
 
     @Override
     public void checkIsMixpanelBlocked() {
+        final String host = mServerHost;
         Thread t =
                 new Thread(
                         new Runnable() {
                             public void run() {
                                 try {
                                     long startTimeNanos = System.nanoTime();
-                                    String host = "api.mixpanel.com";
                                     InetAddress apiMixpanelInet = InetAddress.getByName(host);
                                     sIsMixpanelBlocked =
                                             apiMixpanelInet.isLoopbackAddress() || apiMixpanelInet.isAnyLocalAddress();

@@ -1,5 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -7,10 +11,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
 
@@ -221,11 +221,54 @@ public class MPConfigTest {
 
     }
 
+    @Test
+    public void testServerURLFromMixpanelOptions() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .serverURL("https://api-eu.mixpanel.com")
+                .build();
+
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                UUID.randomUUID().toString(),
+                true,
+                options
+        );
+
+        MPConfig config = mixpanel.getMPConfig();
+        assertEquals("https://api-eu.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://api-eu.mixpanel.com/flags/", config.getFlagsEndpoint());
+    }
+
+    @Test
+    public void testServerURLWithProxyInteractor() {
+        // todo: find a way to test the proxy interactor method calls
+    }
+
+    @Test
+    public void testServerURLDefaultWhenNotSet() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .build();
+
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                UUID.randomUUID().toString(),
+                true,
+                options
+        );
+
+        MPConfig config = mixpanel.getMPConfig();
+        assertEquals("https://api.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://api.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+    }
+
     private MPConfig mpConfig(final Bundle metaData) {
         return new MPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext(), null);
     }
 
     private MixpanelAPI mixpanelApi(final MPConfig config) {
-        return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, false, null,null, true);
+        return new MixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.EmptyPreferences(InstrumentationRegistry.getInstrumentation().getContext()), TOKEN, config, false, null, null, true);
     }
 }
