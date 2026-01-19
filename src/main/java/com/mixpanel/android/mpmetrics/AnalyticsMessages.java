@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import static com.mixpanel.android.util.MPConstants.URL.DEFAULT_SERVER_HOST;
+
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
@@ -204,7 +206,7 @@ import org.json.JSONObject;
         try {
             return new URL(urlString).getHost();
         } catch (Exception e) {
-            return "api.mixpanel.com";
+            return DEFAULT_SERVER_HOST;
         }
     }
 

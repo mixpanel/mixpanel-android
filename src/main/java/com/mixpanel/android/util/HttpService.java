@@ -1,5 +1,6 @@
 package com.mixpanel.android.util;
 
+import static com.mixpanel.android.util.MPConstants.URL.DEFAULT_SERVER_HOST;
 import static com.mixpanel.android.util.MPConstants.URL.MIXPANEL_API;
 
 import android.annotation.SuppressLint;
@@ -7,6 +8,8 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.io.BufferedOutputStream;
@@ -30,8 +33,6 @@ import javax.net.ssl.SSLSocketFactory;
 /** An HTTP utility class for internal use in the Mixpanel library. Not thread-safe. */
 public class HttpService implements RemoteService {
 
-    private static final String DEFAULT_SERVER_HOST = "api.mixpanel.com";
-
     private final boolean shouldGzipRequestPayload;
     private final MixpanelNetworkErrorListener networkErrorListener;
     private String mBackupHost;
@@ -50,7 +51,7 @@ public class HttpService implements RemoteService {
         this.shouldGzipRequestPayload = shouldGzipRequestPayload;
         this.networkErrorListener = networkErrorListener;
         this.mBackupHost = backupHost;
-        this.mServerHost = (serverHost != null && !serverHost.isEmpty()) ? serverHost : DEFAULT_SERVER_HOST;
+        this.mServerHost = TextUtils.isEmpty(serverHost) ? DEFAULT_SERVER_HOST : serverHost;
     }
 
     public HttpService(
