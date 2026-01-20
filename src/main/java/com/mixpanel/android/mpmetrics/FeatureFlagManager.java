@@ -811,8 +811,11 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       return; // No pending events to check
     }
 
-    // Iterate through all pending events
-    for (Map.Entry<String, FirstTimeEventDefinition> entry : mPendingFirstTimeEvents.entrySet()) {
+    // Iterate through all pending events using Iterator to allow safe removal
+    java.util.Iterator<Map.Entry<String, FirstTimeEventDefinition>> iterator =
+        mPendingFirstTimeEvents.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, FirstTimeEventDefinition> entry = iterator.next();
       String compositeKey = entry.getKey();
       FirstTimeEventDefinition def = entry.getValue();
 
@@ -834,8 +837,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
 
       // Match found - activate this event
-      MPLog.d(LOGTAG, "First-time event matched: " + compositeKey);
-      _activateFirstTimeEvent(compositeKey, def);
+      _activateFirstTimeEvent(compositeKey, def, iterator);
     }
   }
 
@@ -843,12 +845,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * Activates a first-time event: updates the flag variant, marks as activated, and fires recording API.
    * Runs on Handler thread.
    */
-  private void _activateFirstTimeEvent(String compositeKey, FirstTimeEventDefinition def) {
+  private void _activateFirstTimeEvent(String compositeKey, FirstTimeEventDefinition def,
+                                        java.util.Iterator<Map.Entry<String, FirstTimeEventDefinition>> iterator) {
     // Add to activated set
     mActivatedFirstTimeEvents.add(compositeKey);
 
-    // Remove from pending map
-    mPendingFirstTimeEvents.remove(compositeKey);
+    // Remove from pending map using iterator to avoid ConcurrentModificationException
+    iterator.remove();
 
     // Update the flag variant (synchronized access to mFlags)
     synchronized (mLock) {
@@ -859,8 +862,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       mutableFlags.put(def.flagKey, def.pendingVariant);
       mFlags = Collections.unmodifiableMap(mutableFlags);
     }
-
-    MPLog.i(LOGTAG, "Activated first-time event: " + compositeKey + " for flag: " + def.flagKey);
 
     // Fire recording API (fire-and-forget)
     _fireRecordingAPI(def);

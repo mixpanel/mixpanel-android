@@ -155,28 +155,32 @@ public class TestUtils {
     public static MixpanelAPI createMixpanelAPIWithMockHttpService(
             Context context, RemoteService mockService) {
         Future<SharedPreferences> referrerPreferences = new EmptyPreferences(context);
+        // Set mock service BEFORE constructing so it's available during super() call
+        CleanMixpanelAPIWithMockService.setMockService(mockService);
         return new CleanMixpanelAPIWithMockService(
-                context, referrerPreferences, "test_token", mockService);
+                context, referrerPreferences, "test_token");
     }
 
     /**
      * Extension of CleanMixpanelAPI that uses a custom RemoteService for testing.
      */
     public static class CleanMixpanelAPIWithMockService extends CleanMixpanelAPI {
-        private final RemoteService mMockService;
+        private static RemoteService sMockService;
+
+        static void setMockService(RemoteService mockService) {
+            sMockService = mockService;
+        }
 
         public CleanMixpanelAPIWithMockService(
                 Context context,
                 Future<SharedPreferences> referrerPreferences,
-                String token,
-                RemoteService mockService) {
+                String token) {
             super(context, referrerPreferences, token);
-            mMockService = mockService;
         }
 
         @Override
         RemoteService getHttpService() {
-            return mMockService;
+            return sMockService;
         }
     }
 

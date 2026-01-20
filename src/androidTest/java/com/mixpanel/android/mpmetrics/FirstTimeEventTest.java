@@ -72,6 +72,10 @@ public class FirstTimeEventTest {
         // Launch an activity to bring the app to foreground, which triggers onForeground()
         // This is required for feature flags to load (see commit a55681bb)
         mActivityScenario = ActivityScenario.launch(TestActivity.class);
+
+        // Ensure distinct ID is initialized before any flag operations
+        String distinctId = mMixpanel.getDistinctId();
+        assertNotNull("Distinct ID should be initialized", distinctId);
     }
 
     @After
