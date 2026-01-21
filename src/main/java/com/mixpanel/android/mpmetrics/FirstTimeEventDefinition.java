@@ -26,12 +26,33 @@ class FirstTimeEventDefinition {
             @NonNull String eventName,
             @Nullable JSONObject propertyFilters,
             @NonNull MixpanelFlagVariant pendingVariant) {
+
+        // Validate required fields (propertyFilters is nullable)
+        if (flagKey == null || flagKey.isEmpty()) {
+            throw new IllegalArgumentException("flagKey cannot be null or empty");
+        }
+        if (flagId == null || flagId.isEmpty()) {
+            throw new IllegalArgumentException("flagId cannot be null or empty");
+        }
+        if (projectId == null || projectId.isEmpty()) {
+            throw new IllegalArgumentException("projectId cannot be null or empty");
+        }
+        if (firstTimeEventHash == null || firstTimeEventHash.isEmpty()) {
+            throw new IllegalArgumentException("firstTimeEventHash cannot be null or empty");
+        }
+        if (eventName == null || eventName.isEmpty()) {
+            throw new IllegalArgumentException("eventName cannot be null or empty");
+        }
+        if (pendingVariant == null) {
+            throw new IllegalArgumentException("pendingVariant cannot be null");
+        }
+
         this.flagKey = flagKey;
         this.flagId = flagId;
         this.projectId = projectId;
         this.firstTimeEventHash = firstTimeEventHash;
         this.eventName = eventName;
-        this.propertyFilters = propertyFilters;
+        this.propertyFilters = propertyFilters;  // null is valid
         this.pendingVariant = pendingVariant;
     }
 

@@ -2663,7 +2663,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             mMessages.eventsMessage(eventDescription);
 
             // Check first-time event targeting conditions
-            if (mFeatureFlagManager != null) {
+            if (mFeatureFlagManager != null && messageProps != null) {
                 mFeatureFlagManager.checkFirstTimeEvent(eventName, messageProps);
             }
         } catch (final JSONException e) {

@@ -54,8 +54,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private volatile FetchTiming mFetchTiming = FetchTiming.neverFetched();
 
   // First-time event targeting state (Handler thread only)
-  private Map<String, FirstTimeEventDefinition> mPendingFirstTimeEvents = new HashMap<>();
-  private final Set<String> mActivatedFirstTimeEvents = new HashSet<>();
+  private Map<String, FirstTimeEventDefinition> mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
+  private final Set<String> mActivatedFirstTimeEvents = Collections.synchronizedSet(new HashSet<>());
 
   // ---
 
@@ -875,8 +875,22 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mNetworkExecutor.execute(() -> {
       try {
         _performRecordingRequest(def);
+        MPLog.v(LOGTAG, "First-time event recorded successfully: " + def.getCompositeKey());
+      } catch (RemoteService.ServiceUnavailableException e) {
+        MPLog.w(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Service unavailable: " + e.getMessage() +
+                ". Event tracked locally but server may not be notified.", e);
+      } catch (IOException e) {
+        MPLog.w(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Network error: " + e.getMessage() +
+                ". Event tracked locally but server may not be notified.", e);
+      } catch (JSONException e) {
+        MPLog.e(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Invalid request data: " + e.getMessage() +
+                ". This may indicate a bug.", e);
       } catch (Exception e) {
-        MPLog.w(LOGTAG, "Recording API call failed (non-critical): " + e.getMessage());
+        MPLog.e(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Unexpected error: " + e.getClass().getName() + ": " + e.getMessage(), e);
       }
     });
   }
@@ -884,54 +898,51 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   /**
    * Performs the HTTP POST request to record the first-time event activation.
    * Runs on Network Executor thread.
+   * @throws IOException on network errors
+   * @throws JSONException on JSON construction errors
+   * @throws RemoteService.ServiceUnavailableException on service unavailability
    */
-  private void _performRecordingRequest(FirstTimeEventDefinition def) {
+  private void _performRecordingRequest(FirstTimeEventDefinition def) throws IOException, JSONException, RemoteService.ServiceUnavailableException {
     final FeatureFlagDelegate delegate = mDelegate.get();
     if (delegate == null) {
       MPLog.w(LOGTAG, "Delegate is null, cannot record first-time event");
       return;
     }
 
-    try {
-      // Build endpoint URL using the flags recording endpoint
-      String endpoint = mFlagsRecordingEndpoint + def.flagId + "/first-time-events";
+    // Build endpoint URL using the flags recording endpoint
+    String endpoint = mFlagsRecordingEndpoint + def.flagId + "/first-time-events";
 
-      // Build request body
-      JSONObject body = new JSONObject();
-      body.put("distinct_id", delegate.getDistinctId());
-      body.put("project_id", def.projectId);
-      body.put("first_time_event_hash", def.firstTimeEventHash);
+    // Build request body
+    JSONObject body = new JSONObject();
+    body.put("distinct_id", delegate.getDistinctId());
+    body.put("project_id", def.projectId);
+    body.put("first_time_event_hash", def.firstTimeEventHash);
 
-      byte[] requestBodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
+    byte[] requestBodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
 
-      // Build headers with Basic auth
-      String token = delegate.getToken();
-      String authString = token + ":";
-      String base64Auth = Base64Coder.encodeString(authString);
+    // Build headers with Basic auth
+    String token = delegate.getToken();
+    String authString = token + ":";
+    String base64Auth = Base64Coder.encodeString(authString);
 
-      Map<String, String> headers = new HashMap<>();
-      headers.put("Authorization", "Basic " + base64Auth);
-      headers.put("Content-Type", "application/json; charset=utf-8");
-      headers.put("traceparent", W3CTraceContext.generateTraceparent());
+    Map<String, String> headers = new HashMap<>();
+    headers.put("Authorization", "Basic " + base64Auth);
+    headers.put("Content-Type", "application/json; charset=utf-8");
+    headers.put("traceparent", W3CTraceContext.generateTraceparent());
 
-      // Perform POST request
-      RemoteService.RequestResult result = mHttpService.performRequest(
-              RemoteService.HttpMethod.POST,
-              endpoint,
-              delegate.getMPConfig().getProxyServerInteractor(),
-              null, // No URL params
-              headers,
-              requestBodyBytes,
-              delegate.getMPConfig().getSSLSocketFactory()
-      );
+    // Perform POST request
+    RemoteService.RequestResult result = mHttpService.performRequest(
+            RemoteService.HttpMethod.POST,
+            endpoint,
+            delegate.getMPConfig().getProxyServerInteractor(),
+            null, // No URL params
+            headers,
+            requestBodyBytes,
+            delegate.getMPConfig().getSSLSocketFactory()
+    );
 
-      if (result.isSuccess()) {
-        MPLog.v(LOGTAG, "First-time event recorded successfully: " + def.getCompositeKey());
-      } else {
-        MPLog.w(LOGTAG, "Recording API returned non-success response");
-      }
-    } catch (Exception e) {
-      MPLog.w(LOGTAG, "Failed to record first-time event: " + e.getMessage());
+    if (!result.isSuccess()) {
+      MPLog.w(LOGTAG, "Recording API returned non-success response for event " + def.getCompositeKey());
     }
   }
 
