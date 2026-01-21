@@ -1,3 +1,9 @@
+# Changelog
+
+## [v8.2.6](https://github.com/mixpanel/mixpanel-android/tree/v8.2.6) (2026-01-17)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.2.5...v8.2.6)
+
 #
 
 ## [v8.2.5](https://github.com/mixpanel/mixpanel-android/tree/v8.2.5) (2026-01-16)
@@ -1659,6 +1665,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
