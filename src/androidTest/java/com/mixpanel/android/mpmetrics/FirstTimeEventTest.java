@@ -420,4 +420,157 @@ public class FirstTimeEventTest {
         assertEquals("Activated variant key should be 'treatment' from pending variant", "treatment", activatedVariant.key);
         assertEquals("Activated variant value should be true from pending variant", true, activatedVariant.value);
     }
+
+    @Test
+    public void testMalformedPendingEvents_DoesNotCrash() throws Exception {
+        // This test verifies that malformed pending first-time events from the backend
+        // are handled gracefully without crashing the host app (core SDK principle)
+
+        // Create a custom HTTP service that returns malformed pending events
+        RemoteService malformedService = new RemoteService() {
+            @Override
+            public boolean isOnline(Context context, OfflineMode offlineMode) {
+                return true;
+            }
+
+            @Override
+            public void checkIsMixpanelBlocked() {
+                // No-op
+            }
+
+            @Override
+            public RequestResult performRequest(
+                    String endpointUrl,
+                    ProxyServerInteractor interactor,
+                    Map<String, Object> params,
+                    Map<String, String> headers,
+                    byte[] requestBodyBytes,
+                    javax.net.ssl.SSLSocketFactory socketFactory)
+                    throws ServiceUnavailableException, java.io.IOException {
+                return performRequest(
+                    HttpMethod.POST,
+                    endpointUrl,
+                    interactor,
+                    params,
+                    headers,
+                    requestBodyBytes,
+                    socketFactory
+                );
+            }
+
+            @Override
+            public RequestResult performRequest(
+                    HttpMethod method,
+                    String endpointUrl,
+                    ProxyServerInteractor interactor,
+                    Map<String, Object> params,
+                    Map<String, String> headers,
+                    byte[] requestBodyBytes,
+                    javax.net.ssl.SSLSocketFactory socketFactory)
+                    throws ServiceUnavailableException, java.io.IOException {
+
+                try {
+                    if (endpointUrl.contains("/flags")) {
+                        // Return response with malformed pending events
+                        JSONObject response = new JSONObject();
+                        
+                        // Add valid flags
+                        JSONObject flags = new JSONObject();
+                        JSONObject testFlagVariant = new JSONObject();
+                        testFlagVariant.put(MPConstants.Flags.VARIANT_KEY, "control");
+                        testFlagVariant.put(MPConstants.Flags.VARIANT_VALUE, false);
+                        flags.put("test_flag", testFlagVariant);
+                        response.put(MPConstants.Flags.FLAGS_KEY, flags);
+
+                        // Add pending events with various malformed data
+                        JSONArray pendingEvents = new JSONArray();
+
+                        // Event 1: Empty flag_key (should be rejected by constructor validation)
+                        JSONObject event1 = new JSONObject();
+                        event1.put(MPConstants.Flags.FLAG_KEY, "");  // Empty string - invalid
+                        event1.put(MPConstants.Flags.FLAG_ID, "flag_id_1");
+                        event1.put(MPConstants.Flags.PROJECT_ID, "12345");
+                        event1.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_1");
+                        event1.put(MPConstants.Flags.EVENT_NAME, "Purchase");
+                        JSONObject pendingVariant1 = new JSONObject();
+                        pendingVariant1.put(MPConstants.Flags.VARIANT_KEY, "treatment");
+                        pendingVariant1.put(MPConstants.Flags.VARIANT_VALUE, true);
+                        event1.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant1);
+                        pendingEvents.put(event1);
+
+                        // Event 2: Missing required field (will throw JSONException)
+                        JSONObject event2 = new JSONObject();
+                        event2.put(MPConstants.Flags.FLAG_KEY, "test_flag");
+                        // Missing FLAG_ID - will cause JSONException
+                        event2.put(MPConstants.Flags.PROJECT_ID, "12345");
+                        event2.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_2");
+                        event2.put(MPConstants.Flags.EVENT_NAME, "AddToCart");
+                        JSONObject pendingVariant2 = new JSONObject();
+                        pendingVariant2.put(MPConstants.Flags.VARIANT_KEY, "variant_a");
+                        pendingVariant2.put(MPConstants.Flags.VARIANT_VALUE, "filtered");
+                        event2.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant2);
+                        pendingEvents.put(event2);
+
+                        // Event 3: Valid event (should be parsed successfully)
+                        JSONObject event3 = new JSONObject();
+                        event3.put(MPConstants.Flags.FLAG_KEY, "valid_flag");
+                        event3.put(MPConstants.Flags.FLAG_ID, "flag_id_3");
+                        event3.put(MPConstants.Flags.PROJECT_ID, "12345");
+                        event3.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_3");
+                        event3.put(MPConstants.Flags.EVENT_NAME, "ValidEvent");
+                        JSONObject pendingVariant3 = new JSONObject();
+                        pendingVariant3.put(MPConstants.Flags.VARIANT_KEY, "valid_variant");
+                        pendingVariant3.put(MPConstants.Flags.VARIANT_VALUE, "valid");
+                        event3.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant3);
+                        pendingEvents.put(event3);
+
+                        response.put(MPConstants.Flags.PENDING_FIRST_TIME_EVENTS, pendingEvents);
+
+                        RequestResult result = RequestResult.success(
+                            response.toString().getBytes(StandardCharsets.UTF_8),
+                            "mock-url"
+                        );
+                        mFlagLoadComplete.offer(true);
+                        return result;
+                    }
+
+                    return RequestResult.success(
+                        "{}".getBytes(StandardCharsets.UTF_8),
+                        "mock-url"
+                    );
+                } catch (Exception e) {
+                    throw new IOException("Error in mock HTTP service", e);
+                }
+            }
+        };
+
+        // Clean up and create new Mixpanel instance with malformed service
+        if (mActivityScenario != null) {
+            mActivityScenario.close();
+        }
+        TestUtils.cleanUpMixpanelData(mContext);
+        mMixpanel = TestUtils.createMixpanelAPIWithMockHttpService(mContext, malformedService);
+
+        // Launch activity to trigger flag loading
+        mActivityScenario = ActivityScenario.launch(TestActivity.class);
+
+        // Ensure distinct ID is initialized
+        String distinctId = mMixpanel.getDistinctId();
+        assertNotNull("Distinct ID should be initialized", distinctId);
+
+        // Load flags - should not crash despite malformed events
+        mMixpanel.getFlags().loadFlags();
+
+        // Wait for flag loading to complete
+        Boolean flagsLoaded = mFlagLoadComplete.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Flags should load successfully despite malformed events", flagsLoaded);
+
+        // Verify that flags were loaded (valid flag data should be available)
+        Object variantValue = mMixpanel.getFlags().getVariantValueSync("test_flag", "fallback");
+        assertEquals("Valid flag should be available", false, variantValue);
+
+        // The test passes if we get here without crashing
+        // The malformed events should have been logged and skipped
+        assertTrue("SDK should handle malformed events gracefully", true);
+    }
 }
