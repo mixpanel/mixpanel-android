@@ -569,8 +569,10 @@ public class FirstTimeEventTest {
         Object variantValue = mMixpanel.getFlags().getVariantValueSync("test_flag", "fallback");
         assertEquals("Valid flag should be available", false, variantValue);
 
-        // The test passes if we get here without crashing
-        // The malformed events should have been logged and skipped
-        assertTrue("SDK should handle malformed events gracefully", true);
+        // The test verifies:
+        // 1. SDK didn't crash despite receiving malformed events (IllegalArgumentException and JSONException)
+        // 2. Valid flag data was still loaded and is accessible
+        // 3. Error handling in parsePendingFirstTimeEvents gracefully skipped malformed events
+        // If we get here without crashing, the fix is working correctly
     }
 }
