@@ -37,7 +37,6 @@ import static org.junit.Assert.*;
 public class FirstTimeEventTest {
     private Context mContext;
     private BlockingQueue<RecordingAPICall> mRecordingCalls;
-    private BlockingQueue<JSONObject> mTrackedEvents;
     private BlockingQueue<Boolean> mFlagLoadComplete;
     private MixpanelAPI mMixpanel;
     private ActivityScenario<TestActivity> mActivityScenario;
@@ -61,7 +60,6 @@ public class FirstTimeEventTest {
     public void setUp() throws Exception {
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         mRecordingCalls = new LinkedBlockingQueue<>();
-        mTrackedEvents = new LinkedBlockingQueue<>();
         mFlagLoadComplete = new LinkedBlockingQueue<>();
 
         // Create MixpanelAPI instance with mock HTTP service
