@@ -114,8 +114,17 @@ import com.mixpanel.android.util.MPLog;
         MPDatabaseHelper(Context context, String dbName, MPConfig config) {
             super(context, dbName, null, DATABASE_VERSION);
             mDatabaseFile = context.getDatabasePath(dbName);
+            mIsNewDatabase = !mDatabaseFile.exists();
             mConfig = config;
             mContext = context;
+        }
+
+        /**
+         * Returns true if this is a newly created database (the database file did not exist
+         * before this helper was initialized).
+         */
+        public boolean isNewDatabase() {
+            return mIsNewDatabase;
         }
 
         /**
@@ -280,6 +289,7 @@ import com.mixpanel.android.util.MPLog;
         }
 
         private final File mDatabaseFile;
+        private final boolean mIsNewDatabase;
         private final MPConfig mConfig;
         private final Context mContext;
     }
@@ -666,8 +676,12 @@ import com.mixpanel.android.util.MPLog;
         return null;
     }
 
-    public File getDatabaseFile() {
-        return mDb.mDatabaseFile;
+    /**
+     * Returns true if this is a newly created database (the database file did not exist
+     * before this adapter was initialized). Used to detect first app launch.
+     */
+    public boolean isNewDatabase() {
+        return mDb.isNewDatabase();
     }
 
     /* For testing use only, do not call from in production code */

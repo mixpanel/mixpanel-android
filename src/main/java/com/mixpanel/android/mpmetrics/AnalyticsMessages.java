@@ -495,8 +495,8 @@ import org.json.JSONObject;
 
                         token = desc.getToken();
                         final PersistentIdentity persistentIdentity = desc.getPersistentIdentity();
-                        boolean dbExists = mDbAdapter.getDatabaseFile().exists();
-                        if (persistentIdentity.isFirstLaunch(dbExists, token)) {
+                        boolean dbExistedBeforeInit = !mDbAdapter.isNewDatabase();
+                        if (persistentIdentity.isFirstLaunch(dbExistedBeforeInit, token)) {
                             try {
                                 returnCode = insertEventToDb(openEvent);
                             } catch (final JSONException e) {
