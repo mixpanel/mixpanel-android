@@ -989,7 +989,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           );
 
           result.put(def.getCompositeKey(), def);
-        } catch (JSONException e) {
+        } catch (Exception e) {
           MPLog.e(LOGTAG, "Failed to parse pending first-time event at index " + i + ": " + e.getMessage());
           // Skip this invalid event, continue with others
         }
