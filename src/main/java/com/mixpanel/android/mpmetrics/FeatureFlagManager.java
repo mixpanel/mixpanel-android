@@ -1014,7 +1014,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // For each activated composite key, preserve the activated flag variant
     for (String activatedCompositeKey : mActivatedFirstTimeEvents) {
       // Extract flag key from composite key (format: "flag_key:hash")
-      String flagKey = activatedCompositeKey.split(":")[0];
+      // Use defensive parsing to avoid ArrayIndexOutOfBoundsException
+      int colonIndex = activatedCompositeKey.indexOf(":");
+      if (colonIndex == -1) {
+        MPLog.w(LOGTAG, "Malformed composite key (missing colon): " + activatedCompositeKey);
+        continue;
+      }
+      String flagKey = activatedCompositeKey.substring(0, colonIndex);
 
       // Check if this flag exists in current mFlags (activated variant)
       MixpanelFlagVariant activatedVariant;
