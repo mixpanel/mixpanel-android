@@ -222,6 +222,42 @@ import com.mixpanel.android.util.MPLog;
         writeIdentities();
     }
 
+    /**
+     * Sets a custom device ID to be used instead of a generated UUID.
+     * Once set, this ID is preserved across clearPreferences() calls.
+     *
+     * <p>This method should be called before first identity access (e.g., before
+     * getEventsDistinctId() or getAnonymousId()). If called after identities have
+     * already been loaded, the custom ID will be stored but will only take effect
+     * after the next clearPreferences() call triggers identity reinitialization.
+     *
+     * @param customDeviceId The custom device ID, or null to use UUID
+     */
+    public synchronized void setCustomDeviceId(String customDeviceId) {
+        String validated = validateDeviceId(customDeviceId);
+        if (validated != null) {
+            this.mCustomDeviceId = validated;
+            this.mHasCustomDeviceId = true;
+        }
+    }
+
+    private String validateDeviceId(String deviceId) {
+        if (deviceId == null) {
+            MPLog.w(LOGTAG, "Custom device_id is null, falling back to UUID");
+            return null;
+        }
+        String trimmed = deviceId.trim();
+        if (trimmed.isEmpty()) {
+            MPLog.w(LOGTAG, "Custom device_id is empty, falling back to UUID");
+            return null;
+        }
+        if (trimmed.startsWith("$")) {
+            MPLog.w(LOGTAG, "Custom device_id cannot start with '$', falling back to UUID. Provided: " + trimmed);
+            return null;
+        }
+        return trimmed;
+    }
+
     public synchronized void setEventsDistinctId(String eventsDistinctId) {
         if(!mIdentitiesLoaded) {
             readIdentities();
@@ -258,12 +294,23 @@ import com.mixpanel.android.util.MPLog;
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
 
+        // Preserve custom device ID across the clear operation.
+        // These are in-memory fields not stored in SharedPreferences, but we
+        // save and restore them explicitly to guard against future changes.
+        final String preservedCustomId = mCustomDeviceId;
+        final boolean preservedHasCustomId = mHasCustomDeviceId;
+
         try {
             final SharedPreferences prefs = mLoadStoredPreferences.get();
             final SharedPreferences.Editor prefsEdit = prefs.edit();
             prefsEdit.clear();
             writeEdits(prefsEdit);
             readSuperProperties();
+
+            // Restore custom device ID state before reading identities
+            mCustomDeviceId = preservedCustomId;
+            mHasCustomDeviceId = preservedHasCustomId;
+
             readIdentities();
         } catch (final ExecutionException | InterruptedException e) {
             throw new RuntimeException(e.getCause());
@@ -577,7 +624,13 @@ import com.mixpanel.android.util.MPLog;
         mHadPersistedDistinctId = prefs.getBoolean("had_persisted_distinct_id", false);
 
         if (mEventsDistinctId == null) {
-            mAnonymousId = UUID.randomUUID().toString();
+            // Use custom device ID if provided, otherwise generate UUID
+            if (mHasCustomDeviceId && mCustomDeviceId != null) {
+                mAnonymousId = mCustomDeviceId;
+                MPLog.v(LOGTAG, "Using custom device_id: " + mAnonymousId);
+            } else {
+                mAnonymousId = UUID.randomUUID().toString();
+            }
             mEventsDistinctId = "$device:" + mAnonymousId;
             mEventsUserIdPresent = false;
             writeIdentities();
@@ -676,6 +729,8 @@ import com.mixpanel.android.util.MPLog;
     private String mAnonymousId;
     private boolean mHadPersistedDistinctId;
     private Boolean mIsUserOptOut;
+    private String mCustomDeviceId;
+    private boolean mHasCustomDeviceId = false;
     private static Integer sPreviousVersionCode;
     private static Boolean sIsFirstAppLaunch;
 

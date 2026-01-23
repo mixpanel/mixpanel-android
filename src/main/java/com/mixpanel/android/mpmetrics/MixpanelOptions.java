@@ -13,6 +13,7 @@ public class MixpanelOptions {
     private final JSONObject superProperties;
     private final boolean featureFlagsEnabled;
     private final JSONObject featureFlagsContext;
+    private final String deviceId;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -20,6 +21,7 @@ public class MixpanelOptions {
         this.superProperties = builder.superProperties;
         this.featureFlagsEnabled = builder.featureFlagsEnabled;
         this.featureFlagsContext = builder.featureFlagsContext;
+        this.deviceId = builder.deviceId;
     }
 
     public String getInstanceName() {
@@ -62,12 +64,23 @@ public class MixpanelOptions {
         }
     }
 
+    /**
+     * Returns the custom device ID if one was provided, or null if the SDK
+     * should generate a UUID.
+     *
+     * @return The custom device ID, or null
+     */
+    public String getDeviceId() {
+        return deviceId;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
         private boolean featureFlagsEnabled = false;
         private JSONObject featureFlagsContext = new JSONObject();
+        private String deviceId;
 
         public Builder() {
         }
@@ -150,6 +163,30 @@ public class MixpanelOptions {
                     this.featureFlagsContext = null;
                 }
             }
+            return this;
+        }
+
+        /**
+         * Sets a custom device ID for the Mixpanel instance.
+         *
+         * <p>The device ID uniquely identifies the device. If not provided,
+         * a random UUID will be generated. Once set, this ID is preserved
+         * across reset() calls.
+         *
+         * <p>The SDK prepends "$device:" to create the distinct_id for anonymous
+         * users. The raw device ID is sent as $device_id in events.
+         *
+         * <p>Validation rules:
+         * <ul>
+         *   <li>Cannot be null or empty (falls back to UUID)</li>
+         *   <li>Cannot start with '$' (reserved, falls back to UUID)</li>
+         * </ul>
+         *
+         * @param deviceId A unique identifier for the device
+         * @return This Builder instance for chaining
+         */
+        public Builder deviceId(String deviceId) {
+            this.deviceId = deviceId;
             return this;
         }
 
