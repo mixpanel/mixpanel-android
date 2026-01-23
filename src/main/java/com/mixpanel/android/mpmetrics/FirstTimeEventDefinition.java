@@ -27,24 +27,21 @@ class FirstTimeEventDefinition {
             @Nullable JSONObject propertyFilters,
             @NonNull MixpanelFlagVariant pendingVariant) {
 
-        // Validate required fields (propertyFilters is nullable)
-        if (flagKey == null || flagKey.isEmpty()) {
-            throw new IllegalArgumentException("flagKey cannot be null or empty");
+        // Validate non-empty strings (propertyFilters is nullable)
+        if (flagKey.isEmpty()) {
+            throw new IllegalArgumentException("flagKey cannot be empty");
         }
-        if (flagId == null || flagId.isEmpty()) {
-            throw new IllegalArgumentException("flagId cannot be null or empty");
+        if (flagId.isEmpty()) {
+            throw new IllegalArgumentException("flagId cannot be empty");
         }
-        if (projectId == null || projectId.isEmpty()) {
-            throw new IllegalArgumentException("projectId cannot be null or empty");
+        if (projectId.isEmpty()) {
+            throw new IllegalArgumentException("projectId cannot be empty");
         }
-        if (firstTimeEventHash == null || firstTimeEventHash.isEmpty()) {
-            throw new IllegalArgumentException("firstTimeEventHash cannot be null or empty");
+        if (firstTimeEventHash.isEmpty()) {
+            throw new IllegalArgumentException("firstTimeEventHash cannot be empty");
         }
-        if (eventName == null || eventName.isEmpty()) {
-            throw new IllegalArgumentException("eventName cannot be null or empty");
-        }
-        if (pendingVariant == null) {
-            throw new IllegalArgumentException("pendingVariant cannot be null");
+        if (eventName.isEmpty()) {
+            throw new IllegalArgumentException("eventName cannot be empty");
         }
 
         this.flagKey = flagKey;
