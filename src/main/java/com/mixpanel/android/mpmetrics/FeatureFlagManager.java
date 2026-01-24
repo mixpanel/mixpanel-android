@@ -32,7 +32,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class FeatureFlagManager implements MixpanelAPI.Flags {
+class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
   private static final String LOGTAG = "MixpanelAPI.FeatureFlagManager";
 
   private final WeakReference<FeatureFlagDelegate> mDelegate;
@@ -239,6 +239,15 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    */
   public void checkFirstTimeEvent(@NonNull String eventName, @NonNull JSONObject properties) {
     mHandler.post(() -> _checkFirstTimeEventOnHandlerThread(eventName, properties));
+  }
+
+  /**
+   * Implementation of FirstTimeEventCallback interface.
+   * Delegates to checkFirstTimeEvent for consistent behavior.
+   */
+  @Override
+  public void onEventTracked(@NonNull String eventName, @NonNull JSONObject properties) {
+    checkFirstTimeEvent(eventName, properties);
   }
 
   /**

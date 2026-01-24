@@ -2616,7 +2616,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
             // Check first-time event targeting conditions
             if (mFeatureFlagManager != null) {
-                mFeatureFlagManager.checkFirstTimeEvent(eventName, messageProps);
+                mFeatureFlagManager.checkFirstTimeEvent(eventName, eventDescription.getProperties());
             }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
@@ -2709,7 +2709,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     new AnalyticsMessages.FirstLaunchDescription(
                             mToken,
                             eventDescription,
-                            mPersistentIdentity);
+                            mPersistentIdentity,
+                            mFeatureFlagManager);
             mMessages.checkFirstLaunchMessage(firstLaunchDescription);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception preparing first launch check", e);

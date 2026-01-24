@@ -335,10 +335,12 @@ import org.json.JSONObject;
         public FirstLaunchDescription(
                 String token,
                 EventDescription firstOpenEvent,
-                PersistentIdentity persistentIdentity) {
+                PersistentIdentity persistentIdentity,
+                FirstTimeEventCallback firstTimeEventCallback) {
             super(token);
             mFirstOpenEvent = firstOpenEvent;
             mPersistentIdentity = persistentIdentity;
+            mFirstTimeEventCallback = firstTimeEventCallback;
         }
 
         public EventDescription getFirstOpenEvent() {
@@ -349,8 +351,13 @@ import org.json.JSONObject;
             return mPersistentIdentity;
         }
 
+        public FirstTimeEventCallback getFirstTimeEventCallback() {
+            return mFirstTimeEventCallback;
+        }
+
         private final EventDescription mFirstOpenEvent;
         private final PersistentIdentity mPersistentIdentity;
+        private final FirstTimeEventCallback mFirstTimeEventCallback;
     }
 
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
@@ -499,6 +506,13 @@ import org.json.JSONObject;
                         if (persistentIdentity.isFirstLaunch(dbExistedBeforeInit, token)) {
                             try {
                                 returnCode = insertEventToDb(openEvent);
+                                // Check first-time event targeting for the FIRST_OPEN event
+                                FirstTimeEventCallback callback = desc.getFirstTimeEventCallback();
+                                if (callback != null) {
+                                    callback.onEventTracked(
+                                            openEvent.getEventName(),
+                                            openEvent.getProperties());
+                                }
                             } catch (final JSONException e) {
                                 MPLog.e(LOGTAG, "Exception tracking event " + openEvent.getEventName(), e);
                             }
