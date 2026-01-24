@@ -90,6 +90,7 @@ java {
 dependencies {
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
+    implementation 'io.github.jamsesso:json-logic-java:1.0.7'
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
