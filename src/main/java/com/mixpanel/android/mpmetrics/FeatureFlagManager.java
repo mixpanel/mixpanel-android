@@ -32,7 +32,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
+class FeatureFlagManager implements MixpanelAPI.Flags {
   private static final String LOGTAG = "MixpanelAPI.FeatureFlagManager";
 
   private final WeakReference<FeatureFlagDelegate> mDelegate;
@@ -88,6 +88,12 @@ class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
     boolean hasBeenFetched() {
       return timeLastFetched != NEVER_FETCHED;
     }
+  }
+
+  /** Mutable container for passing results back from handler thread runnables. */
+  private static class SyncResultContainer {
+    MixpanelFlagVariant flagVariant = null;
+    boolean tracked = false;
   }
 
   // Message codes for Handler
@@ -154,11 +160,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
     }
 
     // Use a container to get results back from the handler thread runnable
-    final var resultContainer =
-        new Object() {
-          MixpanelFlagVariant flagVariant = null;
-          boolean tracked = false;
-        };
+    final SyncResultContainer resultContainer = new SyncResultContainer();
 
     // 2. Execute the core logic synchronously on the handler thread
     mHandler.runAndWait(
@@ -241,14 +243,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
     mHandler.post(() -> _checkFirstTimeEventOnHandlerThread(eventName, properties));
   }
 
-  /**
-   * Implementation of FirstTimeEventCallback interface.
-   * Delegates to checkFirstTimeEvent for consistent behavior.
-   */
-  @Override
-  public void onEventTracked(@NonNull String eventName, @NonNull JSONObject properties) {
-    checkFirstTimeEvent(eventName, properties);
-  }
 
   /**
    * Asynchronously gets the feature flag variant (key and value). If flags are not loaded, it
@@ -485,7 +479,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags, FirstTimeEventCallback {
   // Runs on Handler thread
   private void _fetchFlagsIfNeeded(@Nullable FlagCompletionCallback<Boolean> completion) {
     // It calls _performFetchRequest via mNetworkExecutor if needed.
-    var shouldStartFetch = false;
+    boolean shouldStartFetch = false;
 
     if (!mFlagsConfig.enabled) {
       MPLog.i(LOGTAG, "Feature flags are disabled, not fetching.");
