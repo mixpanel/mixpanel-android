@@ -210,7 +210,9 @@ public class MixpanelOptions {
          * .serverURL("https://my-proxy.example.com", new ProxyServerInteractor() {
          *     @Override
          *     public Map<String, String> getProxyRequestHeaders() {
-         *         return Map.of("Authorization", "Bearer " + token);
+         *         Map<String, String> headers = new HashMap<>();
+         *         headers.put("Authorization", "Bearer " + token);
+         *         return headers;
          *     }
          *
          *     @Override
