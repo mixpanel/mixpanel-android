@@ -225,7 +225,7 @@ public class BackupHostTest {
   /** Test URL host replacement using reflection */
   @Test
   public void testHostReplacement() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to test the private replaceHost method
     Method replaceHostMethod =

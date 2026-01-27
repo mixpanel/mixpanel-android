@@ -31,7 +31,7 @@ public class HttpServiceBackupTest {
   /** Test that HttpService constructor accepts backup host */
   @Test
   public void testConstructorWithBackupHost() {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
     // Service should be created successfully
     assertNotNull(service);
   }
@@ -54,7 +54,7 @@ public class HttpServiceBackupTest {
   /** Test URL host replacement logic using reflection */
   @Test
   public void testUrlHostReplacement() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to test the private replaceHost method
     Method replaceHostMethod =
@@ -103,7 +103,7 @@ public class HttpServiceBackupTest {
    */
   @Test
   public void testBackupHostLogic() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to verify the replaceHost is called when needed
     Method replaceHostMethod =
@@ -132,7 +132,7 @@ public class HttpServiceBackupTest {
   /** Test runtime update of backup host */
   @Test
   public void testRuntimeBackupUpdate() throws Exception {
-    HttpService service = new HttpService(false, null, null);
+    HttpService service = new HttpService(false, null, null, null);
 
     // Use reflection to test replaceHost with different backup hosts
     Method replaceHostMethod =
@@ -162,7 +162,7 @@ public class HttpServiceBackupTest {
   /** Test with empty backup host string */
   @Test
   public void testEmptyBackupHost() {
-    HttpService service = new HttpService(false, null, "");
+    HttpService service = new HttpService(false, null, "", null);
     // Service should handle empty string gracefully
     assertNotNull(service);
 
@@ -173,7 +173,7 @@ public class HttpServiceBackupTest {
   /** Test isOnline method */
   @Test
   public void testIsOnline() {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Should be online by default
     boolean isOnline = service.isOnline(mContext, null);
@@ -184,7 +184,7 @@ public class HttpServiceBackupTest {
   /** Test that service handles null parameters gracefully */
   @Test
   public void testNullParameterHandling() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to test replaceHost with null
     Method replaceHostMethod =
