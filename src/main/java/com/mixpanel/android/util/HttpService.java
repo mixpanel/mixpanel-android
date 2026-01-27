@@ -69,34 +69,49 @@ public class HttpService implements RemoteService {
 
     @Override
     public void checkIsMixpanelBlocked() {
-        final String host = mServerHost;
-        Thread t =
-                new Thread(
-                        new Runnable() {
-                            public void run() {
-                                try {
-                                    long startTimeNanos = System.nanoTime();
-                                    InetAddress apiMixpanelInet = InetAddress.getByName(host);
-                                    sIsMixpanelBlocked =
-                                            apiMixpanelInet.isLoopbackAddress() || apiMixpanelInet.isAnyLocalAddress();
-                                    if (sIsMixpanelBlocked) {
-                                        MPLog.v(
-                                                LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
-                                        onNetworkError(
-                                                null,
-                                                host,
-                                                apiMixpanelInet.getHostAddress(),
-                                                startTimeNanos,
-                                                -1,
-                                                -1,
-                                                new IOException(host + " is blocked"));
-                                    }
-                                } catch (Exception e) {
-                                }
-                            }
-                        });
+        final String primaryHost = mServerHost;
+        final String backupHost = mBackupHost;
+        new Thread(() -> {
+            try {
+                long startTimeNanos = System.nanoTime();
+                InetAddress primaryInet = InetAddress.getByName(primaryHost);
 
-        t.start();
+                if (!isHostBlocked(primaryInet)) {
+                    sIsMixpanelBlocked = false;
+                    return;
+                }
+
+                // Primary is blocked - check backup if configured
+                boolean backupBlocked = true;
+                String errorMsg = primaryHost + " is blocked";
+
+                if (!TextUtils.isEmpty(backupHost)) {
+                    try {
+                        backupBlocked = isHostBlocked(InetAddress.getByName(backupHost));
+                        if (backupBlocked) {
+                            errorMsg = primaryHost + " and " + backupHost + " are blocked";
+                        }
+                    } catch (Exception e) {
+                        errorMsg = primaryHost + " is blocked, backup check failed";
+                    }
+                }
+
+                sIsMixpanelBlocked = backupBlocked;
+                if (backupBlocked) {
+                    MPLog.v(LOGTAG, "AdBlocker is enabled. " + errorMsg);
+                    onNetworkError(null, primaryHost, primaryInet.getHostAddress(),
+                            startTimeNanos, -1, -1, new IOException(errorMsg));
+                } else {
+                    MPLog.v(LOGTAG, "Primary host blocked, but backup host is available.");
+                }
+            } catch (Exception e) {
+                // Primary check failed, don't assume blocked
+            }
+        }).start();
+    }
+
+    private boolean isHostBlocked(InetAddress address) {
+        return address.isLoopbackAddress() || address.isAnyLocalAddress();
     }
 
     @SuppressLint("MissingPermission")
