@@ -2,6 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.ProxyServerInteractor;
 
@@ -195,7 +198,7 @@ public class MixpanelOptions {
          * @param serverURL The base URL for API requests.
          * @return This Builder instance for chaining.
          */
-        public Builder serverURL(String serverURL) {
+        public Builder serverURL(@NonNull String serverURL) {
             this.serverURL = serverURL;
             return this;
         }
@@ -226,7 +229,10 @@ public class MixpanelOptions {
          * @param proxyServerInteractor Handler for custom headers and response callbacks.
          * @return This Builder instance for chaining.
          */
-        public Builder serverURL(String serverURL, ProxyServerInteractor proxyServerInteractor) {
+        public Builder serverURL(
+                @NonNull String serverURL,
+                @Nullable ProxyServerInteractor proxyServerInteractor
+        ) {
             this.serverURL = serverURL;
             this.proxyServerInteractor = proxyServerInteractor;
             return this;
