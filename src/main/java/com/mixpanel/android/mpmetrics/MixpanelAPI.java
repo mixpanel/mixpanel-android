@@ -191,8 +191,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
 
-        // Apply serverURL from options before AnalyticsMessages is created
-        // This ensures the ad-blocker check uses the correct host
+        // Apply custom server URL before AnalyticsMessages is created so that early network
+        // requests (e.g., ad-blocker checks) use the correct host. ProxyServerInteractor, if
+        // provided, is also configured here for custom header injection and response handling.
         if (options.getServerURL() != null) {
             mConfig.setServerURL(options.getServerURL(), options.getProxyServerInteractor());
         }
