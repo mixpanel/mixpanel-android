@@ -12,6 +12,7 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 import java.io.BufferedOutputStream;
@@ -81,6 +82,7 @@ public class HttpService implements RemoteService {
 
     // Runs synchronously. Only call on worker thread
     @WorkerThread
+    @VisibleForTesting
     void checkIsServerBlockedSync() {
         final String primaryHost = mServerHost;
         final String backupHost = mBackupHost;
