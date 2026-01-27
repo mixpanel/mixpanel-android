@@ -19,7 +19,7 @@ public interface RemoteService {
 
     boolean isOnline(Context context, OfflineMode offlineMode);
 
-    void checkIsMixpanelBlocked();
+    void checkIsServerBlocked();
 
     /**
      * Performs an HTTP POST request. Handles either URL-encoded parameters OR a raw byte request body.

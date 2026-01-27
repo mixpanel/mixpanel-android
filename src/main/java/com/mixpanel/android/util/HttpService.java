@@ -38,19 +38,19 @@ public class HttpService implements RemoteService {
     private String mBackupHost;
     private String mServerHost;
 
-    private static boolean sIsMixpanelBlocked;
+    private static boolean sIsServerBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
             HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
     // Package-private for testing
-    static void resetBlockedState() {
-        sIsMixpanelBlocked = false;
+    static void resetServerBlockedState() {
+        sIsServerBlocked = false;
     }
 
     // Package-private for testing
-    static boolean isMixpanelBlocked() {
-        return sIsMixpanelBlocked;
+    static boolean isServerBlocked() {
+        return sIsServerBlocked;
     }
 
     public HttpService(
@@ -78,7 +78,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public void checkIsMixpanelBlocked() {
+    public void checkIsServerBlocked() {
         final String primaryHost = mServerHost;
         final String backupHost = mBackupHost;
         new Thread(() -> {
@@ -87,7 +87,7 @@ public class HttpService implements RemoteService {
                 InetAddress primaryInet = InetAddress.getByName(primaryHost);
 
                 if (!isHostBlocked(primaryInet)) {
-                    sIsMixpanelBlocked = false;
+                    sIsServerBlocked = false;
                     return;
                 }
 
@@ -106,7 +106,7 @@ public class HttpService implements RemoteService {
                     }
                 }
 
-                sIsMixpanelBlocked = backupBlocked;
+                sIsServerBlocked = backupBlocked;
                 if (backupBlocked) {
                     MPLog.v(LOGTAG, "AdBlocker is enabled. " + errorMsg);
                     onNetworkError(null, primaryHost, primaryInet.getHostAddress(),
@@ -128,7 +128,7 @@ public class HttpService implements RemoteService {
     @SuppressWarnings("MissingPermission")
     @Override
     public boolean isOnline(Context context, OfflineMode offlineMode) {
-        if (sIsMixpanelBlocked) return false;
+        if (sIsServerBlocked) return false;
         if (onOfflineMode(offlineMode)) return false;
 
         boolean isOnline;
