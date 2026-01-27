@@ -28,12 +28,12 @@ public class HttpServiceBackupTest {
   @Before
   public void setUp() {
     mContext = InstrumentationRegistry.getInstrumentation().getContext();
-    HttpService.resetBlockedState();
+    HttpService.resetServerBlockedState();
   }
 
   @After
   public void tearDown() {
-    HttpService.resetBlockedState();
+    HttpService.resetServerBlockedState();
   }
 
   /** Test that HttpService constructor accepts backup host */
@@ -214,7 +214,7 @@ public class HttpServiceBackupTest {
   }
 
   // ============================================================
-  // Tests for checkIsMixpanelBlocked (actual async method)
+  // Tests for checkIsServerBlocked (actual async method)
   // ============================================================
 
   private static final int ASYNC_WAIT_MS = 1000;
@@ -224,10 +224,10 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_PrimaryNotBlocked() throws Exception {
     HttpService service = new HttpService(false, null, null, "api.mixpanel.com");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertFalse("Should not be blocked when primary is valid host", HttpService.isMixpanelBlocked());
+    assertFalse("Should not be blocked when primary is valid host", HttpService.isServerBlocked());
   }
 
   /** Primary blocked (loopback), no backup -> blocked */
@@ -235,10 +235,10 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_PrimaryLoopbackNoBackup() throws Exception {
     HttpService service = new HttpService(false, null, null, "127.0.0.1");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertTrue("Should be blocked when primary is loopback", HttpService.isMixpanelBlocked());
+    assertTrue("Should be blocked when primary is loopback", HttpService.isServerBlocked());
   }
 
   /** Primary blocked, backup available -> not blocked */
@@ -246,10 +246,10 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_PrimaryBlockedBackupAvailable() throws Exception {
     HttpService service = new HttpService(false, null, "api.mixpanel.com", "127.0.0.1");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertFalse("Should not be blocked when backup is available", HttpService.isMixpanelBlocked());
+    assertFalse("Should not be blocked when backup is available", HttpService.isServerBlocked());
   }
 
   /** Both primary and backup blocked -> blocked */
@@ -257,10 +257,10 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_BothBlocked() throws Exception {
     HttpService service = new HttpService(false, null, "127.0.0.1", "127.0.0.1");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertTrue("Should be blocked when both are loopback", HttpService.isMixpanelBlocked());
+    assertTrue("Should be blocked when both are loopback", HttpService.isServerBlocked());
   }
 
   /** Primary blocked, backup DNS fails -> blocked */
@@ -268,24 +268,24 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_BackupDnsFails() throws Exception {
     HttpService service = new HttpService(false, null, "invalid..hostname..test", "127.0.0.1");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertTrue("Should be blocked when backup DNS fails", HttpService.isMixpanelBlocked());
+    assertTrue("Should be blocked when backup DNS fails", HttpService.isServerBlocked());
   }
 
   /** Primary DNS fails -> don't assume blocked */
   @Test
   public void testCheckBlocked_PrimaryDnsFails() throws Exception {
-    HttpService.resetBlockedState();
-    assertFalse("Initial state should be not blocked", HttpService.isMixpanelBlocked());
+    HttpService.resetServerBlockedState();
+    assertFalse("Initial state should be not blocked", HttpService.isServerBlocked());
 
     HttpService service = new HttpService(false, null, null, "invalid..hostname..test");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertFalse("Should not assume blocked when primary DNS fails", HttpService.isMixpanelBlocked());
+    assertFalse("Should not assume blocked when primary DNS fails", HttpService.isServerBlocked());
   }
 
   /** Primary blocked, empty backup -> blocked */
@@ -293,9 +293,9 @@ public class HttpServiceBackupTest {
   public void testCheckBlocked_PrimaryBlockedEmptyBackup() throws Exception {
     HttpService service = new HttpService(false, null, "", "127.0.0.1");
 
-    service.checkIsMixpanelBlocked();
+    service.checkIsServerBlocked();
     Thread.sleep(ASYNC_WAIT_MS);
 
-    assertTrue("Should be blocked when backup is empty", HttpService.isMixpanelBlocked());
+    assertTrue("Should be blocked when backup is empty", HttpService.isServerBlocked());
   }
 }
