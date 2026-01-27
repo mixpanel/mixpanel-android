@@ -115,7 +115,7 @@ public class HttpService implements RemoteService {
                     MPLog.v(LOGTAG, "Primary host blocked, but backup host is available.");
                 }
             } catch (Exception e) {
-                // Primary check failed, don't assume blocked
+                MPLog.v(LOGTAG, "Primary server blocked-check failed, not assuming blocked", e);
             }
         }).start();
     }
