@@ -55,13 +55,6 @@ public class HttpService implements RemoteService {
     }
 
     public HttpService(
-            boolean shouldGzipRequestPayload,
-            MixpanelNetworkErrorListener networkErrorListener,
-            String backupHost) {
-        this(shouldGzipRequestPayload, networkErrorListener, backupHost, null);
-    }
-
-    public HttpService(
             boolean shouldGzipRequestPayload, MixpanelNetworkErrorListener networkErrorListener) {
         this(shouldGzipRequestPayload, networkErrorListener, null, null);
     }
