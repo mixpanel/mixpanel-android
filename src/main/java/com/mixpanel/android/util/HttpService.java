@@ -43,6 +43,16 @@ public class HttpService implements RemoteService {
             HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
+    // Package-private for testing
+    static void resetBlockedState() {
+        sIsMixpanelBlocked = false;
+    }
+
+    // Package-private for testing
+    static boolean isMixpanelBlocked() {
+        return sIsMixpanelBlocked;
+    }
+
     public HttpService(
             boolean shouldGzipRequestPayload,
             MixpanelNetworkErrorListener networkErrorListener,
