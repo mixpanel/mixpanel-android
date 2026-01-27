@@ -126,7 +126,7 @@ public class MixpanelOptions {
          * These properties are persistently stored.
          *
          * @param superProperties A JSONObject containing key-value pairs for super properties.
-         * The provided JSONObject will be defensively copied.
+         *                        The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
          */
         public Builder superProperties(JSONObject superProperties) {
@@ -160,7 +160,7 @@ public class MixpanelOptions {
          * This can include properties like distinct_id or other custom properties.
          *
          * @param featureFlagsContext A JSONObject containing key-value pairs for the feature flags context.
-         * The provided JSONObject will be defensively copied.
+         *                            The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
          */
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
@@ -179,17 +179,20 @@ public class MixpanelOptions {
         }
 
         /**
-         * Sets the base URL used for Mixpanel API requests. Useful if you need to proxy
-         * Mixpanel requests or route data to Mixpanel's EU servers.
+         * Sets a custom server URL for Mixpanel API requests.
          *
-         * <p>Defaults to https://api.mixpanel.com. To route data to Mixpanel's EU servers,
-         * set to https://api-eu.mixpanel.com
+         * <p>Use this to route data to a different Mixpanel region or your own proxy server.
+         * Defaults to {@code https://api.mixpanel.com}.
          *
-         * <p>Setting this at initialization time ensures the ad-blocker check uses
-         * the correct host.
+         * <pre>{@code
+         * // Mixpanel regional server (e.g., EU)
+         * .serverURL("https://api-eu.mixpanel.com")
          *
-         * @param serverURL The base URL used for Mixpanel API requests
-         *     (e.g., "https://api-eu.mixpanel.com" or "https://my-proxy.example.com").
+         * // Custom proxy server
+         * .serverURL("https://my-proxy.example.com")
+         * }</pre>
+         *
+         * @param serverURL The base URL for API requests.
          * @return This Builder instance for chaining.
          */
         public Builder serverURL(String serverURL) {
@@ -198,15 +201,31 @@ public class MixpanelOptions {
         }
 
         /**
-         * Sets the proxy server interactor for handling proxy-specific headers and responses.
+         * Sets a custom server URL with a {@link ProxyServerInteractor} for advanced proxy handling.
          *
-         * <p>This is useful when using a custom proxy server that requires additional
-         * authentication headers or needs to process responses differently.
+         * <p>Use this when your proxy server requires custom request headers or you need to
+         * listen to API responses.
          *
-         * @param proxyServerInteractor The interactor to handle proxy server communication.
+         * <pre>{@code
+         * .serverURL("https://my-proxy.example.com", new ProxyServerInteractor() {
+         *     @Override
+         *     public Map<String, String> getProxyRequestHeaders() {
+         *         return Map.of("Authorization", "Bearer " + token);
+         *     }
+         *
+         *     @Override
+         *     public void onProxyResponse(String url, int responseCode) {
+         *         // Handle response
+         *     }
+         * })
+         * }</pre>
+         *
+         * @param serverURL             The base URL for the proxy server.
+         * @param proxyServerInteractor Handler for custom headers and response callbacks.
          * @return This Builder instance for chaining.
          */
-        public Builder proxyServerInteractor(ProxyServerInteractor proxyServerInteractor) {
+        public Builder serverURL(String serverURL, ProxyServerInteractor proxyServerInteractor) {
+            this.serverURL = serverURL;
             this.proxyServerInteractor = proxyServerInteractor;
             return this;
         }
