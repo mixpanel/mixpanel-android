@@ -8,8 +8,9 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import org.junit.After;
+import java.util.concurrent.TimeoutException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,12 +29,6 @@ public class HttpServiceBackupTest {
   @Before
   public void setUp() {
     mContext = InstrumentationRegistry.getInstrumentation().getContext();
-    HttpService.resetServerBlockedState();
-  }
-
-  @After
-  public void tearDown() {
-    HttpService.resetServerBlockedState();
   }
 
   /** Test that HttpService constructor accepts backup host */
@@ -217,17 +212,19 @@ public class HttpServiceBackupTest {
   // Tests for checkIsServerBlocked (actual async method)
   // ============================================================
 
-  private static final int ASYNC_WAIT_MS = 1000;
+  private static final long TIMEOUT_MS = 5000;
+  private static final long POLL_INTERVAL_MS = 10;
 
   /** Primary not blocked -> not blocked */
   @Test
   public void testCheckBlocked_PrimaryNotBlocked() throws Exception {
     HttpService service = new HttpService(false, null, null, "api.mixpanel.com");
+    setServerBlocked(service);
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, false);
 
-    assertFalse("Should not be blocked when primary is valid host", HttpService.isServerBlocked());
+    assertFalse("Should not be blocked when primary is valid host", service.isServerBlocked());
   }
 
   /** Primary blocked (loopback), no backup -> blocked */
@@ -236,20 +233,21 @@ public class HttpServiceBackupTest {
     HttpService service = new HttpService(false, null, null, "127.0.0.1");
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, true);
 
-    assertTrue("Should be blocked when primary is loopback", HttpService.isServerBlocked());
+    assertTrue("Should be blocked when primary is loopback", service.isServerBlocked());
   }
 
   /** Primary blocked, backup available -> not blocked */
   @Test
   public void testCheckBlocked_PrimaryBlockedBackupAvailable() throws Exception {
     HttpService service = new HttpService(false, null, "api.mixpanel.com", "127.0.0.1");
+    setServerBlocked(service);
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, false);
 
-    assertFalse("Should not be blocked when backup is available", HttpService.isServerBlocked());
+    assertFalse("Should not be blocked when backup is available", service.isServerBlocked());
   }
 
   /** Both primary and backup blocked -> blocked */
@@ -258,9 +256,9 @@ public class HttpServiceBackupTest {
     HttpService service = new HttpService(false, null, "127.0.0.1", "127.0.0.1");
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, true);
 
-    assertTrue("Should be blocked when both are loopback", HttpService.isServerBlocked());
+    assertTrue("Should be blocked when both are loopback", service.isServerBlocked());
   }
 
   /** Primary blocked, backup DNS fails -> blocked */
@@ -269,23 +267,22 @@ public class HttpServiceBackupTest {
     HttpService service = new HttpService(false, null, "invalid..hostname..test", "127.0.0.1");
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, true);
 
-    assertTrue("Should be blocked when backup DNS fails", HttpService.isServerBlocked());
+    assertTrue("Should be blocked when backup DNS fails", service.isServerBlocked());
   }
 
-  /** Primary DNS fails -> don't assume blocked */
+  /** Primary DNS fails -> don't assume blocked (state unchanged) */
   @Test
   public void testCheckBlocked_PrimaryDnsFails() throws Exception {
-    HttpService.resetServerBlockedState();
-    assertFalse("Initial state should be not blocked", HttpService.isServerBlocked());
-
     HttpService service = new HttpService(false, null, null, "invalid..hostname..test");
+    setServerBlocked(service);
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
 
-    assertFalse("Should not assume blocked when primary DNS fails", HttpService.isServerBlocked());
+    awaitServerBlockedState(service, true);
+
+    assertTrue("DNS failure should not change blocked state", service.isServerBlocked());
   }
 
   /** Primary blocked, empty backup -> blocked */
@@ -294,8 +291,40 @@ public class HttpServiceBackupTest {
     HttpService service = new HttpService(false, null, "", "127.0.0.1");
 
     service.checkIsServerBlocked();
-    Thread.sleep(ASYNC_WAIT_MS);
+    awaitServerBlockedState(service, true);
 
-    assertTrue("Should be blocked when backup is empty", HttpService.isServerBlocked());
+    assertTrue("Should be blocked when backup is empty", service.isServerBlocked());
   }
+
+    /**
+     * Sets the mIsServerBlocked field on an HttpService instance using reflection.
+     * This allows tests to set a known initial state before testing async behavior.
+     */
+    private void setServerBlocked(HttpService service) throws Exception {
+        Field field = HttpService.class.getDeclaredField("mIsServerBlocked");
+        field.setAccessible(true);
+        field.setBoolean(service, true);
+    }
+
+    /**
+     * Polls until isServerBlocked() returns the expected value, or times out.
+     *
+     * @param service the HttpService instance to check
+     * @param expectedBlocked the expected blocked state
+     * @throws TimeoutException if the expected state is not reached within timeout
+     */
+    private void awaitServerBlockedState(HttpService service, boolean expectedBlocked)
+            throws InterruptedException, TimeoutException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (service.isServerBlocked() == expectedBlocked) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MS);
+        }
+        if (service.isServerBlocked() != expectedBlocked) {
+            throw new TimeoutException(
+                    "Timed out waiting for isServerBlocked() to be " + expectedBlocked);
+        }
+    }
 }
