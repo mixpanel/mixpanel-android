@@ -4,3 +4,4 @@ plugins {
 
 rootProject.name = "mixpanel-android"
 include ':mixpaneldemo'
+include ':mixpanel-kotlin'
