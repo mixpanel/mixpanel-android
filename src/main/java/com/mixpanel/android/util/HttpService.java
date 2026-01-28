@@ -12,6 +12,9 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+import androidx.annotation.WorkerThread;
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -38,19 +41,14 @@ public class HttpService implements RemoteService {
     private String mBackupHost;
     private String mServerHost;
 
-    private static boolean sIsServerBlocked;
+    private boolean mIsServerBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
             HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
     // Package-private for testing
-    static void resetServerBlockedState() {
-        sIsServerBlocked = false;
-    }
-
-    // Package-private for testing
-    static boolean isServerBlocked() {
-        return sIsServerBlocked;
+    boolean isServerBlocked() {
+        return mIsServerBlocked;
     }
 
     public HttpService(
@@ -79,45 +77,50 @@ public class HttpService implements RemoteService {
 
     @Override
     public void checkIsServerBlocked() {
+        new Thread(this::checkIsServerBlockedSync).start();
+    }
+
+    // Runs synchronously. Only call on worker thread
+    @WorkerThread
+    @VisibleForTesting
+    void checkIsServerBlockedSync() {
         final String primaryHost = mServerHost;
         final String backupHost = mBackupHost;
-        new Thread(() -> {
-            try {
-                long startTimeNanos = System.nanoTime();
-                InetAddress primaryInet = InetAddress.getByName(primaryHost);
+        try {
+            long startTimeNanos = System.nanoTime();
+            InetAddress primaryInet = InetAddress.getByName(primaryHost);
 
-                if (!isHostBlocked(primaryInet)) {
-                    sIsServerBlocked = false;
-                    return;
-                }
-
-                // Primary is blocked - check backup if configured
-                boolean backupBlocked = true;
-                String errorMsg = primaryHost + " is blocked";
-
-                if (!TextUtils.isEmpty(backupHost)) {
-                    try {
-                        backupBlocked = isHostBlocked(InetAddress.getByName(backupHost));
-                        if (backupBlocked) {
-                            errorMsg = primaryHost + " and " + backupHost + " are blocked";
-                        }
-                    } catch (Exception e) {
-                        errorMsg = primaryHost + " is blocked, backup check failed";
-                    }
-                }
-
-                sIsServerBlocked = backupBlocked;
-                if (backupBlocked) {
-                    MPLog.v(LOGTAG, "AdBlocker is enabled. " + errorMsg);
-                    onNetworkError(null, primaryHost, primaryInet.getHostAddress(),
-                            startTimeNanos, -1, -1, new IOException(errorMsg));
-                } else {
-                    MPLog.v(LOGTAG, "Primary host blocked, but backup host is available.");
-                }
-            } catch (Exception e) {
-                MPLog.v(LOGTAG, "Primary server blocked-check failed, not assuming blocked", e);
+            if (!isHostBlocked(primaryInet)) {
+                mIsServerBlocked = false;
+                return;
             }
-        }).start();
+
+            // Primary is blocked - check backup if configured
+            boolean backupBlocked = true;
+            String errorMsg = primaryHost + " is blocked";
+
+            if (!TextUtils.isEmpty(backupHost)) {
+                try {
+                    backupBlocked = isHostBlocked(InetAddress.getByName(backupHost));
+                    if (backupBlocked) {
+                        errorMsg = primaryHost + " and " + backupHost + " are blocked";
+                    }
+                } catch (Exception e) {
+                    errorMsg = primaryHost + " is blocked, backup check failed";
+                }
+            }
+
+            mIsServerBlocked = backupBlocked;
+            if (backupBlocked) {
+                MPLog.v(LOGTAG, "AdBlocker is enabled. " + errorMsg);
+                onNetworkError(null, primaryHost, primaryInet.getHostAddress(),
+                        startTimeNanos, -1, -1, new IOException(errorMsg));
+            } else {
+                MPLog.v(LOGTAG, "Primary host blocked, but backup host is available.");
+            }
+        } catch (Exception e) {
+            MPLog.v(LOGTAG, "Primary server blocked-check failed, not assuming blocked", e);
+        }
     }
 
     private boolean isHostBlocked(InetAddress address) {
@@ -128,7 +131,7 @@ public class HttpService implements RemoteService {
     @SuppressWarnings("MissingPermission")
     @Override
     public boolean isOnline(Context context, OfflineMode offlineMode) {
-        if (sIsServerBlocked) return false;
+        if (mIsServerBlocked) return false;
         if (onOfflineMode(offlineMode)) return false;
 
         boolean isOnline;
