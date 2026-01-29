@@ -3,9 +3,9 @@ package com.mixpanel.android.mpmetrics;
 import org.json.JSONObject;
 
 /**
- * Callback interface for first-time event checking.
+ * Listener interface for first-time event checking.
  * Package-private for internal use only.
  */
-interface FirstTimeEventCallback {
+interface FirstTimeEventListener {
     void onEventTracked(String eventName, JSONObject properties);
 }
