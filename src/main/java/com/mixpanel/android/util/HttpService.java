@@ -62,7 +62,7 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public void checkIsMixpanelBlocked() {
+    public void checkIsServerBlocked() {
         Thread t =
                 new Thread(
                         new Runnable() {

@@ -94,7 +94,7 @@ public class FirstTimeEventTest {
             }
 
             @Override
-            public void checkIsMixpanelBlocked() {
+            public void checkIsServerBlocked() {
                 // No-op for tests
             }
 
@@ -432,7 +432,7 @@ public class FirstTimeEventTest {
             }
 
             @Override
-            public void checkIsMixpanelBlocked() {
+            public void checkIsServerBlocked() {
                 // No-op
             }
 

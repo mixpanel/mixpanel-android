@@ -165,7 +165,7 @@ public class FeatureFlagManagerTest {
     }
 
     @Override
-    public void checkIsMixpanelBlocked() {
+    public void checkIsServerBlocked() {
       // No-op for tests
     }
 

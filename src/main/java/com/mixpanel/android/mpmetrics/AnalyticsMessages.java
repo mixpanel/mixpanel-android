@@ -38,7 +38,7 @@ import org.json.JSONObject;
         mConfig = config;
         mInstanceName = config.getInstanceName();
         mWorker = createWorker();
-        getPoster().checkIsMixpanelBlocked();
+        getPoster().checkIsServerBlocked();
     }
 
     protected Worker createWorker() {
