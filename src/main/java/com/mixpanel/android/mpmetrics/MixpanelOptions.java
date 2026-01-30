@@ -2,7 +2,11 @@ package com.mixpanel.android.mpmetrics;
 
 import static com.mixpanel.android.mpmetrics.ConfigurationChecker.LOGTAG;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
@@ -13,6 +17,8 @@ public class MixpanelOptions {
     private final JSONObject superProperties;
     private final boolean featureFlagsEnabled;
     private final JSONObject featureFlagsContext;
+    private final String serverURL;
+    private final ProxyServerInteractor proxyServerInteractor;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -20,6 +26,8 @@ public class MixpanelOptions {
         this.superProperties = builder.superProperties;
         this.featureFlagsEnabled = builder.featureFlagsEnabled;
         this.featureFlagsContext = builder.featureFlagsContext;
+        this.serverURL = builder.serverURL;
+        this.proxyServerInteractor = builder.proxyServerInteractor;
     }
 
     public String getInstanceName() {
@@ -62,12 +70,32 @@ public class MixpanelOptions {
         }
     }
 
+    /**
+     * Returns the server URL configured for this Mixpanel instance.
+     *
+     * @return The server URL, or null if not configured (will use default).
+     */
+    public String getServerURL() {
+        return serverURL;
+    }
+
+    /**
+     * Returns the proxy server interactor configured for this Mixpanel instance.
+     *
+     * @return The ProxyServerInteractor, or null if not configured.
+     */
+    public ProxyServerInteractor getProxyServerInteractor() {
+        return proxyServerInteractor;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
         private boolean featureFlagsEnabled = false;
         private JSONObject featureFlagsContext = new JSONObject();
+        private String serverURL;
+        private ProxyServerInteractor proxyServerInteractor;
 
         public Builder() {
         }
@@ -101,7 +129,7 @@ public class MixpanelOptions {
          * These properties are persistently stored.
          *
          * @param superProperties A JSONObject containing key-value pairs for super properties.
-         * The provided JSONObject will be defensively copied.
+         *                        The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
          */
         public Builder superProperties(JSONObject superProperties) {
@@ -135,7 +163,7 @@ public class MixpanelOptions {
          * This can include properties like distinct_id or other custom properties.
          *
          * @param featureFlagsContext A JSONObject containing key-value pairs for the feature flags context.
-         * The provided JSONObject will be defensively copied.
+         *                            The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
          */
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
@@ -150,6 +178,63 @@ public class MixpanelOptions {
                     this.featureFlagsContext = null;
                 }
             }
+            return this;
+        }
+
+        /**
+         * Sets a custom server URL for Mixpanel API requests.
+         *
+         * <p>Use this to route data to a different Mixpanel region or your own proxy server.
+         * Defaults to {@code https://api.mixpanel.com}.
+         *
+         * <pre>{@code
+         * // Mixpanel regional server (e.g., EU)
+         * .serverURL("https://api-eu.mixpanel.com")
+         *
+         * // Custom proxy server
+         * .serverURL("https://my-proxy.example.com")
+         * }</pre>
+         *
+         * @param serverURL The base URL for API requests.
+         * @return This Builder instance for chaining.
+         */
+        public Builder serverURL(@NonNull String serverURL) {
+            this.serverURL = serverURL;
+            return this;
+        }
+
+        /**
+         * Sets a custom server URL with a {@link ProxyServerInteractor} for advanced proxy handling.
+         *
+         * <p>Use this when your proxy server requires custom request headers or you need to
+         * listen to API responses.
+         *
+         * <pre>{@code
+         * .serverURL("https://my-proxy.example.com", new ProxyServerInteractor() {
+         *     @Override
+         *     public Map<String, String> getProxyRequestHeaders() {
+         *         Map<String, String> headers = new HashMap<>();
+         *         headers.put("Authorization", "Bearer " + token);
+         *         return headers;
+         *     }
+         *
+         *     @Override
+         *     public void onProxyResponse(String url, int responseCode) {
+         *         // Handle response
+         *     }
+         * })
+         * }</pre>
+         *
+         * @param serverURL             The base URL for the proxy server.
+         * @param proxyServerInteractor Handler for custom headers and response callbacks.
+         * @return This Builder instance for chaining.
+         */
+        public Builder serverURL(
+                @NonNull String serverURL,
+                @Nullable ProxyServerInteractor proxyServerInteractor
+        ) {
+            this.serverURL = serverURL;
+            this.proxyServerInteractor = proxyServerInteractor;
             return this;
         }
 

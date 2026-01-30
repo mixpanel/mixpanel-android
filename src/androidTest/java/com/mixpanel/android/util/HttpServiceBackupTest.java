@@ -1,6 +1,7 @@
 package com.mixpanel.android.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -31,7 +32,7 @@ public class HttpServiceBackupTest {
   /** Test that HttpService constructor accepts backup host */
   @Test
   public void testConstructorWithBackupHost() {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
     // Service should be created successfully
     assertNotNull(service);
   }
@@ -54,7 +55,7 @@ public class HttpServiceBackupTest {
   /** Test URL host replacement logic using reflection */
   @Test
   public void testUrlHostReplacement() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to test the private replaceHost method
     Method replaceHostMethod =
@@ -103,7 +104,7 @@ public class HttpServiceBackupTest {
    */
   @Test
   public void testBackupHostLogic() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to verify the replaceHost is called when needed
     Method replaceHostMethod =
@@ -132,7 +133,7 @@ public class HttpServiceBackupTest {
   /** Test runtime update of backup host */
   @Test
   public void testRuntimeBackupUpdate() throws Exception {
-    HttpService service = new HttpService(false, null, null);
+    HttpService service = new HttpService(false, null, null, null);
 
     // Use reflection to test replaceHost with different backup hosts
     Method replaceHostMethod =
@@ -162,7 +163,7 @@ public class HttpServiceBackupTest {
   /** Test with empty backup host string */
   @Test
   public void testEmptyBackupHost() {
-    HttpService service = new HttpService(false, null, "");
+    HttpService service = new HttpService(false, null, "", null);
     // Service should handle empty string gracefully
     assertNotNull(service);
 
@@ -173,7 +174,7 @@ public class HttpServiceBackupTest {
   /** Test isOnline method */
   @Test
   public void testIsOnline() {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Should be online by default
     boolean isOnline = service.isOnline(mContext, null);
@@ -184,7 +185,7 @@ public class HttpServiceBackupTest {
   /** Test that service handles null parameters gracefully */
   @Test
   public void testNullParameterHandling() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST);
+    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
     // Use reflection to test replaceHost with null
     Method replaceHostMethod =
@@ -203,5 +204,80 @@ public class HttpServiceBackupTest {
     String result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, null);
     // Should handle null backup host gracefully
     assertNotNull(result);
+  }
+
+  // ============================================================
+  // Tests for checkIsServerBlockedSync (synchronous version)
+  // ============================================================
+
+  /** Primary not blocked -> not blocked */
+  @Test
+  public void testCheckBlocked_PrimaryNotBlocked() {
+    HttpService service = new HttpService(false, null, null, "api.mixpanel.com");
+
+    service.checkIsServerBlockedSync();
+
+    assertFalse("Should not be blocked when primary is valid host", service.isServerBlocked());
+  }
+
+  /** Primary blocked (loopback), no backup -> blocked */
+  @Test
+  public void testCheckBlocked_PrimaryLoopbackNoBackup() {
+    HttpService service = new HttpService(false, null, null, "127.0.0.1");
+
+    service.checkIsServerBlockedSync();
+
+    assertTrue("Should be blocked when primary is loopback", service.isServerBlocked());
+  }
+
+  /** Primary blocked, backup available -> not blocked */
+  @Test
+  public void testCheckBlocked_PrimaryBlockedBackupAvailable() {
+    HttpService service = new HttpService(false, null, "api.mixpanel.com", "127.0.0.1");
+
+    service.checkIsServerBlockedSync();
+
+    assertFalse("Should not be blocked when backup is available", service.isServerBlocked());
+  }
+
+  /** Both primary and backup blocked -> blocked */
+  @Test
+  public void testCheckBlocked_BothBlocked() {
+    HttpService service = new HttpService(false, null, "127.0.0.1", "127.0.0.1");
+
+    service.checkIsServerBlockedSync();
+
+    assertTrue("Should be blocked when both are loopback", service.isServerBlocked());
+  }
+
+  /** Primary blocked, backup DNS fails -> blocked */
+  @Test
+  public void testCheckBlocked_BackupDnsFails() {
+    HttpService service = new HttpService(false, null, "invalid..hostname..test", "127.0.0.1");
+
+    service.checkIsServerBlockedSync();
+
+    assertTrue("Should be blocked when backup DNS fails", service.isServerBlocked());
+  }
+
+  /** Primary DNS fails -> don't assume blocked (state unchanged) */
+  @Test
+  public void testCheckBlocked_PrimaryDnsFails() {
+    HttpService service = new HttpService(false, null, null, "invalid..hostname..test");
+
+    service.checkIsServerBlockedSync();
+
+    // DNS failure should leave mIsServerBlocked at its default (false)
+    assertFalse("DNS failure should not set blocked state", service.isServerBlocked());
+  }
+
+  /** Primary blocked, empty backup -> blocked */
+  @Test
+  public void testCheckBlocked_PrimaryBlockedEmptyBackup() {
+    HttpService service = new HttpService(false, null, "", "127.0.0.1");
+
+    service.checkIsServerBlockedSync();
+
+    assertTrue("Should be blocked when backup is empty", service.isServerBlocked());
   }
 }
