@@ -1,5 +1,7 @@
 package com.mixpanel.android.mpmetrics;
 
+import static com.mixpanel.android.util.MPConstants.URL.DEFAULT_SERVER_HOST;
+
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
@@ -18,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,7 +41,7 @@ import org.json.JSONObject;
         mConfig = config;
         mInstanceName = config.getInstanceName();
         mWorker = createWorker();
-        getPoster().checkIsMixpanelBlocked();
+        getPoster().checkIsServerBlocked();
     }
 
     protected Worker createWorker() {
@@ -149,6 +152,16 @@ import org.json.JSONObject;
         mWorker.runMessage(m);
     }
 
+    /**
+     * If first launch, track FIRST_OPEN event and set hasLaunched flag
+     */
+    public void checkFirstLaunchMessage(final FirstLaunchDescription firstLaunchDescription) {
+        final Message m = Message.obtain();
+        m.what = CHECK_FIRST_LAUNCH;
+        m.obj = firstLaunchDescription;
+        mWorker.runMessage(m);
+    }
+
     public void hardKill() {
         final Message m = Message.obtain();
         m.what = KILL_WORKER;
@@ -171,14 +184,31 @@ import org.json.JSONObject;
 
     protected RemoteService getPoster() {
         if (mHttpService == null) {
+            String serverHost = extractHostFromUrl(mConfig.getEventsEndpoint());
             mHttpService =
                     new HttpService(
-                            mConfig.shouldGzipRequestPayload(), mNetworkErrorListener, mConfig.getBackupHost());
+                            mConfig.shouldGzipRequestPayload(),
+                            mNetworkErrorListener,
+                            mConfig.getBackupHost(),
+                            serverHost);
         } else {
             // Update backup host in case it changed at runtime
             mHttpService.setBackupHost(mConfig.getBackupHost());
         }
         return mHttpService;
+    }
+
+    /**
+     * Extracts the host from a URL string.
+     * Falls back to the default Mixpanel API host if extraction fails.
+     */
+    private String extractHostFromUrl(String urlString) {
+        try {
+            return new URL(urlString).getHost();
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Could not extract host from URL " + urlString + ". Using default host instead.", e);
+            return DEFAULT_SERVER_HOST;
+        }
     }
 
     ////////////////////////////////////////////////////
@@ -321,6 +351,28 @@ import org.json.JSONObject;
         private final String mToken;
     }
 
+    static class FirstLaunchDescription extends MixpanelDescription {
+        public FirstLaunchDescription(
+                String token,
+                EventDescription firstOpenEvent,
+                PersistentIdentity persistentIdentity) {
+            super(token);
+            mFirstOpenEvent = firstOpenEvent;
+            mPersistentIdentity = persistentIdentity;
+        }
+
+        public EventDescription getFirstOpenEvent() {
+            return mFirstOpenEvent;
+        }
+
+        public PersistentIdentity getPersistentIdentity() {
+            return mPersistentIdentity;
+        }
+
+        private final EventDescription mFirstOpenEvent;
+        private final PersistentIdentity mPersistentIdentity;
+    }
+
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
     // Will be called from the Mixpanel thread.
     private void logAboutMessageToMixpanel(String message) {
@@ -410,11 +462,8 @@ import org.json.JSONObject;
                     } else if (msg.what == ENQUEUE_EVENTS) {
                         final EventDescription eventDescription = (EventDescription) msg.obj;
                         try {
-                            final JSONObject message = prepareEventObject(eventDescription);
-                            logAboutMessageToMixpanel("Queuing event for sending later");
-                            logAboutMessageToMixpanel("    " + message.toString());
                             token = eventDescription.getToken();
-                            returnCode = mDbAdapter.addJSON(message, token, MPDbAdapter.Table.EVENTS);
+                            returnCode = insertEventToDb(eventDescription);
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -460,6 +509,21 @@ import org.json.JSONObject;
                     } else if (msg.what == REMOVE_RESIDUAL_IMAGE_FILES) {
                         final File file = (File) msg.obj;
                         LegacyVersionUtils.removeLegacyResidualImageFiles(file);
+                    } else if (msg.what == CHECK_FIRST_LAUNCH) {
+                        final FirstLaunchDescription desc = (FirstLaunchDescription) msg.obj;
+                        final EventDescription openEvent = desc.getFirstOpenEvent();
+
+                        token = desc.getToken();
+                        final PersistentIdentity persistentIdentity = desc.getPersistentIdentity();
+                        boolean dbExistedBeforeInit = !mDbAdapter.isNewDatabase();
+                        if (persistentIdentity.isFirstLaunch(dbExistedBeforeInit, token)) {
+                            try {
+                                returnCode = insertEventToDb(openEvent);
+                            } catch (final JSONException e) {
+                                MPLog.e(LOGTAG, "Exception tracking event " + openEvent.getEventName(), e);
+                            }
+                            persistentIdentity.setHasLaunched(token);
+                        }
                     } else {
                         MPLog.e(LOGTAG, "Unexpected message received by Mixpanel worker: " + msg);
                     }
@@ -685,6 +749,13 @@ import org.json.JSONObject;
                 return eventObj;
             }
 
+            private int insertEventToDb(EventDescription eventDescription) throws JSONException {
+                final JSONObject message = prepareEventObject(eventDescription);
+                logAboutMessageToMixpanel("Queuing event for sending later");
+                logAboutMessageToMixpanel("    " + message);
+                return mDbAdapter.addJSON(message, eventDescription.getToken(), MPDbAdapter.Table.EVENTS);
+            }
+
             private MPDbAdapter mDbAdapter;
             private final long mFlushInterval;
             private long mTrackEngageRetryAfter;
@@ -746,6 +817,8 @@ import org.json.JSONObject;
             8; // Update or add properties to existing queued events
     private static final int REMOVE_RESIDUAL_IMAGE_FILES =
             9; // Remove residual image files left from the legacy SDK versions
+    private static final int CHECK_FIRST_LAUNCH =
+            10; // If first launch, track FIRST_OPEN event and set hasLaunched flag
 
     private static final String LOGTAG = "MixpanelAPI.Messages";
 

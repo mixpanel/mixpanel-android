@@ -190,6 +190,14 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mPeople = new PeopleImpl();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
+
+        // Apply custom server URL before AnalyticsMessages is created so that early network
+        // requests (e.g., ad-blocker checks) use the correct host. ProxyServerInteractor, if
+        // provided, is also configured here for custom header injection and response handling.
+        if (options.getServerURL() != null) {
+            mConfig.setServerURL(options.getServerURL(), options.getProxyServerInteractor());
+        }
+
         mTrackAutomaticEvents = trackAutomaticEvents;
 
         final Map<String, String> deviceInfo = new HashMap<String, String>();
@@ -232,13 +240,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             registerSuperProperties(options.getSuperProperties());
         }
 
-        final boolean dbExists = MPDbAdapter.getInstance(mContext, mConfig).getDatabaseFile().exists();
-
         registerMixpanelActivityLifecycleCallbacks();
 
-        if (mPersistentIdentity.isFirstLaunch(dbExists, mToken) && mTrackAutomaticEvents) {
-            track(AutomaticEvents.FIRST_OPEN, null, true);
-            mPersistentIdentity.setHasLaunched(mToken);
+        // Enqueue async check to determine if this is the first launch
+        // If it is the first launch, the queue job sends FIRST_OPEN event and sets hasLaunched flag
+        if (mTrackAutomaticEvents) {
+            enqueueFirstLaunchCheck();
         }
 
         if (sendAppOpen() && mTrackAutomaticEvents) {
@@ -2620,59 +2627,71 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         try {
-            final JSONObject messageProps = new JSONObject();
-
-            final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
-            for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
-                final String key = entry.getKey();
-                final String value = entry.getValue();
-                messageProps.put(key, value);
-            }
-
-            mPersistentIdentity.addSuperPropertiesToObject(messageProps);
-
-            // Don't allow super properties or referral properties to override these fields,
-            // but DO allow the caller to override them in their given properties.
-            final double timeSecondsDouble = (System.currentTimeMillis()) / 1000.0;
-            final String distinctId = getDistinctId();
-            final String anonymousId = getAnonymousId();
-            final String userId = getUserId();
-            messageProps.put("time", System.currentTimeMillis());
-            messageProps.put("distinct_id", distinctId);
-            messageProps.put(
-                    "$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
-            if (anonymousId != null) {
-                messageProps.put("$device_id", anonymousId);
-            }
-            if (userId != null) {
-                messageProps.put("$user_id", userId);
-            }
-
-            if (null != eventBegin) {
-                final double eventBeginDouble = ((double) eventBegin) / 1000.0;
-                final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
-                messageProps.put("$duration", secondsElapsed);
-            }
-
-            if (null != properties) {
-                final Iterator<?> propIter = properties.keys();
-                while (propIter.hasNext()) {
-                    final String key = (String) propIter.next();
-                    messageProps.put(key, properties.opt(key));
-                }
-            }
-
             final AnalyticsMessages.EventDescription eventDescription =
-                    new AnalyticsMessages.EventDescription(
-                            eventName,
-                            messageProps,
-                            mToken,
-                            isAutomaticEvent,
-                            mSessionMetadata.getMetadataForEvent());
+                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin);
             mMessages.eventsMessage(eventDescription);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
+    }
+
+    /**
+     * Builds a complete EventDescription with all properties.
+     * Used by track() and enqueueFirstLaunchCheck().
+     */
+    private AnalyticsMessages.EventDescription buildEventDescription(
+            String eventName,
+            JSONObject properties,
+            boolean isAutomaticEvent,
+            Long eventBegin) throws JSONException {
+        final JSONObject messageProps = new JSONObject();
+
+        final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
+        for (final Map.Entry<String, String> entry : referrerProperties.entrySet()) {
+            final String key = entry.getKey();
+            final String value = entry.getValue();
+            messageProps.put(key, value);
+        }
+
+        mPersistentIdentity.addSuperPropertiesToObject(messageProps);
+
+        // Don't allow super properties or referral properties to override these fields,
+        // but DO allow the caller to override them in their given properties.
+        final double timeSecondsDouble = System.currentTimeMillis() / 1000.0;
+        final String distinctId = getDistinctId();
+        final String anonymousId = getAnonymousId();
+        final String userId = getUserId();
+        messageProps.put("time", System.currentTimeMillis());
+        messageProps.put("distinct_id", distinctId);
+        messageProps.put(
+                "$had_persisted_distinct_id", mPersistentIdentity.getHadPersistedDistinctId());
+        if (anonymousId != null) {
+            messageProps.put("$device_id", anonymousId);
+        }
+        if (userId != null) {
+            messageProps.put("$user_id", userId);
+        }
+
+        if (null != eventBegin) {
+            final double eventBeginDouble = ((double) eventBegin) / 1000.0;
+            final double secondsElapsed = timeSecondsDouble - eventBeginDouble;
+            messageProps.put("$duration", secondsElapsed);
+        }
+
+        if (null != properties) {
+            final Iterator<?> propIter = properties.keys();
+            while (propIter.hasNext()) {
+                final String key = (String) propIter.next();
+                messageProps.put(key, properties.opt(key));
+            }
+        }
+
+        return new AnalyticsMessages.EventDescription(
+                eventName,
+                messageProps,
+                mToken,
+                isAutomaticEvent,
+                mSessionMetadata.getMetadataForEvent());
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -2686,6 +2705,26 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             mMessages.groupMessage(new AnalyticsMessages.GroupDescription(message, mToken));
         } else {
             MPLog.e(LOGTAG, "Attempt to update group without key and value--this should not happen.");
+        }
+    }
+
+    /**
+     * Queues a first-launch check to be performed on the worker thread, avoiding disk I/O
+     * on the main thread. If it's the first launch, the FIRST_OPEN event will be tracked.
+     */
+    private void enqueueFirstLaunchCheck() {
+        try {
+            final AnalyticsMessages.EventDescription eventDescription =
+                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null);
+
+            final AnalyticsMessages.FirstLaunchDescription firstLaunchDescription =
+                    new AnalyticsMessages.FirstLaunchDescription(
+                            mToken,
+                            eventDescription,
+                            mPersistentIdentity);
+            mMessages.checkFirstLaunchMessage(firstLaunchDescription);
+        } catch (final JSONException e) {
+            MPLog.e(LOGTAG, "Exception preparing first launch check", e);
         }
     }
 

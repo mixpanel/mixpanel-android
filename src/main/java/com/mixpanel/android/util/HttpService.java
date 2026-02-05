@@ -1,5 +1,6 @@
 package com.mixpanel.android.util;
 
+import static com.mixpanel.android.util.MPConstants.URL.DEFAULT_SERVER_HOST;
 import static com.mixpanel.android.util.MPConstants.URL.MIXPANEL_API;
 
 import android.annotation.SuppressLint;
@@ -7,8 +8,13 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+import androidx.annotation.WorkerThread;
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -33,28 +39,36 @@ public class HttpService implements RemoteService {
     private final boolean shouldGzipRequestPayload;
     private final MixpanelNetworkErrorListener networkErrorListener;
     private String mBackupHost;
+    private String mServerHost;
 
-    private static boolean sIsMixpanelBlocked;
+    private boolean mIsServerBlocked;
     private static final int MIN_UNAVAILABLE_HTTP_RESPONSE_CODE =
             HttpURLConnection.HTTP_INTERNAL_ERROR;
     private static final int MAX_UNAVAILABLE_HTTP_RESPONSE_CODE = 599;
 
+    // Package-private for testing
+    boolean isServerBlocked() {
+        return mIsServerBlocked;
+    }
+
     public HttpService(
             boolean shouldGzipRequestPayload,
             MixpanelNetworkErrorListener networkErrorListener,
-            String backupHost) {
+            String backupHost,
+            String serverHost) {
         this.shouldGzipRequestPayload = shouldGzipRequestPayload;
         this.networkErrorListener = networkErrorListener;
         this.mBackupHost = backupHost;
+        this.mServerHost = TextUtils.isEmpty(serverHost) ? DEFAULT_SERVER_HOST : serverHost;
     }
 
     public HttpService(
             boolean shouldGzipRequestPayload, MixpanelNetworkErrorListener networkErrorListener) {
-        this(shouldGzipRequestPayload, networkErrorListener, null);
+        this(shouldGzipRequestPayload, networkErrorListener, null, null);
     }
 
     public HttpService() {
-        this(false, null, null);
+        this(false, null, null, null);
     }
 
     public void setBackupHost(String backupHost) {
@@ -62,42 +76,62 @@ public class HttpService implements RemoteService {
     }
 
     @Override
-    public void checkIsMixpanelBlocked() {
-        Thread t =
-                new Thread(
-                        new Runnable() {
-                            public void run() {
-                                try {
-                                    long startTimeNanos = System.nanoTime();
-                                    String host = "api.mixpanel.com";
-                                    InetAddress apiMixpanelInet = InetAddress.getByName(host);
-                                    sIsMixpanelBlocked =
-                                            apiMixpanelInet.isLoopbackAddress() || apiMixpanelInet.isAnyLocalAddress();
-                                    if (sIsMixpanelBlocked) {
-                                        MPLog.v(
-                                                LOGTAG, "AdBlocker is enabled. Won't be able to use Mixpanel services.");
-                                        onNetworkError(
-                                                null,
-                                                host,
-                                                apiMixpanelInet.getHostAddress(),
-                                                startTimeNanos,
-                                                -1,
-                                                -1,
-                                                new IOException(host + " is blocked"));
-                                    }
-                                } catch (Exception e) {
-                                }
-                            }
-                        });
+    public void checkIsServerBlocked() {
+        new Thread(this::checkIsServerBlockedSync).start();
+    }
 
-        t.start();
+    // Runs synchronously. Only call on worker thread
+    @WorkerThread
+    @VisibleForTesting
+    void checkIsServerBlockedSync() {
+        final String primaryHost = mServerHost;
+        final String backupHost = mBackupHost;
+        try {
+            long startTimeNanos = System.nanoTime();
+            InetAddress primaryInet = InetAddress.getByName(primaryHost);
+
+            if (!isHostBlocked(primaryInet)) {
+                mIsServerBlocked = false;
+                return;
+            }
+
+            // Primary is blocked - check backup if configured
+            boolean backupBlocked = true;
+            String errorMsg = primaryHost + " is blocked";
+
+            if (!TextUtils.isEmpty(backupHost)) {
+                try {
+                    backupBlocked = isHostBlocked(InetAddress.getByName(backupHost));
+                    if (backupBlocked) {
+                        errorMsg = primaryHost + " and " + backupHost + " are blocked";
+                    }
+                } catch (Exception e) {
+                    errorMsg = primaryHost + " is blocked, backup check failed";
+                }
+            }
+
+            mIsServerBlocked = backupBlocked;
+            if (backupBlocked) {
+                MPLog.v(LOGTAG, "AdBlocker is enabled. " + errorMsg);
+                onNetworkError(null, primaryHost, primaryInet.getHostAddress(),
+                        startTimeNanos, -1, -1, new IOException(errorMsg));
+            } else {
+                MPLog.v(LOGTAG, "Primary host blocked, but backup host is available.");
+            }
+        } catch (Exception e) {
+            MPLog.v(LOGTAG, "Primary server blocked-check failed, not assuming blocked", e);
+        }
+    }
+
+    private boolean isHostBlocked(InetAddress address) {
+        return address.isLoopbackAddress() || address.isAnyLocalAddress();
     }
 
     @SuppressLint("MissingPermission")
     @SuppressWarnings("MissingPermission")
     @Override
     public boolean isOnline(Context context, OfflineMode offlineMode) {
-        if (sIsMixpanelBlocked) return false;
+        if (mIsServerBlocked) return false;
         if (onOfflineMode(offlineMode)) return false;
 
         boolean isOnline;
