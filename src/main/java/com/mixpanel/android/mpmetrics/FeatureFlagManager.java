@@ -10,8 +10,10 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.JsonUtils;
+import com.mixpanel.android.util.MPConstants;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.RemoteService;
+import com.mixpanel.android.util.W3CTraceContext;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -35,6 +38,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private final WeakReference<FeatureFlagDelegate> mDelegate;
   private final FlagsConfig mFlagsConfig;
   private final String mFlagsEndpoint; // e.g. https://api.mixpanel.com/flags/
+  private final String mFlagsRecordingEndpoint; // e.g. https://api.mixpanel.com/flags/
   private final RemoteService mHttpService; // Use RemoteService interface
   private final FeatureFlagHandler mHandler; // For serializing state access and operations
   private final ExecutorService
@@ -48,6 +52,10 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
   // Track last fetch time and latency for $experiment_started event
   private volatile FetchTiming mFetchTiming = FetchTiming.neverFetched();
+
+  // First-time event targeting state (Handler thread only)
+  private Map<String, FirstTimeEventDefinition> mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
+  private final Set<String> mActivatedFirstTimeEvents = Collections.synchronizedSet(new HashSet<>());
 
   // ---
 
@@ -82,6 +90,12 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
   }
 
+  /** Mutable container for passing results back from handler thread runnables. */
+  private static class SyncResultContainer {
+    MixpanelFlagVariant flagVariant = null;
+    boolean tracked = false;
+  }
+
   // Message codes for Handler
   private static final int MSG_FETCH_FLAGS_IF_NEEDED = 0;
   private static final int MSG_COMPLETE_FETCH = 1;
@@ -92,6 +106,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       @NonNull FlagsConfig flagsConfig) {
     mDelegate = new WeakReference<>(delegate);
     mFlagsEndpoint = delegate.getMPConfig().getFlagsEndpoint();
+    mFlagsRecordingEndpoint = delegate.getMPConfig().getFlagsRecordingEndpoint();
     mHttpService = httpService;
     mFlagsConfig = flagsConfig;
 
@@ -145,11 +160,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
 
     // Use a container to get results back from the handler thread runnable
-    final var resultContainer =
-        new Object() {
-          MixpanelFlagVariant flagVariant = null;
-          boolean tracked = false;
-        };
+    final SyncResultContainer resultContainer = new SyncResultContainer();
 
     // 2. Execute the core logic synchronously on the handler thread
     mHandler.runAndWait(
@@ -219,6 +230,19 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     Object variantValue = getVariantValueSync(flagName, fallbackValue);
     return _evaluateBooleanFlag(flagName, variantValue, fallbackValue);
   }
+
+  /**
+   * Checks if a tracked event matches any pending first-time event conditions.
+   * If a match is found, the corresponding flag variant is activated and a recording API call is made.
+   * This method is called from MixpanelAPI.track() and is thread-safe.
+   *
+   * @param eventName The name of the tracked event
+   * @param properties The event properties
+   */
+  public void checkFirstTimeEvent(@NonNull String eventName, @NonNull JSONObject properties) {
+    mHandler.post(() -> _checkFirstTimeEventOnHandlerThread(eventName, properties));
+  }
+
 
   /**
    * Asynchronously gets the feature flag variant (key and value). If flags are not loaded, it
@@ -455,7 +479,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   // Runs on Handler thread
   private void _fetchFlagsIfNeeded(@Nullable FlagCompletionCallback<Boolean> completion) {
     // It calls _performFetchRequest via mNetworkExecutor if needed.
-    var shouldStartFetch = false;
+    boolean shouldStartFetch = false;
 
     if (!mFlagsConfig.enabled) {
       MPLog.i(LOGTAG, "Feature flags are disabled, not fetching.");
@@ -644,11 +668,27 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mFetchCompletionCallbacks = new ArrayList<>();
 
     if (success && flagsResponseJson != null) {
-      Map<String, MixpanelFlagVariant> newFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
-      synchronized (mLock) {
-        mFlags = Collections.unmodifiableMap(newFlags);
+      try {
+        Map<String, MixpanelFlagVariant> newFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
+
+        // Parse pending first-time events
+        Map<String, FirstTimeEventDefinition> newPendingEvents = parsePendingFirstTimeEvents(flagsResponseJson);
+
+        // Merge with activated events to preserve session state
+        mergeWithActivatedEvents(newFlags, newPendingEvents);
+
+        // Update state
+        synchronized (mLock) {
+          mFlags = Collections.unmodifiableMap(newFlags);
+        }
+        mPendingFirstTimeEvents = newPendingEvents;
+
+        MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded, " +
+                newPendingEvents.size() + " pending first-time events.");
+      } catch (Exception e) {
+        MPLog.e(LOGTAG, "Unexpected error parsing flags response", e);
+        success = false;  // Mark as failure so callbacks receive correct status
       }
-      MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded.");
     } else {
       MPLog.w(
           LOGTAG,
@@ -761,5 +801,245 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
     MPLog.w(LOGTAG, "Flag value for " + flagName + " not boolean: " + variantValue);
     return fallbackValue;
+  }
+
+  // --- First-Time Event Targeting Methods ---
+
+  /**
+   * Checks if the tracked event matches any pending first-time event conditions.
+   * Runs on Handler thread for thread-safe access to mPendingFirstTimeEvents and mActivatedFirstTimeEvents.
+   */
+  private void _checkFirstTimeEventOnHandlerThread(String eventName, JSONObject properties) {
+    if (mPendingFirstTimeEvents.isEmpty()) {
+      return; // No pending events to check
+    }
+
+    // Iterate through all pending events using Iterator to allow safe removal
+    java.util.Iterator<Map.Entry<String, FirstTimeEventDefinition>> iterator =
+        mPendingFirstTimeEvents.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, FirstTimeEventDefinition> entry = iterator.next();
+      String compositeKey = entry.getKey();
+      FirstTimeEventDefinition def = entry.getValue();
+
+      // Skip if already activated
+      if (mActivatedFirstTimeEvents.contains(compositeKey)) {
+        continue;
+      }
+
+      // Check event name match (case-sensitive)
+      if (!eventName.equals(def.eventName)) {
+        continue;
+      }
+
+      // Check property filters if present
+      if (def.propertyFilters != null && def.propertyFilters.length() > 0) {
+        if (!FirstTimeEventChecker.propertyFiltersMatch(properties, def.propertyFilters)) {
+          continue; // Property filters didn't match
+        }
+      }
+
+      // Match found - activate this event
+      _activateFirstTimeEvent(compositeKey, def, iterator);
+    }
+  }
+
+  /**
+   * Activates a first-time event: updates the flag variant, marks as activated, and fires recording API.
+   * Runs on Handler thread.
+   */
+  private void _activateFirstTimeEvent(String compositeKey, FirstTimeEventDefinition def,
+                                        java.util.Iterator<Map.Entry<String, FirstTimeEventDefinition>> iterator) {
+    // Add to activated set
+    mActivatedFirstTimeEvents.add(compositeKey);
+
+    // Remove from pending map using iterator to avoid ConcurrentModificationException
+    iterator.remove();
+
+    // Update the flag variant (synchronized access to mFlags)
+    synchronized (mLock) {
+      if (mFlags == null) {
+        mFlags = new HashMap<>();
+      }
+      Map<String, MixpanelFlagVariant> mutableFlags = new HashMap<>(mFlags);
+      mutableFlags.put(def.flagKey, def.pendingVariant);
+      mFlags = Collections.unmodifiableMap(mutableFlags);
+    }
+
+    // Fire recording API (fire-and-forget)
+    _fireRecordingAPI(def);
+  }
+
+  /**
+   * Submits a recording API call to the network executor.
+   * Fire-and-forget - errors are logged but not propagated.
+   */
+  private void _fireRecordingAPI(FirstTimeEventDefinition def) {
+    mNetworkExecutor.execute(() -> {
+      try {
+        _performRecordingRequest(def);
+        MPLog.v(LOGTAG, "First-time event recorded successfully: " + def.getCompositeKey());
+      } catch (RemoteService.ServiceUnavailableException e) {
+        MPLog.w(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Service unavailable: " + e.getMessage() +
+                ". Event tracked locally but server may not be notified.", e);
+      } catch (IOException e) {
+        MPLog.w(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Network error: " + e.getMessage() +
+                ". Event tracked locally but server may not be notified.", e);
+      } catch (JSONException e) {
+        MPLog.e(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Invalid request data: " + e.getMessage() +
+                ". This may indicate a bug.", e);
+      } catch (Exception e) {
+        MPLog.e(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
+                " - Unexpected error: " + e.getClass().getName() + ": " + e.getMessage(), e);
+      }
+    });
+  }
+
+  /**
+   * Performs the HTTP POST request to record the first-time event activation.
+   * Runs on Network Executor thread.
+   * @throws IOException on network errors
+   * @throws JSONException on JSON construction errors
+   * @throws RemoteService.ServiceUnavailableException on service unavailability
+   */
+  private void _performRecordingRequest(FirstTimeEventDefinition def) throws IOException, JSONException, RemoteService.ServiceUnavailableException {
+    final FeatureFlagDelegate delegate = mDelegate.get();
+    if (delegate == null) {
+      MPLog.w(LOGTAG, "Delegate is null, cannot record first-time event");
+      return;
+    }
+
+    // Build endpoint URL using the flags recording endpoint
+    String endpoint = mFlagsRecordingEndpoint + def.flagId + "/first-time-events";
+
+    // Build request body
+    JSONObject body = new JSONObject();
+    body.put("distinct_id", delegate.getDistinctId());
+    body.put("project_id", def.projectId);
+    body.put("first_time_event_hash", def.firstTimeEventHash);
+
+    byte[] requestBodyBytes = body.toString().getBytes(StandardCharsets.UTF_8);
+
+    // Build headers with Basic auth
+    String token = delegate.getToken();
+    String authString = token + ":";
+    String base64Auth = Base64Coder.encodeString(authString);
+
+    Map<String, String> headers = new HashMap<>();
+    headers.put("Authorization", "Basic " + base64Auth);
+    headers.put("Content-Type", "application/json; charset=utf-8");
+    headers.put("traceparent", W3CTraceContext.generateTraceparent());
+
+    // Perform POST request
+    RemoteService.RequestResult result = mHttpService.performRequest(
+            RemoteService.HttpMethod.POST,
+            endpoint,
+            delegate.getMPConfig().getProxyServerInteractor(),
+            null, // No URL params
+            headers,
+            requestBodyBytes,
+            delegate.getMPConfig().getSSLSocketFactory()
+    );
+
+    if (!result.isSuccess()) {
+      MPLog.w(LOGTAG, "Recording API returned non-success response for event " + def.getCompositeKey());
+    }
+  }
+
+  /**
+   * Parses the pending_first_time_events array from the flags API response.
+   * Returns a map keyed by composite key (flag_key:first_time_event_hash).
+   */
+  private Map<String, FirstTimeEventDefinition> parsePendingFirstTimeEvents(JSONObject response) {
+    Map<String, FirstTimeEventDefinition> result = new HashMap<>();
+
+    try {
+      if (!response.has(MPConstants.Flags.PENDING_FIRST_TIME_EVENTS)) {
+        return result; // No pending events in response
+      }
+
+      JSONArray pendingArray = response.getJSONArray(MPConstants.Flags.PENDING_FIRST_TIME_EVENTS);
+      for (int i = 0; i < pendingArray.length(); i++) {
+        try {
+          JSONObject eventObj = pendingArray.getJSONObject(i);
+
+          // Extract required fields
+          String flagKey = eventObj.getString(MPConstants.Flags.FLAG_KEY);
+          String flagId = eventObj.getString(MPConstants.Flags.FLAG_ID);
+          String projectId = eventObj.getString(MPConstants.Flags.PROJECT_ID);
+          String firstTimeEventHash = eventObj.getString(MPConstants.Flags.FIRST_TIME_EVENT_HASH);
+          String eventName = eventObj.getString(MPConstants.Flags.EVENT_NAME);
+
+          // Extract optional property filters
+          JSONObject propertyFilters = eventObj.optJSONObject(MPConstants.Flags.PROPERTY_FILTERS);
+
+          // Parse pending variant
+          JSONObject pendingVariantObj = eventObj.getJSONObject(MPConstants.Flags.PENDING_VARIANT);
+          MixpanelFlagVariant pendingVariant = JsonUtils.parseFlagVariant(pendingVariantObj);
+
+          // Create definition
+          FirstTimeEventDefinition def = new FirstTimeEventDefinition(
+                  flagKey,
+                  flagId,
+                  projectId,
+                  firstTimeEventHash,
+                  eventName,
+                  propertyFilters,
+                  pendingVariant
+          );
+
+          result.put(def.getCompositeKey(), def);
+        } catch (Exception e) {
+          MPLog.e(LOGTAG, "Failed to parse pending first-time event at index " + i + ": " + e.getMessage());
+          // Skip this invalid event, continue with others
+        }
+      }
+
+      MPLog.d(LOGTAG, "Parsed " + result.size() + " pending first-time events");
+    } catch (JSONException e) {
+      MPLog.e(LOGTAG, "Failed to parse pending_first_time_events array: " + e.getMessage());
+    }
+
+    return result;
+  }
+
+  /**
+   * Merges newly fetched flags and pending events with activated events to preserve session state.
+   * Modifies the flags map in-place to preserve activated flag variants.
+   */
+  private void mergeWithActivatedEvents(
+          Map<String, MixpanelFlagVariant> flags,
+          Map<String, FirstTimeEventDefinition> newPendingEvents) {
+
+    // For each activated composite key, preserve the activated flag variant
+    for (String activatedCompositeKey : mActivatedFirstTimeEvents) {
+      // Extract flag key from composite key (format: "flag_key:hash")
+      // Use defensive parsing to avoid ArrayIndexOutOfBoundsException
+      int colonIndex = activatedCompositeKey.indexOf(":");
+      if (colonIndex == -1) {
+        MPLog.w(LOGTAG, "Malformed composite key (missing colon): " + activatedCompositeKey);
+        continue;
+      }
+      String flagKey = activatedCompositeKey.substring(0, colonIndex);
+
+      // Check if this flag exists in current mFlags (activated variant)
+      MixpanelFlagVariant activatedVariant;
+      synchronized (mLock) {
+        if (mFlags != null && mFlags.containsKey(flagKey)) {
+          activatedVariant = mFlags.get(flagKey);
+        } else {
+          continue; // No activated variant to preserve
+        }
+      }
+
+      // Preserve this activated variant in the new flags map
+      flags.put(flagKey, activatedVariant);
+
+      // Remove this event from newPendingEvents if present (already activated)
+      newPendingEvents.remove(activatedCompositeKey);
+    }
   }
 }

@@ -371,6 +371,10 @@ public class MPConfig {
         return mFlagsEndpoint;
     }
 
+    public String getFlagsRecordingEndpoint() {
+        return mFlagsRecordingEndpoint;
+    }
+
     public boolean getTrackAutomaticEvents() {
         return mTrackAutomaticEvents;
     }
@@ -441,10 +445,15 @@ public class MPConfig {
 
     private void setFlagsEndpointWithBaseURL(String baseURL) {
         setFlagsEndpoint(baseURL + MPConstants.URL.FLAGS);
+        setFlagsRecordingEndpoint(baseURL + MPConstants.URL.FLAGS);
     }
 
     private void setFlagsEndpoint(String flagsEndpoint) {
         mFlagsEndpoint = flagsEndpoint;
+    }
+
+    private void setFlagsRecordingEndpoint(String flagsRecordingEndpoint) {
+        mFlagsRecordingEndpoint = flagsRecordingEndpoint;
     }
 
     public int getMinimumSessionDuration() {
@@ -611,6 +620,7 @@ public class MPConfig {
     private String mPeopleEndpoint;
     private String mGroupsEndpoint;
     private String mFlagsEndpoint;
+    private String mFlagsRecordingEndpoint;
     private int mFlushBatchSize;
     private boolean shouldGzipRequestPayload;
 

@@ -215,7 +215,7 @@ import org.json.JSONObject;
 
     static class EventDescription extends MixpanelMessageDescription {
         public EventDescription(String eventName, JSONObject properties, String token) {
-            this(eventName, properties, token, false, new JSONObject());
+            this(eventName, properties, token, false, new JSONObject(), null);
         }
 
         public EventDescription(
@@ -224,10 +224,21 @@ import org.json.JSONObject;
                 String token,
                 boolean isAutomatic,
                 JSONObject sessionMetada) {
+            this(eventName, properties, token, isAutomatic, sessionMetada, null);
+        }
+
+        public EventDescription(
+                String eventName,
+                JSONObject properties,
+                String token,
+                boolean isAutomatic,
+                JSONObject sessionMetada,
+                FirstTimeEventListener firstTimeEventListener) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
             mSessionMetadata = sessionMetada;
+            mFirstTimeEventListener = firstTimeEventListener;
         }
 
         public String getEventName() {
@@ -246,9 +257,14 @@ import org.json.JSONObject;
             return mIsAutomatic;
         }
 
+        public FirstTimeEventListener getFirstTimeEventListener() {
+            return mFirstTimeEventListener;
+        }
+
         private final String mEventName;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
+        private final FirstTimeEventListener mFirstTimeEventListener;
     }
 
     static class PeopleDescription extends MixpanelMessageDescription {
@@ -355,10 +371,12 @@ import org.json.JSONObject;
         public FirstLaunchDescription(
                 String token,
                 EventDescription firstOpenEvent,
-                PersistentIdentity persistentIdentity) {
+                PersistentIdentity persistentIdentity,
+                FirstTimeEventListener firstTimeEventListener) {
             super(token);
             mFirstOpenEvent = firstOpenEvent;
             mPersistentIdentity = persistentIdentity;
+            mFirstTimeEventListener = firstTimeEventListener;
         }
 
         public EventDescription getFirstOpenEvent() {
@@ -369,8 +387,13 @@ import org.json.JSONObject;
             return mPersistentIdentity;
         }
 
+        public FirstTimeEventListener getFirstTimeEventListener() {
+            return mFirstTimeEventListener;
+        }
+
         private final EventDescription mFirstOpenEvent;
         private final PersistentIdentity mPersistentIdentity;
+        private final FirstTimeEventListener mFirstTimeEventListener;
     }
 
     // Sends a message if and only if we are running with Mixpanel Message log enabled.
@@ -464,6 +487,13 @@ import org.json.JSONObject;
                         try {
                             token = eventDescription.getToken();
                             returnCode = insertEventToDb(eventDescription);
+                            // Check first-time event targeting for this event
+                            FirstTimeEventListener listener = eventDescription.getFirstTimeEventListener();
+                            if (listener != null) {
+                                listener.onEventTracked(
+                                        eventDescription.getEventName(),
+                                        eventDescription.getProperties());
+                            }
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -519,6 +549,13 @@ import org.json.JSONObject;
                         if (persistentIdentity.isFirstLaunch(dbExistedBeforeInit, token)) {
                             try {
                                 returnCode = insertEventToDb(openEvent);
+                                // Check first-time event targeting for the FIRST_OPEN event
+                                FirstTimeEventListener listener = desc.getFirstTimeEventListener();
+                                if (listener != null) {
+                                    listener.onEventTracked(
+                                            openEvent.getEventName(),
+                                            openEvent.getProperties());
+                                }
                             } catch (final JSONException e) {
                                 MPLog.e(LOGTAG, "Exception tracking event " + openEvent.getEventName(), e);
                             }
