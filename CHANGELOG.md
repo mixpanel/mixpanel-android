@@ -1,5 +1,13 @@
 # Changelog
 
+## [v8.3.0](https://github.com/mixpanel/mixpanel-android/tree/v8.3.0) (2026-02-06)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.2.7...v8.3.0)
+
+**Merged pull requests:**
+
+- feat: Add DeviceIdProvider for custom device ID generation [\#880](https://github.com/mixpanel/mixpanel-android/pull/880)
+
 ## [v8.2.6](https://github.com/mixpanel/mixpanel-android/tree/v8.2.6) (2026-01-17)
 
 [Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.2.5...v8.2.6)
@@ -1665,6 +1673,8 @@ events being sent.
 * Renamed the event method to track, to be more consistent with the existing APIs.
   Furthermore, the propeties object passed to the new track method is no longer a HashMap, but a JSONObject.
   This will cause types to be correctly preseved in Segmentation.
+
+
 
 
 
