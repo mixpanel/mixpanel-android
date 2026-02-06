@@ -21,12 +21,12 @@ public class TestUtils {
 
     public static class CleanMixpanelAPI extends MixpanelAPI {
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final boolean trackAutomaticEvents) {
-            super(context, referrerPreferences, token, MPConfig.getInstance(context, null), 
+            super(context, referrerPreferences, token, MPConfig.getInstance(context, null),
                   new MixpanelOptions.Builder().featureFlagsEnabled(true).build(), trackAutomaticEvents);
         }
 
         public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token) {
-            super(context, referrerPreferences, token, MPConfig.getInstance(context, null), 
+            super(context, referrerPreferences, token, MPConfig.getInstance(context, null),
                   new MixpanelOptions.Builder().featureFlagsEnabled(true).build(), false);
         }
 
@@ -34,8 +34,12 @@ public class TestUtils {
             super(context, referrerPreferences, token, false, null, instanceName, false);
         }
 
+        public CleanMixpanelAPI(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final MixpanelOptions options) {
+            super(context, referrerPreferences, token, MPConfig.getInstance(context, null), options, false);
+        }
+
         @Override
-            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName) {
+            /* package */ PersistentIdentity getPersistentIdentity(final Context context, final Future<SharedPreferences> referrerPreferences, final String token, final String instanceName, final DeviceIdProvider deviceIdProvider) {
             String instanceKey = instanceName != null ? instanceName : token;
             final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
             final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
@@ -49,7 +53,7 @@ public class TestUtils {
             final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
             mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).apply();
 
-            return super.getPersistentIdentity(context, referrerPreferences, token, instanceName);
+            return super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
         }
 
         @Override

@@ -222,7 +222,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mSessionMetadata = new SessionMetadata();
         mMessages = getAnalyticsMessages();
         mPersistentIdentity =
-                getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName());
+                getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName(), options.getDeviceIdProvider());
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagManager =
@@ -2135,7 +2135,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     /* package */ PersistentIdentity getPersistentIdentity(
             final Context context, Future<SharedPreferences> referrerPreferences, final String token) {
-        return getPersistentIdentity(context, referrerPreferences, token, null);
+        return getPersistentIdentity(context, referrerPreferences, token, null, null);
     }
 
     /* package */ PersistentIdentity getPersistentIdentity(
@@ -2143,6 +2143,15 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             Future<SharedPreferences> referrerPreferences,
             final String token,
             final String instanceName) {
+        return getPersistentIdentity(context, referrerPreferences, token, instanceName, null);
+    }
+
+    /* package */ PersistentIdentity getPersistentIdentity(
+            final Context context,
+            Future<SharedPreferences> referrerPreferences,
+            final String token,
+            final String instanceName,
+            final DeviceIdProvider deviceIdProvider) {
         final SharedPreferencesLoader.OnPrefsLoadedListener listener =
                 new SharedPreferencesLoader.OnPrefsLoadedListener() {
                     @Override
@@ -2169,7 +2178,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 sPrefsLoader.loadPreferences(context, mixpanelPrefsName, null);
 
         return new PersistentIdentity(
-                referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs);
+                referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs, deviceIdProvider);
     }
 
     /* package */ boolean sendAppOpen() {

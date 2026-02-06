@@ -17,6 +17,7 @@ public class MixpanelOptions {
     private final JSONObject superProperties;
     private final boolean featureFlagsEnabled;
     private final JSONObject featureFlagsContext;
+    private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
 
@@ -26,6 +27,7 @@ public class MixpanelOptions {
         this.superProperties = builder.superProperties;
         this.featureFlagsEnabled = builder.featureFlagsEnabled;
         this.featureFlagsContext = builder.featureFlagsContext;
+        this.deviceIdProvider = builder.deviceIdProvider;
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
     }
@@ -71,6 +73,16 @@ public class MixpanelOptions {
     }
 
     /**
+     * Returns the custom device ID provider, or null if not set.
+     *
+     * @return The configured {@link DeviceIdProvider}, or null for default behavior.
+     */
+    @Nullable
+    public DeviceIdProvider getDeviceIdProvider() {
+        return deviceIdProvider;
+    }
+
+    /**
      * Returns the server URL configured for this Mixpanel instance.
      *
      * @return The server URL, or null if not configured (will use default).
@@ -94,6 +106,7 @@ public class MixpanelOptions {
         private JSONObject superProperties;
         private boolean featureFlagsEnabled = false;
         private JSONObject featureFlagsContext = new JSONObject();
+        private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
 
@@ -178,6 +191,31 @@ public class MixpanelOptions {
                     this.featureFlagsContext = null;
                 }
             }
+            return this;
+        }
+
+        /**
+         * Sets a custom device ID provider.
+         *
+         * <p>Use this to control device ID generation instead of relying on the SDK's
+         * default behavior (random UUID).
+         *
+         * <p><b>Important:</b> The device ID strategy is an architectural decision that
+         * should be made at project inception, not retrofitted later. Adding a provider
+         * to an existing app may cause identity discontinuity.
+         *
+         * <p><b>Controlling Reset Behavior:</b>
+         * <ul>
+         *   <li>Return the <b>same value</b> each time = Device ID never changes</li>
+         *   <li>Return a <b>different value</b> each time = Device ID changes on reset</li>
+         * </ul>
+         *
+         * @param deviceIdProvider The provider to use, or null for default behavior.
+         * @return This Builder instance for chaining.
+         * @see DeviceIdProvider
+         */
+        public Builder deviceIdProvider(DeviceIdProvider deviceIdProvider) {
+            this.deviceIdProvider = deviceIdProvider;
             return this;
         }
 
