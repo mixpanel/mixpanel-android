@@ -53,7 +53,6 @@ jobs:
           generate_release_notes: true
           append_body: true
           body: |
-
             ---
             **Note**: After this GitHub release is created, the Maven Central deployment must be manually released at https://central.sonatype.com/publishing/deployments
         env:
