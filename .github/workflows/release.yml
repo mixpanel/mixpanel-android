@@ -46,34 +46,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
           force: false
-      - name: "Prepare for the Github Release"
-        id: generate-release-changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          output: "output.md"
-          headerLabel: "# Changelog"
-          onlyLastTag: true
-          stripHeaders: false
-          breakingLabel: '### Breaking'
-          enhancementLabel: '### Enhancements'
-          stripGeneratorNotice: true
-          bugsLabel: '### Fixes'
-          issues: false
-          issuesWoLabels: false
-          pullRequests: true
-          prWoLabels: true
-          author: false
-          verbose: true
       - name: "🚀 Create GitHub Release"
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          draft: true
+          generate_release_notes: true
+          append_body: true
           body: |
-            ${{ steps.generate-release-changelog.outputs.changelog }}
-            
+
             ---
             **Note**: After this GitHub release is created, the Maven Central deployment must be manually released at https://central.sonatype.com/publishing/deployments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
