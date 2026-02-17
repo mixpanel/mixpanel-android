@@ -1,5 +1,8 @@
 name: BTAR Agent Readiness
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [master]
