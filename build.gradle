@@ -158,45 +158,6 @@ tasks.register('jacocoTestReport', JacocoReport) {
     sourceDirectories.setFrom(files([mainSrc]))
     classDirectories.setFrom(files([debugTree]))
     executionData.setFrom(fileTree(dir: "${buildDir}", includes: ['**/*.exec']))
-
-    doLast {
-        // Post-process XML report: move report-level counters before package elements
-        // so that tools parsing the first <counter type="LINE"> match get the overall summary
-        def xmlFile = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
-        if (xmlFile.exists()) {
-            def content = xmlFile.text
-            // Extract report-level counters (at the end, before </report>)
-            def reportCounterPattern = /(<counter\s+type="(?:INSTRUCTION|BRANCH|LINE|COMPLEXITY|METHOD|CLASS)"\s+missed="\d+"\s+covered="\d+"\s*\/>)/
-            def allCounters = []
-            def matcher = (content =~ reportCounterPattern)
-            def lastCounterEnd = -1
-            matcher.each { match ->
-                lastCounterEnd = matcher.end()
-            }
-            // Find report-level counters: those between last </package> and </report>
-            def lastPackageEnd = content.lastIndexOf('</package>')
-            if (lastPackageEnd >= 0) {
-                lastPackageEnd += '</package>'.length()
-                def reportSection = content.substring(lastPackageEnd, content.indexOf('</report>'))
-                def reportCounters = []
-                def cm = (reportSection =~ reportCounterPattern)
-                cm.each { match ->
-                    reportCounters.add(match[0])
-                }
-                if (!reportCounters.isEmpty()) {
-                    // Remove trailing report counters and re-insert after sessioninfo
-                    def cleanedContent = content.substring(0, lastPackageEnd) + '</report>'
-                    def sessionInfoEnd = cleanedContent.indexOf('/>')
-                    if (sessionInfoEnd >= 0) {
-                        sessionInfoEnd += 2
-                        def prefix = cleanedContent.substring(0, sessionInfoEnd)
-                        def suffix = cleanedContent.substring(sessionInfoEnd)
-                        xmlFile.text = prefix + reportCounters.join('') + suffix
-                    }
-                }
-            }
-        }
-    }
 }
 
 apply from: rootProject.file('maven.gradle')
