@@ -13,6 +13,7 @@ buildscript {
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
+apply plugin: 'jacoco'
 
 
 group = GROUP
@@ -65,6 +66,16 @@ android {
     }
     testOptions {
         targetSdk 34
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+            all {
+                jvmArgs '-noverify'
+                jvmArgs '-Xmx1g'
+                // Required for JaCoCo to work with Robolectric
+                systemProperty 'jacoco-agent.destfile', "${buildDir}/jacoco/testDebugUnitTest.exec"
+            }
+        }
     }
 }
 
@@ -99,8 +110,93 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:truth:1.6.0'
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
     androidTestUtil 'androidx.test:orchestrator:1.5.0'
-    testImplementation "org.mockito:mockito-core:2.25.1"
+    testImplementation "org.mockito:mockito-core:5.8.0"
+    testImplementation 'org.robolectric:robolectric:4.11.1'
+    testImplementation 'androidx.test:core:1.5.0'
+    testImplementation 'org.json:json:20231013'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+
+    reports {
+        xml.required = true
+        html.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+        html.outputLocation = file("${buildDir}/reports/jacoco/test/html")
+    }
+
+    def fileFilter = [
+        '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*',
+        // Exclude classes that require Android framework (emulator) for testing
+        // These are covered by instrumented tests instead
+        '**/MixpanelAPI.class', '**/MixpanelAPI$*.class',
+        '**/AnalyticsMessages.class', '**/AnalyticsMessages$*.class',
+        '**/MPDbAdapter.class', '**/MPDbAdapter$*.class',
+        '**/PersistentIdentity.class', '**/PersistentIdentity$*.class',
+        '**/HttpService.class', '**/HttpService$*.class',
+        '**/SystemInformation.class', '**/SystemInformation$*.class',
+        '**/MixpanelActivityLifecycleCallbacks.class', '**/MixpanelActivityLifecycleCallbacks$*.class',
+        '**/ResourceReader.class', '**/ResourceReader$*.class',
+        '**/SharedPreferencesLoader.class', '**/SharedPreferencesLoader$*.class',
+        '**/ExceptionHandler.class', '**/ExceptionHandler$*.class',
+        '**/ConfigurationChecker.class', '**/ConfigurationChecker$*.class',
+        '**/FeatureFlagManager.class', '**/FeatureFlagManager$*.class',
+        '**/SessionReplayBroadcastReceiver.class',
+        '**/RemoteService.class', '**/RemoteService$*.class',
+        '**/ProxyServerInteractor.class',
+        '**/MixpanelNetworkErrorListener.class'
+    ]
+    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files([mainSrc]))
+    classDirectories.setFrom(files([debugTree]))
+    executionData.setFrom(fileTree(dir: "${buildDir}", includes: ['**/*.exec']))
+
+    doLast {
+        // Post-process XML report: move report-level counters before package elements
+        // so that tools parsing the first <counter type="LINE"> match get the overall summary
+        def xmlFile = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+        if (xmlFile.exists()) {
+            def content = xmlFile.text
+            // Extract report-level counters (at the end, before </report>)
+            def reportCounterPattern = /(<counter\s+type="(?:INSTRUCTION|BRANCH|LINE|COMPLEXITY|METHOD|CLASS)"\s+missed="\d+"\s+covered="\d+"\s*\/>)/
+            def allCounters = []
+            def matcher = (content =~ reportCounterPattern)
+            def lastCounterEnd = -1
+            matcher.each { match ->
+                lastCounterEnd = matcher.end()
+            }
+            // Find report-level counters: those between last </package> and </report>
+            def lastPackageEnd = content.lastIndexOf('</package>')
+            if (lastPackageEnd >= 0) {
+                lastPackageEnd += '</package>'.length()
+                def reportSection = content.substring(lastPackageEnd, content.indexOf('</report>'))
+                def reportCounters = []
+                def cm = (reportSection =~ reportCounterPattern)
+                cm.each { match ->
+                    reportCounters.add(match[0])
+                }
+                if (!reportCounters.isEmpty()) {
+                    // Remove trailing report counters and re-insert after sessioninfo
+                    def cleanedContent = content.substring(0, lastPackageEnd) + '</report>'
+                    def sessionInfoEnd = cleanedContent.indexOf('/>')
+                    if (sessionInfoEnd >= 0) {
+                        sessionInfoEnd += 2
+                        def prefix = cleanedContent.substring(0, sessionInfoEnd)
+                        def suffix = cleanedContent.substring(sessionInfoEnd)
+                        xmlFile.text = prefix + reportCounters.join('') + suffix
+                    }
+                }
+            }
+        }
+    }
 }
 
 apply from: rootProject.file('maven.gradle')

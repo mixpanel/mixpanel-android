@@ -1,0 +1,9 @@
+{
+  "score": 80,
+  "timestamp": "2026-02-17T22:07:25.423Z",
+  "breakdown": {
+    "typeStrictness": 30,
+    "lintErrors": 30,
+    "coverage": 20
+  }
+}
