@@ -74,6 +74,10 @@ android {
                 jvmArgs '-Xmx1g'
                 // Required for JaCoCo to work with Robolectric
                 systemProperty 'jacoco-agent.destfile', "${buildDir}/jacoco/testDebugUnitTest.exec"
+                jacoco {
+                    includeNoLocationClasses = true
+                    excludes = ['jdk.internal.*']
+                }
             }
         }
     }
