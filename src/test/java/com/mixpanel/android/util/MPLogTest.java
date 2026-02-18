@@ -3,9 +3,13 @@ package com.mixpanel.android.util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.shadows.ShadowLog;
 
 import static org.junit.Assert.*;
 
+@RunWith(RobolectricTestRunner.class)
 public class MPLogTest {
 
     private int savedLevel;
@@ -13,6 +17,7 @@ public class MPLogTest {
     @Before
     public void setUp() {
         savedLevel = MPLog.getLevel();
+        ShadowLog.reset();
     }
 
     @After
@@ -58,59 +63,77 @@ public class MPLogTest {
     @Test
     public void testVerboseLogging() {
         MPLog.setLevel(MPLog.VERBOSE);
-        // returnDefaultValues = true means Log.v returns 0 instead of throwing
+        ShadowLog.reset();
         MPLog.v("TestTag", "verbose message");
-        MPLog.v("TestTag", "verbose message", new RuntimeException("test"));
+        assertFalse("Verbose message should appear in logs", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("verbose message", ShadowLog.getLogs().get(0).msg);
     }
 
     @Test
     public void testDebugLogging() {
         MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
         MPLog.d("TestTag", "debug message");
-        MPLog.d("TestTag", "debug message", new RuntimeException("test"));
+        assertFalse("Debug message should appear in logs", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("debug message", ShadowLog.getLogs().get(0).msg);
     }
 
     @Test
     public void testInfoLogging() {
         MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
         MPLog.i("TestTag", "info message");
-        MPLog.i("TestTag", "info message", new RuntimeException("test"));
+        assertFalse("Info message should appear in logs", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("info message", ShadowLog.getLogs().get(0).msg);
     }
 
     @Test
     public void testWarnLogging() {
         MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
         MPLog.w("TestTag", "warn message");
-        MPLog.w("TestTag", "warn message", new RuntimeException("test"));
+        assertFalse("Warn message should appear in logs", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("warn message", ShadowLog.getLogs().get(0).msg);
     }
 
     @Test
     public void testErrorLogging() {
         MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
         MPLog.e("TestTag", "error message");
-        MPLog.e("TestTag", "error message", new RuntimeException("test"));
+        assertFalse("Error message should appear in logs", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("error message", ShadowLog.getLogs().get(0).msg);
     }
 
     @Test
     public void testLevelFiltering() {
         MPLog.setLevel(MPLog.ERROR);
-        // These should be filtered (no-ops due to level check)
+        ShadowLog.reset();
         MPLog.v("TestTag", "should be filtered");
         MPLog.d("TestTag", "should be filtered");
         MPLog.i("TestTag", "should be filtered");
         MPLog.w("TestTag", "should be filtered");
-        // This should pass through
+        assertTrue("Filtered messages should not appear", ShadowLog.getLogs().isEmpty());
         MPLog.e("TestTag", "should pass");
+        assertFalse("ERROR should pass through", ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
     }
 
     @Test
     public void testNoneLevel() {
         MPLog.setLevel(MPLog.NONE);
+        ShadowLog.reset();
         // All methods should be filtered
         MPLog.v("TestTag", "filtered");
         MPLog.d("TestTag", "filtered");
         MPLog.i("TestTag", "filtered");
         MPLog.w("TestTag", "filtered");
         MPLog.e("TestTag", "filtered");
+        assertTrue("All messages should be filtered at NONE level", ShadowLog.getLogs().isEmpty());
     }
 }

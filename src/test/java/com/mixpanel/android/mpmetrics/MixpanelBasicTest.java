@@ -13,7 +13,6 @@ import static org.junit.Assert.fail;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,7 +24,6 @@ import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,23 +56,6 @@ public class MixpanelBasicTest {
             MPConfig.getInstance(ApplicationProvider.getApplicationContext(), null));
     messages.hardKill();
     Thread.sleep(2000);
-
-    try {
-      SystemInformation systemInformation =
-          SystemInformation.getInstance(ApplicationProvider.getApplicationContext());
-
-      final StringBuilder queryBuilder = new StringBuilder();
-      queryBuilder.append("&properties=");
-      JSONObject properties = new JSONObject();
-      properties.putOpt("$android_lib_version", MPConfig.VERSION);
-      properties.putOpt("$android_app_version", systemInformation.getAppVersionName());
-      properties.putOpt("$android_version", Build.VERSION.RELEASE);
-      properties.putOpt("$android_app_release", systemInformation.getAppVersionCode());
-      properties.putOpt("$android_device_model", Build.MODEL);
-      queryBuilder.append(URLEncoder.encode(properties.toString(), "utf-8"));
-      mAppProperties = queryBuilder.toString();
-    } catch (Exception e) {
-    }
   } // end of setUp() method definition
 
   @Test
@@ -2144,8 +2125,6 @@ public class MixpanelBasicTest {
   private Future<SharedPreferences> mMockPreferences;
 
   private static final int POLL_WAIT_SECONDS = 10;
-
-  private String mAppProperties;
 
   private PersistentIdentity mPersistentIdentity;
 }
