@@ -13,6 +13,7 @@ buildscript {
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
+apply plugin: 'jacoco'
 
 
 group = GROUP
@@ -65,6 +66,20 @@ android {
     }
     testOptions {
         targetSdk 34
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+            all {
+                jvmArgs '-noverify'
+                jvmArgs '-Xmx1g'
+                // Required for JaCoCo to work with Robolectric
+                systemProperty 'jacoco-agent.destfile', "${buildDir}/jacoco/testDebugUnitTest.exec"
+                jacoco {
+                    includeNoLocationClasses = true
+                    excludes = ['jdk.internal.*']
+                }
+            }
+        }
     }
 }
 
@@ -99,8 +114,51 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:truth:1.6.0'
     androidTestImplementation "org.mockito:mockito-android:2.25.1"
     androidTestUtil 'androidx.test:orchestrator:1.5.0'
-    testImplementation "org.mockito:mockito-core:2.25.1"
+    testImplementation "org.mockito:mockito-core:5.8.0"
+    testImplementation 'org.robolectric:robolectric:4.11.1'
+    testImplementation 'androidx.test:core:1.5.0'
+    testImplementation 'org.json:json:20231013'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+
+    reports {
+        xml.required = true
+        html.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+        html.outputLocation = file("${buildDir}/reports/jacoco/test/html")
+    }
+
+    def fileFilter = [
+        '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*',
+        // Exclude classes that require Android framework (emulator) for testing
+        // These are covered by instrumented tests instead
+        '**/MixpanelAPI.class', '**/MixpanelAPI$*.class',
+        '**/AnalyticsMessages.class', '**/AnalyticsMessages$*.class',
+        '**/MPDbAdapter.class', '**/MPDbAdapter$*.class',
+        '**/HttpService.class', '**/HttpService$*.class',
+        '**/SystemInformation.class', '**/SystemInformation$*.class',
+        '**/MixpanelActivityLifecycleCallbacks.class', '**/MixpanelActivityLifecycleCallbacks$*.class',
+        '**/ResourceReader.class', '**/ResourceReader$*.class',
+        '**/ExceptionHandler.class', '**/ExceptionHandler$*.class',
+        '**/ConfigurationChecker.class', '**/ConfigurationChecker$*.class',
+        '**/SessionReplayBroadcastReceiver.class',
+        '**/RemoteService.class', '**/RemoteService$*.class',
+        '**/ProxyServerInteractor.class',
+        '**/MixpanelNetworkErrorListener.class'
+    ]
+    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files([mainSrc]))
+    classDirectories.setFrom(files([debugTree]))
+    executionData.setFrom(fileTree(dir: "${buildDir}", includes: ['**/*.exec']))
 }
 
 apply from: rootProject.file('maven.gradle')
