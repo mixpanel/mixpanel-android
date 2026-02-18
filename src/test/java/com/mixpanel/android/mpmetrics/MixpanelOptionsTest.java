@@ -1,7 +1,12 @@
 package com.mixpanel.android.mpmetrics;
 
+import com.mixpanel.android.util.ProxyServerInteractor;
+
 import org.json.JSONObject;
 import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 
@@ -184,5 +189,30 @@ public class MixpanelOptionsTest {
 
         assertNotNull(options.getDeviceIdProvider());
         assertEquals("custom-device-id", options.getDeviceIdProvider().getDeviceId());
+    }
+
+    @Test
+    public void testServerURLWithProxyInteractor() {
+        ProxyServerInteractor interactor = new ProxyServerInteractor() {
+            @Override
+            public Map<String, String> getProxyRequestHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Authorization", "Bearer test-token");
+                return headers;
+            }
+
+            @Override
+            public void onProxyResponse(String apiPath, int responseCode) {
+            }
+        };
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .serverURL("https://proxy.example.com", interactor)
+                .build();
+
+        assertEquals("https://proxy.example.com", options.getServerURL());
+        assertNotNull(options.getProxyServerInteractor());
+        Map<String, String> headers = options.getProxyServerInteractor().getProxyRequestHeaders();
+        assertEquals("Bearer test-token", headers.get("Authorization"));
     }
 }
