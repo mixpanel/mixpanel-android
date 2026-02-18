@@ -16,6 +16,7 @@ import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocketFactory;
+import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,9 +34,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
+import org.robolectric.shadows.ShadowLooper;
 
 @RunWith(RobolectricTestRunner.class)
-@Ignore("TODO: requires emulator — AnalyticsMessages HandlerThread looper does not process messages under Robolectric")
 public class HttpTest {
   private Future<SharedPreferences> mMockPreferences;
   private List<Object> mFlushResults;
@@ -305,6 +308,7 @@ public class HttpTest {
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
+  @Ignore("Double back-off timing not reliably simulated via ShadowLooper — requires emulator")
   @Test
   public void testDoubleServiceUnavailableException() throws InterruptedException {
     mCleanupCalls.clear();
@@ -359,42 +363,43 @@ public class HttpTest {
     assertEquals(1, mCleanupCalls.size());
   }
 
-  private void waitForBackOffTimeInterval() throws InterruptedException {
-    long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
-    Thread.sleep(waitForMs);
-    // Poll for completion with shorter intervals instead of fixed 1500ms wait
-    pollForCompletion(200);
-  }
-
-  private void waitForFlushInternval() throws InterruptedException {
-    Thread.sleep(mFlushInterval);
-    // Poll for completion with shorter intervals instead of fixed 1500ms wait
-    pollForCompletion(200);
-  }
-
-  private void pollForCompletion(long maxWaitMs) throws InterruptedException {
-    // Poll in 10ms intervals up to maxWaitMs
-    long endTime = System.currentTimeMillis() + maxWaitMs;
-    while (System.currentTimeMillis() < endTime) {
-      // Check if the queue has been processed
-      // If we have pending items to verify, give it time
-      if (mPerformRequestCalls.isEmpty() && mCleanupCalls.isEmpty()) {
-        // Give a small buffer for any final processing
-        Thread.sleep(10);
-        return;
+  private void flushAllLoopers() {
+    for (int i = 0; i < 10; i++) {
+      ShadowLooper.idleMainLooper();
+      for (Looper looper : ShadowLooper.getAllLoopers()) {
+        Shadows.shadowOf(looper).idle();
       }
-      Thread.sleep(10);
+      try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+      ShadowLooper.idleMainLooper();
+      for (Looper looper : ShadowLooper.getAllLoopers()) {
+        Shadows.shadowOf(looper).idle();
+      }
     }
   }
 
+  private void waitForBackOffTimeInterval() throws InterruptedException {
+    long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
+    for (Looper looper : ShadowLooper.getAllLoopers()) {
+      Shadows.shadowOf(looper).idleFor(Duration.ofMillis(waitForMs + 100));
+    }
+    flushAllLoopers();
+  }
+
+  private void waitForFlushInternval() throws InterruptedException {
+    for (Looper looper : ShadowLooper.getAllLoopers()) {
+      Shadows.shadowOf(looper).idleFor(Duration.ofMillis(mFlushInterval + 100));
+    }
+    flushAllLoopers();
+  }
+
   private void waitForCleanup(int expectedCount) throws InterruptedException {
-    // Poll for cleanup to reach expected count
-    long endTime = System.currentTimeMillis() + 500; // Wait up to 500ms for cleanup
-    while (System.currentTimeMillis() < endTime) {
+    // Flush loopers and give time for cleanup callbacks
+    for (int i = 0; i < 5; i++) {
       if (mCleanupCalls.size() >= expectedCount) {
         return;
       }
-      Thread.sleep(10);
+      flushAllLoopers();
+      Thread.sleep(50);
     }
   }
 }
