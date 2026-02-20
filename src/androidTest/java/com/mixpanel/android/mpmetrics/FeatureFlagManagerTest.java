@@ -1747,4 +1747,231 @@ public class FeatureFlagManagerTest {
     assertTrue("IsExperimentActive should be included", call.properties.getBoolean("$is_experiment_active"));
     assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
+
+  // ---- getAllVariantsSync / getAllVariants Tests ----
+
+  /**
+   * Helper: creates the standard multi-type flag set used by getAllVariants tests.
+   */
+  private Map<String, MixpanelFlagVariant> createMultiTypeFlagSet() {
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("feature_bool_true", new MixpanelFlagVariant("v_true", true));
+    serverFlags.put("feature_string", new MixpanelFlagVariant("v_string", "test_string"));
+    serverFlags.put("feature_int", new MixpanelFlagVariant("v_int", 42));
+    serverFlags.put("feature_double", new MixpanelFlagVariant("v_double", 99.9));
+    return serverFlags;
+  }
+
+  /**
+   * Helper: loads flags from the multi-type flag set and waits until ready.
+   */
+  private void loadMultiTypeFlagsAndWait() throws InterruptedException {
+    Map<String, MixpanelFlagVariant> serverFlags = createMultiTypeFlagSet();
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); ++i) {
+      Thread.sleep(100);
+    }
+    assertTrue("Flags should be ready after load", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testGetAllVariantsSync_FlagsReady() throws InterruptedException {
+    // Setup: load multiple flags of different types
+    setupFlagsConfig(true, new JSONObject());
+    loadMultiTypeFlagsAndWait();
+
+    // Act: call getAllVariantsSync
+    Map<String, MixpanelFlagVariant> result = mFeatureFlagManager.getAllVariantsSync();
+
+    // Assert: map contains all 4 flags
+    assertNotNull("Result should not be null", result);
+    assertEquals("Should contain all 4 flags", 4, result.size());
+
+    // Verify each flag name is present
+    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
+    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
+    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
+    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
+
+    // Verify variant keys and values
+    assertEquals("v_true", result.get("feature_bool_true").key);
+    assertEquals(true, result.get("feature_bool_true").value);
+
+    assertEquals("v_string", result.get("feature_string").key);
+    assertEquals("test_string", result.get("feature_string").value);
+
+    assertEquals("v_int", result.get("feature_int").key);
+    assertEquals(42, result.get("feature_int").value);
+
+    assertEquals("v_double", result.get("feature_double").key);
+    assertEquals(99.9, result.get("feature_double").value);
+  }
+
+  @Test
+  public void testGetAllVariantsSync_FlagsNotReady() {
+    // Setup: flags are enabled but never loaded
+    setupFlagsConfig(true, new JSONObject());
+    assertFalse("Flags should not be ready", mFeatureFlagManager.areFlagsReady());
+
+    // Act: call getAllVariantsSync without loading flags
+    Map<String, MixpanelFlagVariant> result = mFeatureFlagManager.getAllVariantsSync();
+
+    // Assert: should return empty map (no fetch triggered)
+    assertNotNull("Result should not be null", result);
+    assertTrue("Should return empty map when flags not ready", result.isEmpty());
+  }
+
+  @Test
+  public void testGetAllVariantsSync_NoTracking() throws InterruptedException {
+    // Setup: load flags
+    setupFlagsConfig(true, new JSONObject());
+    loadMultiTypeFlagsAndWait();
+    mMockDelegate.resetTrackCalls();
+
+    // Act: call getAllVariantsSync (should NOT trigger any tracking)
+    Map<String, MixpanelFlagVariant> result = mFeatureFlagManager.getAllVariantsSync();
+
+    // Wait briefly to allow any erroneously-posted tracking calls to process
+    Thread.sleep(200);
+
+    // Assert: no tracking calls should have been made
+    assertTrue("No tracking should occur for getAllVariantsSync", mMockDelegate.trackCalls.isEmpty());
+    // Also verify we actually got flags (test is meaningful)
+    assertFalse("Should have returned flags", result.isEmpty());
+  }
+
+  @Test
+  public void testGetAllVariants_Async_FlagsReady() throws InterruptedException {
+    // Setup: load flags first so they are ready
+    setupFlagsConfig(true, new JSONObject());
+    loadMultiTypeFlagsAndWait();
+
+    // Act: call getAllVariants asynchronously
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<Map<String, MixpanelFlagVariant>> resultRef = new AtomicReference<>();
+
+    mFeatureFlagManager.getAllVariants(result -> {
+      resultRef.set(result);
+      latch.countDown();
+    });
+
+    // Assert: callback fires with full map
+    assertTrue("Callback should complete within timeout",
+        latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    Map<String, MixpanelFlagVariant> result = resultRef.get();
+    assertNotNull("Result should not be null", result);
+    assertEquals("Should contain all 4 flags", 4, result.size());
+
+    // Verify specific values
+    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
+    assertEquals("v_true", result.get("feature_bool_true").key);
+    assertEquals(true, result.get("feature_bool_true").value);
+
+    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
+    assertEquals("v_string", result.get("feature_string").key);
+    assertEquals("test_string", result.get("feature_string").value);
+
+    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
+    assertEquals("v_int", result.get("feature_int").key);
+    assertEquals(42, result.get("feature_int").value);
+
+    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
+    assertEquals("v_double", result.get("feature_double").key);
+    assertEquals(99.9, result.get("feature_double").value);
+  }
+
+  @Test
+  public void testGetAllVariants_Async_FlagsNotReady_FetchSucceeds() throws InterruptedException {
+    // Setup: flags enabled but NOT loaded yet; queue a successful response
+    setupFlagsConfig(true, new JSONObject());
+    assertFalse("Flags should not be ready initially", mFeatureFlagManager.areFlagsReady());
+
+    Map<String, MixpanelFlagVariant> serverFlags = createMultiTypeFlagSet();
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Act: call getAllVariants (should trigger a fetch)
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<Map<String, MixpanelFlagVariant>> resultRef = new AtomicReference<>();
+
+    mFeatureFlagManager.getAllVariants(result -> {
+      resultRef.set(result);
+      latch.countDown();
+    });
+
+    // Assert: callback fires after fetch with all flags
+    assertTrue("Callback should complete within timeout (fetch involved)",
+        latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+    Map<String, MixpanelFlagVariant> result = resultRef.get();
+    assertNotNull("Result should not be null", result);
+    assertEquals("Should contain all 4 flags after fetch", 4, result.size());
+    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
+    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
+    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
+    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
+
+    // Flags should now be ready
+    assertTrue("areFlagsReady should be true after successful fetch",
+        mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testGetAllVariants_Async_FlagsNotReady_FetchFails() throws InterruptedException {
+    // Setup: flags enabled but NOT loaded; queue an error response
+    setupFlagsConfig(true, new JSONObject());
+    assertFalse("Flags should not be ready initially", mFeatureFlagManager.areFlagsReady());
+
+    mMockRemoteService.addError(new IOException("Simulated network failure"));
+
+    // Act: call getAllVariants (should trigger a fetch that fails)
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<Map<String, MixpanelFlagVariant>> resultRef = new AtomicReference<>();
+
+    mFeatureFlagManager.getAllVariants(result -> {
+      resultRef.set(result);
+      latch.countDown();
+    });
+
+    // Assert: callback fires with empty map
+    assertTrue("Callback should complete within timeout (fetch involved)",
+        latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+    Map<String, MixpanelFlagVariant> result = resultRef.get();
+    assertNotNull("Result should not be null", result);
+    assertTrue("Should return empty map on fetch failure", result.isEmpty());
+
+    // Flags should still not be ready after failed fetch
+    assertFalse("areFlagsReady should still be false after failed fetch",
+        mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testGetAllVariants_Async_NoTracking() throws InterruptedException {
+    // Setup: load flags first
+    setupFlagsConfig(true, new JSONObject());
+    loadMultiTypeFlagsAndWait();
+    mMockDelegate.resetTrackCalls();
+
+    // Act: call getAllVariants asynchronously
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<Map<String, MixpanelFlagVariant>> resultRef = new AtomicReference<>();
+
+    mFeatureFlagManager.getAllVariants(result -> {
+      resultRef.set(result);
+      latch.countDown();
+    });
+
+    assertTrue("Callback should complete within timeout",
+        latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    // Wait briefly to allow any erroneously-posted tracking calls to process
+    Thread.sleep(200);
+
+    // Assert: no tracking should have occurred
+    assertTrue("No tracking should occur for getAllVariants", mMockDelegate.trackCalls.isEmpty());
+    // Verify we actually got flags (test is meaningful)
+    assertNotNull("Result should not be null", resultRef.get());
+    assertFalse("Should have returned flags", resultRef.get().isEmpty());
+  }
 }

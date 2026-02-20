@@ -2048,6 +2048,31 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 @NonNull String featureName,
                 boolean fallbackValue,
                 @NonNull FlagCompletionCallback<Boolean> completion);
+
+        // --- Bulk Flag Retrieval ---
+
+        /**
+         * Synchronously retrieves all currently fetched feature flag variants.
+         * Returns an empty map if flags have not been loaded yet.
+         * This method does not trigger tracking for any flags.
+         *
+         * @return A map of flag names to their {@link MixpanelFlagVariant} values,
+         *         or an empty map if flags are not ready.
+         */
+        @NonNull
+        Map<String, MixpanelFlagVariant> getAllVariantsSync();
+
+        /**
+         * Asynchronously retrieves all feature flag variants.
+         * If flags are not ready, an attempt will be made to load them first.
+         * This method does not trigger tracking for any flags.
+         * The completion handler is invoked on the main thread.
+         *
+         * @param completion A callback that receives a map of flag names to their
+         *                   {@link MixpanelFlagVariant} values. Returns an empty map
+         *                   if fetching fails.
+         */
+        void getAllVariants(@NonNull FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion);
     }
 
     /**
