@@ -31,6 +31,7 @@ import org.json.JSONObject;
 
 class FeatureFlagManager implements MixpanelAPI.Flags {
   private static final String LOGTAG = "MixpanelAPI.FeatureFlagManager";
+  private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
   private final WeakReference<FeatureFlagDelegate> mDelegate;
   private final FlagsConfig mFlagsConfig;
@@ -374,6 +375,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   // --- Bulk Flag Retrieval ---
 
+  @Override
   @NonNull
   public Map<String, MixpanelFlagVariant> getAllVariantsSync() {
     synchronized (mLock) {
@@ -381,13 +383,19 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
   }
 
+  @Override
   public void getAllVariants(@NonNull final FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion) {
+    if (completion == null) {
+      MPLog.w(LOGTAG, "Completion callback cannot be null");
+      return;
+    }
+
     mHandler.post(() -> {
       boolean flagsAreCurrentlyReady = (mFlags != null);
 
       if (flagsAreCurrentlyReady) {
-        Map<String, MixpanelFlagVariant> result = mFlags != null ? mFlags : Collections.emptyMap();
-        new Handler(Looper.getMainLooper()).post(() -> completion.onComplete(result));
+        Map<String, MixpanelFlagVariant> result = mFlags;
+        MAIN_HANDLER.post(() -> completion.onComplete(result));
       } else {
         MPLog.i(LOGTAG, "Flags not ready, attempting fetch for getAllVariants call...");
         _fetchFlagsIfNeeded(success -> {

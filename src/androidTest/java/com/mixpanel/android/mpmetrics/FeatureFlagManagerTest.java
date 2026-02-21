@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1973,5 +1974,76 @@ public class FeatureFlagManagerTest {
     // Verify we actually got flags (test is meaningful)
     assertNotNull("Result should not be null", resultRef.get());
     assertFalse("Should have returned flags", resultRef.get().isEmpty());
+  }
+
+  // Test concurrent access to getAllVariantsSync and getAllVariants
+  @Test
+  public void testGetAllVariants_ConcurrentAccess() throws InterruptedException {
+    // First load some flags
+    loadMultiTypeFlagsAndWait();
+
+    final int THREAD_COUNT = 10;
+    final CountDownLatch latch = new CountDownLatch(THREAD_COUNT * 2); // Sync + Async for each thread
+    final AtomicInteger syncSuccessCount = new AtomicInteger(0);
+    final AtomicInteger asyncSuccessCount = new AtomicInteger(0);
+    final AtomicReference<Exception> errorRef = new AtomicReference<>();
+
+    // Create threads that will call both sync and async methods concurrently
+    for (int i = 0; i < THREAD_COUNT; i++) {
+      final int threadId = i;
+
+      // Thread for sync calls
+      new Thread(() -> {
+        try {
+          Map<String, MixpanelFlagVariant> result = mFeatureFlagManager.getAllVariantsSync();
+          if (result != null && !result.isEmpty()) {
+            syncSuccessCount.incrementAndGet();
+          }
+        } catch (Exception e) {
+          errorRef.compareAndSet(null, e);
+        } finally {
+          latch.countDown();
+        }
+      }, "SyncThread-" + threadId).start();
+
+      // Thread for async calls
+      new Thread(() -> {
+        try {
+          BlockingQueue<Map<String, MixpanelFlagVariant>> queue = new LinkedBlockingQueue<>();
+          mFeatureFlagManager.getAllVariants(queue::offer);
+          Map<String, MixpanelFlagVariant> result = queue.poll(5, TimeUnit.SECONDS);
+          if (result != null && !result.isEmpty()) {
+            asyncSuccessCount.incrementAndGet();
+          }
+        } catch (Exception e) {
+          errorRef.compareAndSet(null, e);
+        } finally {
+          latch.countDown();
+        }
+      }, "AsyncThread-" + threadId).start();
+    }
+
+    // Simultaneously update flags from another thread
+    new Thread(() -> {
+      try {
+        Thread.sleep(50); // Let some threads start
+        // Simulate flag update
+        mFeatureFlagManager.loadFlags();
+      } catch (Exception e) {
+        // Ignore - just testing concurrent access
+      }
+    }).start();
+
+    // Wait for all threads to complete
+    assertTrue("All threads should complete", latch.await(10, TimeUnit.SECONDS));
+
+    // Assert no errors occurred
+    assertNull("No exceptions should occur during concurrent access", errorRef.get());
+
+    // All sync calls should have succeeded
+    assertEquals("All sync calls should succeed", THREAD_COUNT, syncSuccessCount.get());
+
+    // All async calls should have succeeded
+    assertEquals("All async calls should succeed", THREAD_COUNT, asyncSuccessCount.get());
   }
 }
