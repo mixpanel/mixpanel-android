@@ -2049,8 +2049,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 boolean fallbackValue,
                 @NonNull FlagCompletionCallback<Boolean> completion);
 
-        // --- Bulk Flag Retrieval ---
-
         /**
          * Synchronously retrieves all currently fetched feature flag variants.
          * Returns an empty map if flags have not been loaded yet.

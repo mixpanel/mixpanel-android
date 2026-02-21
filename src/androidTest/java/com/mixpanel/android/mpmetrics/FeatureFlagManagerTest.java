@@ -1749,8 +1749,6 @@ public class FeatureFlagManagerTest {
     assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
 
-  // ---- getAllVariantsSync / getAllVariants Tests ----
-
   /**
    * Helper: creates the standard multi-type flag set used by getAllVariants tests.
    */
@@ -1761,6 +1759,32 @@ public class FeatureFlagManagerTest {
     serverFlags.put("feature_int", new MixpanelFlagVariant("v_int", 42));
     serverFlags.put("feature_double", new MixpanelFlagVariant("v_double", 99.9));
     return serverFlags;
+  }
+
+  /**
+   * Helper: asserts that the given map contains all 4 flags from createMultiTypeFlagSet()
+   * with the correct keys and values.
+   */
+  private void assertAllMultiTypeFlagsPresent(Map<String, MixpanelFlagVariant> result) {
+    assertNotNull("Result should not be null", result);
+    assertEquals("Should contain all 4 flags", 4, result.size());
+
+    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
+    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
+    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
+    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
+
+    assertEquals("v_true", result.get("feature_bool_true").key);
+    assertEquals(true, result.get("feature_bool_true").value);
+
+    assertEquals("v_string", result.get("feature_string").key);
+    assertEquals("test_string", result.get("feature_string").value);
+
+    assertEquals("v_int", result.get("feature_int").key);
+    assertEquals(42, result.get("feature_int").value);
+
+    assertEquals("v_double", result.get("feature_double").key);
+    assertEquals(99.9, result.get("feature_double").value);
   }
 
   /**
@@ -1786,28 +1810,8 @@ public class FeatureFlagManagerTest {
     // Act: call getAllVariantsSync
     Map<String, MixpanelFlagVariant> result = mFeatureFlagManager.getAllVariantsSync();
 
-    // Assert: map contains all 4 flags
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should contain all 4 flags", 4, result.size());
-
-    // Verify each flag name is present
-    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
-    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
-    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
-    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
-
-    // Verify variant keys and values
-    assertEquals("v_true", result.get("feature_bool_true").key);
-    assertEquals(true, result.get("feature_bool_true").value);
-
-    assertEquals("v_string", result.get("feature_string").key);
-    assertEquals("test_string", result.get("feature_string").value);
-
-    assertEquals("v_int", result.get("feature_int").key);
-    assertEquals(42, result.get("feature_int").value);
-
-    assertEquals("v_double", result.get("feature_double").key);
-    assertEquals(99.9, result.get("feature_double").value);
+    // Assert: map contains all 4 flags with correct keys and values
+    assertAllMultiTypeFlagsPresent(result);
   }
 
   @Test
@@ -1861,26 +1865,7 @@ public class FeatureFlagManagerTest {
     // Assert: callback fires with full map
     assertTrue("Callback should complete within timeout",
         latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-    Map<String, MixpanelFlagVariant> result = resultRef.get();
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should contain all 4 flags", 4, result.size());
-
-    // Verify specific values
-    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
-    assertEquals("v_true", result.get("feature_bool_true").key);
-    assertEquals(true, result.get("feature_bool_true").value);
-
-    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
-    assertEquals("v_string", result.get("feature_string").key);
-    assertEquals("test_string", result.get("feature_string").value);
-
-    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
-    assertEquals("v_int", result.get("feature_int").key);
-    assertEquals(42, result.get("feature_int").value);
-
-    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
-    assertEquals("v_double", result.get("feature_double").key);
-    assertEquals(99.9, result.get("feature_double").value);
+    assertAllMultiTypeFlagsPresent(resultRef.get());
   }
 
   @Test
@@ -1905,13 +1890,7 @@ public class FeatureFlagManagerTest {
     // Assert: callback fires after fetch with all flags
     assertTrue("Callback should complete within timeout (fetch involved)",
         latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
-    Map<String, MixpanelFlagVariant> result = resultRef.get();
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should contain all 4 flags after fetch", 4, result.size());
-    assertTrue("Should contain feature_bool_true", result.containsKey("feature_bool_true"));
-    assertTrue("Should contain feature_string", result.containsKey("feature_string"));
-    assertTrue("Should contain feature_int", result.containsKey("feature_int"));
-    assertTrue("Should contain feature_double", result.containsKey("feature_double"));
+    assertAllMultiTypeFlagsPresent(resultRef.get());
 
     // Flags should now be ready
     assertTrue("areFlagsReady should be true after successful fetch",
@@ -2023,14 +2002,15 @@ public class FeatureFlagManagerTest {
       }, "AsyncThread-" + threadId).start();
     }
 
-    // Simultaneously update flags from another thread
+    // Simultaneously trigger loadFlags from another thread to verify concurrent
+    // loadFlags + getAllVariants calls don't cause crashes or deadlocks.
+    // No additional mock response is queued; the reload itself may no-op.
     new Thread(() -> {
       try {
         Thread.sleep(50); // Let some threads start
-        // Simulate flag update
         mFeatureFlagManager.loadFlags();
       } catch (Exception e) {
-        // Ignore - just testing concurrent access
+        // Ignore - only testing that concurrent access doesn't crash
       }
     }).start();
 

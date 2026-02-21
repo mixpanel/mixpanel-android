@@ -31,7 +31,6 @@ import org.json.JSONObject;
 
 class FeatureFlagManager implements MixpanelAPI.Flags {
   private static final String LOGTAG = "MixpanelAPI.FeatureFlagManager";
-  private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
   private final WeakReference<FeatureFlagDelegate> mDelegate;
   private final FlagsConfig mFlagsConfig;
@@ -373,8 +372,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         });
   }
 
-  // --- Bulk Flag Retrieval ---
-
   @Override
   @NonNull
   public Map<String, MixpanelFlagVariant> getAllVariantsSync() {
@@ -395,7 +392,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
       if (flagsAreCurrentlyReady) {
         Map<String, MixpanelFlagVariant> result = mFlags;
-        MAIN_HANDLER.post(() -> completion.onComplete(result));
+        postCompletion(completion, result);
       } else {
         MPLog.i(LOGTAG, "Flags not ready, attempting fetch for getAllVariants call...");
         _fetchFlagsIfNeeded(success -> {
