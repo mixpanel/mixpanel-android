@@ -376,22 +376,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   @NonNull
   public Map<String, MixpanelFlagVariant> getAllVariantsSync() {
     synchronized (mLock) {
-      return mFlags != null ? mFlags : Collections.emptyMap();
+      return mFlags != null ? Collections.unmodifiableMap(mFlags) : Collections.emptyMap();
     }
   }
 
   @Override
   public void getAllVariants(@NonNull final FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion) {
-    if (completion == null) {
-      MPLog.w(LOGTAG, "Completion callback cannot be null");
-      return;
-    }
-
     mHandler.post(() -> {
       boolean flagsAreCurrentlyReady = (mFlags != null);
 
       if (flagsAreCurrentlyReady) {
-        Map<String, MixpanelFlagVariant> result = mFlags;
+        Map<String, MixpanelFlagVariant> result = Collections.unmodifiableMap(mFlags);
         postCompletion(completion, result);
       } else {
         MPLog.i(LOGTAG, "Flags not ready, attempting fetch for getAllVariants call...");

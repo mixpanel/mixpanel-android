@@ -1791,6 +1791,7 @@ public class FeatureFlagManagerTest {
    * Helper: loads flags from the multi-type flag set and waits until ready.
    */
   private void loadMultiTypeFlagsAndWait() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
     Map<String, MixpanelFlagVariant> serverFlags = createMultiTypeFlagSet();
     mMockRemoteService.addResponse(
         createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
@@ -1804,7 +1805,6 @@ public class FeatureFlagManagerTest {
   @Test
   public void testGetAllVariantsSync_FlagsReady() throws InterruptedException {
     // Setup: load multiple flags of different types
-    setupFlagsConfig(true, new JSONObject());
     loadMultiTypeFlagsAndWait();
 
     // Act: call getAllVariantsSync
@@ -1831,7 +1831,6 @@ public class FeatureFlagManagerTest {
   @Test
   public void testGetAllVariantsSync_NoTracking() throws InterruptedException {
     // Setup: load flags
-    setupFlagsConfig(true, new JSONObject());
     loadMultiTypeFlagsAndWait();
     mMockDelegate.resetTrackCalls();
 
@@ -1850,7 +1849,6 @@ public class FeatureFlagManagerTest {
   @Test
   public void testGetAllVariants_Async_FlagsReady() throws InterruptedException {
     // Setup: load flags first so they are ready
-    setupFlagsConfig(true, new JSONObject());
     loadMultiTypeFlagsAndWait();
 
     // Act: call getAllVariants asynchronously
@@ -1929,7 +1927,6 @@ public class FeatureFlagManagerTest {
   @Test
   public void testGetAllVariants_Async_NoTracking() throws InterruptedException {
     // Setup: load flags first
-    setupFlagsConfig(true, new JSONObject());
     loadMultiTypeFlagsAndWait();
     mMockDelegate.resetTrackCalls();
 
