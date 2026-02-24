@@ -212,39 +212,7 @@ public class FlagOptionsTest {
             mpOptions) {
           @Override
           protected RemoteService getHttpService() {
-            return new HttpService() {
-              @Override
-              public RemoteService.RequestResult performRequest(
-                  String endpointUrl,
-                  ProxyServerInteractor interactor,
-                  Map<String, Object> params,
-                  Map<String, String> headers,
-                  byte[] requestBodyBytes,
-                  SSLSocketFactory socketFactory)
-                  throws ServiceUnavailableException, IOException {
-                return performRequest(
-                    RemoteService.HttpMethod.POST, endpointUrl, interactor, params,
-                    headers, requestBodyBytes, socketFactory);
-              }
-
-              @Override
-              public RemoteService.RequestResult performRequest(
-                  @NonNull RemoteService.HttpMethod method,
-                  @NonNull String endpointUrl,
-                  @Nullable ProxyServerInteractor interactor,
-                  @Nullable Map<String, Object> params,
-                  @Nullable Map<String, String> headers,
-                  @Nullable byte[] requestBodyBytes,
-                  @Nullable SSLSocketFactory socketFactory)
-                  throws ServiceUnavailableException, IOException {
-                if (endpointUrl != null && endpointUrl.contains("/flags/")) {
-                  flagsEndpointCalls.add(endpointUrl);
-                  flagsLoaded.countDown();
-                }
-                return RemoteService.RequestResult.success(
-                    "{\"flags\":{}}".getBytes(), endpointUrl);
-              }
-            };
+            return createFlagsCapturingHttpService(flagsEndpointCalls, flagsLoaded);
           }
         };
 
@@ -288,38 +256,7 @@ public class FlagOptionsTest {
             mpOptions) {
           @Override
           protected RemoteService getHttpService() {
-            return new HttpService() {
-              @Override
-              public RemoteService.RequestResult performRequest(
-                  String endpointUrl,
-                  ProxyServerInteractor interactor,
-                  Map<String, Object> params,
-                  Map<String, String> headers,
-                  byte[] requestBodyBytes,
-                  SSLSocketFactory socketFactory)
-                  throws ServiceUnavailableException, IOException {
-                return performRequest(
-                    RemoteService.HttpMethod.POST, endpointUrl, interactor, params,
-                    headers, requestBodyBytes, socketFactory);
-              }
-
-              @Override
-              public RemoteService.RequestResult performRequest(
-                  @NonNull RemoteService.HttpMethod method,
-                  @NonNull String endpointUrl,
-                  @Nullable ProxyServerInteractor interactor,
-                  @Nullable Map<String, Object> params,
-                  @Nullable Map<String, String> headers,
-                  @Nullable byte[] requestBodyBytes,
-                  @Nullable SSLSocketFactory socketFactory)
-                  throws ServiceUnavailableException, IOException {
-                if (endpointUrl != null && endpointUrl.contains("/flags/")) {
-                  flagsEndpointCalls.add(endpointUrl);
-                }
-                return RemoteService.RequestResult.success(
-                    "{\"flags\":{}}".getBytes(), endpointUrl);
-              }
-            };
+            return createFlagsCapturingHttpService(flagsEndpointCalls, null);
           }
         };
 
@@ -335,5 +272,54 @@ public class FlagOptionsTest {
           "Flags endpoint should NOT have been called when loadOnFirstForeground is false",
           0, flagsEndpointCalls.size());
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  /**
+   * Creates a mock HttpService that captures calls to the /flags/ endpoint.
+   *
+   * @param flagsCalls list to record captured endpoint URLs
+   * @param latch      optional latch to count down on each /flags/ call, or null
+   */
+  private static HttpService createFlagsCapturingHttpService(
+      final List<String> flagsCalls, @Nullable final CountDownLatch latch) {
+    return new HttpService() {
+      @Override
+      public RemoteService.RequestResult performRequest(
+          String endpointUrl,
+          ProxyServerInteractor interactor,
+          Map<String, Object> params,
+          Map<String, String> headers,
+          byte[] requestBodyBytes,
+          SSLSocketFactory socketFactory)
+          throws ServiceUnavailableException, IOException {
+        return performRequest(
+            RemoteService.HttpMethod.POST, endpointUrl, interactor, params,
+            headers, requestBodyBytes, socketFactory);
+      }
+
+      @Override
+      public RemoteService.RequestResult performRequest(
+          @NonNull RemoteService.HttpMethod method,
+          @NonNull String endpointUrl,
+          @Nullable ProxyServerInteractor interactor,
+          @Nullable Map<String, Object> params,
+          @Nullable Map<String, String> headers,
+          @Nullable byte[] requestBodyBytes,
+          @Nullable SSLSocketFactory socketFactory)
+          throws ServiceUnavailableException, IOException {
+        if (endpointUrl != null && endpointUrl.contains("/flags/")) {
+          flagsCalls.add(endpointUrl);
+          if (latch != null) {
+            latch.countDown();
+          }
+        }
+        return RemoteService.RequestResult.success(
+            "{\"flags\":{}}".getBytes(), endpointUrl);
+      }
+    };
   }
 }

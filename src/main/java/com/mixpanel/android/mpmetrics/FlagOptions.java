@@ -3,7 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.util.MPLog;
+import com.mixpanel.android.util.JsonUtils;
 
 import org.json.JSONObject;
 
@@ -30,8 +30,6 @@ import org.json.JSONObject;
  */
 public class FlagOptions {
 
-    private static final String LOGTAG = "MixpanelAPI.FlagOptions";
-
     private final boolean mEnabled;
     private final JSONObject mContext;
     private final boolean mLoadOnFirstForeground;
@@ -39,18 +37,7 @@ public class FlagOptions {
     private FlagOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
         this.mLoadOnFirstForeground = builder.mLoadOnFirstForeground;
-        if (builder.mContext == null) {
-            this.mContext = new JSONObject();
-        } else {
-            JSONObject contextCopy;
-            try {
-                contextCopy = new JSONObject(builder.mContext.toString());
-            } catch (Exception e) {
-                MPLog.e(LOGTAG, "Failed to copy context JSONObject", e);
-                contextCopy = new JSONObject();
-            }
-            this.mContext = contextCopy;
-        }
+        this.mContext = builder.mContext != null ? builder.mContext : new JSONObject();
     }
 
     /**
@@ -74,12 +61,7 @@ public class FlagOptions {
      */
     @NonNull
     public JSONObject getContext() {
-        try {
-            return new JSONObject(mContext.toString());
-        } catch (Exception e) {
-            MPLog.e(LOGTAG, "Invalid feature flags context", e);
-            return new JSONObject();
-        }
+        return JsonUtils.defensiveCopy(mContext);
     }
 
     /**
@@ -132,16 +114,7 @@ public class FlagOptions {
          * @return This Builder instance for chaining.
          */
         public Builder setContext(@Nullable JSONObject context) {
-            if (context == null) {
-                this.mContext = new JSONObject();
-            } else {
-                try {
-                    this.mContext = new JSONObject(context.toString());
-                } catch (Exception e) {
-                    MPLog.e(LOGTAG, "Failed to copy context JSONObject", e);
-                    this.mContext = new JSONObject();
-                }
-            }
+            this.mContext = JsonUtils.defensiveCopy(context);
             return this;
         }
 

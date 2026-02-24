@@ -27,15 +27,7 @@ public class MixpanelOptions {
         this.deviceIdProvider = builder.deviceIdProvider;
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
-        if (builder.mFlagOptions != null) {
-            this.mFlagOptions = builder.mFlagOptions;
-        } else {
-            this.mFlagOptions = new FlagOptions.Builder()
-                    .setEnabled(builder.featureFlagsEnabled)
-                    .setContext(builder.featureFlagsContext)
-                    .setLoadOnFirstForeground(true)
-                    .build();
-        }
+        this.mFlagOptions = builder.mFlagOptionsBuilder.build();
     }
 
     public String getInstanceName() {
@@ -107,9 +99,7 @@ public class MixpanelOptions {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
-        private boolean featureFlagsEnabled = false;
-        private JSONObject featureFlagsContext = new JSONObject();
-        private FlagOptions mFlagOptions = null;
+        private final FlagOptions.Builder mFlagOptionsBuilder = new FlagOptions.Builder();
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
@@ -173,7 +163,7 @@ public class MixpanelOptions {
          */
         @Deprecated
         public Builder featureFlagsEnabled(boolean featureFlagsEnabled) {
-            this.featureFlagsEnabled = featureFlagsEnabled;
+            this.mFlagOptionsBuilder.setEnabled(featureFlagsEnabled);
             return this;
         }
 
@@ -188,31 +178,24 @@ public class MixpanelOptions {
          */
         @Deprecated
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
-            if (featureFlagsContext == null) {
-                this.featureFlagsContext = new JSONObject();
-            } else {
-                try {
-                    // Defensive copy
-                    this.featureFlagsContext = new JSONObject(featureFlagsContext.toString());
-                } catch (Exception e) {
-                    // Log error or handle as appropriate if JSON is invalid
-                    this.featureFlagsContext = null;
-                }
-            }
+            this.mFlagOptionsBuilder.setContext(featureFlagsContext);
             return this;
         }
 
         /**
          * Sets the feature flag options for this Mixpanel instance.
          *
-         * <p>When set, this takes precedence over {@link #featureFlagsEnabled(boolean)}
+         * <p>This replaces any values previously set via {@link #featureFlagsEnabled(boolean)}
          * and {@link #featureFlagsContext(JSONObject)}.
          *
          * @param flagOptions The FlagOptions configuration.
          * @return This Builder instance for chaining.
          */
         public Builder flagOptions(FlagOptions flagOptions) {
-            this.mFlagOptions = flagOptions;
+            this.mFlagOptionsBuilder
+                    .setEnabled(flagOptions.isEnabled())
+                    .setContext(flagOptions.getContext())
+                    .setLoadOnFirstForeground(flagOptions.shouldLoadOnFirstForeground());
             return this;
         }
 
