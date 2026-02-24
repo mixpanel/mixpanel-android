@@ -70,6 +70,7 @@ public class MixpanelOptions {
         return mFlagOptions.getContext();
     }
 
+    @NonNull
     public FlagOptions getFlagOptions() {
         return mFlagOptions;
     }
@@ -168,7 +169,7 @@ public class MixpanelOptions {
          *
          * @param featureFlagsEnabled True to enable feature flags, false to disable.
          * @return This Builder instance for chaining.
-         * @deprecated Use {@link #setFlagOptions(FlagOptions)} instead.
+         * @deprecated Use {@link #flagOptions(FlagOptions)} instead.
          */
         @Deprecated
         public Builder featureFlagsEnabled(boolean featureFlagsEnabled) {
@@ -183,7 +184,7 @@ public class MixpanelOptions {
          * @param featureFlagsContext A JSONObject containing key-value pairs for the feature flags context.
          *                            The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
-         * @deprecated Use {@link #setFlagOptions(FlagOptions)} instead.
+         * @deprecated Use {@link #flagOptions(FlagOptions)} instead.
          */
         @Deprecated
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
@@ -210,7 +211,7 @@ public class MixpanelOptions {
          * @param flagOptions The FlagOptions configuration.
          * @return This Builder instance for chaining.
          */
-        public Builder setFlagOptions(FlagOptions flagOptions) {
+        public Builder flagOptions(FlagOptions flagOptions) {
             this.mFlagOptions = flagOptions;
             return this;
         }

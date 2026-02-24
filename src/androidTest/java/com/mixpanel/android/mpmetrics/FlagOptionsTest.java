@@ -16,10 +16,12 @@ import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocketFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,8 +34,6 @@ import org.junit.runner.RunWith;
 public class FlagOptionsTest {
 
   private Future<SharedPreferences> mMockPreferences;
-
-  private static final int POLL_WAIT_SECONDS = 10;
 
   @Before
   public void setUp() throws Exception {
@@ -128,7 +128,7 @@ public class FlagOptionsTest {
     MixpanelOptions options = new MixpanelOptions.Builder()
         .featureFlagsEnabled(false)
         .featureFlagsContext(flatContext)
-        .setFlagOptions(flagOptions)
+        .flagOptions(flagOptions)
         .build();
 
     // FlagOptions should take precedence
@@ -191,7 +191,8 @@ public class FlagOptionsTest {
 
   @Test
   public void testLoadOnFirstForeground_True_AutoLoadsFlags() throws Exception {
-    final List<String> flagsEndpointCalls = new ArrayList<>();
+    final List<String> flagsEndpointCalls = new CopyOnWriteArrayList<>();
+    final CountDownLatch flagsLoaded = new CountDownLatch(1);
 
     FlagOptions flagOptions = new FlagOptions.Builder()
         .setEnabled(true)
@@ -199,7 +200,7 @@ public class FlagOptionsTest {
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
-        .setFlagOptions(flagOptions)
+        .flagOptions(flagOptions)
         .build();
 
     // Create MixpanelAPI before launching activity so lifecycle callbacks are registered
@@ -238,6 +239,7 @@ public class FlagOptionsTest {
                   throws ServiceUnavailableException, IOException {
                 if (endpointUrl != null && endpointUrl.contains("/flags/")) {
                   flagsEndpointCalls.add(endpointUrl);
+                  flagsLoaded.countDown();
                 }
                 return RemoteService.RequestResult.success(
                     "{\"flags\":{}}".getBytes(), endpointUrl);
@@ -251,11 +253,11 @@ public class FlagOptionsTest {
 
     // Launch activity to trigger onForeground() -> loadFlags()
     try (ActivityScenario<TestActivity> scenario = ActivityScenario.launch(TestActivity.class)) {
-      // Give async flag loading time to execute
-      Thread.sleep(1000);
-
       assertTrue(
           "Flags endpoint should have been called when loadOnFirstForeground is true",
+          flagsLoaded.await(10, TimeUnit.SECONDS));
+      assertTrue(
+          "Flags endpoint calls list should not be empty",
           flagsEndpointCalls.size() >= 1);
     }
   }
@@ -266,7 +268,7 @@ public class FlagOptionsTest {
 
   @Test
   public void testLoadOnFirstForeground_False_DoesNotAutoLoadFlags() throws Exception {
-    final List<String> flagsEndpointCalls = new ArrayList<>();
+    final List<String> flagsEndpointCalls = new CopyOnWriteArrayList<>();
 
     FlagOptions flagOptions = new FlagOptions.Builder()
         .setEnabled(true)
@@ -274,7 +276,7 @@ public class FlagOptionsTest {
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
-        .setFlagOptions(flagOptions)
+        .flagOptions(flagOptions)
         .build();
 
     // Create MixpanelAPI before launching activity so lifecycle callbacks are registered
@@ -326,7 +328,7 @@ public class FlagOptionsTest {
 
     // Launch activity to trigger onForeground()
     try (ActivityScenario<TestActivity> scenario = ActivityScenario.launch(TestActivity.class)) {
-      // Give enough time for any async flag loading that might happen
+      // For negative tests, a short sleep is appropriate to prove absence
       Thread.sleep(1000);
 
       assertEquals(

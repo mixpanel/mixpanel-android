@@ -2105,7 +2105,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mSessionMetadata.initSession();
         // Ensure app has previously launched in foreground before network call.
         mHasAppForegrounded.set(true);
-        if (mFlagOptions.shouldLoadOnFirstForeground()
+        if (mFlagOptions.isEnabled()
+                && mFlagOptions.shouldLoadOnFirstForeground()
                 && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
