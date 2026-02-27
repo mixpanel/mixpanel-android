@@ -3,8 +3,6 @@ package com.mixpanel.android.mpmetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.util.JsonUtils;
-
 import org.json.JSONObject;
 
 /**
@@ -16,9 +14,9 @@ import org.json.JSONObject;
  *
  * <pre>{@code
  * FlagOptions flagOptions = new FlagOptions.Builder()
- *     .setEnabled(true)
- *     .setContext(new JSONObject().put("plan", "enterprise"))
- *     .setLoadOnFirstForeground(true)
+ *     .enabled(true)
+ *     .context(new JSONObject().put("plan", "enterprise"))
+ *     .loadOnFirstForeground(true)
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
@@ -61,7 +59,12 @@ public class FlagOptions {
      */
     @NonNull
     public JSONObject getContext() {
-        return JsonUtils.defensiveCopy(mContext);
+        // Defensive copy: JSONObject is mutable, so return a copy to preserve immutability
+        try {
+            return new JSONObject(mContext.toString());
+        } catch (Exception e) {
+            return new JSONObject();
+        }
     }
 
     /**
@@ -94,12 +97,23 @@ public class FlagOptions {
         }
 
         /**
+         * Creates a Builder pre-populated with values from an existing {@link FlagOptions}.
+         *
+         * @param source The FlagOptions to copy values from.
+         */
+        public Builder(FlagOptions source) {
+            this.mEnabled = source.mEnabled;
+            this.mContext = source.mContext; // same ref is fine, builder will copy on context()
+            this.mLoadOnFirstForeground = source.mLoadOnFirstForeground;
+        }
+
+        /**
          * Enables or disables feature flags.
          *
          * @param enabled {@code true} to enable feature flags, {@code false} to disable.
          * @return This Builder instance for chaining.
          */
-        public Builder setEnabled(boolean enabled) {
+        public Builder enabled(boolean enabled) {
             this.mEnabled = enabled;
             return this;
         }
@@ -113,8 +127,17 @@ public class FlagOptions {
          *                or {@code null} for an empty context.
          * @return This Builder instance for chaining.
          */
-        public Builder setContext(@Nullable JSONObject context) {
-            this.mContext = JsonUtils.defensiveCopy(context);
+        public Builder context(@Nullable JSONObject context) {
+            // Defensive copy: prevents caller's later mutations from affecting built FlagOptions
+            if (context == null) {
+                this.mContext = new JSONObject();
+            } else {
+                try {
+                    this.mContext = new JSONObject(context.toString());
+                } catch (Exception e) {
+                    this.mContext = new JSONObject();
+                }
+            }
             return this;
         }
 
@@ -129,7 +152,7 @@ public class FlagOptions {
          *                              {@code false} to disable auto-loading.
          * @return This Builder instance for chaining.
          */
-        public Builder setLoadOnFirstForeground(boolean loadOnFirstForeground) {
+        public Builder loadOnFirstForeground(boolean loadOnFirstForeground) {
             this.mLoadOnFirstForeground = loadOnFirstForeground;
             return this;
         }

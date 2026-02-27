@@ -72,9 +72,9 @@ public class FlagOptionsTest {
     context.put("beta", true);
 
     FlagOptions options = new FlagOptions.Builder()
-        .setEnabled(true)
-        .setContext(context)
-        .setLoadOnFirstForeground(false)
+        .enabled(true)
+        .context(context)
+        .loadOnFirstForeground(false)
         .build();
 
     assertTrue("enabled should be true", options.isEnabled());
@@ -93,7 +93,7 @@ public class FlagOptionsTest {
     original.put("key", "original_value");
 
     FlagOptions options = new FlagOptions.Builder()
-        .setContext(original)
+        .context(original)
         .build();
 
     // Mutate the original JSONObject after building
@@ -117,9 +117,9 @@ public class FlagOptionsTest {
     flagOptionsContext.put("source", "flagOptions");
 
     FlagOptions flagOptions = new FlagOptions.Builder()
-        .setEnabled(true)
-        .setContext(flagOptionsContext)
-        .setLoadOnFirstForeground(false)
+        .enabled(true)
+        .context(flagOptionsContext)
+        .loadOnFirstForeground(false)
         .build();
 
     JSONObject flatContext = new JSONObject();
@@ -195,8 +195,8 @@ public class FlagOptionsTest {
     final CountDownLatch flagsLoaded = new CountDownLatch(1);
 
     FlagOptions flagOptions = new FlagOptions.Builder()
-        .setEnabled(true)
-        .setLoadOnFirstForeground(true)
+        .enabled(true)
+        .loadOnFirstForeground(true)
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
@@ -239,8 +239,8 @@ public class FlagOptionsTest {
     final List<String> flagsEndpointCalls = new CopyOnWriteArrayList<>();
 
     FlagOptions flagOptions = new FlagOptions.Builder()
-        .setEnabled(true)
-        .setLoadOnFirstForeground(false)
+        .enabled(true)
+        .loadOnFirstForeground(false)
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()

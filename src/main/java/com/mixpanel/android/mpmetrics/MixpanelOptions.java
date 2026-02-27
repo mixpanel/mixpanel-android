@@ -27,7 +27,7 @@ public class MixpanelOptions {
         this.deviceIdProvider = builder.deviceIdProvider;
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
-        this.mFlagOptions = builder.mFlagOptionsBuilder.build();
+        this.mFlagOptions = builder.mFlagOptions;
     }
 
     public String getInstanceName() {
@@ -99,7 +99,7 @@ public class MixpanelOptions {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
-        private final FlagOptions.Builder mFlagOptionsBuilder = new FlagOptions.Builder();
+        private FlagOptions mFlagOptions = new FlagOptions.Builder().build();
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
@@ -163,7 +163,7 @@ public class MixpanelOptions {
          */
         @Deprecated
         public Builder featureFlagsEnabled(boolean featureFlagsEnabled) {
-            this.mFlagOptionsBuilder.setEnabled(featureFlagsEnabled);
+            this.mFlagOptions = new FlagOptions.Builder(mFlagOptions).enabled(featureFlagsEnabled).build();
             return this;
         }
 
@@ -178,7 +178,7 @@ public class MixpanelOptions {
          */
         @Deprecated
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
-            this.mFlagOptionsBuilder.setContext(featureFlagsContext);
+            this.mFlagOptions = new FlagOptions.Builder(mFlagOptions).context(featureFlagsContext).build();
             return this;
         }
 
@@ -192,10 +192,7 @@ public class MixpanelOptions {
          * @return This Builder instance for chaining.
          */
         public Builder flagOptions(FlagOptions flagOptions) {
-            this.mFlagOptionsBuilder
-                    .setEnabled(flagOptions.isEnabled())
-                    .setContext(flagOptions.getContext())
-                    .setLoadOnFirstForeground(flagOptions.shouldLoadOnFirstForeground());
+            this.mFlagOptions = flagOptions;
             return this;
         }
 

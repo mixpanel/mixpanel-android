@@ -24,26 +24,6 @@ public class JsonUtils {
     private static final String LOGTAG = "MixpanelAPI.JsonUtils";
 
     /**
-     * Creates a defensive copy of a JSONObject via serialization.
-     *
-     * @param source The JSONObject to copy, or {@code null}.
-     * @return A new JSONObject that is a deep copy of the source,
-     *         or an empty JSONObject if the source is {@code null} or copying fails.
-     */
-    @NonNull
-    public static JSONObject defensiveCopy(@Nullable JSONObject source) {
-        if (source == null) {
-            return new JSONObject();
-        }
-        try {
-            return new JSONObject(source.toString());
-        } catch (Exception e) {
-            MPLog.e(LOGTAG, "Failed to defensively copy JSONObject", e);
-            return new JSONObject();
-        }
-    }
-
-    /**
      * Parses a JSON value obtained from org.json (like JSONObject.get() or JSONArray.get())
      * into a standard Java Object (String, Boolean, Number, {@code List<Object>}, {@code Map<String, Object>}, or null).
      * Handles JSONObject.NULL correctly.
