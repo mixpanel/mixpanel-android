@@ -10,13 +10,13 @@ import org.json.JSONObject;
  *
  * <p>Use this class to consolidate all feature flag settings into a single
  * configuration object when initializing a {@link MixpanelAPI} instance via
- * {@link MixpanelOptions.Builder#flagOptions(FlagOptions)}.
+ * {@link MixpanelOptions.Builder#flagOptions(FeatureFlagOptions)}.
  *
  * <pre>{@code
- * FlagOptions flagOptions = new FlagOptions.Builder()
+ * FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
  *     .enabled(true)
  *     .context(new JSONObject().put("plan", "enterprise"))
- *     .loadOnFirstForeground(true)
+ *     .prefetchFlags(true)
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
@@ -24,17 +24,17 @@ import org.json.JSONObject;
  *     .build();
  * }</pre>
  *
- * @see MixpanelOptions.Builder#flagOptions(FlagOptions)
+ * @see MixpanelOptions.Builder#flagOptions(FeatureFlagOptions)
  */
-public class FlagOptions {
+public class FeatureFlagOptions {
 
     private final boolean mEnabled;
     private final JSONObject mContext;
-    private final boolean mLoadOnFirstForeground;
+    private final boolean mPrefetchFlags;
 
-    private FlagOptions(Builder builder) {
+    private FeatureFlagOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
-        this.mLoadOnFirstForeground = builder.mLoadOnFirstForeground;
+        this.mPrefetchFlags = builder.mPrefetchFlags;
         this.mContext = builder.mContext != null ? builder.mContext : new JSONObject();
     }
 
@@ -52,7 +52,7 @@ public class FlagOptions {
      * Returns a defensive copy of the context used for evaluating feature flags.
      *
      * <p>The returned {@link JSONObject} is a copy; mutating it will not affect
-     * this {@code FlagOptions} instance.
+     * this {@code FeatureFlagOptions} instance.
      *
      * @return A non-null JSONObject containing the feature flags context.
      *         Defaults to an empty JSONObject.
@@ -71,40 +71,40 @@ public class FlagOptions {
      * Returns whether feature flags should be automatically loaded on the first
      * app foreground event.
      *
-     * @return {@code true} if flags should auto-load on first foreground,
+     * @return {@code true} if flags should be prefetched on first foreground,
      *         {@code false} otherwise. Defaults to {@code true}.
      */
-    public boolean shouldLoadOnFirstForeground() {
-        return mLoadOnFirstForeground;
+    public boolean shouldPrefetchFlags() {
+        return mPrefetchFlags;
     }
 
     /**
-     * Builder for creating {@link FlagOptions} instances.
+     * Builder for creating {@link FeatureFlagOptions} instances.
      *
      * <p>Default values:
      * <ul>
      *   <li>{@code enabled} = {@code false}</li>
      *   <li>{@code context} = empty {@link JSONObject}</li>
-     *   <li>{@code loadOnFirstForeground} = {@code true}</li>
+     *   <li>{@code prefetchFlags} = {@code true}</li>
      * </ul>
      */
     public static class Builder {
         private boolean mEnabled = false;
         private JSONObject mContext = new JSONObject();
-        private boolean mLoadOnFirstForeground = true;
+        private boolean mPrefetchFlags = true;
 
         public Builder() {
         }
 
         /**
-         * Creates a Builder pre-populated with values from an existing {@link FlagOptions}.
+         * Creates a Builder pre-populated with values from an existing {@link FeatureFlagOptions}.
          *
-         * @param source The FlagOptions to copy values from.
+         * @param source The FeatureFlagOptions to copy values from.
          */
-        public Builder(FlagOptions source) {
+        public Builder(FeatureFlagOptions source) {
             this.mEnabled = source.mEnabled;
             this.mContext = source.mContext; // same ref is fine, builder will copy on context()
-            this.mLoadOnFirstForeground = source.mLoadOnFirstForeground;
+            this.mPrefetchFlags = source.mPrefetchFlags;
         }
 
         /**
@@ -128,7 +128,7 @@ public class FlagOptions {
          * @return This Builder instance for chaining.
          */
         public Builder context(@Nullable JSONObject context) {
-            // Defensive copy: prevents caller's later mutations from affecting built FlagOptions
+            // Defensive copy: prevents caller's later mutations from affecting built FeatureFlagOptions
             if (context == null) {
                 this.mContext = new JSONObject();
             } else {
@@ -148,22 +148,22 @@ public class FlagOptions {
          * <p>Set to {@code false} if you want to manually control when flags are loaded
          * (e.g., by calling {@code getFlags().loadFlags()} yourself).
          *
-         * @param loadOnFirstForeground {@code true} to auto-load on first foreground,
-         *                              {@code false} to disable auto-loading.
+         * @param prefetchFlags {@code true} to prefetch on first foreground,
+         *                      {@code false} to disable prefetching.
          * @return This Builder instance for chaining.
          */
-        public Builder loadOnFirstForeground(boolean loadOnFirstForeground) {
-            this.mLoadOnFirstForeground = loadOnFirstForeground;
+        public Builder prefetchFlags(boolean prefetchFlags) {
+            this.mPrefetchFlags = prefetchFlags;
             return this;
         }
 
         /**
-         * Builds and returns a {@link FlagOptions} instance with the configured settings.
+         * Builds and returns a {@link FeatureFlagOptions} instance with the configured settings.
          *
-         * @return A new {@link FlagOptions} instance.
+         * @return A new {@link FeatureFlagOptions} instance.
          */
-        public FlagOptions build() {
-            return new FlagOptions(this);
+        public FeatureFlagOptions build() {
+            return new FeatureFlagOptions(this);
         }
     }
 }

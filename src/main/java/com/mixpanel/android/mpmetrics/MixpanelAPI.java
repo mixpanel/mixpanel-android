@@ -2106,7 +2106,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // Ensure app has previously launched in foreground before network call.
         mHasAppForegrounded.set(true);
         if (mFlagOptions.isEnabled()
-                && mFlagOptions.shouldLoadOnFirstForeground()
+                && mFlagOptions.shouldPrefetchFlags()
                 && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
@@ -2854,7 +2854,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
-    private final FlagOptions mFlagOptions;
+    private final FeatureFlagOptions mFlagOptions;
     private FeatureFlagManager mFeatureFlagManager;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground

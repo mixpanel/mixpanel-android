@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class FlagOptionsTest {
+public class FeatureFlagOptionsTest {
 
   private Future<SharedPreferences> mMockPreferences;
 
@@ -48,51 +48,51 @@ public class FlagOptionsTest {
   }
 
   // -----------------------------------------------------------------------
-  // FlagOptions defaults
+  // FeatureFlagOptions defaults
   // -----------------------------------------------------------------------
 
   @Test
-  public void testFlagOptions_DefaultValues() {
-    FlagOptions defaults = new FlagOptions.Builder().build();
+  public void testFeatureFlagOptions_DefaultValues() {
+    FeatureFlagOptions defaults = new FeatureFlagOptions.Builder().build();
 
     assertFalse("enabled should default to false", defaults.isEnabled());
     assertNotNull("context should not be null", defaults.getContext());
     assertEquals("context should be empty", 0, defaults.getContext().length());
-    assertTrue("loadOnFirstForeground should default to true", defaults.shouldLoadOnFirstForeground());
+    assertTrue("prefetchFlags should default to true", defaults.shouldPrefetchFlags());
   }
 
   // -----------------------------------------------------------------------
-  // FlagOptions custom values
+  // FeatureFlagOptions custom values
   // -----------------------------------------------------------------------
 
   @Test
-  public void testFlagOptions_CustomValues() throws JSONException {
+  public void testFeatureFlagOptions_CustomValues() throws JSONException {
     JSONObject context = new JSONObject();
     context.put("plan", "enterprise");
     context.put("beta", true);
 
-    FlagOptions options = new FlagOptions.Builder()
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
         .enabled(true)
         .context(context)
-        .loadOnFirstForeground(false)
+        .prefetchFlags(false)
         .build();
 
     assertTrue("enabled should be true", options.isEnabled());
     assertEquals("enterprise", options.getContext().getString("plan"));
     assertTrue(options.getContext().getBoolean("beta"));
-    assertFalse("loadOnFirstForeground should be false", options.shouldLoadOnFirstForeground());
+    assertFalse("prefetchFlags should be false", options.shouldPrefetchFlags());
   }
 
   // -----------------------------------------------------------------------
-  // FlagOptions defensive copy
+  // FeatureFlagOptions defensive copy
   // -----------------------------------------------------------------------
 
   @Test
-  public void testFlagOptions_ContextDefensivelyCopied() throws JSONException {
+  public void testFeatureFlagOptions_ContextDefensivelyCopied() throws JSONException {
     JSONObject original = new JSONObject();
     original.put("key", "original_value");
 
-    FlagOptions options = new FlagOptions.Builder()
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
         .context(original)
         .build();
 
@@ -100,7 +100,7 @@ public class FlagOptionsTest {
     original.put("key", "mutated_value");
     original.put("new_key", "new_value");
 
-    // The FlagOptions context should still have the original value
+    // The FeatureFlagOptions context should still have the original value
     assertEquals("original_value", options.getContext().getString("key"));
     assertFalse(
         "new_key should not appear in the defensively copied context",
@@ -108,18 +108,18 @@ public class FlagOptionsTest {
   }
 
   // -----------------------------------------------------------------------
-  // MixpanelOptions integration: FlagOptions overrides flat params
+  // MixpanelOptions integration: FeatureFlagOptions overrides flat params
   // -----------------------------------------------------------------------
 
   @Test
-  public void testMixpanelOptions_FlagOptionsOverridesFlat() throws JSONException {
+  public void testMixpanelOptions_FeatureFlagOptionsOverridesFlat() throws JSONException {
     JSONObject flagOptionsContext = new JSONObject();
     flagOptionsContext.put("source", "flagOptions");
 
-    FlagOptions flagOptions = new FlagOptions.Builder()
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .context(flagOptionsContext)
-        .loadOnFirstForeground(false)
+        .prefetchFlags(false)
         .build();
 
     JSONObject flatContext = new JSONObject();
@@ -131,27 +131,27 @@ public class FlagOptionsTest {
         .flagOptions(flagOptions)
         .build();
 
-    // FlagOptions should take precedence
-    FlagOptions retrieved = options.getFlagOptions();
+    // FeatureFlagOptions should take precedence
+    FeatureFlagOptions retrieved = options.getFlagOptions();
     assertNotNull("getFlagOptions() should not be null", retrieved);
-    assertTrue("enabled should come from FlagOptions (true)", retrieved.isEnabled());
+    assertTrue("enabled should come from FeatureFlagOptions (true)", retrieved.isEnabled());
     assertEquals("flagOptions", retrieved.getContext().getString("source"));
-    assertFalse("loadOnFirstForeground should come from FlagOptions (false)",
-        retrieved.shouldLoadOnFirstForeground());
+    assertFalse("prefetchFlags should come from FeatureFlagOptions (false)",
+        retrieved.shouldPrefetchFlags());
 
-    // Deprecated getters should also reflect FlagOptions values
-    assertTrue("deprecated areFeatureFlagsEnabled() should delegate to FlagOptions",
+    // Deprecated getters should also reflect FeatureFlagOptions values
+    assertTrue("deprecated areFeatureFlagsEnabled() should delegate to FeatureFlagOptions",
         options.areFeatureFlagsEnabled());
-    assertEquals("deprecated getFeatureFlagsContext() should delegate to FlagOptions",
+    assertEquals("deprecated getFeatureFlagsContext() should delegate to FeatureFlagOptions",
         "flagOptions", options.getFeatureFlagsContext().getString("source"));
   }
 
   // -----------------------------------------------------------------------
-  // MixpanelOptions integration: flat params feed into FlagOptions
+  // MixpanelOptions integration: flat params feed into FeatureFlagOptions
   // -----------------------------------------------------------------------
 
   @Test
-  public void testMixpanelOptions_FlatParamsFeedIntoFlagOptions() throws JSONException {
+  public void testMixpanelOptions_FlatParamsFeedIntoFeatureFlagOptions() throws JSONException {
     JSONObject flatContext = new JSONObject();
     flatContext.put("env", "staging");
 
@@ -160,43 +160,43 @@ public class FlagOptionsTest {
         .featureFlagsContext(flatContext)
         .build();
 
-    // When FlagOptions is NOT explicitly set, getFlagOptions() should
-    // return a FlagOptions built from the flat params
-    FlagOptions retrieved = options.getFlagOptions();
+    // When FeatureFlagOptions is NOT explicitly set, getFlagOptions() should
+    // return a FeatureFlagOptions built from the flat params
+    FeatureFlagOptions retrieved = options.getFlagOptions();
     assertNotNull("getFlagOptions() should not be null", retrieved);
     assertTrue("enabled should come from flat param (true)", retrieved.isEnabled());
     assertEquals("staging", retrieved.getContext().getString("env"));
-    assertTrue("loadOnFirstForeground should default to true when auto-constructed",
-        retrieved.shouldLoadOnFirstForeground());
+    assertTrue("prefetchFlags should default to true when auto-constructed",
+        retrieved.shouldPrefetchFlags());
   }
 
   // -----------------------------------------------------------------------
-  // MixpanelOptions integration: default FlagOptions
+  // MixpanelOptions integration: default FeatureFlagOptions
   // -----------------------------------------------------------------------
 
   @Test
-  public void testMixpanelOptions_DefaultFlagOptions() {
+  public void testMixpanelOptions_DefaultFeatureFlagOptions() {
     MixpanelOptions options = new MixpanelOptions.Builder().build();
 
-    FlagOptions retrieved = options.getFlagOptions();
+    FeatureFlagOptions retrieved = options.getFlagOptions();
     assertNotNull("getFlagOptions() should not be null", retrieved);
     assertFalse("enabled should default to false", retrieved.isEnabled());
     assertEquals("context should be empty", 0, retrieved.getContext().length());
-    assertTrue("loadOnFirstForeground should default to true", retrieved.shouldLoadOnFirstForeground());
+    assertTrue("prefetchFlags should default to true", retrieved.shouldPrefetchFlags());
   }
 
   // -----------------------------------------------------------------------
-  // Behavioral: loadOnFirstForeground=true auto-loads flags
+  // Behavioral: prefetchFlags=true auto-loads flags
   // -----------------------------------------------------------------------
 
   @Test
-  public void testLoadOnFirstForeground_True_AutoLoadsFlags() throws Exception {
+  public void testPrefetchFlags_True_AutoLoadsFlags() throws Exception {
     final List<String> flagsEndpointCalls = new CopyOnWriteArrayList<>();
     final CountDownLatch flagsLoaded = new CountDownLatch(1);
 
-    FlagOptions flagOptions = new FlagOptions.Builder()
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
-        .loadOnFirstForeground(true)
+        .prefetchFlags(true)
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
@@ -208,7 +208,7 @@ public class FlagOptionsTest {
         new TestUtils.CleanMixpanelAPI(
             InstrumentationRegistry.getInstrumentation().getTargetContext(),
             mMockPreferences,
-            "Test loadOnFirstForeground true",
+            "Test prefetchFlags true",
             mpOptions) {
           @Override
           protected RemoteService getHttpService() {
@@ -222,7 +222,7 @@ public class FlagOptionsTest {
     // Launch activity to trigger onForeground() -> loadFlags()
     try (ActivityScenario<TestActivity> scenario = ActivityScenario.launch(TestActivity.class)) {
       assertTrue(
-          "Flags endpoint should have been called when loadOnFirstForeground is true",
+          "Flags endpoint should have been called when prefetchFlags is true",
           flagsLoaded.await(10, TimeUnit.SECONDS));
       assertTrue(
           "Flags endpoint calls list should not be empty",
@@ -231,16 +231,16 @@ public class FlagOptionsTest {
   }
 
   // -----------------------------------------------------------------------
-  // Behavioral: loadOnFirstForeground=false does NOT auto-load flags
+  // Behavioral: prefetchFlags=false does NOT auto-load flags
   // -----------------------------------------------------------------------
 
   @Test
-  public void testLoadOnFirstForeground_False_DoesNotAutoLoadFlags() throws Exception {
+  public void testPrefetchFlags_False_DoesNotAutoLoadFlags() throws Exception {
     final List<String> flagsEndpointCalls = new CopyOnWriteArrayList<>();
 
-    FlagOptions flagOptions = new FlagOptions.Builder()
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
-        .loadOnFirstForeground(false)
+        .prefetchFlags(false)
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
@@ -252,7 +252,7 @@ public class FlagOptionsTest {
         new TestUtils.CleanMixpanelAPI(
             InstrumentationRegistry.getInstrumentation().getTargetContext(),
             mMockPreferences,
-            "Test loadOnFirstForeground false",
+            "Test prefetchFlags false",
             mpOptions) {
           @Override
           protected RemoteService getHttpService() {
@@ -269,7 +269,7 @@ public class FlagOptionsTest {
       Thread.sleep(1000);
 
       assertEquals(
-          "Flags endpoint should NOT have been called when loadOnFirstForeground is false",
+          "Flags endpoint should NOT have been called when prefetchFlags is false",
           0, flagsEndpointCalls.size());
     }
   }

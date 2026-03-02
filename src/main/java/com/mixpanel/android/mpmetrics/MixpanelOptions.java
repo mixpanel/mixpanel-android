@@ -15,7 +15,7 @@ public class MixpanelOptions {
     private final String instanceName;
     private final boolean optOutTrackingDefault;
     private final JSONObject superProperties;
-    private final FlagOptions mFlagOptions;
+    private final FeatureFlagOptions mFlagOptions;
     private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
@@ -63,7 +63,7 @@ public class MixpanelOptions {
     }
 
     @NonNull
-    public FlagOptions getFlagOptions() {
+    public FeatureFlagOptions getFlagOptions() {
         return mFlagOptions;
     }
 
@@ -99,7 +99,7 @@ public class MixpanelOptions {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
-        private FlagOptions mFlagOptions = new FlagOptions.Builder().build();
+        private FeatureFlagOptions mFlagOptions = new FeatureFlagOptions.Builder().build();
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
@@ -159,11 +159,11 @@ public class MixpanelOptions {
          *
          * @param featureFlagsEnabled True to enable feature flags, false to disable.
          * @return This Builder instance for chaining.
-         * @deprecated Use {@link #flagOptions(FlagOptions)} instead.
+         * @deprecated Use {@link #flagOptions(FeatureFlagOptions)} instead.
          */
         @Deprecated
         public Builder featureFlagsEnabled(boolean featureFlagsEnabled) {
-            this.mFlagOptions = new FlagOptions.Builder(mFlagOptions).enabled(featureFlagsEnabled).build();
+            this.mFlagOptions = new FeatureFlagOptions.Builder(mFlagOptions).enabled(featureFlagsEnabled).build();
             return this;
         }
 
@@ -174,11 +174,11 @@ public class MixpanelOptions {
          * @param featureFlagsContext A JSONObject containing key-value pairs for the feature flags context.
          *                            The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
-         * @deprecated Use {@link #flagOptions(FlagOptions)} instead.
+         * @deprecated Use {@link #flagOptions(FeatureFlagOptions)} instead.
          */
         @Deprecated
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
-            this.mFlagOptions = new FlagOptions.Builder(mFlagOptions).context(featureFlagsContext).build();
+            this.mFlagOptions = new FeatureFlagOptions.Builder(mFlagOptions).context(featureFlagsContext).build();
             return this;
         }
 
@@ -188,10 +188,10 @@ public class MixpanelOptions {
          * <p>This replaces any values previously set via {@link #featureFlagsEnabled(boolean)}
          * and {@link #featureFlagsContext(JSONObject)}.
          *
-         * @param flagOptions The FlagOptions configuration.
+         * @param flagOptions The FeatureFlagOptions configuration.
          * @return This Builder instance for chaining.
          */
-        public Builder flagOptions(FlagOptions flagOptions) {
+        public Builder flagOptions(FeatureFlagOptions flagOptions) {
             this.mFlagOptions = flagOptions;
             return this;
         }
