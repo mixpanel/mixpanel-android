@@ -128,12 +128,12 @@ public class FeatureFlagOptionsTest {
     MixpanelOptions options = new MixpanelOptions.Builder()
         .featureFlagsEnabled(false)
         .featureFlagsContext(flatContext)
-        .flagOptions(flagOptions)
+        .featureFlagOptions(flagOptions)
         .build();
 
     // FeatureFlagOptions should take precedence
-    FeatureFlagOptions retrieved = options.getFlagOptions();
-    assertNotNull("getFlagOptions() should not be null", retrieved);
+    FeatureFlagOptions retrieved = options.getFeatureFlagOptions();
+    assertNotNull("getFeatureFlagOptions() should not be null", retrieved);
     assertTrue("enabled should come from FeatureFlagOptions (true)", retrieved.isEnabled());
     assertEquals("flagOptions", retrieved.getContext().getString("source"));
     assertFalse("prefetchFlags should come from FeatureFlagOptions (false)",
@@ -160,10 +160,10 @@ public class FeatureFlagOptionsTest {
         .featureFlagsContext(flatContext)
         .build();
 
-    // When FeatureFlagOptions is NOT explicitly set, getFlagOptions() should
+    // When FeatureFlagOptions is NOT explicitly set, getFeatureFlagOptions() should
     // return a FeatureFlagOptions built from the flat params
-    FeatureFlagOptions retrieved = options.getFlagOptions();
-    assertNotNull("getFlagOptions() should not be null", retrieved);
+    FeatureFlagOptions retrieved = options.getFeatureFlagOptions();
+    assertNotNull("getFeatureFlagOptions() should not be null", retrieved);
     assertTrue("enabled should come from flat param (true)", retrieved.isEnabled());
     assertEquals("staging", retrieved.getContext().getString("env"));
     assertTrue("prefetchFlags should default to true when auto-constructed",
@@ -178,8 +178,8 @@ public class FeatureFlagOptionsTest {
   public void testMixpanelOptions_DefaultFeatureFlagOptions() {
     MixpanelOptions options = new MixpanelOptions.Builder().build();
 
-    FeatureFlagOptions retrieved = options.getFlagOptions();
-    assertNotNull("getFlagOptions() should not be null", retrieved);
+    FeatureFlagOptions retrieved = options.getFeatureFlagOptions();
+    assertNotNull("getFeatureFlagOptions() should not be null", retrieved);
     assertFalse("enabled should default to false", retrieved.isEnabled());
     assertEquals("context should be empty", 0, retrieved.getContext().length());
     assertTrue("prefetchFlags should default to true", retrieved.shouldPrefetchFlags());
@@ -200,7 +200,7 @@ public class FeatureFlagOptionsTest {
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
-        .flagOptions(flagOptions)
+        .featureFlagOptions(flagOptions)
         .build();
 
     // Create MixpanelAPI before launching activity so lifecycle callbacks are registered
@@ -244,7 +244,7 @@ public class FeatureFlagOptionsTest {
         .build();
 
     MixpanelOptions mpOptions = new MixpanelOptions.Builder()
-        .flagOptions(flagOptions)
+        .featureFlagOptions(flagOptions)
         .build();
 
     // Create MixpanelAPI before launching activity so lifecycle callbacks are registered

@@ -10,21 +10,21 @@ import org.json.JSONObject;
  *
  * <p>Use this class to consolidate all feature flag settings into a single
  * configuration object when initializing a {@link MixpanelAPI} instance via
- * {@link MixpanelOptions.Builder#flagOptions(FeatureFlagOptions)}.
+ * {@link MixpanelOptions.Builder#featureFlagOptions(FeatureFlagOptions)}.
  *
  * <pre>{@code
- * FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
+ * FeatureFlagOptions featureFlagOptions = new FeatureFlagOptions.Builder()
  *     .enabled(true)
  *     .context(new JSONObject().put("plan", "enterprise"))
  *     .prefetchFlags(true)
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
- *     .flagOptions(flagOptions)
+ *     .featureFlagOptions(featureFlagOptions)
  *     .build();
  * }</pre>
  *
- * @see MixpanelOptions.Builder#flagOptions(FeatureFlagOptions)
+ * @see MixpanelOptions.Builder#featureFlagOptions(FeatureFlagOptions)
  */
 public class FeatureFlagOptions {
 
