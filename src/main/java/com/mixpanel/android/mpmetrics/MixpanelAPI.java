@@ -2654,7 +2654,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin);
+                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
+                            mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
             mMessages.eventsMessage(eventDescription);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
@@ -2669,7 +2670,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             String eventName,
             JSONObject properties,
             boolean isAutomaticEvent,
-            Long eventBegin) throws JSONException {
+            Long eventBegin,
+            FirstTimeEventListener firstTimeEventListener) throws JSONException {
         final JSONObject messageProps = new JSONObject();
 
         final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
@@ -2717,7 +2719,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 messageProps,
                 mToken,
                 isAutomaticEvent,
-                mSessionMetadata.getMetadataForEvent());
+                mSessionMetadata.getMetadataForEvent(),
+                firstTimeEventListener);
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -2741,13 +2744,14 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private void enqueueFirstLaunchCheck() {
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null);
+                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null, null);
 
             final AnalyticsMessages.FirstLaunchDescription firstLaunchDescription =
                     new AnalyticsMessages.FirstLaunchDescription(
                             mToken,
                             eventDescription,
-                            mPersistentIdentity);
+                            mPersistentIdentity,
+                            mFeatureFlagManager::checkFirstTimeEvent);
             mMessages.checkFirstLaunchMessage(firstLaunchDescription);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception preparing first launch check", e);

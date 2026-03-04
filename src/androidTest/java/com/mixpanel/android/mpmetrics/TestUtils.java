@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Message;
 
+import com.mixpanel.android.util.RemoteService;
+
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -133,6 +135,56 @@ public class TestUtils {
         public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
             dispatchMessage(msg);
             return true;
+        }
+    }
+
+    /**
+     * Cleans up all Mixpanel data (SharedPreferences) for testing.
+     * This clears the global Mixpanel SharedPreferences used for tracking instances.
+     */
+    public static void cleanUpMixpanelData(Context context) {
+        String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+        SharedPreferences prefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+        prefs.edit().clear().apply();
+    }
+
+    /**
+     * Creates a CleanMixpanelAPI instance with a custom RemoteService for testing.
+     * This allows tests to intercept and mock HTTP requests.
+     *
+     * @param context The test context
+     * @param mockService The mock RemoteService to use for HTTP requests
+     * @return A MixpanelAPI instance configured with the mock service
+     */
+    public static MixpanelAPI createMixpanelAPIWithMockHttpService(
+            Context context, RemoteService mockService) {
+        Future<SharedPreferences> referrerPreferences = new EmptyPreferences(context);
+        // Set mock service BEFORE constructing so it's available during super() call
+        CleanMixpanelAPIWithMockService.setMockService(mockService);
+        return new CleanMixpanelAPIWithMockService(
+                context, referrerPreferences, "test_token");
+    }
+
+    /**
+     * Extension of CleanMixpanelAPI that uses a custom RemoteService for testing.
+     */
+    public static class CleanMixpanelAPIWithMockService extends CleanMixpanelAPI {
+        private static RemoteService sMockService;
+
+        static void setMockService(RemoteService mockService) {
+            sMockService = mockService;
+        }
+
+        public CleanMixpanelAPIWithMockService(
+                Context context,
+                Future<SharedPreferences> referrerPreferences,
+                String token) {
+            super(context, referrerPreferences, token);
+        }
+
+        @Override
+        RemoteService getHttpService() {
+            return sMockService;
         }
     }
 
