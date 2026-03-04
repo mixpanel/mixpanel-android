@@ -15,8 +15,7 @@ public class MixpanelOptions {
     private final String instanceName;
     private final boolean optOutTrackingDefault;
     private final JSONObject superProperties;
-    private final boolean featureFlagsEnabled;
-    private final JSONObject featureFlagsContext;
+    private final FeatureFlagOptions mFeatureFlagOptions;
     private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
@@ -25,11 +24,10 @@ public class MixpanelOptions {
         this.instanceName = builder.instanceName;
         this.optOutTrackingDefault = builder.optOutTrackingDefault;
         this.superProperties = builder.superProperties;
-        this.featureFlagsEnabled = builder.featureFlagsEnabled;
-        this.featureFlagsContext = builder.featureFlagsContext;
         this.deviceIdProvider = builder.deviceIdProvider;
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
+        this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
     }
 
     public String getInstanceName() {
@@ -54,22 +52,19 @@ public class MixpanelOptions {
         }
     }
 
+    @Deprecated
     public boolean areFeatureFlagsEnabled() {
-        return featureFlagsEnabled;
+        return mFeatureFlagOptions.isEnabled();
     }
 
+    @Deprecated
     public JSONObject getFeatureFlagsContext() {
-        // Defensive copy
-        if (featureFlagsContext == null) {
-            return new JSONObject();
-        }
-        try {
-            return new JSONObject(featureFlagsContext.toString());
-        } catch (Exception e) {
-            // This should ideally not happen if featureFlagsContext was a valid JSONObject
-            MPLog.e(LOGTAG, "Invalid feature flags context", e);
-            return new JSONObject();
-        }
+        return mFeatureFlagOptions.getContext();
+    }
+
+    @NonNull
+    public FeatureFlagOptions getFeatureFlagOptions() {
+        return mFeatureFlagOptions;
     }
 
     /**
@@ -104,8 +99,7 @@ public class MixpanelOptions {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
-        private boolean featureFlagsEnabled = false;
-        private JSONObject featureFlagsContext = new JSONObject();
+        private FeatureFlagOptions mFeatureFlagOptions = new FeatureFlagOptions.Builder().build();
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
@@ -165,9 +159,11 @@ public class MixpanelOptions {
          *
          * @param featureFlagsEnabled True to enable feature flags, false to disable.
          * @return This Builder instance for chaining.
+         * @deprecated Use {@link #featureFlagOptions(FeatureFlagOptions)} instead.
          */
+        @Deprecated
         public Builder featureFlagsEnabled(boolean featureFlagsEnabled) {
-            this.featureFlagsEnabled = featureFlagsEnabled;
+            this.mFeatureFlagOptions = new FeatureFlagOptions.Builder(mFeatureFlagOptions).enabled(featureFlagsEnabled).build();
             return this;
         }
 
@@ -178,19 +174,25 @@ public class MixpanelOptions {
          * @param featureFlagsContext A JSONObject containing key-value pairs for the feature flags context.
          *                            The provided JSONObject will be defensively copied.
          * @return This Builder instance for chaining.
+         * @deprecated Use {@link #featureFlagOptions(FeatureFlagOptions)} instead.
          */
+        @Deprecated
         public Builder featureFlagsContext(JSONObject featureFlagsContext) {
-            if (featureFlagsContext == null) {
-                this.featureFlagsContext = new JSONObject();
-            } else {
-                try {
-                    // Defensive copy
-                    this.featureFlagsContext = new JSONObject(featureFlagsContext.toString());
-                } catch (Exception e) {
-                    // Log error or handle as appropriate if JSON is invalid
-                    this.featureFlagsContext = null;
-                }
-            }
+            this.mFeatureFlagOptions = new FeatureFlagOptions.Builder(mFeatureFlagOptions).context(featureFlagsContext).build();
+            return this;
+        }
+
+        /**
+         * Sets the feature flag options for this Mixpanel instance.
+         *
+         * <p>This replaces any values previously set via {@link #featureFlagsEnabled(boolean)}
+         * and {@link #featureFlagsContext(JSONObject)}.
+         *
+         * @param featureFlagOptions The FeatureFlagOptions configuration.
+         * @return This Builder instance for chaining.
+         */
+        public Builder featureFlagOptions(FeatureFlagOptions featureFlagOptions) {
+            this.mFeatureFlagOptions = featureFlagOptions;
             return this;
         }
 

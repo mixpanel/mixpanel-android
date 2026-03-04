@@ -225,11 +225,12 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 getPersistentIdentity(context, referrerPreferences, token, options.getInstanceName(), options.getDeviceIdProvider());
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
+        mFeatureFlagOptions = options.getFeatureFlagOptions();
         mFeatureFlagManager =
                 new FeatureFlagManager(
                         this,
                         getHttpService(),
-                        new FlagsConfig(options.areFeatureFlagsEnabled(), options.getFeatureFlagsContext()));
+                        new FlagsConfig(mFeatureFlagOptions.isEnabled(), mFeatureFlagOptions.getContext()));
 
         if (options.isOptOutTrackingDefault()
                 && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
@@ -2127,7 +2128,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mSessionMetadata.initSession();
         // Ensure app has previously launched in foreground before network call.
         mHasAppForegrounded.set(true);
-        if (mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+        if (mFeatureFlagOptions.isEnabled()
+                && mFeatureFlagOptions.shouldPrefetchFlags()
+                && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
     }
@@ -2874,6 +2877,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final Map<String, Long> mEventTimings;
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
+    private final FeatureFlagOptions mFeatureFlagOptions;
     private FeatureFlagManager mFeatureFlagManager;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground

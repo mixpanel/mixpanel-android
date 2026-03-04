@@ -21,7 +21,7 @@ import java.util.Map;
  */
 public class JsonUtils {
 
-    private static final String LOGTAG = "MixpanelAPI.JsonUtils"; // Re-use Mixpanel log tag convention
+    private static final String LOGTAG = "MixpanelAPI.JsonUtils";
 
     /**
      * Parses a JSON value obtained from org.json (like JSONObject.get() or JSONArray.get())
