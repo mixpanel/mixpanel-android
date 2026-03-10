@@ -84,6 +84,7 @@ public class MPConfigTest {
         assertEquals("https://api.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
     }
 
+    @Test
     public void testSetServerURL() throws Exception {
         final Bundle metaData = new Bundle();
         MPConfig config = mpConfig(metaData);
@@ -97,6 +98,27 @@ public class MPConfigTest {
         assertEquals("https://api-eu.mixpanel.com/track/?ip=1", config.getEventsEndpoint());
         assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
         assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
+    }
+
+    @Test
+    public void testSetServerURLWithTrailingSlash() throws Exception {
+        final Bundle metaData = new Bundle();
+        MPConfig config = mpConfig(metaData);
+        final MixpanelAPI mixpanelAPI = mixpanelApi(config);
+
+        // URL with trailing slash should NOT produce double slashes (fixes #842)
+        mixpanelAPI.setServerURL("https://custom.proxy.com/");
+        assertEquals("https://custom.proxy.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://custom.proxy.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://custom.proxy.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://custom.proxy.com/flags/", config.getFlagsEndpoint());
+
+        // URL without trailing slash should work the same
+        mixpanelAPI.setServerURL("https://another.proxy.com");
+        assertEquals("https://another.proxy.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://another.proxy.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://another.proxy.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://another.proxy.com/flags/", config.getFlagsEndpoint());
     }
 
     @Test
@@ -239,6 +261,27 @@ public class MPConfigTest {
         assertEquals("https://api-eu.mixpanel.com/engage/?ip=1", config.getPeopleEndpoint());
         assertEquals("https://api-eu.mixpanel.com/groups/?ip=1", config.getGroupsEndpoint());
         assertEquals("https://api-eu.mixpanel.com/flags/", config.getFlagsEndpoint());
+    }
+
+    @Test
+    public void testServerURLFromMixpanelOptionsWithTrailingSlash() {
+        // URL with trailing slash should NOT produce double slashes (fixes #842)
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .serverURL("https://custom.proxy.com/")
+                .build();
+
+        MixpanelAPI mixpanel = MixpanelAPI.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                UUID.randomUUID().toString(),
+                true,
+                options
+        );
+
+        MPConfig config = mixpanel.getMPConfig();
+        assertEquals("https://custom.proxy.com/track/?ip=1", config.getEventsEndpoint());
+        assertEquals("https://custom.proxy.com/engage/?ip=1", config.getPeopleEndpoint());
+        assertEquals("https://custom.proxy.com/groups/?ip=1", config.getGroupsEndpoint());
+        assertEquals("https://custom.proxy.com/flags/", config.getFlagsEndpoint());
     }
 
     @Test
