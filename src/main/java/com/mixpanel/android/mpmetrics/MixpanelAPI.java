@@ -15,6 +15,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import com.mixpanel.android.eventbridge.MixpanelEventBridge;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
@@ -2657,6 +2658,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
                             mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
             mMessages.eventsMessage(eventDescription);
+
+            // Notify event bridge listeners (async, non-blocking)
+            try {
+                MixpanelEventBridge.notifyListeners(
+                        eventName,
+                        eventDescription.getProperties()  // Pass JSONObject directly, no conversion
+                );
+            } catch (final Exception bridgeException) {
+                // Never let bridge errors interrupt event tracking
+                MPLog.w(LOGTAG, "Event bridge notification failed: " + bridgeException.getMessage());
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -2895,7 +2907,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private static final SharedPreferencesLoader sPrefsLoader = new SharedPreferencesLoader();
     private static Future<SharedPreferences> sReferrerPrefs;
 
-    private static final String LOGTAG = "MixpanelAPI.API";
+    public static final String LOGTAG = "MixpanelAPI.API";
     private static final String APP_LINKS_LOGTAG = "MixpanelAPI.AL";
     private static final String ENGAGE_DATE_FORMAT_STRING = "yyyy-MM-dd'T'HH:mm:ss";
 }
