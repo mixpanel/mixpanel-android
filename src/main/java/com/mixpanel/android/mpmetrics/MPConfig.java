@@ -386,10 +386,22 @@ public class MPConfig {
 
     // In parity with iOS SDK
     public void setServerURL(String serverURL) {
-        setEventsEndpointWithBaseURL(serverURL);
-        setPeopleEndpointWithBaseURL(serverURL);
-        setGroupsEndpointWithBaseURL(serverURL);
-        setFlagsEndpointWithBaseURL(serverURL);
+        String normalizedURL = normalizeBaseUrl(serverURL);
+        setEventsEndpointWithBaseURL(normalizedURL);
+        setPeopleEndpointWithBaseURL(normalizedURL);
+        setGroupsEndpointWithBaseURL(normalizedURL);
+        setFlagsEndpointWithBaseURL(normalizedURL);
+    }
+
+    /**
+     * Normalizes a base URL by removing trailing slashes to prevent double-slash issues
+     * when concatenating with path segments that start with a slash.
+     */
+    private String normalizeBaseUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
     private String getEndPointWithIpTrackingParam(
