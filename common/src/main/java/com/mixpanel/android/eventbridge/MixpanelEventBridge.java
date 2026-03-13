@@ -1,7 +1,5 @@
 package com.mixpanel.android.eventbridge;
 
-// import android.util.Log;
-
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
@@ -69,7 +67,7 @@ public final class MixpanelEventBridge {
                 }
 
                 listeners.add(new WeakReference<>(listener));
-                // Log.d(LOGTAG, "Event bridge registered listener.");
+                // MPLog.d(LOGTAG, "Event bridge registered listener.");
             }
         });
     }
@@ -123,7 +121,7 @@ public final class MixpanelEventBridge {
             @Override
             public void run() {
                 if (listeners.isEmpty()) {
-                    // Log.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
+                    // MPLog.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
                     return;
                 }
 
@@ -137,10 +135,10 @@ public final class MixpanelEventBridge {
                     if (listener != null) {
                         try {
                             listener.onEventTracked(event);
-                            // Log.d(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
+                            // MPLog.w(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
                         } catch (Exception e) {
                             // Never let listener errors interrupt event processing
-                            // Log.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
+                            // MPLog.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
                         }
                     }
                 }
