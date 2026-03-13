@@ -25,8 +25,16 @@ android {
             minifyEnabled false
         }
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
     implementation "androidx.annotation:annotation:1.8.2"
 }
+
+apply from: rootProject.file('common/maven-common.gradle')

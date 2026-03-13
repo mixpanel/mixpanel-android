@@ -1,0 +1,37 @@
+apply plugin: 'maven-publish'
+
+group = GROUP
+version = VERSION_NAME
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            afterEvaluate {
+                from components.findByName('release')
+            }
+
+            groupId = GROUP
+            artifactId = 'mixpanel-android-common'
+            version = VERSION_NAME
+
+            pom {
+                name.set('Mixpanel Android Common')
+                description.set('Common components for Mixpanel Android SDK')
+                url.set(POM_URL)
+                packaging = POM_PACKAGING
+
+                licenses {
+                    license {
+                        name.set(POM_LICENCE_NAME)
+                        url.set(POM_LICENCE_URL)
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register('install') {
+    dependsOn 'build', 'publishReleasePublicationToMavenLocal'
+    description = 'Installs the common library to local Maven repository'
+}
