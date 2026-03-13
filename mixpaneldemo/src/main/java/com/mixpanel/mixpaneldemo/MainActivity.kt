@@ -12,18 +12,31 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.*
+import com.mixpanel.android.eventbridge.MixpanelEventBridge
 import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
 
 const val MIXPANEL_PROJECT_TOKEN = "YOUR_PROJECT_TOKEN"
 
 class MainActivity : ComponentActivity() {
+    // Hold strong reference to prevent GC (bridge uses weak references)
+    private val eventListener = SimpleLoggingEventListener()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Register event listener to log all tracked events
+        MixpanelEventBridge.registerListener(eventListener)
+
         setContent {
             MixpanelandroidTheme {
                 MyApp()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        MixpanelEventBridge.unregisterListener(eventListener)
     }
 }
 

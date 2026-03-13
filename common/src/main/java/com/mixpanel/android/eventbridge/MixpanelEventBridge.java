@@ -1,8 +1,6 @@
 package com.mixpanel.android.eventbridge;
 
-import static com.mixpanel.android.mpmetrics.MixpanelAPI.LOGTAG;
-
-import com.mixpanel.android.util.MPLog;
+import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -25,6 +23,9 @@ import java.util.concurrent.Executors;
  * ensuring serial execution and eliminating the need for locks.
  */
 public final class MixpanelEventBridge {
+
+    private static final String LOGTAG = "MixpanelAPI.EventBridge";
+
     /**
      * Single-threaded executor for serial event processing.
      * All listener operations and notifications happen on this thread.
@@ -68,7 +69,7 @@ public final class MixpanelEventBridge {
                 }
 
                 listeners.add(new WeakReference<>(listener));
-                MPLog.d(LOGTAG, "Event bridge registered listener.");
+                Log.d(LOGTAG, "Event bridge registered listener.");
             }
         });
     }
@@ -121,9 +122,8 @@ public final class MixpanelEventBridge {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-//                cleanupDeadReferences();
                 if (listeners.isEmpty()) {
-                    MPLog.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
+                    Log.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
                     return;
                 }
 
@@ -137,10 +137,10 @@ public final class MixpanelEventBridge {
                     if (listener != null) {
                         try {
                             listener.onEventTracked(event);
-                            MPLog.w(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
+                            Log.d(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
                         } catch (Exception e) {
                             // Never let listener errors interrupt event processing
-                            MPLog.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
+                            Log.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
                         }
                     }
                 }

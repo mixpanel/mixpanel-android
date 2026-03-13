@@ -3,4 +3,5 @@ plugins {
 }
 
 rootProject.name = "mixpanel-android"
+include ':common'
 include ':mixpaneldemo'
