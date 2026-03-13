@@ -1,17 +1,15 @@
-package com.mixpanel.android.eventbridge;
-
-import java.util.Map;
+package com.mixpanel.android.eventbridge
 
 /**
  * Interface for listening to Mixpanel analytics events.
  *
  * Components that want to receive notifications when events are tracked
- * should implement this interface and register with {@link MixpanelEventBridge}.
+ * should implement this interface and register with [MixpanelEventBridge].
  *
  * The bridge holds weak references to listeners, so implementers must
  * maintain a strong reference to prevent premature garbage collection.
  */
-public interface MixpanelEventListener {
+fun interface MixpanelEventListener {
     /**
      * Called when an event is tracked in the Mixpanel SDK.
      *
@@ -22,5 +20,5 @@ public interface MixpanelEventListener {
      *              - "eventName" (String): The name of the tracked event
      *              - "properties" (JSONObject): The event properties
      */
-    void onEventTracked(Map<String, Object> event);
+    fun onEventTracked(event: Map<String, Any?>)
 }

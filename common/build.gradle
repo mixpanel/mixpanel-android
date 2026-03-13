@@ -1,0 +1,32 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace "com.mixpanel.android.common"
+    compileSdk 34
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    defaultConfig {
+        minSdk 21
+
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.annotation:annotation:1.8.2"
+}

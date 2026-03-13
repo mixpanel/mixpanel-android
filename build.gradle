@@ -88,6 +88,7 @@ java {
 
 
 dependencies {
+    api project(':common')
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
     implementation 'io.github.jamsesso:json-logic-java:1.0.7'
