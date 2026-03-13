@@ -14,7 +14,7 @@ class SimpleLoggingEventListener : MixpanelEventListener {
         private const val TAG = "MixpanelEventBridge"
     }
 
-    override fun onEventTracked(event: Map<String, Any>) {
+    override fun onEventTracked(event: Map<String, Any?>) {
         val eventName = event["eventName"] as? String ?: "unknown"
         val properties = event["properties"] as? JSONObject
 
