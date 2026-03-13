@@ -197,10 +197,10 @@ public class FirstTimeEventTest {
                 event2.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_2");
                 event2.put(MPConstants.Flags.EVENT_NAME, "AddToCart");
 
-                // JsonLogic: {"==": [{"var": "properties.category"}, "electronics"]}
+                // JsonLogic: {"==": [{"var": "category"}, "electronics"]}
                 JSONObject propertyFilters = new JSONObject();
                 propertyFilters.put("==", new JSONArray()
-                        .put(new JSONObject().put("var", "properties.category"))
+                        .put(new JSONObject().put("var", "category"))
                         .put("electronics"));
                 event2.put(MPConstants.Flags.PROPERTY_FILTERS, propertyFilters);
 
@@ -243,20 +243,29 @@ public class FirstTimeEventTest {
     }
 
     @Test
-    public void testPropertyFilterMatching_CaseInsensitive() throws Exception {
-        // Load flags with pending event for "AddToCart" with category filter
+    public void testPropertyFilterMatching_CaseSensitive() throws Exception {
+        // Load flags with pending event for "AddToCart" with category filter for "electronics"
         mMixpanel.getFlags().loadFlags();
         Boolean flagsLoaded = mFlagLoadComplete.poll(2, TimeUnit.SECONDS);
         assertNotNull("Flags should load successfully", flagsLoaded);
 
-        // Track AddToCart with category="ELECTRONICS" (uppercase) - should match
+        // Track AddToCart with category="ELECTRONICS" (uppercase) - should NOT match
         JSONObject props = new JSONObject();
-        props.put("category", "ELECTRONICS"); // Uppercase
+        props.put("category", "ELECTRONICS"); // Uppercase - won't match "electronics"
         mMixpanel.track("AddToCart", props);
 
-        // Verify recording API call was made (case-insensitive property matching)
-        RecordingAPICall call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
-        assertNotNull("Property filter should match case-insensitively", call);
+        // Verify no recording API call was made (case-sensitive property matching)
+        RecordingAPICall call = mRecordingCalls.poll(1, TimeUnit.SECONDS);
+        assertNull("Property filter should NOT match different case", call);
+
+        // Track AddToCart with category="electronics" (exact match) - SHOULD match
+        JSONObject exactProps = new JSONObject();
+        exactProps.put("category", "electronics");
+        mMixpanel.track("AddToCart", exactProps);
+
+        // Verify recording API call was made
+        call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Property filter should match with exact case", call);
         assertEquals("hash_2", call.body.getString("first_time_event_hash"));
     }
 
