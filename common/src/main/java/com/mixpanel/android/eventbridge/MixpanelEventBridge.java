@@ -1,6 +1,6 @@
 package com.mixpanel.android.eventbridge;
 
-import android.util.Log;
+// import android.util.Log;
 
 import org.json.JSONObject;
 
@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
  */
 public final class MixpanelEventBridge {
 
-    private static final String LOGTAG = "MixpanelAPI.EventBridge";
+    // private static final String LOGTAG = "MixpanelAPI.EventBridge";
 
     /**
      * Single-threaded executor for serial event processing.
@@ -69,7 +69,7 @@ public final class MixpanelEventBridge {
                 }
 
                 listeners.add(new WeakReference<>(listener));
-                Log.d(LOGTAG, "Event bridge registered listener.");
+                // Log.d(LOGTAG, "Event bridge registered listener.");
             }
         });
     }
@@ -123,7 +123,7 @@ public final class MixpanelEventBridge {
             @Override
             public void run() {
                 if (listeners.isEmpty()) {
-                    Log.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
+                    // Log.d(LOGTAG, "Event bridge has no listeners registered: event " + eventName);
                     return;
                 }
 
@@ -137,10 +137,10 @@ public final class MixpanelEventBridge {
                     if (listener != null) {
                         try {
                             listener.onEventTracked(event);
-                            Log.d(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
+                            // Log.d(LOGTAG, "Event dispatched to event bridge - '" + eventName + "'");
                         } catch (Exception e) {
                             // Never let listener errors interrupt event processing
-                            Log.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
+                            // Log.w(LOGTAG, "Event bridge listener failed for event '" + eventName + "': " + e.getMessage());
                         }
                     }
                 }
