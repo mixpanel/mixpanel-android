@@ -8,7 +8,6 @@
 - feat: Add Android support for FF runtime events [\#878](https://github.com/mixpanel/mixpanel-android/pull/878)
 
 ### Fixes
-
 - fix: double slashes in URLs when setServerURL has trailing slash (#842) [\#897](https://github.com/mixpanel/mixpanel-android/pull/897)
 
 [Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.3.0...v8.4.0)
