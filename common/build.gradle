@@ -1,6 +1,15 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
+// Minimum Kotlin version for consumer compatibility.
+// Consumers using Kotlin 1.8+ can use this library.
+def KOTLIN_MIN_VERSION = '1.8.0'
+
+// Disable automatic kotlin-stdlib from kotlin plugin - we'll add it explicitly
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace "com.mixpanel.android.common"
     compileSdk 34
@@ -12,6 +21,8 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+        apiVersion = '1.8'
+        languageVersion = '1.8'
     }
 
     defaultConfig {
@@ -34,7 +45,19 @@ android {
 }
 
 dependencies {
+    // Explicitly set kotlin-stdlib version for consumer compatibility.
+    // Consumers using Kotlin 1.8+ can use this library.
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$KOTLIN_MIN_VERSION"
     implementation "androidx.annotation:annotation:1.8.2"
+}
+
+// Force kotlin-stdlib to minimum version in all configurations
+configurations.configureEach {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib:$KOTLIN_MIN_VERSION"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$KOTLIN_MIN_VERSION"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$KOTLIN_MIN_VERSION"
+    }
 }
 
 apply from: rootProject.file('common/maven-common.gradle')
