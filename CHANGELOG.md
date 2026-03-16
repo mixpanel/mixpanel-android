@@ -1,5 +1,18 @@
 # Changelog
 
+## [v8.4.0](https://github.com/mixpanel/mixpanel-android/tree/v8.4.0) (2026-03-16)
+
+### Enhancements
+- feat: Add support to get all feature flag assignments [\#895](https://github.com/mixpanel/mixpanel-android/pull/895)
+- feat: Add FlagOptions for consolidated feature flag configuration [\#896](https://github.com/mixpanel/mixpanel-android/pull/896)
+- feat: Add Android support for FF runtime events [\#878](https://github.com/mixpanel/mixpanel-android/pull/878)
+
+### Fixes
+- fix: double slashes in URLs when setServerURL has trailing slash (#842) [\#897](https://github.com/mixpanel/mixpanel-android/pull/897)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.3.0...v8.4.0)
+
+
 ## [v8.3.0](https://github.com/mixpanel/mixpanel-android/tree/v8.3.0) (2026-02-06)
 
 [Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.2.7...v8.3.0)
