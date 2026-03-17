@@ -45,11 +45,8 @@ object MixpanelEventBridge {
             cleanupDeadReferences()
 
             // Check for duplicate registration
-            for (ref in listeners) {
-                val existing = ref.get()
-                if (existing != null && existing === listener) {
-                    return@execute
-                }
+            if (listeners.any { it.get() === listener }) {
+                return@execute
             }
 
             listeners.add(WeakReference(listener))
@@ -65,14 +62,7 @@ object MixpanelEventBridge {
     @JvmStatic
     fun unregisterListener(listener: MixpanelEventListener) {
         executor.execute {
-            val iterator = listeners.iterator()
-            while (iterator.hasNext()) {
-                val ref = iterator.next()
-                val existing = ref.get()
-                if (existing == null || existing === listener) {
-                    iterator.remove()
-                }
-            }
+            listeners.removeAll { it.get() == null || it.get() === listener }
         }
     }
 
@@ -108,16 +98,13 @@ object MixpanelEventBridge {
                 "properties" to properties
             )
 
-            for (listenerRef in listeners) {
-                val listener = listenerRef.get()
-                if (listener != null) {
-                    try {
-                        listener.onEventTracked(event)
-                        // MPLog.w(LOGTAG, "Event dispatched to event bridge - '$eventName'")
-                    } catch (e: Exception) {
-                        // Never let listener errors interrupt event processing
-                        // MPLog.w(LOGTAG, "Event bridge listener failed for event '$eventName': ${e.message}")
-                    }
+            listeners.mapNotNull { it.get() }.forEach { listener ->
+                try {
+                    listener.onEventTracked(event)
+                    // MPLog.w(LOGTAG, "Event dispatched to event bridge - '$eventName'")
+                } catch (e: Exception) {
+                    // Never let listener errors interrupt event processing
+                    // MPLog.w(LOGTAG, "Event bridge listener failed for event '$eventName': ${e.message}")
                 }
             }
         }
@@ -127,11 +114,6 @@ object MixpanelEventBridge {
      * Removes listeners that have been garbage collected.
      */
     private fun cleanupDeadReferences() {
-        val iterator = listeners.iterator()
-        while (iterator.hasNext()) {
-            if (iterator.next().get() == null) {
-                iterator.remove()
-            }
-        }
+        listeners.removeAll { it.get() == null }
     }
 }
