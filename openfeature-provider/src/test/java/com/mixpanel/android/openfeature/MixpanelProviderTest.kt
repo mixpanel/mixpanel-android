@@ -324,6 +324,68 @@ class MixpanelProviderTest {
         assertEquals(emptyList<Any>(), provider.hooks)
     }
 
+    // --- Error: SDK exception handling ---
+
+    @Test
+    fun `returns GENERAL error when getVariantSync throws for boolean`() {
+        setupFlagException("error-flag")
+        val result = provider.getBooleanEvaluation("error-flag", true, ImmutableContext())
+        assertEquals(true, result.value)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    @Test
+    fun `returns GENERAL error when getVariantSync throws for string`() {
+        setupFlagException("error-flag")
+        val result = provider.getStringEvaluation("error-flag", "fallback", ImmutableContext())
+        assertEquals("fallback", result.value)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    @Test
+    fun `returns GENERAL error when getVariantSync throws for integer`() {
+        setupFlagException("error-flag")
+        val result = provider.getIntegerEvaluation("error-flag", 99, ImmutableContext())
+        assertEquals(99, result.value)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    @Test
+    fun `returns GENERAL error when getVariantSync throws for double`() {
+        setupFlagException("error-flag")
+        val result = provider.getDoubleEvaluation("error-flag", 1.5, ImmutableContext())
+        assertEquals(1.5, result.value!!, 0.001)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    @Test
+    fun `returns GENERAL error when getVariantSync throws for object`() {
+        setupFlagException("error-flag")
+        val defaultValue = Value.String("fallback")
+        val result = provider.getObjectEvaluation("error-flag", defaultValue, ImmutableContext())
+        assertEquals(defaultValue, result.value)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    // --- Null variant key ---
+
+    @Test
+    fun `null variant key is included as null in evaluation result`() {
+        val variant = NullKeyVariantFactory.create("value")
+        `when`(mockFlags.getVariantSync(eq("flag"), any(MixpanelFlagVariant::class.java)))
+            .thenReturn(variant)
+        val result = provider.getStringEvaluation("flag", "default", ImmutableContext())
+        assertEquals("value", result.value)
+        assertNull(result.variant)
+        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertNull(result.errorCode)
+    }
+
     // --- Variant key passthrough ---
 
     @Test
@@ -368,4 +430,14 @@ class MixpanelProviderTest {
         `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
             .thenAnswer { invocation -> invocation.getArgument(1) }
     }
+
+    /**
+     * Sets up the mock so that getVariantSync throws a RuntimeException,
+     * simulating an SDK error.
+     */
+    private fun setupFlagException(flagName: String) {
+        `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
+            .thenThrow(RuntimeException("SDK internal error"))
+    }
+
 }

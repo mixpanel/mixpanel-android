@@ -44,7 +44,12 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant = flags.getVariantSync(key, fallback)
+        val variant: MixpanelFlagVariant
+        try {
+            variant = flags.getVariantSync(key, fallback)
+        } catch (e: Exception) {
+            return generalError(defaultValue)
+        }
 
         if (variant === fallback) {
             return flagNotFound(defaultValue)
@@ -68,7 +73,12 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant = flags.getVariantSync(key, fallback)
+        val variant: MixpanelFlagVariant
+        try {
+            variant = flags.getVariantSync(key, fallback)
+        } catch (e: Exception) {
+            return generalError(defaultValue)
+        }
 
         if (variant === fallback) {
             return flagNotFound(defaultValue)
@@ -92,7 +102,12 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant = flags.getVariantSync(key, fallback)
+        val variant: MixpanelFlagVariant
+        try {
+            variant = flags.getVariantSync(key, fallback)
+        } catch (e: Exception) {
+            return generalError(defaultValue)
+        }
 
         if (variant === fallback) {
             return flagNotFound(defaultValue)
@@ -129,7 +144,12 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant = flags.getVariantSync(key, fallback)
+        val variant: MixpanelFlagVariant
+        try {
+            variant = flags.getVariantSync(key, fallback)
+        } catch (e: Exception) {
+            return generalError(defaultValue)
+        }
 
         if (variant === fallback) {
             return flagNotFound(defaultValue)
@@ -153,7 +173,12 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         val fallback = MixpanelFlagVariant("", null)
-        val variant = flags.getVariantSync(key, fallback)
+        val variant: MixpanelFlagVariant
+        try {
+            variant = flags.getVariantSync(key, fallback)
+        } catch (e: Exception) {
+            return generalError(defaultValue)
+        }
 
         if (variant === fallback) {
             return flagNotFound(defaultValue)
@@ -192,6 +217,14 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.TYPE_MISMATCH,
+            reason = Reason.ERROR.toString()
+        )
+    }
+
+    private fun <T> generalError(defaultValue: T): ProviderEvaluation<T> {
+        return ProviderEvaluation(
+            value = defaultValue,
+            errorCode = ErrorCode.GENERAL,
             reason = Reason.ERROR.toString()
         )
     }
