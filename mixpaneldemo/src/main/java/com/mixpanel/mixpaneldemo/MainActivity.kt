@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
 import com.mixpanel.android.eventbridge.MixpanelEventBridge
 import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 const val MIXPANEL_PROJECT_TOKEN = "YOUR_PROJECT_TOKEN"
@@ -26,7 +27,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Collect events from the bridge - automatically cancelled when activity is destroyed
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             MixpanelEventBridge.events().collect { event ->
                 Log.i("MixpanelEventBridge", "Event tracked: '${event.eventName}'")
                 event.properties?.let {
