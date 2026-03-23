@@ -1,13 +1,14 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-// Minimum Kotlin version for consumer compatibility.
-// Consumers using Kotlin 1.8+ can use this library.
-def KOTLIN_MIN_VERSION = '1.8.0'
-
-// Disable automatic kotlin-stdlib from kotlin plugin - we'll add it explicitly
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        apiVersion = KotlinVersion.KOTLIN_1_8
+        languageVersion = KotlinVersion.KOTLIN_1_8
+    }
 }
 
 android {
@@ -19,14 +20,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-        apiVersion = '1.8'
-        languageVersion = '1.8'
-    }
-
     defaultConfig {
-        minSdk 21
+        minSdk = 21
 
         consumerProguardFiles 'proguard-rules.pro'
     }
@@ -45,20 +40,10 @@ android {
 }
 
 dependencies {
-    // Explicitly set kotlin-stdlib version for consumer compatibility.
-    // Consumers using Kotlin 1.8+ can use this library.
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$KOTLIN_MIN_VERSION"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
-    implementation "androidx.annotation:annotation:1.8.2"
-}
-
-// Force kotlin-stdlib to minimum version in all configurations
-configurations.configureEach {
-    resolutionStrategy {
-        force "org.jetbrains.kotlin:kotlin-stdlib:$KOTLIN_MIN_VERSION"
-        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$KOTLIN_MIN_VERSION"
-        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$KOTLIN_MIN_VERSION"
-    }
+    // Declared as 1.8.0 so the POM has a low floor version.
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2"
+    implementation "androidx.annotation:annotation:1.9.1"
 }
 
 apply from: rootProject.file('common/maven-common.gradle')
