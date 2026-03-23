@@ -11,6 +11,17 @@ import org.json.JSONObject
 import java.util.ArrayDeque
 
 /**
+ * Represents a tracked Mixpanel event.
+ *
+ * @property eventName The name of the tracked event
+ * @property properties The event properties, or null if none
+ */
+data class MixpanelEvent(
+    val eventName: String,
+    val properties: JSONObject?
+)
+
+/**
  * Central event dispatcher for Mixpanel analytics events.
  *
  * This singleton dispatches events using Kotlin Flows.
@@ -23,8 +34,8 @@ object MixpanelEventBridge {
     private const val MAX_CACHE_SIZE = 100
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val eventFlow = MutableSharedFlow<Map<String, Any?>>()
-    private val eventCache = ArrayDeque<Map<String, Any?>>(MAX_CACHE_SIZE)
+    private val eventFlow = MutableSharedFlow<MixpanelEvent>()
+    private val eventCache = ArrayDeque<MixpanelEvent>(MAX_CACHE_SIZE)
     private val cacheLock = Any()
 
     /**
@@ -34,11 +45,11 @@ object MixpanelEventBridge {
      * Cancellation is automatic when the collecting scope is canceled.
      *
      * @param replayCount Number of cached events to replay (0 to MAX_CACHE_SIZE, default 0)
-     * @return Flow emitting event maps with keys "eventName" (String) and "properties" (JSONObject?)
+     * @return Flow emitting [MixpanelEvent] instances
      */
     @JvmStatic
     @JvmOverloads
-    fun events(replayCount: Int = 0): Flow<Map<String, Any?>> = flow {
+    fun events(replayCount: Int = 0): Flow<MixpanelEvent> = flow {
         // Emit cached events first
         val cached = synchronized(cacheLock) {
             val count = replayCount.coerceIn(0, eventCache.size)
@@ -61,10 +72,7 @@ object MixpanelEventBridge {
      */
     @JvmStatic
     fun notifyListeners(eventName: String, properties: JSONObject?) {
-        val event = mapOf(
-            "eventName" to eventName,
-            "properties" to properties
-        )
+        val event = MixpanelEvent(eventName, properties)
 
         synchronized(cacheLock) {
             if (eventCache.size >= MAX_CACHE_SIZE) {
