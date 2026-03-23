@@ -1,5 +1,6 @@
 package com.mixpanel.android.openfeature
 
+import com.mixpanel.android.mpmetrics.FlagCompletionCallback
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import com.mixpanel.android.mpmetrics.MixpanelFlagVariant
 import dev.openfeature.kotlin.sdk.ImmutableContext
@@ -14,6 +15,8 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.any
 import org.mockito.Mockito.eq
+import org.mockito.kotlin.whenever
+import org.mockito.kotlin.doAnswer
 
 class MixpanelProviderTest {
 
@@ -24,6 +27,12 @@ class MixpanelProviderTest {
     fun setUp() {
         mockFlags = mock(MixpanelAPI.Flags::class.java)
         `when`(mockFlags.areFlagsReady()).thenReturn(true)
+        doAnswer { invocation ->
+            @Suppress("UNCHECKED_CAST")
+            val callback = invocation.getArgument<FlagCompletionCallback<Boolean>>(1)
+            callback.onComplete(true)
+            null
+        }.whenever(mockFlags).setContext(any(), any())
         provider = MixpanelProvider(mockFlags)
     }
 

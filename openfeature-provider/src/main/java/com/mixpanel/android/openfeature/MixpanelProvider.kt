@@ -10,6 +10,8 @@ import dev.openfeature.kotlin.sdk.ProviderMetadata
 import dev.openfeature.kotlin.sdk.Reason
 import dev.openfeature.kotlin.sdk.Value
 import dev.openfeature.kotlin.sdk.exceptions.ErrorCode
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * An OpenFeature provider backed by the Mixpanel Android SDK's feature flags.
@@ -23,11 +25,19 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
     override val metadata: ProviderMetadata = MixpanelProviderMetadata()
 
     override suspend fun initialize(initialContext: EvaluationContext?) {
-        // No-op: the Mixpanel SDK manages its own initialization.
+        if (initialContext != null) {
+            val contextMap = evaluationContextToMap(initialContext)
+            suspendCoroutine<Unit> { continuation ->
+                flags.setContext(contextMap) { continuation.resume(Unit) }
+            }
+        }
     }
 
     override suspend fun onContextSet(oldContext: EvaluationContext?, newContext: EvaluationContext) {
-        // No-op: context is managed by the Mixpanel SDK via mixpanel.identify().
+        val contextMap = evaluationContextToMap(newContext)
+        suspendCoroutine<Unit> { continuation ->
+            flags.setContext(contextMap) { continuation.resume(Unit) }
+        }
     }
 
     override fun shutdown() {
@@ -52,7 +62,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         if (variant === fallback) {
-            return flagNotFound(defaultValue)
+            return flagNotFound(key, defaultValue)
         }
 
         val value = variant.value
@@ -60,7 +70,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             return success(value, variant.key)
         }
 
-        return typeMismatch(defaultValue)
+        return typeMismatch(key, "Boolean", value, defaultValue)
     }
 
     override fun getStringEvaluation(
@@ -81,7 +91,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         if (variant === fallback) {
-            return flagNotFound(defaultValue)
+            return flagNotFound(key, defaultValue)
         }
 
         val value = variant.value
@@ -89,7 +99,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             return success(value, variant.key)
         }
 
-        return typeMismatch(defaultValue)
+        return typeMismatch(key, "String", value, defaultValue)
     }
 
     override fun getIntegerEvaluation(
@@ -110,7 +120,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         if (variant === fallback) {
-            return flagNotFound(defaultValue)
+            return flagNotFound(key, defaultValue)
         }
 
         val value = variant.value
@@ -131,7 +141,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             }
         }
 
-        return typeMismatch(defaultValue)
+        return typeMismatch(key, "Int", value, defaultValue)
     }
 
     override fun getDoubleEvaluation(
@@ -152,7 +162,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         if (variant === fallback) {
-            return flagNotFound(defaultValue)
+            return flagNotFound(key, defaultValue)
         }
 
         val value = variant.value
@@ -160,7 +170,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             return success(value.toDouble(), variant.key)
         }
 
-        return typeMismatch(defaultValue)
+        return typeMismatch(key, "Double", value, defaultValue)
     }
 
     override fun getObjectEvaluation(
@@ -181,7 +191,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         }
 
         if (variant === fallback) {
-            return flagNotFound(defaultValue)
+            return flagNotFound(key, defaultValue)
         }
 
         return success(toValue(variant.value), variant.key)
@@ -201,23 +211,32 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.PROVIDER_NOT_READY,
-            reason = Reason.ERROR.toString()
+            reason = Reason.ERROR.toString(),
+            errorMessage = "Flags not ready"
         )
     }
 
-    private fun <T> flagNotFound(defaultValue: T): ProviderEvaluation<T> {
+    private fun <T> flagNotFound(flagKey: String, defaultValue: T): ProviderEvaluation<T> {
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.FLAG_NOT_FOUND,
-            reason = Reason.ERROR.toString()
+            reason = Reason.ERROR.toString(),
+            errorMessage = "Flag \"$flagKey\" not found"
         )
     }
 
-    private fun <T> typeMismatch(defaultValue: T): ProviderEvaluation<T> {
+    private fun <T> typeMismatch(
+        flagKey: String,
+        expectedType: String,
+        actualValue: Any?,
+        defaultValue: T
+    ): ProviderEvaluation<T> {
+        val actualType = actualValue?.let { it::class.simpleName } ?: "null"
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.TYPE_MISMATCH,
-            reason = Reason.ERROR.toString()
+            reason = Reason.ERROR.toString(),
+            errorMessage = "Flag \"$flagKey\" value is not a $expectedType: $actualType"
         )
     }
 
@@ -238,7 +257,38 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             is Long -> Value.Integer(obj.toInt())
             is Double -> Value.Double(obj)
             is Float -> Value.Double(obj.toDouble())
+            is Map<*, *> -> Value.Structure(
+                obj.entries.associate { (k, v) -> k.toString() to toValue(v) }
+            )
+            is List<*> -> Value.List(obj.map { toValue(it) })
+            is Iterable<*> -> Value.List(obj.map { toValue(it) })
             else -> Value.String(obj.toString())
+        }
+    }
+
+    private fun evaluationContextToMap(ctx: EvaluationContext): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>()
+        val targetingKey = ctx.getTargetingKey()
+        if (targetingKey.isNotEmpty()) {
+            map["targeting_key"] = targetingKey
+        }
+        for (key in ctx.keySet()) {
+            map[key] = valueToAny(ctx.getValue(key))
+        }
+        return map
+    }
+
+    private fun valueToAny(value: Value?): Any? {
+        if (value == null || value.isNull()) return null
+        return when (value) {
+            is Value.Boolean -> value.asBoolean()
+            is Value.String -> value.asString()
+            is Value.Integer -> value.asInteger()
+            is Value.Double -> value.asDouble()
+            is Value.List -> value.asList()?.map { valueToAny(it) }
+            is Value.Structure -> value.asStructure()?.mapValues { (_, v) -> valueToAny(v) }
+            is Value.Instant -> value.asString()
+            else -> value.asString()
         }
     }
 
