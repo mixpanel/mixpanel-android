@@ -1,0 +1,49 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+kotlin {
+    jvmToolchain(17)
+    compilerOptions {
+        apiVersion = KotlinVersion.KOTLIN_1_8
+        languageVersion = KotlinVersion.KOTLIN_1_8
+    }
+}
+
+android {
+    namespace "com.mixpanel.android.common"
+    compileSdk 34
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 21
+
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+dependencies {
+    // Declared as 1.8.0 so the POM has a low floor version.
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2"
+    implementation "androidx.annotation:annotation:1.9.1"
+}
+
+apply from: rootProject.file('common/maven-common.gradle')
