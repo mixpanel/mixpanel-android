@@ -31,7 +31,7 @@ object MixpanelEventBridge {
      * Returns a Flow of events with optional replay of cached events.
      *
      * The caller is responsible for collecting this flow in their own CoroutineScope.
-     * Cancellation is automatic when the collecting scope is cancelled.
+     * Cancellation is automatic when the collecting scope is canceled.
      *
      * @param replayCount Number of cached events to replay (0 to MAX_CACHE_SIZE, default 0)
      * @return Flow emitting event maps with keys "eventName" (String) and "properties" (JSONObject?)
