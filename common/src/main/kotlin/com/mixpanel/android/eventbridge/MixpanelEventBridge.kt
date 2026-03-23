@@ -2,9 +2,10 @@ package com.mixpanel.android.eventbridge
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.ArrayDeque
@@ -12,8 +13,8 @@ import java.util.ArrayDeque
 /**
  * Central event dispatcher for Mixpanel analytics events.
  *
- * This singleton manages event listeners and dispatches events using Kotlin Flows.
- * Events are cached (up to 100) and can be replayed to new listeners.
+ * This singleton dispatches events using Kotlin Flows.
+ * Events are cached (up to 100) and can be replayed to new collectors.
  *
  * Thread Safety: Cache operations use synchronized blocks; event delivery uses coroutines.
  */
@@ -25,80 +26,32 @@ object MixpanelEventBridge {
     private val eventFlow = MutableSharedFlow<Map<String, Any?>>()
     private val eventCache = ArrayDeque<Map<String, Any?>>(MAX_CACHE_SIZE)
     private val cacheLock = Any()
-    private val listenerJobs = mutableMapOf<MixpanelEventListener, Job>()
-    private val listenersLock = Any()
 
     /**
-     * Registers an event listener with the bridge.
+     * Returns a Flow of events with optional replay of cached events.
      *
-     * The listener will receive cached events (based on replayCount) followed by live events.
-     * Duplicate registrations will cancel the previous subscription.
+     * The caller is responsible for collecting this flow in their own CoroutineScope.
+     * Cancellation is automatic when the collecting scope is cancelled.
      *
-     * @param listener The listener to register
      * @param replayCount Number of cached events to replay (0 to MAX_CACHE_SIZE, default 0)
+     * @return Flow emitting event maps with keys "eventName" (String) and "properties" (JSONObject?)
      */
     @JvmStatic
     @JvmOverloads
-    fun registerListener(listener: MixpanelEventListener, replayCount: Int = 0) {
-        synchronized(listenersLock) {
-            listenerJobs[listener]?.cancel()
+    fun events(replayCount: Int = 0): Flow<Map<String, Any?>> = flow {
+        // Emit cached events first
+        val cached = synchronized(cacheLock) {
+            val count = replayCount.coerceIn(0, eventCache.size)
+            eventCache.toList().takeLast(count)
         }
+        cached.forEach { emit(it) }
 
-        val job = scope.launch {
-            // Replay cached events
-            val eventsToReplay = synchronized(cacheLock) {
-                val count = replayCount.coerceIn(0, eventCache.size)
-                eventCache.toList().takeLast(count)
-            }
-
-            eventsToReplay.forEach { event ->
-                try {
-                    listener.onEventTracked(event)
-                } catch (e: Exception) {
-                    // Never let listener errors interrupt event processing
-                }
-            }
-
-            // Collect live events
-            eventFlow.collect { event ->
-                try {
-                    listener.onEventTracked(event)
-                } catch (e: Exception) {
-                    // Never let listener errors interrupt event processing
-                }
-            }
-        }
-
-        synchronized(listenersLock) {
-            listenerJobs[listener] = job
-        }
+        // Then collect live events
+        eventFlow.collect { emit(it) }
     }
 
     /**
-     * Unregisters an event listener from the bridge.
-     *
-     * @param listener The listener to unregister
-     */
-    @JvmStatic
-    fun unregisterListener(listener: MixpanelEventListener) {
-        synchronized(listenersLock) {
-            listenerJobs.remove(listener)?.cancel()
-        }
-    }
-
-    /**
-     * Removes all registered listeners.
-     */
-    @JvmStatic
-    fun removeAllListeners() {
-        synchronized(listenersLock) {
-            listenerJobs.values.forEach { it.cancel() }
-            listenerJobs.clear()
-        }
-    }
-
-    /**
-     * Notifies all registered listeners of a tracked event.
+     * Notifies all collectors of a tracked event.
      *
      * This method is called internally by MixpanelAPI after tracking an event.
      * The event is cached (up to 100 events) and emitted to the flow.

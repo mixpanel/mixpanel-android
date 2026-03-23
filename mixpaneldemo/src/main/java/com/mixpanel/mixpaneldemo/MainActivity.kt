@@ -4,6 +4,7 @@
 package com.mixpanel.mixpaneldemo
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -11,32 +12,37 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
 import com.mixpanel.android.eventbridge.MixpanelEventBridge
 import com.mixpanel.mixpaneldemo.ui.theme.MixpanelandroidTheme
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 const val MIXPANEL_PROJECT_TOKEN = "YOUR_PROJECT_TOKEN"
 
 class MainActivity : ComponentActivity() {
-    // Hold strong reference to prevent GC (bridge uses weak references)
-    private val eventListener = SimpleLoggingEventListener()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Register event listener to log all tracked events
-        MixpanelEventBridge.registerListener(eventListener)
+        // Collect events from the bridge - automatically cancelled when activity is destroyed
+        lifecycleScope.launch {
+            MixpanelEventBridge.events().collect { event ->
+                val eventName = event["eventName"] as? String ?: "unknown"
+                val properties = event["properties"] as? JSONObject
+                Log.i("MixpanelEventBridge", "Event tracked: '$eventName'")
+                properties?.let {
+                    Log.d("MixpanelEventBridge", "Properties: ${it.toString(2)}")
+                }
+            }
+        }
 
         setContent {
             MixpanelandroidTheme {
                 MyApp()
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        MixpanelEventBridge.unregisterListener(eventListener)
     }
 }
 
