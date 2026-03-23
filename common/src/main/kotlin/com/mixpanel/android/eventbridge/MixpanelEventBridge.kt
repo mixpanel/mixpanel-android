@@ -1,56 +1,76 @@
 package com.mixpanel.android.eventbridge
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.lang.ref.WeakReference
-import java.util.concurrent.Executors
+import java.util.ArrayDeque
 
 /**
  * Central event dispatcher for Mixpanel analytics events.
  *
- * This singleton manages event listeners and dispatches events to them asynchronously.
- * Listeners are held as weak references to prevent memory leaks.
+ * This singleton manages event listeners and dispatches events using Kotlin Flows.
+ * Events are cached (up to 100) and can be replayed to new listeners.
  *
- * Thread Safety: All operations are executed on a single-threaded executor,
- * ensuring serial execution and eliminating the need for locks.
+ * Thread Safety: Cache operations use synchronized blocks; event delivery uses coroutines.
  */
 object MixpanelEventBridge {
 
-    // private const val LOGTAG = "MixpanelAPI.EventBridge"
+    private const val MAX_CACHE_SIZE = 100
 
-    /**
-     * Single-threaded executor for serial event processing.
-     * All listener operations and notifications happen on this thread.
-     */
-    private val executor = Executors.newSingleThreadExecutor()
-
-    /**
-     * List of registered listeners stored as weak references.
-     * Dead references are automatically cleaned up before each operation.
-     */
-    private val listeners = mutableListOf<WeakReference<MixpanelEventListener>>()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val eventFlow = MutableSharedFlow<Map<String, Any?>>()
+    private val eventCache = ArrayDeque<Map<String, Any?>>(MAX_CACHE_SIZE)
+    private val cacheLock = Any()
+    private val listenerJobs = mutableMapOf<MixpanelEventListener, Job>()
+    private val listenersLock = Any()
 
     /**
      * Registers an event listener with the bridge.
      *
-     * The listener is stored as a weak reference. The caller must maintain
-     * a strong reference to prevent premature garbage collection.
-     *
-     * Duplicate registrations are ignored (same object reference).
+     * The listener will receive cached events (based on replayCount) followed by live events.
+     * Duplicate registrations will cancel the previous subscription.
      *
      * @param listener The listener to register
+     * @param replayCount Number of cached events to replay (0 to MAX_CACHE_SIZE, default 0)
      */
     @JvmStatic
-    fun registerListener(listener: MixpanelEventListener) {
-        executor.execute {
-            cleanupDeadReferences()
+    @JvmOverloads
+    fun registerListener(listener: MixpanelEventListener, replayCount: Int = 0) {
+        synchronized(listenersLock) {
+            listenerJobs[listener]?.cancel()
+        }
 
-            // Check for duplicate registration
-            if (listeners.any { it.get() === listener }) {
-                return@execute
+        val job = scope.launch {
+            // Replay cached events
+            val eventsToReplay = synchronized(cacheLock) {
+                val count = replayCount.coerceIn(0, eventCache.size)
+                eventCache.toList().takeLast(count)
             }
 
-            listeners.add(WeakReference(listener))
-            // MPLog.d(LOGTAG, "Event bridge registered listener.")
+            eventsToReplay.forEach { event ->
+                try {
+                    listener.onEventTracked(event)
+                } catch (e: Exception) {
+                    // Never let listener errors interrupt event processing
+                }
+            }
+
+            // Collect live events
+            eventFlow.collect { event ->
+                try {
+                    listener.onEventTracked(event)
+                } catch (e: Exception) {
+                    // Never let listener errors interrupt event processing
+                }
+            }
+        }
+
+        synchronized(listenersLock) {
+            listenerJobs[listener] = job
         }
     }
 
@@ -61,8 +81,8 @@ object MixpanelEventBridge {
      */
     @JvmStatic
     fun unregisterListener(listener: MixpanelEventListener) {
-        executor.execute {
-            listeners.removeAll { it.get() == null || it.get() === listener }
+        synchronized(listenersLock) {
+            listenerJobs.remove(listener)?.cancel()
         }
     }
 
@@ -71,8 +91,9 @@ object MixpanelEventBridge {
      */
     @JvmStatic
     fun removeAllListeners() {
-        executor.execute {
-            listeners.clear()
+        synchronized(listenersLock) {
+            listenerJobs.values.forEach { it.cancel() }
+            listenerJobs.clear()
         }
     }
 
@@ -80,40 +101,27 @@ object MixpanelEventBridge {
      * Notifies all registered listeners of a tracked event.
      *
      * This method is called internally by MixpanelAPI after tracking an event.
+     * The event is cached (up to 100 events) and emitted to the flow.
      *
      * @param eventName The name of the tracked event
      * @param properties The event properties as JSONObject
      */
     @JvmStatic
     fun notifyListeners(eventName: String, properties: JSONObject?) {
-        executor.execute {
-            if (listeners.isEmpty()) {
-                // MPLog.d(LOGTAG, "Event bridge has no listeners registered: event $eventName")
-                return@execute
-            }
+        val event = mapOf(
+            "eventName" to eventName,
+            "properties" to properties
+        )
 
-            // Create event data map
-            val event = mapOf<String, Any?>(
-                "eventName" to eventName,
-                "properties" to properties
-            )
-
-            listeners.mapNotNull { it.get() }.forEach { listener ->
-                try {
-                    listener.onEventTracked(event)
-                    // MPLog.w(LOGTAG, "Event dispatched to event bridge - '$eventName'")
-                } catch (e: Exception) {
-                    // Never let listener errors interrupt event processing
-                    // MPLog.w(LOGTAG, "Event bridge listener failed for event '$eventName': ${e.message}")
-                }
+        synchronized(cacheLock) {
+            if (eventCache.size >= MAX_CACHE_SIZE) {
+                eventCache.removeFirst()
             }
+            eventCache.addLast(event)
         }
-    }
 
-    /**
-     * Removes listeners that have been garbage collected.
-     */
-    private fun cleanupDeadReferences() {
-        listeners.removeAll { it.get() == null }
+        scope.launch {
+            eventFlow.emit(event)
+        }
     }
 }

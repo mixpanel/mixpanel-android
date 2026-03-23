@@ -48,6 +48,7 @@ dependencies {
     // Explicitly set kotlin-stdlib version for consumer compatibility.
     // Consumers using Kotlin 1.8+ can use this library.
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$KOTLIN_MIN_VERSION"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3"
     implementation "androidx.annotation:annotation:1.8.2"
 }
 
