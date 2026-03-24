@@ -118,4 +118,59 @@ public class Base64CoderTest {
         byte[] decoded = Base64Coder.decode(encoded);
         assertArrayEquals(allBytes, decoded);
     }
+
+    // Constructor coverage
+    @Test
+    public void testConstructor() {
+        Base64Coder instance = new Base64Coder();
+        assertNotNull(instance);
+    }
+
+    // Decode edge cases — padding variations
+    @Test
+    public void testDecodeWithDoublePadding() {
+        // "Zg==" decodes to "f" (1 byte, 2 padding chars)
+        byte[] decoded = Base64Coder.decode("Zg==".toCharArray());
+        assertArrayEquals(new byte[]{(byte) 'f'}, decoded);
+    }
+
+    @Test
+    public void testDecodeWithSinglePadding() {
+        // "Zm8=" decodes to "fo" (2 bytes, 1 padding char)
+        byte[] decoded = Base64Coder.decode("Zm8=".toCharArray());
+        assertArrayEquals(new byte[]{(byte) 'f', (byte) 'o'}, decoded);
+    }
+
+    @Test
+    public void testDecodeNoPadding() {
+        // "Zm9v" decodes to "foo" (3 bytes, no padding)
+        byte[] decoded = Base64Coder.decode("Zm9v".toCharArray());
+        assertArrayEquals(new byte[]{(byte) 'f', (byte) 'o', (byte) 'o'}, decoded);
+    }
+
+    @Test
+    public void testDecodeEmptyInput() {
+        byte[] decoded = Base64Coder.decode(new char[0]);
+        assertEquals(0, decoded.length);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testDecodeHighByteCharacter() {
+        // Characters > 127 should throw IllegalArgumentException
+        char[] invalid = new char[]{(char) 200, (char) 200, (char) 200, (char) 200};
+        Base64Coder.decode(invalid);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testDecodeIllegalCharacterInMap() {
+        // Characters that are in ASCII range but not valid Base64
+        // e.g. '!' (33) maps to -1 in map2
+        char[] invalid = new char[]{'!', '!', '!', '!'};
+        Base64Coder.decode(invalid);
+    }
+
+    @Test
+    public void testDecodeStringEmpty() {
+        assertEquals("", Base64Coder.decodeString(""));
+    }
 }

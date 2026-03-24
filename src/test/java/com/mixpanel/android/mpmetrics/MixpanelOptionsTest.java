@@ -151,6 +151,22 @@ public class MixpanelOptionsTest {
     }
 
     @Test
+    public void testFeatureFlagsContextGetterDefensiveCopy() throws Exception {
+        JSONObject context = new JSONObject();
+        context.put("key", "original");
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .featureFlagsContext(context)
+                .build();
+
+        // Modify returned copy - should not affect internal state
+        JSONObject copy = options.getFeatureFlagsContext();
+        copy.put("key", "modified");
+
+        assertEquals("original", options.getFeatureFlagsContext().getString("key"));
+    }
+
+    @Test
     public void testServerURL() {
         MixpanelOptions options = new MixpanelOptions.Builder()
                 .serverURL("https://api-eu.mixpanel.com")

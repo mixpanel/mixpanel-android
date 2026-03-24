@@ -136,4 +136,85 @@ public class MPLogTest {
         MPLog.e("TestTag", "filtered");
         assertTrue("All messages should be filtered at NONE level", ShadowLog.getLogs().isEmpty());
     }
+
+    @Test
+    public void testConstructorCoverage() {
+        // Cover the private constructor by instantiating (MPLog is a utility class)
+        MPLog log = new MPLog();
+        assertNotNull(log);
+    }
+
+    @Test
+    public void testVerboseLoggingWithThrowable() {
+        MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("verbose error");
+        MPLog.v("TestTag", "verbose throwable", t);
+        assertFalse(ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("verbose throwable", ShadowLog.getLogs().get(0).msg);
+        assertSame(t, ShadowLog.getLogs().get(0).throwable);
+    }
+
+    @Test
+    public void testDebugLoggingWithThrowable() {
+        MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("debug error");
+        MPLog.d("TestTag", "debug throwable", t);
+        assertFalse(ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("debug throwable", ShadowLog.getLogs().get(0).msg);
+        assertSame(t, ShadowLog.getLogs().get(0).throwable);
+    }
+
+    @Test
+    public void testInfoLoggingWithThrowable() {
+        MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("info error");
+        MPLog.i("TestTag", "info throwable", t);
+        assertFalse(ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("info throwable", ShadowLog.getLogs().get(0).msg);
+        assertSame(t, ShadowLog.getLogs().get(0).throwable);
+    }
+
+    @Test
+    public void testWarnLoggingWithThrowable() {
+        MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("warn error");
+        MPLog.w("TestTag", "warn throwable", t);
+        assertFalse(ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("warn throwable", ShadowLog.getLogs().get(0).msg);
+        assertSame(t, ShadowLog.getLogs().get(0).throwable);
+    }
+
+    @Test
+    public void testErrorLoggingWithThrowable() {
+        MPLog.setLevel(MPLog.VERBOSE);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("error error");
+        MPLog.e("TestTag", "error throwable", t);
+        assertFalse(ShadowLog.getLogs().isEmpty());
+        assertEquals("TestTag", ShadowLog.getLogs().get(0).tag);
+        assertEquals("error throwable", ShadowLog.getLogs().get(0).msg);
+        assertSame(t, ShadowLog.getLogs().get(0).throwable);
+    }
+
+    @Test
+    public void testThrowableOverloadsFilteredByLevel() {
+        MPLog.setLevel(MPLog.ERROR);
+        ShadowLog.reset();
+        Throwable t = new RuntimeException("should not appear");
+        MPLog.v("TestTag", "filtered", t);
+        MPLog.d("TestTag", "filtered", t);
+        MPLog.i("TestTag", "filtered", t);
+        MPLog.w("TestTag", "filtered", t);
+        assertTrue("Throwable overloads should be filtered by level", ShadowLog.getLogs().isEmpty());
+        MPLog.e("TestTag", "should pass", t);
+        assertFalse("ERROR with throwable should pass", ShadowLog.getLogs().isEmpty());
+    }
 }

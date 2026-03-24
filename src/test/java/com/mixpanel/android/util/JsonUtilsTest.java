@@ -280,4 +280,77 @@ public class JsonUtilsTest {
         assertEquals(1, result.size());
         assertNull(result.get("no_value_flag").value); // should default to null
     }
+
+    // Constructor coverage
+    @Test
+    public void testConstructor() {
+        JsonUtils instance = new JsonUtils();
+        assertNotNull(instance);
+    }
+
+    // parseJsonValue edge cases — Number subclass that is not Integer/Long/Double/Float
+    @Test
+    public void testParseJsonValueGenericNumber() throws JSONException {
+        // A Number subclass that isn't Integer, Long, Double, or Float
+        // hits the standalone `instanceof Number` branch (line 51-53)
+        Number bigDecimalLike = new java.math.BigDecimal("99.99");
+        Object result = JsonUtils.parseJsonValue(bigDecimalLike);
+        assertEquals(bigDecimalLike, result);
+    }
+
+    // parseJsonValue — nested array containing JSONObject.NULL
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testParseJsonValueArrayWithNullElement() throws JSONException {
+        JSONArray arr = new JSONArray();
+        arr.put(JSONObject.NULL);
+        arr.put("text");
+
+        Object result = JsonUtils.parseJsonValue(arr);
+        assertTrue(result instanceof List);
+        List<Object> list = (List<Object>) result;
+        assertNull(list.get(0));
+        assertEquals("text", list.get(1));
+    }
+
+    // parseFlagsResponse — empty flags object (has "flags" key but no flag entries)
+    @Test
+    public void testParseFlagsResponseEmptyFlagsObject() throws JSONException {
+        JSONObject response = new JSONObject();
+        response.put("flags", new JSONObject());
+
+        Map<String, MixpanelFlagVariant> result = JsonUtils.parseFlagsResponse(response);
+        assertTrue(result.isEmpty());
+    }
+
+    // parseFlagsResponse — flag definition with null variant_key
+    @Test
+    public void testParseFlagsResponseNullVariantKey() throws JSONException {
+        JSONObject flagDef = new JSONObject();
+        flagDef.put("variant_key", JSONObject.NULL);
+        flagDef.put("variant_value", "some_value");
+
+        JSONObject flags = new JSONObject();
+        flags.put("null_key_flag", flagDef);
+
+        JSONObject response = new JSONObject();
+        response.put("flags", flags);
+
+        Map<String, MixpanelFlagVariant> result = JsonUtils.parseFlagsResponse(response);
+        assertTrue(result.isEmpty()); // skipped because variant_key is null
+    }
+
+    // parseFlagsResponse — malformed flag entry (not a JSONObject, e.g. a string)
+    @Test
+    public void testParseFlagsResponseMalformedFlagEntry() throws JSONException {
+        JSONObject flags = new JSONObject();
+        flags.put("bad_flag", "not_a_json_object");
+
+        JSONObject response = new JSONObject();
+        response.put("flags", flags);
+
+        // Should not crash; malformed entry caught by inner try/catch
+        Map<String, MixpanelFlagVariant> result = JsonUtils.parseFlagsResponse(response);
+        assertTrue(result.isEmpty());
+    }
 }

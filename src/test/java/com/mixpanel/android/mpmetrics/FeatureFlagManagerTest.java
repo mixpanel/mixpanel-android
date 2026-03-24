@@ -1797,4 +1797,378 @@ public class FeatureFlagManagerTest {
     assertTrue("IsExperimentActive should be included", call.properties.getBoolean("$is_experiment_active"));
     assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
+
+  // ---- Coverage Tests for _performFetchRequest response parsing paths ----
+
+  @Test
+  public void testFetchWithNullResponseBytes() throws InterruptedException {
+    // When performRequest returns null bytes, the error path in _performFetchRequest should fire
+    setupFlagsConfig(true, new JSONObject());
+
+    // Create a custom mock that returns null response bytes
+    MockRemoteService nullResponseService = new MockRemoteService() {
+      @Override
+      public RemoteService.RequestResult performRequest(
+          RemoteService.HttpMethod method,
+          String endpointUrl,
+          ProxyServerInteractor interactor,
+          Map<String, Object> params,
+          Map<String, String> headers,
+          byte[] requestBodyBytes,
+          SSLSocketFactory socketFactory)
+          throws ServiceUnavailableException, IOException {
+        // Capture the request for verification
+        super.addResponse("placeholder".getBytes(StandardCharsets.UTF_8));
+        super.performRequest(method, endpointUrl, interactor, params, headers, requestBodyBytes, socketFactory);
+        // Return a result with null bytes
+        return RemoteService.RequestResult.success(null, endpointUrl);
+      }
+    };
+
+    // Replace the http service via reflection
+    try {
+      Field httpServiceField = FeatureFlagManager.class.getDeclaredField("mHttpService");
+      httpServiceField.setAccessible(true);
+      httpServiceField.set(mFeatureFlagManager, nullResponseService);
+    } catch (Exception e) {
+      fail("Failed to set mock http service: " + e.getMessage());
+    }
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    assertFalse("Flags should not be ready after null response bytes", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithErrorInResponse() throws InterruptedException {
+    // When the server returns a JSON response with an "error" key, the error path should fire
+    setupFlagsConfig(true, new JSONObject());
+
+    JSONObject errorResponse = new JSONObject();
+    try {
+      errorResponse.put("error", "Invalid token");
+    } catch (JSONException e) {
+      fail("Failed to create test JSON");
+    }
+    mMockRemoteService.addResponse(errorResponse);
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A network request should have been made", request);
+    assertFalse("Flags should not be ready after error response", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithMalformedJsonResponse() throws InterruptedException {
+    // When the server returns invalid JSON, the JSONException path should fire
+    setupFlagsConfig(true, new JSONObject());
+
+    String malformedJson = "this is not valid json {{{";
+    mMockRemoteService.addResponse(malformedJson.getBytes(StandardCharsets.UTF_8));
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A network request should have been made", request);
+    assertFalse("Flags should not be ready after malformed JSON response", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithServiceUnavailableException() throws InterruptedException {
+    // When performRequest throws ServiceUnavailableException, the catch path should fire
+    setupFlagsConfig(true, new JSONObject());
+
+    mMockRemoteService.addError(
+        new RemoteService.ServiceUnavailableException("Service Unavailable", "30"));
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A network request should have been made", request);
+    assertFalse("Flags should not be ready after ServiceUnavailableException", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithIOException() throws InterruptedException {
+    // This overlaps with testLoadFlags_whenEnabled_andFetchFails_flagsNotReady
+    // but explicitly tests the IOException catch path with a specific message
+    setupFlagsConfig(true, new JSONObject());
+
+    mMockRemoteService.addError(new IOException("Connection reset by peer"));
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A network request should have been made", request);
+    assertFalse("Flags should not be ready after IOException", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithNullDistinctId() throws InterruptedException {
+    // When delegate returns null distinctId, _performFetchRequest should early-return
+    setupFlagsConfig(true, new JSONObject());
+    mMockDelegate.distinctIdToReturn = null;
+
+    // We still need a response queued to avoid the mock timing out on other code paths,
+    // but the request should never be made because of the null distinctId early return
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    // No network request should be captured since we return early before making the request
+    CapturedRequest request = mMockRemoteService.takeRequest(500, TimeUnit.MILLISECONDS);
+    assertNull("No network request should be made when distinctId is null", request);
+    assertFalse("Flags should not be ready when distinctId is null", mFeatureFlagManager.areFlagsReady());
+  }
+
+  // ---- Coverage Tests for _performTrackingDelegateCall with null delegate ----
+
+  @Test
+  public void testTrackingDelegateCallWithNullDelegate() throws InterruptedException {
+    // First, load flags successfully
+    setupFlagsConfig(true, new JSONObject());
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("track_null_delegate_flag", new MixpanelFlagVariant("variant_x", "value_x"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    // Now weaken the delegate reference by clearing it via reflection
+    try {
+      Field delegateField = FeatureFlagManager.class.getDeclaredField("mDelegate");
+      delegateField.setAccessible(true);
+      java.lang.ref.WeakReference<?> weakRef =
+          (java.lang.ref.WeakReference<?>) delegateField.get(mFeatureFlagManager);
+
+      // We can't directly clear a WeakReference, but we can replace it with one that holds null
+      Field mDelegateField = FeatureFlagManager.class.getDeclaredField("mDelegate");
+      mDelegateField.setAccessible(true);
+      mDelegateField.set(mFeatureFlagManager, new java.lang.ref.WeakReference<>(null));
+    } catch (Exception e) {
+      fail("Failed to set delegate to null via reflection: " + e.getMessage());
+    }
+
+    // This should trigger _performTrackingDelegateCall with a null delegate
+    mMockDelegate.resetTrackCalls();
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", "fb_val");
+    mFeatureFlagManager.getVariantSync("track_null_delegate_flag", fallback);
+
+    flushAllLoopers();
+
+    // Tracking should NOT have been called because delegate is null
+    assertEquals("Track should not be called when delegate is null", 0, mMockDelegate.trackCalls.size());
+  }
+
+  // ---- Coverage Tests for handler message paths ----
+
+  @Test
+  public void testFetchCompleteHandlerPath_successParsesFlags() throws InterruptedException {
+    // Tests the MSG_COMPLETE_FETCH handler path with a successful response
+    setupFlagsConfig(true, new JSONObject());
+
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("handler_flag_1", new MixpanelFlagVariant("hv1", "handler_value_1"));
+    serverFlags.put("handler_flag_2", new MixpanelFlagVariant("hv2", 42));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready after fetch complete", mFeatureFlagManager.areFlagsReady());
+
+    // Verify flags were correctly parsed through the handler
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", "fb_val");
+    MixpanelFlagVariant result1 = mFeatureFlagManager.getVariantSync("handler_flag_1", fallback);
+    assertEquals("hv1", result1.key);
+    assertEquals("handler_value_1", result1.value);
+
+    MixpanelFlagVariant result2 = mFeatureFlagManager.getVariantSync("handler_flag_2", fallback);
+    assertEquals("hv2", result2.key);
+    assertEquals(42, result2.value);
+  }
+
+  @Test
+  public void testFetchIfNeededTriggeredByGetVariant() throws InterruptedException {
+    // Tests that MSG_FETCH_IF_NEEDED is triggered when getVariant is called without flags loaded
+    setupFlagsConfig(true, new JSONObject());
+    assertFalse("Flags should not be ready initially", mFeatureFlagManager.areFlagsReady());
+
+    // Prepare a response for the fetch that will be triggered
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("auto_fetch_flag", new MixpanelFlagVariant("auto_v", "auto_value"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Call getVariant which should trigger MSG_FETCH_IF_NEEDED internally
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<MixpanelFlagVariant> resultRef = new AtomicReference<>();
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", "fb_val");
+
+    mFeatureFlagManager.getVariant(
+        "auto_fetch_flag",
+        fallback,
+        result -> {
+          resultRef.set(result);
+          latch.countDown();
+        });
+
+    flushAllLoopers();
+    assertTrue("Callback should complete", latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+
+    assertNotNull(resultRef.get());
+    assertEquals("auto_v", resultRef.get().key);
+    assertEquals("auto_value", resultRef.get().value);
+    assertTrue("Flags should be ready after auto-fetch", mFeatureFlagManager.areFlagsReady());
+  }
+
+  // ---- Coverage Test for fetch with RuntimeException ----
+
+  @Test
+  public void testFetchWithRuntimeException() throws InterruptedException {
+    // Tests the generic Exception catch path in _performFetchRequest
+    setupFlagsConfig(true, new JSONObject());
+
+    mMockRemoteService.addError(new RuntimeException("Unexpected runtime error"));
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A network request should have been made", request);
+    assertFalse("Flags should not be ready after RuntimeException", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testFetchWithNullDelegate() throws InterruptedException {
+    // Tests the null delegate early-return path in _performFetchRequest
+    setupFlagsConfig(true, new JSONObject());
+
+    // Clear the delegate via reflection before triggering fetch
+    try {
+      Field delegateField = FeatureFlagManager.class.getDeclaredField("mDelegate");
+      delegateField.setAccessible(true);
+      delegateField.set(mFeatureFlagManager, new java.lang.ref.WeakReference<>(null));
+    } catch (Exception e) {
+      fail("Failed to set delegate to null: " + e.getMessage());
+    }
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    // No network request should be made since delegate is null
+    CapturedRequest request = mMockRemoteService.takeRequest(500, TimeUnit.MILLISECONDS);
+    assertNull("No network request should be made when delegate is null", request);
+    assertFalse("Flags should not be ready when delegate is null", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testSuccessfulFetchSetsTimingProperties() throws InterruptedException, JSONException {
+    // Verifies that after a successful fetch, timing is set (covers the fetchTiming code path)
+    setupFlagsConfig(true, new JSONObject());
+
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("timing_flag", new MixpanelFlagVariant("tv", "timing_value"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+    assertTrue("Flags should be ready", mFeatureFlagManager.areFlagsReady());
+
+    // Access the fetch timing via reflection
+    try {
+      Field fetchTimingField = FeatureFlagManager.class.getDeclaredField("mFetchTiming");
+      fetchTimingField.setAccessible(true);
+      Object fetchTiming = fetchTimingField.get(mFeatureFlagManager);
+      assertNotNull("FetchTiming should be set after successful fetch", fetchTiming);
+
+      // Verify timing values are reasonable
+      Field timeLastFetchedField = fetchTiming.getClass().getDeclaredField("timeLastFetched");
+      timeLastFetchedField.setAccessible(true);
+      long timeLastFetched = (long) timeLastFetchedField.get(fetchTiming);
+      assertTrue("timeLastFetched should be positive", timeLastFetched > 0);
+
+      Field fetchLatencyField = fetchTiming.getClass().getDeclaredField("fetchLatencyMs");
+      fetchLatencyField.setAccessible(true);
+      long fetchLatencyMs = (long) fetchLatencyField.get(fetchTiming);
+      assertTrue("fetchLatencyMs should be non-negative", fetchLatencyMs >= 0);
+    } catch (Exception e) {
+      fail("Failed to access FetchTiming via reflection: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFailedFetchStillSetsTimingProperties() throws InterruptedException {
+    // Verifies that even after a failed fetch, timing is updated (covers the
+    // timing code after the try-catch block in _performFetchRequest)
+    setupFlagsConfig(true, new JSONObject());
+
+    mMockRemoteService.addError(new IOException("Network error for timing test"));
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+
+    assertFalse("Flags should not be ready after failed fetch", mFeatureFlagManager.areFlagsReady());
+
+    // Even on failure, the timing should be updated
+    try {
+      Field fetchTimingField = FeatureFlagManager.class.getDeclaredField("mFetchTiming");
+      fetchTimingField.setAccessible(true);
+      Object fetchTiming = fetchTimingField.get(mFeatureFlagManager);
+      assertNotNull("FetchTiming should be set even after failed fetch", fetchTiming);
+
+      Field timeLastFetchedField = fetchTiming.getClass().getDeclaredField("timeLastFetched");
+      timeLastFetchedField.setAccessible(true);
+      long timeLastFetched = (long) timeLastFetchedField.get(fetchTiming);
+      assertTrue("timeLastFetched should be positive even after failure", timeLastFetched > 0);
+    } catch (Exception e) {
+      fail("Failed to access FetchTiming via reflection: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMultipleErrorResponseTypes_flagsRecoverOnRetry() throws InterruptedException {
+    // Tests that after various error responses, a successful retry works
+    setupFlagsConfig(true, new JSONObject());
+
+    // First attempt: error response
+    JSONObject errorResponse = new JSONObject();
+    try {
+      errorResponse.put("error", "rate limited");
+    } catch (JSONException e) {
+      fail("Failed to create test JSON");
+    }
+    mMockRemoteService.addResponse(errorResponse);
+
+    mFeatureFlagManager.loadFlags();
+    flushAllLoopers();
+    assertFalse("Flags should not be ready after error response", mFeatureFlagManager.areFlagsReady());
+
+    // Second attempt: successful response
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("retry_flag", new MixpanelFlagVariant("rv", "retry_value"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Create a new manager to simulate retry (since the old one already fetched)
+    mFeatureFlagManager = new FeatureFlagManager(mMockDelegate, mMockRemoteService,
+        new FlagsConfig(true, new JSONObject()));
+    mFeatureFlagManager.loadFlags();
+    waitForFlagsReady();
+
+    assertTrue("Flags should be ready after successful retry", mFeatureFlagManager.areFlagsReady());
+
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", "fb_val");
+    MixpanelFlagVariant result = mFeatureFlagManager.getVariantSync("retry_flag", fallback);
+    assertEquals("rv", result.key);
+    assertEquals("retry_value", result.value);
+  }
 }

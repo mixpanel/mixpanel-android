@@ -117,4 +117,41 @@ public class SessionMetadataTest {
         // Session ID should change after init
         assertNotEquals(oldSessionId, afterReset.getString("$mp_session_id"));
     }
+
+    @Test
+    public void testGetMetadataForPeopleIncrementsIndependently() throws Exception {
+        // Exercise the isEvent=false branch of getNewMetadata explicitly
+        // ensuring mPeopleCounter (not mEventsCounter) is used and incremented
+        JSONObject people1 = mSessionMetadata.getMetadataForPeople();
+        JSONObject people2 = mSessionMetadata.getMetadataForPeople();
+        JSONObject people3 = mSessionMetadata.getMetadataForPeople();
+
+        assertEquals(0, people1.getLong("$mp_session_seq_id"));
+        assertEquals(1, people2.getLong("$mp_session_seq_id"));
+        assertEquals(2, people3.getLong("$mp_session_seq_id"));
+
+        // Verify event counter was not affected
+        JSONObject event1 = mSessionMetadata.getMetadataForEvent();
+        assertEquals(0, event1.getLong("$mp_session_seq_id"));
+    }
+
+    @Test
+    public void testMetadataFieldTypes() throws Exception {
+        // Verify the actual types/content of metadata fields
+        JSONObject metadata = mSessionMetadata.getMetadataForEvent();
+
+        // $mp_event_id should be a hex string
+        String eventId = metadata.getString("$mp_event_id");
+        assertNotNull(eventId);
+        assertFalse(eventId.isEmpty());
+
+        // $mp_session_id should be a hex string
+        String sessionId = metadata.getString("$mp_session_id");
+        assertNotNull(sessionId);
+        assertFalse(sessionId.isEmpty());
+
+        // $mp_session_start_sec should be a positive epoch
+        long startSec = metadata.getLong("$mp_session_start_sec");
+        assertTrue(startSec > 0);
+    }
 }
