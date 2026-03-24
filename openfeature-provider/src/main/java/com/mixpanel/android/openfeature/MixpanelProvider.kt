@@ -58,7 +58,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         try {
             variant = flags.getVariantSync(key, fallback)
         } catch (e: Exception) {
-            return generalError(defaultValue)
+            return generalError(defaultValue, e.message)
         }
 
         if (variant === fallback) {
@@ -87,7 +87,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         try {
             variant = flags.getVariantSync(key, fallback)
         } catch (e: Exception) {
-            return generalError(defaultValue)
+            return generalError(defaultValue, e.message)
         }
 
         if (variant === fallback) {
@@ -116,7 +116,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         try {
             variant = flags.getVariantSync(key, fallback)
         } catch (e: Exception) {
-            return generalError(defaultValue)
+            return generalError(defaultValue, e.message)
         }
 
         if (variant === fallback) {
@@ -158,7 +158,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         try {
             variant = flags.getVariantSync(key, fallback)
         } catch (e: Exception) {
-            return generalError(defaultValue)
+            return generalError(defaultValue, e.message)
         }
 
         if (variant === fallback) {
@@ -187,7 +187,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         try {
             variant = flags.getVariantSync(key, fallback)
         } catch (e: Exception) {
-            return generalError(defaultValue)
+            return generalError(defaultValue, e.message)
         }
 
         if (variant === fallback) {
@@ -240,10 +240,11 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         )
     }
 
-    private fun <T> generalError(defaultValue: T): ProviderEvaluation<T> {
+    private fun <T> generalError(defaultValue: T, message: String? = null): ProviderEvaluation<T> {
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.GENERAL,
+            errorMessage = message ?: "Unexpected error during flag evaluation",
             reason = Reason.ERROR.toString()
         )
     }
@@ -270,7 +271,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         val map = mutableMapOf<String, Any?>()
         val targetingKey = ctx.getTargetingKey()
         if (targetingKey.isNotEmpty()) {
-            map["targeting_key"] = targetingKey
+            map["targetingKey"] = targetingKey
         }
         for (key in ctx.keySet()) {
             map[key] = valueToAny(ctx.getValue(key))
