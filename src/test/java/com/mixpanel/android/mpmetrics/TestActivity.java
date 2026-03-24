@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 /**
- * Simple test activity for instrumented tests that need an activity lifecycle.
+ * Simple test activity for unit/JVM tests (e.g., Robolectric) that need an activity lifecycle.
  */
 public class TestActivity extends Activity {
     @Override

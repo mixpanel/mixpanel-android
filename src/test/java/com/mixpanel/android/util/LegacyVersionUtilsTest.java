@@ -78,7 +78,8 @@ public class LegacyVersionUtilsTest {
 
     @Test
     public void testNonExistentFile() {
-        File nonExistent = new File("/tmp/nonexistent_mixpanel_test_dir");
+        File nonExistent = new File(tempFolder.getRoot(), "nonexistent_mixpanel_test_dir");
+        assertFalse(nonExistent.exists());
         // Should not throw
         LegacyVersionUtils.removeLegacyResidualImageFiles(nonExistent);
     }

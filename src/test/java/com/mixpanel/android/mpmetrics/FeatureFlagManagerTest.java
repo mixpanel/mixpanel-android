@@ -50,6 +50,7 @@ public class FeatureFlagManagerTest {
   private MockRemoteService mMockRemoteService;
   private MPConfig mTestConfig;
   private Context mContext;
+  private int mPreviousLogLevel;
 
   private static final String TEST_SERVER_URL = "https://test.mixpanel.com";
   private static final String TEST_DISTINCT_ID = "test_distinct_id";
@@ -318,13 +319,13 @@ public class FeatureFlagManagerTest {
             mMockDelegate, // Pass delegate directly, manager will wrap in WeakReference
             mMockRemoteService,
             new FlagsConfig(true, new JSONObject()));
+    mPreviousLogLevel = MPLog.getLevel();
     MPLog.setLevel(MPLog.VERBOSE); // Enable verbose logging for tests
   }
 
   @After
   public void tearDown() {
-    // Ensure handler thread is quit if it's still running, though manager re-creation handles it
-    // For more robust cleanup, FeatureFlagManager could have a .release() method
+    MPLog.setLevel(mPreviousLogLevel);
   }
 
   // Helper method to create a valid flags JSON response string

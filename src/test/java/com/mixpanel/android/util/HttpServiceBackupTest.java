@@ -3,6 +3,7 @@ package com.mixpanel.android.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -37,16 +38,24 @@ public class HttpServiceBackupTest {
     assertNotNull(service);
   }
 
-  /** Test that HttpService can set backup host after construction */
+  /** Test that HttpService can set backup host after construction and it affects URL replacement */
   @Test
-  public void testSetBackupHost() {
+  public void testSetBackupHost() throws Exception {
     HttpService service = new HttpService(false, null);
 
-    // Set backup host
+    Method replaceHostMethod =
+        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
+    replaceHostMethod.setAccessible(true);
+
+    // Set backup host and verify it works via replaceHost
     service.setBackupHost(BACKUP_HOST);
+    String result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, BACKUP_HOST);
+    assertEquals("https://backup.mixpanel.com/track", result);
 
     // Can update backup host
     service.setBackupHost("new.backup.host");
+    result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, "new.backup.host");
+    assertEquals("https://new.backup.host/track", result);
 
     // Can clear backup host
     service.setBackupHost(null);
@@ -171,15 +180,13 @@ public class HttpServiceBackupTest {
     // Should not throw exception
   }
 
-  /** Test isOnline method */
+  /** Test isOnline method — Robolectric's ConnectivityManager shadow reports connected by default */
   @Test
   public void testIsOnline() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
-    // Should be online by default
-    boolean isOnline = service.isOnline(mContext, null);
-    // We can't assert true/false as it depends on actual network state
-    // Just verify it doesn't throw exception
+    // Robolectric shadows ConnectivityManager as connected by default
+    assertTrue("Should be online under Robolectric default shadow", service.isOnline(mContext, null));
   }
 
   /** Test that service handles null parameters gracefully */
@@ -187,23 +194,19 @@ public class HttpServiceBackupTest {
   public void testNullParameterHandling() throws Exception {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
-    // Use reflection to test replaceHost with null
     Method replaceHostMethod =
         HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
     replaceHostMethod.setAccessible(true);
 
-    // Test with null URL (should handle gracefully)
-    try {
-      replaceHostMethod.invoke(service, null, BACKUP_HOST);
-    } catch (Exception e) {
-      // Expected - wrapped NullPointerException or similar
-      assertTrue("Should handle null URL", e.getCause() != null);
-    }
+    // replaceHost catches exceptions and returns the original url, so null → null
+    String nullUrlResult = (String) replaceHostMethod.invoke(service, null, BACKUP_HOST);
+    assertNull("Null URL input should return null", nullUrlResult);
 
-    // Test with null backup host
-    String result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, null);
-    // Should handle null backup host gracefully
-    assertNotNull(result);
+    // Null backup host creates a URL with empty host (Java URL constructor accepts null host)
+    String nullHostResult = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, null);
+    assertNotNull("Null backup host should not return null", nullHostResult);
+    assertFalse("Result should not contain original host",
+        nullHostResult.contains(PRIMARY_HOST));
   }
 
   // ============================================================

@@ -22,6 +22,9 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 public class MPConfigTest {
 
+    private boolean mPreviousDebug;
+    private int mPreviousLogLevel;
+
     @Test
     public void testDefaultConfigValues() {
         Bundle metaData = new Bundle();
@@ -256,16 +259,23 @@ public class MPConfigTest {
 
     @Test
     public void testSetEnableLogging() {
-        Bundle metaData = new Bundle();
-        MPConfig config = new MPConfig(metaData, ApplicationProvider.getApplicationContext(), null);
+        mPreviousDebug = MPConfig.DEBUG;
+        mPreviousLogLevel = MPLog.getLevel();
+        try {
+            Bundle metaData = new Bundle();
+            MPConfig config = new MPConfig(metaData, ApplicationProvider.getApplicationContext(), null);
 
-        config.setEnableLogging(true);
-        assertTrue(MPConfig.DEBUG);
-        assertEquals(MPLog.VERBOSE, MPLog.getLevel());
+            config.setEnableLogging(true);
+            assertTrue(MPConfig.DEBUG);
+            assertEquals(MPLog.VERBOSE, MPLog.getLevel());
 
-        config.setEnableLogging(false);
-        assertFalse(MPConfig.DEBUG);
-        assertEquals(MPLog.NONE, MPLog.getLevel());
+            config.setEnableLogging(false);
+            assertFalse(MPConfig.DEBUG);
+            assertEquals(MPLog.NONE, MPLog.getLevel());
+        } finally {
+            MPConfig.DEBUG = mPreviousDebug;
+            MPLog.setLevel(mPreviousLogLevel);
+        }
     }
 
     @Test
@@ -368,11 +378,16 @@ public class MPConfigTest {
 
     @Test
     public void testDebugLoggingEnabled() {
-        Bundle metaData = new Bundle();
-        metaData.putBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", true);
+        mPreviousDebug = MPConfig.DEBUG;
+        try {
+            Bundle metaData = new Bundle();
+            metaData.putBoolean("com.mixpanel.android.MPConfig.EnableDebugLogging", true);
 
-        MPConfig config = new MPConfig(metaData, ApplicationProvider.getApplicationContext(), null);
-        assertTrue(MPConfig.DEBUG);
+            MPConfig config = new MPConfig(metaData, ApplicationProvider.getApplicationContext(), null);
+            assertTrue(MPConfig.DEBUG);
+        } finally {
+            MPConfig.DEBUG = mPreviousDebug;
+        }
     }
 
     @Test
