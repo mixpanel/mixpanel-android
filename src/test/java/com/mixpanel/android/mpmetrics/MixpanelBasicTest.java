@@ -123,7 +123,7 @@ public class MixpanelBasicTest {
       assertEquals(somePeople.getJSONObject(0).get("added"), "after");
 
       String[] someGroupsData = adapter.generateDataString(MPDbAdapter.Table.GROUPS, "ATOKEN");
-      JSONArray someGroups = new JSONArray(somePeopleData[1]);
+      JSONArray someGroups = new JSONArray(someGroupsData[1]);
       assertEquals(someGroups.length(), 1);
       assertEquals(someGroups.getJSONObject(0).get("added"), "after");
     } catch (JSONException e) {

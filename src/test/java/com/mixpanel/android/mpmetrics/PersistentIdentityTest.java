@@ -129,7 +129,7 @@ public class PersistentIdentityTest {
     }
 
     @Test
-    @Ignore("TODO: requires emulator — SharedPreferencesLoader caching differs under Robolectric")
+    @Ignore("TODO: requires emulator — SharedPreferencesLoader caching differs under Robolectric; assertion corrected to expect $device: prefix")
     public void testGeneratedAnonymousId() {
         SharedPreferences testPreferences = ApplicationProvider.getApplicationContext().getSharedPreferences(TEST_PREFERENCES, Context.MODE_PRIVATE);
         testPreferences.edit().remove("events_distinct_id").commit();
@@ -139,7 +139,7 @@ public class PersistentIdentityTest {
 
         // before identifying the anonymous identity is equal to generated distinct_id
         final String eventsDistinctId = mPersistentIdentity.getEventsDistinctId();
-        assertEquals("eventsDistinctId should be same as anonymousId before identify", generatedAnonymousId, eventsDistinctId);
+        assertEquals("eventsDistinctId should be '$device:' + anonymousId before identify", "$device:" + generatedAnonymousId, eventsDistinctId);
 
         mPersistentIdentity.setEventsDistinctId("identified_id");
         assertNotSame("anonymous id doesn't differ from eventsDistinctId post identify", generatedAnonymousId, mPersistentIdentity.getEventsDistinctId());

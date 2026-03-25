@@ -216,7 +216,7 @@ public class HttpServiceBackupTest {
   /** Primary not blocked -> not blocked */
   @Test
   public void testCheckBlocked_PrimaryNotBlocked() {
-    HttpService service = new HttpService(false, null, null, "api.mixpanel.com");
+    HttpService service = new HttpService(false, null, null, "8.8.8.8");
 
     service.checkIsServerBlockedSync();
 
@@ -236,7 +236,7 @@ public class HttpServiceBackupTest {
   /** Primary blocked, backup available -> not blocked */
   @Test
   public void testCheckBlocked_PrimaryBlockedBackupAvailable() {
-    HttpService service = new HttpService(false, null, "api.mixpanel.com", "127.0.0.1");
+    HttpService service = new HttpService(false, null, "8.8.8.8", "127.0.0.1");
 
     service.checkIsServerBlockedSync();
 

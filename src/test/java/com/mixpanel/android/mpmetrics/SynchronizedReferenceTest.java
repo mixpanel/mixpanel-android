@@ -2,6 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 import org.junit.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.Assert.*;
 
 public class SynchronizedReferenceTest {
@@ -68,18 +71,30 @@ public class SynchronizedReferenceTest {
 
     @Test
     public void testThreadSafety() throws InterruptedException {
+        final int THREAD_COUNT = 10;
+        final int ITERATIONS = 100;
         SynchronizedReference<Integer> ref = new SynchronizedReference<>();
         ref.set(0);
 
-        Thread[] threads = new Thread[10];
+        final AtomicInteger completedOperations = new AtomicInteger(0);
+        final AtomicBoolean corruptionDetected = new AtomicBoolean(false);
+
+        Thread[] threads = new Thread[THREAD_COUNT];
         for (int i = 0; i < threads.length; i++) {
             final int val = i;
             threads[i] = new Thread(() -> {
-                for (int j = 0; j < 100; j++) {
+                for (int j = 0; j < ITERATIONS; j++) {
                     ref.set(val);
-                    ref.get();
-                    ref.getAndClear();
+                    Integer got = ref.get();
+                    if (got != null && (got < 0 || got >= THREAD_COUNT)) {
+                        corruptionDetected.set(true);
+                    }
+                    Integer cleared = ref.getAndClear();
+                    if (cleared != null && (cleared < 0 || cleared >= THREAD_COUNT)) {
+                        corruptionDetected.set(true);
+                    }
                     ref.set(val);
+                    completedOperations.addAndGet(4);
                 }
             });
         }
@@ -87,6 +102,12 @@ public class SynchronizedReferenceTest {
         for (Thread t : threads) t.start();
         for (Thread t : threads) t.join();
 
-        // No exception = thread safe
+        assertEquals("All operations should complete",
+            THREAD_COUNT * ITERATIONS * 4, completedOperations.get());
+        assertFalse("No corrupted values should be observed during concurrent access",
+            corruptionDetected.get());
+        Integer finalValue = ref.get();
+        assertTrue("Final value should be null or a valid thread value (0-9)",
+            finalValue == null || (finalValue >= 0 && finalValue < THREAD_COUNT));
     }
 }

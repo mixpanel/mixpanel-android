@@ -28,6 +28,15 @@ android {
     }
 
 
+    sourceSets {
+        test {
+            java.srcDirs += 'src/sharedTest/java'
+        }
+        androidTest {
+            java.srcDirs += 'src/sharedTest/java'
+        }
+    }
+
     defaultConfig {
         minSdk 21
         multiDexEnabled true

@@ -1618,13 +1618,20 @@ public class FeatureFlagManagerTest {
 
                   // Each thread triggers a fetch by getting a different flag
                   MixpanelFlagVariant fallback =
-                      new MixpanelFlagVariant("fallback_" + threadId, "value");
+                      new MixpanelFlagVariant("fallback_" + threadId, "fb_value_" + threadId);
                   MixpanelFlagVariant variant =
                       mFeatureFlagManager.getVariantSync("flag_" + threadId, fallback);
 
-                  // Verify we got the expected variant (could be fallback if fetch hasn't
-                  // completed)
-                  assertNotNull("Variant should not be null", variant);
+                  // Verify variant is either the exact fallback or a real flag with correct data
+                  if (variant == fallback) {
+                    assertEquals("Fallback key should match",
+                        "fallback_" + threadId, variant.key);
+                  } else {
+                    assertEquals("Real flag key should match",
+                        "variant_" + threadId, variant.key);
+                    assertEquals("Real flag value should match",
+                        "value_" + threadId, variant.value);
+                  }
                 } catch (Exception e) {
                   exceptions.add(e);
                 } finally {
