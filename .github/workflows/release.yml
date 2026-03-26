@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Check-out"
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: "Update Release CHANGELOG"
         id: update-release-changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.4
+        uses: heinrichreimer/github-changelog-generator-action@e60b5a2bd9fcd88dadf6345ff8327863fb8b490f  # v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           onlyLastTag: true
@@ -41,14 +41,14 @@ jobs:
           git add CHANGELOG.md
           git diff --cached --quiet || git commit -m "Update CHANGELOG for version ${GITHUB_REF#refs/tags/}"
       - name: Push CHANGELOG changes
-        uses: ad-m/github-push-action@v0.8.0
+        uses: ad-m/github-push-action@d91a481090679876dfc4178fef17f286781251df  # v0.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
           force: false
       - name: "Prepare for the Github Release"
         id: generate-release-changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.4
+        uses: heinrichreimer/github-changelog-generator-action@e60b5a2bd9fcd88dadf6345ff8327863fb8b490f  # v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           output: "output.md"
@@ -66,7 +66,7 @@ jobs:
           author: false
           verbose: true
       - name: "🚀 Create GitHub Release"
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e  # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

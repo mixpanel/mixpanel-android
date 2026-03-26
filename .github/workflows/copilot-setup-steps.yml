@@ -26,14 +26,14 @@ jobs:
       # Check out repository code
       # No Git LFS needed (no .gitattributes file detected)
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0  # Full history for proper Gradle builds
       
       # Set up Java 17 as required by the project
       # build.gradle specifies JavaVersion.VERSION_17
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -42,14 +42,14 @@ jobs:
       # Set up Android SDK
       # Required for building the Android library and running instrumented tests
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407  # v3
         with:
           cmdline-tools-version: '11076708'  # Latest stable
       
       # Cache Gradle dependencies and build outputs
       # Significantly speeds up subsequent builds
       - name: Cache Gradle packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
           path: |
             ~/.gradle/caches
