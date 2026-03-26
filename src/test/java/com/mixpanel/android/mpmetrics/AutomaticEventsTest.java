@@ -7,11 +7,6 @@ import static org.junit.Assert.*;
 public class AutomaticEventsTest {
 
     @Test
-    public void testConstructorCoverage() {
-        assertNotNull(new AutomaticEvents());
-    }
-
-    @Test
     public void testEventConstants() {
         assertEquals("$ae_first_open", AutomaticEvents.FIRST_OPEN);
         assertEquals("$ae_session", AutomaticEvents.SESSION);

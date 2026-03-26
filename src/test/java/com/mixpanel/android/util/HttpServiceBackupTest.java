@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import androidx.test.core.app.ApplicationProvider;
-import java.lang.reflect.Method;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,7 +20,6 @@ public class HttpServiceBackupTest {
   private static final String PRIMARY_HOST = "api.mixpanel.com";
   private static final String BACKUP_HOST = "backup.mixpanel.com";
   private static final String TEST_ENDPOINT = "https://" + PRIMARY_HOST + "/track";
-  private static final byte[] SUCCESS_RESPONSE = "1\n".getBytes();
 
   private Context mContext;
 
@@ -34,93 +32,60 @@ public class HttpServiceBackupTest {
   @Test
   public void testConstructorWithBackupHost() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
-    // Service should be created successfully
     assertNotNull(service);
   }
 
   /** Test that HttpService can set backup host after construction and it affects URL replacement */
   @Test
-  public void testSetBackupHost() throws Exception {
+  public void testSetBackupHost() {
     HttpService service = new HttpService(false, null);
 
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
-
-    // Set backup host and verify it works via replaceHost
     service.setBackupHost(BACKUP_HOST);
-    String result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, BACKUP_HOST);
+    String result = service.replaceHost(TEST_ENDPOINT, BACKUP_HOST);
     assertEquals("https://backup.mixpanel.com/track", result);
 
-    // Can update backup host
     service.setBackupHost("new.backup.host");
-    result = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, "new.backup.host");
+    result = service.replaceHost(TEST_ENDPOINT, "new.backup.host");
     assertEquals("https://new.backup.host/track", result);
 
-    // Can clear backup host
     service.setBackupHost(null);
   }
 
-  /** Test URL host replacement logic using reflection */
+  /** Test URL host replacement logic */
   @Test
-  public void testUrlHostReplacement() throws Exception {
+  public void testUrlHostReplacement() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
-
-    // Use reflection to test the private replaceHost method
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
 
     // Test standard HTTPS URL
-    String result1 =
-        (String) replaceHostMethod.invoke(service, "https://api.mixpanel.com/track", BACKUP_HOST);
-    assertEquals("https://backup.mixpanel.com/track", result1);
+    assertEquals("https://backup.mixpanel.com/track",
+        service.replaceHost("https://api.mixpanel.com/track", BACKUP_HOST));
 
     // Test HTTP URL
-    String result2 =
-        (String) replaceHostMethod.invoke(service, "http://api.mixpanel.com/track", BACKUP_HOST);
-    assertEquals("http://backup.mixpanel.com/track", result2);
+    assertEquals("http://backup.mixpanel.com/track",
+        service.replaceHost("http://api.mixpanel.com/track", BACKUP_HOST));
 
     // Test URL with port
-    String result3 =
-        (String)
-            replaceHostMethod.invoke(service, "https://api.mixpanel.com:8443/track", BACKUP_HOST);
-    assertEquals("https://backup.mixpanel.com:8443/track", result3);
+    assertEquals("https://backup.mixpanel.com:8443/track",
+        service.replaceHost("https://api.mixpanel.com:8443/track", BACKUP_HOST));
 
     // Test URL with query parameters
-    String result4 =
-        (String)
-            replaceHostMethod.invoke(
-                service, "https://api.mixpanel.com/track?param=value&other=123", BACKUP_HOST);
-    assertEquals("https://backup.mixpanel.com/track?param=value&other=123", result4);
+    assertEquals("https://backup.mixpanel.com/track?param=value&other=123",
+        service.replaceHost("https://api.mixpanel.com/track?param=value&other=123", BACKUP_HOST));
 
     // Test URL with path segments
-    String result5 =
-        (String)
-            replaceHostMethod.invoke(
-                service, "https://api.mixpanel.com/api/v2/track/event", BACKUP_HOST);
-    assertEquals("https://backup.mixpanel.com/api/v2/track/event", result5);
+    assertEquals("https://backup.mixpanel.com/api/v2/track/event",
+        service.replaceHost("https://api.mixpanel.com/api/v2/track/event", BACKUP_HOST));
 
     // Test malformed URL (should return original)
-    String result6 = (String) replaceHostMethod.invoke(service, "not-a-valid-url", BACKUP_HOST);
-    assertEquals("not-a-valid-url", result6);
+    assertEquals("not-a-valid-url",
+        service.replaceHost("not-a-valid-url", BACKUP_HOST));
   }
 
-  /**
-   * Test URL replacement logic for backup host failover.
-   * Note: This test verifies the URL replacement mechanism works correctly.
-   * The actual failover logic (triggered on 5xx errors) is tested via integration tests.
-   */
+  /** Test backup host replacement across all endpoint paths */
   @Test
-  public void testBackupHostLogic() throws Exception {
+  public void testBackupHostLogic() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
-    // Use reflection to verify the replaceHost is called when needed
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
-
-    // Test various URLs
     String[] testUrls = {
       "https://api.mixpanel.com/track",
       "https://api.mixpanel.com/engage",
@@ -129,43 +94,29 @@ public class HttpServiceBackupTest {
     };
 
     for (String url : testUrls) {
-      String backupUrl = (String) replaceHostMethod.invoke(service, url, BACKUP_HOST);
+      String backupUrl = service.replaceHost(url, BACKUP_HOST);
       assertTrue("Backup URL should contain backup host", backupUrl.contains(BACKUP_HOST));
-      assertTrue(
-          "Backup URL should have same path",
-          backupUrl
-              .substring(backupUrl.indexOf("/", 8))
-              .equals(url.substring(url.indexOf("/", 8))));
+      assertEquals("Path should be preserved",
+          url.substring(url.indexOf("/", 8)),
+          backupUrl.substring(backupUrl.indexOf("/", 8)));
     }
   }
 
   /** Test runtime update of backup host */
   @Test
-  public void testRuntimeBackupUpdate() throws Exception {
+  public void testRuntimeBackupUpdate() {
     HttpService service = new HttpService(false, null, null, null);
-
-    // Use reflection to test replaceHost with different backup hosts
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
-
     String testUrl = "https://api.mixpanel.com/track";
 
-    // Initially with no backup
-    service.setBackupHost(null);
-
-    // Set backup host at runtime
     service.setBackupHost(BACKUP_HOST);
-    String backupUrl = (String) replaceHostMethod.invoke(service, testUrl, BACKUP_HOST);
-    assertEquals("https://backup.mixpanel.com/track", backupUrl);
+    assertEquals("https://backup.mixpanel.com/track",
+        service.replaceHost(testUrl, BACKUP_HOST));
 
-    // Update to different backup host
     String newBackupHost = "secondary.mixpanel.com";
     service.setBackupHost(newBackupHost);
-    String newBackupUrl = (String) replaceHostMethod.invoke(service, testUrl, newBackupHost);
-    assertEquals("https://secondary.mixpanel.com/track", newBackupUrl);
+    assertEquals("https://secondary.mixpanel.com/track",
+        service.replaceHost(testUrl, newBackupHost));
 
-    // Clear backup host
     service.setBackupHost(null);
   }
 
@@ -173,37 +124,28 @@ public class HttpServiceBackupTest {
   @Test
   public void testEmptyBackupHost() {
     HttpService service = new HttpService(false, null, "", null);
-    // Service should handle empty string gracefully
     assertNotNull(service);
-
     service.setBackupHost("");
-    // Should not throw exception
   }
 
   /** Test isOnline method — Robolectric's ConnectivityManager shadow reports connected by default */
   @Test
   public void testIsOnline() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
-
-    // Robolectric shadows ConnectivityManager as connected by default
     assertTrue("Should be online under Robolectric default shadow", service.isOnline(mContext, null));
   }
 
-  /** Test that service handles null parameters gracefully */
+  /** Test that replaceHost handles null inputs gracefully */
   @Test
-  public void testNullParameterHandling() throws Exception {
+  public void testNullParameterHandling() {
     HttpService service = new HttpService(false, null, BACKUP_HOST, null);
 
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
-
-    // replaceHost catches exceptions and returns the original url, so null → null
-    String nullUrlResult = (String) replaceHostMethod.invoke(service, null, BACKUP_HOST);
+    // null URL — replaceHost catches the exception and returns the original (null)
+    String nullUrlResult = service.replaceHost(null, BACKUP_HOST);
     assertNull("Null URL input should return null", nullUrlResult);
 
     // Null backup host creates a URL with empty host (Java URL constructor accepts null host)
-    String nullHostResult = (String) replaceHostMethod.invoke(service, TEST_ENDPOINT, null);
+    String nullHostResult = service.replaceHost(TEST_ENDPOINT, null);
     assertNotNull("Null backup host should not return null", nullHostResult);
     assertFalse("Result should not contain original host",
         nullHostResult.contains(PRIMARY_HOST));
@@ -217,9 +159,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_PrimaryNotBlocked() {
     HttpService service = new HttpService(false, null, null, "8.8.8.8");
-
     service.checkIsServerBlockedSync();
-
     assertFalse("Should not be blocked when primary is valid host", service.isServerBlocked());
   }
 
@@ -227,9 +167,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_PrimaryLoopbackNoBackup() {
     HttpService service = new HttpService(false, null, null, "127.0.0.1");
-
     service.checkIsServerBlockedSync();
-
     assertTrue("Should be blocked when primary is loopback", service.isServerBlocked());
   }
 
@@ -237,9 +175,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_PrimaryBlockedBackupAvailable() {
     HttpService service = new HttpService(false, null, "8.8.8.8", "127.0.0.1");
-
     service.checkIsServerBlockedSync();
-
     assertFalse("Should not be blocked when backup is available", service.isServerBlocked());
   }
 
@@ -247,9 +183,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_BothBlocked() {
     HttpService service = new HttpService(false, null, "127.0.0.1", "127.0.0.1");
-
     service.checkIsServerBlockedSync();
-
     assertTrue("Should be blocked when both are loopback", service.isServerBlocked());
   }
 
@@ -257,9 +191,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_BackupDnsFails() {
     HttpService service = new HttpService(false, null, "invalid..hostname..test", "127.0.0.1");
-
     service.checkIsServerBlockedSync();
-
     assertTrue("Should be blocked when backup DNS fails", service.isServerBlocked());
   }
 
@@ -267,10 +199,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_PrimaryDnsFails() {
     HttpService service = new HttpService(false, null, null, "invalid..hostname..test");
-
     service.checkIsServerBlockedSync();
-
-    // DNS failure should leave mIsServerBlocked at its default (false)
     assertFalse("DNS failure should not set blocked state", service.isServerBlocked());
   }
 
@@ -278,9 +207,7 @@ public class HttpServiceBackupTest {
   @Test
   public void testCheckBlocked_PrimaryBlockedEmptyBackup() {
     HttpService service = new HttpService(false, null, "", "127.0.0.1");
-
     service.checkIsServerBlockedSync();
-
     assertTrue("Should be blocked when backup is empty", service.isServerBlocked());
   }
 }

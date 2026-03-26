@@ -16,21 +16,41 @@ public class SessionMetadataTest {
     }
 
     @Test
-    public void testGetMetadataForEventContainsRequiredKeys() {
+    public void testGetMetadataForEventContainsValidFields() throws Exception {
         JSONObject metadata = mSessionMetadata.getMetadataForEvent();
-        assertTrue(metadata.has("$mp_event_id"));
-        assertTrue(metadata.has("$mp_session_id"));
-        assertTrue(metadata.has("$mp_session_seq_id"));
-        assertTrue(metadata.has("$mp_session_start_sec"));
+
+        // $mp_event_id should be a valid hex string from Long.toHexString()
+        String eventId = metadata.getString("$mp_event_id");
+        assertValidHexString(eventId, "$mp_event_id");
+
+        // $mp_session_id should be a valid hex string
+        String sessionId = metadata.getString("$mp_session_id");
+        assertValidHexString(sessionId, "$mp_session_id");
+
+        // $mp_session_seq_id should start at 0
+        assertEquals(0, metadata.getLong("$mp_session_seq_id"));
+
+        // $mp_session_start_sec should be a recent epoch timestamp
+        long startSec = metadata.getLong("$mp_session_start_sec");
+        long nowSec = System.currentTimeMillis() / 1000;
+        assertTrue("$mp_session_start_sec should be recent", startSec <= nowSec && startSec >= nowSec - 1);
     }
 
     @Test
-    public void testGetMetadataForPeopleContainsRequiredKeys() {
+    public void testGetMetadataForPeopleContainsValidFields() throws Exception {
         JSONObject metadata = mSessionMetadata.getMetadataForPeople();
-        assertTrue(metadata.has("$mp_event_id"));
-        assertTrue(metadata.has("$mp_session_id"));
-        assertTrue(metadata.has("$mp_session_seq_id"));
-        assertTrue(metadata.has("$mp_session_start_sec"));
+
+        String eventId = metadata.getString("$mp_event_id");
+        assertValidHexString(eventId, "$mp_event_id");
+
+        String sessionId = metadata.getString("$mp_session_id");
+        assertValidHexString(sessionId, "$mp_session_id");
+
+        assertEquals(0, metadata.getLong("$mp_session_seq_id"));
+
+        long startSec = metadata.getLong("$mp_session_start_sec");
+        long nowSec = System.currentTimeMillis() / 1000;
+        assertTrue("$mp_session_start_sec should be recent", startSec <= nowSec && startSec >= nowSec - 1);
     }
 
     @Test
@@ -136,22 +156,35 @@ public class SessionMetadataTest {
     }
 
     @Test
-    public void testMetadataFieldTypes() throws Exception {
-        // Verify the actual types/content of metadata fields
-        JSONObject metadata = mSessionMetadata.getMetadataForEvent();
+    public void testEventIdIsUniqueHexPerCall() throws Exception {
+        JSONObject first = mSessionMetadata.getMetadataForEvent();
+        JSONObject second = mSessionMetadata.getMetadataForEvent();
 
-        // $mp_event_id should be a hex string
-        String eventId = metadata.getString("$mp_event_id");
-        assertNotNull(eventId);
-        assertFalse(eventId.isEmpty());
+        String id1 = first.getString("$mp_event_id");
+        String id2 = second.getString("$mp_event_id");
 
-        // $mp_session_id should be a hex string
-        String sessionId = metadata.getString("$mp_session_id");
-        assertNotNull(sessionId);
-        assertFalse(sessionId.isEmpty());
+        assertValidHexString(id1, "first $mp_event_id");
+        assertValidHexString(id2, "second $mp_event_id");
+        assertNotEquals("Each event should get a unique ID", id1, id2);
+    }
 
-        // $mp_session_start_sec should be a positive epoch
-        long startSec = metadata.getLong("$mp_session_start_sec");
-        assertTrue(startSec > 0);
+    @Test
+    public void testSessionIdIsConsistentHex() throws Exception {
+        JSONObject event = mSessionMetadata.getMetadataForEvent();
+        JSONObject people = mSessionMetadata.getMetadataForPeople();
+
+        String sessionFromEvent = event.getString("$mp_session_id");
+        String sessionFromPeople = people.getString("$mp_session_id");
+
+        assertValidHexString(sessionFromEvent, "$mp_session_id from event");
+        assertEquals("Session ID should be the same across event and people calls",
+                sessionFromEvent, sessionFromPeople);
+    }
+
+    private static void assertValidHexString(String value, String fieldName) {
+        assertNotNull(fieldName + " should not be null", value);
+        assertFalse(fieldName + " should not be empty", value.isEmpty());
+        assertTrue(fieldName + " should be a valid hex string, got: " + value,
+                value.matches("[0-9a-f]+"));
     }
 }
