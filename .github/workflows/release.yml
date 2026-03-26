@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Check-out"
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -41,7 +41,7 @@ jobs:
           git add CHANGELOG.md
           git diff --cached --quiet || git commit -m "Update CHANGELOG for version ${GITHUB_REF#refs/tags/}"
       - name: Push CHANGELOG changes
-        uses: ad-m/github-push-action@d91a481090679876dfc4178fef17f286781251df  # v0.8.0
+        uses: ad-m/github-push-action@77c5b412c50b723d2a4fbc6d71fb5723bcd439aa  # v1.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
