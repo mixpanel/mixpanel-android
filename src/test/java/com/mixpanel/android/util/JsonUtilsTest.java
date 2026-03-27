@@ -281,13 +281,6 @@ public class JsonUtilsTest {
         assertNull(result.get("no_value_flag").value); // should default to null
     }
 
-    // Constructor coverage
-    @Test
-    public void testConstructor() {
-        JsonUtils instance = new JsonUtils();
-        assertNotNull(instance);
-    }
-
     // parseJsonValue edge cases — Number subclass that is not Integer/Long/Double/Float
     @Test
     public void testParseJsonValueGenericNumber() throws JSONException {

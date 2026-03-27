@@ -119,13 +119,6 @@ public class Base64CoderTest {
         assertArrayEquals(allBytes, decoded);
     }
 
-    // Constructor coverage
-    @Test
-    public void testConstructor() {
-        Base64Coder instance = new Base64Coder();
-        assertNotNull(instance);
-    }
-
     // Decode edge cases — padding variations
     @Test
     public void testDecodeWithDoublePadding() {

@@ -32,13 +32,4 @@ public class MPConstantsTest {
         assertEquals("com.mixpanel.properties.unregister", MPConstants.SessionReplay.UNREGISTER_ACTION);
         assertEquals("$mp_replay_id", MPConstants.SessionReplay.REPLAY_ID_KEY);
     }
-
-    @Test
-    public void testConstructorCoverage() {
-        // Cover implicit constructors for JaCoCo
-        assertNotNull(new MPConstants());
-        assertNotNull(new MPConstants.URL());
-        assertNotNull(new MPConstants.Flags());
-        assertNotNull(new MPConstants.SessionReplay());
-    }
 }

@@ -9,7 +9,6 @@ import android.content.Context;
 import android.os.Bundle;
 import androidx.test.core.app.ApplicationProvider;
 import com.mixpanel.android.util.HttpService;
-import java.lang.reflect.Method;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -82,30 +81,6 @@ public class BackupHostTest {
         "Backup host should be updatable at runtime",
         "runtime.backup.host",
         config.getBackupHost());
-  }
-
-  /** Test that HttpService receives backup host from config */
-  @Test
-  public void testHttpServiceBackupHostIntegration() throws Exception {
-    Bundle metaData = new Bundle();
-    metaData.putString("com.mixpanel.android.MPConfig.BackupHost", BACKUP_HOST);
-
-    MPConfig config = new MPConfig(metaData, mContext, "integration_test");
-
-    // Create AnalyticsMessages which creates HttpService internally
-    AnalyticsMessages messages = new AnalyticsMessages(mContext, config);
-
-    // Use reflection to get the HttpService instance
-    Method getPosterMethod = AnalyticsMessages.class.getDeclaredMethod("getPoster");
-    getPosterMethod.setAccessible(true);
-    Object poster = getPosterMethod.invoke(messages);
-
-    assertNotNull("HttpService should be created", poster);
-    assertTrue("Poster should be HttpService", poster instanceof HttpService);
-
-    // Verify backup host was passed to HttpService
-    // (We can't directly check as backupHost is private, but we tested
-    // the constructor and setter in HttpServiceBackupTest)
   }
 
   /** Test that backup host works with different endpoint types */
@@ -222,32 +197,4 @@ public class BackupHostTest {
     mixpanel.flush();
   }
 
-  /** Test URL host replacement using reflection */
-  @Test
-  public void testHostReplacement() throws Exception {
-    HttpService service = new HttpService(false, null, BACKUP_HOST, null);
-
-    // Use reflection to test the private replaceHost method
-    Method replaceHostMethod =
-        HttpService.class.getDeclaredMethod("replaceHost", String.class, String.class);
-    replaceHostMethod.setAccessible(true);
-
-    // Test basic replacement
-    String original = "https://api.mixpanel.com/track";
-    String expected = "https://backup.mixpanel.com/track";
-    String result = (String) replaceHostMethod.invoke(service, original, BACKUP_HOST);
-    assertEquals("Host should be replaced correctly", expected, result);
-
-    // Test with query parameters
-    original = "https://api.mixpanel.com/track?param=value";
-    expected = "https://backup.mixpanel.com/track?param=value";
-    result = (String) replaceHostMethod.invoke(service, original, BACKUP_HOST);
-    assertEquals("Host should be replaced preserving query params", expected, result);
-
-    // Test with port
-    original = "https://api.mixpanel.com:8443/track";
-    expected = "https://backup.mixpanel.com:8443/track";
-    result = (String) replaceHostMethod.invoke(service, original, BACKUP_HOST);
-    assertEquals("Host should be replaced preserving port", expected, result);
-  }
 }

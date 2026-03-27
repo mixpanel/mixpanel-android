@@ -146,22 +146,7 @@ tasks.register('jacocoTestReport', JacocoReport) {
     }
 
     def fileFilter = [
-        '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*',
-        // Exclude classes that require Android framework (emulator) for testing
-        // These are covered by instrumented tests instead
-        '**/MixpanelAPI.class', '**/MixpanelAPI$*.class',
-        '**/AnalyticsMessages.class', '**/AnalyticsMessages$*.class',
-        '**/MPDbAdapter.class', '**/MPDbAdapter$*.class',
-        '**/HttpService.class', '**/HttpService$*.class',
-        '**/SystemInformation.class', '**/SystemInformation$*.class',
-        '**/MixpanelActivityLifecycleCallbacks.class', '**/MixpanelActivityLifecycleCallbacks$*.class',
-        '**/ResourceReader.class', '**/ResourceReader$*.class',
-        '**/ExceptionHandler.class', '**/ExceptionHandler$*.class',
-        '**/ConfigurationChecker.class', '**/ConfigurationChecker$*.class',
-        '**/SessionReplayBroadcastReceiver.class',
-        '**/RemoteService.class', '**/RemoteService$*.class',
-        '**/ProxyServerInteractor.class',
-        '**/MixpanelNetworkErrorListener.class'
+        '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*'
     ]
     def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: fileFilter)
     def mainSrc = "${project.projectDir}/src/main/java"

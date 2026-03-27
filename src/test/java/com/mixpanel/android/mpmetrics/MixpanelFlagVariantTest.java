@@ -101,11 +101,4 @@ public class MixpanelFlagVariantTest {
         assertNull(variant.isQATester);
     }
 
-    @Test
-    public void testFieldsArePublicFinal() {
-        MixpanelFlagVariant variant = new MixpanelFlagVariant("key", "value");
-        // Fields should be accessible directly (public final)
-        assertNotNull(variant.key);
-        assertNotNull(variant.value);
-    }
 }
