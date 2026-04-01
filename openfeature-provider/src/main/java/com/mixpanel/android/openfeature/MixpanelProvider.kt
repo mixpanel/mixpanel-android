@@ -26,15 +26,16 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
 
     override suspend fun initialize(initialContext: EvaluationContext?) {
         if (initialContext != null) {
-            val contextMap = evaluationContextToMap(initialContext)
-            suspendCoroutine<Unit> { continuation ->
-                flags.setContext(contextMap) { continuation.resume(Unit) }
-            }
+            applyContext(initialContext)
         }
     }
 
     override suspend fun onContextSet(oldContext: EvaluationContext?, newContext: EvaluationContext) {
-        val contextMap = evaluationContextToMap(newContext)
+        applyContext(newContext)
+    }
+
+    private suspend fun applyContext(context: EvaluationContext) {
+        val contextMap = evaluationContextToMap(context)
         suspendCoroutine<Unit> { continuation ->
             flags.setContext(contextMap) { continuation.resume(Unit) }
         }
@@ -49,28 +50,14 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: Boolean,
         context: EvaluationContext?
     ): ProviderEvaluation<Boolean> {
-        if (!flags.areFlagsReady()) {
-            return providerNotReady(defaultValue)
+        return resolveFlag(key, defaultValue) { variant ->
+            val value = variant.value
+            if (value is Boolean) {
+                success(value, variant.key)
+            } else {
+                typeMismatch(key, "Boolean", value, defaultValue)
+            }
         }
-
-        val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant: MixpanelFlagVariant
-        try {
-            variant = flags.getVariantSync(key, fallback)
-        } catch (e: Exception) {
-            return generalError(defaultValue, e.message)
-        }
-
-        if (variant === fallback) {
-            return flagNotFound(key, defaultValue)
-        }
-
-        val value = variant.value
-        if (value is Boolean) {
-            return success(value, variant.key)
-        }
-
-        return typeMismatch(key, "Boolean", value, defaultValue)
     }
 
     override fun getStringEvaluation(
@@ -78,28 +65,14 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: String,
         context: EvaluationContext?
     ): ProviderEvaluation<String> {
-        if (!flags.areFlagsReady()) {
-            return providerNotReady(defaultValue)
+        return resolveFlag(key, defaultValue) { variant ->
+            val value = variant.value
+            if (value is String) {
+                success(value, variant.key)
+            } else {
+                typeMismatch(key, "String", value, defaultValue)
+            }
         }
-
-        val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant: MixpanelFlagVariant
-        try {
-            variant = flags.getVariantSync(key, fallback)
-        } catch (e: Exception) {
-            return generalError(defaultValue, e.message)
-        }
-
-        if (variant === fallback) {
-            return flagNotFound(key, defaultValue)
-        }
-
-        val value = variant.value
-        if (value is String) {
-            return success(value, variant.key)
-        }
-
-        return typeMismatch(key, "String", value, defaultValue)
     }
 
     override fun getIntegerEvaluation(
@@ -107,41 +80,30 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: Int,
         context: EvaluationContext?
     ): ProviderEvaluation<Int> {
-        if (!flags.areFlagsReady()) {
-            return providerNotReady(defaultValue)
-        }
-
-        val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant: MixpanelFlagVariant
-        try {
-            variant = flags.getVariantSync(key, fallback)
-        } catch (e: Exception) {
-            return generalError(defaultValue, e.message)
-        }
-
-        if (variant === fallback) {
-            return flagNotFound(key, defaultValue)
-        }
-
-        val value = variant.value
-        val variantKey = variant.key
-        when (value) {
-            is Int -> return success(value, variantKey)
-            is Long -> return success(value.toInt(), variantKey)
-            is Double -> {
-                if (value == Math.floor(value) && !value.isInfinite()) {
-                    return success(value.toInt(), variantKey)
+        return resolveFlag(key, defaultValue) { variant ->
+            val value = variant.value
+            val variantKey = variant.key
+            when (value) {
+                is Int -> success(value, variantKey)
+                is Long -> success(value.toInt(), variantKey)
+                is Double -> {
+                    if (value == Math.floor(value) && !value.isInfinite()) {
+                        success(value.toInt(), variantKey)
+                    } else {
+                        typeMismatch(key, "Int", value, defaultValue)
+                    }
                 }
-            }
-            is Float -> {
-                val d = value.toDouble()
-                if (d == Math.floor(d) && !d.isInfinite()) {
-                    return success(value.toInt(), variantKey)
+                is Float -> {
+                    val d = value.toDouble()
+                    if (d == Math.floor(d) && !d.isInfinite()) {
+                        success(value.toInt(), variantKey)
+                    } else {
+                        typeMismatch(key, "Int", value, defaultValue)
+                    }
                 }
+                else -> typeMismatch(key, "Int", value, defaultValue)
             }
         }
-
-        return typeMismatch(key, "Int", value, defaultValue)
     }
 
     override fun getDoubleEvaluation(
@@ -149,28 +111,14 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: Double,
         context: EvaluationContext?
     ): ProviderEvaluation<Double> {
-        if (!flags.areFlagsReady()) {
-            return providerNotReady(defaultValue)
+        return resolveFlag(key, defaultValue) { variant ->
+            val value = variant.value
+            if (value is Number) {
+                success(value.toDouble(), variant.key)
+            } else {
+                typeMismatch(key, "Double", value, defaultValue)
+            }
         }
-
-        val fallback = MixpanelFlagVariant(defaultValue as Any)
-        val variant: MixpanelFlagVariant
-        try {
-            variant = flags.getVariantSync(key, fallback)
-        } catch (e: Exception) {
-            return generalError(defaultValue, e.message)
-        }
-
-        if (variant === fallback) {
-            return flagNotFound(key, defaultValue)
-        }
-
-        val value = variant.value
-        if (value is Number) {
-            return success(value.toDouble(), variant.key)
-        }
-
-        return typeMismatch(key, "Double", value, defaultValue)
     }
 
     override fun getObjectEvaluation(
@@ -178,26 +126,41 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         defaultValue: Value,
         context: EvaluationContext?
     ): ProviderEvaluation<Value> {
+        return resolveFlag(key, defaultValue, fallbackVariant = MixpanelFlagVariant("", null)) { variant ->
+            success(toValue(variant.value), variant.key)
+        }
+    }
+
+    // --- Helpers ---
+
+    /**
+     * Shared resolution logic for all flag evaluation methods.
+     * Handles readiness checks, fallback creation, exception handling, and flag-not-found detection.
+     * The [coerce] block is only called when a flag variant is successfully found.
+     */
+    private fun <T> resolveFlag(
+        key: String,
+        defaultValue: T,
+        fallbackVariant: MixpanelFlagVariant = MixpanelFlagVariant(defaultValue as Any),
+        coerce: (MixpanelFlagVariant) -> ProviderEvaluation<T>
+    ): ProviderEvaluation<T> {
         if (!flags.areFlagsReady()) {
             return providerNotReady(defaultValue)
         }
 
-        val fallback = MixpanelFlagVariant("", null)
         val variant: MixpanelFlagVariant
         try {
-            variant = flags.getVariantSync(key, fallback)
+            variant = flags.getVariantSync(key, fallbackVariant)
         } catch (e: Exception) {
             return generalError(defaultValue, e.message)
         }
 
-        if (variant === fallback) {
+        if (variant === fallbackVariant) {
             return flagNotFound(key, defaultValue)
         }
 
-        return success(toValue(variant.value), variant.key)
+        return coerce(variant)
     }
-
-    // --- Helpers ---
 
     private fun <T> success(value: T, variant: String? = null): ProviderEvaluation<T> {
         return ProviderEvaluation(
@@ -261,7 +224,6 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             is Map<*, *> -> Value.Structure(
                 obj.entries.associate { (k, v) -> k.toString() to toValue(v) }
             )
-            is List<*> -> Value.List(obj.map { toValue(it) })
             is Iterable<*> -> Value.List(obj.map { toValue(it) })
             else -> Value.String(obj.toString())
         }
