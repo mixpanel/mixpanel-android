@@ -128,6 +128,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mHandler.sendMessage(mHandler.obtainMessage(MSG_FETCH_FLAGS_IF_NEEDED));
   }
 
+  /**
+   * Asynchronously loads flags from the Mixpanel server with a completion callback.
+   * The callback is invoked on the main thread with true on success and false on failure.
+   */
+  public void loadFlags(@Nullable FlagCompletionCallback<Boolean> callback) {
+    mHandler.post(() -> _fetchFlagsIfNeeded(callback));
+  }
+
   /** Returns true if flags are loaded and ready for synchronous access. */
   public boolean areFlagsReady() {
     synchronized (mLock) {

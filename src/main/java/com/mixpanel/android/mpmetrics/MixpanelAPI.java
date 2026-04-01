@@ -1910,6 +1910,16 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         void loadFlags();
 
         /**
+         * Asynchronously loads flags from the Mixpanel server with a completion callback.
+         * The callback is invoked on the main thread with {@code true} on success
+         * and {@code false} on failure.
+         *
+         * @param callback The {@link FlagCompletionCallback} that will be invoked on the main thread
+         *     with the result of the load operation.
+         */
+        void loadFlags(@Nullable FlagCompletionCallback<Boolean> callback);
+
+        /**
          * Returns true if flags have been successfully loaded from the server and are currently
          * available for synchronous access. This is useful to check before calling synchronous flag
          * retrieval methods like {@link #getVariantSync(String, MixpanelFlagVariant)} to avoid them
