@@ -2023,4 +2023,252 @@ public class FeatureFlagManagerTest {
     // All async calls should have succeeded
     assertEquals("All async calls should succeed", THREAD_COUNT, asyncSuccessCount.get());
   }
+
+  // ---- loadFlags(callback) tests ----
+
+  @Test
+  public void testLoadFlagsWithCallback_successInvokesCallbackWithTrue() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
+
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<Boolean> callbackResult = new AtomicReference<>();
+
+    mFeatureFlagManager.loadFlags(result -> {
+      callbackResult.set(result);
+      latch.countDown();
+    });
+
+    assertTrue("Callback should be invoked within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertTrue("Callback should receive true on success", callbackResult.get());
+    assertTrue("Flags should be ready after successful load", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testLoadFlagsWithCallback_failureInvokesCallbackWithFalse() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
+    mMockRemoteService.addError(new IOException("Network error"));
+
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<Boolean> callbackResult = new AtomicReference<>();
+
+    mFeatureFlagManager.loadFlags(result -> {
+      callbackResult.set(result);
+      latch.countDown();
+    });
+
+    assertTrue("Callback should be invoked within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertFalse("Callback should receive false on failure", callbackResult.get());
+    assertFalse("Flags should not be ready after failed load", mFeatureFlagManager.areFlagsReady());
+  }
+
+  @Test
+  public void testLoadFlagsWithCallback_disabledInvokesCallbackWithFalse() throws InterruptedException {
+    setupFlagsConfig(false, null);
+
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicReference<Boolean> callbackResult = new AtomicReference<>();
+
+    mFeatureFlagManager.loadFlags(result -> {
+      callbackResult.set(result);
+      latch.countDown();
+    });
+
+    assertTrue("Callback should be invoked within timeout", latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertFalse("Callback should receive false when disabled", callbackResult.get());
+  }
+
+  @Test
+  public void testLoadFlagsWithCallback_nullCallbackDoesNotCrash() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
+
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    mFeatureFlagManager.loadFlags(null);
+
+    // Wait for fetch to complete
+    boolean ready = false;
+    for (int i = 0; i < 20; i++) {
+      if (mFeatureFlagManager.areFlagsReady()) {
+        ready = true;
+        break;
+      }
+      Thread.sleep(100);
+    }
+    assertTrue("Flags should become ready even with null callback", ready);
+  }
+
+  @Test
+  public void testLoadFlagsWithCallback_multipleCallbacksAllInvoked() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
+
+    // First response for the single fetch that both callbacks attach to
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch latch = new CountDownLatch(2);
+    AtomicReference<Boolean> result1 = new AtomicReference<>();
+    AtomicReference<Boolean> result2 = new AtomicReference<>();
+
+    mFeatureFlagManager.loadFlags(result -> {
+      result1.set(result);
+      latch.countDown();
+    });
+    mFeatureFlagManager.loadFlags(result -> {
+      result2.set(result);
+      latch.countDown();
+    });
+
+    assertTrue("Both callbacks should be invoked", latch.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+    assertTrue("First callback should receive true", result1.get());
+    assertTrue("Second callback should receive true", result2.get());
+  }
+
+  // ---- setContext tests ----
+
+  @Test
+  public void testSetContext_sendsNewContextInRequest() throws Exception {
+    setupFlagsConfig(true, new JSONObject());
+
+    // Response for initial loadFlags
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Load flags first to complete initial fetch
+    CountDownLatch initialLatch = new CountDownLatch(1);
+    mFeatureFlagManager.loadFlags(result -> initialLatch.countDown());
+    assertTrue("Initial load should complete", initialLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    // Consume initial request
+    CapturedRequest initialRequest = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("Initial request should have been made", initialRequest);
+
+    // Response for setContext re-fetch
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Set new context
+    Map<String, Object> newContext = new HashMap<>();
+    newContext.put("plan", "enterprise");
+    newContext.put("region", "us-east");
+
+    CountDownLatch contextLatch = new CountDownLatch(1);
+    mFeatureFlagManager.setContext(newContext, result -> contextLatch.countDown());
+    assertTrue("setContext callback should be invoked", contextLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    // Verify the re-fetch request contains the new context
+    CapturedRequest contextRequest = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    assertNotNull("A re-fetch request should have been made after setContext", contextRequest);
+
+    JSONObject requestContext = contextRequest.getContextFromQueryParams();
+    assertNotNull("Context should be valid JSON", requestContext);
+    assertEquals("plan should be in context", "enterprise", requestContext.getString("plan"));
+    assertEquals("region should be in context", "us-east", requestContext.getString("region"));
+    assertTrue("distinct_id should still be present", requestContext.has("distinct_id"));
+  }
+
+  @Test
+  public void testSetContext_replacesExistingContext() throws Exception {
+    // Start with initial context
+    JSONObject initialContext = new JSONObject();
+    initialContext.put("env", "staging");
+    initialContext.put("version", "1.0");
+    setupFlagsConfig(true, initialContext);
+
+    // Response for initial load
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch initialLatch = new CountDownLatch(1);
+    mFeatureFlagManager.loadFlags(result -> initialLatch.countDown());
+    assertTrue("Initial load should complete", initialLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    // Consume initial request and verify it has the original context
+    CapturedRequest initialRequest = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    JSONObject initialReqContext = initialRequest.getContextFromQueryParams();
+    assertEquals("Initial context should have env", "staging", initialReqContext.getString("env"));
+
+    // Response for setContext re-fetch
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    // Replace context entirely — "env" and "version" should be gone
+    Map<String, Object> newContext = new HashMap<>();
+    newContext.put("plan", "enterprise");
+
+    CountDownLatch contextLatch = new CountDownLatch(1);
+    mFeatureFlagManager.setContext(newContext, result -> contextLatch.countDown());
+    assertTrue("setContext callback should be invoked", contextLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    CapturedRequest contextRequest = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    JSONObject newReqContext = contextRequest.getContextFromQueryParams();
+    assertEquals("plan should be present", "enterprise", newReqContext.getString("plan"));
+    assertFalse("env from initial context should be gone", newReqContext.has("env"));
+    assertFalse("version from initial context should be gone", newReqContext.has("version"));
+  }
+
+  @Test
+  public void testSetContext_triggersRefetchAndCallbackReceivesResult() throws InterruptedException {
+    setupFlagsConfig(true, new JSONObject());
+
+    // Response for initial load
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch initialLatch = new CountDownLatch(1);
+    mFeatureFlagManager.loadFlags(result -> initialLatch.countDown());
+    assertTrue(initialLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
+    // setContext with a failure response
+    mMockRemoteService.addError(new IOException("Network error"));
+
+    Map<String, Object> newContext = new HashMap<>();
+    newContext.put("key", "value");
+
+    CountDownLatch contextLatch = new CountDownLatch(1);
+    AtomicReference<Boolean> callbackResult = new AtomicReference<>();
+    mFeatureFlagManager.setContext(newContext, result -> {
+      callbackResult.set(result);
+      contextLatch.countDown();
+    });
+
+    assertTrue("setContext callback should be invoked", contextLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertFalse("Callback should receive false on fetch failure", callbackResult.get());
+  }
+
+  @Test
+  public void testSetContext_emptyMapSendsOnlyDistinctIdAndDeviceId() throws Exception {
+    setupFlagsConfig(true, new JSONObject());
+
+    // Response for initial load
+    Map<String, MixpanelFlagVariant> testFlags = new HashMap<>();
+    testFlags.put("flag1", new MixpanelFlagVariant("v1", true));
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch initialLatch = new CountDownLatch(1);
+    mFeatureFlagManager.loadFlags(result -> initialLatch.countDown());
+    assertTrue(initialLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
+    // Set empty context
+    mMockRemoteService.addResponse(createFlagsResponseJson(testFlags).getBytes(StandardCharsets.UTF_8));
+
+    CountDownLatch contextLatch = new CountDownLatch(1);
+    mFeatureFlagManager.setContext(new HashMap<>(), result -> contextLatch.countDown());
+    assertTrue(contextLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+    CapturedRequest request = mMockRemoteService.takeRequest(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    JSONObject reqContext = request.getContextFromQueryParams();
+    assertEquals("Context should only have distinct_id and device_id", 2, reqContext.length());
+    assertTrue("Should have distinct_id", reqContext.has("distinct_id"));
+    assertTrue("Should have device_id", reqContext.has("device_id"));
+  }
 }
