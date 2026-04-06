@@ -42,9 +42,11 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
      * @param options A [MixpanelOptions] instance to configure the Mixpanel SDK.
      */
     constructor(context: Context, token: String, options: MixpanelOptions) : this(
-        MixpanelAPI.getInstance(context, token, false, options).getFlags()
-    ) {
-        mixpanel = MixpanelAPI.getInstance(context, token, false, options)
+        MixpanelAPI.getInstance(context, token, false, options)
+    )
+
+    private constructor(mixpanelAPI: MixpanelAPI) : this(mixpanelAPI.getFlags()) {
+        mixpanel = mixpanelAPI
     }
 
     override val hooks: List<Hook<*>> = emptyList()
