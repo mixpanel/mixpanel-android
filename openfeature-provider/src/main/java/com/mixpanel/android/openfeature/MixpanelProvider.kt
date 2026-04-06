@@ -34,6 +34,9 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
      * Convenience constructor that creates a [MixpanelAPI] instance internally and
      * extracts its [MixpanelAPI.Flags] for use as the backing flag source.
      *
+     * The created instance is accessible via the [mixpanel] property for calling
+     * [MixpanelAPI.identify] and [MixpanelAPI.track].
+     *
      * @param context The application context.
      * @param token Your Mixpanel project token.
      * @param options A [MixpanelOptions] instance to configure the Mixpanel SDK.
