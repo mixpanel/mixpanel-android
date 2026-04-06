@@ -1,7 +1,9 @@
 package com.mixpanel.android.openfeature
 
+import android.content.Context
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import com.mixpanel.android.mpmetrics.MixpanelFlagVariant
+import com.mixpanel.android.mpmetrics.MixpanelOptions
 import dev.openfeature.kotlin.sdk.EvaluationContext
 import dev.openfeature.kotlin.sdk.FeatureProvider
 import dev.openfeature.kotlin.sdk.Hook
@@ -19,6 +21,28 @@ import kotlin.coroutines.suspendCoroutine
  * @param flags The [MixpanelAPI.Flags] instance obtained via `mixpanel.getFlags()`.
  */
 class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
+
+    /**
+     * The underlying [MixpanelAPI] instance, if this provider was created via the
+     * convenience constructor. Users need this to call [MixpanelAPI.identify] and
+     * [MixpanelAPI.track] on the underlying instance.
+     */
+    var mixpanel: MixpanelAPI? = null
+        private set
+
+    /**
+     * Convenience constructor that creates a [MixpanelAPI] instance internally and
+     * extracts its [MixpanelAPI.Flags] for use as the backing flag source.
+     *
+     * @param context The application context.
+     * @param token Your Mixpanel project token.
+     * @param options A [MixpanelOptions] instance to configure the Mixpanel SDK.
+     */
+    constructor(context: Context, token: String, options: MixpanelOptions) : this(
+        MixpanelAPI.getInstance(context, token, false, options).getFlags()
+    ) {
+        mixpanel = MixpanelAPI.getInstance(context, token, false, options)
+    }
 
     override val hooks: List<Hook<*>> = emptyList()
 
