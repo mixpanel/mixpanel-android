@@ -2082,6 +2082,20 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          *                   if fetching fails.
          */
         void getAllVariants(@NonNull FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion);
+
+        /**
+         * Replaces the current custom flag evaluation context and triggers a flag re-fetch.
+         *
+         * <p>The provided context map entirely replaces any previously set custom context.
+         * After updating the context, a new flag fetch is initiated. The completion callback
+         * is invoked on the main thread once the fetch completes.
+         *
+         * @param context A map of context key-value pairs to send with flag evaluation requests.
+         *                This must not be null.
+         * @param completion A callback invoked on the main thread when the fetch completes.
+         *                   This must not be null.
+         */
+        void setContext(@NonNull Map<String, Object> context, @NonNull FlagCompletionCallback<Boolean> completion);
     }
 
     /**

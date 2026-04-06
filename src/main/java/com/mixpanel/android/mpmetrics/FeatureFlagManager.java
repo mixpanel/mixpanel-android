@@ -50,6 +50,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private final Set<String> mTrackedFlags = new HashSet<>();
   private boolean mIsFetching = false;
   private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
+  private volatile JSONObject mCustomContext;
   // Track last fetch time and latency for $experiment_started event
   private volatile FetchTiming mFetchTiming = FetchTiming.neverFetched();
 
@@ -109,6 +110,11 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mFlagsRecordingEndpoint = delegate.getMPConfig().getFlagsRecordingEndpoint();
     mHttpService = httpService;
     mFlagsConfig = flagsConfig;
+    try {
+      mCustomContext = new JSONObject(flagsConfig.context.toString());
+    } catch (JSONException e) {
+      mCustomContext = new JSONObject();
+    }
 
     // Dedicated thread for serializing access to flags state
     HandlerThread handlerThread =
@@ -126,6 +132,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   public void loadFlags() {
     // Send message to the handler thread to check and potentially fetch
     mHandler.sendMessage(mHandler.obtainMessage(MSG_FETCH_FLAGS_IF_NEEDED));
+  }
+
+  @Override
+  public void setContext(@NonNull Map<String, Object> context, @NonNull FlagCompletionCallback<Boolean> completion) {
+    try {
+      mCustomContext = new JSONObject(context);
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Failed to set custom context", e);
+      mCustomContext = new JSONObject();
+    }
+    mHandler.post(() -> _fetchFlagsIfNeeded(completion));
   }
 
   /**
@@ -527,17 +544,15 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       return;
     }
 
+    if (completion != null) {
+      mFetchCompletionCallbacks.add(completion);
+    }
+
     if (!mIsFetching) {
       mIsFetching = true;
       shouldStartFetch = true;
-      if (completion != null) {
-        mFetchCompletionCallbacks.add(completion);
-      }
     } else {
       MPLog.d(LOGTAG, "Fetch already in progress, queueing completion handler.");
-      if (completion != null) {
-        mFetchCompletionCallbacks.add(completion);
-      }
     }
 
     if (shouldStartFetch) {
@@ -581,7 +596,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     try {
       // 1. Build Query Parameters
       // Defensive copy: we mutate contextJson below (adding distinct_id, device_id)
-      JSONObject contextJson = new JSONObject(mFlagsConfig.context.toString());
+      JSONObject contextJson = new JSONObject(mCustomContext.toString());
       contextJson.put("distinct_id", distinctId);
       if (deviceId != null) {
         contextJson.put("device_id", deviceId);
