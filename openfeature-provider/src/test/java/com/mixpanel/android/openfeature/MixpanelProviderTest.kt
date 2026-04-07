@@ -50,7 +50,7 @@ class MixpanelProviderTest {
         setupFlag("bool-flag", true)
         val result = provider.getBooleanEvaluation("bool-flag", false, ImmutableContext())
         assertEquals(true, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -59,7 +59,7 @@ class MixpanelProviderTest {
         setupFlag("bool-flag", false)
         val result = provider.getBooleanEvaluation("bool-flag", true, ImmutableContext())
         assertEquals(false, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     // --- String evaluation ---
@@ -69,7 +69,7 @@ class MixpanelProviderTest {
         setupFlag("string-flag", "hello")
         val result = provider.getStringEvaluation("string-flag", "default", ImmutableContext())
         assertEquals("hello", result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -80,7 +80,7 @@ class MixpanelProviderTest {
         setupFlag("int-flag", 42)
         val result = provider.getIntegerEvaluation("int-flag", 0, ImmutableContext())
         assertEquals(42, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -89,7 +89,7 @@ class MixpanelProviderTest {
         setupFlag("int-flag", 42L)
         val result = provider.getIntegerEvaluation("int-flag", 0, ImmutableContext())
         assertEquals(42, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     @Test
@@ -97,7 +97,7 @@ class MixpanelProviderTest {
         setupFlag("int-flag", 42.0)
         val result = provider.getIntegerEvaluation("int-flag", 0, ImmutableContext())
         assertEquals(42, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     // --- Double evaluation ---
@@ -107,7 +107,7 @@ class MixpanelProviderTest {
         setupFlag("double-flag", 3.14)
         val result = provider.getDoubleEvaluation("double-flag", 0.0, ImmutableContext())
         assertEquals(3.14, result.value!!, 0.001)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -116,7 +116,7 @@ class MixpanelProviderTest {
         setupFlag("double-flag", 42)
         val result = provider.getDoubleEvaluation("double-flag", 0.0, ImmutableContext())
         assertEquals(42.0, result.value!!, 0.001)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     // --- Object evaluation ---
@@ -127,7 +127,7 @@ class MixpanelProviderTest {
         val defaultValue = Value.Null
         val result = provider.getObjectEvaluation("obj-flag", defaultValue, ImmutableContext())
         assertEquals(Value.String("hello"), result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -137,7 +137,7 @@ class MixpanelProviderTest {
         val defaultValue = Value.Null
         val result = provider.getObjectEvaluation("obj-flag", defaultValue, ImmutableContext())
         assertEquals(Value.Boolean(true), result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     @Test
@@ -146,7 +146,7 @@ class MixpanelProviderTest {
         val defaultValue = Value.Null
         val result = provider.getObjectEvaluation("obj-flag", defaultValue, ImmutableContext())
         assertEquals(Value.Integer(42), result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     @Test
@@ -155,7 +155,7 @@ class MixpanelProviderTest {
         val defaultValue = Value.Null
         val result = provider.getObjectEvaluation("obj-flag", defaultValue, ImmutableContext())
         assertEquals(Value.Double(3.14), result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     @Test
@@ -164,7 +164,7 @@ class MixpanelProviderTest {
         val defaultValue = Value.String("default")
         val result = provider.getObjectEvaluation("obj-flag", defaultValue, ImmutableContext())
         assertEquals(Value.Null, result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
     }
 
     // --- Error: FLAG_NOT_FOUND ---
@@ -175,7 +175,7 @@ class MixpanelProviderTest {
         val result = provider.getBooleanEvaluation("missing-flag", true, ImmutableContext())
         assertEquals(true, result.value)
         assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
-        assertEquals(Reason.ERROR.toString(), result.reason)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
     }
 
     @Test
@@ -184,7 +184,7 @@ class MixpanelProviderTest {
         val result = provider.getStringEvaluation("missing-flag", "fallback", ImmutableContext())
         assertEquals("fallback", result.value)
         assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
-        assertEquals(Reason.ERROR.toString(), result.reason)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
     }
 
     @Test
@@ -193,7 +193,7 @@ class MixpanelProviderTest {
         val result = provider.getIntegerEvaluation("missing-flag", 99, ImmutableContext())
         assertEquals(99, result.value)
         assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
-        assertEquals(Reason.ERROR.toString(), result.reason)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
     }
 
     @Test
@@ -202,7 +202,7 @@ class MixpanelProviderTest {
         val result = provider.getDoubleEvaluation("missing-flag", 1.5, ImmutableContext())
         assertEquals(1.5, result.value!!, 0.001)
         assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
-        assertEquals(Reason.ERROR.toString(), result.reason)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
     }
 
     @Test
@@ -212,7 +212,7 @@ class MixpanelProviderTest {
         val result = provider.getObjectEvaluation("missing-flag", defaultValue, ImmutableContext())
         assertEquals(defaultValue, result.value)
         assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
-        assertEquals(Reason.ERROR.toString(), result.reason)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
     }
 
     // --- Error: TYPE_MISMATCH ---
@@ -391,7 +391,7 @@ class MixpanelProviderTest {
         val result = provider.getStringEvaluation("flag", "default", ImmutableContext())
         assertEquals("value", result.value)
         assertNull(result.variant)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 
@@ -415,7 +415,7 @@ class MixpanelProviderTest {
         )
         val result = provider.getStringEvaluation("flag", "default", context)
         assertEquals("resolved-value", result.value)
-        assertEquals(Reason.STATIC.toString(), result.reason)
+        assertEquals(Reason.TARGETING_MATCH.toString(), result.reason)
         assertNull(result.errorCode)
     }
 

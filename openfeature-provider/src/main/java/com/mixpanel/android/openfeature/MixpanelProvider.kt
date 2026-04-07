@@ -195,7 +195,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         return ProviderEvaluation(
             value = value,
             variant = variant,
-            reason = Reason.STATIC.toString()
+            reason = Reason.TARGETING_MATCH.toString()
         )
     }
 
@@ -212,7 +212,7 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
         return ProviderEvaluation(
             value = defaultValue,
             errorCode = ErrorCode.FLAG_NOT_FOUND,
-            reason = Reason.ERROR.toString(),
+            reason = Reason.DEFAULT.toString(),
             errorMessage = "Flag \"$flagKey\" not found"
         )
     }
