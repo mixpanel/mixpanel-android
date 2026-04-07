@@ -75,6 +75,7 @@ allprojects {
         }
     }
     repositories {
+        mavenLocal()
         mavenCentral()
         google()
     }
@@ -91,6 +92,7 @@ dependencies {
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'
+    implementation 'com.mixpanel.android:mixpanel-android-common:0.0.1-SNAPSHOT'
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:core:1.6.1'

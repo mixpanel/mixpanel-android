@@ -15,6 +15,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import com.mixpanel.android.eventbridge.MixpanelEventBridge;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
@@ -2681,6 +2682,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
                             mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
             mMessages.eventsMessage(eventDescription);
+            MixpanelEventBridge.notifyListeners(eventName, properties);
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
