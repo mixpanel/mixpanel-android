@@ -2682,9 +2682,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
                             mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
             mMessages.eventsMessage(eventDescription);
-
-            // Notify event bridge listeners with the complete event properties
-            MixpanelEventBridge.notifyListeners(eventName, eventDescription.getProperties());
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }

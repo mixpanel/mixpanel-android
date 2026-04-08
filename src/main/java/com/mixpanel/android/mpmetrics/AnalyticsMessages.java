@@ -10,6 +10,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.DisplayMetrics;
+
+import com.mixpanel.android.eventbridge.MixpanelEventBridge;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.LegacyVersionUtils;
@@ -494,6 +496,10 @@ import org.json.JSONObject;
                                         eventDescription.getEventName(),
                                         eventDescription.getProperties());
                             }
+
+                            // Notify event bridge listeners with the complete event properties
+                            JSONObject properties = prepareEventObject(eventDescription).getJSONObject("properties");
+                            MixpanelEventBridge.notifyListeners(eventDescription.getEventName(), properties);
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
