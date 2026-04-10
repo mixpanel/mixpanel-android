@@ -76,6 +76,15 @@ allprojects {
     }
     repositories {
         mavenLocal()
+        maven {
+            url 'https://central.sonatype.com/repository/maven-snapshots/'
+            content {
+                includeGroup 'com.mixpanel.android'
+            }
+            mavenContent {
+                snapshotsOnly()
+            }
+        }
         mavenCentral()
         google()
     }
