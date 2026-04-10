@@ -1,5 +1,13 @@
 # Changelog
 
+## [v8.5.0](https://github.com/mixpanel/mixpanel-android/tree/v8.5.0) (2026-04-06)
+
+### Enhancements
+- feat: Add setContext() to Flags interface and de-duplicate fetch callbacks [\#923](https://github.com/mixpanel/mixpanel-android/pull/923)
+- feat: Add loadFlags(callback) for async flag loading with completion notification [\#902](https://github.com/mixpanel/mixpanel-android/pull/902)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.4.0...v8.5.0)
+
 ## [v8.4.0](https://github.com/mixpanel/mixpanel-android/tree/v8.4.0) (2026-03-16)
 
 ### Enhancements
