@@ -1,7 +1,8 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("maven-publish")
+    id("org.jetbrains.dokka") version "1.9.20"
+    id("mixpanel.maven-publish")
 }
 
 android {
@@ -28,7 +29,9 @@ android {
     }
 
     publishing {
-        singleVariant("release") {}
+        singleVariant("release") {
+            withSourcesJar()
+        }
     }
 }
 
@@ -38,21 +41,12 @@ java {
     }
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
-                groupId = property("GROUP") as String
-                artifactId = "mixpanel-android-openfeature"
-                version = property("VERSION_NAME") as String
-            }
-        }
-    }
-}
-
 dependencies {
-    implementation(project(":"))
+    // official release
+    implementation("com.mixpanel.android:mixpanel-android:8.5.0")
+    // or use below for local testing
+    // implementation(project(":"))
+
     implementation("dev.openfeature:kotlin-sdk-android:0.7.2")
 
     testImplementation("junit:junit:4.13.2")
