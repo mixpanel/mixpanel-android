@@ -496,10 +496,7 @@ import org.json.JSONObject;
                                         eventDescription.getEventName(),
                                         eventDescription.getProperties());
                             }
-
-                            // Notify event bridge listeners with the complete event properties
-                            JSONObject properties = prepareEventObject(eventDescription).getJSONObject("properties");
-                            MixpanelEventBridge.notifyListeners(eventDescription.getEventName(), properties);
+                            notifyEventBridgeListeners(eventDescription);
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -562,6 +559,7 @@ import org.json.JSONObject;
                                             openEvent.getEventName(),
                                             openEvent.getProperties());
                                 }
+                                notifyEventBridgeListeners(openEvent);
                             } catch (final JSONException e) {
                                 MPLog.e(LOGTAG, "Exception tracking event " + openEvent.getEventName(), e);
                             }
@@ -797,6 +795,15 @@ import org.json.JSONObject;
                 logAboutMessageToMixpanel("Queuing event for sending later");
                 logAboutMessageToMixpanel("    " + message);
                 return mDbAdapter.addJSON(message, eventDescription.getToken(), MPDbAdapter.Table.EVENTS);
+            }
+
+            private void notifyEventBridgeListeners(EventDescription eventDescription) {
+                try {
+                    JSONObject properties = prepareEventObject(eventDescription).getJSONObject("properties");
+                    MixpanelEventBridge.notifyListeners(eventDescription.getEventName(), properties);
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Exception notifying event bridge listeners", e);
+                }
             }
 
             private MPDbAdapter mDbAdapter;
