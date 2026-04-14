@@ -12,9 +12,15 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ProcessLifecycleOwner;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
@@ -242,6 +248,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         registerMixpanelActivityLifecycleCallbacks();
+        registerForegroundTracking();
 
         // Enqueue async check to determine if this is the first launch
         // If it is the first launch, the queue job sends FIRST_OPEN event and sets hasLaunched flag
@@ -2150,11 +2157,36 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     /* package */ void onForeground() {
         mSessionMetadata.initSession();
-        // Ensure app has previously launched in foreground before network call.
+    }
+
+    /**
+     * Uses ProcessLifecycleOwner to track when the app first enters the foreground.
+     * Sets mHasAppForegrounded (used to guard network calls from background wakes),
+     * and prefetches feature flags if enabled.
+     */
+    private void registerForegroundTracking() {
+        final boolean shouldPrefetchFlags = mFeatureFlagOptions.isEnabled()
+                && mFeatureFlagOptions.shouldPrefetchFlags();
+
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Lifecycle lifecycle = ProcessLifecycleOwner.get().getLifecycle();
+            if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                onFirstForeground(shouldPrefetchFlags);
+            } else {
+                lifecycle.addObserver(new DefaultLifecycleObserver() {
+                    @Override
+                    public void onStart(@NonNull LifecycleOwner owner) {
+                        lifecycle.removeObserver(this);
+                        onFirstForeground(shouldPrefetchFlags);
+                    }
+                });
+            }
+        });
+    }
+
+    private void onFirstForeground(boolean shouldPrefetchFlags) {
         mHasAppForegrounded.set(true);
-        if (mFeatureFlagOptions.isEnabled()
-                && mFeatureFlagOptions.shouldPrefetchFlags()
-                && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+        if (shouldPrefetchFlags && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
     }
