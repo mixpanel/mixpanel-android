@@ -3,17 +3,9 @@ name: Publish SDK Release to Maven Central
 on:
   workflow_dispatch:
     inputs:
-      publishing_type:
-        description: 'Publishing type for the deployment'
+      confirm_version:
+        description: 'Confirm the version to publish (must match VERSION_NAME in gradle.properties)'
         required: true
-        default: 'user_managed'
-        type: choice
-        options:
-          - user_managed
-          - automatic
-      version_override:
-        description: 'Version to publish (leave empty to use gradle.properties VERSION_NAME)'
-        required: false
         type: string
 
 # Prevent concurrent publishes
@@ -67,20 +59,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
 
-      - name: Override version if specified
-        if: inputs.version_override != ''
-        run: |
-          sed -i "s/VERSION_NAME=.*/VERSION_NAME=${{ inputs.version_override }}/" gradle.properties
-          echo "Updated version to: ${{ inputs.version_override }}"
-
       - name: Validate version
         run: |
-          VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
-          if echo "$VERSION" | grep -q "SNAPSHOT"; then
-            echo "::error::VERSION_NAME ($VERSION) contains SNAPSHOT. Set a release version before publishing."
+          GRADLE_VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
+          if [ "${{ inputs.confirm_version }}" != "$GRADLE_VERSION" ]; then
+            echo "::error::Input version '${{ inputs.confirm_version }}' does not match gradle.properties VERSION_NAME '$GRADLE_VERSION'"
             exit 1
           fi
-          echo "Publishing version: $VERSION"
+          echo "Version confirmed: $GRADLE_VERSION"
 
       - name: Clean
         run: ./gradlew clean
@@ -106,7 +92,7 @@ jobs:
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer $AUTH_TOKEN" \
-            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}")
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=user_managed")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
           BODY=$(echo "$RESPONSE" | sed '$d')
@@ -121,18 +107,11 @@ jobs:
 
       - name: Summary
         run: |
-          VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
           echo "## SDK Publishing Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Publishing Type**: ${{ inputs.publishing_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "Version **${{ inputs.confirm_version }}** has been staged to Maven Central." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ inputs.publishing_type }}" == "user_managed" ]; then
-            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-            echo "1. Go to [Maven Central Portal Deployments](https://central.sonatype.com/publishing/deployments)" >> $GITHUB_STEP_SUMMARY
-            echo "2. Find your deployment (version $VERSION)" >> $GITHUB_STEP_SUMMARY
-            echo "3. Review and click 'Publish' to release to Maven Central" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### Status" >> $GITHUB_STEP_SUMMARY
-            echo "Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to [Maven Central Portal](https://central.sonatype.com/publishing/deployments)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review the staged artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "3. Click **Publish** to make the release live" >> $GITHUB_STEP_SUMMARY
