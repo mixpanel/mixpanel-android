@@ -12,7 +12,7 @@ import org.json.JSONObject;
 class FirstTimeEventDefinition {
     @NonNull final String flagKey;
     @NonNull final String flagId;
-    @NonNull final String projectId;
+    @NonNull final Long projectId;
     @NonNull final String firstTimeEventHash;
     @NonNull final String eventName;
     @Nullable final JSONObject propertyFilters;  // JsonLogic filter, null means no property filtering
@@ -21,7 +21,7 @@ class FirstTimeEventDefinition {
     FirstTimeEventDefinition(
             @NonNull String flagKey,
             @NonNull String flagId,
-            @NonNull String projectId,
+            @NonNull Long projectId,
             @NonNull String firstTimeEventHash,
             @NonNull String eventName,
             @Nullable JSONObject propertyFilters,
@@ -33,9 +33,6 @@ class FirstTimeEventDefinition {
         }
         if (flagId.isEmpty()) {
             throw new IllegalArgumentException("flagId cannot be empty");
-        }
-        if (projectId.isEmpty()) {
-            throw new IllegalArgumentException("projectId cannot be empty");
         }
         if (firstTimeEventHash.isEmpty()) {
             throw new IllegalArgumentException("firstTimeEventHash cannot be empty");
