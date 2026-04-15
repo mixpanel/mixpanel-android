@@ -214,31 +214,17 @@ import org.json.JSONObject;
     ////////////////////////////////////////////////////
 
     static class EventDescription extends MixpanelMessageDescription {
-        public EventDescription(String eventName, JSONObject properties, String token) {
-            this(eventName, properties, token, false, new JSONObject(), null);
-        }
 
         public EventDescription(
                 String eventName,
                 JSONObject properties,
                 String token,
                 boolean isAutomatic,
-                JSONObject sessionMetada) {
-            this(eventName, properties, token, isAutomatic, sessionMetada, null);
-        }
-
-        public EventDescription(
-                String eventName,
-                JSONObject properties,
-                String token,
-                boolean isAutomatic,
-                JSONObject sessionMetada,
-                FirstTimeEventListener firstTimeEventListener) {
+                JSONObject sessionMetadata) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
-            mSessionMetadata = sessionMetada;
-            mFirstTimeEventListener = firstTimeEventListener;
+            mSessionMetadata = sessionMetadata;
         }
 
         public String getEventName() {
@@ -257,14 +243,9 @@ import org.json.JSONObject;
             return mIsAutomatic;
         }
 
-        public FirstTimeEventListener getFirstTimeEventListener() {
-            return mFirstTimeEventListener;
-        }
-
         private final String mEventName;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
-        private final FirstTimeEventListener mFirstTimeEventListener;
     }
 
     static class PeopleDescription extends MixpanelMessageDescription {
@@ -487,13 +468,6 @@ import org.json.JSONObject;
                         try {
                             token = eventDescription.getToken();
                             returnCode = insertEventToDb(eventDescription);
-                            // Check first-time event targeting for this event
-                            FirstTimeEventListener listener = eventDescription.getFirstTimeEventListener();
-                            if (listener != null) {
-                                listener.onEventTracked(
-                                        eventDescription.getEventName(),
-                                        eventDescription.getProperties());
-                            }
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }

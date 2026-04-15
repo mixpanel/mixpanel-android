@@ -2710,9 +2710,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
-                            mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
+                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin);
             mMessages.eventsMessage(eventDescription);
+            // Post first-time event check directly to the FeatureFlagManager handler
+            // thread from the calling thread, rather than routing through the
+            // AnalyticsMessages worker. This ensures that when track() and getVariant()
+            // are called sequentially on the same thread, the check is queued on the
+            // handler before getVariant's lookup.
+            if (mFeatureFlagManager != null) {
+                mFeatureFlagManager.checkFirstTimeEvent(
+                        eventName, eventDescription.getProperties());
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -2726,8 +2734,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             String eventName,
             JSONObject properties,
             boolean isAutomaticEvent,
-            Long eventBegin,
-            FirstTimeEventListener firstTimeEventListener) throws JSONException {
+            Long eventBegin) throws JSONException {
         final JSONObject messageProps = new JSONObject();
 
         final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
@@ -2775,8 +2782,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 messageProps,
                 mToken,
                 isAutomaticEvent,
-                mSessionMetadata.getMetadataForEvent(),
-                firstTimeEventListener);
+                mSessionMetadata.getMetadataForEvent());
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -2800,7 +2806,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private void enqueueFirstLaunchCheck() {
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null, null);
+                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null);
 
             final AnalyticsMessages.FirstLaunchDescription firstLaunchDescription =
                     new AnalyticsMessages.FirstLaunchDescription(
