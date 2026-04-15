@@ -63,29 +63,37 @@ class MavenPublishConventionPlugin : Plugin<Project> {
      * Registers JAR tasks for Maven Central requirements.
      */
     private fun Project.registerJarTasks() {
-        // Javadoc JAR from Dokka output
-        tasks.register<Jar>("dokkaJavadocJar") {
+        // Javadoc JAR - will be configured with the appropriate javadoc source
+        tasks.register<Jar>("javadocJar") {
             archiveClassifier.set("javadoc")
         }
     }
 
     /**
      * Configures task dependencies after all tasks are registered.
+     * Supports Dokka (Kotlin projects) or standard androidJavadocs (Java projects).
      */
     private fun Project.configureTaskDependencies() {
-        // Configure Dokka dependency
-        tasks.named<Jar>("dokkaJavadocJar").configure {
+        tasks.named<Jar>("javadocJar").configure {
+            // Prefer Dokka if available, fall back to standard Javadoc
             val dokkaTask = tasks.findByName("dokkaJavadoc")
-            if (dokkaTask != null) {
-                dependsOn(dokkaTask)
-                from(dokkaTask.outputs)
+            val javadocTask = tasks.findByName("androidJavadocs")
+            when {
+                dokkaTask != null -> {
+                    dependsOn(dokkaTask)
+                    from(dokkaTask.outputs)
+                }
+                javadocTask != null -> {
+                    dependsOn(javadocTask)
+                    from(javadocTask.outputs)
+                }
             }
         }
 
-        // Ensure Dokka javadoc JAR is built before metadata generation
+        // Ensure javadoc JAR is built before metadata generation
         listOf("Release", "Local", "Snapshot").forEach { pubName ->
             tasks.named("generateMetadataFileFor${pubName}Publication").configure {
-                dependsOn("dokkaJavadocJar")
+                dependsOn("javadocJar")
             }
         }
     }
@@ -220,8 +228,7 @@ class MavenPublishConventionPlugin : Plugin<Project> {
                     this.artifactId = artifactId
                     this.version = versionName
 
-                    // Dokka javadoc JAR
-                    artifact(tasks.named("dokkaJavadocJar"))
+                    artifact(tasks.named("javadocJar"))
 
                     configurePom(project)
                 }
@@ -234,8 +241,7 @@ class MavenPublishConventionPlugin : Plugin<Project> {
                     this.artifactId = artifactId
                     this.version = versionName
 
-                    // Dokka javadoc JAR
-                    artifact(tasks.named("dokkaJavadocJar"))
+                    artifact(tasks.named("javadocJar"))
 
                     configurePom(project)
                 }
@@ -248,8 +254,7 @@ class MavenPublishConventionPlugin : Plugin<Project> {
                     this.artifactId = artifactId
                     this.version = computeNextSnapshotVersion(versionName)
 
-                    // Dokka javadoc JAR
-                    artifact(tasks.named("dokkaJavadocJar"))
+                    artifact(tasks.named("javadocJar"))
 
                     configurePom(project)
                 }

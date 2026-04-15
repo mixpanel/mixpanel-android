@@ -1,4 +1,4 @@
-name: Publish to Maven Central
+name: Publish SDK Release to Maven Central
 
 on:
   workflow_dispatch:
@@ -16,93 +16,113 @@ on:
         required: false
         type: string
 
+# Prevent concurrent publishes
+concurrency:
+  group: sdk-maven-publish
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   publish:
-    name: Publish to Maven Central Portal
+    name: "Publish SDK to Maven Central"
     runs-on: ubuntu-latest
+    environment: release
+
     steps:
+      - name: Validate secrets
+        run: |
+          missing=""
+          if [ -z "${{ secrets.MAVEN_CENTRAL_USERNAME }}" ]; then missing="$missing MAVEN_CENTRAL_USERNAME"; fi
+          if [ -z "${{ secrets.MAVEN_CENTRAL_TOKEN }}" ]; then missing="$missing MAVEN_CENTRAL_TOKEN"; fi
+          if [ -z "${{ secrets.GPG_PRIVATE_KEY }}" ]; then missing="$missing GPG_PRIVATE_KEY"; fi
+          if [ -z "${{ secrets.GPG_PASSPHRASE }}" ]; then missing="$missing GPG_PASSPHRASE"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secrets:$missing"
+            exit 1
+          fi
+          echo "All required secrets are configured"
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        
+
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
         with:
-          distribution: 'temurin'
           java-version: '17'
-          
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407  # v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
-        
-      - name: Configure signing
-        env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-        run: |
-          echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> ~/.gradle/gradle.properties
-          echo "signing.password=$SIGNING_PASSWORD" >> ~/.gradle/gradle.properties
-          echo "signing.secretKeyRingFile=$HOME/.gnupg/secring.gpg" >> ~/.gradle/gradle.properties
-          mkdir -p ~/.gnupg
-          echo "$SIGNING_KEY" | base64 --decode > ~/.gnupg/secring.gpg
-          
-      - name: Configure Portal credentials
-        env:
-          CENTRAL_PORTAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
-          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
-        run: |
-          echo "centralPortalToken=$CENTRAL_PORTAL_TOKEN" >> ~/.gradle/gradle.properties
-          echo "centralPortalPassword=$CENTRAL_PORTAL_PASSWORD" >> ~/.gradle/gradle.properties
-          
+
       - name: Override version if specified
         if: inputs.version_override != ''
         run: |
           sed -i "s/VERSION_NAME=.*/VERSION_NAME=${{ inputs.version_override }}/" gradle.properties
           echo "Updated version to: ${{ inputs.version_override }}"
-          
-      - name: Build artifacts
+
+      - name: Validate version
         run: |
-          ./gradlew clean build
-          ./gradlew androidJavadocsJar androidSourcesJar
-          
-      - name: Publish to Maven Central Portal
-        run: ./gradlew publishRelease
-        
+          VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
+          if echo "$VERSION" | grep -q "SNAPSHOT"; then
+            echo "::error::VERSION_NAME ($VERSION) contains SNAPSHOT. Set a release version before publishing."
+            exit 1
+          fi
+          echo "Publishing version: $VERSION"
+
+      - name: Clean
+        run: ./gradlew clean
+
+      - name: Build
+        run: ./gradlew :build
+
+      - name: Publish to Maven Central
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+          SIGNING_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.GPG_PASSPHRASE }}
+        run: ./gradlew :publishRelease
+
       - name: Upload to Maven Central Portal
         env:
-          CENTRAL_PORTAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
-          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
         run: |
-          # Get the namespace from gradle.properties
           NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
-          
-          # Create Bearer auth token (as per docs)
-          AUTH_TOKEN=$(echo -n "$CENTRAL_PORTAL_TOKEN:$CENTRAL_PORTAL_PASSWORD" | base64)
-          
-          # Call the manual upload endpoint
+          AUTH_TOKEN=$(echo -n "$MAVEN_CENTRAL_USERNAME:$MAVEN_CENTRAL_PASSWORD" | base64)
+
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer $AUTH_TOKEN" \
             "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=${{ inputs.publishing_type }}")
-          
+
           HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
           BODY=$(echo "$RESPONSE" | sed '$d')
-          
+
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "204" ]; then
             echo "Error: Portal upload failed with HTTP $HTTP_CODE"
             echo "Response: $BODY"
             exit 1
           fi
-          
+
           echo "Success! Deployment uploaded to Portal."
-          
+
       - name: Summary
         run: |
           VERSION=$(grep "^VERSION_NAME=" gradle.properties | cut -d'=' -f2)
-          echo "## Publishing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## SDK Publishing Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "- **Publishing Type**: ${{ inputs.publishing_type }}" >> $GITHUB_STEP_SUMMARY
@@ -112,17 +132,7 @@ jobs:
             echo "1. Go to [Maven Central Portal Deployments](https://central.sonatype.com/publishing/deployments)" >> $GITHUB_STEP_SUMMARY
             echo "2. Find your deployment (version $VERSION)" >> $GITHUB_STEP_SUMMARY
             echo "3. Review and click 'Publish' to release to Maven Central" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⏱️ **Timeline**:" >> $GITHUB_STEP_SUMMARY
-            echo "- Validation: 15-30 minutes" >> $GITHUB_STEP_SUMMARY
-            echo "- Portal search: 1-2 hours" >> $GITHUB_STEP_SUMMARY
-            echo "- Maven Central sync: 2-4 hours" >> $GITHUB_STEP_SUMMARY
           else
             echo "### Status" >> $GITHUB_STEP_SUMMARY
-            echo "✅ Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⏱️ **Timeline**:" >> $GITHUB_STEP_SUMMARY
-            echo "- Validation and release: 15-30 minutes" >> $GITHUB_STEP_SUMMARY
-            echo "- Portal search: 1-2 hours" >> $GITHUB_STEP_SUMMARY
-            echo "- Maven Central sync: 2-4 hours" >> $GITHUB_STEP_SUMMARY
+            echo "Deployment will be automatically released if validation passes" >> $GITHUB_STEP_SUMMARY
           fi
