@@ -56,7 +56,7 @@ jobs:
             "build-tools;34.0.0"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947  # v4
+        uses: gradle/actions/setup-gradle@11d4d83c63a6ce61b32d8a9c4faddbdb04fe9917  # v4
 
       - name: Clean
         run: ./gradlew clean
