@@ -10,9 +10,10 @@ buildscript {
     }
 }
 
-apply plugin: 'com.android.library'
-apply plugin: 'maven-publish'
-apply plugin: 'signing'
+plugins {
+    id 'com.android.library' version '8.13.2'
+    id 'mixpanel.maven-publish'
+}
 
 
 group = GROUP
@@ -49,6 +50,12 @@ android {
             execution 'ANDROIDX_TEST_ORCHESTRATOR'
         }
     }
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+
     buildTypes {
         debug{
             minifyEnabled false
@@ -87,6 +94,36 @@ java {
 }
 
 
+tasks.register("androidJavadocs", Javadoc) {
+    dependsOn ':assembleRelease'
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += project.files('build/generated/source/buildConfig/release')
+    classpath += project.files(android.sourceSets.main.java.srcDirs)
+    source = android.sourceSets.main.java.srcDirs
+
+    android.libraryVariants.all { variant ->
+        if (variant.name == 'release') {
+            classpath += variant.javaCompileProvider.get().classpath
+        }
+    }
+
+    exclude(
+            '**/R.*',
+            '**/util/Base64Coder.java',
+            '**/util/HttpService.java',
+            '**/util/RemoteService.java',
+            '**/ResourceIds.java',
+            '**/ResourceReader.java',
+            '**/*.md'
+    )
+
+    options {
+        encoding = 'UTF-8'
+        docEncoding = 'UTF-8'
+        charSet = 'UTF-8'
+    }
+}
+
 dependencies {
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
@@ -104,5 +141,3 @@ dependencies {
     testImplementation "org.mockito:mockito-core:5.22.0"
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }
-
-apply from: rootProject.file('maven.gradle')
