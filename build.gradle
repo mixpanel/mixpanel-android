@@ -129,6 +129,8 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'
+    // json-logic-java pulls in an outdated json with cve
+    implementation 'com.google.code.gson:gson:2.13.2'
     // AndroidJUnitRunner and JUnit Rules
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:core:1.6.1'
