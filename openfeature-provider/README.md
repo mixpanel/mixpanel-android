@@ -3,6 +3,8 @@
 [![OpenFeature](https://img.shields.io/badge/OpenFeature-compatible-green)](https://openfeature.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/mixpanel/mixpanel-android/blob/master/LICENSE)
 
+##### _April 15, 2026_ - [open-feature-v0.1.0](https://github.com/mixpanel/mixpanel-android/releases/tag/open-feature-v0.1.0)
+
 An [OpenFeature](https://openfeature.dev/) provider that wraps Mixpanel's feature flags for use with the OpenFeature Kotlin (Android) SDK. This allows you to use Mixpanel's feature flagging capabilities through OpenFeature's standardized, vendor-agnostic API.
 
 ## Overview

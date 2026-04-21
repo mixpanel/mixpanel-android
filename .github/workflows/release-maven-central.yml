@@ -1,29 +1,32 @@
-name: Publish OpenFeature Provider Release to Maven Central
+name: Publish Release to Maven Central
 
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Git ref to publish (tag, branch, or SHA)'
+      module:
+        description: 'Module to publish (must match a key in .github/modules.json)'
         required: true
         type: string
       confirm_version:
-        description: 'Confirm the version to publish (must match version in openfeature-provider build.gradle.kts)'
+        description: 'Confirm the version to publish (must match VERSION_NAME in the module gradle.properties)'
         required: true
         type: string
+      ref:
+        description: 'Git ref to publish (branch, tag, or SHA). Leave empty for the default branch.'
+        required: false
+        type: string
+        default: ''
 
-# Prevent concurrent publishes
 concurrency:
-  group: openfeature-maven-publish
+  group: ${{ inputs.module }}-maven-publish
   cancel-in-progress: false
 
-# Minimum required permissions
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   publish:
-    name: "Publish OpenFeature Provider to Maven Central"
+    name: "Publish ${{ inputs.module }} to Maven Central"
     runs-on: ubuntu-latest
     environment: release
 
@@ -46,11 +49,36 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Validate version
+      - name: Validate inputs and resolve module config
+        id: module
+        env:
+          MODULE: ${{ inputs.module }}
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
         run: |
-          GRADLE_VERSION=$(grep "^VERSION_NAME=" openfeature-provider/gradle.properties | cut -d'=' -f2)
-          if [ "${{ inputs.confirm_version }}" != "$GRADLE_VERSION" ]; then
-            echo "::error::Input version '${{ inputs.confirm_version }}' does not match gradle.properties VERSION_NAME '$GRADLE_VERSION'"
+          if ! [[ "$CONFIRM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid version format: $CONFIRM_VERSION"
+            exit 1
+          fi
+
+          MODULE_CONFIG=$(jq -e --arg m "$MODULE" '.[$m]' .github/modules.json) || {
+            echo "::error::Unknown module '$MODULE'. Valid modules: $(jq -r 'keys | join(", ")' .github/modules.json)"
+            exit 1
+          }
+
+          TAG_PREFIX=$(echo "$MODULE_CONFIG" | jq -r '.tag_prefix')
+          echo "tag=${TAG_PREFIX}${CONFIRM_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "changelog=$(echo "$MODULE_CONFIG" | jq -r '.changelog')" >> "$GITHUB_OUTPUT"
+          echo "gradle_properties=$(echo "$MODULE_CONFIG" | jq -r '.gradle_properties')" >> "$GITHUB_OUTPUT"
+          echo "gradle_task_prefix=$(echo "$MODULE_CONFIG" | jq -r '.gradle_task_prefix')" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version
+        env:
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+          GRADLE_PROPS: ${{ steps.module.outputs.gradle_properties }}
+        run: |
+          GRADLE_VERSION=$(grep "^VERSION_NAME=" "$GRADLE_PROPS" | cut -d'=' -f2)
+          if [ "$CONFIRM_VERSION" != "$GRADLE_VERSION" ]; then
+            echo "::error::Input version '$CONFIRM_VERSION' does not match $GRADLE_PROPS VERSION_NAME '$GRADLE_VERSION'"
             exit 1
           fi
           echo "Version confirmed: $GRADLE_VERSION"
@@ -79,10 +107,14 @@ jobs:
         run: ./gradlew clean
 
       - name: Build
-        run: ./gradlew :openfeature-provider:build
+        env:
+          TASK_PREFIX: ${{ steps.module.outputs.gradle_task_prefix }}
+        run: ./gradlew "${TASK_PREFIX}build"
 
-      - name: Run tests
-        run: ./gradlew :openfeature-provider:test
+      - name: Test
+        env:
+          TASK_PREFIX: ${{ steps.module.outputs.gradle_task_prefix }}
+        run: ./gradlew "${TASK_PREFIX}test"
 
       - name: Upload test reports
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
@@ -99,20 +131,17 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
           SIGNING_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           SIGNING_PASSWORD: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./gradlew :openfeature-provider:publishRelease
+          TASK_PREFIX: ${{ steps.module.outputs.gradle_task_prefix }}
+        run: ./gradlew "${TASK_PREFIX}publishRelease"
 
       - name: Upload to Maven Central Portal
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
         run: |
-          # Get the namespace from gradle.properties
           NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
-
-          # Create Bearer auth token (as per docs)
           AUTH_TOKEN=$(echo -n "$MAVEN_CENTRAL_USERNAME:$MAVEN_CENTRAL_PASSWORD" | base64)
 
-          # Call the manual upload endpoint
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer $AUTH_TOKEN" \
             "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${NAMESPACE}?publishing_type=user_managed")
@@ -128,13 +157,33 @@ jobs:
 
           echo "Success! Deployment uploaded to Portal."
 
-      - name: Summary
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.module.outputs.tag }}
+          CHANGELOG: ${{ steps.module.outputs.changelog }}
+          TARGET_REF: ${{ inputs.ref }}
         run: |
-          echo "## OpenFeature Provider - Maven Central Publish Complete" >> $GITHUB_STEP_SUMMARY
+          NOTES=$(sed -n '/^## \['"${TAG}"'\]/,/^## \[/{/^## \['"${TAG}"'\]/d;/^## \[/d;p;}' "$CHANGELOG")
+
+          ARGS=(--draft --title "$TAG" --notes "$NOTES")
+          if [ -n "$TARGET_REF" ]; then
+            ARGS+=(--target "$TARGET_REF")
+          fi
+
+          gh release create "$TAG" "${ARGS[@]}"
+
+      - name: Summary
+        env:
+          MODULE: ${{ inputs.module }}
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+        run: |
+          echo "## ${MODULE} Publishing Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Version **${{ inputs.confirm_version }}** has been staged to Maven Central." >> $GITHUB_STEP_SUMMARY
+          echo "Version **${CONFIRM_VERSION}** has been staged to Maven Central." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Go to [Maven Central Portal](https://central.sonatype.com/publishing/deployments)" >> $GITHUB_STEP_SUMMARY
           echo "2. Review the staged artifacts" >> $GITHUB_STEP_SUMMARY
           echo "3. Click **Publish** to make the release live" >> $GITHUB_STEP_SUMMARY
+          echo "4. Review and publish the [draft GitHub release](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases)" >> $GITHUB_STEP_SUMMARY
