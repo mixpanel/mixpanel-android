@@ -1,0 +1,46 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check-title:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          sparse-checkout: .github/modules.json
+          sparse-checkout-cone-mode: false
+
+      - name: Check PR title format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          MODULE_LIST=$(jq -r 'keys | join("|")' .github/modules.json)
+          SCOPED_PATTERN="^(feat|fix|chore)\((${MODULE_LIST}|all)\): .+"
+          UNSCOPED_PATTERN="^(release|chore): .+"
+
+          if [[ "$PR_TITLE" =~ $SCOPED_PATTERN ]] || [[ "$PR_TITLE" =~ $UNSCOPED_PATTERN ]]; then
+            echo "✅ PR title is valid: $PR_TITLE"
+            exit 0
+          fi
+
+          echo "❌ PR title does not match the required format."
+          echo ""
+          echo "  Got: $PR_TITLE"
+          echo ""
+          echo "Expected one of:"
+          echo "  feat(<module>): description"
+          echo "  fix(<module>): description"
+          echo "  chore(<module>): description"
+          echo "  chore: description"
+          echo "  release: description"
+          echo ""
+          echo "Valid modules: ${MODULE_LIST//|/, }"
+          exit 1

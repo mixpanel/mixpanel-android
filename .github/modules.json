@@ -1,0 +1,18 @@
+{
+  "analytics": {
+    "tag_prefix": "v",
+    "gradle_properties": "gradle.properties",
+    "changelog": "CHANGELOG.md",
+    "readme": "README.md",
+    "gradle_task_prefix": ":",
+    "artifact_id": "mixpanel-android"
+  },
+  "openfeature": {
+    "tag_prefix": "open-feature-v",
+    "gradle_properties": "openfeature-provider/gradle.properties",
+    "changelog": "openfeature-provider/CHANGELOG.md",
+    "readme": "openfeature-provider/README.md",
+    "gradle_task_prefix": ":openfeature-provider:",
+    "artifact_id": "mixpanel-android-openfeature"
+  }
+}
