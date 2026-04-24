@@ -151,6 +151,15 @@ The SDK publishes via the new Maven Central Portal:
 - Android Gradle Plugin: 8.13.2
 - Kotlin: 2.1.0
 
+### Subprojects
+
+- **`:` (root)** — main `mixpanel-android` SDK. Consumes `:common` via its **published Maven coordinate** (`com.mixpanel.android:mixpanel-android-common:X.Y.Z`), not as a `project(':common')` dependency. This means `:common` must be released to Maven Central before the main SDK can pick up changes; the trade-off buys back independent snapshot publishing for `:common` and matches the consumption pattern `:openfeature-provider` uses for the main SDK.
+- **`:common`** — published as `com.mixpanel.android:mixpanel-android-common`. Holds `MixpanelEventBridge` (Kotlin `SharedFlow` event dispatcher for cross-SDK consumption) and a Kotlin JsonLogic implementation. Has its own `gradle.properties` and is versioned independently of the main SDK.
+- **`:openfeature-provider`** — published as `com.mixpanel.android:mixpanel-android-openfeature`. Consumes the main SDK via its published Maven coordinate.
+- **`:mixpaneldemo`** — sample app, not published.
+
+For local iteration on `:common` against the main SDK or `:openfeature-provider`, swap the Maven dep for the commented-out `project(':...')` line in the consumer's build script (same workflow `:openfeature-provider/build.gradle.kts` already uses).
+
 ## Key Patterns and Conventions
 
 ### Threading Model
