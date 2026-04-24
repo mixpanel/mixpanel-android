@@ -24,6 +24,8 @@ jobs:
         arch: x86_64
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
         script: ./gradlew createDebugCoverageReport
+    - name: Run OpenFeature Provider tests
+      run: ./gradlew :openfeature-provider:test
     - name: Lint
       run:  ./gradlew lint
     - name: Upload test report
@@ -32,6 +34,12 @@ jobs:
       with:
         name: Unit Test Report
         path: build/reports/androidTests/connected
+    - name: Upload OpenFeature test report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: always()
+      with:
+        name: OpenFeature Unit Test Report
+        path: openfeature-provider/build/reports/tests/
     - name: Upload test coverage report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:

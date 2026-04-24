@@ -12,9 +12,15 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ProcessLifecycleOwner;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
@@ -242,6 +248,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
 
         registerMixpanelActivityLifecycleCallbacks();
+        registerForegroundTracking();
 
         // Enqueue async check to determine if this is the first launch
         // If it is the first launch, the queue job sends FIRST_OPEN event and sets hasLaunched flag
@@ -2150,11 +2157,36 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
     /* package */ void onForeground() {
         mSessionMetadata.initSession();
-        // Ensure app has previously launched in foreground before network call.
+    }
+
+    /**
+     * Uses ProcessLifecycleOwner to track when the app first enters the foreground.
+     * Sets mHasAppForegrounded (used to guard network calls from background wakes),
+     * and prefetches feature flags if enabled.
+     */
+    private void registerForegroundTracking() {
+        final boolean shouldPrefetchFlags = mFeatureFlagOptions.isEnabled()
+                && mFeatureFlagOptions.shouldPrefetchFlags();
+
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Lifecycle lifecycle = ProcessLifecycleOwner.get().getLifecycle();
+            if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                onFirstForeground(shouldPrefetchFlags);
+            } else {
+                lifecycle.addObserver(new DefaultLifecycleObserver() {
+                    @Override
+                    public void onStart(@NonNull LifecycleOwner owner) {
+                        lifecycle.removeObserver(this);
+                        onFirstForeground(shouldPrefetchFlags);
+                    }
+                });
+            }
+        });
+    }
+
+    private void onFirstForeground(boolean shouldPrefetchFlags) {
         mHasAppForegrounded.set(true);
-        if (mFeatureFlagOptions.isEnabled()
-                && mFeatureFlagOptions.shouldPrefetchFlags()
-                && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+        if (shouldPrefetchFlags && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
     }
@@ -2678,9 +2710,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin,
-                            mFeatureFlagManager != null ? mFeatureFlagManager::checkFirstTimeEvent : null);
+                    buildEventDescription(eventName, properties, isAutomaticEvent, eventBegin);
             mMessages.eventsMessage(eventDescription);
+            // Post first-time event check directly to the FeatureFlagManager handler
+            // thread from the calling thread, rather than routing through the
+            // AnalyticsMessages worker. This ensures that when track() and getVariant()
+            // are called sequentially on the same thread, the check is queued on the
+            // handler before getVariant's lookup.
+            if (mFeatureFlagManager != null) {
+                mFeatureFlagManager.checkFirstTimeEvent(
+                        eventName, eventDescription.getProperties());
+            }
         } catch (final JSONException e) {
             MPLog.e(LOGTAG, "Exception tracking event " + eventName, e);
         }
@@ -2694,8 +2734,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             String eventName,
             JSONObject properties,
             boolean isAutomaticEvent,
-            Long eventBegin,
-            FirstTimeEventListener firstTimeEventListener) throws JSONException {
+            Long eventBegin) throws JSONException {
         final JSONObject messageProps = new JSONObject();
 
         final Map<String, String> referrerProperties = mPersistentIdentity.getReferrerProperties();
@@ -2743,8 +2782,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 messageProps,
                 mToken,
                 isAutomaticEvent,
-                mSessionMetadata.getMetadataForEvent(),
-                firstTimeEventListener);
+                mSessionMetadata.getMetadataForEvent());
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -2768,7 +2806,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private void enqueueFirstLaunchCheck() {
         try {
             final AnalyticsMessages.EventDescription eventDescription =
-                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null, null);
+                    buildEventDescription(AutomaticEvents.FIRST_OPEN, null, true, null);
 
             final AnalyticsMessages.FirstLaunchDescription firstLaunchDescription =
                     new AnalyticsMessages.FirstLaunchDescription(

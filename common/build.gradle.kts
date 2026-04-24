@@ -6,11 +6,24 @@ plugins {
 }
 
 android {
-    namespace = "com.mixpanel.android.openfeature"
+    namespace = "com.mixpanel.android.common"
     compileSdk = 34
 
     defaultConfig {
         minSdk = 21
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     compileOptions {
@@ -20,12 +33,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-    }
-
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-        }
     }
 
     publishing {
@@ -42,15 +49,10 @@ java {
 }
 
 dependencies {
-    // official release
-    implementation("com.mixpanel.android:mixpanel-android:8.5.0")
-    // or use below for local testing
-    // implementation(project(":"))
-
-    implementation("dev.openfeature:kotlin-sdk-android:0.7.2")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.annotation:annotation:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.mockito:mockito-core:4.11.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("org.json:json:20231013")
 }

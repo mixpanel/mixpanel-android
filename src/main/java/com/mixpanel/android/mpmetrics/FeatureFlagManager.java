@@ -1025,7 +1025,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           // Extract required fields
           String flagKey = eventObj.getString(MPConstants.Flags.FLAG_KEY);
           String flagId = eventObj.getString(MPConstants.Flags.FLAG_ID);
-          String projectId = eventObj.getString(MPConstants.Flags.PROJECT_ID);
+          Long projectId = eventObj.getLong(MPConstants.Flags.PROJECT_ID);
           String firstTimeEventHash = eventObj.getString(MPConstants.Flags.FIRST_TIME_EVENT_HASH);
           String eventName = eventObj.getString(MPConstants.Flags.EVENT_NAME);
 

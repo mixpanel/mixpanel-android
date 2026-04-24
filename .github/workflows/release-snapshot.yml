@@ -1,0 +1,127 @@
+name: Publish Snapshots to Maven Central
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  list-modules:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.modules.outputs.list }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          sparse-checkout: .github/modules.json
+          sparse-checkout-cone-mode: false
+
+      - name: List modules
+        id: modules
+        run: echo "list=$(jq -c 'keys' .github/modules.json)" >> "$GITHUB_OUTPUT"
+
+  publish-snapshot:
+    needs: list-modules
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.list-modules.outputs.modules) }}
+    concurrency:
+      group: ${{ matrix.module }}-snapshot-publish
+      cancel-in-progress: true
+    name: "Publish ${{ matrix.module }} snapshot"
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - name: Validate secrets
+        run: |
+          missing=""
+          if [ -z "${{ secrets.MAVEN_CENTRAL_USERNAME }}" ]; then missing="$missing MAVEN_CENTRAL_USERNAME"; fi
+          if [ -z "${{ secrets.MAVEN_CENTRAL_TOKEN }}" ]; then missing="$missing MAVEN_CENTRAL_TOKEN"; fi
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secrets:$missing"
+            exit 1
+          fi
+          echo "All required secrets are configured"
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Resolve module config
+        id: config
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          MODULE_CONFIG=$(jq -e --arg m "$MODULE" '.[$m]' .github/modules.json)
+          echo "gradle_task_prefix=$(echo "$MODULE_CONFIG" | jq -r '.gradle_task_prefix')" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$(echo "$MODULE_CONFIG" | jq -r '.artifact_id')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407  # v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947  # v4
+
+      - name: Clean
+        run: ./gradlew clean
+
+      - name: Build
+        env:
+          TASK_PREFIX: ${{ steps.config.outputs.gradle_task_prefix }}
+        run: ./gradlew "${TASK_PREFIX}build"
+
+      - name: Publish Snapshot to Maven Central
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+          TASK_PREFIX: ${{ steps.config.outputs.gradle_task_prefix }}
+        run: ./gradlew "${TASK_PREFIX}publishSnapshot"
+
+      - name: Get Snapshot Version
+        id: version
+        env:
+          TASK_PREFIX: ${{ steps.config.outputs.gradle_task_prefix }}
+        run: |
+          SNAPSHOT_VERSION=$(./gradlew -q "${TASK_PREFIX}getSnapshotVersion")
+          echo "SNAPSHOT_VERSION=$SNAPSHOT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        env:
+          MODULE: ${{ matrix.module }}
+          SNAPSHOT_VERSION: ${{ steps.version.outputs.SNAPSHOT_VERSION }}
+          ARTIFACT_ID: ${{ steps.config.outputs.artifact_id }}
+        run: |
+          GROUP=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
+          echo "## ${MODULE} Snapshot Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version **${SNAPSHOT_VERSION}** has been published to Maven Central Snapshots." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo '```gradle' >> $GITHUB_STEP_SUMMARY
+          echo "repositories {" >> $GITHUB_STEP_SUMMARY
+          echo "    maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }" >> $GITHUB_STEP_SUMMARY
+          echo "}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "dependencies {" >> $GITHUB_STEP_SUMMARY
+          echo "    implementation '${GROUP}:${ARTIFACT_ID}:${SNAPSHOT_VERSION}'" >> $GITHUB_STEP_SUMMARY
+          echo "}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
