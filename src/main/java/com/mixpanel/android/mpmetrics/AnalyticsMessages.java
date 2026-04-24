@@ -470,6 +470,7 @@ import org.json.JSONObject;
                         try {
                             token = eventDescription.getToken();
                             returnCode = insertEventToDb(eventDescription);
+                            notifyEventBridgeListeners(eventDescription);
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
