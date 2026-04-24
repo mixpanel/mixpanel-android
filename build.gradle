@@ -125,6 +125,10 @@ tasks.register("androidJavadocs", Javadoc) {
 }
 
 dependencies {
+    // official release
+    implementation 'com.mixpanel.android:mixpanel-android-common:1.0.0'
+    // or use below for local testing
+    // implementation project(':common')
     implementation "androidx.annotation:annotation:1.8.2"
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'

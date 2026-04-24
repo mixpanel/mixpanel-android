@@ -14,5 +14,13 @@
     "readme": "openfeature-provider/README.md",
     "gradle_task_prefix": ":openfeature-provider:",
     "artifact_id": "mixpanel-android-openfeature"
+  },
+  "common": {
+    "tag_prefix": "common-v",
+    "gradle_properties": "common/gradle.properties",
+    "changelog": "common/CHANGELOG.md",
+    "readme": "common/README.md",
+    "gradle_task_prefix": ":common:",
+    "artifact_id": "mixpanel-android-common"
   }
 }
