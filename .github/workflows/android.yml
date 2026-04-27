@@ -12,6 +12,8 @@ jobs:
     steps:
     - name: Checkout the code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - name: Build all modules
+      run: ./gradlew assemble
     - name: Enable KVM
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -26,6 +28,10 @@ jobs:
         script: ./gradlew createDebugCoverageReport
     - name: Run OpenFeature Provider tests
       run: ./gradlew :openfeature-provider:test
+    - name: Run Common module tests
+      run: ./gradlew :common:test
+    - name: Run Common ktlint check
+      run: ./gradlew :common:ktlintCheck
     - name: Lint
       run:  ./gradlew lint
     - name: Upload test report
@@ -40,6 +46,18 @@ jobs:
       with:
         name: OpenFeature Unit Test Report
         path: openfeature-provider/build/reports/tests/
+    - name: Upload Common test report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: always()
+      with:
+        name: Common Unit Test Report
+        path: common/build/reports/tests/
+    - name: Upload Common ktlint report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: always()
+      with:
+        name: Common ktlint Report
+        path: common/build/reports/ktlint/
     - name: Upload test coverage report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:

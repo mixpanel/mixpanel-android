@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.dokka") version "1.9.20"
     id("mixpanel.maven-publish")
+    id("mixpanel.ktlint")
 }
 
 android {
