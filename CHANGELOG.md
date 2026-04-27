@@ -1,5 +1,12 @@
 # Changelog
 
+## [v8.6.0](https://github.com/mixpanel/mixpanel-android/tree/v8.6.0) (2026-04-27)
+
+### Fixes
+- Integrate mixpanel-android-common library for event bridging ([#924](https://github.com/mixpanel/mixpanel-android/pull/924))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.5.2...v8.6.0)
+
 ## [v8.5.2](https://github.com/mixpanel/mixpanel-android/tree/v8.5.2) (2026-04-22)
 
 ### Fixes
