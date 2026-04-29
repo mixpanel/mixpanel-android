@@ -4,6 +4,7 @@ import static com.mixpanel.android.util.MPConstants.URL.DEFAULT_SERVER_HOST;
 import static com.mixpanel.android.util.MPConstants.URL.MIXPANEL_API;
 
 import android.annotation.SuppressLint;
+import androidx.annotation.VisibleForTesting;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -277,7 +278,8 @@ public class HttpService implements RemoteService {
     }
 
 
-    private String replaceHost(String url, String newHost) {
+    @VisibleForTesting
+    String replaceHost(String url, String newHost) {
         try {
             URL originalUrl = new URL(url);
             URL newUrl =
