@@ -13,6 +13,7 @@ buildscript {
 plugins {
     id 'com.android.library' version '8.13.2'
     id 'mixpanel.maven-publish'
+    id 'jacoco'
 }
 
 
@@ -27,6 +28,15 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+
+    sourceSets {
+        test {
+            java.srcDirs += 'src/sharedTest/java'
+        }
+        androidTest {
+            java.srcDirs += 'src/sharedTest/java'
+        }
+    }
 
     defaultConfig {
         minSdk 21
@@ -72,6 +82,20 @@ android {
     }
     testOptions {
         targetSdk 34
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+            all {
+                jvmArgs '-noverify'
+                jvmArgs '-Xmx1g'
+                // Required for JaCoCo to work with Robolectric
+                systemProperty 'jacoco-agent.destfile', "${buildDir}/jacoco/testDebugUnitTest.exec"
+                jacoco {
+                    includeNoLocationClasses = true
+                    excludes = ['jdk.internal.*']
+                }
+            }
+        }
     }
 }
 
@@ -145,5 +169,33 @@ dependencies {
     androidTestImplementation "org.mockito:mockito-android:5.22.0"
     androidTestUtil 'androidx.test:orchestrator:1.6.1'
     testImplementation "org.mockito:mockito-core:5.22.0"
+    testImplementation 'org.robolectric:robolectric:4.11.1'
+    testImplementation 'androidx.test:core:1.5.0'
+    testImplementation 'org.json:json:20231013'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+
+    reports {
+        xml.required = true
+        html.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+        html.outputLocation = file("${buildDir}/reports/jacoco/test/html")
+    }
+
+    def fileFilter = [
+        '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*'
+    ]
+    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files([mainSrc]))
+    classDirectories.setFrom(files([debugTree]))
+    executionData.setFrom(fileTree(dir: "${buildDir}", includes: ['**/*.exec']))
 }
