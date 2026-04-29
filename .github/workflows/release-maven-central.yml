@@ -22,13 +22,15 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish:
     name: "Publish ${{ inputs.module }} to Maven Central"
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write  # gh release create
 
     steps:
       - name: Validate secrets
