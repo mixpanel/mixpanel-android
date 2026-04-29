@@ -131,34 +131,34 @@ Before submitting any PR, you MUST:
 
 ### 1. Build Validation
 ```bash
-./gradlew clean build
+./gradlew clean :analytics:build
 # Must pass with no errors or warnings
 ```
 
 ### 2. Test Validation
 ```bash
 # Run all instrumented tests (requires device/emulator)
-# IMPORTANT: Run from main module, not :mixpaneldemo
-./gradlew :connectedAndroidTest
+# IMPORTANT: Run from the analytics module, not :analytics:mixpaneldemo
+./gradlew :analytics:connectedAndroidTest
 # All tests must pass
 
 # Run specific test class
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName
 
 # Run specific test method
-./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName
 ```
 
 ### 3. Code Style Check
 ```bash
-./gradlew lint
-# Review any warnings in build/reports/lint-results.html
+./gradlew :analytics:lint
+# Review any warnings in analytics/build/reports/lint-results-debug.html
 ```
 
 ### 4. Manual Verification
 ```bash
 # Test with demo app
-./gradlew :mixpaneldemo:installDebug
+./gradlew :analytics:mixpaneldemo:installDebug
 # Manually verify the feature works
 ```
 
@@ -213,9 +213,9 @@ Your PR description should include:
 - [x] Thread safety verified
 
 ## Validation
-- `./gradlew build` - ✅ Passed
-- `./gradlew connectedAndroidTest` - ✅ All tests pass
-- `./gradlew lint` - ✅ No new warnings
+- `./gradlew :analytics:build` - ✅ Passed
+- `./gradlew :analytics:connectedAndroidTest` - ✅ All tests pass
+- `./gradlew :analytics:lint` - ✅ No new warnings
 ```
 
 ## Success Metrics

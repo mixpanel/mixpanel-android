@@ -28,7 +28,7 @@ jobs:
         api-level: 34
         arch: x86_64
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-        script: ./gradlew createDebugCoverageReport
+        script: ./gradlew :analytics:createDebugCoverageReport
     - name: Run OpenFeature Provider tests
       run: ./gradlew :openfeature-provider:test
     - name: Run Common module tests
@@ -36,13 +36,13 @@ jobs:
     - name: Run Common ktlint check
       run: ./gradlew :common:ktlintCheck
     - name: Lint
-      run:  ./gradlew lint
+      run:  ./gradlew :analytics:lint
     - name: Upload test report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       if: always()
       with:
         name: Unit Test Report
-        path: build/reports/androidTests/connected
+        path: analytics/build/reports/androidTests/connected
     - name: Upload OpenFeature test report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       if: always()
@@ -65,12 +65,12 @@ jobs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:
         name: Test Coverage Report
-        path: build/reports/coverage/debug/
+        path: analytics/build/reports/coverage/debug/
     - name: Upload lint report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:
         name: Lint Report
-        path: build/reports/lint-results.html
+        path: analytics/build/reports/lint-results-*.*
     - name: Android docs
-      run:  ./gradlew --info androidJavadocs
+      run:  ./gradlew --info :analytics:androidJavadocs
 

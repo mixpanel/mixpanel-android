@@ -60,6 +60,7 @@ jobs:
           MODULE_CONFIG=$(jq -e --arg m "$MODULE" '.[$m]' .github/modules.json)
           echo "gradle_task_prefix=$(echo "$MODULE_CONFIG" | jq -r '.gradle_task_prefix')" >> "$GITHUB_OUTPUT"
           echo "artifact_id=$(echo "$MODULE_CONFIG" | jq -r '.artifact_id')" >> "$GITHUB_OUTPUT"
+          echo "gradle_properties=$(echo "$MODULE_CONFIG" | jq -r '.gradle_properties')" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
@@ -109,8 +110,9 @@ jobs:
           MODULE: ${{ matrix.module }}
           SNAPSHOT_VERSION: ${{ steps.version.outputs.SNAPSHOT_VERSION }}
           ARTIFACT_ID: ${{ steps.config.outputs.artifact_id }}
+          GRADLE_PROPS: ${{ steps.config.outputs.gradle_properties }}
         run: |
-          GROUP=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
+          GROUP=$(grep "^GROUP=" "$GRADLE_PROPS" | cut -d'=' -f2)
           echo "## ${MODULE} Snapshot Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Version **${SNAPSHOT_VERSION}** has been published to Maven Central Snapshots." >> $GITHUB_STEP_SUMMARY
