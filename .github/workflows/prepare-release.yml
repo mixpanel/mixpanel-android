@@ -1,0 +1,159 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Module to release (must match a key in .github/modules.json)'
+        required: true
+        type: string
+      version:
+        description: 'Release version (e.g., 8.6.0 or 0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: "Prepare ${{ inputs.module }} ${{ inputs.version }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the release branch
+      pull-requests: write  # open the release PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate inputs
+        env:
+          MODULE: ${{ inputs.module }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid version format: $VERSION"
+            exit 1
+          fi
+          jq -e --arg m "$MODULE" '.[$m]' .github/modules.json > /dev/null || {
+            echo "::error::Unknown module '$MODULE'. Valid modules: $(jq -r 'keys | join(", ")' .github/modules.json)"
+            exit 1
+          }
+
+      - name: Determine version label and paths
+        id: config
+        env:
+          MODULE: ${{ inputs.module }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          MODULE_CONFIG=$(jq -e --arg m "$MODULE" '.[$m]' .github/modules.json)
+
+          TAG_PREFIX=$(echo "$MODULE_CONFIG" | jq -r '.tag_prefix')
+          echo "tag=${TAG_PREFIX}${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "gradle_properties=$(echo "$MODULE_CONFIG" | jq -r '.gradle_properties')" >> "$GITHUB_OUTPUT"
+          echo "changelog=$(echo "$MODULE_CONFIG" | jq -r '.changelog')" >> "$GITHUB_OUTPUT"
+          echo "branch=release/${MODULE}/${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "readme=$(echo "$MODULE_CONFIG" | jq -r '.readme')" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version not already released
+        env:
+          TAG: ${{ steps.config.outputs.tag }}
+        run: |
+          if git tag -l "$TAG" | grep -q .; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+      - name: Create release branch
+        env:
+          BRANCH: ${{ steps.config.outputs.branch }}
+        run: git checkout -b "$BRANCH"
+
+      - name: Bump version in gradle.properties
+        env:
+          VERSION: ${{ inputs.version }}
+          GRADLE_PROPS: ${{ steps.config.outputs.gradle_properties }}
+        run: |
+          sed -i "s/^VERSION_NAME=.*/VERSION_NAME=${VERSION}/" "$GRADLE_PROPS"
+
+      - name: Update README
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          TAG: ${{ steps.config.outputs.tag }}
+          README: ${{ steps.config.outputs.readme }}
+        run: |
+          DATE=$(date +"%B %d, %Y")
+          sed -i -E \
+            "s|^##### _.*_ - \[.*\]\(.*\)|##### _${DATE}_ - [${TAG}](${REPO_URL}/releases/tag/${TAG})|" \
+            "$README"
+
+      - name: Generate changelog
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          MODULE: ${{ inputs.module }}
+          TAG: ${{ steps.config.outputs.tag }}
+          CHANGELOG_FILE: ${{ steps.config.outputs.changelog }}
+        run: |
+          CHANGELOG=$(.github/scripts/generate-changelog.sh \
+            "$MODULE" "$TAG" "$REPO_URL" HEAD)
+
+          if [ -f "$CHANGELOG_FILE" ]; then
+            {
+              printf '# Changelog\n\n%s\n' "$CHANGELOG"
+              sed '1{/^# Changelog$/d;}' "$CHANGELOG_FILE"
+            } > CHANGELOG.new.md
+            mv CHANGELOG.new.md "$CHANGELOG_FILE"
+          else
+            printf '# Changelog\n\n%s\n' "$CHANGELOG" > "$CHANGELOG_FILE"
+          fi
+
+      - name: Commit and push
+        env:
+          MODULE: ${{ inputs.module }}
+          VERSION: ${{ inputs.version }}
+          BRANCH: ${{ steps.config.outputs.branch }}
+          GRADLE_PROPS: ${{ steps.config.outputs.gradle_properties }}
+          CHANGELOG_FILE: ${{ steps.config.outputs.changelog }}
+          README: ${{ steps.config.outputs.readme }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$GRADLE_PROPS" "$CHANGELOG_FILE" "$README"
+          if [[ "$README" != "README.md" ]]; then
+            git add README.md 2>/dev/null || true
+          fi
+          git commit -m "release: prepare ${MODULE} ${VERSION}"
+          git push origin "$BRANCH"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODULE: ${{ inputs.module }}
+          VERSION: ${{ inputs.version }}
+          TAG: ${{ steps.config.outputs.tag }}
+          GRADLE_PROPS: ${{ steps.config.outputs.gradle_properties }}
+          CHANGELOG_FILE: ${{ steps.config.outputs.changelog }}
+          README: ${{ steps.config.outputs.readme }}
+          BRANCH: ${{ steps.config.outputs.branch }}
+        run: |
+          gh pr create \
+            --title "release: prepare ${MODULE} ${VERSION}" \
+            --body "$(cat <<EOF
+          ## Release ${MODULE} ${VERSION}
+
+          This PR prepares the ${MODULE} module for release.
+
+          ### Changes
+          - Bumps \`VERSION_NAME\` to \`${VERSION}\` in \`${GRADLE_PROPS}\`
+          - Updates \`${CHANGELOG_FILE}\` with changelog since last release
+          - Updates \`${README}\` with new version
+
+          ### After merging
+          1. Run the publish workflow for ${MODULE} (this will also create a draft GitHub release with tag \`${TAG}\`)
+          EOF
+          )" \
+            --base master \
+            --head "$BRANCH"

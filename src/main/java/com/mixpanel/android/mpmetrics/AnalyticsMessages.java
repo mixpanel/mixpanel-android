@@ -10,6 +10,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.DisplayMetrics;
+
+import com.mixpanel.android.eventbridge.MixpanelEventBridge;
 import com.mixpanel.android.util.Base64Coder;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.LegacyVersionUtils;
@@ -214,31 +216,17 @@ import org.json.JSONObject;
     ////////////////////////////////////////////////////
 
     static class EventDescription extends MixpanelMessageDescription {
-        public EventDescription(String eventName, JSONObject properties, String token) {
-            this(eventName, properties, token, false, new JSONObject(), null);
-        }
 
         public EventDescription(
                 String eventName,
                 JSONObject properties,
                 String token,
                 boolean isAutomatic,
-                JSONObject sessionMetada) {
-            this(eventName, properties, token, isAutomatic, sessionMetada, null);
-        }
-
-        public EventDescription(
-                String eventName,
-                JSONObject properties,
-                String token,
-                boolean isAutomatic,
-                JSONObject sessionMetada,
-                FirstTimeEventListener firstTimeEventListener) {
+                JSONObject sessionMetadata) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
-            mSessionMetadata = sessionMetada;
-            mFirstTimeEventListener = firstTimeEventListener;
+            mSessionMetadata = sessionMetadata;
         }
 
         public String getEventName() {
@@ -257,14 +245,9 @@ import org.json.JSONObject;
             return mIsAutomatic;
         }
 
-        public FirstTimeEventListener getFirstTimeEventListener() {
-            return mFirstTimeEventListener;
-        }
-
         private final String mEventName;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
-        private final FirstTimeEventListener mFirstTimeEventListener;
     }
 
     static class PeopleDescription extends MixpanelMessageDescription {
@@ -487,13 +470,7 @@ import org.json.JSONObject;
                         try {
                             token = eventDescription.getToken();
                             returnCode = insertEventToDb(eventDescription);
-                            // Check first-time event targeting for this event
-                            FirstTimeEventListener listener = eventDescription.getFirstTimeEventListener();
-                            if (listener != null) {
-                                listener.onEventTracked(
-                                        eventDescription.getEventName(),
-                                        eventDescription.getProperties());
-                            }
+                            notifyEventBridgeListeners(eventDescription);
                         } catch (final JSONException e) {
                             MPLog.e(LOGTAG, "Exception tracking event " + eventDescription.getEventName(), e);
                         }
@@ -556,6 +533,7 @@ import org.json.JSONObject;
                                             openEvent.getEventName(),
                                             openEvent.getProperties());
                                 }
+                                notifyEventBridgeListeners(openEvent);
                             } catch (final JSONException e) {
                                 MPLog.e(LOGTAG, "Exception tracking event " + openEvent.getEventName(), e);
                             }
@@ -791,6 +769,15 @@ import org.json.JSONObject;
                 logAboutMessageToMixpanel("Queuing event for sending later");
                 logAboutMessageToMixpanel("    " + message);
                 return mDbAdapter.addJSON(message, eventDescription.getToken(), MPDbAdapter.Table.EVENTS);
+            }
+
+            private void notifyEventBridgeListeners(EventDescription eventDescription) {
+                try {
+                    JSONObject properties = prepareEventObject(eventDescription).getJSONObject("properties");
+                    MixpanelEventBridge.notifyListeners(eventDescription.getEventName(), properties);
+                } catch (JSONException e) {
+                    MPLog.e(LOGTAG, "Exception notifying event bridge listeners", e);
+                }
             }
 
             private MPDbAdapter mDbAdapter;

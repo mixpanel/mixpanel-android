@@ -1,5 +1,27 @@
 # Changelog
 
+## [v8.6.0](https://github.com/mixpanel/mixpanel-android/tree/v8.6.0) (2026-04-27)
+
+### Fixes
+- Integrate mixpanel-android-common library for event bridging ([#924](https://github.com/mixpanel/mixpanel-android/pull/924))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.5.2...v8.6.0)
+
+## [v8.5.2](https://github.com/mixpanel/mixpanel-android/tree/v8.5.2) (2026-04-22)
+
+### Fixes
+- fix: Update Gson version [#946](https://github.com/mixpanel/mixpanel-android/pull/946)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.5.1...v8.5.2)
+
+## [v8.5.0](https://github.com/mixpanel/mixpanel-android/tree/v8.5.0) (2026-04-06)
+
+### Enhancements
+- feat: Add setContext() to Flags interface and de-duplicate fetch callbacks [\#923](https://github.com/mixpanel/mixpanel-android/pull/923)
+- feat: Add loadFlags(callback) for async flag loading with completion notification [\#902](https://github.com/mixpanel/mixpanel-android/pull/902)
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.4.0...v8.5.0)
+
 ## [v8.4.0](https://github.com/mixpanel/mixpanel-android/tree/v8.4.0) (2026-03-16)
 
 ### Enhancements
