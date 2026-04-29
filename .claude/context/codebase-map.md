@@ -4,48 +4,52 @@
 
 ```
 mixpanel-android/
-├── src/main/java/com/mixpanel/android/
-│   ├── mpmetrics/                    # Core SDK implementation
-│   │   ├── MixpanelAPI.java         # Main entry point & public API
-│   │   ├── AnalyticsMessages.java   # Message queue & background processing
-│   │   ├── MPDbAdapter.java         # SQLite persistence layer
-│   │   ├── PersistentIdentity.java  # Identity & properties management
-│   │   ├── HttpService.java         # Network communication
-│   │   ├── MPConfig.java            # Configuration management
-│   │   ├── FeatureFlagManager.java  # Feature flags implementation
-│   │   ├── ResourceIds.java         # R.id resource handling
-│   │   ├── ResourceReader.java      # Resource reading utilities
-│   │   ├── DecideChecker.java       # Remote configuration fetcher
-│   │   ├── SessionMetadata.java    # Session tracking
-│   │   ├── ConnectivityReceiver.java # Network state monitoring
-│   │   ├── ExceptionHandler.java    # Crash reporting
-│   │   ├── MixpanelActivityLifecycleCallbacks.java # Lifecycle integration
-│   │   └── [Various data models & utilities]
-│   └── util/                         # Utility classes
-│       ├── MPLog.java               # Logging utility
-│       ├── HttpService.java         # HTTP utilities
-│       ├── ImageStore.java          # Image caching
-│       ├── OfflineMode.java         # Offline mode management
-│       └── [Other utilities]
-├── src/androidTest/                  # Instrumented tests only
-│   └── java/com/mixpanel/android/
-│       ├── mpmetrics/               # Core SDK tests
-│       └── util/                    # Utility tests
-├── mixpaneldemo/                     # Demo application (Kotlin/Compose)
-│   └── src/main/
-│       ├── java/                    # Demo app code
-│       └── res/                     # Demo resources
-├── acceptance/test-application/      # Acceptance test app
-├── build.gradle                      # Main build configuration
-├── maven.gradle                      # Maven publishing configuration
-├── proguard.txt                      # Consumer ProGuard rules
-└── gradle.properties                 # Version & properties
+├── analytics/                        # Main analytics SDK module (:analytics)
+│   ├── src/main/java/com/mixpanel/android/
+│   │   ├── mpmetrics/                # Core SDK implementation
+│   │   │   ├── MixpanelAPI.java      # Main entry point & public API
+│   │   │   ├── AnalyticsMessages.java   # Message queue & background processing
+│   │   │   ├── MPDbAdapter.java      # SQLite persistence layer
+│   │   │   ├── PersistentIdentity.java  # Identity & properties management
+│   │   │   ├── HttpService.java      # Network communication
+│   │   │   ├── MPConfig.java         # Configuration management
+│   │   │   ├── FeatureFlagManager.java  # Feature flags implementation
+│   │   │   ├── ResourceIds.java      # R.id resource handling
+│   │   │   ├── ResourceReader.java   # Resource reading utilities
+│   │   │   ├── DecideChecker.java    # Remote configuration fetcher
+│   │   │   ├── SessionMetadata.java  # Session tracking
+│   │   │   ├── ConnectivityReceiver.java # Network state monitoring
+│   │   │   ├── ExceptionHandler.java # Crash reporting
+│   │   │   ├── MixpanelActivityLifecycleCallbacks.java # Lifecycle integration
+│   │   │   └── [Various data models & utilities]
+│   │   └── util/                     # Utility classes
+│   │       ├── MPLog.java            # Logging utility
+│   │       ├── HttpService.java      # HTTP utilities
+│   │       ├── ImageStore.java       # Image caching
+│   │       ├── OfflineMode.java      # Offline mode management
+│   │       └── [Other utilities]
+│   ├── src/androidTest/              # Instrumented tests only
+│   │   └── java/com/mixpanel/android/
+│   │       ├── mpmetrics/            # Core SDK tests
+│   │       └── util/                 # Utility tests
+│   ├── mixpaneldemo/                 # Demo application (:analytics:mixpaneldemo)
+│   │   └── src/main/
+│   │       ├── java/                 # Demo app code
+│   │       └── res/                  # Demo resources
+│   ├── build.gradle                  # Analytics module build
+│   ├── proguard.txt                  # Consumer ProGuard rules
+│   └── gradle.properties             # Analytics version & POM properties
+├── common/                           # Shared utilities (:common)
+├── openfeature-provider/             # OpenFeature provider (:openfeature-provider)
+├── build.gradle                      # Root build (cross-cutting config)
+├── settings.gradle                   # Subproject includes
+└── gradle.properties                 # Shared org.gradle.* / android.* settings
 
 ```
 
 ## Key Components
 
-### Core SDK (`src/main/java/com/mixpanel/android/mpmetrics/`)
+### Core SDK (`analytics/src/main/java/com/mixpanel/android/mpmetrics/`)
 
 **Entry Points:**
 - `MixpanelAPI` - Main SDK interface, singleton per token
@@ -65,15 +69,15 @@ mixpanel-android/
 - `DecideChecker` - Remote configuration updates
 - `ExceptionHandler` - Automatic crash reporting
 
-### Testing Structure (`src/androidTest/`)
+### Testing Structure (`analytics/src/androidTest/`)
 
 **Test Organization:**
 - All tests are instrumented (require Android device/emulator)
-- No unit tests (src/test directory absent)
+- Unit tests live alongside under `analytics/src/test/` (Robolectric/JUnit)
 - Tests use AndroidJUnit4 runner
 - Mock implementations in TestUtils
 
-### Demo Application (`mixpaneldemo/`)
+### Demo Application (`analytics/mixpaneldemo/`)
 
 **Technology Stack:**
 - Kotlin language
@@ -89,8 +93,8 @@ mixpanel-android (library)
     ├── androidx.core:core
     └── Android SDK (min 21, target 34)
 
-mixpaneldemo (app)
-    ├── :mixpanel-android (project dependency)
+:analytics:mixpaneldemo (app)
+    ├── :analytics (project dependency)
     ├── Jetpack Compose dependencies
     └── Kotlin standard library
 ```

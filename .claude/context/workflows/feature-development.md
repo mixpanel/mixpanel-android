@@ -12,7 +12,7 @@
 
 ### Step 1: Define Public API
 
-**Location:** `src/main/java/com/mixpanel/android/mpmetrics/MixpanelAPI.java`
+**Location:** `analytics/src/main/java/com/mixpanel/android/mpmetrics/MixpanelAPI.java`
 
 ```java
 // Add to main API class
@@ -34,7 +34,7 @@ public interface People {
 
 ### Step 2: Implement Message Types
 
-**Location:** `src/main/java/com/mixpanel/android/mpmetrics/AnalyticsMessages.java`
+**Location:** `analytics/src/main/java/com/mixpanel/android/mpmetrics/AnalyticsMessages.java`
 
 ```java
 // Add message type constant
@@ -67,7 +67,7 @@ public void handleMessage(Message msg) {
 
 ### Step 3: Add Database Support (if needed)
 
-**Location:** `src/main/java/com/mixpanel/android/mpmetrics/MPDbAdapter.java`
+**Location:** `analytics/src/main/java/com/mixpanel/android/mpmetrics/MPDbAdapter.java`
 
 ```java
 // Add table if new data type
@@ -102,7 +102,7 @@ private static class DatabaseHelper extends SQLiteOpenHelper {
 
 ### Step 4: Add Configuration Options
 
-**Location:** `src/main/java/com/mixpanel/android/mpmetrics/MPConfig.java`
+**Location:** `analytics/src/main/java/com/mixpanel/android/mpmetrics/MPConfig.java`
 
 ```java
 // Add configuration field
@@ -120,7 +120,7 @@ public boolean getNewFeatureEnabled() {
 }
 ```
 
-**Location:** `src/main/java/com/mixpanel/android/mpmetrics/MixpanelOptions.java`
+**Location:** `analytics/src/main/java/com/mixpanel/android/mpmetrics/MixpanelOptions.java`
 
 ```java
 public static class Builder {
@@ -172,7 +172,7 @@ try {
 
 ### Step 6: Add Tests
 
-**Location:** `src/androidTest/java/com/mixpanel/android/mpmetrics/`
+**Location:** `analytics/src/androidTest/java/com/mixpanel/android/mpmetrics/`
 
 ```java
 @RunWith(AndroidJUnit4.class)
@@ -241,7 +241,7 @@ public void newFeature(String param1, JSONObject properties) {
 
 ### Step 8: Update Demo App
 
-**Location:** `mixpaneldemo/src/main/java/`
+**Location:** `analytics/mixpaneldemo/src/main/java/`
 
 Add demonstration of new feature to showcase usage:
 ```kotlin
@@ -279,10 +279,10 @@ binding.newFeatureButton.setOnClickListener {
 
 3. Run release checklist:
    ```bash
-   ./gradlew clean build
-   ./gradlew test
-   ./gradlew connectedAndroidTest
-   ./gradlew androidJavadocs
+   ./gradlew clean :analytics:build
+   ./gradlew :analytics:test
+   ./gradlew :analytics:connectedAndroidTest
+   ./gradlew :analytics:androidJavadocs
    ```
 
 ### Integration Testing Checklist

@@ -12,6 +12,7 @@ plugins {
 }
 
 rootProject.name = "mixpanel-android"
+include ':analytics'
+include ':analytics:mixpaneldemo'
 include ':common'
-include ':mixpaneldemo'
 include ':openfeature-provider'

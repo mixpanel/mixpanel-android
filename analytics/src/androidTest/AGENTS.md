@@ -144,13 +144,13 @@ public void testDatabaseOperations() throws Exception {
 
 ```bash
 # Run all tests in this directory
-./gradlew connectedAndroidTest
+./gradlew :analytics:connectedAndroidTest
 
 # Run specific test class
-./gradlew connectedAndroidTest --tests "*.MixpanelBasicTest"
+./gradlew :analytics:connectedAndroidTest --tests "*.MixpanelBasicTest"
 
 # Run with coverage
-./gradlew createDebugCoverageReport
+./gradlew :analytics:createDebugCoverageReport
 ```
 
 ## Test Guidelines

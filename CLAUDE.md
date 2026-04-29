@@ -6,43 +6,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build the library
-./gradlew build
+./gradlew :analytics:build
 
 # Run unit tests
-./gradlew test
+./gradlew :analytics:test
 
 # Run instrumented tests (requires Android device/emulator)
-./gradlew connectedAndroidTest
+./gradlew :analytics:connectedAndroidTest
 
-# Install to local Maven repository  
-./gradlew install
+# Install to local Maven repository
+./gradlew :analytics:install
 
 # Clean build artifacts
 ./gradlew clean
 
 # Generate Javadocs
-./gradlew androidJavadocs
+./gradlew :analytics:androidJavadocs
 
 # Run tests with coverage
-./gradlew createDebugCoverageReport
+./gradlew :analytics:createDebugCoverageReport
 
 # Lint checks
-./gradlew lint
+./gradlew :analytics:lint
 
 # Build demo app
-./gradlew :mixpaneldemo:build
+./gradlew :analytics:mixpaneldemo:build
 ```
 
 ## Testing
 
 - **No unit tests**: The SDK uses instrumented tests only for real device validation
-- **Instrumented tests**: Located in `/src/androidTest/` (require Android device/emulator)
+- **Instrumented tests**: Located in `/analytics/src/androidTest/` (require Android device/emulator)
   - Use AndroidJUnit4 runner
-  - **IMPORTANT**: Run tests from the main module (not :mixpaneldemo) using `:connectedAndroidTest`
-  - Run all tests: `./gradlew :connectedAndroidTest`
-  - Run specific test class: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
-  - Run specific test method: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
-  - Run multiple test methods: `./gradlew :connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2`
+  - **IMPORTANT**: Run tests from the analytics module (not `:analytics:mixpaneldemo`) using `:analytics:connectedAndroidTest`
+  - Run all tests: `./gradlew :analytics:connectedAndroidTest`
+  - Run specific test class: `./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName`
+  - Run specific test method: `./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethodName`
+  - Run multiple test methods: `./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.TestClassName#testMethod1,testMethod2`
   - BlockingQueue pattern for async testing
   - TestUtils provides mock implementations
 
@@ -79,12 +79,12 @@ The Mixpanel Android SDK follows a producer-consumer pattern with persistent sto
 - SQLite database stores events when offline
 - Feature flags are cached and refreshed periodically
 - Automatic events track app lifecycle (configurable)
-- ProGuard rules are provided in `proguard.txt`
+- ProGuard rules are provided in `analytics/proguard.txt`
 
 ## Release Process
 
 The project uses semantic versioning (X.Y.Z) and publishes to Maven Central:
-- Version is defined in `gradle.properties` as `VERSION_NAME`
+- Version is defined in each module's `gradle.properties` as `VERSION_NAME` (analytics: `analytics/gradle.properties`)
 - Release script: `./release.sh [version]`
 - Published as: `com.mixpanel.android:mixpanel-android:X.Y.Z`
 
@@ -153,12 +153,12 @@ The SDK publishes via the new Maven Central Portal:
 
 ### Subprojects
 
-- **`:` (root)** — main `mixpanel-android` SDK. Consumes `:common` via its **published Maven coordinate** (`com.mixpanel.android:mixpanel-android-common:X.Y.Z`), not as a `project(':common')` dependency. This means `:common` must be released to Maven Central before the main SDK can pick up changes; the trade-off buys back independent snapshot publishing for `:common` and matches the consumption pattern `:openfeature-provider` uses for the main SDK.
+- **`:analytics`** (`analytics/`) — main `mixpanel-android` SDK. Consumes `:common` via its **published Maven coordinate** (`com.mixpanel.android:mixpanel-android-common:X.Y.Z`), not as a `project(':common')` dependency. This means `:common` must be released to Maven Central before the main SDK can pick up changes; the trade-off buys back independent snapshot publishing for `:common` and matches the consumption pattern `:openfeature-provider` uses for the main SDK.
 - **`:common`** — published as `com.mixpanel.android:mixpanel-android-common`. Holds `MixpanelEventBridge` (Kotlin `SharedFlow` event dispatcher for cross-SDK consumption) and a Kotlin JsonLogic implementation. Has its own `gradle.properties` and is versioned independently of the main SDK.
 - **`:openfeature-provider`** — published as `com.mixpanel.android:mixpanel-android-openfeature`. Consumes the main SDK via its published Maven coordinate.
-- **`:mixpaneldemo`** — sample app, not published.
+- **`:analytics:mixpaneldemo`** (`analytics/mixpaneldemo/`) — sample app, not published.
 
-For local iteration on `:common` against the main SDK or `:openfeature-provider`, swap the Maven dep for the commented-out `project(':...')` line in the consumer's build script (same workflow `:openfeature-provider/build.gradle.kts` already uses).
+For local iteration on `:common` against `:analytics` or `:openfeature-provider`, swap the Maven dep for the commented-out `project(':...')` line in the consumer's build script (same workflow `:openfeature-provider/build.gradle.kts` already uses).
 
 ## Key Patterns and Conventions
 

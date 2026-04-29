@@ -140,8 +140,9 @@ jobs:
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+          GRADLE_PROPS: ${{ steps.module.outputs.gradle_properties }}
         run: |
-          NAMESPACE=$(grep "^GROUP=" gradle.properties | cut -d'=' -f2)
+          NAMESPACE=$(grep "^GROUP=" "$GRADLE_PROPS" | cut -d'=' -f2)
           AUTH_TOKEN=$(echo -n "$MAVEN_CENTRAL_USERNAME:$MAVEN_CENTRAL_PASSWORD" | base64)
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
