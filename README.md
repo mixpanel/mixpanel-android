@@ -6,7 +6,7 @@
 
 Mixpanel's Android libraries.
 
-For installation and implementation steps, see the official Mixpanel docs:D
+For installation and implementation steps, see the official Mixpanel docs:
 - [Android SDK](https://docs.mixpanel.com/docs/tracking-methods/sdks/android) — event tracking, identity, and people properties
 - [Android Feature Flags](https://docs.mixpanel.com/docs/tracking-methods/sdks/android/android-flags) — feature flag evaluation (bundled in the analytics library)
 
