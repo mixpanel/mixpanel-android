@@ -45,7 +45,7 @@ dependencies {
     // official release
     implementation("com.mixpanel.android:mixpanel-android:8.5.0")
     // or use below for local testing
-    // implementation(project(":"))
+    // implementation(project(":analytics"))
 
     implementation("dev.openfeature:kotlin-sdk-android:0.7.2")
 

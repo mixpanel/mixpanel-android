@@ -117,12 +117,12 @@ For ANY change in this directory:
 
 ```bash
 # Minimum test run
-./gradlew connectedAndroidTest --tests "com.mixpanel.android.mpmetrics.*"
+./gradlew :analytics:connectedAndroidTest --tests "com.mixpanel.android.mpmetrics.*"
 
 # Specific component tests
-./gradlew connectedAndroidTest --tests "*MixpanelBasicTest"
-./gradlew connectedAndroidTest --tests "*MPDbAdapterTest"
-./gradlew connectedAndroidTest --tests "*AnalyticsMessagesTest"
+./gradlew :analytics:connectedAndroidTest --tests "*MixpanelBasicTest"
+./gradlew :analytics:connectedAndroidTest --tests "*MPDbAdapterTest"
+./gradlew :analytics:connectedAndroidTest --tests "*AnalyticsMessagesTest"
 ```
 
 ## Do NOT Modify Without Approval

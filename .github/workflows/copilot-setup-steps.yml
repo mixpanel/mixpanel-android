@@ -55,7 +55,8 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             build
-            mixpaneldemo/build
+            analytics/build
+            analytics/mixpaneldemo/build
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -82,13 +83,13 @@ jobs:
       # This pre-downloads all dependencies to speed up development
       - name: Download dependencies
         run: |
-          ./gradlew dependencies --no-daemon
-          ./gradlew :mixpaneldemo:dependencies --no-daemon
+          ./gradlew :analytics:dependencies --no-daemon
+          ./gradlew :analytics:mixpaneldemo:dependencies --no-daemon
       
       # Run a quick build to verify everything is set up correctly
       # This catches any configuration issues early
       - name: Verify build setup
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew :analytics:assembleDebug --no-daemon
       
       # Install additional development tools
       # These tools are referenced in CLAUDE.md and improve the development experience
@@ -124,8 +125,8 @@ jobs:
       # This ensures the test environment is properly configured
       - name: Compile test classes
         run: |
-          ./gradlew compileDebugAndroidTestSources --no-daemon
-          ./gradlew :mixpaneldemo:compileDebugAndroidTestSources --no-daemon
+          ./gradlew :analytics:compileDebugAndroidTestSources --no-daemon
+          ./gradlew :analytics:mixpaneldemo:compileDebugAndroidTestSources --no-daemon
       
       # Print environment information for debugging
       # Helpful for troubleshooting setup issues

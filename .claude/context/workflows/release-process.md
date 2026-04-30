@@ -15,7 +15,7 @@ The Mixpanel Android SDK follows semantic versioning (X.Y.Z) and publishes to Ma
 
 ### 2. Version Update
 
-**File:** `gradle.properties`
+**File:** `analytics/gradle.properties` (or the per-module `gradle.properties` for `:common` / `:openfeature-provider`)
 ```properties
 VERSION_NAME=8.3.0
 ```
@@ -25,7 +25,7 @@ VERSION_NAME=8.3.0
 - **Minor (X.Y.0)**: New features, backwards compatible
 - **Patch (X.Y.Z)**: Bug fixes only
 
-### 3. Update CHANGELOG.md
+### 3. Update analytics/CHANGELOG.md
 
 ```markdown
 ## Version 8.3.0 (January 15, 2024)
@@ -54,68 +54,68 @@ VERSION_NAME=8.3.0
 ./gradlew clean
 
 # Build library
-./gradlew build
+./gradlew :analytics:build
 
 # Verify no warnings
 ```
 
 ### 2. Run All Tests
 ```bash
-# Unit tests (if any)
-./gradlew test
+# Unit tests (Robolectric/JVM)
+./gradlew :analytics:test
 
 # Instrumented tests (requires device/emulator)
-./gradlew connectedAndroidTest
+./gradlew :analytics:connectedAndroidTest
 
-# Generate test report
-./gradlew createDebugCoverageReport
+# Generate coverage report
+./gradlew :analytics:createDebugCoverageReport
 ```
 
 ### 3. Lint Verification
 ```bash
 # Run lint checks
-./gradlew lint
+./gradlew :analytics:lint
 
 # Review lint report at:
-# build/reports/lint-results.html
+# analytics/build/reports/lint-results-debug.html
 ```
 
 ### 4. ProGuard Testing
 ```bash
 # Build release variant
-./gradlew assembleRelease
+./gradlew :analytics:assembleRelease
 
 # Test ProGuard rules
-./gradlew testReleaseUnitTest
+./gradlew :analytics:testReleaseUnitTest
 ```
 
 ### 5. Documentation Generation
 ```bash
 # Generate JavaDocs
-./gradlew androidJavadocs
+./gradlew :analytics:androidJavadocs
 
-# Review at build/docs/javadoc/
+# Review at analytics/build/docs/javadoc/
 ```
 
 ## Demo App Verification
 
 ### 1. Update Demo Dependencies
-**File:** `mixpaneldemo/build.gradle`
-```gradle
+**File:** `analytics/mixpaneldemo/build.gradle.kts`
+```kotlin
 dependencies {
-    implementation project(':mixpanel-android')
+    implementation(project(":analytics"))
     // Or for testing published version:
-    // implementation 'com.mixpanel.android:mixpanel-android:8.3.0'
+    // implementation("com.mixpanel.android:mixpanel-android:8.6.0")
 }
 ```
 
 ### 2. Test Demo Features
 ```bash
 # Build demo app
-./gradlew :mixpaneldemo:assembleDebug
+./gradlew :analytics:mixpaneldemo:assembleDebug
 
 # Install on device
-./gradlew :mixpaneldemo:installDebug
+./gradlew :analytics:mixpaneldemo:installDebug
 ```
 
 **Manual Testing Checklist:**

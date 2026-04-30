@@ -8,7 +8,7 @@ The SDK uses **instrumented tests only** - all tests require an Android device o
 
 ### Location
 ```
-src/androidTest/java/com/mixpanel/android/
+analytics/src/androidTest/java/com/mixpanel/android/
 ├── mpmetrics/           # Core SDK tests
 │   ├── MixpanelBasicTest.java
 │   ├── MPDbAdapterTest.java
@@ -285,13 +285,13 @@ public class TestUtils {
 
 ```bash
 # Run all tests
-./gradlew connectedAndroidTest
+./gradlew :analytics:connectedAndroidTest
 
 # Run specific test class
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
+./gradlew :analytics:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.mpmetrics.MixpanelBasicTest
 
 # Run with coverage
-./gradlew createDebugCoverageReport
+./gradlew :analytics:createDebugCoverageReport
 ```
 
 ### Android Studio
