@@ -1397,6 +1397,18 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 .clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
         identify(getDistinctId(), false);
         flush();
+
+        // identify() above no-ops its loadFlags() branch because reset has already overwritten
+        // the stored distinct id, so the new id matches the "current" id and the diff check
+        // short-circuits. Clear feature-flag state explicitly and refetch under the new identity.
+        mFeatureFlagManager.reset();
+        mInitialFeatureFlagLoad.set(false);
+        if (mFeatureFlagOptions.isEnabled()
+                && mFeatureFlagOptions.shouldPrefetchFlags()
+                && mHasAppForegrounded.get()
+                && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+            mFeatureFlagManager.loadFlags();
+        }
     }
 
     /**
