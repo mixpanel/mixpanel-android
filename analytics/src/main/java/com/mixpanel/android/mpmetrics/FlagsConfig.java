@@ -8,28 +8,17 @@ class FlagsConfig {
     public final boolean enabled;
     @NonNull public final JSONObject context;
     @NonNull public final VariantLookupPolicy variantLookupPolicy;
+    public final boolean cacheVariants;
 
-    public FlagsConfig() {
-        this.enabled = false;
-        this.context = new JSONObject();
-        this.variantLookupPolicy = VariantLookupPolicy.networkOnly();
-    }
-
-    public FlagsConfig(boolean enabled) {
-        this.enabled = enabled;
-        this.context = new JSONObject();
-        this.variantLookupPolicy = VariantLookupPolicy.networkOnly();
-    }
-
-    public FlagsConfig(boolean enabled, @NonNull JSONObject context) {
-        this.enabled = enabled;
-        this.context = context;
-        this.variantLookupPolicy = VariantLookupPolicy.networkOnly();
-    }
-
-    public FlagsConfig(boolean enabled, @NonNull JSONObject context, @NonNull VariantLookupPolicy variantLookupPolicy) {
+    FlagsConfig(
+        boolean enabled,
+        @NonNull JSONObject context,
+        @NonNull VariantLookupPolicy variantLookupPolicy,
+        boolean cacheVariants
+    ) {
         this.enabled = enabled;
         this.context = context;
         this.variantLookupPolicy = variantLookupPolicy;
+        this.cacheVariants = cacheVariants;
     }
 }

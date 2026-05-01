@@ -232,11 +232,30 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
+        final VariantLookupPolicy variantLookupPolicy = mFeatureFlagOptions.getVariantLookupPolicy();
+        final boolean cacheVariants = mFeatureFlagOptions.shouldCacheVariants();
+        // The flags cache lives alongside super properties / identity in the stored prefs file
+        // so reset() — which calls PersistentIdentity.clearPreferences() — wipes it for free.
+        // Need cache prefs if reads might happen (non-NetworkOnly policy) OR writes might happen
+        // (cacheVariants=true). Pass null when neither side touches the cache.
+        final boolean readsTouchCache = !(variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
+        final Future<SharedPreferences> flagsCachePrefs =
+                (readsTouchCache || cacheVariants)
+                        ? sPrefsLoader.loadPreferences(
+                                context,
+                                storedPrefsName(token, options.getInstanceName()),
+                                null)
+                        : null;
         mFeatureFlagManager =
                 new FeatureFlagManager(
                         this,
                         getHttpService(),
-                        new FlagsConfig(mFeatureFlagOptions.isEnabled(), mFeatureFlagOptions.getContext()));
+                        new FlagsConfig(
+                                mFeatureFlagOptions.isEnabled(),
+                                mFeatureFlagOptions.getContext(),
+                                variantLookupPolicy,
+                                cacheVariants),
+                        flagsCachePrefs);
 
         if (options.isOptOutTrackingDefault()
                 && (hasOptedOutTracking() || !mPersistentIdentity.hasOptOutFlag(token))) {
@@ -841,6 +860,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 mPersistentIdentity.markEventsUserIdPresent();
                 // Ensure app has previously launched in foreground before network call.
                 if (mHasAppForegrounded.get()) {
+                    // Distinct ID just changed — clear in-memory feature-flag state from the
+                    // prior identity (and bump the fetch generation so any in-flight fetch is
+                    // discarded) before loading flags under the new identity.
+                    mFeatureFlagManager.reset();
                     mFeatureFlagManager.loadFlags();
                 }
                 try {
@@ -1400,7 +1423,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         // identify() above no-ops its loadFlags() branch because reset has already overwritten
         // the stored distinct id, so the new id matches the "current" id and the diff check
-        // short-circuits. Clear feature-flag state explicitly and refetch under the new identity.
+        // short-circuits. Clear feature-flag state explicitly (including any cached variants
+        // from the prior identity) and refetch under the new identity.
         mFeatureFlagManager.reset();
         mInitialFeatureFlagLoad.set(false);
         prefetchInitialFeatureFlagsIfNeeded();
@@ -1934,12 +1958,24 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         void loadFlags(@Nullable FlagCompletionCallback<Boolean> callback);
 
         /**
-         * Returns true if flags have been successfully loaded from the server and are currently
-         * available for synchronous access. This is useful to check before calling synchronous flag
-         * retrieval methods like {@link #getVariantSync(String, MixpanelFlagVariant)} to avoid them
-         * returning the fallback value immediately.
+         * Returns {@code true} if flag variants are currently in memory and available for
+         * synchronous access. Useful to check before calling synchronous methods like
+         * {@link #getVariantSync(String, MixpanelFlagVariant)} to avoid them returning the
+         * fallback value immediately.
          *
-         * @return true if flags are loaded and ready, false otherwise.
+         * <p><b>Note:</b> "in memory" includes variants restored from the on-disk cache, not
+         * just freshly fetched ones. When
+         * {@link FeatureFlagOptions.Builder#variantLookupPolicy(VariantLookupPolicy)} is set to
+         * a caching policy ({@link VariantLookupPolicy#cacheFirst(long)} or
+         * {@link VariantLookupPolicy#networkFirst(long)}), this method may return {@code true}
+         * before the SDK has spoken to the network this session — the returned variants could
+         * be stale data from a previous session. Use the {@code source} field on the served
+         * {@link MixpanelFlagVariant} to distinguish:
+         * {@link MixpanelFlagVariant.Source.Network} for fresh values,
+         * {@link MixpanelFlagVariant.Source.Cache} for on-disk-cache values (with the cache
+         * timestamp on the {@code Cache} instance).
+         *
+         * @return true if flags are available in memory (from network or cache), false otherwise.
          */
         boolean areFlagsReady();
 
@@ -2261,9 +2297,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 };
 
         String instanceKey = instanceName != null ? instanceName : token;
-        final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
         final Future<SharedPreferences> storedPreferences =
-                sPrefsLoader.loadPreferences(context, prefsName, listener);
+                sPrefsLoader.loadPreferences(context, storedPrefsName(token, instanceName), listener);
 
         final String timeEventsPrefsName =
                 "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + instanceKey;
@@ -2276,6 +2311,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         return new PersistentIdentity(
                 referrerPreferences, storedPreferences, timeEventsPrefs, mixpanelPrefs, deviceIdProvider);
+    }
+
+    private static String storedPrefsName(String token, String instanceName) {
+        final String instanceKey = instanceName != null ? instanceName : token;
+        return "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
     }
 
     /* package */ boolean sendAppOpen() {
