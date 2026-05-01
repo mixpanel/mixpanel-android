@@ -17,6 +17,7 @@ import org.json.JSONObject;
  *     .enabled(true)
  *     .context(new JSONObject().put("plan", "enterprise"))
  *     .prefetchFlags(true)
+ *     .variantLookupPolicy(VariantLookupPolicy.cacheFirst(TimeUnit.HOURS.toMillis(24)))
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
@@ -31,11 +32,13 @@ public class FeatureFlagOptions {
     private final boolean mEnabled;
     private final JSONObject mContext;
     private final boolean mPrefetchFlags;
+    private final VariantLookupPolicy mVariantLookupPolicy;
 
     private FeatureFlagOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
         this.mPrefetchFlags = builder.mPrefetchFlags;
         this.mContext = builder.mContext != null ? builder.mContext : new JSONObject();
+        this.mVariantLookupPolicy = builder.mVariantLookupPolicy != null ? builder.mVariantLookupPolicy : VariantLookupPolicy.networkOnly();
     }
 
     /**
@@ -79,6 +82,18 @@ public class FeatureFlagOptions {
     }
 
     /**
+     * Returns the strategy used to resolve flag variants relative to the
+     * on-disk cache and the network.
+     *
+     * @return the configured {@link VariantLookupPolicy}; defaults to
+     *         {@link VariantLookupPolicy#networkOnly()}.
+     */
+    @NonNull
+    public VariantLookupPolicy getVariantLookupPolicy() {
+        return mVariantLookupPolicy;
+    }
+
+    /**
      * Builder for creating {@link FeatureFlagOptions} instances.
      *
      * <p>Default values:
@@ -86,12 +101,14 @@ public class FeatureFlagOptions {
      *   <li>{@code enabled} = {@code false}</li>
      *   <li>{@code context} = empty {@link JSONObject}</li>
      *   <li>{@code prefetchFlags} = {@code true}</li>
+     *   <li>{@code variantLookupPolicy} = {@link VariantLookupPolicy#networkOnly()}</li>
      * </ul>
      */
     public static class Builder {
         private boolean mEnabled = false;
         private JSONObject mContext = new JSONObject();
         private boolean mPrefetchFlags = true;
+        private VariantLookupPolicy mVariantLookupPolicy = VariantLookupPolicy.networkOnly();
 
         public Builder() {
         }
@@ -105,6 +122,7 @@ public class FeatureFlagOptions {
             this.mEnabled = source.mEnabled;
             this.mContext = source.mContext; // same ref is fine, builder will copy on context()
             this.mPrefetchFlags = source.mPrefetchFlags;
+            this.mVariantLookupPolicy = source.mVariantLookupPolicy;
         }
 
         /**
@@ -154,6 +172,19 @@ public class FeatureFlagOptions {
          */
         public Builder prefetchFlags(boolean prefetchFlags) {
             this.mPrefetchFlags = prefetchFlags;
+            return this;
+        }
+
+        /**
+         * Sets the strategy used to resolve flag variants relative to the
+         * on-disk cache and the network.
+         *
+         * @param variantLookupPolicy the lookup strategy to use.
+         * @return This Builder instance for chaining.
+         * @see VariantLookupPolicy
+         */
+        public Builder variantLookupPolicy(@NonNull VariantLookupPolicy variantLookupPolicy) {
+            this.mVariantLookupPolicy = variantLookupPolicy;
             return this;
         }
 

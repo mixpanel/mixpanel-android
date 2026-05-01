@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.SharedPreferences;
@@ -59,6 +60,45 @@ public class FeatureFlagOptionsTest {
     assertNotNull("context should not be null", defaults.getContext());
     assertEquals("context should be empty", 0, defaults.getContext().length());
     assertTrue("prefetchFlags should default to true", defaults.shouldPrefetchFlags());
+    assertSame(VariantLookupPolicy.networkOnly(), defaults.getVariantLookupPolicy());
+  }
+
+  // -----------------------------------------------------------------------
+  // FlagLookup variants
+  // -----------------------------------------------------------------------
+
+  @Test
+  public void testFlagLookup_NetworkOnlyExplicit() {
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.networkOnly())
+        .build();
+
+    assertSame(VariantLookupPolicy.networkOnly(), options.getVariantLookupPolicy());
+    assertTrue(options.getVariantLookupPolicy() instanceof VariantLookupPolicy.NetworkOnly);
+  }
+
+  @Test
+  public void testFlagLookup_CacheFirstPreservesTtl() {
+    long ttl = TimeUnit.HOURS.toMillis(24);
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.cacheFirst(ttl))
+        .build();
+
+    VariantLookupPolicy lookup = options.getVariantLookupPolicy();
+    assertTrue(lookup instanceof VariantLookupPolicy.CacheFirst);
+    assertEquals(ttl, ((VariantLookupPolicy.CacheFirst) lookup).cacheTtlMillis);
+  }
+
+  @Test
+  public void testFlagLookup_NetworkFirstPreservesTtl() {
+    long ttl = TimeUnit.MINUTES.toMillis(5);
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.networkFirst(ttl))
+        .build();
+
+    VariantLookupPolicy lookup = options.getVariantLookupPolicy();
+    assertTrue("expected NetworkFirst", lookup instanceof VariantLookupPolicy.NetworkFirst);
+    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).cacheTtlMillis);
   }
 
   // -----------------------------------------------------------------------
