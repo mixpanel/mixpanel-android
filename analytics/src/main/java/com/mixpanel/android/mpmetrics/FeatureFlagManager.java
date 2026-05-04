@@ -219,10 +219,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       MPLog.e(LOGTAG, "Failed to set custom context", e);
       mCustomContext = new JSONObject();
     }
-    // Context change invalidates the current user context's variants. Reset (which also
-    // discards any in-flight fetch via the generation check) before fetching under the new
-    // context — handler FIFO guarantees the reset runs before the fetch.
-    reset();
     mHandler.post(() -> _fetchFlagsIfNeeded(completion));
   }
 
