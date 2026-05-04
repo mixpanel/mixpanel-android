@@ -233,19 +233,14 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
         final VariantLookupPolicy variantLookupPolicy = mFeatureFlagOptions.getVariantLookupPolicy();
-        final boolean cacheVariants = mFeatureFlagOptions.shouldCacheVariants();
-        // The flags cache lives alongside super properties / identity in the stored prefs file
-        // so reset() — which calls PersistentIdentity.clearPreferences() — wipes it for free.
-        // Need cache prefs if reads might happen (non-NetworkOnly policy) OR writes might happen
-        // (cacheVariants=true). Pass null when neither side touches the cache.
-        final boolean readsTouchCache = !(variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
-        final Future<SharedPreferences> flagsCachePrefs =
-                (readsTouchCache || cacheVariants)
-                        ? sPrefsLoader.loadPreferences(
-                                context,
-                                storedPrefsName(token, options.getInstanceName()),
-                                null)
-                        : null;
+        // Always hand the cache prefs to FeatureFlagManager: non-NetworkOnly policies use it to
+        // read/write, and NetworkOnly uses it on init to wipe any stale blob left over from a
+        // prior config. The blob lives in the existing stored prefs file so reset() —
+        // PersistentIdentity.clearPreferences() — also wipes it for free.
+        final Future<SharedPreferences> flagsCachePrefs = sPrefsLoader.loadPreferences(
+                context,
+                storedPrefsName(token, options.getInstanceName()),
+                null);
         mFeatureFlagManager =
                 new FeatureFlagManager(
                         this,
@@ -253,8 +248,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         new FlagsConfig(
                                 mFeatureFlagOptions.isEnabled(),
                                 mFeatureFlagOptions.getContext(),
-                                variantLookupPolicy,
-                                cacheVariants),
+                                variantLookupPolicy),
                         flagsCachePrefs);
 
         if (options.isOptOutTrackingDefault()

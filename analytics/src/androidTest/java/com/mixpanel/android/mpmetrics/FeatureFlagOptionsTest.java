@@ -61,7 +61,6 @@ public class FeatureFlagOptionsTest {
     assertEquals("context should be empty", 0, defaults.getContext().length());
     assertTrue("prefetchFlags should default to true", defaults.shouldPrefetchFlags());
     assertSame(VariantLookupPolicy.networkOnly(), defaults.getVariantLookupPolicy());
-    assertFalse("cacheVariants should default to false", defaults.shouldCacheVariants());
   }
 
   // -----------------------------------------------------------------------
@@ -100,33 +99,6 @@ public class FeatureFlagOptionsTest {
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
     assertTrue("expected NetworkFirst", lookup instanceof VariantLookupPolicy.NetworkFirst);
     assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).cacheTtlMillis);
-  }
-
-  // -----------------------------------------------------------------------
-  // cacheVariants
-  // -----------------------------------------------------------------------
-
-  @Test
-  public void testCacheVariants_SetterRoundTrips() {
-    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
-        .cacheVariants(true)
-        .build();
-
-    assertTrue(options.shouldCacheVariants());
-  }
-
-  @Test
-  public void testCacheVariants_IndependentOfLookupPolicy() {
-    // The migration warm-up case: networkOnly reads with cacheVariants writes.
-    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
-        .variantLookupPolicy(VariantLookupPolicy.networkOnly())
-        .cacheVariants(true)
-        .build();
-
-    assertTrue(options.getVariantLookupPolicy() instanceof VariantLookupPolicy.NetworkOnly);
-    assertTrue(
-        "cacheVariants should be settable alongside networkOnly without being overridden",
-        options.shouldCacheVariants());
   }
 
   // -----------------------------------------------------------------------

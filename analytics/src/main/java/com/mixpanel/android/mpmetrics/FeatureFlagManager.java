@@ -156,11 +156,41 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Separate executor for network requests so they don't block the state queue
     mNetworkExecutor = Executors.newSingleThreadExecutor();
 
-    // Load cached variants on the handler thread so SharedPreferences I/O does not block the
-    // caller (typically the main thread during MixpanelAPI construction).
+    // Initialize cache state on the handler thread so SharedPreferences I/O does not block
+    // the caller (typically the main thread during MixpanelAPI construction).
+    //  - Caching policies (CacheFirst / NetworkFirst): load the cached blob into mFlags.
+    //  - NetworkOnly: wipe any stale cache blob left over from a prior policy configuration.
     if (mCachePrefs != null) {
-      mHandler.post(this::_loadCachedVariants);
+      if (isCachingPolicy()) {
+        mHandler.post(this::_loadCachedVariants);
+      } else {
+        mHandler.post(this::clearCacheOnDisk);
+      }
     }
+  }
+
+  /**
+   * Returns {@code true} when the configured policy reads/writes the on-disk cache
+   * (CacheFirst or NetworkFirst). NetworkOnly returns {@code false}.
+   */
+  private boolean isCachingPolicy() {
+    return !(mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
+  }
+
+  /**
+   * Returns {@code true} if the variant was loaded from the on-disk cache and is now past
+   * the configured TTL. Network-sourced variants and developer-supplied fallbacks always
+   * return {@code false}. Used in lookup paths to suppress serving stale cached values
+   * (without clearing the on-disk blob — the blob may become valid again under a longer
+   * TTL config or be overwritten by the next successful fetch).
+   */
+  private boolean isExpiredCacheVariant(@Nullable MixpanelFlagVariant variant) {
+    if (variant == null || !(variant.source instanceof MixpanelFlagVariant.Source.Cache)) {
+      return false;
+    }
+    final long cachedAt = ((MixpanelFlagVariant.Source.Cache) variant.source).cachedAtMillis;
+    final long ttl = cacheTtlMillis();
+    return ttl > 0 && cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > ttl;
   }
 
   // --- Public Methods ---
@@ -281,6 +311,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           }
 
           MixpanelFlagVariant variant = mFlags.get(flagName);
+          // Suppress stale cached variants — leave the disk blob alone, just don't serve.
+          if (isExpiredCacheVariant(variant)) {
+            MPLog.d(
+                LOGTAG,
+                "Cached variant for '" + flagName + "' is past TTL; returning fallback.");
+            variant = null;
+          }
           if (variant != null) {
             resultContainer.flagVariant = variant;
 
@@ -375,14 +412,22 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           if (canServeImmediately) {
             MPLog.v(LOGTAG, "Flags ready. Checking for flag '" + flagName + "'");
             MixpanelFlagVariant flagVariant = mFlags.get(flagName);
-            boolean needsTracking = (flagVariant != null) && _checkAndSetTrackedFlag(flagName);
-            MixpanelFlagVariant result = (flagVariant != null) ? flagVariant : fallback;
+            // Suppress stale cached variants — leave the disk blob alone, just don't serve.
+            if (isExpiredCacheVariant(flagVariant)) {
+              MPLog.d(
+                  LOGTAG,
+                  "Cached variant for '" + flagName + "' is past TTL; returning fallback.");
+              flagVariant = null;
+            }
+            final MixpanelFlagVariant variantForLambda = flagVariant;
+            boolean needsTracking = (variantForLambda != null) && _checkAndSetTrackedFlag(flagName);
+            MixpanelFlagVariant result = (variantForLambda != null) ? variantForLambda : fallback;
 
             new Handler(Looper.getMainLooper())
                 .post(
                     () -> {
                       completion.onComplete(result);
-                      if (flagVariant != null && needsTracking) {
+                      if (variantForLambda != null && needsTracking) {
                         _performTrackingDelegateCall(flagName, result);
                       }
                     });
@@ -403,16 +448,22 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                       () -> {
                         MixpanelFlagVariant fetchedVariant =
                             mFlags != null ? mFlags.get(flagName) : null;
+                        // If a fetch failure left mFlags holding stale cached values, treat
+                        // expired entries as not-found and return the developer fallback.
+                        if (isExpiredCacheVariant(fetchedVariant)) {
+                          fetchedVariant = null;
+                        }
+                        final MixpanelFlagVariant variantForLambda = fetchedVariant;
                         boolean tracked =
-                            (fetchedVariant != null) && _checkAndSetTrackedFlag(flagName);
+                            (variantForLambda != null) && _checkAndSetTrackedFlag(flagName);
                         MixpanelFlagVariant finalResult =
-                            (fetchedVariant != null) ? fetchedVariant : fallback;
+                            (variantForLambda != null) ? variantForLambda : fallback;
 
                         new Handler(Looper.getMainLooper())
                             .post(
                                 () -> {
                                   completion.onComplete(finalResult);
-                                  if (fetchedVariant != null && tracked) {
+                                  if (variantForLambda != null && tracked) {
                                     _performTrackingDelegateCall(flagName, finalResult);
                                   }
                                 });
@@ -468,9 +519,24 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   @Override
   @NonNull
   public Map<String, MixpanelFlagVariant> getAllVariantsSync() {
+    final Map<String, MixpanelFlagVariant> snapshot;
     synchronized (mLock) {
-      return mFlags != null ? Collections.unmodifiableMap(mFlags) : Collections.emptyMap();
+      if (mFlags == null) {
+        return Collections.emptyMap();
+      }
+      snapshot = mFlags;
     }
+    // mFlags is wholesale-replaced on every state change, so all entries share a single
+    // Source.Cache(cachedAt) — checking any one entry tells us whether the whole map is
+    // expired. Sample the first; if expired, return an empty map (matching the per-variant
+    // "don't serve expired cache" rule from getVariant).
+    if (!snapshot.isEmpty()) {
+      MixpanelFlagVariant first = snapshot.values().iterator().next();
+      if (isExpiredCacheVariant(first)) {
+        return Collections.emptyMap();
+      }
+    }
+    return Collections.unmodifiableMap(snapshot);
   }
 
   @Override
@@ -479,8 +545,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       boolean canServeImmediately = mFlags != null && !mAwaitingInitialNetworkResponse;
 
       if (canServeImmediately) {
-        Map<String, MixpanelFlagVariant> result = Collections.unmodifiableMap(mFlags);
-        postCompletion(completion, result);
+        // Route through getAllVariantsSync so the TTL check on cached entries applies here too.
+        postCompletion(completion, getAllVariantsSync());
       } else {
         MPLog.i(LOGTAG, "Flags not yet servable, attempting fetch for getAllVariants...");
         _fetchFlagsIfNeeded(success -> {
@@ -806,9 +872,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         // Persist the raw response to disk so future sessions / failed fetches can fall back.
         // Storing the wire format (rather than re-serializing the parsed variants) keeps
         // JsonUtils.parseFlagsResponse as the single source of truth and carries
-        // pending_first_time_events along for free. Writes are independent of the lookup
-        // policy — a customer may opt into caching just to warm up for a future migration.
-        if (mFlagsConfig.cacheVariants && mCachePrefs != null) {
+        // pending_first_time_events along for free. Writes happen for any caching policy;
+        // NetworkOnly skips them.
+        if (isCachingPolicy() && mCachePrefs != null) {
           writeCacheToDisk(flagsResponseJson);
         }
 

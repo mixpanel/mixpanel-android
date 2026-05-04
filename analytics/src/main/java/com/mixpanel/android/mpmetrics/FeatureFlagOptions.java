@@ -33,14 +33,12 @@ public class FeatureFlagOptions {
     private final JSONObject mContext;
     private final boolean mPrefetchFlags;
     private final VariantLookupPolicy mVariantLookupPolicy;
-    private final boolean mCacheVariants;
 
     private FeatureFlagOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
         this.mPrefetchFlags = builder.mPrefetchFlags;
         this.mContext = builder.mContext != null ? builder.mContext : new JSONObject();
         this.mVariantLookupPolicy = builder.mVariantLookupPolicy != null ? builder.mVariantLookupPolicy : VariantLookupPolicy.networkOnly();
-        this.mCacheVariants = builder.mCacheVariants;
     }
 
     /**
@@ -85,7 +83,10 @@ public class FeatureFlagOptions {
 
     /**
      * Returns the strategy used to resolve flag variants relative to the
-     * on-disk cache and the network.
+     * on-disk cache and the network. Determines whether the SDK reads and writes the
+     * cache: {@link VariantLookupPolicy#networkOnly()} disables both;
+     * {@link VariantLookupPolicy#cacheFirst(long)} and
+     * {@link VariantLookupPolicy#networkFirst(long)} enable both.
      *
      * @return the configured {@link VariantLookupPolicy}; defaults to
      *         {@link VariantLookupPolicy#networkOnly()}.
@@ -93,22 +94,6 @@ public class FeatureFlagOptions {
     @NonNull
     public VariantLookupPolicy getVariantLookupPolicy() {
         return mVariantLookupPolicy;
-    }
-
-    /**
-     * Returns whether successful flag responses are written to the on-disk cache.
-     *
-     * <p>This is independent of {@link #getVariantLookupPolicy()}. Setting this to
-     * {@code true} while keeping the policy as {@link VariantLookupPolicy#networkOnly()}
-     * lets you populate the cache today so a future migration to
-     * {@link VariantLookupPolicy#cacheFirst(long)} or
-     * {@link VariantLookupPolicy#networkFirst(long)} starts with a warm cache.
-     *
-     * @return {@code true} if responses are cached to disk, {@code false} otherwise.
-     *         Defaults to {@code false}.
-     */
-    public boolean shouldCacheVariants() {
-        return mCacheVariants;
     }
 
     /**
@@ -120,7 +105,6 @@ public class FeatureFlagOptions {
      *   <li>{@code context} = empty {@link JSONObject}</li>
      *   <li>{@code prefetchFlags} = {@code true}</li>
      *   <li>{@code variantLookupPolicy} = {@link VariantLookupPolicy#networkOnly()}</li>
-     *   <li>{@code cacheVariants} = {@code false}</li>
      * </ul>
      */
     public static class Builder {
@@ -128,7 +112,6 @@ public class FeatureFlagOptions {
         private JSONObject mContext = new JSONObject();
         private boolean mPrefetchFlags = true;
         private VariantLookupPolicy mVariantLookupPolicy = VariantLookupPolicy.networkOnly();
-        private boolean mCacheVariants = false;
 
         public Builder() {
         }
@@ -143,7 +126,6 @@ public class FeatureFlagOptions {
             this.mContext = source.mContext; // same ref is fine, builder will copy on context()
             this.mPrefetchFlags = source.mPrefetchFlags;
             this.mVariantLookupPolicy = source.mVariantLookupPolicy;
-            this.mCacheVariants = source.mCacheVariants;
         }
 
         /**
@@ -206,21 +188,6 @@ public class FeatureFlagOptions {
          */
         public Builder variantLookupPolicy(@NonNull VariantLookupPolicy variantLookupPolicy) {
             this.mVariantLookupPolicy = variantLookupPolicy;
-            return this;
-        }
-
-        /**
-         * Controls whether successful flag responses are written to the on-disk cache.
-         *
-         * <p>Independent of {@link #variantLookupPolicy(VariantLookupPolicy)} — set this to
-         * {@code true} alongside {@link VariantLookupPolicy#networkOnly()} if you want
-         * responses cached for a future migration without affecting current lookup behavior.
-         *
-         * @param cacheVariants {@code true} to cache responses to disk, {@code false} otherwise.
-         * @return This Builder instance for chaining.
-         */
-        public Builder cacheVariants(boolean cacheVariants) {
-            this.mCacheVariants = cacheVariants;
             return this;
         }
 
