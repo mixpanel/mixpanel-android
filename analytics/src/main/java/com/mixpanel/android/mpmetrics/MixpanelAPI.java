@@ -1462,6 +1462,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
         mPersistentIdentity.clearReferrerProperties();
         mPersistentIdentity.setOptOutTracking(true, mToken);
+        // Drop in-memory feature flag state (and any cached variants) so the prior user's
+        // variants can't be served via getVariant after they've opted out.
+        mFeatureFlagManager.reset();
     }
 
     /**

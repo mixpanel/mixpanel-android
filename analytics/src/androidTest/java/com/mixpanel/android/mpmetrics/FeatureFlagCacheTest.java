@@ -45,6 +45,7 @@ public class FeatureFlagCacheTest {
   private static final String TOKEN_RESET = "TestPersistence_Reset";
   private static final String TOKEN_WRITE_ONLY = "TestPersistence_WriteOnly";
   private static final String TOKEN_NETWORK_FIRST_FAIL = "TestPersistence_NetworkFirstFail";
+  private static final String TOKEN_OPT_OUT = "TestPersistence_OptOut";
   private static final String FLAG_NAME = "cached-flag";
   private static final String CACHED_VARIANT_KEY = "cached-variant";
   private static final String CACHED_VARIANT_VALUE = "cached-value";
@@ -63,6 +64,7 @@ public class FeatureFlagCacheTest {
     storedPrefs(TOKEN_RESET).edit().clear().commit();
     storedPrefs(TOKEN_WRITE_ONLY).edit().clear().commit();
     storedPrefs(TOKEN_NETWORK_FIRST_FAIL).edit().clear().commit();
+    storedPrefs(TOKEN_OPT_OUT).edit().clear().commit();
   }
 
   // -----------------------------------------------------------------------
@@ -71,8 +73,7 @@ public class FeatureFlagCacheTest {
 
   @Test
   public void testCacheFirst_ServesCachedVariantWithoutNetwork() throws Exception {
-    // Arrange: seed the stored-prefs file with a fingerprint matching the SDK's
-    // distinct_id and (empty) context.
+    // Arrange: seed the stored-prefs file with a blob keyed to the SDK's distinct_id.
     seedCachedResponse(TOKEN_CACHE_FIRST, /*distinctId*/ TOKEN_CACHE_FIRST);
 
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
@@ -231,6 +232,51 @@ public class FeatureFlagCacheTest {
   }
 
   // -----------------------------------------------------------------------
+  // optOutTracking() clears the cached variants
+  // -----------------------------------------------------------------------
+
+  @Test
+  public void testOptOutTracking_ClearsCachedVariants() throws Exception {
+    // Arrange: seed cache + create CacheFirst-configured SDK.
+    seedCachedResponse(TOKEN_OPT_OUT, /*distinctId*/ TOKEN_OPT_OUT);
+
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
+        .enabled(true)
+        .prefetchFlags(false)
+        .cacheVariants(true)
+        .variantLookupPolicy(VariantLookupPolicy.cacheFirst(TimeUnit.HOURS.toMillis(24)))
+        .build();
+    MixpanelOptions opts = new MixpanelOptions.Builder()
+        .featureFlagOptions(flagOptions)
+        .build();
+
+    final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
+    MixpanelAPI mixpanel = newMixpanel(
+        TOKEN_OPT_OUT, opts, new CountingHangingHttpService(flagsHttpCallCount));
+
+    assertNotNull(
+        "Cache blob should exist after seeding",
+        storedPrefs(TOKEN_OPT_OUT).getString(BLOB_KEY, null));
+
+    // Act
+    mixpanel.optOutTracking();
+
+    long deadline = System.currentTimeMillis() + 5_000L;
+    while (System.currentTimeMillis() < deadline) {
+      if (storedPrefs(TOKEN_OPT_OUT).getString(BLOB_KEY, null) == null) {
+        break;
+      }
+      Thread.sleep(50);
+    }
+
+    // Assert: opt-out wiped the cached variants — the prior user can't be served their
+    // variants after opting out.
+    assertNull(
+        "optOutTracking() should remove the cached flags blob",
+        storedPrefs(TOKEN_OPT_OUT).getString(BLOB_KEY, null));
+  }
+
+  // -----------------------------------------------------------------------
   // NetworkFirst falls back to cached values when the fetch fails
   // -----------------------------------------------------------------------
 
@@ -292,13 +338,10 @@ public class FeatureFlagCacheTest {
   }
 
   /**
-   * Writes a cached /flags/ response blob with a fingerprint that matches the SDK's
-   * runtime fingerprint at construction time (distinct_id + empty context).
+   * Writes a cached /flags/ response blob keyed by the given distinct_id, matching the SDK's
+   * runtime distinct_id at construction time.
    */
   private void seedCachedResponse(String token, String distinctId) throws Exception {
-    final String contextString = "{}"; // FeatureFlagOptions defaults to empty JSONObject
-    final String fingerprint = sha256(distinctId + "|" + contextString);
-
     org.json.JSONObject variant = new org.json.JSONObject();
     variant.put("variant_key", CACHED_VARIANT_KEY);
     variant.put("variant_value", CACHED_VARIANT_VALUE);
@@ -309,7 +352,7 @@ public class FeatureFlagCacheTest {
 
     org.json.JSONObject blob = new org.json.JSONObject();
     blob.put("cachedAt", System.currentTimeMillis());
-    blob.put("fingerprint", fingerprint);
+    blob.put("distinctId", distinctId);
     blob.put("response", response);
 
     storedPrefs(token).edit().putString(BLOB_KEY, blob.toString()).commit();
@@ -318,7 +361,7 @@ public class FeatureFlagCacheTest {
   /**
    * Builds a MixpanelAPI with the supplied HTTP service, a no-op app_open, and — importantly —
    * the default getPersistentIdentity (no wipe). The token is also seeded as the distinct_id
-   * and anonymous_id so the SDK's runtime fingerprint deterministically matches anything our
+   * and anonymous_id so the SDK's runtime distinct_id deterministically matches anything our
    * tests seed via {@link #seedCachedResponse}.
    */
   private MixpanelAPI newMixpanel(String token, MixpanelOptions opts, RemoteService httpService) {
@@ -339,16 +382,6 @@ public class FeatureFlagCacheTest {
         return false;
       }
     };
-  }
-
-  private static String sha256(String input) throws Exception {
-    java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-    byte[] digest = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-    StringBuilder hex = new StringBuilder(digest.length * 2);
-    for (byte b : digest) {
-      hex.append(String.format("%02x", b));
-    }
-    return hex.toString();
   }
 
   /**

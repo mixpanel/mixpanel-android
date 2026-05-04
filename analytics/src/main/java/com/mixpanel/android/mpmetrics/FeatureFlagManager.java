@@ -20,8 +20,6 @@ import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,7 +55,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   // current shape. This makes incompatible changes self-healing rather than gated.
   private static final String CACHE_BLOB_KEY = "mixpanel.flags.cache";
   private static final String CACHE_FIELD_CACHED_AT = "cachedAt";
-  private static final String CACHE_FIELD_FINGERPRINT = "fingerprint";
+  private static final String CACHE_FIELD_DISTINCT_ID = "distinctId";
   private static final String CACHE_FIELD_RESPONSE = "response";
 
   // --- State Variables (Protected by mHandler) ---
@@ -1243,11 +1241,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     if (raw == null) {
       return null;
     }
+    final FeatureFlagDelegate delegate = mDelegate.get();
+    final String currentDistinctId = delegate == null ? null : delegate.getDistinctId();
+    if (currentDistinctId == null) {
+      // No identity to validate against — can't trust the cache.
+      return null;
+    }
     try {
       JSONObject blob = new JSONObject(raw);
-      String storedFingerprint = blob.optString(CACHE_FIELD_FINGERPRINT, null);
-      if (storedFingerprint == null || !storedFingerprint.equals(currentFingerprint())) {
-        MPLog.d(LOGTAG, "Cached flags fingerprint mismatch; ignoring cache.");
+      String storedDistinctId = blob.optString(CACHE_FIELD_DISTINCT_ID, null);
+      if (!currentDistinctId.equals(storedDistinctId)) {
+        MPLog.d(LOGTAG, "Cached flags belong to a different distinct_id; ignoring cache.");
         return null;
       }
       long cachedAt = blob.optLong(CACHE_FIELD_CACHED_AT, 0L);
@@ -1272,18 +1276,24 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   /**
-   * Writes the given /flags/ response to disk under the current fingerprint, wrapped in the
-   * version + cachedAt + fingerprint envelope. No-op (logs) on write failure.
+   * Writes the given /flags/ response to disk under the current distinct_id, wrapped in the
+   * cachedAt + distinctId envelope. No-op (logs) on write failure.
    */
   private void writeCacheToDisk(@NonNull JSONObject response) {
     final SharedPreferences prefs = awaitCachePrefs();
     if (prefs == null) {
       return;
     }
+    final FeatureFlagDelegate delegate = mDelegate.get();
+    final String distinctId = delegate == null ? null : delegate.getDistinctId();
+    if (distinctId == null) {
+      // Nothing to key the cache under — don't write a blob the next reader can't validate.
+      return;
+    }
     try {
       JSONObject blob = new JSONObject();
       blob.put(CACHE_FIELD_CACHED_AT, System.currentTimeMillis());
-      blob.put(CACHE_FIELD_FINGERPRINT, currentFingerprint());
+      blob.put(CACHE_FIELD_DISTINCT_ID, distinctId);
       blob.put(CACHE_FIELD_RESPONSE, response);
       prefs.edit().putString(CACHE_BLOB_KEY, blob.toString()).apply();
     } catch (Exception e) {
@@ -1342,32 +1352,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
   }
 
-  /**
-   * Returns SHA-256(distinctId + "|" + customContext.toString()), used to validate that
-   * cached variants belong to the current user/context combination. device_id is
-   * intentionally excluded — it only changes on fresh install or reset(), both of which
-   * already invalidate the cache through other paths.
-   */
-  @NonNull
-  private String currentFingerprint() {
-    final FeatureFlagDelegate delegate = mDelegate.get();
-    final String distinctId = delegate != null ? delegate.getDistinctId() : "";
-    final String contextString = mCustomContext != null ? mCustomContext.toString() : "";
-    final String input = (distinctId == null ? "" : distinctId) + "|" + contextString;
-    try {
-      MessageDigest md = MessageDigest.getInstance("SHA-256");
-      byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
-      StringBuilder hex = new StringBuilder(digest.length * 2);
-      for (byte b : digest) {
-        hex.append(String.format("%02x", b));
-      }
-      return hex.toString();
-    } catch (NoSuchAlgorithmException e) {
-      // SHA-256 is required by every JVM; this is unreachable in practice.
-      MPLog.e(LOGTAG, "SHA-256 unavailable; falling back to raw fingerprint", e);
-      return input;
-    }
-  }
 
   /**
    * Returns a new map whose values are copies of the input variants stamped with the given
