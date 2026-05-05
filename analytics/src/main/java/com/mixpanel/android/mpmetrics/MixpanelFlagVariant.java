@@ -13,14 +13,19 @@ public class MixpanelFlagVariant {
     /**
      * Identifies where a served variant came from. {@link Network} for a fresh
      * /flags/ response; {@link Persistence} for one loaded from the on-disk
-     * persistence layer. Populated only when the SDK actually serves a variant —
-     * developer-supplied fallbacks have a {@code null} source.
+     * persistence layer; {@link Fallback} for the developer-supplied fallback the
+     * SDK returned because no real variant was available.
+     *
+     * <p>Variants the SDK returns from {@link MixpanelAPI.Flags#getVariant} or
+     * {@link MixpanelAPI.Flags#getVariantSync} always carry a non-null {@code source}.
+     * Variants the developer constructs themselves (to pass in as a fallback) have a
+     * {@code null} source until the SDK stamps them on return.
      *
      * <p>This is a Java 8-compatible discriminated union (no {@code sealed}
      * keyword) so that variant-specific data — namely the {@code persistedAtMillis}
      * timestamp on {@link Persistence} — is bundled with the variant rather than
      * floating as a separate nullable field on {@link MixpanelFlagVariant}.
-     * Construct via {@link #network()} / {@link #persistence(long)}.
+     * Construct via {@link #network()} / {@link #persistence(long)} / {@link #fallback()}.
      */
     public abstract static class Source {
         Source() {}
@@ -42,6 +47,12 @@ public class MixpanelFlagVariant {
             return new Persistence(persistedAtMillis);
         }
 
+        /** Singleton {@link Fallback} instance — every call returns the same one. */
+        @NonNull
+        public static Fallback fallback() {
+            return Fallback.INSTANCE;
+        }
+
         /** Variant assigned by the most recent successful /flags/ network call. */
         public static final class Network extends Source {
             // Held inside the subclass so the outer class's <clinit> does not reference it,
@@ -59,6 +70,19 @@ public class MixpanelFlagVariant {
             Persistence(long persistedAtMillis) {
                 this.persistedAtMillis = persistedAtMillis;
             }
+        }
+
+        /**
+         * Developer-supplied fallback returned by the SDK because no flag was found, the
+         * lookup happened before flags were ready, or a fetch failed without a usable
+         * persisted blob to fall back to.
+         */
+        public static final class Fallback extends Source {
+            // Held inside the subclass so the outer class's <clinit> does not reference it,
+            // sidestepping the "subclass referenced from superclass initializer" deadlock pattern.
+            static final Fallback INSTANCE = new Fallback();
+
+            Fallback() {}
         }
     }
 
@@ -96,14 +120,18 @@ public class MixpanelFlagVariant {
     public final Boolean isQATester;
 
     /**
-     * Where this variant was sourced from. {@code null} on developer-supplied
-     * fallback instances; {@link Source.Network} or {@link Source.Persistence} when
-     * the SDK serves a variant. For persisted variants, the persistence timestamp lives
-     * on the {@link Source.Persistence} instance itself rather than as a separate
-     * field — this makes invalid combinations like NETWORK + non-null timestamp
-     * impossible to construct.
+     * Where this variant came from.
+     * <ul>
+     *   <li>{@link Source.Network} — assigned by the most recent successful /flags/ response.</li>
+     *   <li>{@link Source.Persistence} — loaded from the on-disk persistence layer
+     *       (the persistence timestamp lives on the {@link Source.Persistence} instance).</li>
+     *   <li>{@link Source.Fallback} — the developer-supplied fallback. This is the default
+     *       on every instance the developer constructs, since the only reason to build one
+     *       directly is to pass it as a fallback to {@link MixpanelAPI.Flags#getVariant} or
+     *       {@link MixpanelAPI.Flags#getVariantSync}.</li>
+     * </ul>
      */
-    @Nullable
+    @NonNull
     public final Source source;
 
     /**
@@ -119,7 +147,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = null;
+        this.source = Source.fallback();
     }
 
     /**
@@ -138,7 +166,7 @@ public class MixpanelFlagVariant {
         this.experimentID = experimentID;
         this.isExperimentActive = isExperimentActive;
         this.isQATester = isQATester;
-        this.source = null;
+        this.source = Source.fallback();
     }
 
     /**
@@ -151,7 +179,7 @@ public class MixpanelFlagVariant {
             @Nullable String experimentID,
             @Nullable Boolean isExperimentActive,
             @Nullable Boolean isQATester,
-            @Nullable Source source) {
+            @NonNull Source source) {
         this.key = key;
         this.value = value;
         this.experimentID = experimentID;
@@ -189,7 +217,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = null;
+        this.source = Source.fallback();
     }
 
     /**
@@ -207,7 +235,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = null;
+        this.source = Source.fallback();
     }
 
     /**
@@ -221,6 +249,6 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = null;
+        this.source = Source.fallback();
     }
 }
