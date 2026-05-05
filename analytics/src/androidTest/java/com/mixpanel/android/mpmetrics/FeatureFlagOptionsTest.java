@@ -78,15 +78,15 @@ public class FeatureFlagOptionsTest {
   }
 
   @Test
-  public void testFlagLookup_PersistenceFirstPreservesTtl() {
+  public void testFlagLookup_PersistenceUntilNetworkSuccessPreservesTtl() {
     long ttl = TimeUnit.HOURS.toMillis(24);
     FeatureFlagOptions options = new FeatureFlagOptions.Builder()
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(ttl))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(ttl))
         .build();
 
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
-    assertTrue(lookup instanceof VariantLookupPolicy.PersistenceFirst);
-    assertEquals(ttl, ((VariantLookupPolicy.PersistenceFirst) lookup).ttlMillis);
+    assertTrue(lookup instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess);
+    assertEquals(ttl, ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) lookup).ttlMillis);
   }
 
   @Test

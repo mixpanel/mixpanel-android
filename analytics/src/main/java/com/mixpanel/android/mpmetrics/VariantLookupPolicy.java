@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
  *       wait for the network call. This is the default and matches behavior prior to the
  *       introduction of variant persistence. Construction also wipes any stale on-disk blob
  *       left over from a prior persisting configuration.</li>
- *   <li>{@link PersistenceFirst} - serve persisted variants immediately when available, and
+ *   <li>{@link PersistenceUntilNetworkSuccess} - serve persisted variants immediately when available, and
  *       only block on the network if no persisted variants exist for the current user. The
  *       network call still runs in the background to refresh. Persisted entries older than
  *       {@code ttlMillis} are not served.</li>
@@ -24,7 +24,7 @@ import androidx.annotation.NonNull;
  * <p>Construct instances via the static factories rather than {@code new}:
  * <pre>{@code
  * VariantLookupPolicy.networkOnly()
- * VariantLookupPolicy.persistenceFirst(TimeUnit.HOURS.toMillis(24))
+ * VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(24))
  * VariantLookupPolicy.networkFirst(TimeUnit.HOURS.toMillis(24))
  * }</pre>
  *
@@ -37,7 +37,7 @@ import androidx.annotation.NonNull;
 public abstract class VariantLookupPolicy {
 
     /**
-     * Default persistence TTL applied by {@link #persistenceFirst()} and {@link #networkFirst()}
+     * Default persistence TTL applied by {@link #persistenceUntilNetworkSuccess()} and {@link #networkFirst()}
      * when no explicit TTL is provided. 24 hours.
      */
     public static final long DEFAULT_PERSISTENCE_TTL_MILLIS = 24L * 60 * 60 * 1000;
@@ -54,22 +54,22 @@ public abstract class VariantLookupPolicy {
     }
 
     /**
-     * Returns a {@link PersistenceFirst} strategy with the {@link #DEFAULT_PERSISTENCE_TTL_MILLIS}.
+     * Returns a {@link PersistenceUntilNetworkSuccess} strategy with the {@link #DEFAULT_PERSISTENCE_TTL_MILLIS}.
      */
     @NonNull
-    public static PersistenceFirst persistenceFirst() {
-        return persistenceFirst(DEFAULT_PERSISTENCE_TTL_MILLIS);
+    public static PersistenceUntilNetworkSuccess persistenceUntilNetworkSuccess() {
+        return persistenceUntilNetworkSuccess(DEFAULT_PERSISTENCE_TTL_MILLIS);
     }
 
     /**
-     * Returns a {@link PersistenceFirst} strategy with the given persistence TTL.
+     * Returns a {@link PersistenceUntilNetworkSuccess} strategy with the given persistence TTL.
      *
      * @param ttlMillis maximum age, in milliseconds, of a persisted variant set before it is
      *                  not served. Non-positive values effectively disable expiry.
      */
     @NonNull
-    public static PersistenceFirst persistenceFirst(long ttlMillis) {
-        return new PersistenceFirst(ttlMillis);
+    public static PersistenceUntilNetworkSuccess persistenceUntilNetworkSuccess(long ttlMillis) {
+        return new PersistenceUntilNetworkSuccess(ttlMillis);
     }
 
     /**
@@ -107,10 +107,10 @@ public abstract class VariantLookupPolicy {
      * Strategy that serves persisted variants immediately when available and only waits on
      * the network when no persisted entry exists.
      */
-    public static final class PersistenceFirst extends VariantLookupPolicy {
+    public static final class PersistenceUntilNetworkSuccess extends VariantLookupPolicy {
         public final long ttlMillis;
 
-        PersistenceFirst(long ttlMillis) {
+        PersistenceUntilNetworkSuccess(long ttlMillis) {
             this.ttlMillis = ttlMillis;
         }
     }

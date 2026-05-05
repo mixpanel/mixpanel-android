@@ -62,7 +62,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private volatile Map<String, MixpanelFlagVariant> mFlags = null;
   // True when mFlags was populated from the on-disk persistence and we have not yet seen the
   // initial network response for the current user/context. Only set for NetworkFirst —
-  // PersistenceFirst serves persisted values immediately. Async lookups gate on this to honor the
+  // PersistenceUntilNetworkSuccess serves persisted values immediately. Async lookups gate on this to honor the
   // NetworkFirst spec ("await on network call, only serve persisted values if it fails")
   // while still letting sync lookups + areFlagsReady() see the persisted values.
   private volatile boolean mAwaitingInitialNetworkResponse = false;
@@ -158,7 +158,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     // Initialize persistence state on the handler thread so SharedPreferences I/O does not block
     // the caller (typically the main thread during MixpanelAPI construction).
-    //  - Persistence policies (PersistenceFirst / NetworkFirst): load the persisted blob into mFlags.
+    //  - Persistence policies (PersistenceUntilNetworkSuccess / NetworkFirst): load the persisted blob into mFlags.
     //  - NetworkOnly: wipe any stale persistence blob left over from a prior policy configuration.
     if (mPersistencePrefs != null) {
       if (isPersistencePolicy()) {
@@ -171,7 +171,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Returns {@code true} when the configured policy reads/writes the on-disk persistence
-   * (PersistenceFirst or NetworkFirst). NetworkOnly returns {@code false}.
+   * (PersistenceUntilNetworkSuccess or NetworkFirst). NetworkOnly returns {@code false}.
    */
   private boolean isPersistencePolicy() {
     return !(mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
@@ -1295,7 +1295,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Loads the persisted /flags/ response from storage and parses it into mFlags +
-   * mPendingFirstTimeEvents. Both PersistenceFirst and NetworkFirst populate mFlags directly so
+   * mPendingFirstTimeEvents. Both PersistenceUntilNetworkSuccess and NetworkFirst populate mFlags directly so
    * that sync lookups and {@link #areFlagsReady()} reflect the persisted blob. The difference
    * between policies is enforced at async-lookup time via {@link #mAwaitingInitialNetworkResponse}:
    * NetworkFirst sets it true so async lookups await the network call before serving, per the ERD.
@@ -1430,8 +1430,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    */
   private long persistenceTtlMillis() {
     VariantLookupPolicy policy = mFlagsConfig.variantLookupPolicy;
-    if (policy instanceof VariantLookupPolicy.PersistenceFirst) {
-      return ((VariantLookupPolicy.PersistenceFirst) policy).ttlMillis;
+    if (policy instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess) {
+      return ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) policy).ttlMillis;
     }
     if (policy instanceof VariantLookupPolicy.NetworkFirst) {
       return ((VariantLookupPolicy.NetworkFirst) policy).ttlMillis;

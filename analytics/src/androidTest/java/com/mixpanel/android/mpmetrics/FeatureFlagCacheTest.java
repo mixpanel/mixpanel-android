@@ -41,7 +41,7 @@ import org.junit.runner.RunWith;
 @LargeTest
 public class FeatureFlagCacheTest {
 
-  private static final String TOKEN_PERSISTENCE_FIRST = "TestPersistence_PersistenceFirst";
+  private static final String TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS = "TestPersistence_PersistenceUntilNetworkSuccess";
   private static final String TOKEN_RESET = "TestPersistence_Reset";
   private static final String TOKEN_NETWORK_ONLY_STALE = "TestPersistence_NetworkOnlyStale";
   private static final String TOKEN_TTL_LOOKUP = "TestPersistence_TtlLookup";
@@ -62,7 +62,7 @@ public class FeatureFlagCacheTest {
     mMockReferrerPrefs = new TestUtils.EmptyPreferences(
         InstrumentationRegistry.getInstrumentation().getContext());
     // Wipe the stored prefs files this test class uses so prior runs don't leak in.
-    storedPrefs(TOKEN_PERSISTENCE_FIRST).edit().clear().commit();
+    storedPrefs(TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS).edit().clear().commit();
     storedPrefs(TOKEN_RESET).edit().clear().commit();
     storedPrefs(TOKEN_NETWORK_ONLY_STALE).edit().clear().commit();
     storedPrefs(TOKEN_TTL_LOOKUP).edit().clear().commit();
@@ -72,18 +72,18 @@ public class FeatureFlagCacheTest {
   }
 
   // -----------------------------------------------------------------------
-  // PersistenceFirst serves persisted variants without a network call
+  // PersistenceUntilNetworkSuccess serves persisted variants without a network call
   // -----------------------------------------------------------------------
 
   @Test
-  public void testPersistenceFirst_ServesPersistedVariantWithoutNetwork() throws Exception {
+  public void testPersistenceUntilNetworkSuccess_ServesPersistedVariantWithoutNetwork() throws Exception {
     // Arrange: seed the stored-prefs file with a blob keyed to the SDK's distinct_id.
-    seedPersistedResponse(TOKEN_PERSISTENCE_FIRST, /*distinctId*/ TOKEN_PERSISTENCE_FIRST);
+    seedPersistedResponse(TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS, /*distinctId*/ TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS);
 
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .prefetchFlags(false)  // Don't race the persistence load with a network fetch.
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(TimeUnit.HOURS.toMillis(24)))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(24)))
         .build();
     MixpanelOptions opts = new MixpanelOptions.Builder()
         .featureFlagOptions(flagOptions)
@@ -91,7 +91,7 @@ public class FeatureFlagCacheTest {
 
     final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
     MixpanelAPI mixpanel = newMixpanel(
-        TOKEN_PERSISTENCE_FIRST, opts, new CountingHangingHttpService(flagsHttpCallCount));
+        TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS, opts, new CountingHangingHttpService(flagsHttpCallCount));
 
     // Act: ask asynchronously so the lookup queues behind the persistence-load Runnable
     // on the FF handler — both run on the same thread, FIFO.
@@ -118,7 +118,7 @@ public class FeatureFlagCacheTest {
         "persistedAtMillis should be set",
         ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis > 0);
     assertEquals(
-        "No network call should fire when PersistenceFirst can satisfy the lookup",
+        "No network call should fire when PersistenceUntilNetworkSuccess can satisfy the lookup",
         0, flagsHttpCallCount.get());
   }
 
@@ -128,13 +128,13 @@ public class FeatureFlagCacheTest {
 
   @Test
   public void testReset_ClearsPersistedVariants() throws Exception {
-    // Arrange: seed persistence + create PersistenceFirst-configured SDK.
+    // Arrange: seed persistence + create PersistenceUntilNetworkSuccess-configured SDK.
     seedPersistedResponse(TOKEN_RESET, /*distinctId*/ TOKEN_RESET);
 
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .prefetchFlags(false)
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(TimeUnit.HOURS.toMillis(24)))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(24)))
         .build();
     MixpanelOptions opts = new MixpanelOptions.Builder()
         .featureFlagOptions(flagOptions)
@@ -176,7 +176,7 @@ public class FeatureFlagCacheTest {
   @Test
   public void testNetworkOnly_OnInitClearsStalePersistedBlob() throws Exception {
     // Arrange: a stale persisted blob exists on disk (e.g., from a prior release that used
-    // PersistenceFirst). The customer has now reconfigured to NetworkOnly.
+    // PersistenceUntilNetworkSuccess). The customer has now reconfigured to NetworkOnly.
     seedPersistedResponse(TOKEN_NETWORK_ONLY_STALE, /*distinctId*/ TOKEN_NETWORK_ONLY_STALE);
     assertNotNull(
         "Sanity: blob should exist before construction",
@@ -219,7 +219,7 @@ public class FeatureFlagCacheTest {
 
   @Test
   public void testGetVariant_DoesNotServeExpiredPersistenceButLeavesBlobOnDisk() throws Exception {
-    // Arrange: seed persistence with persistedAt=now. Configure PersistenceFirst with a short
+    // Arrange: seed persistence with persistedAt=now. Configure PersistenceUntilNetworkSuccess with a short
     // TTL so the persisted values are valid at init-time load but expire shortly thereafter.
     seedPersistedResponse(TOKEN_TTL_LOOKUP, /*distinctId*/ TOKEN_TTL_LOOKUP);
 
@@ -227,7 +227,7 @@ public class FeatureFlagCacheTest {
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .prefetchFlags(false)
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(shortTtlMs))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(shortTtlMs))
         .build();
     MixpanelOptions opts = new MixpanelOptions.Builder()
         .featureFlagOptions(flagOptions)
@@ -265,14 +265,14 @@ public class FeatureFlagCacheTest {
   }
 
   // -----------------------------------------------------------------------
-  // Async getVariant under PersistenceFirst: when the persisted snapshot loaded
+  // Async getVariant under PersistenceUntilNetworkSuccess: when the persisted snapshot loaded
   // at init has since expired, the lookup falls through to a network fetch and
   // returns its result instead of bailing to the developer fallback.
   // -----------------------------------------------------------------------
 
   @Test
   public void testGetVariantAsync_AwaitsFetchWhenPersistedSnapshotIsExpired() throws Exception {
-    // Arrange: seed persistence with persistedAt=now. Configure PersistenceFirst with a short
+    // Arrange: seed persistence with persistedAt=now. Configure PersistenceUntilNetworkSuccess with a short
     // TTL so the persisted values load at init but expire shortly after.
     seedPersistedResponse(TOKEN_TTL_AWAIT_FETCH, /*distinctId*/ TOKEN_TTL_AWAIT_FETCH);
 
@@ -280,7 +280,7 @@ public class FeatureFlagCacheTest {
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .prefetchFlags(false)
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(shortTtlMs))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(shortTtlMs))
         .build();
     MixpanelOptions opts = new MixpanelOptions.Builder()
         .featureFlagOptions(flagOptions)
@@ -335,13 +335,13 @@ public class FeatureFlagCacheTest {
 
   @Test
   public void testOptOutTracking_ClearsPersistedVariants() throws Exception {
-    // Arrange: seed persistence + create PersistenceFirst-configured SDK.
+    // Arrange: seed persistence + create PersistenceUntilNetworkSuccess-configured SDK.
     seedPersistedResponse(TOKEN_OPT_OUT, /*distinctId*/ TOKEN_OPT_OUT);
 
     FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
         .enabled(true)
         .prefetchFlags(false)
-        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(TimeUnit.HOURS.toMillis(24)))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(24)))
         .build();
     MixpanelOptions opts = new MixpanelOptions.Builder()
         .featureFlagOptions(flagOptions)

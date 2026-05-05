@@ -1963,7 +1963,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * <p><b>Note:</b> "in memory" includes variants restored from the on-disk persistence
          * layer, not just freshly fetched ones. When
          * {@link FeatureFlagOptions.Builder#variantLookupPolicy(VariantLookupPolicy)} is set to
-         * a persistence policy ({@link VariantLookupPolicy#persistenceFirst()} or
+         * a persistence policy ({@link VariantLookupPolicy#persistenceUntilNetworkSuccess()} or
          * {@link VariantLookupPolicy#networkFirst()}), this method may return {@code true}
          * before the SDK has spoken to the network this session — the returned variants could
          * be stale data from a previous session. Use the {@code source} field on the served

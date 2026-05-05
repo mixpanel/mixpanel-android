@@ -17,7 +17,7 @@ import org.json.JSONObject;
  *     .enabled(true)
  *     .context(new JSONObject().put("plan", "enterprise"))
  *     .prefetchFlags(true)
- *     .variantLookupPolicy(VariantLookupPolicy.persistenceFirst())
+ *     .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess())
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
@@ -85,7 +85,7 @@ public class FeatureFlagOptions {
      * Returns the strategy used to resolve flag variants relative to the
      * on-disk persistence layer and the network. Determines whether the SDK reads and writes
      * persisted variants: {@link VariantLookupPolicy#networkOnly()} disables both;
-     * {@link VariantLookupPolicy#persistenceFirst()} and
+     * {@link VariantLookupPolicy#persistenceUntilNetworkSuccess()} and
      * {@link VariantLookupPolicy#networkFirst()} enable both.
      *
      * @return the configured {@link VariantLookupPolicy}; defaults to
