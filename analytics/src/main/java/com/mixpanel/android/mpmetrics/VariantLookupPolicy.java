@@ -36,6 +36,12 @@ import androidx.annotation.NonNull;
  */
 public abstract class VariantLookupPolicy {
 
+    /**
+     * Default cache TTL applied by {@link #cacheFirst()} and {@link #networkFirst()} when
+     * no explicit TTL is provided. One hour.
+     */
+    public static final long DEFAULT_CACHE_TTL_MILLIS = 60L * 60 * 1000;
+
     VariantLookupPolicy() {}
 
     /**
@@ -48,6 +54,14 @@ public abstract class VariantLookupPolicy {
     }
 
     /**
+     * Returns a {@link CacheFirst} strategy with the {@link #DEFAULT_CACHE_TTL_MILLIS}.
+     */
+    @NonNull
+    public static CacheFirst cacheFirst() {
+        return cacheFirst(DEFAULT_CACHE_TTL_MILLIS);
+    }
+
+    /**
      * Returns a {@link CacheFirst} strategy with the given cache TTL.
      *
      * @param cacheTtlMillis maximum age, in milliseconds, of a cached variant
@@ -57,6 +71,14 @@ public abstract class VariantLookupPolicy {
     @NonNull
     public static CacheFirst cacheFirst(long cacheTtlMillis) {
         return new CacheFirst(cacheTtlMillis);
+    }
+
+    /**
+     * Returns a {@link NetworkFirst} strategy with the {@link #DEFAULT_CACHE_TTL_MILLIS}.
+     */
+    @NonNull
+    public static NetworkFirst networkFirst() {
+        return networkFirst(DEFAULT_CACHE_TTL_MILLIS);
     }
 
     /**
