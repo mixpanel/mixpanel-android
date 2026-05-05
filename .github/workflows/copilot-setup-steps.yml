@@ -57,6 +57,8 @@ jobs:
             build
             analytics/build
             analytics/mixpaneldemo/build
+            session-replay/build
+            session-replay/sessionreplaydemo/build
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -85,6 +87,8 @@ jobs:
         run: |
           ./gradlew :analytics:dependencies --no-daemon
           ./gradlew :analytics:mixpaneldemo:dependencies --no-daemon
+          ./gradlew :session-replay:dependencies --no-daemon
+          ./gradlew :session-replay:sessionreplaydemo:dependencies --no-daemon
       
       # Run a quick build to verify everything is set up correctly
       # This catches any configuration issues early
@@ -127,6 +131,8 @@ jobs:
         run: |
           ./gradlew :analytics:compileDebugAndroidTestSources --no-daemon
           ./gradlew :analytics:mixpaneldemo:compileDebugAndroidTestSources --no-daemon
+          ./gradlew :session-replay:compileDebugAndroidTestSources --no-daemon
+          ./gradlew :session-replay:sessionreplaydemo:compileDebugAndroidTestSources --no-daemon
       
       # Print environment information for debugging
       # Helpful for troubleshooting setup issues
