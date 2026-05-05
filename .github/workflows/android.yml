@@ -29,27 +29,14 @@ jobs:
         arch: x86_64
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
         script: ./gradlew :analytics:createDebugCoverageReport
-    - name: Run Session Replay instrumentation tests
-      uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a  # v2
-      with:
-        api-level: 34
-        arch: x86_64
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-        script: ./gradlew :session-replay:connectedDebugAndroidTest
     - name: Run OpenFeature Provider tests
       run: ./gradlew :openfeature-provider:test
     - name: Run Common module tests
       run: ./gradlew :common:test
-    - name: Run Session Replay unit tests
-      run: ./gradlew :session-replay:test
     - name: Run Common ktlint check
       run: ./gradlew :common:ktlintCheck
-    - name: Run Session Replay ktlint check
-      run: ./gradlew :session-replay:ktlintCheck
     - name: Lint
       run:  ./gradlew :analytics:lint
-    - name: Run Session Replay lint
-      run: ./gradlew :session-replay:lint
     - name: Upload test report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       if: always()
@@ -74,30 +61,6 @@ jobs:
       with:
         name: Common ktlint Report
         path: common/build/reports/ktlint/
-    - name: Upload Session Replay test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-      if: always()
-      with:
-        name: Session Replay Unit Test Report
-        path: session-replay/build/reports/tests/
-    - name: Upload Session Replay ktlint report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-      if: always()
-      with:
-        name: Session Replay ktlint Report
-        path: session-replay/build/reports/ktlint/
-    - name: Upload Session Replay lint report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-      if: always()
-      with:
-        name: Session Replay Lint Report
-        path: session-replay/build/reports/lint-results-*.*
-    - name: Upload Session Replay instrumentation test report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-      if: always()
-      with:
-        name: Session Replay Instrumentation Test Report
-        path: session-replay/build/reports/androidTests/connected
     - name: Upload test coverage report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       with:

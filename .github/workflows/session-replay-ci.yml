@@ -1,0 +1,280 @@
+name: Session Replay CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'session-replay/**'
+      - '.github/workflows/session-replay-ci.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'session-replay/**'
+      - '.github/workflows/session-replay-ci.yml'
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
+
+      - name: Run ktlint
+        run: ./gradlew :session-replay:ktlintCheck --stacktrace
+
+      - name: Run lint
+        run: ./gradlew :session-replay:lint --stacktrace
+
+      - name: Upload lint reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: lint-reports
+          path: |
+            **/build/reports/lint-results-*.html
+            **/build/reports/lint-results-*.xml
+            **/build/reports/ktlint/**/*.html
+            **/build/reports/ktlint/**/*.xml
+
+      - name: Publish Lint Results
+        uses: yutailang0119/action-android-lint@8345a8dece583030445b0b5f9611209431d601c4  # v5.0.0
+        if: always()
+        with:
+          report-path: '**/build/reports/lint-results-*.xml'
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
+
+      - name: Run session replay unit tests
+        run: ./gradlew :session-replay:test --stacktrace
+
+      - name: Upload unit test reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: unit-test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+
+      - name: Generate test report
+        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc  # v1
+        if: always()
+        with:
+          name: Unit Test Results
+          path: '**/build/test-results/test*/TEST-*.xml'
+          reporter: java-junit
+
+  instrumentation-tests:
+    name: Instrumentation Tests (API ${{ matrix.api-level }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 21
+            target: default
+            arch: x86
+            profile: Nexus 6
+            name: "Android 5.0 (Lollipop)"
+          - api-level: 30
+            target: google_apis
+            arch: x86_64
+            profile: pixel_6
+            name: "Android 11"
+          - api-level: 34
+            target: google_apis
+            arch: x86_64
+            profile: pixel_6
+            name: "Android 14 (Latest)"
+
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
+
+      - name: AVD cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}-${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.profile }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a  # v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          profile: ${{ matrix.profile }}
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel on
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a  # v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          profile: ${{ matrix.profile }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel on
+          disable-animations: true
+          script: |
+            echo "Running instrumentation tests on ${{ matrix.name }} (API ${{ matrix.api-level }})"
+
+            # Run session replay instrumentation tests
+            ./gradlew :session-replay:connectedDebugAndroidTest --stacktrace
+
+            # Run API compatibility tests on all API levels
+            echo "Running API compatibility tests on API ${{ matrix.api-level }}"
+            ./gradlew :session-replay:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.sessionreplay.APICompatibilityTest --stacktrace
+
+            # Run sensitive view manager tests on all API levels
+            echo "Running sensitive view manager tests"
+            ./gradlew :session-replay:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.mixpanel.android.sessionreplay.sensitive_views.SensitiveViewManagerTest --stacktrace
+
+            # Kill crashpad_handler processes to prevent hanging
+            killall -INT crashpad_handler || true
+
+      - name: Upload instrumentation test reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: instrumentation-test-reports-api-${{ matrix.api-level }}
+          path: |
+            **/build/reports/androidTests/
+            **/build/outputs/androidTest-results/
+
+  build:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    needs: [lint]  # Only depend on lint, not tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4
+
+      - name: Build APKs
+        run: ./gradlew :session-replay:sessionreplaydemo:assembleDebug :session-replay:sessionreplaydemo:assembleRelease --stacktrace
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: apks
+          path: |
+            session-replay/sessionreplaydemo/build/outputs/apk/debug/*.apk
+            session-replay/sessionreplaydemo/build/outputs/apk/release/*.apk
+
+  test-results:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, instrumentation-tests]
+    if: always() && github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Download all test reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          path: test-reports
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040  # v2
+        if: always()
+        with:
+          files: |
+            test-reports/**/TEST-*.xml
+            test-reports/**/test-results/**/*.xml
+            test-reports/**/androidTest-results/**/*.xml
+          check_name: Test Results
+          comment_mode: always
