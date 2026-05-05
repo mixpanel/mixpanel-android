@@ -33,7 +33,6 @@ class MyApplication : Application() {
 ## Requirements
 
 - Android SDK 21+
-- Mixpanel Android SDK 8.6.0+
 
 ## License
 
