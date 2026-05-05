@@ -52,6 +52,7 @@ object SessionReplayEncoder {
             val jsonString = json.encodeToString(allEvents)
             jsonString
         } catch (e: Exception) {
+            println("Error serializing JSON: ${e.message}")
             Logger.error("Failed to encode/save JSON: ${e.message}")
             null
         }
