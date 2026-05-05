@@ -1,5 +1,6 @@
 package com.mixpanel.android.sessionreplay.utils
 
+import com.mixpanel.android.sessionreplay.BuildConfig
 import com.mixpanel.android.sessionreplay.logging.Logger
 
 object APIConstants {
@@ -8,7 +9,6 @@ object APIConstants {
     const val MIN_RETRY_BACKOFF = 60.0
     const val MAX_RETRY_BACKOFF = 600.0
     const val FAILURES_TILL_BACKOFF = 2
-    private const val LIB_VERSION = "1.2.0"
     private const val MP_LIB = "android-sr"
 
     // Override mechanism for library version and mp_lib
@@ -20,7 +20,7 @@ object APIConstants {
 
     @JvmStatic
     val currentLibVersion: String
-        get() = overriddenLibVersion ?: LIB_VERSION
+        get() = overriddenLibVersion ?: BuildConfig.VERSION_NAME
 
     @JvmStatic
     fun setLibVersion(version: String) {
