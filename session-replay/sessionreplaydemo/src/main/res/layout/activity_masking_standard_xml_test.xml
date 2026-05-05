@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:id="@+id/pageHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Masking Standard Tests (XML)"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="To see expected results, configure app with Image-only auto-masking."
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 1: Sensitive Container -->
+        <!-- MixpanelMask wrapping a container with text, image, and input -->
+        <!-- Expected: All leaf children individually masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario1Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1. Sensitive Container"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSensitiveView(container) - All children should be masked"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/sensitiveContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#FFEBEE"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Name: Tyler"
+                android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_launcher_foreground"
+                android:contentDescription="Profile image"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Email"
+                android:text="tyler@example.com"
+                android:inputType="textEmailAddress"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 2: Insensitive Container -->
+        <!-- MixpanelUnmask wrapping a container - overrides auto-masking -->
+        <!-- Expected: Text+Image NOT masked, EditText ALWAYS masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario2Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="2. Insensitive Container"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSafeView(container) - Text/Image NOT masked, EditText ALWAYS masked"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/insensitiveContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#E8F5E9"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Public label"
+                android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_launcher_foreground"
+                    android:contentDescription="Profile image" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Visible caption"
+                    android:textSize="14sp"
+                    android:layout_marginStart="8dp"
+                    android:layout_gravity="center_vertical" />
+            </LinearLayout>
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Password"
+                android:text="password123"
+                android:inputType="textPassword"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 3: Sensitive Container with Overflow -->
+        <!-- MixpanelMask on a container with clipChildren=false -->
+        <!-- A child is positioned outside parent bounds -->
+        <!-- Overflow child is NOT currently masked — auto-mask rules may apply. -->
+        <!-- May change to align across platforms. -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario3Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="3. Sensitive Container with Overflow"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSensitiveView(container) + clipChildren=false - Overflow Image IS masked (auto-mask), Text is NOT masked. May change to align across platforms."
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:clipChildren="false"
+            android:layout_marginBottom="16dp">
+
+            <FrameLayout
+                android:id="@+id/sensitiveOverflowContainer"
+                android:layout_width="150dp"
+                android:layout_height="80dp"
+                android:clipChildren="false"
+                android:background="#2196F3">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Inside"
+                    android:textColor="#FFFFFF"
+                    android:layout_gravity="center"
+                    android:textSize="14sp" />
+
+                <FrameLayout
+                    android:layout_width="130dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="150dp"
+                    android:layout_marginTop="15dp"
+                    android:background="#F44336">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Outside"
+                        android:textColor="#FFFFFF"
+                        android:layout_gravity="center"
+                        android:textSize="14sp" />
+                </FrameLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 4: MixpanelMask + MixpanelUnmask -->
+        <!-- Outer: addSensitiveView, Inner child: addSafeView -->
+        <!-- Expected: Header masked, Public note UNmasked, Footer masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario4Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="4. MixpanelMask + MixpanelUnmask"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSensitiveView(outer) + addSafeView(inner) - Inner child should be UNmasked"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/maskWithInnerUnmaskContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#FFEBEE"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Header (masked)"
+                android:textSize="14sp"
+                android:padding="6dp" />
+
+            <LinearLayout
+                android:id="@+id/innerUnmaskContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#E8F5E9"
+                android:padding="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Public note (unmask inside mask)"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Footer (masked)"
+                android:textSize="14sp"
+                android:padding="6dp" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 5: MixpanelMask + MixpanelUnmask with Overflow -->
+        <!-- MixpanelMask container with MixpanelUnmask child that -->
+        <!-- overflows outside the mask's bounds. -->
+        <!-- Overflow child is NOT currently masked — auto-mask rules may apply. -->
+        <!-- May change to align across platforms. -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario5Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="5. MixpanelMask + MixpanelUnmask with Overflow"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSensitiveView(outer) + addSafeView(overflow child) - Overflow Image IS masked (auto-mask), Text is NOT masked. May change to align across platforms."
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:clipChildren="false"
+            android:layout_marginBottom="16dp">
+
+            <FrameLayout
+                android:id="@+id/maskWithUnmaskOverflowContainer"
+                android:layout_width="150dp"
+                android:layout_height="80dp"
+                android:clipChildren="false"
+                android:background="#2196F3">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Masked"
+                    android:textColor="#FFFFFF"
+                    android:layout_gravity="center"
+                    android:textSize="14sp" />
+
+                <FrameLayout
+                    android:id="@+id/unmaskOverflowChild"
+                    android:layout_width="130dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="150dp"
+                    android:layout_marginTop="15dp"
+                    android:background="#4CAF50">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Unmasked"
+                        android:textColor="#FFFFFF"
+                        android:layout_gravity="center"
+                        android:textSize="14sp" />
+                </FrameLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 6: MixpanelUnmask + MixpanelMask -->
+        <!-- Outer: addSafeView, Inner child: addSensitiveView -->
+        <!-- Expected: Public text NOT masked, Private text IS masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario6Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="6. MixpanelUnmask + MixpanelMask"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSafeView(outer) + addSensitiveView(inner) - Inner child IS masked"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/unmaskWithInnerMaskContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#E8F5E9"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Public (visible)"
+                android:textSize="14sp"
+                android:padding="6dp" />
+
+            <LinearLayout
+                android:id="@+id/innerMaskContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#FFEBEE"
+                android:padding="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Private (masked)"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 7: MixpanelUnmask + TextEntry -->
+        <!-- Safe container with username/password labels + EditTexts -->
+        <!-- Expected: Labels NOT masked, ALL EditTexts ALWAYS masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario7Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="7. MixpanelUnmask + TextEntry"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="addSafeView(container) - Labels visible, ALL EditTexts ALWAYS masked (security)"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/textFieldSecurityContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#E8F5E9"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Username"
+                android:textSize="14sp"
+                android:padding="6dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="tyler@example.com"
+                android:inputType="textEmailAddress"
+                android:importantForAutofill="no"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Password"
+                android:textSize="14sp"
+                android:padding="6dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="secret123"
+                android:inputType="textPassword"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Scenario 8: Auto-masking (No Explicit Directives) -->
+        <!-- No addSensitiveView/addSafeView - just default auto-masking -->
+        <!-- Expected: Text=masked, Image=masked, EditText=masked -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:id="@+id/scenario8Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="8. Auto-masking (No Explicit Directives)"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Default behavior - Text, Image, EditText all auto-masked"
+                android:textSize="11sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="6dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="#F5F5F5"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hello World"
+                android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_launcher_foreground"
+                android:contentDescription="Auto-masked image"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Search"
+                android:text="search query"
+                android:inputType="text"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+
+        <!-- Bottom padding -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+    </LinearLayout>
+</ScrollView>

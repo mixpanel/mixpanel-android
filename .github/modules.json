@@ -22,5 +22,13 @@
     "readme": "common/README.md",
     "gradle_task_prefix": ":common:",
     "artifact_id": "mixpanel-android-common"
+  },
+  "session-replay": {
+    "tag_prefix": "session-replay-v",
+    "gradle_properties": "session-replay/gradle.properties",
+    "changelog": "session-replay/CHANGELOG.md",
+    "readme": "session-replay/README.md",
+    "gradle_task_prefix": ":session-replay:",
+    "artifact_id": "mixpanel-android-session-replay"
   }
 }
