@@ -47,6 +47,7 @@ public class FeatureFlagCacheTest {
   private static final String TOKEN_TTL_LOOKUP = "TestPersistence_TtlLookup";
   private static final String TOKEN_NETWORK_FIRST_FAIL = "TestPersistence_NetworkFirstFail";
   private static final String TOKEN_OPT_OUT = "TestPersistence_OptOut";
+  private static final String TOKEN_TTL_AWAIT_FETCH = "TestPersistence_TtlAwaitFetch";
   private static final String FLAG_NAME = "persisted-flag";
   private static final String PERSISTED_VARIANT_KEY = "persisted-variant";
   private static final String PERSISTED_VARIANT_VALUE = "persisted-value";
@@ -67,6 +68,7 @@ public class FeatureFlagCacheTest {
     storedPrefs(TOKEN_TTL_LOOKUP).edit().clear().commit();
     storedPrefs(TOKEN_NETWORK_FIRST_FAIL).edit().clear().commit();
     storedPrefs(TOKEN_OPT_OUT).edit().clear().commit();
+    storedPrefs(TOKEN_TTL_AWAIT_FETCH).edit().clear().commit();
   }
 
   // -----------------------------------------------------------------------
@@ -260,6 +262,71 @@ public class FeatureFlagCacheTest {
     assertNotNull(
         "TTL expiry must not clear the on-disk persisted blob",
         storedPrefs(TOKEN_TTL_LOOKUP).getString(BLOB_KEY, null));
+  }
+
+  // -----------------------------------------------------------------------
+  // Async getVariant under PersistenceFirst: when the persisted snapshot loaded
+  // at init has since expired, the lookup falls through to a network fetch and
+  // returns its result instead of bailing to the developer fallback.
+  // -----------------------------------------------------------------------
+
+  @Test
+  public void testGetVariantAsync_AwaitsFetchWhenPersistedSnapshotIsExpired() throws Exception {
+    // Arrange: seed persistence with persistedAt=now. Configure PersistenceFirst with a short
+    // TTL so the persisted values load at init but expire shortly after.
+    seedPersistedResponse(TOKEN_TTL_AWAIT_FETCH, /*distinctId*/ TOKEN_TTL_AWAIT_FETCH);
+
+    final long shortTtlMs = 100L;
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
+        .enabled(true)
+        .prefetchFlags(false)
+        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(shortTtlMs))
+        .build();
+    MixpanelOptions opts = new MixpanelOptions.Builder()
+        .featureFlagOptions(flagOptions)
+        .build();
+
+    final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
+    MixpanelAPI mixpanel = newMixpanel(
+        TOKEN_TTL_AWAIT_FETCH, opts,
+        new CountingHangingHttpService(flagsHttpCallCount));
+
+    // Wait for the init-time persistence load to drain.
+    long deadline = System.currentTimeMillis() + 2_000L;
+    while (System.currentTimeMillis() < deadline && !mixpanel.getFlags().areFlagsReady()) {
+      Thread.sleep(20);
+    }
+    assertTrue(
+        "Sanity: persisted blob should have loaded into mFlags before TTL expired",
+        mixpanel.getFlags().areFlagsReady());
+
+    // Act: sleep past TTL so the in-memory snapshot is now stale, then async-lookup.
+    Thread.sleep(shortTtlMs * 3);
+
+    final CountDownLatch done = new CountDownLatch(1);
+    final AtomicReference<MixpanelFlagVariant> received = new AtomicReference<>();
+    mixpanel.getFlags().getVariant(
+        FLAG_NAME,
+        new MixpanelFlagVariant("dev-fallback-key", "dev-fallback-value"),
+        result -> {
+          received.set(result);
+          done.countDown();
+        });
+
+    // Assert: the lookup awaited a network fetch (CountingHanging returns empty flags, so
+    // post-fetch the lookup returns the developer fallback) and the network was attempted.
+    assertTrue("getVariant callback should fire", done.await(5, TimeUnit.SECONDS));
+    assertEquals(
+        "Expired persisted snapshot must trigger a network fetch on async lookup",
+        1, flagsHttpCallCount.get());
+    MixpanelFlagVariant variant = received.get();
+    assertNotNull(variant);
+    assertEquals(
+        "Network response had no flags so the fallback should be served",
+        "dev-fallback-key", variant.key);
+    assertTrue(
+        "Source should be Fallback when the network returned no matching flag",
+        variant.source instanceof MixpanelFlagVariant.Source.Fallback);
   }
 
   // -----------------------------------------------------------------------
