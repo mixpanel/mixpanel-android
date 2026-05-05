@@ -78,15 +78,15 @@ public class FeatureFlagOptionsTest {
   }
 
   @Test
-  public void testFlagLookup_CacheFirstPreservesTtl() {
+  public void testFlagLookup_PersistenceFirstPreservesTtl() {
     long ttl = TimeUnit.HOURS.toMillis(24);
     FeatureFlagOptions options = new FeatureFlagOptions.Builder()
-        .variantLookupPolicy(VariantLookupPolicy.cacheFirst(ttl))
+        .variantLookupPolicy(VariantLookupPolicy.persistenceFirst(ttl))
         .build();
 
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
-    assertTrue(lookup instanceof VariantLookupPolicy.CacheFirst);
-    assertEquals(ttl, ((VariantLookupPolicy.CacheFirst) lookup).cacheTtlMillis);
+    assertTrue(lookup instanceof VariantLookupPolicy.PersistenceFirst);
+    assertEquals(ttl, ((VariantLookupPolicy.PersistenceFirst) lookup).ttlMillis);
   }
 
   @Test
@@ -98,7 +98,7 @@ public class FeatureFlagOptionsTest {
 
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
     assertTrue("expected NetworkFirst", lookup instanceof VariantLookupPolicy.NetworkFirst);
-    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).cacheTtlMillis);
+    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).ttlMillis);
   }
 
   // -----------------------------------------------------------------------

@@ -233,9 +233,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
         final VariantLookupPolicy variantLookupPolicy = mFeatureFlagOptions.getVariantLookupPolicy();
-        // Always hand the cache prefs to FeatureFlagManager: non-NetworkOnly policies use it to
-        // read/write, and NetworkOnly uses it on init to wipe any stale blob left over from a
-        // prior config. The blob lives in the existing stored prefs file so reset() —
+        // Always hand the persistence prefs to FeatureFlagManager: non-NetworkOnly policies use
+        // it to read/write, and NetworkOnly uses it on init to wipe any stale blob left over
+        // from a prior config. The blob lives in the existing stored prefs file so reset() —
         // PersistentIdentity.clearPreferences() — also wipes it for free.
         final Future<SharedPreferences> flagsCachePrefs = sPrefsLoader.loadPreferences(
                 context,
@@ -1417,7 +1417,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         // identify() above no-ops its loadFlags() branch because reset has already overwritten
         // the stored distinct id, so the new id matches the "current" id and the diff check
-        // short-circuits. Clear feature-flag state explicitly (including any cached variants
+        // short-circuits. Clear feature-flag state explicitly (including any persisted variants
         // from the prior identity) and refetch under the new identity.
         mFeatureFlagManager.reset();
         mInitialFeatureFlagLoad.set(false);
@@ -1456,7 +1456,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         }
         mPersistentIdentity.clearReferrerProperties();
         mPersistentIdentity.setOptOutTracking(true, mToken);
-        // Drop in-memory feature flag state (and any cached variants) so the prior user's
+        // Drop in-memory feature flag state (and any persisted variants) so the prior user's
         // variants can't be served via getVariant after they've opted out.
         mFeatureFlagManager.reset();
     }
@@ -1937,8 +1937,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // --- Public Methods ---
 
         /**
-         * Asynchronously loads flags from the Mixpanel server if they haven't been loaded yet or if the
-         * cached flags have expired. This method will initiate a network request if necessary.
+         * Asynchronously loads flags from the Mixpanel server if they haven't been loaded yet or if
+         * the persisted flags have expired. This method will initiate a network request if necessary.
          * Subsequent calls to get flag values (especially asynchronous ones) may trigger this load if
          * flags are not yet available.
          */
@@ -1960,19 +1960,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * {@link #getVariantSync(String, MixpanelFlagVariant)} to avoid them returning the
          * fallback value immediately.
          *
-         * <p><b>Note:</b> "in memory" includes variants restored from the on-disk cache, not
-         * just freshly fetched ones. When
+         * <p><b>Note:</b> "in memory" includes variants restored from the on-disk persistence
+         * layer, not just freshly fetched ones. When
          * {@link FeatureFlagOptions.Builder#variantLookupPolicy(VariantLookupPolicy)} is set to
-         * a caching policy ({@link VariantLookupPolicy#cacheFirst(long)} or
-         * {@link VariantLookupPolicy#networkFirst(long)}), this method may return {@code true}
+         * a persistence policy ({@link VariantLookupPolicy#persistenceFirst()} or
+         * {@link VariantLookupPolicy#networkFirst()}), this method may return {@code true}
          * before the SDK has spoken to the network this session — the returned variants could
          * be stale data from a previous session. Use the {@code source} field on the served
          * {@link MixpanelFlagVariant} to distinguish:
          * {@link MixpanelFlagVariant.Source.Network} for fresh values,
-         * {@link MixpanelFlagVariant.Source.Cache} for on-disk-cache values (with the cache
-         * timestamp on the {@code Cache} instance).
+         * {@link MixpanelFlagVariant.Source.Persistence} for on-disk values (with the persisted
+         * timestamp on the {@code Persistence} instance).
          *
-         * @return true if flags are available in memory (from network or cache), false otherwise.
+         * @return true if flags are available in memory (from network or persistence), false otherwise.
          */
         boolean areFlagsReady();
 

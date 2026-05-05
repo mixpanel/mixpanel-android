@@ -17,7 +17,7 @@ import org.json.JSONObject;
  *     .enabled(true)
  *     .context(new JSONObject().put("plan", "enterprise"))
  *     .prefetchFlags(true)
- *     .variantLookupPolicy(VariantLookupPolicy.cacheFirst(TimeUnit.HOURS.toMillis(24)))
+ *     .variantLookupPolicy(VariantLookupPolicy.persistenceFirst())
  *     .build();
  *
  * MixpanelOptions options = new MixpanelOptions.Builder()
@@ -83,10 +83,10 @@ public class FeatureFlagOptions {
 
     /**
      * Returns the strategy used to resolve flag variants relative to the
-     * on-disk cache and the network. Determines whether the SDK reads and writes the
-     * cache: {@link VariantLookupPolicy#networkOnly()} disables both;
-     * {@link VariantLookupPolicy#cacheFirst(long)} and
-     * {@link VariantLookupPolicy#networkFirst(long)} enable both.
+     * on-disk persistence layer and the network. Determines whether the SDK reads and writes
+     * persisted variants: {@link VariantLookupPolicy#networkOnly()} disables both;
+     * {@link VariantLookupPolicy#persistenceFirst()} and
+     * {@link VariantLookupPolicy#networkFirst()} enable both.
      *
      * @return the configured {@link VariantLookupPolicy}; defaults to
      *         {@link VariantLookupPolicy#networkOnly()}.
@@ -180,7 +180,7 @@ public class FeatureFlagOptions {
 
         /**
          * Sets the strategy used to resolve flag variants relative to the
-         * on-disk cache and the network.
+         * on-disk persistence layer and the network.
          *
          * @param variantLookupPolicy the lookup strategy to use.
          * @return This Builder instance for chaining.

@@ -12,15 +12,15 @@ public class MixpanelFlagVariant {
 
     /**
      * Identifies where a served variant came from. {@link Network} for a fresh
-     * /flags/ response; {@link Cache} for one loaded from the on-disk cache.
-     * Populated only when the SDK actually serves a variant — developer-supplied
-     * fallbacks have a {@code null} source.
+     * /flags/ response; {@link Persistence} for one loaded from the on-disk
+     * persistence layer. Populated only when the SDK actually serves a variant —
+     * developer-supplied fallbacks have a {@code null} source.
      *
      * <p>This is a Java 8-compatible discriminated union (no {@code sealed}
-     * keyword) so that variant-specific data — namely the {@code cachedAtMillis}
-     * timestamp on {@link Cache} — is bundled with the variant rather than
+     * keyword) so that variant-specific data — namely the {@code persistedAtMillis}
+     * timestamp on {@link Persistence} — is bundled with the variant rather than
      * floating as a separate nullable field on {@link MixpanelFlagVariant}.
-     * Construct via {@link #network()} / {@link #cache(long)}.
+     * Construct via {@link #network()} / {@link #persistence(long)}.
      */
     public abstract static class Source {
         Source() {}
@@ -32,14 +32,14 @@ public class MixpanelFlagVariant {
         }
 
         /**
-         * Returns a {@link Cache} source stamped with the given write timestamp.
+         * Returns a {@link Persistence} source stamped with the given write timestamp.
          *
-         * @param cachedAtMillis absolute timestamp (millis since epoch) at which
-         *                       this variant set was originally written to the cache.
+         * @param persistedAtMillis absolute timestamp (millis since epoch) at which
+         *                          this variant set was originally written to disk.
          */
         @NonNull
-        public static Cache cache(long cachedAtMillis) {
-            return new Cache(cachedAtMillis);
+        public static Persistence persistence(long persistedAtMillis) {
+            return new Persistence(persistedAtMillis);
         }
 
         /** Variant assigned by the most recent successful /flags/ network call. */
@@ -51,13 +51,13 @@ public class MixpanelFlagVariant {
             Network() {}
         }
 
-        /** Variant loaded from the on-disk cache. */
-        public static final class Cache extends Source {
-            /** Absolute timestamp (millis since epoch) at which this variant set was cached. */
-            public final long cachedAtMillis;
+        /** Variant loaded from the on-disk persistence layer. */
+        public static final class Persistence extends Source {
+            /** Absolute timestamp (millis since epoch) at which this variant set was persisted. */
+            public final long persistedAtMillis;
 
-            Cache(long cachedAtMillis) {
-                this.cachedAtMillis = cachedAtMillis;
+            Persistence(long persistedAtMillis) {
+                this.persistedAtMillis = persistedAtMillis;
             }
         }
     }
@@ -97,9 +97,9 @@ public class MixpanelFlagVariant {
 
     /**
      * Where this variant was sourced from. {@code null} on developer-supplied
-     * fallback instances; {@link Source.Network} or {@link Source.Cache} when
-     * the SDK serves a variant. For cached variants, the cache timestamp lives
-     * on the {@link Source.Cache} instance itself rather than as a separate
+     * fallback instances; {@link Source.Network} or {@link Source.Persistence} when
+     * the SDK serves a variant. For persisted variants, the persistence timestamp lives
+     * on the {@link Source.Persistence} instance itself rather than as a separate
      * field — this makes invalid combinations like NETWORK + non-null timestamp
      * impossible to construct.
      */

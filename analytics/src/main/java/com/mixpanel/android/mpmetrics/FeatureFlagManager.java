@@ -46,25 +46,25 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private final ExecutorService
       mNetworkExecutor; // For performing network calls off the handler thread
   private final Object mLock = new Object();
-  // SharedPreferences (shared with PersistentIdentity) used to cache the most recent /flags/
-  // response. null when VariantLookupPolicy is NetworkOnly — caching is opt-in via the policy.
-  @Nullable private final Future<SharedPreferences> mCachePrefs;
+  // SharedPreferences (shared with PersistentIdentity) used to persist the most recent /flags/
+  // response. null when VariantLookupPolicy is NetworkOnly — persistence is opt-in via policy.
+  @Nullable private final Future<SharedPreferences> mPersistencePrefs;
 
-  // Cache blob layout — single key in the shared stored-prefs file. No version field:
+  // Persistence blob layout — single key in the shared stored-prefs file. No version field:
   // any parse failure clears the blob, and the next successful fetch overwrites with the
   // current shape. This makes incompatible changes self-healing rather than gated.
-  private static final String CACHE_BLOB_KEY = "mixpanel.flags.cache";
-  private static final String CACHE_FIELD_CACHED_AT = "cachedAt";
-  private static final String CACHE_FIELD_DISTINCT_ID = "distinctId";
-  private static final String CACHE_FIELD_RESPONSE = "response";
+  private static final String PERSISTENCE_BLOB_KEY = "mixpanel.flags.persistence";
+  private static final String PERSISTENCE_FIELD_PERSISTED_AT = "persistedAt";
+  private static final String PERSISTENCE_FIELD_DISTINCT_ID = "distinctId";
+  private static final String PERSISTENCE_FIELD_RESPONSE = "response";
 
   // --- State Variables (Protected by mHandler) ---
   private volatile Map<String, MixpanelFlagVariant> mFlags = null;
-  // True when mFlags was populated from the on-disk cache and we have not yet seen the
+  // True when mFlags was populated from the on-disk persistence and we have not yet seen the
   // initial network response for the current user/context. Only set for NetworkFirst —
-  // CacheFirst serves cached values immediately. Async lookups gate on this to honor the
+  // PersistenceFirst serves persisted values immediately. Async lookups gate on this to honor the
   // NetworkFirst spec ("await on network call, only serve persisted values if it fails")
-  // while still letting sync lookups + areFlagsReady() see the cached values.
+  // while still letting sync lookups + areFlagsReady() see the persisted values.
   private volatile boolean mAwaitingInitialNetworkResponse = false;
   private final Set<String> mTrackedFlags = new HashSet<>();
   private boolean mIsFetching = false;
@@ -134,13 +134,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       @NonNull FeatureFlagDelegate delegate,
       @NonNull RemoteService httpService,
       @NonNull FlagsConfig flagsConfig,
-      @Nullable Future<SharedPreferences> cachePrefs) {
+      @Nullable Future<SharedPreferences> persistencePrefs) {
     mDelegate = new WeakReference<>(delegate);
     mFlagsEndpoint = delegate.getMPConfig().getFlagsEndpoint();
     mFlagsRecordingEndpoint = delegate.getMPConfig().getFlagsRecordingEndpoint();
     mHttpService = httpService;
     mFlagsConfig = flagsConfig;
-    mCachePrefs = cachePrefs;
+    mPersistencePrefs = persistencePrefs;
     try {
       mCustomContext = new JSONObject(flagsConfig.context.toString());
     } catch (JSONException e) {
@@ -156,41 +156,41 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Separate executor for network requests so they don't block the state queue
     mNetworkExecutor = Executors.newSingleThreadExecutor();
 
-    // Initialize cache state on the handler thread so SharedPreferences I/O does not block
+    // Initialize persistence state on the handler thread so SharedPreferences I/O does not block
     // the caller (typically the main thread during MixpanelAPI construction).
-    //  - Caching policies (CacheFirst / NetworkFirst): load the cached blob into mFlags.
-    //  - NetworkOnly: wipe any stale cache blob left over from a prior policy configuration.
-    if (mCachePrefs != null) {
-      if (isCachingPolicy()) {
-        mHandler.post(this::_loadCachedVariants);
+    //  - Persistence policies (PersistenceFirst / NetworkFirst): load the persisted blob into mFlags.
+    //  - NetworkOnly: wipe any stale persistence blob left over from a prior policy configuration.
+    if (mPersistencePrefs != null) {
+      if (isPersistencePolicy()) {
+        mHandler.post(this::_loadPersistedVariants);
       } else {
-        mHandler.post(this::clearCacheOnDisk);
+        mHandler.post(this::clearPersistenceOnDisk);
       }
     }
   }
 
   /**
-   * Returns {@code true} when the configured policy reads/writes the on-disk cache
-   * (CacheFirst or NetworkFirst). NetworkOnly returns {@code false}.
+   * Returns {@code true} when the configured policy reads/writes the on-disk persistence
+   * (PersistenceFirst or NetworkFirst). NetworkOnly returns {@code false}.
    */
-  private boolean isCachingPolicy() {
+  private boolean isPersistencePolicy() {
     return !(mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
   }
 
   /**
-   * Returns {@code true} if the variant was loaded from the on-disk cache and is now past
+   * Returns {@code true} if the variant was loaded from the on-disk persistence and is now past
    * the configured TTL. Network-sourced variants and developer-supplied fallbacks always
-   * return {@code false}. Used in lookup paths to suppress serving stale cached values
+   * return {@code false}. Used in lookup paths to suppress serving stale persisted values
    * (without clearing the on-disk blob — the blob may become valid again under a longer
    * TTL config or be overwritten by the next successful fetch).
    */
-  private boolean isExpiredCacheVariant(@Nullable MixpanelFlagVariant variant) {
-    if (variant == null || !(variant.source instanceof MixpanelFlagVariant.Source.Cache)) {
+  private boolean isExpiredPersistedVariant(@Nullable MixpanelFlagVariant variant) {
+    if (variant == null || !(variant.source instanceof MixpanelFlagVariant.Source.Persistence)) {
       return false;
     }
-    final long cachedAt = ((MixpanelFlagVariant.Source.Cache) variant.source).cachedAtMillis;
-    final long ttl = cacheTtlMillis();
-    return ttl > 0 && cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > ttl;
+    final long persistedAt = ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;
+    final long ttl = persistenceTtlMillis();
+    return ttl > 0 && persistedAt > 0 && (System.currentTimeMillis() - persistedAt) > ttl;
   }
 
   // --- Public Methods ---
@@ -202,8 +202,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   /**
-   * Clears all in-memory feature flag state: cached flags, tracked-flag set, fetch timing,
-   * first-time event state, and the persisted-cache fallback. Also wipes the on-disk cache
+   * Clears all in-memory feature flag state: persisted flags, tracked-flag set, fetch timing,
+   * first-time event state, and the in-memory persisted fallback. Also wipes the on-disk persistence
    * blob so a freshly-identified user can't be served the prior user's variants — note that
    * {@code MixpanelAPI.reset()} also calls {@code PersistentIdentity.clearPreferences()}
    * which wipes the same shared file, so the disk clear here is defensive (idempotent) but
@@ -228,8 +228,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           mActivatedFirstTimeEvents.clear();
           mAwaitingInitialNetworkResponse = false;
 
-          if (mCachePrefs != null) {
-            clearCacheOnDisk();
+          if (mPersistencePrefs != null) {
+            clearPersistenceOnDisk();
           }
 
           List<FlagCompletionCallback<Boolean>> orphaned = mFetchCompletionCallbacks;
@@ -262,8 +262,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Returns true if flag variants are in memory and available for synchronous access.
-   * Includes variants restored from the on-disk cache; callers that need to distinguish
-   * fresh-from-network values from cached ones should inspect {@code variant.source} on the
+   * Includes variants restored from the on-disk persistence; callers that need to distinguish
+   * fresh-from-network values from persisted ones should inspect {@code variant.source} on the
    * served {@link MixpanelFlagVariant}. See {@link MixpanelAPI.Flags#areFlagsReady()} for
    * the full caller-facing contract.
    */
@@ -311,11 +311,11 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           }
 
           MixpanelFlagVariant variant = mFlags.get(flagName);
-          // Suppress stale cached variants — leave the disk blob alone, just don't serve.
-          if (isExpiredCacheVariant(variant)) {
+          // Suppress stale persisted variants — leave the disk blob alone, just don't serve.
+          if (isExpiredPersistedVariant(variant)) {
             MPLog.d(
                 LOGTAG,
-                "Cached variant for '" + flagName + "' is past TTL; returning fallback.");
+                "Persisted variant for '" + flagName + "' is past TTL; returning fallback.");
             variant = null;
           }
           if (variant != null) {
@@ -406,17 +406,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     mHandler.post(
         () -> {
           // Serve immediately when mFlags is populated and we're not in the NetworkFirst-init
-          // window (waiting for the first network response after a cache hit).
+          // window (waiting for the first network response after a persistence hit).
           boolean canServeImmediately = mFlags != null && !mAwaitingInitialNetworkResponse;
 
           if (canServeImmediately) {
             MPLog.v(LOGTAG, "Flags ready. Checking for flag '" + flagName + "'");
             MixpanelFlagVariant flagVariant = mFlags.get(flagName);
-            // Suppress stale cached variants — leave the disk blob alone, just don't serve.
-            if (isExpiredCacheVariant(flagVariant)) {
+            // Suppress stale persisted variants — leave the disk blob alone, just don't serve.
+            if (isExpiredPersistedVariant(flagVariant)) {
               MPLog.d(
                   LOGTAG,
-                  "Cached variant for '" + flagName + "' is past TTL; returning fallback.");
+                  "Persisted variant for '" + flagName + "' is past TTL; returning fallback.");
               flagVariant = null;
             }
             final MixpanelFlagVariant variantForLambda = flagVariant;
@@ -434,8 +434,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           } else {
             // Either mFlags is null OR we're a NetworkFirst caller awaiting the initial
             // network response. Trigger a fetch and serve from mFlags after it completes.
-            // On failure, mFlags is left untouched: for NetworkFirst with a cache hit it
-            // still holds the cached values; for everything else it's still null and we
+            // On failure, mFlags is left untouched: for NetworkFirst with a persistence hit it
+            // still holds the persisted values; for everything else it's still null and we
             // fall back to the developer-supplied fallback.
             MPLog.i(
                 LOGTAG,
@@ -448,9 +448,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                       () -> {
                         MixpanelFlagVariant fetchedVariant =
                             mFlags != null ? mFlags.get(flagName) : null;
-                        // If a fetch failure left mFlags holding stale cached values, treat
+                        // If a fetch failure left mFlags holding stale persisted values, treat
                         // expired entries as not-found and return the developer fallback.
-                        if (isExpiredCacheVariant(fetchedVariant)) {
+                        if (isExpiredPersistedVariant(fetchedVariant)) {
                           fetchedVariant = null;
                         }
                         final MixpanelFlagVariant variantForLambda = fetchedVariant;
@@ -527,12 +527,12 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       snapshot = mFlags;
     }
     // mFlags is wholesale-replaced on every state change, so all entries share a single
-    // Source.Cache(cachedAt) — checking any one entry tells us whether the whole map is
+    // Source.Persistence(persistedAt) — checking any one entry tells us whether the whole map is
     // expired. Sample the first; if expired, return an empty map (matching the per-variant
-    // "don't serve expired cache" rule from getVariant).
+    // "don't serve expired persisted entry" rule from getVariant).
     if (!snapshot.isEmpty()) {
       MixpanelFlagVariant first = snapshot.values().iterator().next();
-      if (isExpiredCacheVariant(first)) {
+      if (isExpiredPersistedVariant(first)) {
         return Collections.emptyMap();
       }
     }
@@ -545,14 +545,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       boolean canServeImmediately = mFlags != null && !mAwaitingInitialNetworkResponse;
 
       if (canServeImmediately) {
-        // Route through getAllVariantsSync so the TTL check on cached entries applies here too.
+        // Route through getAllVariantsSync so the TTL check on persisted entries applies here too.
         postCompletion(completion, getAllVariantsSync());
       } else {
         MPLog.i(LOGTAG, "Flags not yet servable, attempting fetch for getAllVariants...");
         _fetchFlagsIfNeeded(success -> {
           // Fetch completion runs on the main thread. After it fires, mFlags may have been
-          // refreshed (success), left as cached values (NetworkFirst failure with cache hit),
-          // or remain null (no cache + failure). Always serve from getAllVariantsSync, which
+          // refreshed (success), left as persisted values (NetworkFirst failure with persistence hit),
+          // or remain null (no persistence + failure). Always serve from getAllVariantsSync, which
           // returns an empty map when mFlags is null.
           completion.onComplete(getAllVariantsSync());
         });
@@ -863,7 +863,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         // Stamp NETWORK source on every variant before exposing through mFlags.
         Map<String, MixpanelFlagVariant> newFlags = stampSource(rawFlags, MixpanelFlagVariant.Source.network());
 
-        // Update state — mFlags goes from cached values (or null) to fresh network values.
+        // Update state — mFlags goes from persisted values (or null) to fresh network values.
         synchronized (mLock) {
           mFlags = Collections.unmodifiableMap(newFlags);
         }
@@ -872,10 +872,10 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         // Persist the raw response to disk so future sessions / failed fetches can fall back.
         // Storing the wire format (rather than re-serializing the parsed variants) keeps
         // JsonUtils.parseFlagsResponse as the single source of truth and carries
-        // pending_first_time_events along for free. Writes happen for any caching policy;
+        // pending_first_time_events along for free. Writes happen for any persistence policy;
         // NetworkOnly skips them.
-        if (isCachingPolicy() && mCachePrefs != null) {
-          writeCacheToDisk(flagsResponseJson);
+        if (isPersistencePolicy() && mPersistencePrefs != null) {
+          writePersistedToDisk(flagsResponseJson);
         }
 
         MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded, " +
@@ -886,7 +886,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
     } else {
       // Fetch failed or returned an unparseable response. mFlags is left untouched —
-      // for NetworkFirst with a cache hit it still holds the cached values (Source.Cache),
+      // for NetworkFirst with a persistence hit it still holds the persisted values (Source.Persistence),
       // for any other configuration it stays null and async lookups serve the fallback.
       MPLog.w(
           LOGTAG,
@@ -958,6 +958,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
       if (variant.isQATester != null) {
         properties.put("$is_qa_tester", variant.isQATester);
+      }
+      // Cross-platform contract for $experiment_started: when the served variant came from
+      // the on-disk persistence layer, emit $variant_source = "persistence" plus the raw
+      // persistedAt epoch ms (no calculation — consumers compute age themselves) and the
+      // configured TTL. Network-served variants and developer fallbacks omit all three.
+      if (variant.source instanceof MixpanelFlagVariant.Source.Persistence) {
+        properties.put("$variant_source", "persistence");
+        long persistedAt =
+            ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;
+        properties.put("$persisted_at_in_ms", persistedAt);
+        properties.put("$ttl_in_ms", persistenceTtlMillis());
       }
     } catch (JSONException e) {
       MPLog.e(LOGTAG, "Failed to create JSON properties for $experiment_started event", e);
@@ -1066,13 +1077,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           def.pendingVariant.withSource(MixpanelFlagVariant.Source.network()));
       mFlags = Collections.unmodifiableMap(mutableFlags);
     }
-    // Deliberately not persisted: activations live only in memory for this session. The cache
-    // stores the raw /flags/ response untouched, so on next app start the activated variant
-    // briefly appears as still-pending until either (a) the user re-fires the activating event
-    // or (b) the next /flags/ network response lands (which the server should return reflecting
-    // the activation, since _fireRecordingAPI below tells it about the activation). The window
-    // is small and the alternative (mutating the cache from this code path) was rejected to
-    // keep the cache strictly a passive copy of what the server returned.
+    // Deliberately not persisted: activations live only in memory for this session. The
+    // persisted blob stores the raw /flags/ response untouched, so on next app start the
+    // activated variant briefly appears as still-pending until either (a) the user re-fires
+    // the activating event or (b) the next /flags/ network response lands (which the server
+    // should return reflecting the activation, since _fireRecordingAPI below tells it about
+    // the activation). The window is small and the alternative (mutating the persisted blob
+    // from this code path) was rejected to keep persistence strictly a passive copy of what
+    // the server returned.
 
     // Fire recording API (fire-and-forget)
     _fireRecordingAPI(def);
@@ -1254,21 +1266,21 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   // --- Persistence Helpers (run on Handler thread) ---
 
   /**
-   * Loads the cached /flags/ response from storage and parses it into mFlags +
-   * mPendingFirstTimeEvents. Both CacheFirst and NetworkFirst populate mFlags directly so that
-   * sync lookups and {@link #areFlagsReady()} reflect the cache. The difference between policies
-   * is enforced at async-lookup time via {@link #mAwaitingInitialNetworkResponse}: NetworkFirst
-   * sets it true so async lookups await the network call before serving, per the ERD.
+   * Loads the persisted /flags/ response from storage and parses it into mFlags +
+   * mPendingFirstTimeEvents. Both PersistenceFirst and NetworkFirst populate mFlags directly so
+   * that sync lookups and {@link #areFlagsReady()} reflect the persisted blob. The difference
+   * between policies is enforced at async-lookup time via {@link #mAwaitingInitialNetworkResponse}:
+   * NetworkFirst sets it true so async lookups await the network call before serving, per the ERD.
    */
-  private void _loadCachedVariants() {
-    final CachedFlagsResponse cached = readCacheFromDisk();
+  private void _loadPersistedVariants() {
+    final PersistedFlagsResponse cached = readPersistedFromDisk();
     if (cached == null) {
       return;
     }
     Map<String, MixpanelFlagVariant> parsed = JsonUtils.parseFlagsResponse(cached.response);
     Map<String, MixpanelFlagVariant> stamped = stampSource(
         parsed,
-        MixpanelFlagVariant.Source.cache(cached.cachedAtMillis));
+        MixpanelFlagVariant.Source.persistence(cached.persistedAtMillis));
     synchronized (mLock) {
       // Defer to network values if a fetch already raced ahead of us.
       if (mFlags == null) {
@@ -1277,140 +1289,140 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         if (mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkFirst) {
           mAwaitingInitialNetworkResponse = true;
         }
-        MPLog.v(LOGTAG, "Loaded " + stamped.size() + " cached variants into memory.");
+        MPLog.v(LOGTAG, "Loaded " + stamped.size() + " persisted variants into memory.");
       }
     }
   }
 
   /**
-   * Reads, validates, and returns the cached /flags/ response from disk, or {@code null} if
-   * nothing is cached, the fingerprint doesn't match the current user/context, the entry is
+   * Reads, validates, and returns the persisted /flags/ response from disk, or {@code null} if
+   * nothing is persisted, the stored distinct_id doesn't match the current one, the entry is
    * past TTL, or the blob is unparseable. Malformed blobs are cleared as a side effect so we
    * don't get stuck rejecting them on every call.
    *
-   * <p>Runs on the handler thread (called from {@code _loadCachedVariants}).
+   * <p>Runs on the handler thread (called from {@code _loadPersistedVariants}).
    */
   @Nullable
-  private CachedFlagsResponse readCacheFromDisk() {
-    if (mCachePrefs == null) {
+  private PersistedFlagsResponse readPersistedFromDisk() {
+    if (mPersistencePrefs == null) {
       return null;
     }
-    final SharedPreferences prefs = awaitCachePrefs();
+    final SharedPreferences prefs = awaitPersistencePrefs();
     if (prefs == null) {
       return null;
     }
-    final String raw = prefs.getString(CACHE_BLOB_KEY, null);
+    final String raw = prefs.getString(PERSISTENCE_BLOB_KEY, null);
     if (raw == null) {
       return null;
     }
     final FeatureFlagDelegate delegate = mDelegate.get();
     final String currentDistinctId = delegate == null ? null : delegate.getDistinctId();
     if (currentDistinctId == null) {
-      // No identity to validate against — can't trust the cache.
+      // No identity to validate against — can't trust the persisted blob.
       return null;
     }
     try {
       JSONObject blob = new JSONObject(raw);
-      String storedDistinctId = blob.optString(CACHE_FIELD_DISTINCT_ID, null);
+      String storedDistinctId = blob.optString(PERSISTENCE_FIELD_DISTINCT_ID, null);
       if (!currentDistinctId.equals(storedDistinctId)) {
-        MPLog.d(LOGTAG, "Cached flags belong to a different distinct_id; ignoring cache.");
+        MPLog.d(LOGTAG, "Persisted flags belong to a different distinct_id; ignoring persisted blob.");
         return null;
       }
-      long cachedAt = blob.optLong(CACHE_FIELD_CACHED_AT, 0L);
-      long ttl = cacheTtlMillis();
-      if (ttl > 0 && cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > ttl) {
-        MPLog.d(LOGTAG, "Cached flags expired; ignoring cache.");
+      long persistedAt = blob.optLong(PERSISTENCE_FIELD_PERSISTED_AT, 0L);
+      long ttl = persistenceTtlMillis();
+      if (ttl > 0 && persistedAt > 0 && (System.currentTimeMillis() - persistedAt) > ttl) {
+        MPLog.d(LOGTAG, "Persisted flags expired; ignoring.");
         return null;
       }
-      JSONObject response = blob.optJSONObject(CACHE_FIELD_RESPONSE);
+      JSONObject response = blob.optJSONObject(PERSISTENCE_FIELD_RESPONSE);
       if (response == null) {
         return null;
       }
-      return new CachedFlagsResponse(response, cachedAt);
+      return new PersistedFlagsResponse(response, persistedAt);
     } catch (JSONException e) {
-      MPLog.w(LOGTAG, "Failed to parse cached flags blob; clearing.", e);
-      prefs.edit().remove(CACHE_BLOB_KEY).apply();
+      MPLog.w(LOGTAG, "Failed to parse persisted flags blob; clearing.", e);
+      prefs.edit().remove(PERSISTENCE_BLOB_KEY).apply();
       return null;
     } catch (Exception e) {
-      MPLog.e(LOGTAG, "Unexpected error loading cached flags", e);
+      MPLog.e(LOGTAG, "Unexpected error loading persisted flags", e);
       return null;
     }
   }
 
   /**
    * Writes the given /flags/ response to disk under the current distinct_id, wrapped in the
-   * cachedAt + distinctId envelope. No-op (logs) on write failure.
+   * persistedAt + distinctId envelope. No-op (logs) on write failure.
    */
-  private void writeCacheToDisk(@NonNull JSONObject response) {
-    final SharedPreferences prefs = awaitCachePrefs();
+  private void writePersistedToDisk(@NonNull JSONObject response) {
+    final SharedPreferences prefs = awaitPersistencePrefs();
     if (prefs == null) {
       return;
     }
     final FeatureFlagDelegate delegate = mDelegate.get();
     final String distinctId = delegate == null ? null : delegate.getDistinctId();
     if (distinctId == null) {
-      // Nothing to key the cache under — don't write a blob the next reader can't validate.
+      // Nothing to key the blob under — don't write something the next reader can't validate.
       return;
     }
     try {
       JSONObject blob = new JSONObject();
-      blob.put(CACHE_FIELD_CACHED_AT, System.currentTimeMillis());
-      blob.put(CACHE_FIELD_DISTINCT_ID, distinctId);
-      blob.put(CACHE_FIELD_RESPONSE, response);
-      prefs.edit().putString(CACHE_BLOB_KEY, blob.toString()).apply();
+      blob.put(PERSISTENCE_FIELD_PERSISTED_AT, System.currentTimeMillis());
+      blob.put(PERSISTENCE_FIELD_DISTINCT_ID, distinctId);
+      blob.put(PERSISTENCE_FIELD_RESPONSE, response);
+      prefs.edit().putString(PERSISTENCE_BLOB_KEY, blob.toString()).apply();
     } catch (Exception e) {
-      MPLog.e(LOGTAG, "Failed to cache flags response", e);
+      MPLog.e(LOGTAG, "Failed to persist flags response", e);
     }
   }
 
-  private void clearCacheOnDisk() {
-    final SharedPreferences prefs = awaitCachePrefs();
+  private void clearPersistenceOnDisk() {
+    final SharedPreferences prefs = awaitPersistencePrefs();
     if (prefs != null) {
-      prefs.edit().remove(CACHE_BLOB_KEY).apply();
+      prefs.edit().remove(PERSISTENCE_BLOB_KEY).apply();
     }
   }
 
   @Nullable
-  private SharedPreferences awaitCachePrefs() {
-    if (mCachePrefs == null) {
+  private SharedPreferences awaitPersistencePrefs() {
+    if (mPersistencePrefs == null) {
       return null;
     }
     try {
-      return mCachePrefs.get();
+      return mPersistencePrefs.get();
     } catch (Exception e) {
-      MPLog.e(LOGTAG, "Failed to load SharedPreferences for cached flags", e);
+      MPLog.e(LOGTAG, "Failed to load SharedPreferences for persisted flags", e);
       return null;
     }
   }
 
   /**
    * Returns the configured TTL in milliseconds, or 0 to disable expiry checks. NetworkOnly
-   * is unreachable here (no cache prefs would have been provided) but treated as no-cache
+   * is unreachable here (no persistence prefs would have been provided) but treated as no-TTL
    * defensively.
    */
-  private long cacheTtlMillis() {
+  private long persistenceTtlMillis() {
     VariantLookupPolicy policy = mFlagsConfig.variantLookupPolicy;
-    if (policy instanceof VariantLookupPolicy.CacheFirst) {
-      return ((VariantLookupPolicy.CacheFirst) policy).cacheTtlMillis;
+    if (policy instanceof VariantLookupPolicy.PersistenceFirst) {
+      return ((VariantLookupPolicy.PersistenceFirst) policy).ttlMillis;
     }
     if (policy instanceof VariantLookupPolicy.NetworkFirst) {
-      return ((VariantLookupPolicy.NetworkFirst) policy).cacheTtlMillis;
+      return ((VariantLookupPolicy.NetworkFirst) policy).ttlMillis;
     }
     return 0L;
   }
 
   /**
-   * Two-tuple holding a parsed /flags/ response body and the timestamp at which it was cached.
+   * Two-tuple holding a parsed /flags/ response body and the timestamp at which it was persisted.
    * Used both as the in-memory NetworkFirst fallback and as the return type of
-   * {@link #readCacheFromDisk()}.
+   * {@link #readPersistedFromDisk()}.
    */
-  private static final class CachedFlagsResponse {
+  private static final class PersistedFlagsResponse {
     @NonNull final JSONObject response;
-    final long cachedAtMillis;
+    final long persistedAtMillis;
 
-    CachedFlagsResponse(@NonNull JSONObject response, long cachedAtMillis) {
+    PersistedFlagsResponse(@NonNull JSONObject response, long persistedAtMillis) {
       this.response = response;
-      this.cachedAtMillis = cachedAtMillis;
+      this.persistedAtMillis = persistedAtMillis;
     }
   }
 
