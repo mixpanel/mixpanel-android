@@ -1,62 +1,21 @@
 # Mixpanel Android Session Replay SDK
 
-The official Mixpanel Session Replay SDK for Android.
+Session Replay observes user interactions within your app, capturing UI hierarchy changes and storing them as images, which are then sent to Mixpanel. These images are then reconstructed to replay the user experience.
 
-## Installation
+## Documentation
 
-Add the dependency to your `build.gradle.kts`:
+For installation instructions, initialization, privacy controls, and configuration options, see the official documentation:
 
-```kotlin
-implementation("com.mixpanel.android:mixpanel-android-session-replay:1.3.0")
-```
-
-## Usage
-
-Initialize the Session Replay SDK in your Application class:
-
-```kotlin
-import com.mixpanel.android.sessionreplay.MPSessionReplay
-import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
-import com.mixpanel.android.sessionreplay.sensitive_views.AutoMaskedView
-
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-
-        val token = "YOUR_PROJECT_TOKEN"
-        val distinctId = "YOUR_DISTINCT_ID"
-
-        // Configure Session Replay
-        val config = MPSessionReplayConfig(
-            wifiOnly = false,
-            autoMaskedViews = mutableSetOf(AutoMaskedView.Text),
-            enableLogging = true
-        )
-
-        // Initialize Session Replay
-        MPSessionReplay.initialize(
-            this,
-            token,
-            distinctId,
-            config
-        ) { result ->
-            result.fold(
-                onSuccess = { instance ->
-                    // Session Replay initialized successfully
-                },
-                onFailure = { error ->
-                    // Handle initialization error
-                }
-            )
-        }
-    }
-}
-```
+**[Mixpanel Session Replay for Android](https://docs.mixpanel.com/docs/tracking-methods/sdks/android/android-replay)**
 
 ## Requirements
 
 - Android SDK 21+
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
-Apache License 2.0
+Apache License 2.0 - See [LICENSE](../LICENSE) for details.
