@@ -987,11 +987,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       if (variant.isQATester != null) {
         properties.put("$is_qa_tester", variant.isQATester);
       }
-      // Cross-platform contract for $experiment_started: when the served variant came from
-      // the on-disk persistence layer, emit $variant_source = "persistence" plus the raw
-      // persistedAt epoch ms (no calculation — consumers compute age themselves) and the
-      // configured TTL. Network-served variants and developer fallbacks omit all three.
-      if (variant.source instanceof MixpanelFlagVariant.Source.Persistence) {
+      // Cross-platform contract for $experiment_started: emit $variant_source on every served
+      // variant ("network" or "persistence") so consumers can attribute exposures by origin.
+      // Persistence variants additionally carry the raw persistedAt epoch ms (no calculation —
+      // consumers compute age themselves) and the configured TTL. _performTrackingDelegateCall
+      // is only invoked for served variants, so Source.Fallback never reaches this branch.
+      if (variant.source instanceof MixpanelFlagVariant.Source.Network) {
+        properties.put("$variant_source", "network");
+      } else if (variant.source instanceof MixpanelFlagVariant.Source.Persistence) {
         properties.put("$variant_source", "persistence");
         long persistedAt =
             ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;

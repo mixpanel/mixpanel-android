@@ -101,6 +101,32 @@ public class FeatureFlagOptionsTest {
     assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).ttlMillis);
   }
 
+  @Test
+  public void testFlagLookup_NegativeTtlFallsBackToDefault() {
+    // Aligns with mixpanel-js: negative TTL is treated as a developer error and substituted
+    // with the default rather than throwing or being interpreted as "indefinite".
+    VariantLookupPolicy.PersistenceUntilNetworkSuccess persistence =
+        VariantLookupPolicy.persistenceUntilNetworkSuccess(-1);
+    assertEquals(
+        "negative TTL on persistenceUntilNetworkSuccess should fall back to the default",
+        VariantLookupPolicy.DEFAULT_PERSISTENCE_TTL_MILLIS,
+        persistence.ttlMillis);
+
+    VariantLookupPolicy.NetworkFirst networkFirst = VariantLookupPolicy.networkFirst(-100);
+    assertEquals(
+        "negative TTL on networkFirst should fall back to the default",
+        VariantLookupPolicy.DEFAULT_PERSISTENCE_TTL_MILLIS,
+        networkFirst.ttlMillis);
+  }
+
+  @Test
+  public void testFlagLookup_ZeroTtlPreserved() {
+    // 0 is a valid (if unusual) value meaning "no expiry" — only negative is rejected.
+    VariantLookupPolicy.PersistenceUntilNetworkSuccess persistence =
+        VariantLookupPolicy.persistenceUntilNetworkSuccess(0);
+    assertEquals(0, persistence.ttlMillis);
+  }
+
   // -----------------------------------------------------------------------
   // FeatureFlagOptions custom values
   // -----------------------------------------------------------------------
