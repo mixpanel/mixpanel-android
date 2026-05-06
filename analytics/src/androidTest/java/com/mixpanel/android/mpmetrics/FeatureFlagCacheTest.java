@@ -92,8 +92,11 @@ public class FeatureFlagCacheTest {
         .build();
 
     final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
+    // Hang the network so the lookup-driven background refresh that PUN initiates from
+    // getVariant doesn't complete and replace mFlags before we can assert on the persisted
+    // state.
     MixpanelAPI mixpanel = newMixpanel(
-        TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS, opts, new CountingHangingHttpService(flagsHttpCallCount));
+        TOKEN_PERSISTENCE_UNTIL_NETWORK_SUCCESS, opts, new HangingFlagsHttpService(flagsHttpCallCount));
 
     // Act: ask asynchronously so the lookup queues behind the persistence-load Runnable
     // on the FF handler — both run on the same thread, FIFO.
@@ -119,9 +122,17 @@ public class FeatureFlagCacheTest {
     assertTrue(
         "persistedAtMillis should be set",
         ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis > 0);
+    // PUN spec: serve persistence immediately, refresh in background. The lookup itself
+    // doesn't block on the network, but a background fetch is kicked off lazily when the
+    // first lookup discovers that mFlags is still persistence-loaded. Poll briefly to give
+    // the background fetch time to dispatch.
+    long deadline = System.currentTimeMillis() + 2_000L;
+    while (System.currentTimeMillis() < deadline && flagsHttpCallCount.get() == 0) {
+      Thread.sleep(20);
+    }
     assertEquals(
-        "No network call should fire when PersistenceUntilNetworkSuccess can satisfy the lookup",
-        0, flagsHttpCallCount.get());
+        "PUN's first lookup that serves persistence should kick off exactly one background fetch",
+        1, flagsHttpCallCount.get());
   }
 
   // -----------------------------------------------------------------------
@@ -236,8 +247,11 @@ public class FeatureFlagCacheTest {
         .build();
 
     final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
+    // Hang the network so the lookup-driven PUN background refresh that getVariantSync
+    // initiates can't complete and replace the persisted variants with empty Network-stamped
+    // ones — that would defeat the TTL-expiry assertion below.
     MixpanelAPI mixpanel = newMixpanel(
-        TOKEN_TTL_LOOKUP, opts, new CountingHangingHttpService(flagsHttpCallCount));
+        TOKEN_TTL_LOOKUP, opts, new HangingFlagsHttpService(flagsHttpCallCount));
 
     // Sanity #1: the persisted blob loads at init (TTL not yet expired) and getVariantSync
     // serves it. Wait briefly for _loadPersistedVariants to drain on the FF handler thread.
@@ -593,6 +607,60 @@ public class FeatureFlagCacheTest {
         throws ServiceUnavailableException, IOException {
       if (endpointUrl != null && endpointUrl.contains("/flags/")) {
         mCalls.incrementAndGet();
+        return RemoteService.RequestResult.success(
+            "{\"flags\":{}}".getBytes(), endpointUrl);
+      }
+      return RemoteService.RequestResult.success(new byte[]{'1'}, endpointUrl);
+    }
+  }
+
+  /**
+   * HTTP service that counts /flags/ calls and then HANGS the request indefinitely. Use this
+   * when a test needs to verify that a background fetch was initiated (via the call count)
+   * without the fetch actually completing and replacing {@code mFlags} mid-test — relevant
+   * for PersistenceUntilNetworkSuccess scenarios where {@code _loadPersistedVariants}
+   * auto-kicks-off a background refresh and you want to assert on the in-memory persistence
+   * state before that fetch could plausibly land.
+   */
+  private static final class HangingFlagsHttpService extends HttpService {
+    private final AtomicInteger mCalls;
+    private final CountDownLatch mNeverReleased = new CountDownLatch(1);
+
+    HangingFlagsHttpService(AtomicInteger calls) {
+      this.mCalls = calls;
+    }
+
+    @Override
+    public RemoteService.RequestResult performRequest(
+        String endpointUrl,
+        ProxyServerInteractor interactor,
+        Map<String, Object> params,
+        Map<String, String> headers,
+        byte[] requestBodyBytes,
+        SSLSocketFactory socketFactory)
+        throws ServiceUnavailableException, IOException {
+      return performRequest(
+          RemoteService.HttpMethod.POST, endpointUrl, interactor, params,
+          headers, requestBodyBytes, socketFactory);
+    }
+
+    @Override
+    public RemoteService.RequestResult performRequest(
+        RemoteService.HttpMethod method,
+        String endpointUrl,
+        ProxyServerInteractor interactor,
+        Map<String, Object> params,
+        Map<String, String> headers,
+        byte[] requestBodyBytes,
+        SSLSocketFactory socketFactory)
+        throws ServiceUnavailableException, IOException {
+      if (endpointUrl != null && endpointUrl.contains("/flags/")) {
+        mCalls.incrementAndGet();
+        try {
+          mNeverReleased.await();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
         return RemoteService.RequestResult.success(
             "{\"flags\":{}}".getBytes(), endpointUrl);
       }

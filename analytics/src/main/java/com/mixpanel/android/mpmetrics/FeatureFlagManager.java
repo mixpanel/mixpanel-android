@@ -446,6 +446,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
           if (canServeImmediately) {
             MPLog.v(LOGTAG, "Flags ready. Checking for flag '" + flagName + "'");
+            // Background refresh under PersistenceUntilNetworkSuccess while we're still
+            // serving from disk. Stops once a successful fetch clears the timestamp.
+            if (mFlagsConfig.variantLookupPolicy
+                    instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess
+                && mLoadedBlobPersistedAtMillis > 0) {
+              _fetchFlagsIfNeeded(null);
+            }
             MixpanelFlagVariant flagVariant = mFlags.get(flagName);
             final MixpanelFlagVariant variantForLambda = flagVariant;
             boolean needsTracking = (variantForLambda != null) && _checkAndSetTrackedFlag(flagName);
@@ -589,6 +596,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           mFlags != null && !mAwaitingInitialNetworkResponse && !loadedFlagsAreStale();
 
       if (canServeImmediately) {
+        // Background refresh under PersistenceUntilNetworkSuccess while we're still
+        // serving from disk. Stops once a successful fetch clears the timestamp.
+        if (mFlagsConfig.variantLookupPolicy
+                instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess
+            && mLoadedBlobPersistedAtMillis > 0) {
+          _fetchFlagsIfNeeded(null);
+        }
         // Route through getAllVariantsSync so the TTL filter on persisted entries applies here too.
         postCompletion(completion, getAllVariantsSync());
       } else {
