@@ -1397,6 +1397,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 .clearAnonymousUpdatesMessage(new AnalyticsMessages.MixpanelDescription(mToken));
         identify(getDistinctId(), false);
         flush();
+
+        // identify() above no-ops its loadFlags() branch because reset has already overwritten
+        // the stored distinct id, so the new id matches the "current" id and the diff check
+        // short-circuits. Clear feature-flag state explicitly and refetch under the new identity.
+        mFeatureFlagManager.reset();
+        mInitialFeatureFlagLoad.set(false);
+        prefetchInitialFeatureFlagsIfNeeded();
     }
 
     /**
@@ -2165,28 +2172,36 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * and prefetches feature flags if enabled.
      */
     private void registerForegroundTracking() {
-        final boolean shouldPrefetchFlags = mFeatureFlagOptions.isEnabled()
-                && mFeatureFlagOptions.shouldPrefetchFlags();
-
         new Handler(Looper.getMainLooper()).post(() -> {
             Lifecycle lifecycle = ProcessLifecycleOwner.get().getLifecycle();
             if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
-                onFirstForeground(shouldPrefetchFlags);
+                onFirstForeground();
             } else {
                 lifecycle.addObserver(new DefaultLifecycleObserver() {
                     @Override
                     public void onStart(@NonNull LifecycleOwner owner) {
                         lifecycle.removeObserver(this);
-                        onFirstForeground(shouldPrefetchFlags);
+                        onFirstForeground();
                     }
                 });
             }
         });
     }
 
-    private void onFirstForeground(boolean shouldPrefetchFlags) {
+    private void onFirstForeground() {
         mHasAppForegrounded.set(true);
-        if (shouldPrefetchFlags && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
+        prefetchInitialFeatureFlagsIfNeeded();
+    }
+
+    /**
+     * Kicks off the initial feature-flag prefetch if it hasn't run since the last reset
+     * (or app start) and we're configured to prefetch. Idempotent.
+     */
+    private void prefetchInitialFeatureFlagsIfNeeded() {
+        if (mFeatureFlagOptions.isEnabled()
+                && mFeatureFlagOptions.shouldPrefetchFlags()
+                && mHasAppForegrounded.get()
+                && mInitialFeatureFlagLoad.compareAndSet(false, true)) {
             mFeatureFlagManager.loadFlags();
         }
     }

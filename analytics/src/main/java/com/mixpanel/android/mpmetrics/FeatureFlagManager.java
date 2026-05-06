@@ -58,6 +58,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private Map<String, FirstTimeEventDefinition> mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
   private final Set<String> mActivatedFirstTimeEvents = Collections.synchronizedSet(new HashSet<>());
 
+  // Bumped on reset() so in-flight fetches dispatched pre-reset don't poison post-reset state.
+  private int mFetchGeneration = 0;
+
   // ---
 
   /**
@@ -132,6 +135,37 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   public void loadFlags() {
     // Send message to the handler thread to check and potentially fetch
     mHandler.sendMessage(mHandler.obtainMessage(MSG_FETCH_FLAGS_IF_NEEDED));
+  }
+
+  /**
+   * Clears all in-memory feature flag state: cached flags, tracked-flag set, fetch timing, and
+   * first-time event state. Intended to be called from {@link MixpanelAPI#reset()}.
+   *
+   * <p>Posts to the handler thread so the mutation is serialized with reads and fetches. Any
+   * in-flight fetch dispatched before this call is discarded when it completes (via the
+   * generation check in {@code _completeFetch}). Pending fetch-completion callbacks are invoked
+   * with {@code false} so callers don't hang.
+   */
+  public void reset() {
+    mHandler.post(
+        () -> {
+          mFetchGeneration++;
+
+          synchronized (mLock) {
+            mFlags = null;
+          }
+          mTrackedFlags.clear();
+          mFetchTiming = FetchTiming.neverFetched();
+          mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
+          mActivatedFirstTimeEvents.clear();
+
+          List<FlagCompletionCallback<Boolean>> orphaned = mFetchCompletionCallbacks;
+          mFetchCompletionCallbacks = new ArrayList<>();
+          mIsFetching = false;
+          for (FlagCompletionCallback<Boolean> cb : orphaned) {
+            postCompletion(cb, false);
+          }
+        });
   }
 
   @Override
@@ -470,6 +504,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         case MSG_COMPLETE_FETCH:
           // Extract results from the Message Bundle
           Bundle data = msg.getData();
+          int generation = data.getInt("generation");
+          if (generation != mFetchGeneration) {
+            MPLog.d(
+                LOGTAG,
+                "Discarding flag fetch result from stale generation "
+                    + generation
+                    + " (current "
+                    + mFetchGeneration
+                    + ")");
+            break;
+          }
           boolean success = data.getBoolean("success");
           String responseJsonString = data.getString("responseJson"); // Can be null
           String errorMessage = data.getString("errorMessage"); // Can be null
@@ -557,7 +602,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     if (shouldStartFetch) {
       MPLog.d(LOGTAG, "Starting flag fetch (dispatching network request)...");
-      mNetworkExecutor.execute(this::_performFetchRequest);
+      final int generation = mFetchGeneration;
+      mNetworkExecutor.execute(() -> _performFetchRequest(generation));
     }
   }
 
@@ -567,7 +613,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * sends it, and posts the result (success/failure + data) back to the mHandler thread via
    * MSG_COMPLETE_FETCH.
    */
-  private void _performFetchRequest() {
+  private void _performFetchRequest(int generation) {
     long fetchStartNanos = System.nanoTime(); // For measuring elapsed time
     long fetchStartMillis = System.currentTimeMillis(); // For absolute timestamp
     MPLog.v(LOGTAG, "Performing fetch request on thread: " + Thread.currentThread().getName());
@@ -578,7 +624,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     final FeatureFlagDelegate delegate = mDelegate.get();
     if (delegate == null) {
       MPLog.w(LOGTAG, "Delegate became null before network request could start.");
-      postResultToHandler(false, null, errorMessage);
+      postResultToHandler(generation, false, null, errorMessage);
       return;
     }
 
@@ -589,7 +635,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     if (distinctId == null) {
       MPLog.w(LOGTAG, "Distinct ID is null. Cannot fetch flags.");
       errorMessage = "Distinct ID is null.";
-      postResultToHandler(false, null, errorMessage);
+      postResultToHandler(generation, false, null, errorMessage);
       return;
     }
 
@@ -685,14 +731,18 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Update fetch timing atomically with absolute timestamp and accurate latency
     mFetchTiming = new FetchTiming(fetchEndMillis, fetchLatencyMs);
     // 5. Post result back to Handler thread
-    postResultToHandler(success, responseJson, errorMessage);
+    postResultToHandler(generation, success, responseJson, errorMessage);
   }
 
   /** Helper to dispatch the result of the fetch back to the handler thread. */
   private void postResultToHandler(
-      boolean success, @Nullable JSONObject responseJson, @Nullable String errorMessage) {
+      int generation,
+      boolean success,
+      @Nullable JSONObject responseJson,
+      @Nullable String errorMessage) {
     // Use a Bundle to pass multiple arguments efficiently
     android.os.Bundle resultData = new android.os.Bundle();
+    resultData.putInt("generation", generation);
     resultData.putBoolean("success", success);
     if (success && responseJson != null) {
       resultData.putString("responseJson", responseJson.toString());
