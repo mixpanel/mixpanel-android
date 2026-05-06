@@ -916,6 +916,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           mLoadedBlobPersistedAtMillis = 0L;
         }
         mPendingFirstTimeEvents = newPendingEvents;
+        // Reset the per-flag $experiment_started dedup window. Without this, a flag whose
+        // variant changed between fetches (e.g. persistence-loaded "control" → network
+        // "treatment", or a re-fetch under a new server-side rule) would serve the new value
+        // but silently skip tracking — analytics would still show the prior exposure. Clearing
+        // here means each successful fetch gets a fresh shot at firing $experiment_started for
+        // any accessed flag. The trade-off is occasional duplicate events when the variant
+        // didn't actually change across fetches; we accept that for analytics correctness.
+        mTrackedFlags.clear();
 
         // Persist the raw response to disk so future sessions / failed fetches can fall back.
         // Storing the wire format (rather than re-serializing the parsed variants) keeps

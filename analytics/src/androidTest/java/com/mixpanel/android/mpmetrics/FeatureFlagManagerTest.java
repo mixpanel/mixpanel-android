@@ -574,6 +574,67 @@ public class FeatureFlagManagerTest {
   }
 
   @Test
+  public void testTracking_getVariantSync_refireAfterSuccessfulRefetch()
+      throws InterruptedException, JSONException {
+    // A successful refetch invalidates the per-flag $experiment_started dedup window so the
+    // next lookup re-tracks. This trades occasional duplicate events (when the variant didn't
+    // actually change between fetches) for analytics correctness when the variant DID change.
+    setupFlagsConfig(true, new JSONObject());
+
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("retracked_flag", new MixpanelFlagVariant("v1", "val1"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+    assertTrue(mFeatureFlagManager.areFlagsReady());
+
+    mMockDelegate.resetTrackCalls();
+    mMockDelegate.trackCalledLatch = new CountDownLatch(1);
+
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("", null);
+    // First exposure — should fire $experiment_started.
+    mFeatureFlagManager.getVariantSync("retracked_flag", fallback);
+    assertTrue(
+        "First lookup should track",
+        mMockDelegate.trackCalledLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertEquals("Track should be called once after first lookup", 1, mMockDelegate.trackCalls.size());
+
+    // Same fetch round — second lookup is dedup'd.
+    mFeatureFlagManager.getVariantSync("retracked_flag", fallback);
+    Thread.sleep(200);
+    assertEquals(
+        "Repeated lookup within same fetch round should not retrack",
+        1, mMockDelegate.trackCalls.size());
+
+    // Force a refetch. Same key/value so the variant didn't actually change.
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mMockDelegate.trackCalledLatch = new CountDownLatch(1);
+    final CountDownLatch refetchDone = new CountDownLatch(1);
+    mFeatureFlagManager.loadFlags(success -> {
+      assertTrue("Refetch should succeed", success);
+      refetchDone.countDown();
+    });
+    assertTrue(
+        "Refetch should complete",
+        refetchDone.await(ASYNC_TEST_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS));
+
+    // Next lookup should fire $experiment_started AGAIN — the refetch cleared the dedup window.
+    mFeatureFlagManager.getVariantSync("retracked_flag", fallback);
+    assertTrue(
+        "Lookup after successful refetch should re-track",
+        mMockDelegate.trackCalledLatch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertEquals(
+        "Refetch should reset the dedup window so the next lookup retracks",
+        2, mMockDelegate.trackCalls.size());
+
+    MockFeatureFlagDelegate.TrackCall second = mMockDelegate.trackCalls.get(1);
+    assertEquals("$experiment_started", second.eventName);
+    assertEquals("retracked_flag", second.properties.getString("Experiment name"));
+  }
+
+  @Test
   public void testGetVariant_Async_flagsNotReady_fetchFails_returnsFallback()
       throws InterruptedException {
     setupFlagsConfig(true, new JSONObject());
