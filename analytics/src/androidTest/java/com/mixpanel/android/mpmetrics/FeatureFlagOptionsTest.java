@@ -3,6 +3,7 @@ package com.mixpanel.android.mpmetrics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.SharedPreferences;
@@ -59,6 +60,89 @@ public class FeatureFlagOptionsTest {
     assertNotNull("context should not be null", defaults.getContext());
     assertEquals("context should be empty", 0, defaults.getContext().length());
     assertTrue("prefetchFlags should default to true", defaults.shouldPrefetchFlags());
+    assertSame(VariantLookupPolicy.networkOnly(), defaults.getVariantLookupPolicy());
+  }
+
+  // -----------------------------------------------------------------------
+  // FlagLookup variants
+  // -----------------------------------------------------------------------
+
+  @Test
+  public void testFlagLookup_NetworkOnlyExplicit() {
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.networkOnly())
+        .build();
+
+    assertSame(VariantLookupPolicy.networkOnly(), options.getVariantLookupPolicy());
+    assertTrue(options.getVariantLookupPolicy() instanceof VariantLookupPolicy.NetworkOnly);
+  }
+
+  @Test
+  public void testFlagLookup_PersistenceUntilNetworkSuccessPreservesTtl() {
+    long ttl = TimeUnit.HOURS.toMillis(24);
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(ttl))
+        .build();
+
+    VariantLookupPolicy lookup = options.getVariantLookupPolicy();
+    assertTrue(lookup instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess);
+    assertEquals(ttl, ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) lookup).ttlMillis);
+  }
+
+  @Test
+  public void testFlagLookup_NetworkFirstPreservesTtl() {
+    long ttl = TimeUnit.MINUTES.toMillis(5);
+    FeatureFlagOptions options = new FeatureFlagOptions.Builder()
+        .variantLookupPolicy(VariantLookupPolicy.networkFirst(ttl))
+        .build();
+
+    VariantLookupPolicy lookup = options.getVariantLookupPolicy();
+    assertTrue("expected NetworkFirst", lookup instanceof VariantLookupPolicy.NetworkFirst);
+    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).ttlMillis);
+  }
+
+  @Test
+  public void testFlagLookup_FactoriesPreserveExactTtl() {
+    // Factories don't sanitize — they construct exactly what was asked. The "fall back to
+    // networkOnly" rule for non-positive TTL is enforced at SDK init via
+    // VariantLookupPolicy.effective(), not at factory construction time, so callers can
+    // introspect what they configured.
+    assertEquals(-1L, VariantLookupPolicy.persistenceUntilNetworkSuccess(-1).ttlMillis);
+    assertEquals(0L, VariantLookupPolicy.persistenceUntilNetworkSuccess(0).ttlMillis);
+    assertEquals(-100L, VariantLookupPolicy.networkFirst(-100).ttlMillis);
+  }
+
+  @Test
+  public void testEffectivePolicy_NonPositiveTtlBecomesNetworkOnly() {
+    // Persisting policies with TTL <= 0 do no useful work (we'd write to disk on every fetch
+    // but never serve anything from persistence) so the SDK substitutes networkOnly at init.
+    assertSame(
+        "negative TTL on persistenceUntilNetworkSuccess should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.persistenceUntilNetworkSuccess(-1)));
+    assertSame(
+        "zero TTL on persistenceUntilNetworkSuccess should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.persistenceUntilNetworkSuccess(0)));
+    assertSame(
+        "negative TTL on networkFirst should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.networkFirst(-100)));
+    assertSame(
+        "zero TTL on networkFirst should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.networkFirst(0)));
+  }
+
+  @Test
+  public void testEffectivePolicy_PositiveTtlPreserved() {
+    // Sanity: non-degenerate configurations pass through unchanged.
+    VariantLookupPolicy persistence =
+        VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(1));
+    assertSame(persistence, VariantLookupPolicy.effective(persistence));
+
+    VariantLookupPolicy networkOnly = VariantLookupPolicy.networkOnly();
+    assertSame(networkOnly, VariantLookupPolicy.effective(networkOnly));
   }
 
   // -----------------------------------------------------------------------

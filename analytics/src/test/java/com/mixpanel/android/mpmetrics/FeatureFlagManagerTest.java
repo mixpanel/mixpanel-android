@@ -318,7 +318,7 @@ public class FeatureFlagManagerTest {
         new FeatureFlagManager(
             mMockDelegate, // Pass delegate directly, manager will wrap in WeakReference
             mMockRemoteService,
-            new FlagsConfig(true, new JSONObject()));
+            new FlagsConfig(true, new JSONObject(), VariantLookupPolicy.networkOnly()));
     mPreviousLogLevel = MPLog.getLevel();
     MPLog.setLevel(MPLog.VERBOSE); // Enable verbose logging for tests
   }
@@ -364,7 +364,8 @@ public class FeatureFlagManagerTest {
   // Helper to simulate MPConfig having specific FlagsConfig
   private void setupFlagsConfig(boolean enabled, @Nullable JSONObject context) {
     final JSONObject finalContext = (context == null) ? new JSONObject() : context;
-    final FlagsConfig flagsConfig = new FlagsConfig(enabled, finalContext);
+    final FlagsConfig flagsConfig =
+        new FlagsConfig(enabled, finalContext, VariantLookupPolicy.networkOnly());
 
     mMockDelegate.configToReturn =
         new MPConfig(new Bundle(), mContext, TEST_TOKEN) {
@@ -2167,7 +2168,7 @@ public class FeatureFlagManagerTest {
 
     // Create a new manager to simulate retry (since the old one already fetched)
     mFeatureFlagManager = new FeatureFlagManager(mMockDelegate, mMockRemoteService,
-        new FlagsConfig(true, new JSONObject()));
+        new FlagsConfig(true, new JSONObject(), VariantLookupPolicy.networkOnly()));
     mFeatureFlagManager.loadFlags();
     waitForFlagsReady();
 
