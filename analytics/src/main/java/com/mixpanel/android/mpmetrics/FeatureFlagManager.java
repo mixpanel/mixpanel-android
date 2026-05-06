@@ -234,11 +234,11 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   /**
    * Clears all in-memory feature flag state: persisted flags, tracked-flag set, fetch timing,
-   * first-time event state, and the in-memory persisted fallback. Also wipes the on-disk persistence
-   * blob so a freshly-identified user can't be served the prior user's variants — note that
-   * {@code MixpanelAPI.reset()} also calls {@code PersistentIdentity.clearPreferences()}
+   * first-time event state, and the in-memory persisted fallback. Also wipes the on-disk
+   * persistence blob so a freshly-identified user can't be served the prior user's variants —
+   * note that {@code MixpanelAPI.reset()} also calls {@code PersistentIdentity.clearPreferences()}
    * which wipes the same shared file, so the disk clear here is defensive (idempotent) but
-   * keeps this method self-contained.
+   * keeps this method self-contained. Intended to be called from {@link MixpanelAPI#reset()}.
    *
    * <p>Posts to the handler thread so the mutation is serialized with reads and fetches. Any
    * in-flight fetch dispatched before this call is discarded when it completes (via the
