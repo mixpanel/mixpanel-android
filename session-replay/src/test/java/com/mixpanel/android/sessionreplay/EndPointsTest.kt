@@ -41,4 +41,9 @@ class EndPointsTest {
         val endpoint = EndPoints.settings("https://api-eu.mixpanel.com/")
         assertEquals("https://api-eu.mixpanel.com/settings", endpoint)
     }
+
+    @Test
+    fun testSessionReplayRedirectConstant() {
+        assertEquals("https://mixpanel.com/projects/replay-redirect", EndPoints.SESSION_REPLAY_REDIRECT)
+    }
 }

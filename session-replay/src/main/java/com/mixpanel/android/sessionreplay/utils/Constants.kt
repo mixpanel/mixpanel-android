@@ -97,6 +97,9 @@ object DataResidency {
 internal object EndPoints {
     const val DEFAULT_BASE_URL = DataResidency.US
 
+    /** Base URL for session replay redirect (works for all data residency regions). */
+    const val SESSION_REPLAY_REDIRECT = "https://mixpanel.com/projects/replay-redirect"
+
     fun record(baseUrl: String): String = "${baseUrl.trimEnd('/')}/record"
 
     fun settings(baseUrl: String): String = "${baseUrl.trimEnd('/')}/settings"
