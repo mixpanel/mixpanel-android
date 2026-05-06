@@ -49,17 +49,32 @@ public abstract class VariantLookupPolicy {
     VariantLookupPolicy() {}
 
     /**
-     * Negative TTL values are not meaningful (a persisted entry can't be older than the time it
-     * was written) so we treat them as a developer mistake and substitute the default. We log a
-     * warning rather than throwing because the SDK's contract is to never crash the host app.
+     * Resolves the policy the SDK should actually use given what the developer configured.
+     * Substitutes {@link #networkOnly()} when the requested policy is a persisting one with a
+     * non-positive TTL, since "persist on every fetch but expire immediately (or never accept
+     * the entry)" does no useful work — the developer almost certainly meant "no persistence."
+     * Logs a warning so the misconfiguration is visible without crashing the host app.
+     *
+     * <p>Called once at SDK init; downstream code can treat the returned policy as canonical.
      */
-    private static long sanitizeTtl(long ttlMillis) {
-        if (ttlMillis < 0) {
-            MPLog.w(LOGTAG, "Negative TTL provided (" + ttlMillis + "ms); falling back to default of "
-                    + DEFAULT_PERSISTENCE_TTL_MILLIS + "ms.");
-            return DEFAULT_PERSISTENCE_TTL_MILLIS;
+    @NonNull
+    static VariantLookupPolicy effective(@NonNull VariantLookupPolicy requested) {
+        final long ttl;
+        if (requested instanceof PersistenceUntilNetworkSuccess) {
+            ttl = ((PersistenceUntilNetworkSuccess) requested).ttlMillis;
+        } else if (requested instanceof NetworkFirst) {
+            ttl = ((NetworkFirst) requested).ttlMillis;
+        } else {
+            return requested;
         }
-        return ttlMillis;
+        if (ttl <= 0) {
+            MPLog.w(LOGTAG, "Non-positive TTL (" + ttl + "ms) on "
+                    + requested.getClass().getSimpleName()
+                    + "; falling back to networkOnly since persistence with no meaningful TTL "
+                    + "does no useful work.");
+            return networkOnly();
+        }
+        return requested;
     }
 
     /**
@@ -83,13 +98,13 @@ public abstract class VariantLookupPolicy {
      * Returns a {@link PersistenceUntilNetworkSuccess} strategy with the given persistence TTL.
      *
      * @param ttlMillis maximum age, in milliseconds, of a persisted variant set before it is
-     *                  not served. {@code 0} disables expiry. Negative values are treated as
-     *                  a developer error and silently fall back to
-     *                  {@link #DEFAULT_PERSISTENCE_TTL_MILLIS} (with a warning logged).
+     *                  not served. Non-positive values are treated as a misconfiguration —
+     *                  the SDK substitutes {@link #networkOnly()} at init (with a warning
+     *                  logged), since persistence with no meaningful TTL does no useful work.
      */
     @NonNull
     public static PersistenceUntilNetworkSuccess persistenceUntilNetworkSuccess(long ttlMillis) {
-        return new PersistenceUntilNetworkSuccess(sanitizeTtl(ttlMillis));
+        return new PersistenceUntilNetworkSuccess(ttlMillis);
     }
 
     /**
@@ -104,13 +119,13 @@ public abstract class VariantLookupPolicy {
      * Returns a {@link NetworkFirst} strategy with the given persistence TTL.
      *
      * @param ttlMillis maximum age, in milliseconds, of a persisted variant set before it is
-     *                  not served. {@code 0} disables expiry. Negative values are treated as
-     *                  a developer error and silently fall back to
-     *                  {@link #DEFAULT_PERSISTENCE_TTL_MILLIS} (with a warning logged).
+     *                  not served. Non-positive values are treated as a misconfiguration —
+     *                  the SDK substitutes {@link #networkOnly()} at init (with a warning
+     *                  logged), since persistence with no meaningful TTL does no useful work.
      */
     @NonNull
     public static NetworkFirst networkFirst(long ttlMillis) {
-        return new NetworkFirst(sanitizeTtl(ttlMillis));
+        return new NetworkFirst(ttlMillis);
     }
 
     /**

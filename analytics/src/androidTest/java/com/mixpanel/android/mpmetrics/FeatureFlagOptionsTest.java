@@ -102,29 +102,47 @@ public class FeatureFlagOptionsTest {
   }
 
   @Test
-  public void testFlagLookup_NegativeTtlFallsBackToDefault() {
-    // Aligns with mixpanel-js: negative TTL is treated as a developer error and substituted
-    // with the default rather than throwing or being interpreted as "indefinite".
-    VariantLookupPolicy.PersistenceUntilNetworkSuccess persistence =
-        VariantLookupPolicy.persistenceUntilNetworkSuccess(-1);
-    assertEquals(
-        "negative TTL on persistenceUntilNetworkSuccess should fall back to the default",
-        VariantLookupPolicy.DEFAULT_PERSISTENCE_TTL_MILLIS,
-        persistence.ttlMillis);
-
-    VariantLookupPolicy.NetworkFirst networkFirst = VariantLookupPolicy.networkFirst(-100);
-    assertEquals(
-        "negative TTL on networkFirst should fall back to the default",
-        VariantLookupPolicy.DEFAULT_PERSISTENCE_TTL_MILLIS,
-        networkFirst.ttlMillis);
+  public void testFlagLookup_FactoriesPreserveExactTtl() {
+    // Factories don't sanitize — they construct exactly what was asked. The "fall back to
+    // networkOnly" rule for non-positive TTL is enforced at SDK init via
+    // VariantLookupPolicy.effective(), not at factory construction time, so callers can
+    // introspect what they configured.
+    assertEquals(-1L, VariantLookupPolicy.persistenceUntilNetworkSuccess(-1).ttlMillis);
+    assertEquals(0L, VariantLookupPolicy.persistenceUntilNetworkSuccess(0).ttlMillis);
+    assertEquals(-100L, VariantLookupPolicy.networkFirst(-100).ttlMillis);
   }
 
   @Test
-  public void testFlagLookup_ZeroTtlPreserved() {
-    // 0 is a valid (if unusual) value meaning "no expiry" — only negative is rejected.
-    VariantLookupPolicy.PersistenceUntilNetworkSuccess persistence =
-        VariantLookupPolicy.persistenceUntilNetworkSuccess(0);
-    assertEquals(0, persistence.ttlMillis);
+  public void testEffectivePolicy_NonPositiveTtlBecomesNetworkOnly() {
+    // Persisting policies with TTL <= 0 do no useful work (we'd write to disk on every fetch
+    // but never serve anything from persistence) so the SDK substitutes networkOnly at init.
+    assertSame(
+        "negative TTL on persistenceUntilNetworkSuccess should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.persistenceUntilNetworkSuccess(-1)));
+    assertSame(
+        "zero TTL on persistenceUntilNetworkSuccess should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.persistenceUntilNetworkSuccess(0)));
+    assertSame(
+        "negative TTL on networkFirst should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.networkFirst(-100)));
+    assertSame(
+        "zero TTL on networkFirst should resolve to networkOnly",
+        VariantLookupPolicy.networkOnly(),
+        VariantLookupPolicy.effective(VariantLookupPolicy.networkFirst(0)));
+  }
+
+  @Test
+  public void testEffectivePolicy_PositiveTtlPreserved() {
+    // Sanity: non-degenerate configurations pass through unchanged.
+    VariantLookupPolicy persistence =
+        VariantLookupPolicy.persistenceUntilNetworkSuccess(TimeUnit.HOURS.toMillis(1));
+    assertSame(persistence, VariantLookupPolicy.effective(persistence));
+
+    VariantLookupPolicy networkOnly = VariantLookupPolicy.networkOnly();
+    assertSame(networkOnly, VariantLookupPolicy.effective(networkOnly));
   }
 
   // -----------------------------------------------------------------------

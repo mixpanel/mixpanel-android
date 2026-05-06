@@ -232,7 +232,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
-        final VariantLookupPolicy variantLookupPolicy = mFeatureFlagOptions.getVariantLookupPolicy();
+        // Resolve the effective policy once at init: a persisting policy with non-positive TTL
+        // is collapsed to NetworkOnly, since "persist on every fetch but the TTL makes nothing
+        // ever serve" does no useful work. Logs a warning when the substitution happens.
+        final VariantLookupPolicy variantLookupPolicy =
+                VariantLookupPolicy.effective(mFeatureFlagOptions.getVariantLookupPolicy());
         // Always hand the persistence prefs to FeatureFlagManager: non-NetworkOnly policies use
         // it to read/write, and NetworkOnly uses it on init to wipe any stale blob left over
         // from a prior config. The blob lives in the existing stored prefs file so reset() —
