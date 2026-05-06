@@ -1,8 +1,23 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("mixpanel.ktlint")
+}
+
+val mixpanelToken: String = run {
+    val fromEnv = System.getenv("MIXPANEL_TOKEN")
+    if (!fromEnv.isNullOrBlank()) return@run fromEnv
+    val localProps = rootProject.file("local.properties")
+    if (localProps.exists()) {
+        Properties().apply { localProps.inputStream().use { load(it) } }
+            .getProperty("MIXPANEL_TOKEN")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return@run it }
+    }
+    ""
 }
 
 android {
@@ -22,6 +37,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "MIXPANEL_TOKEN", "\"$mixpanelToken\"")
     }
 
     buildTypes {
@@ -46,6 +63,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 }
 
