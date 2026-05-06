@@ -125,6 +125,15 @@ class APICompatibilityTest {
         instance.identify("new_user_456")
         assertEquals("new_user_456", instance.getDistinctId())
 
+        // Test: getSessionReplayUrl API
+        instance.startRecording(100.0)
+        val currentReplayId = instance.getReplayId()
+        val sessionReplayUrl = instance.getSessionReplayUrl()
+        assertNotNull(sessionReplayUrl)
+        assertTrue(sessionReplayUrl!!.contains(currentReplayId))
+        assertTrue(sessionReplayUrl.contains(testToken))
+        instance.stopRecording()
+
         // Test 10: Sensitive view management with real views
         val textView = TextView(context)
         val editText = EditText(context)
