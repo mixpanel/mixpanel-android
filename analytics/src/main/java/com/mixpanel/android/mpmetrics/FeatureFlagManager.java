@@ -60,18 +60,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
   // --- State Variables (Protected by mHandler) ---
   private volatile Map<String, MixpanelFlagVariant> mFlags = null;
-  // True when mFlags was populated from the on-disk persistence and we have not yet seen the
-  // initial network response for the current user/context. Only set for NetworkFirst —
-  // PersistenceUntilNetworkSuccess serves persisted values immediately. Async lookups gate on this to honor the
-  // NetworkFirst spec ("await on network call, only serve persisted values if it fails")
-  // while still letting sync lookups + areFlagsReady() see the persisted values.
-  private volatile boolean mAwaitingInitialNetworkResponse = false;
   // Timestamp from the on-disk blob currently loaded into mFlags (epoch ms). 0 means no
-  // persisted blob is loaded — either because we're networkOnly, or no blob exists, or the
+  // persisted blob is loaded — either because we're networkOnly, no blob exists, or the
   // most recent /flags/ response replaced the loaded blob with Network-stamped variants.
   // Tracked separately from per-variant Source.Persistence(persistedAtMillis) so the
   // staleness check works uniformly even when the persisted blob was empty (no variants to
-  // sample a timestamp from).
+  // sample a timestamp from). Also doubles as the "NetworkFirst is still awaiting a
+  // successful network response" signal — see isNetworkFirstAwaitingFetch().
   // Set: in _loadPersistedVariants after readPersistedFromDisk returns non-null.
   // Cleared: in reset(), and in _completeFetch on success when mFlags is replaced with
   // Network variants. NOT cleared on fetch failure — preserves NetworkFirst's contract of
@@ -189,6 +184,21 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   /**
+   * Returns {@code true} when the policy is NetworkFirst and we're still serving from the
+   * persisted blob (no successful network fetch has overwritten it yet). Async lookups gate on
+   * this to honor the NetworkFirst spec ("await on network call, only serve persisted values
+   * if it fails") while still letting sync lookups + areFlagsReady() see the persisted values.
+   *
+   * <p>Stays true across failed fetches so each subsequent async lookup re-attempts the
+   * network until one succeeds, matching the pre-persistence behavior where a null mFlags
+   * caused getVariant to retry indefinitely.
+   */
+  private boolean isNetworkFirstAwaitingFetch() {
+    return mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkFirst
+        && mLoadedBlobPersistedAtMillis > 0;
+  }
+
+  /**
    * Returns {@code true} if the variant was loaded from the on-disk persistence and is now past
    * the configured TTL. Network-sourced variants and developer-supplied fallbacks always
    * return {@code false}. Used in lookup paths to suppress serving stale persisted values
@@ -258,7 +268,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           mFetchTiming = FetchTiming.neverFetched();
           mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
           mActivatedFirstTimeEvents.clear();
-          mAwaitingInitialNetworkResponse = false;
 
           if (mPersistencePrefs != null) {
             clearPersistenceOnDisk();
@@ -437,12 +446,12 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     // Post the core logic to the handler thread for safe state access
     mHandler.post(
         () -> {
-          // Serve immediately when mFlags is populated, we're not in the NetworkFirst-init
-          // window (waiting for the first network response after a persistence hit), AND the
-          // loaded snapshot isn't past TTL. The staleness clause is what makes the async path
-          // fall through to a fetch when persisted values have aged out mid-session.
+          // Serve immediately when mFlags is populated, we're not in the NetworkFirst gate
+          // (still serving the persisted blob, no successful fetch yet), AND the loaded
+          // snapshot isn't past TTL. The staleness clause is what makes the async path fall
+          // through to a fetch when persisted values have aged out mid-session.
           boolean canServeImmediately =
-              mFlags != null && !mAwaitingInitialNetworkResponse && !loadedFlagsAreStale();
+              mFlags != null && !isNetworkFirstAwaitingFetch() && !loadedFlagsAreStale();
 
           if (canServeImmediately) {
             MPLog.v(LOGTAG, "Flags ready. Checking for flag '" + flagName + "'");
@@ -593,7 +602,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   public void getAllVariants(@NonNull final FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion) {
     mHandler.post(() -> {
       boolean canServeImmediately =
-          mFlags != null && !mAwaitingInitialNetworkResponse && !loadedFlagsAreStale();
+          mFlags != null && !isNetworkFirstAwaitingFetch() && !loadedFlagsAreStale();
 
       if (canServeImmediately) {
         // Background refresh under PersistenceUntilNetworkSuccess while we're still
@@ -903,10 +912,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     List<FlagCompletionCallback<Boolean>> callbacksToCall = mFetchCompletionCallbacks;
     mFetchCompletionCallbacks = new ArrayList<>();
-
-    // Whatever the outcome, we've now seen a network response (or definitively failed to
-    // get one). NetworkFirst async lookups can stop awaiting the initial response.
-    mAwaitingInitialNetworkResponse = false;
 
     if (success && flagsResponseJson != null) {
       try {
@@ -1342,8 +1347,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * Loads the persisted /flags/ response from storage and parses it into mFlags +
    * mPendingFirstTimeEvents. Both PersistenceUntilNetworkSuccess and NetworkFirst populate mFlags directly so
    * that sync lookups and {@link #areFlagsReady()} reflect the persisted blob. The difference
-   * between policies is enforced at async-lookup time via {@link #mAwaitingInitialNetworkResponse}:
-   * NetworkFirst sets it true so async lookups await the network call before serving, per the ERD.
+   * between policies is enforced at async-lookup time via {@link #isNetworkFirstAwaitingFetch()}:
+   * NetworkFirst gates async lookups on a successful network response, per the ERD.
    */
   private void _loadPersistedVariants() {
     final PersistedFlagsResponse cached = readPersistedFromDisk();
@@ -1360,9 +1365,6 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         mFlags = Collections.unmodifiableMap(stamped);
         mLoadedBlobPersistedAtMillis = cached.persistedAtMillis;
         mPendingFirstTimeEvents = parsePendingFirstTimeEvents(cached.response);
-        if (mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkFirst) {
-          mAwaitingInitialNetworkResponse = true;
-        }
         MPLog.v(LOGTAG, "Loaded " + stamped.size() + " persisted variants into memory.");
       }
     }
