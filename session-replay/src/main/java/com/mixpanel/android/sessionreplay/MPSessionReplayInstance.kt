@@ -23,7 +23,9 @@ import com.mixpanel.android.sessionreplay.tracking.EventPublisher
 import com.mixpanel.android.sessionreplay.tracking.ScreenRecorder
 import com.mixpanel.android.sessionreplay.tracking.TouchEventListener
 import com.mixpanel.android.sessionreplay.tracking.TouchEventRecorder
+import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
+import androidx.core.net.toUri
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
 import curtains.OnTouchEventListener
@@ -232,6 +234,22 @@ class MPSessionReplayInstance(
     fun getReplayId(): String = flushService.replayId
 
     fun getDistinctId(): String = flushService.getDistinctId()
+
+    /**
+     * Returns the URL to view the current session replay in the Mixpanel dashboard.
+     *
+     * @return The session replay URL if recording is active, or `null` if not recording.
+     */
+    fun getSessionReplayUrl(): String? {
+        if (!hasStartedRecording) return null
+
+        return EndPoints.SESSION_REPLAY_REDIRECT.toUri().buildUpon()
+            .appendQueryParameter("replay_id", getReplayId())
+            .appendQueryParameter("distinct_id", getDistinctId())
+            .appendQueryParameter("token", token)
+            .build()
+            .toString()
+    }
 
     fun isRecording(): Boolean = hasStartedRecording
 
