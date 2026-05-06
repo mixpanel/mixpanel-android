@@ -66,6 +66,17 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   // NetworkFirst spec ("await on network call, only serve persisted values if it fails")
   // while still letting sync lookups + areFlagsReady() see the persisted values.
   private volatile boolean mAwaitingInitialNetworkResponse = false;
+  // Timestamp from the on-disk blob currently loaded into mFlags (epoch ms). 0 means no
+  // persisted blob is loaded — either because we're networkOnly, or no blob exists, or the
+  // most recent /flags/ response replaced the loaded blob with Network-stamped variants.
+  // Tracked separately from per-variant Source.Persistence(persistedAtMillis) so the
+  // staleness check works uniformly even when the persisted blob was empty (no variants to
+  // sample a timestamp from).
+  // Set: in _loadPersistedVariants after readPersistedFromDisk returns non-null.
+  // Cleared: in reset(), and in _completeFetch on success when mFlags is replaced with
+  // Network variants. NOT cleared on fetch failure — preserves NetworkFirst's contract of
+  // serving persisted values when the network call fails.
+  private volatile long mLoadedBlobPersistedAtMillis = 0L;
   private final Set<String> mTrackedFlags = new HashSet<>();
   private boolean mIsFetching = false;
   private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
@@ -194,19 +205,23 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   /**
-   * Returns {@code true} if the entire in-memory snapshot was loaded from persistence and is
-   * now past TTL. {@code mFlags} is wholesale-replaced on every state change, so all entries
-   * share a single {@link MixpanelFlagVariant.Source.Persistence#persistedAtMillis} — sampling
-   * any one entry tells us whether the whole map is expired. Used to fold staleness into the
-   * "can serve immediately?" check so async lookups fall through to a fetch instead of
-   * silently serving the developer fallback.
+   * Returns {@code true} if the on-disk persisted blob currently loaded into memory is past
+   * TTL. Consults {@link #mLoadedBlobPersistedAtMillis} directly rather than sampling a
+   * variant's {@link MixpanelFlagVariant.Source.Persistence} stamp so the check works
+   * uniformly even when the persisted blob was empty (a previous session may have persisted
+   * a no-flags response — TTL still governs when to refresh in that case).
+   *
+   * <p>Returns {@code false} when no persisted blob is loaded — either because there was
+   * nothing to load, or because a successful network fetch has since replaced mFlags with
+   * Network-stamped variants and cleared the field.
    */
   private boolean loadedFlagsAreStale() {
-    final Map<String, MixpanelFlagVariant> snapshot = mFlags;
-    if (snapshot == null || snapshot.isEmpty()) {
+    final long persistedAt = mLoadedBlobPersistedAtMillis;
+    if (persistedAt <= 0) {
       return false;
     }
-    return isExpiredPersistedVariant(snapshot.values().iterator().next());
+    final long ttl = persistenceTtlMillis();
+    return ttl > 0 && (System.currentTimeMillis() - persistedAt) > ttl;
   }
 
   // --- Public Methods ---
@@ -237,6 +252,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
           synchronized (mLock) {
             mFlags = null;
+            mLoadedBlobPersistedAtMillis = 0L;
           }
           mTrackedFlags.clear();
           mFetchTiming = FetchTiming.neverFetched();
@@ -892,8 +908,12 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         Map<String, MixpanelFlagVariant> newFlags = stampSource(rawFlags, MixpanelFlagVariant.Source.network());
 
         // Update state — mFlags goes from persisted values (or null) to fresh network values.
+        // Clearing mLoadedBlobPersistedAtMillis here means loadedFlagsAreStale() now returns
+        // false (the loaded blob has been superseded by Network values), so subsequent
+        // immediate-serve lookups won't bounce back to the fetch path.
         synchronized (mLock) {
           mFlags = Collections.unmodifiableMap(newFlags);
+          mLoadedBlobPersistedAtMillis = 0L;
         }
         mPendingFirstTimeEvents = newPendingEvents;
 
@@ -1316,6 +1336,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       // Defer to network values if a fetch already raced ahead of us.
       if (mFlags == null) {
         mFlags = Collections.unmodifiableMap(stamped);
+        mLoadedBlobPersistedAtMillis = cached.persistedAtMillis;
         mPendingFirstTimeEvents = parsePendingFirstTimeEvents(cached.response);
         if (mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkFirst) {
           mAwaitingInitialNetworkResponse = true;

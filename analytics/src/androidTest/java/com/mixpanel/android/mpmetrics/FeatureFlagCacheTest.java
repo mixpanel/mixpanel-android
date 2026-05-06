@@ -48,6 +48,7 @@ public class FeatureFlagCacheTest {
   private static final String TOKEN_NETWORK_FIRST_FAIL = "TestPersistence_NetworkFirstFail";
   private static final String TOKEN_OPT_OUT = "TestPersistence_OptOut";
   private static final String TOKEN_TTL_AWAIT_FETCH = "TestPersistence_TtlAwaitFetch";
+  private static final String TOKEN_EMPTY_BLOB_TTL = "TestPersistence_EmptyBlobTtl";
   private static final String FLAG_NAME = "persisted-flag";
   private static final String PERSISTED_VARIANT_KEY = "persisted-variant";
   private static final String PERSISTED_VARIANT_VALUE = "persisted-value";
@@ -69,6 +70,7 @@ public class FeatureFlagCacheTest {
     storedPrefs(TOKEN_NETWORK_FIRST_FAIL).edit().clear().commit();
     storedPrefs(TOKEN_OPT_OUT).edit().clear().commit();
     storedPrefs(TOKEN_TTL_AWAIT_FETCH).edit().clear().commit();
+    storedPrefs(TOKEN_EMPTY_BLOB_TTL).edit().clear().commit();
   }
 
   // -----------------------------------------------------------------------
@@ -330,6 +332,60 @@ public class FeatureFlagCacheTest {
   }
 
   // -----------------------------------------------------------------------
+  // Empty persisted blob with an expired TTL must NOT serve fallback silently —
+  // the lookup falls through to a fetch (matches iOS / fixes a real bug where
+  // a previously-empty /flags/ response would lock the SDK into fallback forever).
+  // -----------------------------------------------------------------------
+
+  @Test
+  public void testGetVariantAsync_EmptyPersistedBlobPastTtlAwaitsFetch() throws Exception {
+    // Arrange: seed a blob that loaded successfully but contained no variants. Use a short
+    // TTL so the blob ages out almost immediately.
+    seedEmptyPersistedResponse(TOKEN_EMPTY_BLOB_TTL, /*distinctId*/ TOKEN_EMPTY_BLOB_TTL);
+
+    final long shortTtlMs = 100L;
+    FeatureFlagOptions flagOptions = new FeatureFlagOptions.Builder()
+        .enabled(true)
+        .prefetchFlags(false)
+        .variantLookupPolicy(VariantLookupPolicy.persistenceUntilNetworkSuccess(shortTtlMs))
+        .build();
+    MixpanelOptions opts = new MixpanelOptions.Builder()
+        .featureFlagOptions(flagOptions)
+        .build();
+
+    final AtomicInteger flagsHttpCallCount = new AtomicInteger(0);
+    MixpanelAPI mixpanel = newMixpanel(
+        TOKEN_EMPTY_BLOB_TTL, opts, new CountingHangingHttpService(flagsHttpCallCount));
+
+    // Wait for the empty blob to load — areFlagsReady() flips true once mFlags is the
+    // (empty) loaded map.
+    long deadline = System.currentTimeMillis() + 2_000L;
+    while (System.currentTimeMillis() < deadline && !mixpanel.getFlags().areFlagsReady()) {
+      Thread.sleep(20);
+    }
+    assertTrue(
+        "Sanity: empty blob should have loaded (areFlagsReady == true)",
+        mixpanel.getFlags().areFlagsReady());
+
+    // Act: sleep past TTL, then async-lookup. Pre-fix, the immediate-serve path would bail
+    // to fallback because there were no variants to sample a persistedAt from. Post-fix,
+    // loadedFlagsAreStale() consults the manager-level mLoadedBlobPersistedAtMillis directly
+    // and forces the lookup through the fetch path.
+    Thread.sleep(shortTtlMs * 3);
+
+    final CountDownLatch done = new CountDownLatch(1);
+    mixpanel.getFlags().getVariant(
+        FLAG_NAME,
+        new MixpanelFlagVariant("dev-fallback-key", "dev-fallback-value"),
+        result -> done.countDown());
+
+    assertTrue("getVariant callback should fire", done.await(5, TimeUnit.SECONDS));
+    assertEquals(
+        "Stale empty blob must trigger a network fetch on async lookup",
+        1, flagsHttpCallCount.get());
+  }
+
+  // -----------------------------------------------------------------------
   // optOutTracking() clears the persisted variants
   // -----------------------------------------------------------------------
 
@@ -446,6 +502,24 @@ public class FeatureFlagCacheTest {
     flags.put(FLAG_NAME, variant);
     org.json.JSONObject response = new org.json.JSONObject();
     response.put("flags", flags);
+
+    org.json.JSONObject blob = new org.json.JSONObject();
+    blob.put("persistedAt", System.currentTimeMillis());
+    blob.put("distinctId", distinctId);
+    blob.put("response", response);
+
+    storedPrefs(token).edit().putString(BLOB_KEY, blob.toString()).commit();
+  }
+
+  /**
+   * Writes a persisted blob whose response contains an empty flags map — simulates a prior
+   * session where /flags/ returned successfully but with no variants assigned to the user.
+   * Used to verify the SDK still consults the blob's TTL even when there are no variants
+   * to inspect.
+   */
+  private void seedEmptyPersistedResponse(String token, String distinctId) throws Exception {
+    org.json.JSONObject response = new org.json.JSONObject();
+    response.put("flags", new org.json.JSONObject());
 
     org.json.JSONObject blob = new org.json.JSONObject();
     blob.put("persistedAt", System.currentTimeMillis());
