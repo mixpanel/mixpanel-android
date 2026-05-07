@@ -17,9 +17,9 @@ import com.mixpanel.android.util.MPLog;
  *   <li>{@link PersistenceUntilNetworkSuccess} - serve persisted variants immediately when available, and
  *       only block on the network if no persisted variants exist for the current user. The
  *       network call still runs in the background to refresh. Persisted entries older than
- *       {@code ttlMillis} are not served.</li>
+ *       {@code persistenceTtlMillis} are not served.</li>
  *   <li>{@link NetworkFirst} - prefer fresh values from the network, but fall back to persisted
- *       variants when the network call fails. Persisted entries older than {@code ttlMillis}
+ *       variants when the network call fails. Persisted entries older than {@code persistenceTtlMillis}
  *       are not served.</li>
  * </ul>
  *
@@ -61,9 +61,9 @@ public abstract class VariantLookupPolicy {
     static VariantLookupPolicy effective(@NonNull VariantLookupPolicy requested) {
         final long ttl;
         if (requested instanceof PersistenceUntilNetworkSuccess) {
-            ttl = ((PersistenceUntilNetworkSuccess) requested).ttlMillis;
+            ttl = ((PersistenceUntilNetworkSuccess) requested).persistenceTtlMillis;
         } else if (requested instanceof NetworkFirst) {
-            ttl = ((NetworkFirst) requested).ttlMillis;
+            ttl = ((NetworkFirst) requested).persistenceTtlMillis;
         } else {
             return requested;
         }
@@ -97,14 +97,15 @@ public abstract class VariantLookupPolicy {
     /**
      * Returns a {@link PersistenceUntilNetworkSuccess} strategy with the given persistence TTL.
      *
-     * @param ttlMillis maximum age, in milliseconds, of a persisted variant set before it is
-     *                  not served. Non-positive values are treated as a misconfiguration —
-     *                  the SDK substitutes {@link #networkOnly()} at init (with a warning
-     *                  logged), since persistence with no meaningful TTL does no useful work.
+     * @param persistenceTtlMillis maximum age, in milliseconds, of a persisted variant set before
+     *                             it is not served. Non-positive values are treated as a
+     *                             misconfiguration — the SDK substitutes {@link #networkOnly()}
+     *                             at init (with a warning logged), since persistence with no
+     *                             meaningful TTL does no useful work.
      */
     @NonNull
-    public static PersistenceUntilNetworkSuccess persistenceUntilNetworkSuccess(long ttlMillis) {
-        return new PersistenceUntilNetworkSuccess(ttlMillis);
+    public static PersistenceUntilNetworkSuccess persistenceUntilNetworkSuccess(long persistenceTtlMillis) {
+        return new PersistenceUntilNetworkSuccess(persistenceTtlMillis);
     }
 
     /**
@@ -118,14 +119,15 @@ public abstract class VariantLookupPolicy {
     /**
      * Returns a {@link NetworkFirst} strategy with the given persistence TTL.
      *
-     * @param ttlMillis maximum age, in milliseconds, of a persisted variant set before it is
-     *                  not served. Non-positive values are treated as a misconfiguration —
-     *                  the SDK substitutes {@link #networkOnly()} at init (with a warning
-     *                  logged), since persistence with no meaningful TTL does no useful work.
+     * @param persistenceTtlMillis maximum age, in milliseconds, of a persisted variant set before
+     *                             it is not served. Non-positive values are treated as a
+     *                             misconfiguration — the SDK substitutes {@link #networkOnly()}
+     *                             at init (with a warning logged), since persistence with no
+     *                             meaningful TTL does no useful work.
      */
     @NonNull
-    public static NetworkFirst networkFirst(long ttlMillis) {
-        return new NetworkFirst(ttlMillis);
+    public static NetworkFirst networkFirst(long persistenceTtlMillis) {
+        return new NetworkFirst(persistenceTtlMillis);
     }
 
     /**
@@ -145,10 +147,10 @@ public abstract class VariantLookupPolicy {
      * the network when no persisted entry exists.
      */
     public static final class PersistenceUntilNetworkSuccess extends VariantLookupPolicy {
-        public final long ttlMillis;
+        public final long persistenceTtlMillis;
 
-        PersistenceUntilNetworkSuccess(long ttlMillis) {
-            this.ttlMillis = ttlMillis;
+        PersistenceUntilNetworkSuccess(long persistenceTtlMillis) {
+            this.persistenceTtlMillis = persistenceTtlMillis;
         }
     }
 
@@ -157,10 +159,10 @@ public abstract class VariantLookupPolicy {
      * when the network call fails.
      */
     public static final class NetworkFirst extends VariantLookupPolicy {
-        public final long ttlMillis;
+        public final long persistenceTtlMillis;
 
-        NetworkFirst(long ttlMillis) {
-            this.ttlMillis = ttlMillis;
+        NetworkFirst(long persistenceTtlMillis) {
+            this.persistenceTtlMillis = persistenceTtlMillis;
         }
     }
 }

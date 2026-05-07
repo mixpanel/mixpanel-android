@@ -86,7 +86,7 @@ public class FeatureFlagOptionsTest {
 
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
     assertTrue(lookup instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess);
-    assertEquals(ttl, ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) lookup).ttlMillis);
+    assertEquals(ttl, ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) lookup).persistenceTtlMillis);
   }
 
   @Test
@@ -98,7 +98,7 @@ public class FeatureFlagOptionsTest {
 
     VariantLookupPolicy lookup = options.getVariantLookupPolicy();
     assertTrue("expected NetworkFirst", lookup instanceof VariantLookupPolicy.NetworkFirst);
-    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).ttlMillis);
+    assertEquals(ttl, ((VariantLookupPolicy.NetworkFirst) lookup).persistenceTtlMillis);
   }
 
   @Test
@@ -107,9 +107,9 @@ public class FeatureFlagOptionsTest {
     // networkOnly" rule for non-positive TTL is enforced at SDK init via
     // VariantLookupPolicy.effective(), not at factory construction time, so callers can
     // introspect what they configured.
-    assertEquals(-1L, VariantLookupPolicy.persistenceUntilNetworkSuccess(-1).ttlMillis);
-    assertEquals(0L, VariantLookupPolicy.persistenceUntilNetworkSuccess(0).ttlMillis);
-    assertEquals(-100L, VariantLookupPolicy.networkFirst(-100).ttlMillis);
+    assertEquals(-1L, VariantLookupPolicy.persistenceUntilNetworkSuccess(-1).persistenceTtlMillis);
+    assertEquals(0L, VariantLookupPolicy.persistenceUntilNetworkSuccess(0).persistenceTtlMillis);
+    assertEquals(-100L, VariantLookupPolicy.networkFirst(-100).persistenceTtlMillis);
   }
 
   @Test

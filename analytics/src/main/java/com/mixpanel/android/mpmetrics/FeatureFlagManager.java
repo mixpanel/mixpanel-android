@@ -1479,10 +1479,10 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private long persistenceTtlMillis() {
     VariantLookupPolicy policy = mFlagsConfig.variantLookupPolicy;
     if (policy instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess) {
-      return ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) policy).ttlMillis;
+      return ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) policy).persistenceTtlMillis;
     }
     if (policy instanceof VariantLookupPolicy.NetworkFirst) {
-      return ((VariantLookupPolicy.NetworkFirst) policy).ttlMillis;
+      return ((VariantLookupPolicy.NetworkFirst) policy).persistenceTtlMillis;
     }
     return 0L;
   }
