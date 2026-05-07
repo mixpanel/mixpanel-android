@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -232,6 +233,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
+        mBlacklistedProperties = options.getBlacklistedProperties();
         mFeatureFlagManager =
                 new FeatureFlagManager(
                         this,
@@ -2792,12 +2794,23 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             }
         }
 
+        // Strip user/super/referrer properties listed in the blacklist. Auto-properties
+        // (added later in AnalyticsMessages.prepareEventObject) are filtered there using
+        // the same set, which is forwarded via EventDescription.
+        if (!mBlacklistedProperties.isEmpty()) {
+            for (final String key : mBlacklistedProperties) {
+                if (RESERVED_BUILD_KEYS.contains(key)) continue;
+                messageProps.remove(key);
+            }
+        }
+
         return new AnalyticsMessages.EventDescription(
                 eventName,
                 messageProps,
                 mToken,
                 isAutomaticEvent,
-                mSessionMetadata.getMetadataForEvent());
+                mSessionMetadata.getMetadataForEvent(),
+                mBlacklistedProperties);
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -2959,6 +2972,24 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
     private final FeatureFlagOptions mFeatureFlagOptions;
+    private final Set<String> mBlacklistedProperties;
+
+    /**
+     * Property keys that buildEventDescription itself writes and must not be stripped, even if
+     * a customer adds them to the blacklist. Mirrors AnalyticsMessages.RESERVED_PROPERTY_KEYS
+     * for the keys produced at this layer.
+     */
+    private static final Set<String> RESERVED_BUILD_KEYS;
+
+    static {
+        final java.util.HashSet<String> reserved = new java.util.HashSet<>();
+        reserved.add("time");
+        reserved.add("distinct_id");
+        reserved.add("$device_id");
+        reserved.add("$user_id");
+        reserved.add("$had_persisted_distinct_id");
+        RESERVED_BUILD_KEYS = Collections.unmodifiableSet(reserved);
+    }
     private FeatureFlagManager mFeatureFlagManager;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground

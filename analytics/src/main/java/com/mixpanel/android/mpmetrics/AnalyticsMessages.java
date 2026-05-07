@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import javax.net.ssl.SSLSocketFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,6 +38,41 @@ import org.json.JSONObject;
  * <p>This class straddles the thread boundary between user threads and a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
+
+    /**
+     * Property keys that are required for ingestion or identity resolution and must never be
+     * stripped, even if a customer adds them to their {@link MixpanelOptions} blacklist.
+     */
+    private static final Set<String> RESERVED_PROPERTY_KEYS;
+
+    static {
+        final java.util.HashSet<String> reserved = new java.util.HashSet<>();
+        reserved.add("token");
+        reserved.add("time");
+        reserved.add("distinct_id");
+        reserved.add("$device_id");
+        reserved.add("$user_id");
+        reserved.add("$insert_id");
+        reserved.add("$had_persisted_distinct_id");
+        RESERVED_PROPERTY_KEYS = Collections.unmodifiableSet(reserved);
+    }
+
+    /**
+     * Removes any property whose key appears in {@code blacklist} from {@code target},
+     * skipping reserved keys that ingestion or identity require. Package-private + static
+     * so it can be unit-tested directly.
+     */
+    /* package */ static void applyPropertyBlacklist(JSONObject target, Set<String> blacklist) {
+        if (target == null || blacklist == null || blacklist.isEmpty()) {
+            return;
+        }
+        for (final String key : blacklist) {
+            if (RESERVED_PROPERTY_KEYS.contains(key)) {
+                continue;
+            }
+            target.remove(key);
+        }
+    }
 
     /** Do not call directly. You should call AnalyticsMessages.getInstance() */
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
@@ -223,10 +260,22 @@ import org.json.JSONObject;
                 String token,
                 boolean isAutomatic,
                 JSONObject sessionMetadata) {
+            this(eventName, properties, token, isAutomatic, sessionMetadata, Collections.<String>emptySet());
+        }
+
+        public EventDescription(
+                String eventName,
+                JSONObject properties,
+                String token,
+                boolean isAutomatic,
+                JSONObject sessionMetadata,
+                Set<String> blacklistedProperties) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
             mSessionMetadata = sessionMetadata;
+            mBlacklistedProperties =
+                    blacklistedProperties == null ? Collections.<String>emptySet() : blacklistedProperties;
         }
 
         public String getEventName() {
@@ -245,9 +294,14 @@ import org.json.JSONObject;
             return mIsAutomatic;
         }
 
+        public Set<String> getBlacklistedProperties() {
+            return mBlacklistedProperties;
+        }
+
         private final String mEventName;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
+        private final Set<String> mBlacklistedProperties;
     }
 
     static class PeopleDescription extends MixpanelMessageDescription {
@@ -758,6 +812,7 @@ import org.json.JSONObject;
                         sendProperties.put(key, eventProperties.get(key));
                     }
                 }
+                applyPropertyBlacklist(sendProperties, eventDescription.getBlacklistedProperties());
                 eventObj.put("event", eventDescription.getEventName());
                 eventObj.put("properties", sendProperties);
                 eventObj.put("$mp_metadata", eventDescription.getSessionMetadata());

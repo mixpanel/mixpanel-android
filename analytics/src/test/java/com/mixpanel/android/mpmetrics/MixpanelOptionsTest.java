@@ -5,8 +5,11 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -25,6 +28,66 @@ public class MixpanelOptionsTest {
         assertNull(options.getDeviceIdProvider());
         assertNull(options.getServerURL());
         assertNull(options.getProxyServerInteractor());
+        assertNotNull(options.getBlacklistedProperties());
+        assertTrue(options.getBlacklistedProperties().isEmpty());
+    }
+
+    @Test
+    public void testBlacklistedProperties() {
+        Set<String> blacklist = new HashSet<>();
+        blacklist.add("$screen_height");
+        blacklist.add("$lib_version");
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .blacklistedProperties(blacklist)
+                .build();
+
+        assertEquals(2, options.getBlacklistedProperties().size());
+        assertTrue(options.getBlacklistedProperties().contains("$screen_height"));
+        assertTrue(options.getBlacklistedProperties().contains("$lib_version"));
+    }
+
+    @Test
+    public void testBlacklistedPropertiesDefensiveCopy() {
+        Set<String> blacklist = new HashSet<>();
+        blacklist.add("$screen_height");
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .blacklistedProperties(blacklist)
+                .build();
+
+        // Mutating the source should not affect the stored set.
+        blacklist.add("$lib_version");
+        assertEquals(1, options.getBlacklistedProperties().size());
+        assertTrue(options.getBlacklistedProperties().contains("$screen_height"));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testBlacklistedPropertiesGetterIsImmutable() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .blacklistedProperties(Collections.singleton("$screen_height"))
+                .build();
+        options.getBlacklistedProperties().add("anything");
+    }
+
+    @Test
+    public void testNullBlacklistedProperties() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .blacklistedProperties(null)
+                .build();
+
+        assertNotNull(options.getBlacklistedProperties());
+        assertTrue(options.getBlacklistedProperties().isEmpty());
+    }
+
+    @Test
+    public void testEmptyBlacklistedProperties() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .blacklistedProperties(Collections.<String>emptySet())
+                .build();
+
+        assertNotNull(options.getBlacklistedProperties());
+        assertTrue(options.getBlacklistedProperties().isEmpty());
     }
 
     @Test

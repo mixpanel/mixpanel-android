@@ -10,6 +10,10 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class MixpanelOptions {
 
     private final String instanceName;
@@ -19,6 +23,7 @@ public class MixpanelOptions {
     private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
+    private final Set<String> blacklistedProperties;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -28,6 +33,7 @@ public class MixpanelOptions {
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
+        this.blacklistedProperties = builder.blacklistedProperties;
     }
 
     public String getInstanceName() {
@@ -95,6 +101,18 @@ public class MixpanelOptions {
         return proxyServerInteractor;
     }
 
+    /**
+     * Returns the set of property keys that should be stripped from every event before it is
+     * sent to Mixpanel. Returns an empty set if none were configured. The returned set is
+     * unmodifiable.
+     *
+     * @return The configured blacklist, or an empty unmodifiable set.
+     */
+    @NonNull
+    public Set<String> getBlacklistedProperties() {
+        return blacklistedProperties;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -103,6 +121,7 @@ public class MixpanelOptions {
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
+        private Set<String> blacklistedProperties = Collections.emptySet();
 
         public Builder() {
         }
@@ -275,6 +294,34 @@ public class MixpanelOptions {
         ) {
             this.serverURL = serverURL;
             this.proxyServerInteractor = proxyServerInteractor;
+            return this;
+        }
+
+        /**
+         * Sets a blacklist of property keys that should be stripped from every event before it
+         * is sent to Mixpanel. This applies to user-supplied properties, super properties, and
+         * the SDK's automatically tracked properties (e.g. {@code $screen_height},
+         * {@code $lib_version}).
+         *
+         * <p>Use this to reduce per-event payload size or to suppress properties the project
+         * has no interest in. Matching is exact and case-sensitive. Internal identity/routing
+         * fields ({@code time}, {@code distinct_id}, {@code $device_id}, {@code $user_id},
+         * {@code $insert_id}, {@code token}) are never stripped, even if listed.
+         *
+         * <p>A {@code null} or empty set disables filtering entirely with zero per-event
+         * overhead.
+         *
+         * @param blacklistedProperties The set of property keys to strip.
+         * @return This Builder instance for chaining.
+         */
+        public Builder blacklistedProperties(@Nullable Set<String> blacklistedProperties) {
+            if (blacklistedProperties == null || blacklistedProperties.isEmpty()) {
+                this.blacklistedProperties = Collections.emptySet();
+            } else {
+                // Defensive copy + immutable wrapper so callers can't mutate post-build.
+                this.blacklistedProperties =
+                        Collections.unmodifiableSet(new HashSet<>(blacklistedProperties));
+            }
             return this;
         }
 
