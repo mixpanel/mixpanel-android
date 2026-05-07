@@ -1164,7 +1164,7 @@ public class FeatureFlagManagerTest {
   }
 
   @Test
-  public void testRequestBodyConstruction_performFetchRequest()
+  public void testRequestBodyConstructionperformFetchRequest()
       throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Setup with flags enabled and specific context data
     JSONObject contextData = new JSONObject();

@@ -254,7 +254,7 @@ public class FeatureFlagCacheTest {
         TOKEN_TTL_LOOKUP, opts, new HangingFlagsHttpService(flagsHttpCallCount));
 
     // Sanity #1: the persisted blob loads at init (TTL not yet expired) and getVariantSync
-    // serves it. Wait briefly for _loadPersistedVariants to drain on the FF handler thread.
+    // serves it. Wait briefly for loadPersistedVariants to drain on the FF handler thread.
     long deadline = System.currentTimeMillis() + 2_000L;
     while (System.currentTimeMillis() < deadline && !mixpanel.getFlags().areFlagsReady()) {
       Thread.sleep(20);
@@ -618,7 +618,7 @@ public class FeatureFlagCacheTest {
    * HTTP service that counts /flags/ calls and then HANGS the request indefinitely. Use this
    * when a test needs to verify that a background fetch was initiated (via the call count)
    * without the fetch actually completing and replacing {@code mFlags} mid-test — relevant
-   * for PersistenceUntilNetworkSuccess scenarios where {@code _loadPersistedVariants}
+   * for PersistenceUntilNetworkSuccess scenarios where {@code loadPersistedVariants}
    * auto-kicks-off a background refresh and you want to assert on the in-memory persistence
    * state before that fetch could plausibly land.
    */
