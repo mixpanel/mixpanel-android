@@ -1,5 +1,6 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,9 +46,32 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   private final ExecutorService
       mNetworkExecutor; // For performing network calls off the handler thread
   private final Object mLock = new Object();
+  // SharedPreferences (shared with PersistentIdentity) used to persist the most recent /flags/
+  // response. null when VariantLookupPolicy is NetworkOnly — persistence is opt-in via policy.
+  @Nullable private final Future<SharedPreferences> mPersistencePrefs;
+
+  // Persistence blob layout — single key in the shared stored-prefs file. No version field:
+  // any parse failure clears the blob, and the next successful fetch overwrites with the
+  // current shape. This makes incompatible changes self-healing rather than gated.
+  private static final String PERSISTENCE_BLOB_KEY = "mixpanel.flags.persistence";
+  private static final String PERSISTENCE_FIELD_PERSISTED_AT = "persistedAt";
+  private static final String PERSISTENCE_FIELD_DISTINCT_ID = "distinctId";
+  private static final String PERSISTENCE_FIELD_RESPONSE = "response";
 
   // --- State Variables (Protected by mHandler) ---
   private volatile Map<String, MixpanelFlagVariant> mFlags = null;
+  // Timestamp from the on-disk blob currently loaded into mFlags (epoch ms). 0 means no
+  // persisted blob is loaded — either because we're networkOnly, no blob exists, or the
+  // most recent /flags/ response replaced the loaded blob with Network-stamped variants.
+  // Tracked separately from per-variant Source.Persistence(persistedAtMillis) so the
+  // staleness check works uniformly even when the persisted blob was empty (no variants to
+  // sample a timestamp from). Also doubles as the "NetworkFirst is still awaiting a
+  // successful network response" signal — see isNetworkFirstAwaitingFetch().
+  // Set: in loadPersistedVariants after readPersistedFromDisk returns non-null.
+  // Cleared: in reset(), and in completeFetch on success when mFlags is replaced with
+  // Network variants. NOT cleared on fetch failure — preserves NetworkFirst's contract of
+  // serving persisted values when the network call fails.
+  private volatile long mLoadedBlobPersistedAtMillis = 0L;
   private final Set<String> mTrackedFlags = new HashSet<>();
   private boolean mIsFetching = false;
   private List<FlagCompletionCallback<Boolean>> mFetchCompletionCallbacks = new ArrayList<>();
@@ -108,11 +133,20 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       @NonNull FeatureFlagDelegate delegate,
       @NonNull RemoteService httpService,
       @NonNull FlagsConfig flagsConfig) {
+    this(delegate, httpService, flagsConfig, null);
+  }
+
+  public FeatureFlagManager(
+      @NonNull FeatureFlagDelegate delegate,
+      @NonNull RemoteService httpService,
+      @NonNull FlagsConfig flagsConfig,
+      @Nullable Future<SharedPreferences> persistencePrefs) {
     mDelegate = new WeakReference<>(delegate);
     mFlagsEndpoint = delegate.getMPConfig().getFlagsEndpoint();
     mFlagsRecordingEndpoint = delegate.getMPConfig().getFlagsRecordingEndpoint();
     mHttpService = httpService;
     mFlagsConfig = flagsConfig;
+    mPersistencePrefs = persistencePrefs;
     try {
       mCustomContext = new JSONObject(flagsConfig.context.toString());
     } catch (JSONException e) {
@@ -127,6 +161,77 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     // Separate executor for network requests so they don't block the state queue
     mNetworkExecutor = Executors.newSingleThreadExecutor();
+
+    // Initialize persistence state on the handler thread so SharedPreferences I/O does not block
+    // the caller (typically the main thread during MixpanelAPI construction).
+    //  - Persistence policies (PersistenceUntilNetworkSuccess / NetworkFirst): load the persisted blob into mFlags.
+    //  - NetworkOnly: wipe any stale persistence blob left over from a prior policy configuration.
+    if (mPersistencePrefs != null) {
+      if (isPersistencePolicy()) {
+        mHandler.post(this::loadPersistedVariants);
+      } else {
+        mHandler.post(this::clearPersistenceOnDisk);
+      }
+    }
+  }
+
+  /**
+   * Returns {@code true} when the configured policy reads/writes the on-disk persistence
+   * (PersistenceUntilNetworkSuccess or NetworkFirst). NetworkOnly returns {@code false}.
+   */
+  private boolean isPersistencePolicy() {
+    return !(mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkOnly);
+  }
+
+  /**
+   * Returns {@code true} when the policy is NetworkFirst and we're still serving from the
+   * persisted blob (no successful network fetch has overwritten it yet). Async lookups gate on
+   * this to honor the NetworkFirst spec ("await on network call, only serve persisted values
+   * if it fails") while still letting sync lookups + areFlagsReady() see the persisted values.
+   *
+   * <p>Stays true across failed fetches so each subsequent async lookup re-attempts the
+   * network until one succeeds, matching the pre-persistence behavior where a null mFlags
+   * caused getVariant to retry indefinitely.
+   */
+  private boolean isNetworkFirstAwaitingFetch() {
+    return mFlagsConfig.variantLookupPolicy instanceof VariantLookupPolicy.NetworkFirst
+        && mLoadedBlobPersistedAtMillis > 0;
+  }
+
+  /**
+   * Returns {@code true} if the variant was loaded from the on-disk persistence and is now past
+   * the configured TTL. Network-sourced variants and developer-supplied fallbacks always
+   * return {@code false}. Used in lookup paths to suppress serving stale persisted values
+   * (without clearing the on-disk blob — the blob may become valid again under a longer
+   * TTL config or be overwritten by the next successful fetch).
+   */
+  private boolean isExpiredPersistedVariant(@Nullable MixpanelFlagVariant variant) {
+    if (variant == null || !(variant.source instanceof MixpanelFlagVariant.Source.Persistence)) {
+      return false;
+    }
+    final long persistedAt = ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;
+    final long ttl = persistenceTtlMillis();
+    return ttl > 0 && persistedAt > 0 && (System.currentTimeMillis() - persistedAt) > ttl;
+  }
+
+  /**
+   * Returns {@code true} if the on-disk persisted blob currently loaded into memory is past
+   * TTL. Consults {@link #mLoadedBlobPersistedAtMillis} directly rather than sampling a
+   * variant's {@link MixpanelFlagVariant.Source.Persistence} stamp so the check works
+   * uniformly even when the persisted blob was empty (a previous session may have persisted
+   * a no-flags response — TTL still governs when to refresh in that case).
+   *
+   * <p>Returns {@code false} when no persisted blob is loaded — either because there was
+   * nothing to load, or because a successful network fetch has since replaced mFlags with
+   * Network-stamped variants and cleared the field.
+   */
+  private boolean loadedFlagsAreStale() {
+    final long persistedAt = mLoadedBlobPersistedAtMillis;
+    if (persistedAt <= 0) {
+      return false;
+    }
+    final long ttl = persistenceTtlMillis();
+    return ttl > 0 && (System.currentTimeMillis() - persistedAt) > ttl;
   }
 
   // --- Public Methods ---
@@ -138,12 +243,16 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   /**
-   * Clears all in-memory feature flag state: cached flags, tracked-flag set, fetch timing, and
-   * first-time event state. Intended to be called from {@link MixpanelAPI#reset()}.
+   * Clears all in-memory feature flag state: persisted flags, tracked-flag set, fetch timing,
+   * first-time event state, and the in-memory persisted fallback. Also wipes the on-disk
+   * persistence blob so a freshly-identified user can't be served the prior user's variants —
+   * note that {@code MixpanelAPI.reset()} also calls {@code PersistentIdentity.clearPreferences()}
+   * which wipes the same shared file, so the disk clear here is defensive (idempotent) but
+   * keeps this method self-contained. Intended to be called from {@link MixpanelAPI#reset()}.
    *
    * <p>Posts to the handler thread so the mutation is serialized with reads and fetches. Any
    * in-flight fetch dispatched before this call is discarded when it completes (via the
-   * generation check in {@code _completeFetch}). Pending fetch-completion callbacks are invoked
+   * generation check in {@code completeFetch}). Pending fetch-completion callbacks are invoked
    * with {@code false} so callers don't hang.
    */
   public void reset() {
@@ -153,11 +262,16 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
           synchronized (mLock) {
             mFlags = null;
+            mLoadedBlobPersistedAtMillis = 0L;
           }
           mTrackedFlags.clear();
           mFetchTiming = FetchTiming.neverFetched();
           mPendingFirstTimeEvents = Collections.synchronizedMap(new HashMap<>());
           mActivatedFirstTimeEvents.clear();
+
+          if (mPersistencePrefs != null) {
+            clearPersistenceOnDisk();
+          }
 
           List<FlagCompletionCallback<Boolean>> orphaned = mFetchCompletionCallbacks;
           mFetchCompletionCallbacks = new ArrayList<>();
@@ -176,7 +290,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       MPLog.e(LOGTAG, "Failed to set custom context", e);
       mCustomContext = new JSONObject();
     }
-    mHandler.post(() -> _fetchFlagsIfNeeded(completion));
+    mHandler.post(() -> fetchFlagsIfNeeded(completion));
   }
 
   /**
@@ -184,10 +298,16 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * The callback is invoked on the main thread with true on success and false on failure.
    */
   public void loadFlags(@Nullable FlagCompletionCallback<Boolean> callback) {
-    mHandler.post(() -> _fetchFlagsIfNeeded(callback));
+    mHandler.post(() -> fetchFlagsIfNeeded(callback));
   }
 
-  /** Returns true if flags are loaded and ready for synchronous access. */
+  /**
+   * Returns true if flag variants are in memory and available for synchronous access.
+   * Includes variants restored from the on-disk persistence; callers that need to distinguish
+   * fresh-from-network values from persisted ones should inspect {@code variant.source} on the
+   * served {@link MixpanelFlagVariant}. See {@link MixpanelAPI.Flags#areFlagsReady()} for
+   * the full caller-facing contract.
+   */
   public boolean areFlagsReady() {
     synchronized (mLock) {
       return mFlags != null;
@@ -232,12 +352,19 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
           }
 
           MixpanelFlagVariant variant = mFlags.get(flagName);
+          // Suppress stale persisted variants — leave the disk blob alone, just don't serve.
+          if (isExpiredPersistedVariant(variant)) {
+            MPLog.d(
+                LOGTAG,
+                "Persisted variant for '" + flagName + "' is past TTL; returning fallback.");
+            variant = null;
+          }
           if (variant != null) {
             resultContainer.flagVariant = variant;
 
             // Perform atomic check-and-set for tracking directly here
-            // (Calls _checkAndSetTrackedFlag which runs on this thread)
-            resultContainer.tracked = _checkAndSetTrackedFlag(flagName);
+            // (Calls checkAndSetTrackedFlag which runs on this thread)
+            resultContainer.tracked = checkAndSetTrackedFlag(flagName);
           }
           // If variant is null, resultContainer.flagVariant remains null
         });
@@ -247,8 +374,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     if (resultContainer.flagVariant != null) {
       if (resultContainer.tracked) {
         // If tracking was performed *in this call*, trigger the delegate call helper
-        // (This runs on the *calling* thread, but _performTrackingDelegateCall dispatches to main)
-        _performTrackingDelegateCall(flagName, resultContainer.flagVariant);
+        // (This runs on the *calling* thread, but performTrackingDelegateCall dispatches to main)
+        performTrackingDelegateCall(flagName, resultContainer.flagVariant);
       }
       return resultContainer.flagVariant;
     } else {
@@ -287,7 +414,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    */
   public boolean isEnabledSync(@NonNull String flagName, boolean fallbackValue) {
     Object variantValue = getVariantValueSync(flagName, fallbackValue);
-    return _evaluateBooleanFlag(flagName, variantValue, fallbackValue);
+    return evaluateBooleanFlag(flagName, variantValue, fallbackValue);
   }
 
   /**
@@ -299,7 +426,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * @param properties The event properties
    */
   public void checkFirstTimeEvent(@NonNull String eventName, @NonNull JSONObject properties) {
-    mHandler.post(() -> _checkFirstTimeEventOnHandlerThread(eventName, properties));
+    mHandler.post(() -> checkFirstTimeEventOnHandlerThread(eventName, properties));
   }
 
 
@@ -318,98 +445,91 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       @NonNull final FlagCompletionCallback<MixpanelFlagVariant> completion) {
     // Post the core logic to the handler thread for safe state access
     mHandler.post(
-        () -> { // Block A: Initial processing, runs serially on mHandler thread
-          MixpanelFlagVariant flagVariant;
-          boolean needsTracking;
-          boolean flagsAreCurrentlyReady = (mFlags != null);
+        () -> {
+          // Serve immediately when mFlags is populated, we're not in the NetworkFirst gate
+          // (still serving the persisted blob, no successful fetch yet), AND the loaded
+          // snapshot isn't past TTL. The staleness clause is what makes the async path fall
+          // through to a fetch when persisted values have aged out mid-session.
+          boolean canServeImmediately =
+              mFlags != null && !isNetworkFirstAwaitingFetch() && !loadedFlagsAreStale();
 
-          if (flagsAreCurrentlyReady) {
-            // --- Flags ARE Ready ---
+          if (canServeImmediately) {
             MPLog.v(LOGTAG, "Flags ready. Checking for flag '" + flagName + "'");
-            flagVariant = mFlags.get(flagName); // Read state directly (safe on handler thread)
-
-            if (flagVariant != null) {
-              needsTracking = _checkAndSetTrackedFlag(flagName); // Runs on handler thread
-            } else {
-              needsTracking = false;
+            // Background refresh under PersistenceUntilNetworkSuccess while we're still
+            // serving from disk. Stops once a successful fetch clears the timestamp.
+            if (mFlagsConfig.variantLookupPolicy
+                    instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess
+                && mLoadedBlobPersistedAtMillis > 0) {
+              fetchFlagsIfNeeded(null);
             }
+            MixpanelFlagVariant flagVariant = mFlags.get(flagName);
+            final MixpanelFlagVariant variantForLambda = flagVariant;
+            boolean needsTracking = (variantForLambda != null) && checkAndSetTrackedFlag(flagName);
+            MixpanelFlagVariant result = (variantForLambda != null) ? variantForLambda : fallback;
 
-            MixpanelFlagVariant result = (flagVariant != null) ? flagVariant : fallback;
-            MPLog.v(
-                LOGTAG, "Found flag variant (or fallback): " + result.key + " -> " + result.value);
-
-            // Dispatch completion and potential tracking to main thread
             new Handler(Looper.getMainLooper())
                 .post(
-                    () -> { // Block B: User completion and subsequent tracking logic, runs on Main
-                      // Thread
+                    () -> {
                       completion.onComplete(result);
-                      if (flagVariant != null && needsTracking) {
-                        MPLog.v(LOGTAG, "Tracking needed for '" + flagName + "'.");
-                        // _performTrackingDelegateCall handles its own main thread dispatch for the
-                        // delegate.
-                        _performTrackingDelegateCall(flagName, result);
+                      if (variantForLambda != null && needsTracking) {
+                        performTrackingDelegateCall(flagName, result);
                       }
-                    }); // End Block B (Main Thread)
-
+                    });
           } else {
-            // --- Flags were NOT Ready ---
-            MPLog.i(
-                LOGTAG,
-                "Flags not ready, attempting fetch for getVariant call '" + flagName + "'...");
-            _fetchFlagsIfNeeded(
-                success -> {
-                  // This fetch completion block itself runs on the MAIN thread (due to
-                  // postCompletion in _completeFetch)
-                  MPLog.v(
-                      LOGTAG,
-                      "Fetch completion received on main thread for '"
-                          + flagName
-                          + "'. Success: "
-                          + success);
-                  if (success) {
-                    // Fetch succeeded. Post BACK to the handler thread to get the flag value
-                    // and perform tracking check now that flags are ready.
-                    mHandler.post(
-                        () -> { // Block C: Post-fetch processing, runs on mHandler thread
-                          MPLog.v(
-                              LOGTAG,
-                              "Processing successful fetch result for '"
-                                  + flagName
-                                  + "' on handler thread.");
-                          MixpanelFlagVariant fetchedVariant =
-                              mFlags != null ? mFlags.get(flagName) : null;
-                          boolean tracked;
-                          if (fetchedVariant != null) {
-                            tracked = _checkAndSetTrackedFlag(flagName);
-                          } else {
-                            tracked = false;
-                          }
-                          MixpanelFlagVariant finalResult =
-                              (fetchedVariant != null) ? fetchedVariant : fallback;
-
-                          // Dispatch final user completion and potential tracking to main thread
-                          new Handler(Looper.getMainLooper())
-                              .post(
-                                  () -> { // Block D: User completion and subsequent tracking, runs
-                                    // on Main Thread
-                                    completion.onComplete(finalResult);
-                                    if (fetchedVariant != null && tracked) {
-                                      _performTrackingDelegateCall(flagName, finalResult);
-                                    }
-                                  }); // End Block D (Main Thread)
-                        }); // End Block C (handler thread)
-                  } else {
-                    // Fetch failed, just call original completion with fallback (already on main
-                    // thread)
-                    MPLog.w(LOGTAG, "Fetch failed for '" + flagName + "'. Returning fallback.");
-                    completion.onComplete(fallback);
-                  }
-                }); // End _fetchFlagsIfNeeded completion
-            // No return here needed as _fetchFlagsIfNeeded's completion handles the original
-            // callback
+            // Flags not yet servable. Either nothing in memory, NetworkFirst awaiting the
+            // initial network response, or the loaded persisted snapshot is past TTL.
+            // Trigger a fetch and serve from mFlags after it completes. On failure, mFlags
+            // is left untouched: NetworkFirst with a persistence hit still has persisted
+            // values; everything else stays null and we serve the fallback.
+            fetchAndServeVariant(flagName, fallback, completion);
           }
-        }); // End mHandler.post (Block A)
+        });
+  }
+
+  /**
+   * Triggers a flag fetch and serves the result for a single-flag lookup. On fetch failure,
+   * mFlags is left untouched: for NetworkFirst with a persistence hit it still holds the
+   * persisted values; for everything else it's still null and the developer-supplied fallback
+   * is returned.
+   *
+   * <p>Must be called on the handler thread.
+   */
+  private void fetchAndServeVariant(
+      @NonNull final String flagName,
+      @NonNull final MixpanelFlagVariant fallback,
+      @NonNull final FlagCompletionCallback<MixpanelFlagVariant> completion) {
+    MPLog.i(
+        LOGTAG,
+        "Flags not yet servable, attempting fetch for getVariant '" + flagName + "'...");
+    fetchFlagsIfNeeded(
+        success -> {
+          // Fetch completion runs on the main thread; hop back to handler so we can
+          // read mFlags and run the tracking check atomically.
+          mHandler.post(
+              () -> {
+                MixpanelFlagVariant fetchedVariant =
+                    mFlags != null ? mFlags.get(flagName) : null;
+                // If a fetch failure left mFlags holding stale persisted values, treat
+                // expired entries as not-found and return the developer fallback.
+                if (isExpiredPersistedVariant(fetchedVariant)) {
+                  fetchedVariant = null;
+                }
+                final MixpanelFlagVariant variantForLambda = fetchedVariant;
+                boolean tracked =
+                    (variantForLambda != null) && checkAndSetTrackedFlag(flagName);
+                MixpanelFlagVariant finalResult =
+                    (variantForLambda != null) ? variantForLambda : fallback;
+
+                new Handler(Looper.getMainLooper())
+                    .post(
+                        () -> {
+                          completion.onComplete(finalResult);
+                          if (variantForLambda != null && tracked) {
+                            performTrackingDelegateCall(flagName, finalResult);
+                          }
+                        });
+              });
+        });
   }
 
   /**
@@ -450,7 +570,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         fallbackValue,
         value -> {
           // This completion runs on the main thread
-          boolean isEnabled = _evaluateBooleanFlag(flagName, value, fallbackValue);
+          boolean isEnabled = evaluateBooleanFlag(flagName, value, fallbackValue);
           completion.onComplete(isEnabled);
         });
   }
@@ -458,30 +578,50 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   @Override
   @NonNull
   public Map<String, MixpanelFlagVariant> getAllVariantsSync() {
+    final Map<String, MixpanelFlagVariant> snapshot;
     synchronized (mLock) {
-      return mFlags != null ? Collections.unmodifiableMap(mFlags) : Collections.emptyMap();
+      if (mFlags == null) {
+        return Collections.emptyMap();
+      }
+      snapshot = mFlags;
     }
+    // mFlags is wholesale-replaced on every state change, so all entries share a single
+    // Source.Persistence(persistedAt) — checking any one entry tells us whether the whole map is
+    // expired. Sample the first; if expired, return an empty map (matching the per-variant
+    // "don't serve expired persisted entry" rule from getVariant).
+    if (!snapshot.isEmpty()) {
+      MixpanelFlagVariant first = snapshot.values().iterator().next();
+      if (isExpiredPersistedVariant(first)) {
+        return Collections.emptyMap();
+      }
+    }
+    return Collections.unmodifiableMap(snapshot);
   }
 
   @Override
   public void getAllVariants(@NonNull final FlagCompletionCallback<Map<String, MixpanelFlagVariant>> completion) {
     mHandler.post(() -> {
-      boolean flagsAreCurrentlyReady = (mFlags != null);
+      boolean canServeImmediately =
+          mFlags != null && !isNetworkFirstAwaitingFetch() && !loadedFlagsAreStale();
 
-      if (flagsAreCurrentlyReady) {
-        Map<String, MixpanelFlagVariant> result = Collections.unmodifiableMap(mFlags);
-        postCompletion(completion, result);
+      if (canServeImmediately) {
+        // Background refresh under PersistenceUntilNetworkSuccess while we're still
+        // serving from disk. Stops once a successful fetch clears the timestamp.
+        if (mFlagsConfig.variantLookupPolicy
+                instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess
+            && mLoadedBlobPersistedAtMillis > 0) {
+          fetchFlagsIfNeeded(null);
+        }
+        // Route through getAllVariantsSync so the TTL filter on persisted entries applies here too.
+        postCompletion(completion, getAllVariantsSync());
       } else {
-        MPLog.i(LOGTAG, "Flags not ready, attempting fetch for getAllVariants call...");
-        _fetchFlagsIfNeeded(success -> {
-          // This callback runs on MAIN thread (postCompletion dispatches there)
-          if (success) {
-            Map<String, MixpanelFlagVariant> result = getAllVariantsSync();
-            completion.onComplete(result);
-          } else {
-            MPLog.w(LOGTAG, "Warning: Failed to fetch flags, returning empty map.");
-            completion.onComplete(Collections.emptyMap());
-          }
+        MPLog.i(LOGTAG, "Flags not yet servable, attempting fetch for getAllVariants...");
+        fetchFlagsIfNeeded(success -> {
+          // Fetch completion runs on the main thread. After it fires, mFlags may have been
+          // refreshed (success), left as persisted values (NetworkFirst failure with persistence hit),
+          // or remain null (no persistence + failure). Always serve from getAllVariantsSync, which
+          // returns an empty map when mFlags is null or the snapshot is expired.
+          completion.onComplete(getAllVariantsSync());
         });
       }
     });
@@ -498,7 +638,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     public void handleMessage(@NonNull Message msg) {
       switch (msg.what) {
         case MSG_FETCH_FLAGS_IF_NEEDED:
-          _fetchFlagsIfNeeded(null); // Assume completion passed via instance var now
+          fetchFlagsIfNeeded(null); // Assume completion passed via instance var now
           break;
 
         case MSG_COMPLETE_FETCH:
@@ -533,7 +673,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             MPLog.w(LOGTAG, "Flag fetch failed: " + errorMessage);
           }
           // Call the internal completion logic
-          _completeFetch(success, responseJson);
+          completeFetch(success, responseJson);
           break;
 
         default:
@@ -579,8 +719,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   // --- Internal Methods (run on Handler thread or background executor) ---
 
   // Runs on Handler thread
-  private void _fetchFlagsIfNeeded(@Nullable FlagCompletionCallback<Boolean> completion) {
-    // It calls _performFetchRequest via mNetworkExecutor if needed.
+  private void fetchFlagsIfNeeded(@Nullable FlagCompletionCallback<Boolean> completion) {
+    // It calls performFetchRequest via mNetworkExecutor if needed.
     boolean shouldStartFetch = false;
 
     if (!mFlagsConfig.enabled) {
@@ -603,7 +743,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     if (shouldStartFetch) {
       MPLog.d(LOGTAG, "Starting flag fetch (dispatching network request)...");
       final int generation = mFetchGeneration;
-      mNetworkExecutor.execute(() -> _performFetchRequest(generation));
+      mNetworkExecutor.execute(() -> performFetchRequest(generation));
     }
   }
 
@@ -613,7 +753,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * sends it, and posts the result (success/failure + data) back to the mHandler thread via
    * MSG_COMPLETE_FETCH.
    */
-  private void _performFetchRequest(int generation) {
+  private void performFetchRequest(int generation) {
     long fetchStartNanos = System.nanoTime(); // For measuring elapsed time
     long fetchStartMillis = System.currentTimeMillis(); // For absolute timestamp
     MPLog.v(LOGTAG, "Performing fetch request on thread: " + Thread.currentThread().getName());
@@ -647,13 +787,13 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       if (deviceId != null) {
         contextJson.put("device_id", deviceId);
       }
-      
+
       Map<String, Object> params = new HashMap<>();
       params.put("context", contextJson.toString());
       params.put("token", delegate.getToken());
       params.put("mp_lib", "android");
       params.put("$lib_version", MPConfig.VERSION);
-      
+
       MPLog.v(LOGTAG, "Request query parameters: " + params.toString());
 
       // 2. Build Headers
@@ -765,7 +905,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    *     parsing failed.
    */
   @VisibleForTesting
-  void _completeFetch(boolean success, @Nullable JSONObject flagsResponseJson) {
+  void completeFetch(boolean success, @Nullable JSONObject flagsResponseJson) {
     MPLog.d(LOGTAG, "Completing fetch request. Success: " + success);
     // State updates MUST happen on the handler thread implicitly
     mIsFetching = false;
@@ -775,19 +915,43 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
 
     if (success && flagsResponseJson != null) {
       try {
-        Map<String, MixpanelFlagVariant> newFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
+        Map<String, MixpanelFlagVariant> rawFlags = JsonUtils.parseFlagsResponse(flagsResponseJson);
 
         // Parse pending first-time events
         Map<String, FirstTimeEventDefinition> newPendingEvents = parsePendingFirstTimeEvents(flagsResponseJson);
 
         // Merge with activated events to preserve session state
-        mergeWithActivatedEvents(newFlags, newPendingEvents);
+        mergeWithActivatedEvents(rawFlags, newPendingEvents);
 
-        // Update state
+        // Stamp NETWORK source on every variant before exposing through mFlags.
+        Map<String, MixpanelFlagVariant> newFlags = stampSource(rawFlags, MixpanelFlagVariant.Source.network());
+
+        // Update state — mFlags goes from persisted values (or null) to fresh network values.
+        // Clearing mLoadedBlobPersistedAtMillis here means loadedFlagsAreStale() now returns
+        // false (the loaded blob has been superseded by Network values), so subsequent
+        // immediate-serve lookups won't bounce back to the fetch path.
         synchronized (mLock) {
           mFlags = Collections.unmodifiableMap(newFlags);
+          mLoadedBlobPersistedAtMillis = 0L;
         }
         mPendingFirstTimeEvents = newPendingEvents;
+        // Reset the per-flag $experiment_started dedup window. Without this, a flag whose
+        // variant changed between fetches (e.g. persistence-loaded "control" → network
+        // "treatment", or a re-fetch under a new server-side rule) would serve the new value
+        // but silently skip tracking — analytics would still show the prior exposure. Clearing
+        // here means each successful fetch gets a fresh shot at firing $experiment_started for
+        // any accessed flag. The trade-off is occasional duplicate events when the variant
+        // didn't actually change across fetches; we accept that for analytics correctness.
+        mTrackedFlags.clear();
+
+        // Persist the raw response to disk so future sessions / failed fetches can fall back.
+        // Storing the wire format (rather than re-serializing the parsed variants) keeps
+        // JsonUtils.parseFlagsResponse as the single source of truth and carries
+        // pending_first_time_events along for free. Writes happen for any persistence policy;
+        // NetworkOnly skips them.
+        if (isPersistencePolicy() && mPersistencePrefs != null) {
+          writePersistedToDisk(flagsResponseJson);
+        }
 
         MPLog.v(LOGTAG, "Flags updated: " + mFlags.size() + " flags loaded, " +
                 newPendingEvents.size() + " pending first-time events.");
@@ -796,6 +960,9 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         success = false;  // Mark as failure so callbacks receive correct status
       }
     } else {
+      // Fetch failed or returned an unparseable response. mFlags is left untouched —
+      // for NetworkFirst with a persistence hit it still holds the persisted values (Source.Persistence),
+      // for any other configuration it stays null and async lookups serve the fallback.
       MPLog.w(
           LOGTAG,
           "Flag fetch failed or response missing/invalid. Keeping existing flags (if any).");
@@ -820,7 +987,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * @return true if the flag was NOT previously tracked (and was therefore marked now), false
    *     otherwise.
    */
-  private boolean _checkAndSetTrackedFlag(@NonNull String flagName) {
+  private boolean checkAndSetTrackedFlag(@NonNull String flagName) {
     // Already running on the handler thread, direct access is safe and serialized
     if (!mTrackedFlags.contains(flagName)) {
       mTrackedFlags.add(flagName);
@@ -837,7 +1004,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * @param flagName Name of the feature flag.
    * @param variant The specific variant received.
    */
-  private void _performTrackingDelegateCall(String flagName, MixpanelFlagVariant variant) {
+  private void performTrackingDelegateCall(String flagName, MixpanelFlagVariant variant) {
     final FeatureFlagDelegate delegate = mDelegate.get();
     if (delegate == null) {
       MPLog.w(LOGTAG, "Delegate is null, cannot track $experiment_started.");
@@ -866,6 +1033,20 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
       if (variant.isQATester != null) {
         properties.put("$is_qa_tester", variant.isQATester);
+      }
+      // Cross-platform contract for $experiment_started: emit $variant_source on every served
+      // variant ("network" or "persistence") so consumers can attribute exposures by origin.
+      // Persistence variants additionally carry the raw persistedAt epoch ms (no calculation —
+      // consumers compute age themselves) and the configured TTL. performTrackingDelegateCall
+      // is only invoked for served variants, so Source.Fallback never reaches this branch.
+      if (variant.source instanceof MixpanelFlagVariant.Source.Network) {
+        properties.put("$variant_source", "network");
+      } else if (variant.source instanceof MixpanelFlagVariant.Source.Persistence) {
+        properties.put("$variant_source", "persistence");
+        long persistedAt =
+            ((MixpanelFlagVariant.Source.Persistence) variant.source).persistedAtMillis;
+        properties.put("$persisted_at_in_ms", persistedAt);
+        properties.put("$ttl_in_ms", persistenceTtlMillis());
       }
     } catch (JSONException e) {
       MPLog.e(LOGTAG, "Failed to create JSON properties for $experiment_started event", e);
@@ -900,7 +1081,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
   }
 
   // --- Boolean Evaluation Helper ---
-  private boolean _evaluateBooleanFlag(
+  private boolean evaluateBooleanFlag(
       String flagName, Object variantValue, boolean fallbackValue) {
     if (variantValue instanceof Boolean) {
       return (Boolean) variantValue;
@@ -915,7 +1096,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * Checks if the tracked event matches any pending first-time event conditions.
    * Runs on Handler thread for thread-safe access to mPendingFirstTimeEvents and mActivatedFirstTimeEvents.
    */
-  private void _checkFirstTimeEventOnHandlerThread(String eventName, JSONObject properties) {
+  private void checkFirstTimeEventOnHandlerThread(String eventName, JSONObject properties) {
     if (mPendingFirstTimeEvents.isEmpty()) {
       return; // No pending events to check
     }
@@ -946,7 +1127,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       }
 
       // Match found - activate this event
-      _activateFirstTimeEvent(compositeKey, def, iterator);
+      activateFirstTimeEvent(compositeKey, def, iterator);
     }
   }
 
@@ -954,7 +1135,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * Activates a first-time event: updates the flag variant, marks as activated, and fires recording API.
    * Runs on Handler thread.
    */
-  private void _activateFirstTimeEvent(String compositeKey, FirstTimeEventDefinition def,
+  private void activateFirstTimeEvent(String compositeKey, FirstTimeEventDefinition def,
                                         java.util.Iterator<Map.Entry<String, FirstTimeEventDefinition>> iterator) {
     // Add to activated set
     mActivatedFirstTimeEvents.add(compositeKey);
@@ -968,22 +1149,33 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
         mFlags = new HashMap<>();
       }
       Map<String, MixpanelFlagVariant> mutableFlags = new HashMap<>(mFlags);
-      mutableFlags.put(def.flagKey, def.pendingVariant);
+      // Stamp the activated variant with NETWORK source — it came from the flags API response.
+      mutableFlags.put(
+          def.flagKey,
+          def.pendingVariant.withSource(MixpanelFlagVariant.Source.network()));
       mFlags = Collections.unmodifiableMap(mutableFlags);
     }
+    // Deliberately not persisted: activations live only in memory for this session. The
+    // persisted blob stores the raw /flags/ response untouched, so on next app start the
+    // activated variant briefly appears as still-pending until either (a) the user re-fires
+    // the activating event or (b) the next /flags/ network response lands (which the server
+    // should return reflecting the activation, since fireRecordingAPI below tells it about
+    // the activation). The window is small and the alternative (mutating the persisted blob
+    // from this code path) was rejected to keep persistence strictly a passive copy of what
+    // the server returned.
 
     // Fire recording API (fire-and-forget)
-    _fireRecordingAPI(def);
+    fireRecordingAPI(def);
   }
 
   /**
    * Submits a recording API call to the network executor.
    * Fire-and-forget - errors are logged but not propagated.
    */
-  private void _fireRecordingAPI(FirstTimeEventDefinition def) {
+  private void fireRecordingAPI(FirstTimeEventDefinition def) {
     mNetworkExecutor.execute(() -> {
       try {
-        _performRecordingRequest(def);
+        performRecordingRequest(def);
         MPLog.v(LOGTAG, "First-time event recorded successfully: " + def.getCompositeKey());
       } catch (RemoteService.ServiceUnavailableException e) {
         MPLog.w(LOGTAG, "Recording API failed for event " + def.getCompositeKey() +
@@ -1011,7 +1203,7 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
    * @throws JSONException on JSON construction errors
    * @throws RemoteService.ServiceUnavailableException on service unavailability
    */
-  private void _performRecordingRequest(FirstTimeEventDefinition def) throws IOException, JSONException, RemoteService.ServiceUnavailableException {
+  private void performRecordingRequest(FirstTimeEventDefinition def) throws IOException, JSONException, RemoteService.ServiceUnavailableException {
     final FeatureFlagDelegate delegate = mDelegate.get();
     if (delegate == null) {
       MPLog.w(LOGTAG, "Delegate is null, cannot record first-time event");
@@ -1147,5 +1339,182 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       // Remove this event from newPendingEvents if present (already activated)
       newPendingEvents.remove(activatedCompositeKey);
     }
+  }
+
+  // --- Persistence Helpers (run on Handler thread) ---
+
+  /**
+   * Loads the persisted /flags/ response from storage and parses it into mFlags +
+   * mPendingFirstTimeEvents. Both PersistenceUntilNetworkSuccess and NetworkFirst populate mFlags directly so
+   * that sync lookups and {@link #areFlagsReady()} reflect the persisted blob. The difference
+   * between policies is enforced at async-lookup time via {@link #isNetworkFirstAwaitingFetch()}:
+   * NetworkFirst gates async lookups on a successful network response, per the ERD.
+   */
+  private void loadPersistedVariants() {
+    final PersistedFlagsResponse cached = readPersistedFromDisk();
+    if (cached == null) {
+      return;
+    }
+    Map<String, MixpanelFlagVariant> parsed = JsonUtils.parseFlagsResponse(cached.response);
+    Map<String, MixpanelFlagVariant> stamped = stampSource(
+        parsed,
+        MixpanelFlagVariant.Source.persistence(cached.persistedAtMillis));
+    synchronized (mLock) {
+      // Defer to network values if a fetch already raced ahead of us.
+      if (mFlags == null) {
+        mFlags = Collections.unmodifiableMap(stamped);
+        mLoadedBlobPersistedAtMillis = cached.persistedAtMillis;
+        mPendingFirstTimeEvents = parsePendingFirstTimeEvents(cached.response);
+        MPLog.v(LOGTAG, "Loaded " + stamped.size() + " persisted variants into memory.");
+      }
+    }
+  }
+
+  /**
+   * Reads, validates, and returns the persisted /flags/ response from disk, or {@code null} if
+   * nothing is persisted, the stored distinct_id doesn't match the current one, the entry is
+   * past TTL, or the blob is unparseable. Malformed blobs are cleared as a side effect so we
+   * don't get stuck rejecting them on every call.
+   *
+   * <p>Runs on the handler thread (called from {@code loadPersistedVariants}).
+   */
+  @Nullable
+  private PersistedFlagsResponse readPersistedFromDisk() {
+    if (mPersistencePrefs == null) {
+      return null;
+    }
+    final SharedPreferences prefs = awaitPersistencePrefs();
+    if (prefs == null) {
+      return null;
+    }
+    final String raw = prefs.getString(PERSISTENCE_BLOB_KEY, null);
+    if (raw == null) {
+      return null;
+    }
+    final FeatureFlagDelegate delegate = mDelegate.get();
+    final String currentDistinctId = delegate == null ? null : delegate.getDistinctId();
+    if (currentDistinctId == null) {
+      // No identity to validate against — can't trust the persisted blob.
+      return null;
+    }
+    try {
+      JSONObject blob = new JSONObject(raw);
+      String storedDistinctId = blob.optString(PERSISTENCE_FIELD_DISTINCT_ID, null);
+      if (!currentDistinctId.equals(storedDistinctId)) {
+        MPLog.d(LOGTAG, "Persisted flags belong to a different distinct_id; ignoring persisted blob.");
+        return null;
+      }
+      long persistedAt = blob.optLong(PERSISTENCE_FIELD_PERSISTED_AT, 0L);
+      long ttl = persistenceTtlMillis();
+      if (ttl > 0 && persistedAt > 0 && (System.currentTimeMillis() - persistedAt) > ttl) {
+        MPLog.d(LOGTAG, "Persisted flags expired; ignoring.");
+        return null;
+      }
+      JSONObject response = blob.optJSONObject(PERSISTENCE_FIELD_RESPONSE);
+      if (response == null) {
+        return null;
+      }
+      return new PersistedFlagsResponse(response, persistedAt);
+    } catch (JSONException e) {
+      MPLog.w(LOGTAG, "Failed to parse persisted flags blob; clearing.", e);
+      prefs.edit().remove(PERSISTENCE_BLOB_KEY).apply();
+      return null;
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Unexpected error loading persisted flags", e);
+      return null;
+    }
+  }
+
+  /**
+   * Writes the given /flags/ response to disk under the current distinct_id, wrapped in the
+   * persistedAt + distinctId envelope. No-op (logs) on write failure.
+   */
+  private void writePersistedToDisk(@NonNull JSONObject response) {
+    final SharedPreferences prefs = awaitPersistencePrefs();
+    if (prefs == null) {
+      return;
+    }
+    final FeatureFlagDelegate delegate = mDelegate.get();
+    final String distinctId = delegate == null ? null : delegate.getDistinctId();
+    if (distinctId == null) {
+      // Nothing to key the blob under — don't write something the next reader can't validate.
+      return;
+    }
+    try {
+      JSONObject blob = new JSONObject();
+      blob.put(PERSISTENCE_FIELD_PERSISTED_AT, System.currentTimeMillis());
+      blob.put(PERSISTENCE_FIELD_DISTINCT_ID, distinctId);
+      blob.put(PERSISTENCE_FIELD_RESPONSE, response);
+      prefs.edit().putString(PERSISTENCE_BLOB_KEY, blob.toString()).apply();
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Failed to persist flags response", e);
+    }
+  }
+
+  private void clearPersistenceOnDisk() {
+    final SharedPreferences prefs = awaitPersistencePrefs();
+    if (prefs != null) {
+      prefs.edit().remove(PERSISTENCE_BLOB_KEY).apply();
+    }
+  }
+
+  @Nullable
+  private SharedPreferences awaitPersistencePrefs() {
+    if (mPersistencePrefs == null) {
+      return null;
+    }
+    try {
+      return mPersistencePrefs.get();
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Failed to load SharedPreferences for persisted flags", e);
+      return null;
+    }
+  }
+
+  /**
+   * Returns the configured TTL in milliseconds, or 0 to disable expiry checks. NetworkOnly
+   * is unreachable here (no persistence prefs would have been provided) but treated as no-TTL
+   * defensively.
+   */
+  private long persistenceTtlMillis() {
+    VariantLookupPolicy policy = mFlagsConfig.variantLookupPolicy;
+    if (policy instanceof VariantLookupPolicy.PersistenceUntilNetworkSuccess) {
+      return ((VariantLookupPolicy.PersistenceUntilNetworkSuccess) policy).persistenceTtlMillis;
+    }
+    if (policy instanceof VariantLookupPolicy.NetworkFirst) {
+      return ((VariantLookupPolicy.NetworkFirst) policy).persistenceTtlMillis;
+    }
+    return 0L;
+  }
+
+  /**
+   * Two-tuple holding a parsed /flags/ response body and the timestamp at which it was persisted.
+   * Used both as the in-memory NetworkFirst fallback and as the return type of
+   * {@link #readPersistedFromDisk()}.
+   */
+  private static final class PersistedFlagsResponse {
+    @NonNull final JSONObject response;
+    final long persistedAtMillis;
+
+    PersistedFlagsResponse(@NonNull JSONObject response, long persistedAtMillis) {
+      this.response = response;
+      this.persistedAtMillis = persistedAtMillis;
+    }
+  }
+
+
+  /**
+   * Returns a new map whose values are copies of the input variants stamped with the given
+   * source metadata. Input map is not mutated.
+   */
+  @NonNull
+  private static Map<String, MixpanelFlagVariant> stampSource(
+      @NonNull Map<String, MixpanelFlagVariant> in,
+      @NonNull MixpanelFlagVariant.Source source) {
+    Map<String, MixpanelFlagVariant> out = new HashMap<>(in.size());
+    for (Map.Entry<String, MixpanelFlagVariant> entry : in.entrySet()) {
+      out.put(entry.getKey(), entry.getValue().withSource(source));
+    }
+    return out;
   }
 }

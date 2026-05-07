@@ -318,7 +318,7 @@ public class FeatureFlagManagerTest {
         new FeatureFlagManager(
             mMockDelegate, // Pass delegate directly, manager will wrap in WeakReference
             mMockRemoteService,
-            new FlagsConfig(true, new JSONObject()));
+            new FlagsConfig(true, new JSONObject(), VariantLookupPolicy.networkOnly()));
     mPreviousLogLevel = MPLog.getLevel();
     MPLog.setLevel(MPLog.VERBOSE); // Enable verbose logging for tests
   }
@@ -364,7 +364,8 @@ public class FeatureFlagManagerTest {
   // Helper to simulate MPConfig having specific FlagsConfig
   private void setupFlagsConfig(boolean enabled, @Nullable JSONObject context) {
     final JSONObject finalContext = (context == null) ? new JSONObject() : context;
-    final FlagsConfig flagsConfig = new FlagsConfig(enabled, finalContext);
+    final FlagsConfig flagsConfig =
+        new FlagsConfig(enabled, finalContext, VariantLookupPolicy.networkOnly());
 
     mMockDelegate.configToReturn =
         new MPConfig(new Bundle(), mContext, TEST_TOKEN) {
@@ -1159,7 +1160,7 @@ public class FeatureFlagManagerTest {
   }
 
   @Test
-  public void testRequestBodyConstruction_performFetchRequest()
+  public void testRequestBodyConstructionperformFetchRequest()
       throws InterruptedException, JSONException, UnsupportedEncodingException {
     // Setup with flags enabled and specific context data
     JSONObject contextData = new JSONObject();
@@ -1805,11 +1806,11 @@ public class FeatureFlagManagerTest {
     assertTrue("IsQATester should be included", call.properties.getBoolean("$is_qa_tester"));
   }
 
-  // ---- Coverage Tests for _performFetchRequest response parsing paths ----
+  // ---- Coverage Tests for performFetchRequest response parsing paths ----
 
   @Test
   public void testFetchWithNullResponseBytes() throws InterruptedException {
-    // When performRequest returns null bytes, the error path in _performFetchRequest should fire
+    // When performRequest returns null bytes, the error path in performFetchRequest should fire
     setupFlagsConfig(true, new JSONObject());
 
     // Create a custom mock that returns null response bytes
@@ -1918,7 +1919,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFetchWithNullDistinctId() throws InterruptedException {
-    // When delegate returns null distinctId, _performFetchRequest should early-return
+    // When delegate returns null distinctId, performFetchRequest should early-return
     setupFlagsConfig(true, new JSONObject());
     mMockDelegate.distinctIdToReturn = null;
 
@@ -1933,7 +1934,7 @@ public class FeatureFlagManagerTest {
     assertFalse("Flags should not be ready when distinctId is null", mFeatureFlagManager.areFlagsReady());
   }
 
-  // ---- Coverage Tests for _performTrackingDelegateCall with null delegate ----
+  // ---- Coverage Tests for performTrackingDelegateCall with null delegate ----
 
   @Test
   public void testTrackingDelegateCallWithNullDelegate() throws InterruptedException {
@@ -1963,7 +1964,7 @@ public class FeatureFlagManagerTest {
       fail("Failed to set delegate to null via reflection: " + e.getMessage());
     }
 
-    // This should trigger _performTrackingDelegateCall with a null delegate
+    // This should trigger performTrackingDelegateCall with a null delegate
     mMockDelegate.resetTrackCalls();
     MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb", "fb_val");
     mFeatureFlagManager.getVariantSync("track_null_delegate_flag", fallback);
@@ -2040,7 +2041,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFetchWithRuntimeException() throws InterruptedException {
-    // Tests the generic Exception catch path in _performFetchRequest
+    // Tests the generic Exception catch path in performFetchRequest
     setupFlagsConfig(true, new JSONObject());
 
     mMockRemoteService.addError(new RuntimeException("Unexpected runtime error"));
@@ -2055,7 +2056,7 @@ public class FeatureFlagManagerTest {
 
   @Test
   public void testFetchWithNullDelegate() throws InterruptedException {
-    // Tests the null delegate early-return path in _performFetchRequest
+    // Tests the null delegate early-return path in performFetchRequest
     setupFlagsConfig(true, new JSONObject());
 
     // Clear the delegate via reflection before triggering fetch
@@ -2115,7 +2116,7 @@ public class FeatureFlagManagerTest {
   @Test
   public void testFailedFetchStillSetsTimingProperties() throws InterruptedException {
     // Verifies that even after a failed fetch, timing is updated (covers the
-    // timing code after the try-catch block in _performFetchRequest)
+    // timing code after the try-catch block in performFetchRequest)
     setupFlagsConfig(true, new JSONObject());
 
     mMockRemoteService.addError(new IOException("Network error for timing test"));
@@ -2167,7 +2168,7 @@ public class FeatureFlagManagerTest {
 
     // Create a new manager to simulate retry (since the old one already fetched)
     mFeatureFlagManager = new FeatureFlagManager(mMockDelegate, mMockRemoteService,
-        new FlagsConfig(true, new JSONObject()));
+        new FlagsConfig(true, new JSONObject(), VariantLookupPolicy.networkOnly()));
     mFeatureFlagManager.loadFlags();
     waitForFlagsReady();
 
