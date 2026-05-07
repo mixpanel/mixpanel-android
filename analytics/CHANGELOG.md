@@ -1,5 +1,18 @@
 # Changelog
 
+## [v8.7.0](https://github.com/mixpanel/mixpanel-android/tree/v8.7.0) (2026-05-07)
+
+### Features
+- feature flag persistence ([#962](https://github.com/mixpanel/mixpanel-android/pull/962))
+
+### Fixes
+- reload flags on reset ([#961](https://github.com/mixpanel/mixpanel-android/pull/961))
+
+### Chores
+- Add JVM unit test infrastructure with Robolectric ([#894](https://github.com/mixpanel/mixpanel-android/pull/894))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.6.0...v8.7.0)
+
 ## [v8.6.0](https://github.com/mixpanel/mixpanel-android/tree/v8.6.0) (2026-04-27)
 
 ### Fixes
