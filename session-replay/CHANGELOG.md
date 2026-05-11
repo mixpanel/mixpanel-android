@@ -1,5 +1,13 @@
 # Changelog
 
+## [session-replay-v1.4.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.4.0) (2026-05-11)
+
+### Features
+- feat(sr): Add custom server URL support for data residency
+
+### Bug Fixes
+- fix(sr): ensure overlay enable and disable are hit from main thread
+
 ## v1.3.0 (2026-04-27)
 
 ### Features
