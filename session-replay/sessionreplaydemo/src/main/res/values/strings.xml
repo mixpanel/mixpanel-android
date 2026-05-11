@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">Session Replay Sample App</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="action_settings">Settings</string>
+    <string name="view_jokes_compose">View Jokes (Compose)</string>
+    <string name="jokes_screen_title">Jokes Feed</string>
+    <string name="view_safe_container_tests">Safe Container Tests</string>
+    <string name="safe_container_test_title">Safe Container Masking Tests</string>
+    <string name="safe_container_test_subtitle">Note: Enable Text and Image auto-masking in your config for these test cases to read accurately.</string>
+
+    <!-- Test Case 1 -->
+    <string name="test_case_1_title">Test 1: Basic Safe Container</string>
+    <string name="test_case_1_desc">✓ NOT MASKED: This container is marked SAFE. TextView and ImageView should NOT be masked.</string>
+    <string name="sample_text_content">This is sample text that should NOT be masked</string>
+    <string name="sample_image_desc">Sample image in safe container</string>
+
+    <!-- Test Case 2 -->
+    <string name="test_case_2_title">Test 2: EditText in Safe Container (Always Masked)</string>
+    <string name="test_case_2_desc">✓ ALWAYS MASKED: EditText is ALWAYS masked even in safe container.</string>
+    <string name="edit_text_hint">Enter text here</string>
+    <string name="sensitive_input">Sensitive password or data</string>
+    <string name="safe_text_in_same_container">This TextView in same safe container should NOT be masked</string>
+
+    <!-- Test Case 3 -->
+    <string name="test_case_3_title">Test 3: Nested Safe Containers (3 Levels)</string>
+    <string name="test_case_3_level1">Level 1: Outermost container (marked SAFE)</string>
+    <string name="test_case_3_level2">Level 2: Middle container (inherits safe status)</string>
+    <string name="test_case_3_level3">Level 3: Innermost container (inherits safe status)</string>
+    <string name="nested_text_content">This TextView at level 3 should NOT be masked (protected by ancestor)</string>
+
+    <!-- Test Case 4 -->
+    <string name="test_case_4_title">Test 4: Compose Safe Containers</string>
+
+    <!-- Instructions -->
+    <string name="test_instructions">Instructions:\n1. Take a screenshot using Session Replay\n2. Check that TextView and ImageView in safe containers are NOT masked\n3. Verify that ALL EditText and TextField elements ARE masked\n4. Verify nested containers work correctly</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_reinitialize_session_replay">Re-initialize Session Replay</string>
+    <string name="settings_initialization_status_label">Current Status:</string>
+    <string name="settings_status_initialized">Initialized ✓</string>
+    <string name="settings_status_not_initialized">Not initialized</string>
+
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.mixpanel.android.sessionreplay.ShellActivity"
+            android:exported="false"/>
+        <activity
+            android:name="com.mixpanel.android.sessionreplay.EventTriggerTestActivity"
+            android:exported="false"/>
+    </application>
+</manifest>
