@@ -1,5 +1,10 @@
 # Changelog
 
+## [session-replay-v1.4.0](https://github.com/mixpanel/mixpanel-android/tree/session-replay-v1.4.0) (2026-05-11)
+
+### Features
+- open source session replay SDK ([#963](https://github.com/mixpanel/mixpanel-android/pull/963))
+
 ## v1.3.0 (2026-04-27)
 
 ### Features
