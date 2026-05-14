@@ -1,7 +1,6 @@
 package com.mixpanel.android.sessionreplay
 
 import android.content.Context
-import android.net.ConnectivityManager
 import com.mixpanel.android.sessionreplay.models.MPSessionReplayConfig
 import com.mixpanel.android.sessionreplay.services.FlushService
 import io.mockk.Runs
