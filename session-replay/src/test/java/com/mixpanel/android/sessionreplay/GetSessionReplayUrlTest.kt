@@ -8,9 +8,11 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -38,6 +40,11 @@ class GetSessionReplayUrlTest {
 
         mockkObject(SessionReplayManager)
         every { SessionReplayManager.cleanupEventCollection() } just Runs
+    }
+
+    @After
+    fun tearDown() {
+        unmockkObject(SessionReplayManager)
     }
 
     @Test
