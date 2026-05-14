@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewTreeObserver.OnDrawListener
+import androidx.core.net.toUri
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -25,7 +26,6 @@ import com.mixpanel.android.sessionreplay.tracking.TouchEventListener
 import com.mixpanel.android.sessionreplay.tracking.TouchEventRecorder
 import com.mixpanel.android.sessionreplay.utils.EndPoints
 import com.mixpanel.android.sessionreplay.utils.LogMessages.AUTO_START_RECORDING_DEPRECATED
-import androidx.core.net.toUri
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
 import curtains.OnTouchEventListener
