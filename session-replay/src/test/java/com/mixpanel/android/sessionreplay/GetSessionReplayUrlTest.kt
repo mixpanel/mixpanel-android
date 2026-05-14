@@ -116,7 +116,9 @@ class GetSessionReplayUrlTest {
 
         val url = instance.getSessionReplayUrl()
         assertEquals(
-            "https://mixpanel.com/projects/replay-redirect?replay_id=550e8400-e29b-41d4-a716-446655440000&distinct_id=user%40example.com&token=abc123def456",
+            "https://mixpanel.com/projects/replay-redirect" +
+                "?replay_id=550e8400-e29b-41d4-a716-446655440000" +
+                "&distinct_id=user%40example.com&token=abc123def456",
             url
         )
     }
