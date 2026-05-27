@@ -38,7 +38,7 @@ import javax.net.ssl.SSLSocketFactory;
 public class HttpService implements RemoteService {
 
     private final boolean shouldGzipRequestPayload;
-    private final MixpanelNetworkErrorListener networkErrorListener;
+    private MixpanelNetworkErrorListener networkErrorListener;
     private String mBackupHost;
     private String mServerHost;
 
@@ -74,6 +74,10 @@ public class HttpService implements RemoteService {
 
     public void setBackupHost(String backupHost) {
         this.mBackupHost = backupHost;
+    }
+
+    public void setNetworkErrorListener(MixpanelNetworkErrorListener networkErrorListener) {
+        this.networkErrorListener = networkErrorListener;
     }
 
     @Override

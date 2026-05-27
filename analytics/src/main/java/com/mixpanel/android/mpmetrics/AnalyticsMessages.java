@@ -74,6 +74,9 @@ import org.json.JSONObject;
 
     public void setNetworkErrorListener(MixpanelNetworkErrorListener errorListener) {
         mNetworkErrorListener = errorListener;
+        if (mHttpService != null) {
+            mHttpService.setNetworkErrorListener(errorListener);
+        }
     }
 
     public void eventsMessage(final EventDescription eventDescription) {
@@ -194,8 +197,9 @@ import org.json.JSONObject;
                             mConfig.getBackupHost(),
                             serverHost);
         } else {
-            // Update backup host in case it changed at runtime
+            // Update backup host and listener in case they changed at runtime
             mHttpService.setBackupHost(mConfig.getBackupHost());
+            mHttpService.setNetworkErrorListener(mNetworkErrorListener);
         }
         return mHttpService;
     }
