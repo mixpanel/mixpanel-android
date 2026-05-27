@@ -2380,6 +2380,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     final String key = (String) iter.next();
                     sendProperties.put(key, properties.get(key));
                 }
+                AnalyticsMessages.applyExcludeProperties(sendProperties, mExcludeProperties);
 
                 final JSONObject message = stdPeopleMessage("$set", sendProperties);
                 recordPeopleMessage(message);

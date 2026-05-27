@@ -305,11 +305,25 @@ public class MixpanelOptions {
         }
 
         /**
-         * Sets a set of property keys that should be stripped from every event before it is
-         * sent to Mixpanel.
+         * Sets a set of property keys that should be stripped from outgoing payloads before
+         * they are sent to Mixpanel.
          *
-         * <p>Use this to reduce per-event payload size or to suppress properties the project
-         * has no interest in. Matching is exact and case-sensitive. Keys in
+         * <p>The filter is applied at two chokepoints:
+         * <ul>
+         *   <li>Every event (super properties, caller properties, referrer properties, and
+         *       SDK auto-properties like {@code $screen_height} / {@code $lib_version}).</li>
+         *   <li>The {@code $set} bag on {@code People.set(...)}, which auto-merges SDK
+         *       device info such as {@code $android_lib_version} and {@code $android_model}.
+         *       The mutating operators ({@code $set_once}, {@code $add}, {@code $append},
+         *       {@code $union}, {@code $remove}, {@code $unset}, {@code $merge},
+         *       {@code $delete}) are pass-through — they don't merge device info, and
+         *       filtering inside them would change semantics (e.g. silently dropping a name
+         *       from an {@code $unset} list). Group updates are not filtered because they
+         *       never merge device info.</li>
+         * </ul>
+         *
+         * <p>Use this to reduce per-payload size or to suppress properties the project has
+         * no interest in. Matching is exact and case-sensitive. Keys in
          * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
          *
          * <p>A {@code null} or empty set disables filtering entirely with zero per-event

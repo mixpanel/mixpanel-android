@@ -1,5 +1,9 @@
 package com.mixpanel.android.mpmetrics;
 
+import android.content.Context;
+
+import androidx.test.core.app.ApplicationProvider;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -9,25 +13,34 @@ import org.robolectric.RobolectricTestRunner;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for the property exclude set applied to outgoing events.
+ * Tests for the property exclude set applied to outgoing payloads.
  *
  * <p>The exclude set is configured at SDK init via {@link MixpanelOptions.Builder#excludeProperties(Set)}.
  * It is applied at two chokepoints:
  * <ol>
- *   <li>{@code MixpanelAPI.buildEventDescription} for user / super / referrer properties</li>
- *   <li>{@link AnalyticsMessages#applyExcludeProperties(JSONObject, Set)} for SDK auto-properties
- *       (the default-event-properties added in the worker just before send).</li>
+ *   <li>{@code AnalyticsMessages.Worker.prepareEventObject} for every event, covering super /
+ *       caller / referrer properties and the SDK auto-properties merged in just before send.</li>
+ *   <li>{@code MixpanelAPI.PeopleImpl.set} for the {@code $set} bag, which auto-merges the
+ *       SDK's device-info properties. Other people operators and group updates do not merge
+ *       SDK fat and are not filtered.</li>
  * </ol>
  *
- * <p>These tests target the second chokepoint directly, since it's the one with the most
- * customer value (those auto-properties are usually what bloats {@code $mp_event_size}).
- * Tests for the {@link MixpanelOptions} builder live in {@link MixpanelOptionsTest}.
+ * <p>Most of these tests target {@link AnalyticsMessages#applyExcludeProperties(JSONObject, Set)}
+ * directly because it carries the substantive behavior; one end-to-end test
+ * ({@link #testPeopleSetStripsAutoMergedDeviceInfo}) verifies the people-side wiring through a
+ * real {@link MixpanelAPI}. Tests for the {@link MixpanelOptions} builder live in
+ * {@link MixpanelOptionsTest}.
  */
 @RunWith(RobolectricTestRunner.class)
 public class ExcludePropertiesTest {
@@ -151,6 +164,60 @@ public class ExcludePropertiesTest {
     public void testNullTargetIsNoOp() {
         // No exception should be thrown.
         AnalyticsMessages.applyExcludeProperties(null, Collections.singleton("$lib_version"));
+    }
+
+    /**
+     * End-to-end check that {@code People.set(...)} honors the exclude set by stripping an
+     * auto-merged device-info key while preserving caller-supplied properties. This is the
+     * one wiring path that {@link AnalyticsMessages#applyExcludeProperties(JSONObject, Set)}
+     * alone can't cover, since the merge happens in {@link MixpanelAPI} before the worker
+     * sees it.
+     */
+    @Test
+    public void testPeopleSetStripsAutoMergedDeviceInfo() throws Exception {
+        final Context context = ApplicationProvider.getApplicationContext();
+        final String token = UUID.randomUUID().toString();
+        final BlockingQueue<AnalyticsMessages.PeopleDescription> seen =
+                new LinkedBlockingQueue<>();
+
+        final AnalyticsMessages capturing = new AnalyticsMessages(
+                context, MPConfig.getInstance(context, null)) {
+            @Override
+            public void peopleMessage(PeopleDescription description) {
+                seen.add(description);
+                // Don't forward; we just want to inspect the bag the API constructed.
+            }
+        };
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(Collections.singleton("$android_lib_version"))
+                .build();
+
+        MixpanelAPI mixpanel = new TestUtils.CleanMixpanelAPI(
+                context, new TestUtils.EmptyPreferences(context), token, options) {
+            @Override
+            protected AnalyticsMessages getAnalyticsMessages() {
+                return capturing;
+            }
+        };
+        mixpanel.identify("user-under-test");
+
+        JSONObject callerProps = new JSONObject();
+        callerProps.put("custom_prop", "kept");
+        mixpanel.getPeople().set(callerProps);
+
+        AnalyticsMessages.PeopleDescription description =
+                seen.poll(5, TimeUnit.SECONDS);
+        assertNotNull("PeopleDescription should have been recorded", description);
+
+        JSONObject setBag = description.getMessage().getJSONObject("$set");
+        assertFalse("Excluded auto-merged property should be stripped",
+                setBag.has("$android_lib_version"));
+        assertEquals("Caller property should pass through",
+                "kept", setBag.getString("custom_prop"));
+        // Adjacent auto-properties should still be present.
+        assertTrue("Adjacent auto-property should remain",
+                setBag.has("$android_os"));
     }
 
     /**
