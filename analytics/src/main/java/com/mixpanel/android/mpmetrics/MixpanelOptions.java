@@ -10,7 +10,18 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
+import java.util.Collections;
+import java.util.Set;
+
 public class MixpanelOptions {
+
+    /**
+     * Property keys that are required for ingestion or identity resolution and will never be
+     * stripped by {@link Builder#excludeProperties(Set)}, even if a customer lists them.
+     */
+    public static final Set<String> RESERVED_PROPERTY_KEYS = Set.of(
+        "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
+    );
 
     private final String instanceName;
     private final boolean optOutTrackingDefault;
@@ -19,6 +30,7 @@ public class MixpanelOptions {
     private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
+    private final Set<String> excludeProperties;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -28,6 +40,7 @@ public class MixpanelOptions {
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
+        this.excludeProperties = builder.excludeProperties;
     }
 
     public String getInstanceName() {
@@ -95,6 +108,18 @@ public class MixpanelOptions {
         return proxyServerInteractor;
     }
 
+    /**
+     * Returns the set of property keys that will be stripped from every event before it is
+     * sent to Mixpanel. Returns an empty set if none were configured. The returned set is
+     * unmodifiable.
+     *
+     * @return The configured exclude set, or an empty unmodifiable set.
+     */
+    @NonNull
+    public Set<String> getExcludeProperties() {
+        return excludeProperties;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -103,6 +128,7 @@ public class MixpanelOptions {
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
+        private Set<String> excludeProperties = Collections.emptySet();
 
         public Builder() {
         }
@@ -275,6 +301,30 @@ public class MixpanelOptions {
         ) {
             this.serverURL = serverURL;
             this.proxyServerInteractor = proxyServerInteractor;
+            return this;
+        }
+
+        /**
+         * Sets a set of property keys that should be stripped from every event before it is
+         * sent to Mixpanel.
+         *
+         * <p>Use this to reduce per-event payload size or to suppress properties the project
+         * has no interest in. Matching is exact and case-sensitive. Keys in
+         * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
+         *
+         * <p>A {@code null} or empty set disables filtering entirely with zero per-event
+         * overhead.
+         *
+         * @param excludeProperties The set of property keys to strip.
+         * @return This Builder instance for chaining.
+         */
+        public Builder excludeProperties(@Nullable Set<String> excludeProperties) {
+            if (excludeProperties == null || excludeProperties.isEmpty()) {
+                this.excludeProperties = Collections.emptySet();
+            } else {
+                // Defensive copy + immutable wrapper so callers can't mutate post-build.
+                this.excludeProperties = Set.copyOf(excludeProperties);
+            }
             return this;
         }
 

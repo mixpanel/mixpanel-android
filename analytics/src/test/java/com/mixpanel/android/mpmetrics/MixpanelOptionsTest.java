@@ -5,8 +5,11 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -25,6 +28,66 @@ public class MixpanelOptionsTest {
         assertNull(options.getDeviceIdProvider());
         assertNull(options.getServerURL());
         assertNull(options.getProxyServerInteractor());
+        assertNotNull(options.getExcludeProperties());
+        assertTrue(options.getExcludeProperties().isEmpty());
+    }
+
+    @Test
+    public void testExcludeProperties() {
+        Set<String> exclude = new HashSet<>();
+        exclude.add("$screen_height");
+        exclude.add("$lib_version");
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(exclude)
+                .build();
+
+        assertEquals(2, options.getExcludeProperties().size());
+        assertTrue(options.getExcludeProperties().contains("$screen_height"));
+        assertTrue(options.getExcludeProperties().contains("$lib_version"));
+    }
+
+    @Test
+    public void testExcludePropertiesDefensiveCopy() {
+        Set<String> exclude = new HashSet<>();
+        exclude.add("$screen_height");
+
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(exclude)
+                .build();
+
+        // Mutating the source should not affect the stored set.
+        exclude.add("$lib_version");
+        assertEquals(1, options.getExcludeProperties().size());
+        assertTrue(options.getExcludeProperties().contains("$screen_height"));
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testExcludePropertiesGetterIsImmutable() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(Collections.singleton("$screen_height"))
+                .build();
+        options.getExcludeProperties().add("anything");
+    }
+
+    @Test
+    public void testNullExcludeProperties() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(null)
+                .build();
+
+        assertNotNull(options.getExcludeProperties());
+        assertTrue(options.getExcludeProperties().isEmpty());
+    }
+
+    @Test
+    public void testEmptyExcludeProperties() {
+        MixpanelOptions options = new MixpanelOptions.Builder()
+                .excludeProperties(Collections.emptySet())
+                .build();
+
+        assertNotNull(options.getExcludeProperties());
+        assertTrue(options.getExcludeProperties().isEmpty());
     }
 
     @Test
