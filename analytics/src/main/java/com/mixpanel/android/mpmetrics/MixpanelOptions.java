@@ -10,7 +10,9 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 public class MixpanelOptions {
@@ -19,8 +21,10 @@ public class MixpanelOptions {
      * Property keys that are required for ingestion or identity resolution and will never be
      * stripped by {@link Builder#excludeProperties(Set)}, even if a customer lists them.
      */
-    public static final Set<String> RESERVED_PROPERTY_KEYS = Set.of(
-        "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
+    public static final Set<String> RESERVED_PROPERTY_KEYS = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
+        ))
     );
 
     private final String instanceName;
@@ -323,7 +327,8 @@ public class MixpanelOptions {
          * </ul>
          *
          * <p>Use this to reduce per-payload size or to suppress properties the project has
-         * no interest in. Matching is exact and case-sensitive. Keys in
+         * no interest in. Matching is exact, case-sensitive, and applied only to top-level
+         * property keys (values that are themselves objects are not traversed). Keys in
          * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
          *
          * <p>A {@code null} or empty set disables filtering entirely with zero per-event
@@ -337,7 +342,7 @@ public class MixpanelOptions {
                 this.excludeProperties = Collections.emptySet();
             } else {
                 // Defensive copy + immutable wrapper so callers can't mutate post-build.
-                this.excludeProperties = Set.copyOf(excludeProperties);
+                this.excludeProperties = Collections.unmodifiableSet(new HashSet<>(excludeProperties));
             }
             return this;
         }

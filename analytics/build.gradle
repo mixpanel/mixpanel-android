@@ -2,6 +2,16 @@ plugins {
     id 'com.android.library'
     id 'mixpanel.maven-publish'
     id 'jacoco'
+    id 'ru.vyarus.animalsniffer' version '2.0.0'
+}
+
+animalsniffer {
+    // Real CI gate: the per-variant animalsniffer{Debug,Release} tasks are wired
+    // into `check` by the plugin, so a Java 9+ / unsupported-Android API will fail
+    // the build.
+    ignoreFailures = false
+    // Runtime-gated by SDK_INT >= TIRAMISU; animalsniffer can't see the version check.
+    ignore 'android.content.pm.PackageManager'
 }
 
 
@@ -67,6 +77,8 @@ android {
     lint {
         abortOnError false
         targetSdk 34
+        error 'NewApi'
+        checkReleaseBuilds true
     }
     testOptions {
         targetSdk 34
@@ -127,6 +139,7 @@ tasks.register("androidJavadocs", Javadoc) {
 dependencies {
     // official release
     implementation 'com.mixpanel.android:mixpanel-android-common:1.0.1'
+    signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
     // or use below for local testing
     // implementation project(':common')
     implementation "androidx.annotation:annotation:1.8.2"

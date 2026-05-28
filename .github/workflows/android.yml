@@ -37,6 +37,8 @@ jobs:
       run: ./gradlew :common:ktlintCheck
     - name: Lint
       run:  ./gradlew :analytics:lint
+    - name: AnimalSniffer (Java/Android API compatibility)
+      run:  ./gradlew :analytics:animalsnifferRelease
     - name: Upload test report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       if: always()
@@ -71,6 +73,12 @@ jobs:
       with:
         name: Lint Report
         path: analytics/build/reports/lint-results-*.*
+    - name: Upload AnimalSniffer report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: always()
+      with:
+        name: AnimalSniffer Report
+        path: analytics/build/reports/animalsniffer/
     - name: Android docs
       run:  ./gradlew --info :analytics:androidJavadocs
 

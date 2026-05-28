@@ -29,6 +29,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Lint checks
 ./gradlew :analytics:lint
 
+# AnimalSniffer (Java/Android API compatibility — fails on Java 9+ APIs and Android calls
+# above minSdk that aren't SDK_INT-gated; report at analytics/build/reports/animalsniffer/)
+./gradlew :analytics:animalsnifferRelease
+
 # Build demo app
 ./gradlew :analytics:mixpaneldemo:build
 ```
