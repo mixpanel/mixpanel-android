@@ -234,6 +234,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
         mExcludeProperties = options.getExcludeProperties();
+        warnIfStrippingLibProperties(mExcludeProperties);
         // Resolve the effective policy once at init: a persisting policy with non-positive TTL
         // is collapsed to NetworkOnly, since "persist on every fetch but the TTL makes nothing
         // ever serve" does no useful work. Logs a warning when the substitution happens.
@@ -2319,6 +2320,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private static String storedPrefsName(String token, String instanceName) {
         final String instanceKey = instanceName != null ? instanceName : token;
         return "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
+    }
+
+    private static void warnIfStrippingLibProperties(Set<String> excludeProperties) {
+        if (excludeProperties.contains("mp_lib") || excludeProperties.contains("$lib_version")) {
+            MPLog.w(
+                    LOGTAG,
+                    "MixpanelOptions.excludeProperties is stripping 'mp_lib' and/or"
+                            + " '$lib_version'. These are not required for ingestion or identity,"
+                            + " but Mixpanel uses them to identify the SDK source and version of"
+                            + " each event — stripping them is not recommended.");
+        }
     }
 
     /* package */ boolean sendAppOpen() {

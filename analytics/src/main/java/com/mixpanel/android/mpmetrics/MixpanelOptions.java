@@ -331,6 +331,13 @@ public class MixpanelOptions {
          * property keys (values that are themselves objects are not traversed). Keys in
          * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
          *
+         * <p><b>Recommended: do not strip {@code mp_lib} or {@code $lib_version}.</b> Mixpanel
+         * does not need them for ingestion or identity resolution, so stripping them is
+         * permitted — but they are how Mixpanel identifies which SDK (and which version)
+         * produced an event. Removing them limits reporting accuracy (e.g. per-platform
+         * breakdowns) and makes it harder for support to debug issues on your project. If
+         * either key is included here, the SDK logs a warning at instance creation time.
+         *
          * <p>A {@code null} or empty set disables filtering entirely with zero per-event
          * overhead.
          *
