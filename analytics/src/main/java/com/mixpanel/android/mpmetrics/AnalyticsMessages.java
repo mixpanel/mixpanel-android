@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import javax.net.ssl.SSLSocketFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,6 +38,23 @@ import org.json.JSONObject;
  * <p>This class straddles the thread boundary between user threads and a logical Mixpanel thread.
  */
 /* package */ class AnalyticsMessages {
+
+    /**
+     * Removes any property whose key appears in {@code excludeProperties} from {@code target},
+     * skipping keys in {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} that ingestion or identity
+     * require. Package-private + static so it can be unit-tested directly.
+     */
+    /* package */ static void applyExcludeProperties(JSONObject target, Set<String> excludeProperties) {
+        if (target == null || excludeProperties == null || excludeProperties.isEmpty()) {
+            return;
+        }
+        for (final String key : excludeProperties) {
+            if (MixpanelOptions.RESERVED_PROPERTY_KEYS.contains(key)) {
+                continue;
+            }
+            target.remove(key);
+        }
+    }
 
     /** Do not call directly. You should call AnalyticsMessages.getInstance() */
     /* package */ AnalyticsMessages(final Context context, MPConfig config) {
@@ -227,10 +246,22 @@ import org.json.JSONObject;
                 String token,
                 boolean isAutomatic,
                 JSONObject sessionMetadata) {
+            this(eventName, properties, token, isAutomatic, sessionMetadata, Collections.emptySet());
+        }
+
+        public EventDescription(
+                String eventName,
+                JSONObject properties,
+                String token,
+                boolean isAutomatic,
+                JSONObject sessionMetadata,
+                Set<String> excludeProperties) {
             super(token, properties);
             mEventName = eventName;
             mIsAutomatic = isAutomatic;
             mSessionMetadata = sessionMetadata;
+            mExcludeProperties =
+                    excludeProperties == null ? Collections.emptySet() : excludeProperties;
         }
 
         public String getEventName() {
@@ -249,9 +280,14 @@ import org.json.JSONObject;
             return mIsAutomatic;
         }
 
+        public Set<String> getExcludeProperties() {
+            return mExcludeProperties;
+        }
+
         private final String mEventName;
         private final JSONObject mSessionMetadata;
         private final boolean mIsAutomatic;
+        private final Set<String> mExcludeProperties;
     }
 
     static class PeopleDescription extends MixpanelMessageDescription {
@@ -636,7 +672,7 @@ import org.json.JSONObject;
                                         url, mConfig.getProxyServerInteractor(), params, null, null, socketFactory);
                         byte[] response = result.getResponse();
                         String actualUrl = result.getRequestUrl(); // Get the actual URL that succeeded
-                        
+
                         if (null == response) {
                             deleteEvents = false;
                             logAboutMessageToMixpanel(
@@ -762,6 +798,7 @@ import org.json.JSONObject;
                         sendProperties.put(key, eventProperties.get(key));
                     }
                 }
+                applyExcludeProperties(sendProperties, eventDescription.getExcludeProperties());
                 eventObj.put("event", eventDescription.getEventName());
                 eventObj.put("properties", sendProperties);
                 eventObj.put("$mp_metadata", eventDescription.getSessionMetadata());

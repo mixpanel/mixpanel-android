@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -232,6 +233,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mEventTimings = mPersistentIdentity.getTimeEvents();
 
         mFeatureFlagOptions = options.getFeatureFlagOptions();
+        mExcludeProperties = options.getExcludeProperties();
+        warnIfStrippingLibProperties(mExcludeProperties);
         // Resolve the effective policy once at init: a persisting policy with non-positive TTL
         // is collapsed to NetworkOnly, since "persist on every fetch but the TTL makes nothing
         // ever serve" does no useful work. Logs a warning when the substitution happens.
@@ -2319,6 +2322,17 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         return "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
     }
 
+    private static void warnIfStrippingLibProperties(Set<String> excludeProperties) {
+        if (excludeProperties.contains("mp_lib") || excludeProperties.contains("$lib_version")) {
+            MPLog.w(
+                    LOGTAG,
+                    "MixpanelOptions.excludeProperties is stripping 'mp_lib' and/or"
+                            + " '$lib_version'. These are not required for ingestion or identity,"
+                            + " but Mixpanel uses them to identify the SDK source and version of"
+                            + " each event — stripping them is not recommended.");
+        }
+    }
+
     /* package */ boolean sendAppOpen() {
         return !mConfig.getDisableAppOpenEvent();
     }
@@ -2378,6 +2392,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     final String key = (String) iter.next();
                     sendProperties.put(key, properties.get(key));
                 }
+                AnalyticsMessages.applyExcludeProperties(sendProperties, mExcludeProperties);
 
                 final JSONObject message = stdPeopleMessage("$set", sendProperties);
                 recordPeopleMessage(message);
@@ -2838,7 +2853,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 messageProps,
                 mToken,
                 isAutomaticEvent,
-                mSessionMetadata.getMetadataForEvent());
+                mSessionMetadata.getMetadataForEvent(),
+                mExcludeProperties);
     }
 
     private void recordPeopleMessage(JSONObject message) {
@@ -3000,6 +3016,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private MixpanelActivityLifecycleCallbacks mMixpanelActivityLifecycleCallbacks;
     private final SessionMetadata mSessionMetadata;
     private final FeatureFlagOptions mFeatureFlagOptions;
+    private final Set<String> mExcludeProperties;
     private FeatureFlagManager mFeatureFlagManager;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground

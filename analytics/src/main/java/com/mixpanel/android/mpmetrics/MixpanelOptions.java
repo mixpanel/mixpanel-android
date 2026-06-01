@@ -10,7 +10,22 @@ import com.mixpanel.android.util.ProxyServerInteractor;
 
 import org.json.JSONObject;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class MixpanelOptions {
+
+    /**
+     * Property keys that are required for ingestion or identity resolution and will never be
+     * stripped by {@link Builder#excludeProperties(Set)}, even if a customer lists them.
+     */
+    public static final Set<String> RESERVED_PROPERTY_KEYS = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            "token", "time", "distinct_id", "$device_id", "$user_id", "$had_persisted_distinct_id"
+        ))
+    );
 
     private final String instanceName;
     private final boolean optOutTrackingDefault;
@@ -19,6 +34,7 @@ public class MixpanelOptions {
     private final DeviceIdProvider deviceIdProvider;
     private final String serverURL;
     private final ProxyServerInteractor proxyServerInteractor;
+    private final Set<String> excludeProperties;
 
     private MixpanelOptions(Builder builder) {
         this.instanceName = builder.instanceName;
@@ -28,6 +44,7 @@ public class MixpanelOptions {
         this.serverURL = builder.serverURL;
         this.proxyServerInteractor = builder.proxyServerInteractor;
         this.mFeatureFlagOptions = builder.mFeatureFlagOptions;
+        this.excludeProperties = builder.excludeProperties;
     }
 
     public String getInstanceName() {
@@ -95,6 +112,18 @@ public class MixpanelOptions {
         return proxyServerInteractor;
     }
 
+    /**
+     * Returns the set of property keys that will be stripped from every event before it is
+     * sent to Mixpanel. Returns an empty set if none were configured. The returned set is
+     * unmodifiable.
+     *
+     * @return The configured exclude set, or an empty unmodifiable set.
+     */
+    @NonNull
+    public Set<String> getExcludeProperties() {
+        return excludeProperties;
+    }
+
     public static class Builder {
         private String instanceName;
         private boolean optOutTrackingDefault = false;
@@ -103,6 +132,7 @@ public class MixpanelOptions {
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
+        private Set<String> excludeProperties = Collections.emptySet();
 
         public Builder() {
         }
@@ -275,6 +305,52 @@ public class MixpanelOptions {
         ) {
             this.serverURL = serverURL;
             this.proxyServerInteractor = proxyServerInteractor;
+            return this;
+        }
+
+        /**
+         * Sets a set of property keys that should be stripped from outgoing payloads before
+         * they are sent to Mixpanel.
+         *
+         * <p>The filter is applied at two chokepoints:
+         * <ul>
+         *   <li>Every event (super properties, caller properties, referrer properties, and
+         *       SDK auto-properties like {@code $screen_height} / {@code $lib_version}).</li>
+         *   <li>The {@code $set} bag on {@code People.set(...)}, which auto-merges SDK
+         *       device info such as {@code $android_lib_version} and {@code $android_model}.
+         *       The mutating operators ({@code $set_once}, {@code $add}, {@code $append},
+         *       {@code $union}, {@code $remove}, {@code $unset}, {@code $merge},
+         *       {@code $delete}) are pass-through — they don't merge device info, and
+         *       filtering inside them would change semantics (e.g. silently dropping a name
+         *       from an {@code $unset} list). Group updates are not filtered because they
+         *       never merge device info.</li>
+         * </ul>
+         *
+         * <p>Use this to reduce per-payload size or to suppress properties the project has
+         * no interest in. Matching is exact, case-sensitive, and applied only to top-level
+         * property keys (values that are themselves objects are not traversed). Keys in
+         * {@link MixpanelOptions#RESERVED_PROPERTY_KEYS} are never stripped, even if listed.
+         *
+         * <p><b>Recommended: do not strip {@code mp_lib} or {@code $lib_version}.</b> Mixpanel
+         * does not need them for ingestion or identity resolution, so stripping them is
+         * permitted — but they are how Mixpanel identifies which SDK (and which version)
+         * produced an event. Removing them limits reporting accuracy (e.g. per-platform
+         * breakdowns) and makes it harder for support to debug issues on your project. If
+         * either key is included here, the SDK logs a warning at instance creation time.
+         *
+         * <p>A {@code null} or empty set disables filtering entirely with zero per-event
+         * overhead.
+         *
+         * @param excludeProperties The set of property keys to strip.
+         * @return This Builder instance for chaining.
+         */
+        public Builder excludeProperties(@Nullable Set<String> excludeProperties) {
+            if (excludeProperties == null || excludeProperties.isEmpty()) {
+                this.excludeProperties = Collections.emptySet();
+            } else {
+                // Defensive copy + immutable wrapper so callers can't mutate post-build.
+                this.excludeProperties = Collections.unmodifiableSet(new HashSet<>(excludeProperties));
+            }
             return this;
         }
 

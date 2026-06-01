@@ -153,6 +153,10 @@ Before submitting any PR, you MUST:
 ```bash
 ./gradlew :analytics:lint
 # Review any warnings in analytics/build/reports/lint-results-debug.html
+
+./gradlew :analytics:animalsnifferRelease
+# Fails on Java 9+ APIs and unguarded Android calls above minSdk.
+# Report at analytics/build/reports/animalsniffer/release.text
 ```
 
 ### 4. Manual Verification
@@ -216,6 +220,7 @@ Your PR description should include:
 - `./gradlew :analytics:build` - ✅ Passed
 - `./gradlew :analytics:connectedAndroidTest` - ✅ All tests pass
 - `./gradlew :analytics:lint` - ✅ No new warnings
+- `./gradlew :analytics:animalsnifferRelease` - ✅ No API compatibility violations
 ```
 
 ## Success Metrics
