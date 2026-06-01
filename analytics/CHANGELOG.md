@@ -1,5 +1,15 @@
 # Changelog
 
+## [v8.8.0](https://github.com/mixpanel/mixpanel-android/tree/v8.8.0) (2026-06-01)
+
+### Features
+- add excludeProperties API for events and People.set() ([#975](https://github.com/mixpanel/mixpanel-android/pull/975))
+
+### Fixes
+- Ensure MixpanelNetworkErrorListener fires ([#974](https://github.com/mixpanel/mixpanel-android/pull/974))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.7.0...v8.8.0)
+
 ## [v8.7.0](https://github.com/mixpanel/mixpanel-android/tree/v8.7.0) (2026-05-07)
 
 ### Features
