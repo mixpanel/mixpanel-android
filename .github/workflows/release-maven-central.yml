@@ -114,6 +114,7 @@ jobs:
         run: ./gradlew "${TASK_PREFIX}build"
 
       - name: Test
+        timeout-minutes: 30
         env:
           TASK_PREFIX: ${{ steps.module.outputs.gradle_task_prefix }}
         run: ./gradlew "${TASK_PREFIX}test"
