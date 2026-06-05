@@ -365,30 +365,40 @@ public class HttpTest {
 
   private void flushAllLoopers() {
     for (int i = 0; i < 10; i++) {
-      ShadowLooper.idleMainLooper();
-      for (Looper looper : ShadowLooper.getAllLoopers()) {
-        Shadows.shadowOf(looper).idle();
-      }
+      idleAllLoopers();
       try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-      ShadowLooper.idleMainLooper();
-      for (Looper looper : ShadowLooper.getAllLoopers()) {
+      idleAllLoopers();
+    }
+  }
+
+  // Quitted/dead loopers left behind by sibling test classes (e.g. FeatureFlagManagerTest
+  // closes its worker HandlerThread in tearDown) cause Shadows.idle()/idleFor() to throw.
+  // Swallow those so an unrelated test's leftover doesn't fail this test.
+  private void idleAllLoopers() {
+    ShadowLooper.idleMainLooper();
+    for (Looper looper : ShadowLooper.getAllLoopers()) {
+      try {
         Shadows.shadowOf(looper).idle();
-      }
+      } catch (RuntimeException ignored) {}
+    }
+  }
+
+  private void idleAllLoopersFor(Duration duration) {
+    for (Looper looper : ShadowLooper.getAllLoopers()) {
+      try {
+        Shadows.shadowOf(looper).idleFor(duration);
+      } catch (RuntimeException ignored) {}
     }
   }
 
   private void waitForBackOffTimeInterval() throws InterruptedException {
     long waitForMs = mMetrics.getAnalyticsMessages().getTrackEngageRetryAfter();
-    for (Looper looper : ShadowLooper.getAllLoopers()) {
-      Shadows.shadowOf(looper).idleFor(Duration.ofMillis(waitForMs + 100));
-    }
+    idleAllLoopersFor(Duration.ofMillis(waitForMs + 100));
     flushAllLoopers();
   }
 
   private void waitForFlushInternval() throws InterruptedException {
-    for (Looper looper : ShadowLooper.getAllLoopers()) {
-      Shadows.shadowOf(looper).idleFor(Duration.ofMillis(mFlushInterval + 100));
-    }
+    idleAllLoopersFor(Duration.ofMillis(mFlushInterval + 100));
     flushAllLoopers();
   }
 

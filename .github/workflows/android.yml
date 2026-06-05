@@ -33,6 +33,8 @@ jobs:
       run: ./gradlew :openfeature-provider:test
     - name: Run Common module tests
       run: ./gradlew :common:test
+    - name: Run analytics JVM unit tests
+      run: ./gradlew :analytics:test
     - name: Run Common ktlint check
       run: ./gradlew :common:ktlintCheck
     - name: Lint
@@ -51,6 +53,14 @@ jobs:
       with:
         name: OpenFeature Unit Test Report
         path: openfeature-provider/build/reports/tests/
+    - name: Upload analytics JVM unit test report
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+      if: always()
+      with:
+        name: Analytics JVM Unit Test Report
+        path: |
+          analytics/build/reports/tests/
+          analytics/build/test-results/
     - name: Upload Common test report
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
       if: always()

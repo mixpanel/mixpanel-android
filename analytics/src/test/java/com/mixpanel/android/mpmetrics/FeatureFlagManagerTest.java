@@ -60,18 +60,28 @@ public class FeatureFlagManagerTest {
   /**
    * Flushes all background loopers and the main looper repeatedly to drive
    * async Handler-based operations to completion in Robolectric.
+   *
+   * <p>Sibling test classes (e.g. {@code MixpanelBasicTest}) create real {@code MixpanelAPI}
+   * instances without per-test teardown, so {@link ShadowLooper#getAllLoopers()} can include
+   * loopers whose queued handlers reference state torn down between tests (closed SQLite
+   * cursors, etc.). Idling those throws — swallow it here so unrelated tests don't fail.
    */
   private void flushAllLoopers() {
     for (int i = 0; i < 10; i++) {
-      ShadowLooper.idleMainLooper();
-      for (Looper looper : ShadowLooper.getAllLoopers()) {
-        Shadows.shadowOf(looper).idle();
-      }
-      // Give the network executor thread time to run
+      idleAllLoopers();
       try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-      ShadowLooper.idleMainLooper();
-      for (Looper looper : ShadowLooper.getAllLoopers()) {
+      idleAllLoopers();
+    }
+  }
+
+  private void idleAllLoopers() {
+    ShadowLooper.idleMainLooper();
+    for (Looper looper : ShadowLooper.getAllLoopers()) {
+      try {
         Shadows.shadowOf(looper).idle();
+      } catch (RuntimeException e) {
+        MPLog.w("MixpanelAPI.FeatureFlagManagerTest",
+            "Ignoring exception while idling looper " + looper, e);
       }
     }
   }
@@ -325,6 +335,9 @@ public class FeatureFlagManagerTest {
 
   @After
   public void tearDown() {
+    if (mFeatureFlagManager != null) {
+      mFeatureFlagManager.close();
+    }
     MPLog.setLevel(mPreviousLogLevel);
   }
 

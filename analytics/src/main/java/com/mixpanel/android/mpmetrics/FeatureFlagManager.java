@@ -175,6 +175,22 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
   }
 
+  // Stop the worker HandlerThread and network executor so they don't outlive a test JVM
+  // worker (non-daemon threads would otherwise keep gradle's test JVM alive after a failure).
+  // Package-private; idempotent.
+  void close() {
+    try {
+      mHandler.getLooper().quitSafely();
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Error quitting FeatureFlagManager looper", e);
+    }
+    try {
+      mNetworkExecutor.shutdownNow();
+    } catch (Exception e) {
+      MPLog.e(LOGTAG, "Error shutting down FeatureFlagManager network executor", e);
+    }
+  }
+
   /**
    * Returns {@code true} when the configured policy reads/writes the on-disk persistence
    * (PersistenceUntilNetworkSuccess or NetworkFirst). NetworkOnly returns {@code false}.
