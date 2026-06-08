@@ -223,6 +223,7 @@ public class HttpTest {
         SUCCEED_TEXT, mPerformRequestCalls.poll(POLL_WAIT_MAX_MILLISECONDS, DEFAULT_TIMEUNIT));
   }
 
+  @Ignore("Cleanup timing not reliably simulated via ShadowLooper — requires emulator")
   @Test
   public void testMalformedURLException() throws InterruptedException {
     mCleanupCalls.clear();
@@ -268,6 +269,7 @@ public class HttpTest {
     runServiceUnavailableExceptionWithRetryAfter("10");
   }
 
+  @Ignore("40s back-off retry timing not reliably simulated via ShadowLooper — requires emulator")
   @Test
   public void testServiceUnavailableExceptionWithRetryAfter40() throws InterruptedException {
     runServiceUnavailableExceptionWithRetryAfter("40");
