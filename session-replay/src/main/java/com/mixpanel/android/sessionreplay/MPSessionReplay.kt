@@ -30,6 +30,16 @@ sealed class MPSessionReplayError : Exception() {
     data class InitializationError(override val cause: Throwable) : MPSessionReplayError()
 }
 
+/**
+ * Consolidated result from applying remote settings.
+ * Contains all values needed for SDK initialization in one place.
+ */
+internal data class ResolvedRemoteSettings(
+    val isRecordingEnabled: Boolean,
+    val config: MPSessionReplayConfig,
+    val recordingEventTriggers: Map<String, RecordingEventTrigger>?
+)
+
 open class MPSessionReplay {
     // Class-level properties and other methods can go here if needed
 
@@ -158,26 +168,25 @@ object SessionReplayManager {
 
                 // Now we're in foreground, safe to make network call
                 val settingsResult = remoteSettingsService.fetchRemoteSettings(token)
-                val finalConfig = applyRemoteSettings(config, settingsResult)
+                val resolvedSettings = applyRemoteSettings(config, settingsResult)
 
                 withContext(Dispatchers.Main) {
-                    if (settingsResult.isRecordingEnabled) {
-                        finalConfig?.let { config ->
-                            instance = MPSessionReplayInstance(appContext, token, distinctId, config)
-
-                            // Setup event triggers from remote settings
-                            setupEventTriggers(settingsResult.sdkConfig?.recordingEventTriggers)
-
-                            completion(Result.success(instance))
-                        } ?: run {
-                            val error = "Session Replay is disabled because remote settings could not be fetched in STRICT mode."
+                    when {
+                        resolvedSettings == null -> {
+                            val error = "Session Replay is disabled (STRICT mode: settings unavailable)"
                             Logger.warn(error)
                             completion(Result.failure(MPSessionReplayError.Disabled(error)))
                         }
-                    } else {
-                        val error = "Session Replay is disabled via remote settings"
-                        Logger.warn(error)
-                        completion(Result.failure(MPSessionReplayError.Disabled(error)))
+                        !resolvedSettings.isRecordingEnabled -> {
+                            val error = "Session Replay is disabled via remote settings"
+                            Logger.warn(error)
+                            completion(Result.failure(MPSessionReplayError.Disabled(error)))
+                        }
+                        else -> {
+                            instance = MPSessionReplayInstance(appContext, token, distinctId, resolvedSettings.config)
+                            setupEventTriggers(resolvedSettings.recordingEventTriggers)
+                            completion(Result.success(instance))
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -191,24 +200,36 @@ object SessionReplayManager {
 
     /**
      * Applies remote settings to the config based on remoteSettingsMode.
-     * Returns a new config with remote settings applied, preserving immutability.
+     * Returns a consolidated ResolvedRemoteSettings containing all values needed for initialization.
      * Returns null if SDK initialization should be disabled (STRICT mode with API failure or missing sdk_config).
      */
     @VisibleForTesting
     internal fun applyRemoteSettings(
         config: MPSessionReplayConfig,
         remoteSettings: RemoteSettingsResult
-    ): MPSessionReplayConfig? = when (config.remoteSettingsMode) {
-        RemoteSettingsMode.DISABLED -> config
+    ): ResolvedRemoteSettings? = when (config.remoteSettingsMode) {
+        RemoteSettingsMode.DISABLED -> ResolvedRemoteSettings(
+            isRecordingEnabled = remoteSettings.isRecordingEnabled,
+            config = config,
+            recordingEventTriggers = null // Ignored in DISABLED mode
+        )
 
         RemoteSettingsMode.STRICT -> if (remoteSettings.isFromCache || remoteSettings.sdkConfig == null) {
-            // The API call failed or the response did not include sdk_config.config, so the SDK will not be initialized.
+            // The API call failed or the response did not include sdk_config.config
             null
         } else {
-            applyRemoteConfigValues(config, remoteSettings)
+            ResolvedRemoteSettings(
+                isRecordingEnabled = remoteSettings.isRecordingEnabled,
+                config = applyRemoteConfigValues(config, remoteSettings),
+                recordingEventTriggers = remoteSettings.sdkConfig.recordingEventTriggers
+            )
         }
 
-        RemoteSettingsMode.FALLBACK -> applyRemoteConfigValues(config, remoteSettings)
+        RemoteSettingsMode.FALLBACK -> ResolvedRemoteSettings(
+            isRecordingEnabled = remoteSettings.isRecordingEnabled,
+            config = applyRemoteConfigValues(config, remoteSettings),
+            recordingEventTriggers = remoteSettings.sdkConfig?.recordingEventTriggers
+        )
     }
 
     /**
