@@ -168,7 +168,7 @@ object SessionReplayManager {
 
                 // Now we're in foreground, safe to make network call
                 val settingsResult = remoteSettingsService.fetchRemoteSettings(token)
-                val resolvedSettings = applyRemoteSettings(config, settingsResult)
+                val resolvedSettings = resolveRemoteSettings(config, settingsResult)
 
                 withContext(Dispatchers.Main) {
                     when {
@@ -204,7 +204,7 @@ object SessionReplayManager {
      * Returns null if SDK initialization should be disabled (STRICT mode with API failure or missing sdk_config).
      */
     @VisibleForTesting
-    internal fun applyRemoteSettings(
+    internal fun resolveRemoteSettings(
         config: MPSessionReplayConfig,
         remoteSettings: RemoteSettingsResult
     ): ResolvedRemoteSettings? = when (config.remoteSettingsMode) {
