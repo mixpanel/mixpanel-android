@@ -31,12 +31,12 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = 25.0)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should keep original config, ignoring remote config
-        assertEquals(config, resolved?.config)
+        assertEquals(config, resolvedSettings?.config)
         // Event triggers should be null in DISABLED mode
-        assertNull(resolved?.recordingEventTriggers)
+        assertNull(resolvedSettings?.recordingEventTriggers)
     }
 
     @Test
@@ -63,10 +63,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = 10.0)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should apply remote value
-        assertEquals(config.copy(recordingSessionsPercent = 10.0), resolved?.config)
+        assertEquals(config.copy(recordingSessionsPercent = 10.0), resolvedSettings?.config)
     }
 
     @Test
@@ -82,10 +82,10 @@ class RemoteSettingsModeTest {
             isFromCache = true // API failed, using cache
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // STRICT mode should return null when API fails, disabling SDK initialization
-        assertNull(resolved)
+        assertNull(resolvedSettings)
     }
 
     @Test
@@ -101,10 +101,10 @@ class RemoteSettingsModeTest {
             isFromCache = false // API succeeded but no sdk_config
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // STRICT mode should return null when sdk_config is missing, disabling SDK initialization
-        assertNull(resolved)
+        assertNull(resolvedSettings)
     }
 
     @Test
@@ -118,10 +118,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = null)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should use init value when remote value is null
-        assertEquals(80.0, resolved?.config?.recordingSessionsPercent)
+        assertEquals(80.0, resolvedSettings?.config?.recordingSessionsPercent)
     }
 
     @Test
@@ -136,10 +136,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = -10.0)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should use init value when remote value is invalid
-        assertEquals(50.0, resolved?.config?.recordingSessionsPercent)
+        assertEquals(50.0, resolvedSettings?.config?.recordingSessionsPercent)
     }
 
     @Test
@@ -173,9 +173,9 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordingEventTriggers = triggers)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
-        assertEquals(triggers, resolved?.recordingEventTriggers)
+        assertEquals(triggers, resolvedSettings?.recordingEventTriggers)
     }
 
     // --- FALLBACK Mode Tests ---
@@ -191,10 +191,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = 25.0)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should apply remote value
-        assertEquals(config.copy(recordingSessionsPercent = 25.0), resolved?.config)
+        assertEquals(config.copy(recordingSessionsPercent = 25.0), resolvedSettings?.config)
     }
 
     @Test
@@ -210,10 +210,10 @@ class RemoteSettingsModeTest {
             isFromCache = true // API failed, using cache
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // FALLBACK mode should keep original config
-        assertEquals(config, resolved?.config)
+        assertEquals(config, resolvedSettings?.config)
     }
 
     @Test
@@ -228,10 +228,10 @@ class RemoteSettingsModeTest {
             isFromCache = true
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should use cached value
-        assertEquals(config.copy(recordingSessionsPercent = 50.0), resolved?.config)
+        assertEquals(config.copy(recordingSessionsPercent = 50.0), resolvedSettings?.config)
     }
 
     @Test
@@ -246,10 +246,10 @@ class RemoteSettingsModeTest {
             isFromCache = false // API succeeded but no sdk_config
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should keep original config when sdk_config is missing
-        assertEquals(config, resolved?.config)
+        assertEquals(config, resolvedSettings?.config)
     }
 
     @Test
@@ -263,10 +263,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = null)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should use init value when remote value is null
-        assertEquals(60.0, resolved?.config?.recordingSessionsPercent)
+        assertEquals(60.0, resolvedSettings?.config?.recordingSessionsPercent)
     }
 
     @Test
@@ -280,10 +280,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordSessionsPercent = 150.0) // Invalid: > 100
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // Should use init value when remote value is invalid
-        assertEquals(40.0, resolved?.config?.recordingSessionsPercent)
+        assertEquals(40.0, resolvedSettings?.config?.recordingSessionsPercent)
     }
 
     @Test
@@ -295,9 +295,9 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordingEventTriggers = triggers)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
-        assertEquals(triggers, resolved?.recordingEventTriggers)
+        assertEquals(triggers, resolvedSettings?.recordingEventTriggers)
     }
 
     // --- DISABLED Mode Additional Tests ---
@@ -314,10 +314,10 @@ class RemoteSettingsModeTest {
             isFromCache = true
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // DISABLED mode should ignore even cached config
-        assertEquals(config, resolved?.config)
+        assertEquals(config, resolvedSettings?.config)
     }
 
     @Test
@@ -332,11 +332,11 @@ class RemoteSettingsModeTest {
             isFromCache = true // Simulating API failure
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // DISABLED mode should return resolved (not null like STRICT)
-        assertNotNull(resolved)
-        assertEquals(config, resolved?.config)
+        assertNotNull(resolvedSettings)
+        assertEquals(config, resolvedSettings?.config)
     }
 
     @Test
@@ -348,10 +348,10 @@ class RemoteSettingsModeTest {
             sdkConfig = SdkConfig(recordingEventTriggers = triggers)
         )
 
-        val resolved = SessionReplayManager.applyRemoteSettings(config, result)
+        val resolvedSettings =SessionReplayManager.applyRemoteSettings(config, result)
 
         // DISABLED mode should return null for event triggers
-        assertNull(resolved?.recordingEventTriggers)
+        assertNull(resolvedSettings?.recordingEventTriggers)
     }
 
     // --- Edge Case Tests ---
