@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -21,6 +22,8 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
+
+import com.mixpanel.android.autocapture.AutocaptureManager;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
@@ -308,6 +311,11 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     sessionReplayReceiver,
                     SessionReplayBroadcastReceiver.INTENT_FILTER,
                     ContextCompat.RECEIVER_NOT_EXPORTED);
+        }
+
+        // Initialize autocapture if enabled
+        if (options.getAutocaptureOptions().isEnabled()) {
+            initializeAutocapture(options.getAutocaptureOptions());
         }
     }
 
@@ -2178,6 +2186,32 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Initializes the autocapture functionality with the provided options.
+     *
+     * <p>Autocapture automatically tracks user interactions (clicks, rage clicks, dead clicks)
+     * without requiring manual instrumentation.
+     *
+     * @param options The autocapture configuration options.
+     */
+    private void initializeAutocapture(AutocaptureOptions options) {
+        try {
+            mAutocaptureManager = new AutocaptureManager(
+                    mContext,
+                    options,
+                    (eventName, properties) -> {
+                        // Use track() to emit autocapture events
+                        // These are internal events so we use the internal tracking method
+                        track(eventName, properties, true);
+                    }
+            );
+            mAutocaptureManager.start();
+            MPLog.d(LOGTAG, "Autocapture initialized");
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Failed to initialize autocapture", e);
+        }
+    }
+
+    /**
      * Based on the application's event lifecycle this method will determine whether the app is
      * running in the foreground or not.
      *
@@ -3018,6 +3052,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final FeatureFlagOptions mFeatureFlagOptions;
     private final Set<String> mExcludeProperties;
     private FeatureFlagManager mFeatureFlagManager;
+    private AutocaptureManager mAutocaptureManager;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground
     private final AtomicBoolean mHasAppForegrounded = new AtomicBoolean(false);

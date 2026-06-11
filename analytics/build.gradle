@@ -12,6 +12,8 @@ animalsniffer {
     ignoreFailures = false
     // Runtime-gated by SDK_INT >= TIRAMISU; animalsniffer can't see the version check.
     ignore 'android.content.pm.PackageManager'
+    // Autocapture TouchInterceptor: API 23+ Window.Callback methods, runtime-gated by SDK_INT >= M
+    ignore 'android.view.Window$Callback'
 }
 
 
