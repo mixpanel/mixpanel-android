@@ -93,6 +93,8 @@ final class SemanticExtractor {
                 MPLog.d(TAG, "extractFromCompose result: " + composeResult.result);
 
                 if (composeResult.result == ComposeSemanticHelper.ExtractionResult.SUCCESS) {
+                    // Set Compose root for dead click detection using semantic comparison
+                    composeResult.builder.composeRoot(composeRoot);
                     return composeResult.builder;
                 }
 

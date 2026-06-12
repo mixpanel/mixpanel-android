@@ -1,10 +1,14 @@
 package com.mixpanel.android.autocapture;
 
+import android.view.View;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.lang.ref.WeakReference;
 
 /**
  * Immutable data class representing a captured click event.
@@ -52,6 +56,13 @@ final class ClickEvent {
     public final boolean isInteractive;
 
     /**
+     * Reference to Compose root view for dead click detection.
+     * Only set for clicks on Compose elements. Weak reference to avoid memory leaks.
+     */
+    @Nullable
+    final WeakReference<View> composeRootRef;
+
+    /**
      * Creates a new ClickEvent.
      */
     ClickEvent(
@@ -64,7 +75,8 @@ final class ClickEvent {
             @Nullable String role,
             @Nullable String elements,
             long timestamp,
-            boolean isInteractive) {
+            boolean isInteractive,
+            @Nullable View composeRoot) {
         this.x = x;
         this.y = y;
         this.elementId = elementId;
@@ -75,6 +87,22 @@ final class ClickEvent {
         this.elements = elements;
         this.timestamp = timestamp;
         this.isInteractive = isInteractive;
+        this.composeRootRef = composeRoot != null ? new WeakReference<>(composeRoot) : null;
+    }
+
+    /**
+     * Returns true if this click was on a Compose element.
+     */
+    boolean isComposeClick() {
+        return composeRootRef != null && composeRootRef.get() != null;
+    }
+
+    /**
+     * Returns the Compose root view, or null if not a Compose click or view was garbage collected.
+     */
+    @Nullable
+    View getComposeRoot() {
+        return composeRootRef != null ? composeRootRef.get() : null;
     }
 
     /**
@@ -127,6 +155,7 @@ final class ClickEvent {
         private String elements;
         private long timestamp;
         private boolean isInteractive;
+        private View composeRoot;
 
         Builder() {
             this.timestamp = System.currentTimeMillis();
@@ -182,8 +211,13 @@ final class ClickEvent {
             return this;
         }
 
+        Builder composeRoot(@Nullable View composeRoot) {
+            this.composeRoot = composeRoot;
+            return this;
+        }
+
         ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, text, ariaLabel, role, elements, timestamp, isInteractive);
+            return new ClickEvent(x, y, elementId, tagName, text, ariaLabel, role, elements, timestamp, isInteractive, composeRoot);
         }
     }
 }

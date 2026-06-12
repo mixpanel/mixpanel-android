@@ -423,19 +423,153 @@ final class ComposeSemanticHelper {
 
     /**
      * Checks if element is interactive for dead click detection.
-     *
-     * <p>NOTE: Currently returns false for ALL Compose elements because the
-     * DeadClickDetector uses ViewTreeObserver and View hierarchy comparison,
-     * which cannot detect Compose UI changes (Compose renders inside a single
-     * AndroidComposeView). This prevents false positive dead clicks.
-     *
-     * <p>TODO: Implement Compose-aware dead click detection using semantic tree
-     * comparison (capture semantic snapshot before click, compare after timeout).
+     * Excludes elements with inherent visual feedback.
      */
     private static boolean isInteractiveElement(@NonNull SemanticsConfiguration config) {
-        // Disable dead click detection for Compose elements until we implement
-        // semantic tree comparison. ViewTreeObserver cannot detect Compose UI changes.
-        return false;
+        // Exclude editable (keyboard feedback)
+        if (config.contains(SemanticsProperties.INSTANCE.getEditableText())) {
+            return false;
+        }
+
+        // Exclude toggle controls (visual feedback)
+        SemanticsPropertyKey<Role> roleKey = SemanticsProperties.INSTANCE.getRole();
+        if (config.contains(roleKey)) {
+            Role role = config.get(roleKey);
+            if (role != null) {
+                String roleName = role.toString().toLowerCase();
+                if (roleName.contains("checkbox") ||
+                    roleName.contains("switch") ||
+                    roleName.contains("radiobutton") ||
+                    roleName.contains("slider")) {
+                    return false;
+                }
+            }
+        }
+
+        // Interactive if clickable
+        return config.contains(SemanticsActions.INSTANCE.getOnClick());
+    }
+
+    // ==================== Semantic Snapshot for Dead Click Detection ====================
+
+    /**
+     * Captures a semantic snapshot at the given position for dead click comparison.
+     *
+     * @param view The Compose root view (must implement RootForTest)
+     * @param x    Screen X coordinate
+     * @param y    Screen Y coordinate
+     * @return A snapshot hash, or null if capture failed
+     */
+    @Nullable
+    static Integer captureSnapshot(@NonNull View view, float x, float y) {
+        try {
+            if (!(view instanceof RootForTest)) {
+                return null;
+            }
+
+            RootForTest root = (RootForTest) view;
+            SemanticsNode rootNode = root.getSemanticsOwner().getRootSemanticsNode();
+
+            // Find the node at position and compute its state hash
+            NodeSearchResult result = findNodeAtPositionWithPath(rootNode, x, y);
+            if (result == null || result.node == null) {
+                return null;
+            }
+
+            return computeSemanticHash(result.node);
+        } catch (Exception e) {
+            MPLog.d(TAG, "Error capturing Compose snapshot: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Checks if the semantic state has changed since the baseline snapshot.
+     *
+     * @param view     The Compose root view
+     * @param x        Screen X coordinate
+     * @param y        Screen Y coordinate
+     * @param baseline The baseline snapshot hash
+     * @return true if state changed, false if same (dead click)
+     */
+    static boolean hasStateChanged(@NonNull View view, float x, float y, int baseline) {
+        try {
+            Integer current = captureSnapshot(view, x, y);
+            if (current == null) {
+                // Can't determine - assume changed to avoid false positive
+                return true;
+            }
+            return current != baseline;
+        } catch (Exception e) {
+            MPLog.d(TAG, "Error comparing Compose snapshots: " + e.getMessage());
+            // Assume changed to avoid false positive dead click
+            return true;
+        }
+    }
+
+    /**
+     * Computes a hash of the semantic state of a node and its subtree.
+     * Changes in text, checked state, enabled state, etc. will produce different hashes.
+     */
+    private static int computeSemanticHash(@NonNull SemanticsNode node) {
+        int hash = 17;
+
+        SemanticsConfiguration config = node.getConfig();
+
+        // Include text content
+        String text = getTextProperty(config);
+        if (text != null) {
+            hash = 31 * hash + text.hashCode();
+        }
+
+        // Include content description
+        String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
+        if (contentDesc != null) {
+            hash = 31 * hash + contentDesc.hashCode();
+        }
+
+        // Include checked/selected state
+        if (config.contains(SemanticsProperties.INSTANCE.getSelected())) {
+            Boolean selected = config.get(SemanticsProperties.INSTANCE.getSelected());
+            hash = 31 * hash + (selected != null && selected ? 1 : 0);
+        }
+
+        // Include toggle state (for checkboxes, switches)
+        // ToggleableState is a sealed class, check via contains
+        try {
+            SemanticsPropertyKey<?> toggleKey = SemanticsProperties.INSTANCE.getToggleableState();
+            if (config.contains(toggleKey)) {
+                Object state = config.get(toggleKey);
+                hash = 31 * hash + (state != null ? state.toString().hashCode() : 0);
+            }
+        } catch (Exception ignored) {
+            // Property might not exist in this version
+        }
+
+        // Include progress value (for sliders, progress bars)
+        try {
+            SemanticsPropertyKey<?> progressKey = SemanticsProperties.INSTANCE.getProgressBarRangeInfo();
+            if (config.contains(progressKey)) {
+                Object progress = config.get(progressKey);
+                hash = 31 * hash + (progress != null ? progress.toString().hashCode() : 0);
+            }
+        } catch (Exception ignored) {
+            // Property might not exist in this version
+        }
+
+        // Include bounds (position/size changes)
+        Rect bounds = node.getBoundsInWindow();
+        hash = 31 * hash + Float.floatToIntBits(bounds.getLeft());
+        hash = 31 * hash + Float.floatToIntBits(bounds.getTop());
+        hash = 31 * hash + Float.floatToIntBits(bounds.getWidth());
+        hash = 31 * hash + Float.floatToIntBits(bounds.getHeight());
+
+        // Include children hashes (to detect changes in child content)
+        for (SemanticsNode child : node.getChildren()) {
+            hash = 31 * hash + computeSemanticHash(child);
+        }
+
+        return hash;
     }
 
     private ComposeSemanticHelper() {
