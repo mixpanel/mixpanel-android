@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- $el_id Resolution -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$EL_ID RESOLUTION"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/rule1_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rule 1 - contentDescription"
+            android:contentDescription="rule1_btn" />
+
+        <Button
+            android:id="@+id/rule2_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rule 2 - resource ID name (no contentDescription)"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/rule3_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rule 3 - No ID, No Desc (hash fallback)"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/also_has_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rule 1 Wins - contentDescription + ID"
+            android:contentDescription="desc_wins"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:id="@+id/custom_layout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="#1A0000FF"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="custom_layout"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Clickable Layout (non-button container)" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/tap_image"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/star_on"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="tap_image"
+            android:layout_marginTop="8dp" />
+
+        <!-- Dead Click -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DEAD CLICK"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/dead_xml_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dead Button (no listener) -> $mp_dead_click"
+            android:contentDescription="dead_xml_btn" />
+
+        <!-- Rage Click -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RAGE CLICK - TAP 4+ TIMES"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <View
+            android:id="@+id/rage_zone"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:background="#1AFF0000"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="rage_zone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tap the red zone above 4+ times rapidly"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/rage_and_click_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Click + Rage - tap 4x (both events)"
+            android:contentDescription="rage_and_click_btn" />
+
+        <TextView
+            android:id="@+id/tap_counter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tap count: 0"
+            android:gravity="center"
+            android:layout_marginTop="4dp" />
+
+        <!-- Excluded Controls -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EXCLUDED CONTROLS (no dead click)"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Switch - no dead click" />
+
+            <Switch
+                android:id="@+id/test_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="EditText - no dead click, text not captured"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/test_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password - $el_text absent"
+            android:inputType="textPassword"
+            android:layout_marginTop="8dp" />
+
+        <SeekBar
+            android:id="@+id/test_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SeekBar - no dead click"
+            android:textSize="12sp"
+            android:gravity="center" />
+
+        <!-- Privacy -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PRIVACY - ZERO EVENTS"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/sensitive_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="mp-sensitive (contentDescription)"
+            android:contentDescription="mp-sensitive" />
+
+        <Button
+            android:id="@+id/no_track_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="mp-no-track (tag)"
+            android:layout_marginTop="8dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="32dp" />
+
+    </LinearLayout>
+</ScrollView>
