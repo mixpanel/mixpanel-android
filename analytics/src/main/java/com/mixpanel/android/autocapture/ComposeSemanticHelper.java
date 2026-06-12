@@ -373,12 +373,13 @@ final class ComposeSemanticHelper {
             }
         }
 
-        // Infer from properties
-        if (config.contains(SemanticsActions.INSTANCE.getOnClick())) {
-            return "Button";
-        }
+        // Infer from properties - check EditableText BEFORE OnClick
+        // (TextFields are clickable to gain focus but should be identified as TextField)
         if (config.contains(SemanticsProperties.INSTANCE.getEditableText())) {
             return "TextField";
+        }
+        if (config.contains(SemanticsActions.INSTANCE.getOnClick())) {
+            return "Button";
         }
         if (config.contains(SemanticsProperties.INSTANCE.getText())) {
             return "Text";
@@ -408,12 +409,13 @@ final class ComposeSemanticHelper {
             }
         }
 
-        // Infer from properties
-        if (config.contains(SemanticsActions.INSTANCE.getOnClick())) {
-            return "button";
-        }
+        // Infer from properties - check EditableText BEFORE OnClick
+        // (TextFields are clickable to gain focus but should be identified as textbox)
         if (config.contains(SemanticsProperties.INSTANCE.getEditableText())) {
             return "textbox";
+        }
+        if (config.contains(SemanticsActions.INSTANCE.getOnClick())) {
+            return "button";
         }
 
         return "none";
