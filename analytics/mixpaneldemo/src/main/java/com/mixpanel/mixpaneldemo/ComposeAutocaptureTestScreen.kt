@@ -127,12 +127,12 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
 
             item {
                 Button(
-                    onClick = { }, // Empty - no UI change
+                    onClick = { }, // Empty - no UI change, only ripple
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "compose_dead_btn" }
                 ) {
-                    Text("Dead Button (no UI change) -> \$mp_dead_click")
+                    Text("Dead Button (ripple only) -> \$mp_dead_click")
                 }
             }
 

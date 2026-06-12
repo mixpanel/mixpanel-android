@@ -129,6 +129,9 @@ final class DeadClickDetector {
 
     /**
      * Manages the detection lifecycle for a single click.
+     *
+     * <p>For XML views: uses OnGlobalLayoutListener and OnScrollChangedListener.
+     * <p>For Compose views: checks if the clicked node still exists at timeout.
      */
     private class DetectionSession implements
             ViewTreeObserver.OnGlobalLayoutListener,
@@ -137,19 +140,21 @@ final class DeadClickDetector {
         private final ClickEvent mClickEvent;
         private final WeakReference<View> mRootViewRef;
 
-        // Compose-specific: reference to compose root and click position
+        // Compose-specific: reference to compose root
         private final boolean mIsComposeClick;
         @Nullable
         private final WeakReference<View> mComposeRootRef;
 
         private boolean mCancelled = false;
         private boolean mBaselineCaptured = false;
+
+        // XML-specific baseline
         private int mBaselineViewCount;
         private int mBaselineContentHash;
 
-        // Compose-specific baseline: semantic hash at click position
+        // Compose-specific baseline snapshot
         @Nullable
-        private Integer mComposeSemanticBaseline;
+        private ComposeSemanticHelper.SemanticSnapshot mComposeSnapshot;
 
         private final Runnable mCaptureBaselineRunnable = this::captureBaseline;
         private final Runnable mCheckResultRunnable = this::checkResult;
@@ -165,22 +170,37 @@ final class DeadClickDetector {
         }
 
         void start() {
-            // Schedule baseline capture after delay
-            mHandler.postDelayed(mCaptureBaselineRunnable, mBaselineDelayMs);
-
             // Schedule final check
             mHandler.postDelayed(mCheckResultRunnable, mTimeoutMs);
 
-            // Attach listeners for XML views (ViewTreeObserver doesn't detect Compose changes)
-            if (!mIsComposeClick) {
-                View rootView = mRootViewRef.get();
-                if (rootView != null) {
-                    ViewTreeObserver observer = rootView.getViewTreeObserver();
-                    if (observer.isAlive()) {
-                        observer.addOnGlobalLayoutListener(this);
-                        observer.addOnScrollChangedListener(this);
-                    }
+            View rootView = mRootViewRef.get();
+            if (rootView == null) {
+                cancel();
+                return;
+            }
+
+            ViewTreeObserver observer = rootView.getViewTreeObserver();
+            if (!observer.isAlive()) {
+                cancel();
+                return;
+            }
+
+            if (mIsComposeClick) {
+                // Compose: capture snapshot immediately (before any state changes)
+                View composeRoot = mComposeRootRef != null ? mComposeRootRef.get() : null;
+                if (composeRoot != null) {
+                    mComposeSnapshot = ComposeSemanticHelper.captureSnapshot(composeRoot);
+                    mBaselineCaptured = mComposeSnapshot != null;
                 }
+                if (!mBaselineCaptured) {
+                    cancel();
+                    return;
+                }
+            } else {
+                // XML: use layout/scroll listeners with configurable baseline
+                mHandler.postDelayed(mCaptureBaselineRunnable, mBaselineDelayMs);
+                observer.addOnGlobalLayoutListener(this);
+                observer.addOnScrollChangedListener(this);
             }
         }
 
@@ -216,95 +236,60 @@ final class DeadClickDetector {
         private void captureBaseline() {
             if (mCancelled) return;
 
-            View rootView = mRootViewRef.get();
-            if (rootView == null) {
-                cancel();
+            // Only called for XML views (Compose captures in start())
+            if (mIsComposeClick) {
                 return;
             }
 
             try {
-                if (mIsComposeClick) {
-                    // Compose: capture semantic snapshot at click position
-                    View composeRoot = mComposeRootRef != null ? mComposeRootRef.get() : null;
-                    if (composeRoot != null) {
-                        mComposeSemanticBaseline = captureComposeSnapshot(
-                                composeRoot, mClickEvent.x, mClickEvent.y);
-                        mBaselineCaptured = mComposeSemanticBaseline != null;
-                        if (!mBaselineCaptured) {
-                            MPLog.d(TAG, "Failed to capture Compose baseline, cancelling");
-                            cancel();
-                            return;
-                        }
-                    } else {
-                        cancel();
-                        return;
-                    }
-                } else {
-                    // XML: use view tree approach
-                    mBaselineViewCount = countViews(rootView);
-                    mBaselineContentHash = computeContentHash(rootView);
-                    mBaselineCaptured = true;
+                View rootView = mRootViewRef.get();
+                if (rootView == null) {
+                    cancel();
+                    return;
                 }
+                mBaselineViewCount = countViews(rootView);
+                mBaselineContentHash = computeContentHash(rootView);
+                mBaselineCaptured = true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing baseline", e);
                 cancel();
             }
         }
 
-        /**
-         * Captures Compose semantic snapshot via ComposeSemanticHelper.
-         * Isolated method to handle NoClassDefFoundError if Compose is not available.
-         */
-        @Nullable
-        private Integer captureComposeSnapshot(@NonNull View composeRoot, float x, float y) {
-            try {
-                return ComposeSemanticHelper.captureSnapshot(composeRoot, x, y);
-            } catch (NoClassDefFoundError e) {
-                MPLog.d(TAG, "Compose not available for snapshot");
-                return null;
-            }
-        }
-
-        /**
-         * Checks Compose semantic state change via ComposeSemanticHelper.
-         */
-        private boolean hasComposeStateChanged(@NonNull View composeRoot, float x, float y, int baseline) {
-            try {
-                return ComposeSemanticHelper.hasStateChanged(composeRoot, x, y, baseline);
-            } catch (NoClassDefFoundError e) {
-                MPLog.d(TAG, "Compose not available for state comparison");
-                // Assume changed to avoid false positive
-                return true;
-            }
-        }
-
         private void checkResult() {
             if (mCancelled) return;
 
-            try {
-                View rootView = mRootViewRef.get();
-                if (rootView == null) {
-                    cleanup();
-                    return;
-                }
+            // Need baseline to compare
+            if (!mBaselineCaptured) {
+                cleanup();
+                return;
+            }
 
+            try {
                 boolean noChange;
 
                 if (mIsComposeClick) {
                     // Compose: compare semantic snapshots
+                    // If content changed or node count changed significantly -> not dead click
                     View composeRoot = mComposeRootRef != null ? mComposeRootRef.get() : null;
-                    if (composeRoot == null || mComposeSemanticBaseline == null) {
+                    if (composeRoot == null) {
                         cleanup();
                         return;
                     }
 
-                    boolean stateChanged = hasComposeStateChanged(
-                            composeRoot, mClickEvent.x, mClickEvent.y, mComposeSemanticBaseline);
-                    noChange = !stateChanged;
-
-                    MPLog.d(TAG, "Compose dead click check - state changed: " + stateChanged);
+                    ComposeSemanticHelper.SemanticSnapshot currentSnapshot =
+                            ComposeSemanticHelper.captureSnapshot(composeRoot);
+                    boolean changed = mComposeSnapshot.hasChanged(currentSnapshot);
+                    noChange = !changed;
+                    MPLog.d(TAG, "Compose dead click check - changed: " + changed);
                 } else {
                     // XML: compare view counts and content hashes
+                    View rootView = mRootViewRef.get();
+                    if (rootView == null) {
+                        cleanup();
+                        return;
+                    }
+
                     int currentViewCount = countViews(rootView);
                     int currentContentHash = computeContentHash(rootView);
 
@@ -327,7 +312,7 @@ final class DeadClickDetector {
             mHandler.removeCallbacks(mCaptureBaselineRunnable);
             mHandler.removeCallbacks(mCheckResultRunnable);
 
-            // Only remove view tree listeners for XML views
+            // Only XML uses view tree listeners
             if (!mIsComposeClick) {
                 View rootView = mRootViewRef.get();
                 if (rootView != null) {

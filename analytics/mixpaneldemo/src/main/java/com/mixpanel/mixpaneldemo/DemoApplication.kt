@@ -16,6 +16,8 @@ class DemoApplication : Application() {
             .autocaptureOptions(autocaptureOptions)
             .build()
 
-        MixpanelAPI.getInstance(this, MIXPANEL_PROJECT_TOKEN, true, options)
+        val mixpanel = MixpanelAPI.getInstance(this, MIXPANEL_PROJECT_TOKEN, true, options)
+        mixpanel.setEnableLogging(true)
+
     }
 }
