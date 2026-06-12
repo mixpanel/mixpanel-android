@@ -167,15 +167,28 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from an AccessibilityNodeInfo.
+     * Returns null if the node is marked as sensitive (mp-sensitive/mp-no-track).
      */
-    @NonNull
+    @Nullable
     private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y) {
+        // Check if node is marked as sensitive - block ALL events
+        CharSequence contentDesc = node.getContentDescription();
+        if (contentDesc != null) {
+            String desc = contentDesc.toString();
+            if (desc.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
+                desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
+                CharSequence className = node.getClassName();
+                String simpleName = className != null ? getSimpleClassName(className.toString()) : "Unknown";
+                MPLog.d(TAG, "Skipping autocapture for sensitive element: " + simpleName);
+                return null;
+            }
+        }
+
         ClickEvent.Builder builder = new ClickEvent.Builder()
                 .x(x)
                 .y(y);
 
         // Element ID (contentDescription or class name fallback)
-        CharSequence contentDesc = node.getContentDescription();
         if (contentDesc != null && contentDesc.length() > 0) {
             builder.elementId(contentDesc.toString());
             builder.ariaLabel(contentDesc.toString());
@@ -210,19 +223,19 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from a traditional View.
+     * Returns null if the view is marked as sensitive (mp-sensitive/mp-no-track).
      */
-    @NonNull
+    @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y) {
+        // Check if view or ancestors are marked as sensitive - block ALL events
+        if (isSensitiveView(view)) {
+            MPLog.d(TAG, "Skipping autocapture for sensitive element: " + view.getClass().getSimpleName());
+            return null;
+        }
+
         ClickEvent.Builder builder = new ClickEvent.Builder()
                 .x(x)
                 .y(y);
-
-        // Check if view or ancestors are marked as sensitive
-        if (isSensitiveView(view)) {
-            builder.tagName(view.getClass().getSimpleName());
-            builder.isInteractive(isInteractive(view));
-            return builder;
-        }
 
         // Element ID resolution: contentDescription > resource ID > fallback
         String elementId = resolveElementId(view);
@@ -476,9 +489,22 @@ final class SemanticExtractor {
     }
 
     /**
-     * Checks if a view is interactive (clickable or long-clickable).
+     * Checks if a view is interactive for dead click detection purposes.
+     *
+     * <p>Note: Controls with inherent visual feedback (EditText, Switch, SeekBar)
+     * are excluded because they always produce a UI response:
+     * - EditText: Shows cursor, keyboard appears
+     * - Switch/CompoundButton: Toggle animation and state change
+     * - SeekBar: Thumb moves with drag
      */
     private static boolean isInteractive(@NonNull View view) {
+        // Exclude controls with inherent visual feedback from dead click monitoring
+        if (view instanceof EditText ||
+            view instanceof CompoundButton ||  // Switch, CheckBox, RadioButton, ToggleButton
+            view instanceof SeekBar) {
+            return false;
+        }
+
         if (view.hasOnClickListeners()) {
             return true;
         }
@@ -487,9 +513,6 @@ final class SemanticExtractor {
         }
         // Known interactive types
         return view instanceof Button ||
-               view instanceof CompoundButton ||
-               view instanceof EditText ||
-               view instanceof SeekBar ||
                view instanceof Spinner;
     }
 
