@@ -19,5 +19,6 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable("utilityPage") { UtilityPage(navController) }
         composable("gdprPage") { GDPRPage(navController) }
         composable("groupsPage") { GroupsPage(navController) }
+        composable("autocaptureTestPage") { ComposeAutocaptureTestScreen(navController) }
     }
 }
