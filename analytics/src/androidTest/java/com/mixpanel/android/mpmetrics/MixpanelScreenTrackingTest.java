@@ -65,7 +65,7 @@ public class MixpanelScreenTrackingTest {
     JSONObject props = new JSONObject();
     props.put("extra_prop", "extra_value");
 
-    mixpanel.screenView("HomeScreen", props);
+    mixpanel.trackScreenView("HomeScreen", props);
 
     final AnalyticsMessages.EventDescription message =
         messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
@@ -103,7 +103,7 @@ public class MixpanelScreenTrackingTest {
             "TEST_TOKEN",
             listener);
 
-    mixpanel.screenView("HomeScreen");
+    mixpanel.trackScreenView("HomeScreen");
 
     final AnalyticsMessages.EventDescription message =
         messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
@@ -139,9 +139,9 @@ public class MixpanelScreenTrackingTest {
             "TEST_TOKEN",
             listener);
 
-    mixpanel.screenView(null);
-    mixpanel.screenView("");
-    mixpanel.screenView("   ");
+    mixpanel.trackScreenView(null);
+    mixpanel.trackScreenView("");
+    mixpanel.trackScreenView("   ");
 
     final AnalyticsMessages.EventDescription message =
         messages.poll(1, TimeUnit.SECONDS);
@@ -173,7 +173,7 @@ public class MixpanelScreenTrackingTest {
             "TEST_TOKEN",
             listener);
 
-    mixpanel.screenLeave("HomeScreen");
+    mixpanel.trackScreenLeave("HomeScreen");
 
     final AnalyticsMessages.EventDescription message =
         messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
@@ -209,7 +209,7 @@ public class MixpanelScreenTrackingTest {
             "TEST_TOKEN",
             listener);
 
-    mixpanel.screenLeave(null);
+    mixpanel.trackScreenLeave(null);
 
     final AnalyticsMessages.EventDescription message =
         messages.poll(1, TimeUnit.SECONDS);

@@ -44,12 +44,12 @@ fun MyApp() {
             // Track screen leave for previous screen
             previousRoute?.let { prevRoute ->
                 val screenName = formatScreenName(prevRoute)
-                mixpanel.screenLeave(screenName)
+                mixpanel.trackScreenLeave(screenName)
             }
 
             // Track screen view for current screen
             val screenName = formatScreenName(route)
-            mixpanel.screenView(screenName)
+            mixpanel.trackScreenView(screenName)
 
             // Update previous route
             previousRoute = route

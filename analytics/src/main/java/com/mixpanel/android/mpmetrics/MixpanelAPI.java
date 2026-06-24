@@ -1029,9 +1029,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param properties A JSONObject containing additional properties to include with this event.
      *                   Pass null if no extra properties exist.
      */
-    public void screenView(String screenName, JSONObject properties) {
+    public void trackScreenView(String screenName, JSONObject properties) {
         if (screenName == null || screenName.trim().isEmpty()) {
-            MPLog.e(LOGTAG, "screenView called with null or empty screenName. Event not tracked.");
+            MPLog.e(LOGTAG, "trackScreenView called with null or empty screenName. Event not tracked.");
             return;
         }
 
@@ -1048,7 +1048,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 }
             }
         } catch (JSONException e) {
-            MPLog.e(LOGTAG, "Exception merging properties for screenView", e);
+            MPLog.e(LOGTAG, "Exception merging properties for trackScreenView", e);
         }
 
         track("$mp_page_view", mergedProperties);
@@ -1059,8 +1059,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param screenName The name of the screen/page being viewed
      */
-    public void screenView(String screenName) {
-        screenView(screenName, null);
+    public void trackScreenView(String screenName) {
+        trackScreenView(screenName, null);
     }
 
     /**
@@ -1071,9 +1071,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param properties A JSONObject containing additional properties to include with this event.
      *                   Pass null if no extra properties exist.
      */
-    public void screenLeave(String screenName, JSONObject properties) {
+    public void trackScreenLeave(String screenName, JSONObject properties) {
         if (screenName == null || screenName.trim().isEmpty()) {
-            MPLog.e(LOGTAG, "screenLeave called with null or empty screenName. Event not tracked.");
+            MPLog.e(LOGTAG, "trackScreenLeave called with null or empty screenName. Event not tracked.");
             return;
         }
 
@@ -1090,7 +1090,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                 }
             }
         } catch (JSONException e) {
-            MPLog.e(LOGTAG, "Exception merging properties for screenLeave", e);
+            MPLog.e(LOGTAG, "Exception merging properties for trackScreenLeave", e);
         }
 
         track("$mp_page_leave", mergedProperties);
@@ -1101,8 +1101,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param screenName The name of the screen/page being left
      */
-    public void screenLeave(String screenName) {
-        screenLeave(screenName, null);
+    public void trackScreenLeave(String screenName) {
+        trackScreenLeave(screenName, null);
     }
 
     /**
