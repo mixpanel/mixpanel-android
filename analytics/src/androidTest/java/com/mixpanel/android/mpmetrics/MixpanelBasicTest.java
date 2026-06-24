@@ -2148,7 +2148,7 @@ public class MixpanelBasicTest {
 
     final AnalyticsMessages listener =
         AnalyticsMessages.getInstance(
-            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+            InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()), true);
     listener.setOnEventListener(
         new AnalyticsMessages.OnEventListener() {
           @Override
@@ -2158,7 +2158,7 @@ public class MixpanelBasicTest {
         });
 
     final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+        new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST_TOKEN", listener);
 
     JSONObject props = new JSONObject();
     props.put("extra_prop", "extra_value");
@@ -2183,7 +2183,7 @@ public class MixpanelBasicTest {
 
     final AnalyticsMessages listener =
         AnalyticsMessages.getInstance(
-            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+            InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()), true);
     listener.setOnEventListener(
         new AnalyticsMessages.OnEventListener() {
           @Override
@@ -2193,7 +2193,7 @@ public class MixpanelBasicTest {
         });
 
     final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+        new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST_TOKEN", listener);
 
     mixpanel.screenView("HomeScreen");
 
@@ -2213,7 +2213,7 @@ public class MixpanelBasicTest {
 
     final AnalyticsMessages listener =
         AnalyticsMessages.getInstance(
-            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+            InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()), true);
     listener.setOnEventListener(
         new AnalyticsMessages.OnEventListener() {
           @Override
@@ -2223,7 +2223,7 @@ public class MixpanelBasicTest {
         });
 
     final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+        new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST_TOKEN", listener);
 
     mixpanel.screenView(null);
     mixpanel.screenView("");
@@ -2241,7 +2241,7 @@ public class MixpanelBasicTest {
 
     final AnalyticsMessages listener =
         AnalyticsMessages.getInstance(
-            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+            InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()), true);
     listener.setOnEventListener(
         new AnalyticsMessages.OnEventListener() {
           @Override
@@ -2251,7 +2251,7 @@ public class MixpanelBasicTest {
         });
 
     final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+        new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST_TOKEN", listener);
 
     mixpanel.screenLeave("HomeScreen");
 
@@ -2271,7 +2271,7 @@ public class MixpanelBasicTest {
 
     final AnalyticsMessages listener =
         AnalyticsMessages.getInstance(
-            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+            InstrumentationRegistry.getInstrumentation().getContext(), new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()), true);
     listener.setOnEventListener(
         new AnalyticsMessages.OnEventListener() {
           @Override
@@ -2281,7 +2281,7 @@ public class MixpanelBasicTest {
         });
 
     final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+        new TestUtils.CleanMixpanelAPI(InstrumentationRegistry.getInstrumentation().getContext(), mMockPreferences, "TEST_TOKEN", listener);
 
     mixpanel.screenLeave(null);
 
