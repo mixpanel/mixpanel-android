@@ -43,13 +43,11 @@ fun MyApp() {
         currentRoute?.let { route ->
             // Track screen leave for previous screen
             previousRoute?.let { prevRoute ->
-                val screenName = formatScreenName(prevRoute)
-                mixpanel.trackScreenLeave(screenName)
+                mixpanel.trackScreenLeave(prevRoute)
             }
 
             // Track screen view for current screen
-            val screenName = formatScreenName(route)
-            mixpanel.trackScreenView(screenName)
+            mixpanel.trackScreenView(route)
 
             // Update previous route
             previousRoute = route
@@ -61,14 +59,6 @@ fun MyApp() {
     ) { innerPadding ->
         NavGraph(navController = navController, modifier = Modifier.padding(innerPadding))
     }
-}
-
-// Helper function to format route names into readable screen names
-private fun formatScreenName(route: String): String {
-    return route
-        .replace(Regex("Page$"), "") // Remove "Page" suffix
-        .replace(Regex("([a-z])([A-Z])"), "$1 $2") // Add spaces before capitals
-        .replaceFirstChar { it.uppercase() } // Capitalize first letter
 }
 
 
