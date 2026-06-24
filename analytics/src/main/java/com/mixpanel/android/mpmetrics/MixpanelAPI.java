@@ -1029,12 +1029,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param properties A JSONObject containing additional properties to include with this event.
      *                   Pass null if no extra properties exist.
      */
-    public void trackScreenView(String screenName, JSONObject properties) {
-        if (screenName == null || screenName.trim().isEmpty()) {
-            MPLog.e(LOGTAG, "trackScreenView called with null or empty screenName. Event not tracked.");
-            return;
-        }
-
+    public void trackScreenView(@NonNull String screenName, JSONObject properties) {
         JSONObject mergedProperties = new JSONObject();
         try {
             mergedProperties.put("current_page_title", screenName);
@@ -1059,7 +1054,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param screenName The name of the screen/page being viewed
      */
-    public void trackScreenView(String screenName) {
+    public void trackScreenView(@NonNull String screenName) {
         trackScreenView(screenName, null);
     }
 
@@ -1071,12 +1066,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      * @param properties A JSONObject containing additional properties to include with this event.
      *                   Pass null if no extra properties exist.
      */
-    public void trackScreenLeave(String screenName, JSONObject properties) {
-        if (screenName == null || screenName.trim().isEmpty()) {
-            MPLog.e(LOGTAG, "trackScreenLeave called with null or empty screenName. Event not tracked.");
-            return;
-        }
-
+    public void trackScreenLeave(@NonNull String screenName, JSONObject properties) {
         JSONObject mergedProperties = new JSONObject();
         try {
             mergedProperties.put("current_page_title", screenName);
@@ -1101,7 +1091,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
      *
      * @param screenName The name of the screen/page being left
      */
-    public void trackScreenLeave(String screenName) {
+    public void trackScreenLeave(@NonNull String screenName) {
         trackScreenLeave(screenName, null);
     }
 

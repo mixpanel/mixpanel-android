@@ -115,40 +115,6 @@ public class MixpanelScreenTrackingTest {
   }
 
   @Test
-  public void testScreenViewNullScreenName() throws InterruptedException {
-    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
-        new LinkedBlockingQueue<>();
-
-    final AnalyticsMessages listener =
-        AnalyticsMessages.getInstance(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()),
-            true);
-    listener.setOnEventListener(
-        new AnalyticsMessages.OnEventListener() {
-          @Override
-          public void onEvent(AnalyticsMessages.EventDescription event) {
-            messages.add(event);
-          }
-        });
-
-    final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            mMockPreferences,
-            "TEST_TOKEN",
-            listener);
-
-    mixpanel.trackScreenView(null);
-    mixpanel.trackScreenView("");
-    mixpanel.trackScreenView("   ");
-
-    final AnalyticsMessages.EventDescription message =
-        messages.poll(1, TimeUnit.SECONDS);
-    assertNull(message);
-  }
-
-  @Test
   public void testScreenLeave() throws InterruptedException, JSONException {
     final BlockingQueue<AnalyticsMessages.EventDescription> messages =
         new LinkedBlockingQueue<>();
@@ -184,35 +150,4 @@ public class MixpanelScreenTrackingTest {
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
   }
 
-  @Test
-  public void testScreenLeaveNullScreenName() throws InterruptedException {
-    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
-        new LinkedBlockingQueue<>();
-
-    final AnalyticsMessages listener =
-        AnalyticsMessages.getInstance(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()),
-            true);
-    listener.setOnEventListener(
-        new AnalyticsMessages.OnEventListener() {
-          @Override
-          public void onEvent(AnalyticsMessages.EventDescription event) {
-            messages.add(event);
-          }
-        });
-
-    final MixpanelAPI mixpanel =
-        new TestUtils.CleanMixpanelAPI(
-            InstrumentationRegistry.getInstrumentation().getContext(),
-            mMockPreferences,
-            "TEST_TOKEN",
-            listener);
-
-    mixpanel.trackScreenLeave(null);
-
-    final AnalyticsMessages.EventDescription message =
-        messages.poll(1, TimeUnit.SECONDS);
-    assertNull(message);
-  }
 }
