@@ -1038,6 +1038,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         JSONObject mergedProperties = new JSONObject();
         try {
             mergedProperties.put("current_page_title", screenName);
+            mergedProperties.put("$mp_autocapture", true);
 
             if (properties != null) {
                 Iterator<String> keys = properties.keys();
@@ -1079,6 +1080,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         JSONObject mergedProperties = new JSONObject();
         try {
             mergedProperties.put("current_page_title", screenName);
+            mergedProperties.put("$mp_autocapture", true);
 
             if (properties != null) {
                 Iterator<String> keys = properties.keys();
