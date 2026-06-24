@@ -2141,6 +2141,155 @@ public class MixpanelBasicTest {
     assertNull(storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
   }
 
+  @Test
+  public void testScreenView() throws InterruptedException, JSONException {
+    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
+        new LinkedBlockingQueue<>();
+
+    final AnalyticsMessages listener =
+        AnalyticsMessages.getInstance(
+            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+    listener.setOnEventListener(
+        new AnalyticsMessages.OnEventListener() {
+          @Override
+          public void onEvent(AnalyticsMessages.EventDescription event) {
+            messages.add(event);
+          }
+        });
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+
+    JSONObject props = new JSONObject();
+    props.put("extra_prop", "extra_value");
+
+    mixpanel.screenView("HomeScreen", props);
+
+    final AnalyticsMessages.EventDescription message =
+        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    assertNotNull(message);
+    assertEquals("$mp_page_view", message.getEventName());
+
+    final JSONObject eventProps = message.getProperties();
+    assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertEquals("extra_value", eventProps.getString("extra_prop"));
+    assertTrue(eventProps.has("$screen_height"));
+  }
+
+  @Test
+  public void testScreenViewWithoutProperties() throws InterruptedException, JSONException {
+    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
+        new LinkedBlockingQueue<>();
+
+    final AnalyticsMessages listener =
+        AnalyticsMessages.getInstance(
+            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+    listener.setOnEventListener(
+        new AnalyticsMessages.OnEventListener() {
+          @Override
+          public void onEvent(AnalyticsMessages.EventDescription event) {
+            messages.add(event);
+          }
+        });
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+
+    mixpanel.screenView("HomeScreen");
+
+    final AnalyticsMessages.EventDescription message =
+        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    assertNotNull(message);
+    assertEquals("$mp_page_view", message.getEventName());
+
+    final JSONObject eventProps = message.getProperties();
+    assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+  }
+
+  @Test
+  public void testScreenViewNullScreenName() throws InterruptedException {
+    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
+        new LinkedBlockingQueue<>();
+
+    final AnalyticsMessages listener =
+        AnalyticsMessages.getInstance(
+            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+    listener.setOnEventListener(
+        new AnalyticsMessages.OnEventListener() {
+          @Override
+          public void onEvent(AnalyticsMessages.EventDescription event) {
+            messages.add(event);
+          }
+        });
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+
+    mixpanel.screenView(null);
+    mixpanel.screenView("");
+    mixpanel.screenView("   ");
+
+    final AnalyticsMessages.EventDescription message =
+        messages.poll(1, TimeUnit.SECONDS);
+    assertNull(message);
+  }
+
+  @Test
+  public void testScreenLeave() throws InterruptedException, JSONException {
+    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
+        new LinkedBlockingQueue<>();
+
+    final AnalyticsMessages listener =
+        AnalyticsMessages.getInstance(
+            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+    listener.setOnEventListener(
+        new AnalyticsMessages.OnEventListener() {
+          @Override
+          public void onEvent(AnalyticsMessages.EventDescription event) {
+            messages.add(event);
+          }
+        });
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+
+    mixpanel.screenLeave("HomeScreen");
+
+    final AnalyticsMessages.EventDescription message =
+        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    assertNotNull(message);
+    assertEquals("$mp_page_leave", message.getEventName());
+
+    final JSONObject eventProps = message.getProperties();
+    assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+  }
+
+  @Test
+  public void testScreenLeaveNullScreenName() throws InterruptedException {
+    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
+        new LinkedBlockingQueue<>();
+
+    final AnalyticsMessages listener =
+        AnalyticsMessages.getInstance(
+            getContext(), new TestUtils.TestMPConfig(getContext()), true);
+    listener.setOnEventListener(
+        new AnalyticsMessages.OnEventListener() {
+          @Override
+          public void onEvent(AnalyticsMessages.EventDescription event) {
+            messages.add(event);
+          }
+        });
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(getContext(), mMockPreferences, testToken(), listener);
+
+    mixpanel.screenLeave(null);
+
+    final AnalyticsMessages.EventDescription message =
+        messages.poll(1, TimeUnit.SECONDS);
+    assertNull(message);
+  }
+
   private Future<SharedPreferences> mMockPreferences;
 
   private static final int POLL_WAIT_SECONDS = 10;

@@ -1022,6 +1022,88 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Track a screen view event. This is a convenience method for tracking when users view
+     * a screen/page in your application.
+     *
+     * @param screenName The name of the screen/page being viewed
+     * @param properties A JSONObject containing additional properties to include with this event.
+     *                   Pass null if no extra properties exist.
+     */
+    public void screenView(String screenName, JSONObject properties) {
+        if (screenName == null || screenName.trim().isEmpty()) {
+            MPLog.e(LOGTAG, "screenView called with null or empty screenName. Event not tracked.");
+            return;
+        }
+
+        JSONObject mergedProperties = new JSONObject();
+        try {
+            mergedProperties.put("current_page_title", screenName);
+
+            if (properties != null) {
+                Iterator<String> keys = properties.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    mergedProperties.put(key, properties.get(key));
+                }
+            }
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Exception merging properties for screenView", e);
+        }
+
+        track("$mp_page_view", mergedProperties);
+    }
+
+    /**
+     * Track a screen view event without additional properties.
+     *
+     * @param screenName The name of the screen/page being viewed
+     */
+    public void screenView(String screenName) {
+        screenView(screenName, null);
+    }
+
+    /**
+     * Track a screen leave event. This is a convenience method for tracking when users leave
+     * a screen/page in your application.
+     *
+     * @param screenName The name of the screen/page being left
+     * @param properties A JSONObject containing additional properties to include with this event.
+     *                   Pass null if no extra properties exist.
+     */
+    public void screenLeave(String screenName, JSONObject properties) {
+        if (screenName == null || screenName.trim().isEmpty()) {
+            MPLog.e(LOGTAG, "screenLeave called with null or empty screenName. Event not tracked.");
+            return;
+        }
+
+        JSONObject mergedProperties = new JSONObject();
+        try {
+            mergedProperties.put("current_page_title", screenName);
+
+            if (properties != null) {
+                Iterator<String> keys = properties.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    mergedProperties.put(key, properties.get(key));
+                }
+            }
+        } catch (JSONException e) {
+            MPLog.e(LOGTAG, "Exception merging properties for screenLeave", e);
+        }
+
+        track("$mp_page_leave", mergedProperties);
+    }
+
+    /**
+     * Track a screen leave event without additional properties.
+     *
+     * @param screenName The name of the screen/page being left
+     */
+    public void screenLeave(String screenName) {
+        screenLeave(screenName, null);
+    }
+
+    /**
      * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
      *
      * <p>Events and People messages are pushed gradually throughout the lifetime of your application.
