@@ -15,6 +15,8 @@
     - [Initialize Mixpanel](#2-initialize-mixpanel)
     - [Send Data](#3-send-data)
     - [Check for Success](#4-check-for-success)
+- [Features](#features)
+    - [Autocapture](#autocapture)
 - [FAQ](#i-want-to-know-more)
 - [I want to know more!](#i-want-to-know-more)
 - [Want to Contribute?](#want-to-contribute)
@@ -112,6 +114,51 @@ In addition to event data, you can also send [user profile data](https://develop
 Once data hits our API, it generally takes ~60 seconds for it to be processed, stored, and queryable in your project.
 
 👋 👋  Tell us about the Mixpanel developer experience! [https://www.mixpanel.com/devnps](https://www.mixpanel.com/devnps) 👍  👎
+
+# Features
+
+## Autocapture
+
+**Automatically track user interactions without manual instrumentation.**
+
+Autocapture tracks three types of events:
+- **Click** (`$mp_click`) - Fired when a user taps any element
+- **Rage Click** (`$mp_rage_click`) - Fired when a user taps rapidly (4+ times) in the same area
+- **Dead Click** (`$mp_dead_click`) - Fired when a tap produces no visible UI response
+
+### Quick Setup
+
+```kotlin
+// Kotlin
+val autocaptureOptions = AutocaptureOptions.Builder().build()
+
+val options = MixpanelOptions.Builder()
+    .autocaptureOptions(autocaptureOptions)
+    .build()
+
+val mixpanel = MixpanelAPI.getInstance(context, "YOUR_TOKEN", true, options)
+```
+
+```java
+// Java
+AutocaptureOptions autocaptureOptions = new AutocaptureOptions.Builder().build();
+
+MixpanelOptions options = new MixpanelOptions.Builder()
+    .autocaptureOptions(autocaptureOptions)
+    .build();
+
+MixpanelAPI mixpanel = MixpanelAPI.getInstance(context, "YOUR_TOKEN", true, options);
+```
+
+### Key Features
+
+- ✅ **Full Jetpack Compose support** - Works with both XML Views and Compose UI
+- ✅ **Privacy-first** - Automatically redacts sensitive data (passwords, credit cards, SSNs)
+- ✅ **Zero setup** - No additional code required after initialization
+- ✅ **Configurable** - Customize thresholds, timeouts, and exclusions
+- ✅ **Multi-window tracking** - Captures clicks on dialogs, popups, bottom sheets
+
+📖 **[Read the full Autocapture guide](docs/autocapture.md)** for detailed documentation, configuration options, and best practices.
 
 # FAQ
 **I want to stop tracking an event/event property in Mixpanel. Is that possible?**
