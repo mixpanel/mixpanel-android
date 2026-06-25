@@ -2,9 +2,9 @@ package com.mixpanel.android.mpmetrics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -39,40 +39,54 @@ public class MixpanelScreenTrackingTest {
 
   @Test
   public void testScreenView() throws InterruptedException, JSONException {
-    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
-        new LinkedBlockingQueue<>();
+    final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
 
-    final AnalyticsMessages listener =
-        AnalyticsMessages.getInstance(
+    final MPDbAdapter dbMock =
+        new MPDbAdapter(
             InstrumentationRegistry.getInstrumentation().getContext(),
-            new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()),
-            true);
-    listener.setOnEventListener(
-        new AnalyticsMessages.OnEventListener() {
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
           @Override
-          public void onEvent(AnalyticsMessages.EventDescription event) {
-            messages.add(event);
+          public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+            if (table == MPDbAdapter.Table.EVENTS) {
+              messages.add(message);
+            }
+            return 1;
           }
-        });
+        };
+
+    final AnalyticsMessages analyticsMessages =
+        new AnalyticsMessages(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public MPDbAdapter makeDbAdapter(Context context) {
+            return dbMock;
+          }
+        };
 
     final MixpanelAPI mixpanel =
         new TestUtils.CleanMixpanelAPI(
             InstrumentationRegistry.getInstrumentation().getContext(),
             mMockPreferences,
-            "TEST_TOKEN",
-            listener);
+            "TEST_TOKEN") {
+          @Override
+          protected AnalyticsMessages getAnalyticsMessages() {
+            return analyticsMessages;
+          }
+        };
 
     JSONObject props = new JSONObject();
     props.put("extra_prop", "extra_value");
 
     mixpanel.trackScreenView("HomeScreen", props);
 
-    final AnalyticsMessages.EventDescription message =
-        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
-    assertEquals("$mp_page_view", message.getEventName());
+    assertEquals("$mp_page_view", message.getString("event"));
 
-    final JSONObject eventProps = message.getProperties();
+    final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
     assertEquals("extra_value", eventProps.getString("extra_prop"));
     assertTrue(eventProps.has("$screen_height"));
@@ -80,73 +94,101 @@ public class MixpanelScreenTrackingTest {
 
   @Test
   public void testScreenViewWithoutProperties() throws InterruptedException, JSONException {
-    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
-        new LinkedBlockingQueue<>();
+    final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
 
-    final AnalyticsMessages listener =
-        AnalyticsMessages.getInstance(
+    final MPDbAdapter dbMock =
+        new MPDbAdapter(
             InstrumentationRegistry.getInstrumentation().getContext(),
-            new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()),
-            true);
-    listener.setOnEventListener(
-        new AnalyticsMessages.OnEventListener() {
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
           @Override
-          public void onEvent(AnalyticsMessages.EventDescription event) {
-            messages.add(event);
+          public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+            if (table == MPDbAdapter.Table.EVENTS) {
+              messages.add(message);
+            }
+            return 1;
           }
-        });
+        };
+
+    final AnalyticsMessages analyticsMessages =
+        new AnalyticsMessages(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public MPDbAdapter makeDbAdapter(Context context) {
+            return dbMock;
+          }
+        };
 
     final MixpanelAPI mixpanel =
         new TestUtils.CleanMixpanelAPI(
             InstrumentationRegistry.getInstrumentation().getContext(),
             mMockPreferences,
-            "TEST_TOKEN",
-            listener);
+            "TEST_TOKEN") {
+          @Override
+          protected AnalyticsMessages getAnalyticsMessages() {
+            return analyticsMessages;
+          }
+        };
 
     mixpanel.trackScreenView("HomeScreen");
 
-    final AnalyticsMessages.EventDescription message =
-        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
-    assertEquals("$mp_page_view", message.getEventName());
+    assertEquals("$mp_page_view", message.getString("event"));
 
-    final JSONObject eventProps = message.getProperties();
+    final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
   }
 
   @Test
   public void testScreenLeave() throws InterruptedException, JSONException {
-    final BlockingQueue<AnalyticsMessages.EventDescription> messages =
-        new LinkedBlockingQueue<>();
+    final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
 
-    final AnalyticsMessages listener =
-        AnalyticsMessages.getInstance(
+    final MPDbAdapter dbMock =
+        new MPDbAdapter(
             InstrumentationRegistry.getInstrumentation().getContext(),
-            new TestUtils.TestMPConfig(InstrumentationRegistry.getInstrumentation().getContext()),
-            true);
-    listener.setOnEventListener(
-        new AnalyticsMessages.OnEventListener() {
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
           @Override
-          public void onEvent(AnalyticsMessages.EventDescription event) {
-            messages.add(event);
+          public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+            if (table == MPDbAdapter.Table.EVENTS) {
+              messages.add(message);
+            }
+            return 1;
           }
-        });
+        };
+
+    final AnalyticsMessages analyticsMessages =
+        new AnalyticsMessages(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public MPDbAdapter makeDbAdapter(Context context) {
+            return dbMock;
+          }
+        };
 
     final MixpanelAPI mixpanel =
         new TestUtils.CleanMixpanelAPI(
             InstrumentationRegistry.getInstrumentation().getContext(),
             mMockPreferences,
-            "TEST_TOKEN",
-            listener);
+            "TEST_TOKEN") {
+          @Override
+          protected AnalyticsMessages getAnalyticsMessages() {
+            return analyticsMessages;
+          }
+        };
 
     mixpanel.trackScreenLeave("HomeScreen");
 
-    final AnalyticsMessages.EventDescription message =
-        messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
-    assertEquals("$mp_page_leave", message.getEventName());
+    assertEquals("$mp_page_leave", message.getString("event"));
 
-    final JSONObject eventProps = message.getProperties();
+    final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
   }
 
