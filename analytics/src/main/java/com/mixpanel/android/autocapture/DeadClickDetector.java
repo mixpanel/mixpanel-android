@@ -247,8 +247,8 @@ final class DeadClickDetector {
                     cancel();
                     return;
                 }
-                mBaselineViewCount = countViews(rootView);
-                mBaselineContentHash = computeContentHash(rootView);
+                mBaselineViewCount = countViews(rootView, 0);
+                mBaselineContentHash = computeContentHash(rootView, 0);
                 mBaselineCaptured = true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing baseline", e);
@@ -290,8 +290,8 @@ final class DeadClickDetector {
                         return;
                     }
 
-                    int currentViewCount = countViews(rootView);
-                    int currentContentHash = computeContentHash(rootView);
+                    int currentViewCount = countViews(rootView, 0);
+                    int currentContentHash = computeContentHash(rootView, 0);
 
                     noChange = (currentViewCount == mBaselineViewCount) &&
                                (currentContentHash == mBaselineContentHash);
@@ -332,7 +332,10 @@ final class DeadClickDetector {
         /**
          * Counts the total number of views in the hierarchy.
          */
-        private int countViews(@NonNull View view) {
+        private int countViews(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+                return 0;
+            }
             if (view.getVisibility() != View.VISIBLE) {
                 return 0;
             }
@@ -341,7 +344,7 @@ final class DeadClickDetector {
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    count += countViews(group.getChildAt(i));
+                    count += countViews(group.getChildAt(i), depth + 1);
                 }
             }
             return count;
@@ -355,7 +358,10 @@ final class DeadClickDetector {
          * - View bounds
          * - Text content (if TextView)
          */
-        private int computeContentHash(@NonNull View view) {
+        private int computeContentHash(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+                return 0;
+            }
             if (view.getVisibility() != View.VISIBLE) {
                 return 0;
             }
@@ -376,7 +382,7 @@ final class DeadClickDetector {
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    hash = 31 * hash + computeContentHash(group.getChildAt(i));
+                    hash = 31 * hash + computeContentHash(group.getChildAt(i), depth + 1);
                 }
             }
 

@@ -86,11 +86,13 @@ final class WindowSpy {
 
                 @SuppressWarnings("unchecked")
                 ArrayList<View> originalList = (ArrayList<View>) mViewsField.get(sWmgInstance);
-                sOriginalViews = originalList;
 
                 // Replace with delegating list that notifies on add/remove
-                ArrayList<View> delegatingList = new DelegatingViewList(originalList);
+                DelegatingViewList delegatingList = new DelegatingViewList(originalList);
                 mViewsField.set(sWmgInstance, delegatingList);
+
+                // Store reference to the LIVE delegating list (not the original)
+                sOriginalViews = delegatingList;
 
                 sInstalled = true;
                 MPLog.d(TAG, "WindowSpy installed successfully");

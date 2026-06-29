@@ -262,19 +262,28 @@ final class SemanticExtractor {
         AccessibilityNodeInfo deepestChild = null;
         int childCount = node.getChildCount();
         for (int i = childCount - 1; i >= 0; i--) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                AccessibilityNodeInfo result = findNodeAtPosition(child, x, y, depth + 1);
-                if (result != null) {
-                    child.recycle();
-                    if (deepestChild != null) {
-                        deepestChild.recycle();
+            AccessibilityNodeInfo child = null;
+            try {
+                child = node.getChild(i);
+                if (child != null) {
+                    AccessibilityNodeInfo result = findNodeAtPosition(child, x, y, depth + 1);
+                    if (result != null) {
+                        child.recycle();
+                        child = null;
+                        if (deepestChild != null) {
+                            deepestChild.recycle();
+                        }
+                        deepestChild = result;
+                        // Continue looking - we'll prefer clickable nodes
+                        break;
                     }
-                    deepestChild = result;
-                    // Continue looking - we'll prefer clickable nodes
-                    break;
+                    child.recycle();
+                    child = null;
                 }
-                child.recycle();
+            } catch (Exception e) {
+                if (child != null) {
+                    child.recycle();
+                }
             }
         }
 
@@ -609,7 +618,7 @@ final class SemanticExtractor {
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             StringBuilder sb = new StringBuilder();
-            collectTextFromChildren(group, sb);
+            collectTextFromChildren(group, sb, 0);
             if (sb.length() > 0) {
                 return sb.toString();
             }
@@ -621,7 +630,10 @@ final class SemanticExtractor {
     /**
      * Recursively collects text from child TextViews.
      */
-    private static void collectTextFromChildren(@NonNull ViewGroup group, @NonNull StringBuilder sb) {
+    private static void collectTextFromChildren(@NonNull ViewGroup group, @NonNull StringBuilder sb, int depth) {
+        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+            return;
+        }
         for (int i = 0; i < group.getChildCount(); i++) {
             View child = group.getChildAt(i);
             if (child instanceof TextView) {
@@ -633,7 +645,7 @@ final class SemanticExtractor {
                     sb.append(text);
                 }
             } else if (child instanceof ViewGroup) {
-                collectTextFromChildren((ViewGroup) child, sb);
+                collectTextFromChildren((ViewGroup) child, sb, depth + 1);
             }
         }
     }
