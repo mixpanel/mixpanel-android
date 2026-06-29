@@ -88,6 +88,7 @@ public class MixpanelScreenTrackingTest {
 
     final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertTrue(eventProps.getBoolean("$mp_autocapture"));
     assertEquals("extra_value", eventProps.getString("extra_prop"));
     assertTrue(eventProps.has("$screen_height"));
   }
@@ -140,6 +141,7 @@ public class MixpanelScreenTrackingTest {
 
     final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertTrue(eventProps.getBoolean("$mp_autocapture"));
   }
 
   @Test
@@ -190,6 +192,116 @@ public class MixpanelScreenTrackingTest {
 
     final JSONObject eventProps = message.getJSONObject("properties");
     assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertTrue(eventProps.getBoolean("$mp_autocapture"));
+  }
+
+  @Test
+  public void testScreenLeaveWithProperties() throws InterruptedException, JSONException {
+    final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
+
+    final MPDbAdapter dbMock =
+        new MPDbAdapter(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+            if (table == MPDbAdapter.Table.EVENTS) {
+              messages.add(message);
+            }
+            return 1;
+          }
+        };
+
+    final AnalyticsMessages analyticsMessages =
+        new AnalyticsMessages(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public MPDbAdapter makeDbAdapter(Context context) {
+            return dbMock;
+          }
+        };
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            mMockPreferences,
+            "TEST_TOKEN") {
+          @Override
+          protected AnalyticsMessages getAnalyticsMessages() {
+            return analyticsMessages;
+          }
+        };
+
+    JSONObject props = new JSONObject();
+    props.put("time_spent", 30);
+
+    mixpanel.getAutocapture().trackScreenLeave("HomeScreen", props);
+
+    final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    assertNotNull(message);
+    assertEquals("$mp_page_leave", message.getString("event"));
+
+    final JSONObject eventProps = message.getJSONObject("properties");
+    assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertTrue(eventProps.getBoolean("$mp_autocapture"));
+    assertEquals(30, eventProps.getInt("time_spent"));
+  }
+
+  @Test
+  public void testSdkPropertiesCannotBeOverridden() throws InterruptedException, JSONException {
+    final BlockingQueue<JSONObject> messages = new LinkedBlockingQueue<>();
+
+    final MPDbAdapter dbMock =
+        new MPDbAdapter(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+            if (table == MPDbAdapter.Table.EVENTS) {
+              messages.add(message);
+            }
+            return 1;
+          }
+        };
+
+    final AnalyticsMessages analyticsMessages =
+        new AnalyticsMessages(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            MPConfig.getInstance(
+                InstrumentationRegistry.getInstrumentation().getContext(), null)) {
+          @Override
+          public MPDbAdapter makeDbAdapter(Context context) {
+            return dbMock;
+          }
+        };
+
+    final MixpanelAPI mixpanel =
+        new TestUtils.CleanMixpanelAPI(
+            InstrumentationRegistry.getInstrumentation().getContext(),
+            mMockPreferences,
+            "TEST_TOKEN") {
+          @Override
+          protected AnalyticsMessages getAnalyticsMessages() {
+            return analyticsMessages;
+          }
+        };
+
+    JSONObject props = new JSONObject();
+    props.put("current_page_title", "SpoofedTitle");
+    props.put("$mp_autocapture", false);
+
+    mixpanel.getAutocapture().trackScreenView("HomeScreen", props);
+
+    final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
+    assertNotNull(message);
+
+    final JSONObject eventProps = message.getJSONObject("properties");
+    assertEquals("HomeScreen", eventProps.getString("current_page_title"));
+    assertTrue(eventProps.getBoolean("$mp_autocapture"));
   }
 
 }
