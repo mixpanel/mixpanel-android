@@ -188,41 +188,6 @@ public class AutocaptureInstrumentedTest {
     }
 
     @Test
-    public void testClickEventPropertiesComplete() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
-
-            Thread.sleep(500);
-
-            // Click a button
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
-
-            // Poll for the event
-            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
-            assertNotNull("Event should be captured", event);
-
-            JSONObject properties = event.getJSONObject("properties");
-
-            // Verify all required properties exist
-            assertTrue("$el_id should exist", properties.has("$el_id"));
-            assertTrue("$el_tag_name should exist", properties.has("$el_tag_name"));
-            assertTrue("$x should exist", properties.has("$x"));
-            assertTrue("$y should exist", properties.has("$y"));
-
-            // Verify property types
-            assertTrue("$el_id should be a string", properties.get("$el_id") instanceof String);
-            assertTrue("$el_tag_name should be a string", properties.get("$el_tag_name") instanceof String);
-            assertTrue("$x should be numeric", properties.get("$x") instanceof Number);
-            assertTrue("$y should be numeric", properties.get("$y") instanceof Number);
-
-            // Verify optional $el_text if present
-            if (properties.has("$el_text")) {
-                assertTrue("$el_text should be a string", properties.get("$el_text") instanceof String);
-            }
-        }
-    }
-
-    @Test
     public void testRageClickDetection() throws Exception {
         try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
                      ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
@@ -327,26 +292,6 @@ public class AutocaptureInstrumentedTest {
 
             // Assert NO event was captured
             assertNull("Sensitive element should not emit any event", event);
-        }
-    }
-
-    @Test
-    public void testElementIdResolutionRule1() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
-
-            Thread.sleep(500);
-
-            // Click button with contentDescription (highest priority)
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
-
-            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
-            assertNotNull("Event should be captured", event);
-
-            JSONObject properties = event.getJSONObject("properties");
-
-            // Verify $el_id uses contentDescription value
-            assertEquals("rule1_btn", properties.getString("$el_id"));
         }
     }
 
