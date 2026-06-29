@@ -26,6 +26,12 @@ final class AutocaptureDefaults {
     static final int MAX_ACCESSIBILITY_NODES = 500;
 
     /**
+     * Maximum recursion depth for tree traversal operations.
+     * Prevents {@code StackOverflowError} in deeply nested view/semantic trees.
+     */
+    static final int MAX_RECURSION_DEPTH = 20;
+
+    /**
      * Event name for click events.
      */
     static final String EVENT_CLICK = "$mp_click";

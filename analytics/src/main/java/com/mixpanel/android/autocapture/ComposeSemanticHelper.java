@@ -204,7 +204,7 @@ final class ComposeSemanticHelper {
         try {
             RootForTest root = (RootForTest) view;
             SemanticsNode rootNode = root.getSemanticsOwner().getRootSemanticsNode();
-            int[] result = computeTreeHash(rootNode);
+            int[] result = computeTreeHash(rootNode, 0);
             MPLog.d(TAG, "Captured snapshot - nodes: " + result[0] + ", hash: " + result[1]);
             return new SemanticSnapshot(result[0], result[1]);
         } catch (Exception e) {
@@ -217,7 +217,11 @@ final class ComposeSemanticHelper {
      * Computes node count and content hash for the semantic tree.
      * Returns [nodeCount, contentHash].
      */
-    private static int[] computeTreeHash(@NonNull SemanticsNode node) {
+    private static int[] computeTreeHash(@NonNull SemanticsNode node, int depth) {
+        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+            return new int[]{0, 0};
+        }
+
         int nodeCount = 1;
         int hash = 17;
 
@@ -238,7 +242,7 @@ final class ComposeSemanticHelper {
         // Recurse into children
         List<SemanticsNode> children = node.getChildren();
         for (SemanticsNode child : children) {
-            int[] childResult = computeTreeHash(child);
+            int[] childResult = computeTreeHash(child, depth + 1);
             nodeCount += childResult[0];
             hash = 31 * hash + childResult[1];
         }
@@ -253,7 +257,7 @@ final class ComposeSemanticHelper {
     @Nullable
     private static NodeSearchResult findNodeAtPositionWithPath(@NonNull SemanticsNode node, float x, float y) {
         List<SemanticsNode> path = new java.util.ArrayList<>();
-        SemanticsNode result = findNodeAtPositionRecursive(node, x, y, path);
+        SemanticsNode result = findNodeAtPositionRecursive(node, x, y, path, 0);
         if (result == null) {
             return null;
         }
@@ -262,7 +266,11 @@ final class ComposeSemanticHelper {
 
     @Nullable
     private static SemanticsNode findNodeAtPositionRecursive(
-            @NonNull SemanticsNode node, float x, float y, @NonNull List<SemanticsNode> path) {
+            @NonNull SemanticsNode node, float x, float y, @NonNull List<SemanticsNode> path, int depth) {
+        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+            return null;
+        }
+
         Rect bounds = node.getBoundsInWindow();
 
         // Check if point is within bounds
@@ -282,7 +290,7 @@ final class ComposeSemanticHelper {
         for (int i = children.size() - 1; i >= 0; i--) {
             SemanticsNode child = children.get(i);
             List<SemanticsNode> childPath = new java.util.ArrayList<>(path);
-            SemanticsNode childMatch = findNodeAtPositionRecursive(child, x, y, childPath);
+            SemanticsNode childMatch = findNodeAtPositionRecursive(child, x, y, childPath, depth + 1);
             if (childMatch != null) {
                 // Prefer clickable nodes
                 if (isClickable(childMatch)) {

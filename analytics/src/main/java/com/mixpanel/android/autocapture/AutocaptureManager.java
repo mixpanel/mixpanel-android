@@ -140,8 +140,9 @@ public final class AutocaptureManager implements
             // Remove WindowSpy listener
             WindowSpy.removeListener(this);
 
-            // Uninstall all interceptors
-            for (TouchInterceptor interceptor : mWindowInterceptors.values()) {
+            // Uninstall all interceptors (copy to avoid ConcurrentModificationException from WeakHashMap)
+            java.util.List<TouchInterceptor> interceptors = new java.util.ArrayList<>(mWindowInterceptors.values());
+            for (TouchInterceptor interceptor : interceptors) {
                 if (interceptor != null) {
                     interceptor.uninstall();
                 }

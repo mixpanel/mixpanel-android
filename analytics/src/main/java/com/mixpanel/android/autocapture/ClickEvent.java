@@ -55,6 +55,9 @@ final class ClickEvent {
     /** Whether the clicked view is considered interactive (clickable/longClickable). */
     public final boolean isInteractive;
 
+    /** Whether this click originated from a Compose element (set at construction, not affected by GC). */
+    final boolean isCompose;
+
     /**
      * Reference to Compose root view for dead click detection.
      * Only set for clicks on Compose elements. Weak reference to avoid memory leaks.
@@ -87,6 +90,7 @@ final class ClickEvent {
         this.elements = elements;
         this.timestamp = timestamp;
         this.isInteractive = isInteractive;
+        this.isCompose = composeRoot != null;
         this.composeRootRef = composeRoot != null ? new WeakReference<>(composeRoot) : null;
     }
 
@@ -94,7 +98,7 @@ final class ClickEvent {
      * Returns true if this click was on a Compose element.
      */
     boolean isComposeClick() {
-        return composeRootRef != null && composeRootRef.get() != null;
+        return isCompose;
     }
 
     /**
