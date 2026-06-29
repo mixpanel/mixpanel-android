@@ -43,11 +43,11 @@ fun MyApp() {
         currentRoute?.let { route ->
             // Track screen leave for previous screen
             previousRoute?.let { prevRoute ->
-                mixpanel.trackScreenLeave(prevRoute)
+                mixpanel.autocapture.trackScreenLeave(prevRoute)
             }
 
             // Track screen view for current screen
-            mixpanel.trackScreenView(route)
+            mixpanel.autocapture.trackScreenView(route)
 
             // Update previous route
             previousRoute = route

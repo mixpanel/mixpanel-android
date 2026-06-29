@@ -80,7 +80,7 @@ public class MixpanelScreenTrackingTest {
     JSONObject props = new JSONObject();
     props.put("extra_prop", "extra_value");
 
-    mixpanel.trackScreenView("HomeScreen", props);
+    mixpanel.getAutocapture().trackScreenView("HomeScreen", props);
 
     final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
@@ -132,7 +132,7 @@ public class MixpanelScreenTrackingTest {
           }
         };
 
-    mixpanel.trackScreenView("HomeScreen");
+    mixpanel.getAutocapture().trackScreenView("HomeScreen");
 
     final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
@@ -182,7 +182,7 @@ public class MixpanelScreenTrackingTest {
           }
         };
 
-    mixpanel.trackScreenLeave("HomeScreen");
+    mixpanel.getAutocapture().trackScreenLeave("HomeScreen");
 
     final JSONObject message = messages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS);
     assertNotNull(message);
