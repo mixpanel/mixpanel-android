@@ -427,4 +427,48 @@ public class AutocaptureInstrumentedTest {
             assertEquals("Token should match", TEST_TOKEN, properties.getString("token"));
         }
     }
+
+    @Test
+    public void testElementIdResolutionRule3HashFallback() throws Exception {
+        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
+                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+
+            Thread.sleep(500);
+
+            // Click button with no contentDescription and invalid resource ID (10003)
+            // This forces resolveElementId to fall through Rule 1 and Rule 2 to the hash fallback
+            onView(withId(XmlAutocaptureTestActivity.ID_RULE3_BTN)).perform(click());
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Event should be captured", event);
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            // Verify $el_id uses hash fallback format: ClassName_view_<hexHashCode>
+            String elId = properties.getString("$el_id");
+            assertTrue("$el_id should start with 'Button_view_' for hash fallback, got: " + elId,
+                    elId.matches("Button_view_[0-9a-f]+"));
+        }
+    }
+
+    @Test
+    public void testClickEventCapturesElText() throws Exception {
+        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
+                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+
+            Thread.sleep(500);
+
+            // Click rule1_btn which has text "Rule 1 - contentDescription"
+            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Event should be captured", event);
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            // Verify $el_text captures the button's visible text
+            assertTrue("$el_text should exist", properties.has("$el_text"));
+            assertEquals("Rule 1 - contentDescription", properties.getString("$el_text"));
+        }
+    }
 }

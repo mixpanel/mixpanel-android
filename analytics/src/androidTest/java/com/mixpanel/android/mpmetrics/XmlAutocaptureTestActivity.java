@@ -43,20 +43,20 @@ public class XmlAutocaptureTestActivity extends Activity {
         Button rule1Btn = createButton("Rule 1 - contentDescription");
         rule1Btn.setId(ID_RULE1_BTN);
         rule1Btn.setContentDescription("rule1_btn");
-        rule1Btn.setOnClickListener(v -> {}); // Live button (not dead)
+        rule1Btn.setOnClickListener(v -> {});
         layout.addView(rule1Btn);
 
         // Rule 2 button - resource ID fallback
         Button rule2Btn = createButton("Rule 2 - resource ID");
         rule2Btn.setId(ID_RULE2_BTN);
-        rule2Btn.setOnClickListener(v -> {}); // Live button (not dead)
+        rule2Btn.setOnClickListener(v -> {});
         addMarginTop(rule2Btn, 8);
         layout.addView(rule2Btn);
 
-        // Rule 3 button - hash fallback
+        // Rule 3 button - hash fallback (no contentDescription, invalid resource ID)
         Button rule3Btn = createButton("Rule 3 - hash fallback");
         rule3Btn.setId(ID_RULE3_BTN);
-        rule3Btn.setOnClickListener(v -> {}); // Live button (not dead)
+        rule3Btn.setOnClickListener(v -> {});
         addMarginTop(rule3Btn, 8);
         layout.addView(rule3Btn);
 
