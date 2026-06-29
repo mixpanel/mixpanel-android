@@ -1056,9 +1056,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             }
             JSONObject mergedProperties = new JSONObject();
             try {
-                mergedProperties.put("current_page_title", screenName);
-                mergedProperties.put("$mp_autocapture", true);
-
                 if (properties != null) {
                     Iterator<String> keys = properties.keys();
                     while (keys.hasNext()) {
@@ -1066,6 +1063,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         mergedProperties.put(key, properties.get(key));
                     }
                 }
+
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+                mergedProperties.put("$mp_autocapture", true);
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception merging properties for trackScreenView", e);
             }
@@ -1097,9 +1098,6 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             }
             JSONObject mergedProperties = new JSONObject();
             try {
-                mergedProperties.put("current_page_title", screenName);
-                mergedProperties.put("$mp_autocapture", true);
-
                 if (properties != null) {
                     Iterator<String> keys = properties.keys();
                     while (keys.hasNext()) {
@@ -1107,6 +1105,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         mergedProperties.put(key, properties.get(key));
                     }
                 }
+
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+                mergedProperties.put("$mp_autocapture", true);
             } catch (JSONException e) {
                 MPLog.e(LOGTAG, "Exception merging properties for trackScreenLeave", e);
             }
