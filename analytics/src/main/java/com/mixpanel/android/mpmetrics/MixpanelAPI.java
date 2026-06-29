@@ -195,6 +195,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         mToken = token;
         mInstanceName = options.getInstanceName();
         mPeople = new PeopleImpl();
+        mAutocapture = new Autocapture();
         mGroups = new HashMap<String, GroupImpl>();
         mConfig = config;
 
@@ -1019,6 +1020,110 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     public void track(String eventName) {
         if (hasOptedOutTracking()) return;
         track(eventName, null);
+    }
+
+    /**
+     * Return the Autocapture instance associated with this MixpanelAPI instance.
+     * Use this to track autocapture events such as screen views and screen leaves.
+     *
+     * @return an instance of {@link Autocapture}
+     */
+    public Autocapture getAutocapture() {
+        return mAutocapture;
+    }
+
+    /**
+     * Provides methods for tracking autocapture events. Events tracked through this class
+     * are automatically tagged with the {@code $mp_autocapture} property, which causes them
+     * to appear with an "[Auto]" prefix in the Mixpanel web app.
+     *
+     * <p>Access this via {@link MixpanelAPI#getAutocapture()}.
+     */
+    public class Autocapture {
+
+        /**
+         * Track a screen view event. This is a convenience method for tracking when users view
+         * a screen/page in your application.
+         *
+         * @param screenName The name of the screen/page being viewed
+         * @param properties A JSONObject containing additional properties to include with this event.
+         *                   Pass null if no extra properties exist.
+         */
+        public void trackScreenView(@NonNull String screenName, JSONObject properties) {
+            if (screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenView called with empty screenName, ignoring event");
+                return;
+            }
+            JSONObject mergedProperties = new JSONObject();
+            try {
+                if (properties != null) {
+                    Iterator<String> keys = properties.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        mergedProperties.put(key, properties.get(key));
+                    }
+                }
+
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+                mergedProperties.put("$mp_autocapture", true);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception merging properties for trackScreenView", e);
+            }
+
+            track("$mp_page_view", mergedProperties);
+        }
+
+        /**
+         * Track a screen view event without additional properties.
+         *
+         * @param screenName The name of the screen/page being viewed
+         */
+        public void trackScreenView(@NonNull String screenName) {
+            trackScreenView(screenName, null);
+        }
+
+        /**
+         * Track a screen leave event. This is a convenience method for tracking when users leave
+         * a screen/page in your application.
+         *
+         * @param screenName The name of the screen/page being left
+         * @param properties A JSONObject containing additional properties to include with this event.
+         *                   Pass null if no extra properties exist.
+         */
+        public void trackScreenLeave(@NonNull String screenName, JSONObject properties) {
+            if (screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenLeave called with empty screenName, ignoring event");
+                return;
+            }
+            JSONObject mergedProperties = new JSONObject();
+            try {
+                if (properties != null) {
+                    Iterator<String> keys = properties.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        mergedProperties.put(key, properties.get(key));
+                    }
+                }
+
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+                mergedProperties.put("$mp_autocapture", true);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception merging properties for trackScreenLeave", e);
+            }
+
+            track("$mp_page_leave", mergedProperties);
+        }
+
+        /**
+         * Track a screen leave event without additional properties.
+         *
+         * @param screenName The name of the screen/page being left
+         */
+        public void trackScreenLeave(@NonNull String screenName) {
+            trackScreenLeave(screenName, null);
+        }
     }
 
     /**
@@ -3009,6 +3114,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final String mToken;
     private final String mInstanceName;
     private final PeopleImpl mPeople;
+    private final Autocapture mAutocapture;
     private final Map<String, GroupImpl> mGroups;
     private final PersistentIdentity mPersistentIdentity;
     private final Map<String, String> mDeviceInfo;
