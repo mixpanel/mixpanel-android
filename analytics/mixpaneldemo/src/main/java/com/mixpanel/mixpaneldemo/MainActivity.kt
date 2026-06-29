@@ -33,14 +33,14 @@ class MainActivity : ComponentActivity() {
 fun MyApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val mixpanel = remember { MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true) }
-
     // Track screen navigation changes automatically
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     var previousRoute by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentRoute) {
         currentRoute?.let { route ->
+            val mixpanel = MixpanelAPI.getInstance(context, MIXPANEL_PROJECT_TOKEN, true)
+
             // Track screen leave for previous screen
             previousRoute?.let { prevRoute ->
                 mixpanel.autocapture.trackScreenLeave(prevRoute)
