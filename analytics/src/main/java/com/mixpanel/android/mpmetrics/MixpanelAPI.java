@@ -1050,6 +1050,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          *                   Pass null if no extra properties exist.
          */
         public void trackScreenView(@NonNull String screenName, JSONObject properties) {
+            if (screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenView called with empty screenName, ignoring event");
+                return;
+            }
             JSONObject mergedProperties = new JSONObject();
             try {
                 mergedProperties.put("current_page_title", screenName);
@@ -1087,6 +1091,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          *                   Pass null if no extra properties exist.
          */
         public void trackScreenLeave(@NonNull String screenName, JSONObject properties) {
+            if (screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenLeave called with empty screenName, ignoring event");
+                return;
+            }
             JSONObject mergedProperties = new JSONObject();
             try {
                 mergedProperties.put("current_page_title", screenName);
