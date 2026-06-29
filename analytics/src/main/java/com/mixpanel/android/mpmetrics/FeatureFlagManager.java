@@ -351,7 +351,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
       MPLog.w(
           LOGTAG,
           "Flags not ready for getVariantSync call for '" + flagName + "'. Returning fallback.");
-      return fallback;
+      return fallback.withSource(
+          MixpanelFlagVariant.Source.fallback(MixpanelFlagVariant.Source.Fallback.Reason.NOT_READY));
     }
 
     // Use a container to get results back from the handler thread runnable
@@ -397,7 +398,8 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     } else {
       // Flag key not found in the loaded flags
       MPLog.i(LOGTAG, "Flag '" + flagName + "' not found sync. Returning fallback.");
-      return fallback;
+      return fallback.withSource(
+          MixpanelFlagVariant.Source.fallback(MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND));
     }
   }
 
