@@ -115,8 +115,6 @@ public class MixpanelFlagVariant {
                 FLAG_NOT_FOUND,
                 /** Flags were not ready when the sync lookup happened. */
                 NOT_READY,
-                /** An exception occurred during evaluation. */
-                EVALUATION_ERROR,
             }
 
             /** Singleton for the unspecified case (developer construction). */
