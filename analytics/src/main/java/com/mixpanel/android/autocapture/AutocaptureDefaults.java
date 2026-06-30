@@ -97,12 +97,7 @@ final class AutocaptureDefaults {
     static final String REDACTED_PLACEHOLDER = "[REDACTED]";
 
     /**
-     * Tag value used to mark views as sensitive (excluded from autocapture).
-     */
-    static final String SENSITIVE_TAG = "mp-sensitive";
-
-    /**
-     * Alternative tag value used to mark views as excluded from autocapture.
+     * Tag value used to mark views as excluded from autocapture.
      */
     static final String NO_TRACK_TAG = "mp-no-track";
 

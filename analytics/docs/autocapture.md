@@ -247,7 +247,7 @@ fun CheckoutButton() {
 
 ## Disabling for Specific Elements
 
-Mark elements as sensitive to exclude them from **all** autocapture events:
+Mark elements with `mp-no-track` to exclude them from **all** autocapture events:
 
 ### Using contentDescription
 
@@ -256,17 +256,14 @@ Mark elements as sensitive to exclude them from **all** autocapture events:
 ```xml
 <Button
     android:id="@+id/sensitive_button"
-    android:contentDescription="mp-sensitive"
+    android:contentDescription="mp-no-track"
     android:text="Sensitive Action"/>
 ```
 
 #### Kotlin/Java
 
 ```kotlin
-// Mark a view as sensitive
-button.contentDescription = "mp-sensitive"
-
-// Or use mp-no-track
+// Mark a view to exclude from autocapture
 button.contentDescription = "mp-no-track"
 ```
 
@@ -274,10 +271,10 @@ button.contentDescription = "mp-no-track"
 
 ```kotlin
 // Mark via tag (Kotlin)
-sensitiveView.tag = "mp-sensitive"
+sensitiveView.tag = "mp-no-track"
 
 // Java
-sensitiveView.setTag("mp-sensitive");
+sensitiveView.setTag("mp-no-track");
 ```
 
 ### Jetpack Compose
@@ -286,16 +283,16 @@ sensitiveView.setTag("mp-sensitive");
 Button(
     onClick = { /* ... */ },
     modifier = Modifier.semantics {
-        contentDescription = "mp-sensitive"
+        contentDescription = "mp-no-track"
     }
 ) {
     Text("Sensitive Action")
 }
 ```
 
-Both `mp-sensitive` and `mp-no-track` are supported. The check uses `contains()`, so identifiers like `payment-form-mp-sensitive` also work.
+The check uses `contains()`, so identifiers like `payment-form-mp-no-track` also work.
 
-**Note:** When a view is marked as sensitive, it is completely excluded - no `$mp_click`, `$mp_rage_click`, or `$mp_dead_click` events are emitted. Child views inherit this exclusion.
+**Note:** When a view is marked with `mp-no-track`, it is completely excluded - no `$mp_click`, `$mp_rage_click`, or `$mp_dead_click` events are emitted. Child views inherit this exclusion.
 
 ## Dead Click Detection
 
@@ -386,7 +383,7 @@ This cancels any pending dead click detection by notifying the SDK that a UI cha
 - Email/phone fields (configurable via input type detection)
 - Credit card numbers (regex redacted)
 - Social Security Numbers (regex redacted)
-- Content from elements marked `mp-sensitive` or `mp-no-track`
+- Content from elements marked `mp-no-track`
 
 ### Auto-Detection of Sensitive Fields
 

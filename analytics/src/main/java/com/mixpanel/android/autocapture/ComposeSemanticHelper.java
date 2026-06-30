@@ -395,8 +395,7 @@ final class ComposeSemanticHelper {
 
     private static boolean isSensitive(@Nullable String value) {
         if (value == null) return false;
-        return value.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
-               value.contains(AutocaptureDefaults.NO_TRACK_TAG);
+        return value.contains(AutocaptureDefaults.NO_TRACK_TAG);
     }
 
     /**
