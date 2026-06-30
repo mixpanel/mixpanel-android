@@ -309,7 +309,7 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from an AccessibilityNodeInfo.
-     * Returns null if the node is marked as sensitive (mp-sensitive/mp-no-track).
+     * Returns null if the node is marked with mp-no-track.
      */
     @Nullable
     private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y, boolean captureTextContent) {
@@ -317,8 +317,7 @@ final class SemanticExtractor {
         CharSequence contentDesc = node.getContentDescription();
         if (contentDesc != null) {
             String desc = contentDesc.toString();
-            if (desc.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
-                desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
+            if (desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
                 MPLog.d(TAG, "Skipping autocapture for sensitive element (accessibility node)");
                 return null;
             }
@@ -327,8 +326,7 @@ final class SemanticExtractor {
         // Also check viewIdResourceName for sensitive markers (testTag in Compose)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
             String viewId = node.getViewIdResourceName();
-            if (viewId != null && (viewId.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
-                                   viewId.contains(AutocaptureDefaults.NO_TRACK_TAG))) {
+            if (viewId != null && viewId.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
                 MPLog.d(TAG, "Skipping autocapture for sensitive element (testTag): " + viewId);
                 return null;
             }
@@ -491,7 +489,7 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from a traditional View.
-     * Returns null if the view is marked as sensitive (mp-sensitive/mp-no-track).
+     * Returns null if the view is marked with mp-no-track.
      */
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y, boolean captureTextContent) {
@@ -808,8 +806,7 @@ final class SemanticExtractor {
             Object tag = current.getTag();
             if (tag instanceof String) {
                 String tagStr = (String) tag;
-                if (tagStr.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
-                    tagStr.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
+                if (tagStr.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
                     return true;
                 }
             }
@@ -818,8 +815,7 @@ final class SemanticExtractor {
             CharSequence contentDesc = current.getContentDescription();
             if (contentDesc != null) {
                 String desc = contentDesc.toString();
-                if (desc.contains(AutocaptureDefaults.SENSITIVE_TAG) ||
-                    desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
+                if (desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
                     return true;
                 }
             }
