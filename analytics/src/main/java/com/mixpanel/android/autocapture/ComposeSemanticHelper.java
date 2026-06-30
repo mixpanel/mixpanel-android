@@ -72,11 +72,12 @@ final class ComposeSemanticHelper {
      *
      * @param view The view (must implement RootForTest)
      * @param x    Screen X coordinate
-     * @param y    Screen Y coordinate
+     * @param y                  Screen Y coordinate
+     * @param captureTextContent Whether to capture the text content of the element as {@code $el_text}.
      * @return ExtractResult indicating success, not found, or blocked
      */
     @NonNull
-    static ExtractResult extract(@NonNull View view, float x, float y) {
+    static ExtractResult extract(@NonNull View view, float x, float y, boolean captureTextContent) {
         MPLog.d(TAG, "extract() called - view: " + view.getClass().getSimpleName() +
                 ", isRootForTest: " + (view instanceof RootForTest) + ", x: " + x + ", y: " + y);
 
@@ -106,7 +107,7 @@ final class ComposeSemanticHelper {
             return ExtractResult.blocked();
         }
 
-        ClickEvent.Builder builder = extractFromNode(result.node, x, y);
+        ClickEvent.Builder builder = extractFromNode(result.node, x, y, captureTextContent);
         if (builder == null) {
             return ExtractResult.notFound();
         }
@@ -333,7 +334,7 @@ final class ComposeSemanticHelper {
      * Note: Sensitive check is done in extract() by checking the entire path.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y) {
+    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y, boolean captureTextContent) {
         SemanticsConfiguration config = node.getConfig();
 
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
@@ -371,8 +372,8 @@ final class ComposeSemanticHelper {
         String tagName = getTagName(config);
         builder.tagName(tagName);
 
-        // Text content (if not editable)
-        if (text != null && !text.isEmpty() && !isEditable(config)) {
+        // Text content (only when captureTextContent is enabled, and not editable)
+        if (captureTextContent && text != null && !text.isEmpty() && !isEditable(config)) {
             String sanitizedText = text.length() > AutocaptureDefaults.MAX_TEXT_LENGTH
                     ? text.substring(0, AutocaptureDefaults.MAX_TEXT_LENGTH)
                     : text;
