@@ -69,13 +69,14 @@ final class SemanticExtractor {
     /**
      * Extracts semantic information from a view at the given coordinates.
      *
-     * @param rootView The root view to search within.
-     * @param x        Screen X coordinate.
-     * @param y        Screen Y coordinate.
+     * @param rootView           The root view to search within.
+     * @param x                  Screen X coordinate.
+     * @param y                  Screen Y coordinate.
+     * @param captureTextContent Whether to capture the text content of the element as {@code $el_text}.
      * @return A ClickEvent.Builder with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent.Builder extract(@NonNull View rootView, float x, float y) {
+    static ClickEvent.Builder extract(@NonNull View rootView, float x, float y, boolean captureTextContent) {
         try {
             // Find the view at the tap position
             View targetView = findViewAtPosition(rootView, (int) x, (int) y);
@@ -89,7 +90,7 @@ final class SemanticExtractor {
             MPLog.d(TAG, "findComposeRoot result: " + (composeRoot != null ? composeRoot.getClass().getSimpleName() : "null") +
                     ", targetView: " + targetView.getClass().getSimpleName());
             if (composeRoot != null) {
-                ComposeSemanticHelper.ExtractResult composeResult = extractFromCompose(composeRoot, x, y);
+                ComposeSemanticHelper.ExtractResult composeResult = extractFromCompose(composeRoot, x, y, captureTextContent);
                 MPLog.d(TAG, "extractFromCompose result: " + composeResult.result);
 
                 if (composeResult.result == ComposeSemanticHelper.ExtractionResult.SUCCESS) {
@@ -106,14 +107,14 @@ final class SemanticExtractor {
 
                 // Only fall back to accessibility if Compose didn't find a node (NOT_FOUND)
                 MPLog.d(TAG, "Compose node not found, falling back to accessibility");
-                ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y);
+                ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y, captureTextContent);
                 if (accessibilityResult != null) {
                     return accessibilityResult;
                 }
             }
 
             // Fall back to direct view extraction (XML views)
-            return extractFromView(targetView, x, y);
+            return extractFromView(targetView, x, y, captureTextContent);
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
         }
@@ -154,9 +155,9 @@ final class SemanticExtractor {
      * Extracts semantics from a Compose root using Compose's SemanticsNode API.
      */
     @NonNull
-    private static ComposeSemanticHelper.ExtractResult extractFromCompose(@NonNull View composeRoot, float x, float y) {
+    private static ComposeSemanticHelper.ExtractResult extractFromCompose(@NonNull View composeRoot, float x, float y, boolean captureTextContent) {
         try {
-            return ComposeSemanticHelper.extract(composeRoot, x, y);
+            return ComposeSemanticHelper.extract(composeRoot, x, y, captureTextContent);
         } catch (NoClassDefFoundError e) {
             // Compose not available at runtime
             composeAvailable = false;
@@ -189,7 +190,7 @@ final class SemanticExtractor {
      * Extracts semantics using AccessibilityNodeProvider (for Compose views).
      */
     @Nullable
-    private static ClickEvent.Builder extractFromAccessibility(@NonNull View viewWithProvider, float x, float y) {
+    private static ClickEvent.Builder extractFromAccessibility(@NonNull View viewWithProvider, float x, float y, boolean captureTextContent) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             return null;
         }
@@ -224,7 +225,7 @@ final class SemanticExtractor {
                         ", viewId: " + viewId +
                         ", clickable: " + targetNode.isClickable());
 
-                ClickEvent.Builder builder = extractFromNode(targetNode, x, y);
+                ClickEvent.Builder builder = extractFromNode(targetNode, x, y, captureTextContent);
                 targetNode.recycle();
                 rootNode.recycle();
                 return builder;
@@ -311,7 +312,7 @@ final class SemanticExtractor {
      * Returns null if the node is marked as sensitive (mp-sensitive/mp-no-track).
      */
     @Nullable
-    private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y) {
+    private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y, boolean captureTextContent) {
         // Check if node is marked as sensitive - block ALL events
         CharSequence contentDesc = node.getContentDescription();
         if (contentDesc != null) {
@@ -387,8 +388,8 @@ final class SemanticExtractor {
             builder.tagName(tagName);
         }
 
-        // Text content (with privacy filtering)
-        if (text != null && text.length() > 0 && !isPasswordNode(node)) {
+        // Text content (only when captureTextContent is enabled, with privacy filtering)
+        if (captureTextContent && text != null && text.length() > 0 && !isPasswordNode(node)) {
             builder.text(sanitizeText(text.toString()));
         }
 
@@ -493,7 +494,7 @@ final class SemanticExtractor {
      * Returns null if the view is marked as sensitive (mp-sensitive/mp-no-track).
      */
     @Nullable
-    private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y) {
+    private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y, boolean captureTextContent) {
         // Check if view or ancestors are marked as sensitive - block ALL events
         if (isSensitiveView(view)) {
             MPLog.d(TAG, "Skipping autocapture for sensitive element: " + view.getClass().getSimpleName());
@@ -517,10 +518,12 @@ final class SemanticExtractor {
             builder.ariaLabel(contentDesc.toString());
         }
 
-        // Text content (with privacy filtering)
-        String text = extractText(view);
-        if (text != null && !isSensitiveInput(view)) {
-            builder.text(sanitizeText(text));
+        // Text content (only when captureTextContent is enabled, with privacy filtering)
+        if (captureTextContent) {
+            String text = extractText(view);
+            if (text != null && !isSensitiveInput(view)) {
+                builder.text(sanitizeText(text));
+            }
         }
 
         // Role

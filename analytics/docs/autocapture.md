@@ -77,12 +77,19 @@ That's it! No additional setup required. Autocapture automatically intercepts al
 | `timeoutMs` | `500` | Response wait time in milliseconds |
 | `baselineDelayMs` | `150` | Delay before capturing baseline snapshot |
 
+### AutocaptureOptions
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `captureTextContent` | `false` | Capture text content of clicked elements as `$el_text`. Disabled by default to protect user privacy. |
+
 ### Custom Configuration Example
 
 #### Kotlin
 
 ```kotlin
 val autocaptureOptions = AutocaptureOptions.Builder()
+    .captureTextContent(true)     // Enable $el_text capture
     .clickOptions(ClickOptions.Builder().enabled(true).build())
     .rageClickOptions(
         RageClickOptions.Builder()
@@ -108,6 +115,7 @@ val options = MixpanelOptions.Builder()
 
 ```java
 AutocaptureOptions autocaptureOptions = new AutocaptureOptions.Builder()
+    .captureTextContent(true)     // Enable $el_text capture
     .clickOptions(new ClickOptions.Builder().enabled(true).build())
     .rageClickOptions(
         new RageClickOptions.Builder()
@@ -139,7 +147,7 @@ All autocapture events include these properties:
 | `$y` | Touch Y coordinate (screen pixels) |
 | `$el_id` | Element identifier (see resolution rules below) |
 | `$el_tag_name` | Class name of the view (e.g., `Button`, `TextView`) |
-| `$el_text` | Visible text content (max 100 chars) |
+| `$el_text` | Visible text content (max 100 chars, **opt-in** — requires `captureTextContent(true)`) |
 | `$attr-aria-label` | Content description (accessibility label) |
 | `$attr-role` | Element role (Button, Switch, etc.) |
 | `$elements` | View hierarchy string (max 5 levels) |
@@ -370,7 +378,7 @@ This cancels any pending dead click detection by notifying the SDK that a UI cha
 - View class names and hierarchy
 - Content descriptions (accessibility labels)
 - Resource ID names
-- Visible text content (redacted for sensitive patterns)
+- Visible text content — **only when `captureTextContent(true)` is set** (redacted for sensitive patterns)
 
 ### What is NOT Captured
 
