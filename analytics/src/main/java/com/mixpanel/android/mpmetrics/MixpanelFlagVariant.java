@@ -75,6 +75,8 @@ public class MixpanelFlagVariant {
             static final Network INSTANCE = new Network();
 
             Network() {}
+
+            @Override public String toString() { return "Network"; }
         }
 
         /** Variant loaded from the on-disk persistence layer. */
@@ -85,6 +87,20 @@ public class MixpanelFlagVariant {
             Persistence(long persistedAtMillis) {
                 this.persistedAtMillis = persistedAtMillis;
             }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Persistence)) return false;
+                return persistedAtMillis == ((Persistence) o).persistedAtMillis;
+            }
+
+            @Override
+            public int hashCode() {
+                return (int) (persistedAtMillis ^ (persistedAtMillis >>> 32));
+            }
+
+            @Override public String toString() { return "Persistence(persistedAtMillis=" + persistedAtMillis + ")"; }
         }
 
         /**
@@ -133,6 +149,20 @@ public class MixpanelFlagVariant {
             Fallback(@NonNull Reason reason) {
                 this.reason = reason;
             }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Fallback)) return false;
+                return reason == ((Fallback) o).reason;
+            }
+
+            @Override
+            public int hashCode() {
+                return reason.hashCode();
+            }
+
+            @Override public String toString() { return "Fallback(" + reason + ")"; }
         }
     }
 
