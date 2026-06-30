@@ -1983,6 +1983,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          */
         boolean areFlagsReady();
 
+        /**
+         * Releases the resources held by this flags instance: the dedicated
+         * worker {@link android.os.HandlerThread} and the network request
+         * executor. Both are non-daemon, so a long-lived process that
+         * creates multiple flag instances (tests, multi-tenant setups) needs
+         * to call this to let the JVM exit cleanly.
+         *
+         * <p>Idempotent. Calling any flag method after {@code shutdown()} is
+         * undefined and may silently no-op (the looper is quit and pending
+         * tasks are not run).
+         */
+        void shutdown();
+
         // --- Sync Flag Retrieval ---
 
         /**

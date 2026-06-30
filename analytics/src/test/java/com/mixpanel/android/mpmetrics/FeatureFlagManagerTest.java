@@ -336,9 +336,23 @@ public class FeatureFlagManagerTest {
   @After
   public void tearDown() {
     if (mFeatureFlagManager != null) {
-      mFeatureFlagManager.close();
+      mFeatureFlagManager.shutdown();
     }
     MPLog.setLevel(mPreviousLogLevel);
+  }
+
+  @Test
+  public void testShutdownIsIdempotent() {
+    // Real-Android thread teardown can't be verified under Robolectric
+    // (the runner controls Loopers and HandlerThreads don't terminate
+    // from quitSafely() the way they do on a real device). The contract
+    // we can assert at the unit level is that shutdown() is callable,
+    // idempotent, and doesn't throw — every other test in this file
+    // exercises shutdown() via tearDown, so any side-effect breakage
+    // would surface there.
+    mFeatureFlagManager.shutdown();
+    mFeatureFlagManager.shutdown(); // second call must not throw
+    mFeatureFlagManager = null;
   }
 
   // Helper method to create a valid flags JSON response string

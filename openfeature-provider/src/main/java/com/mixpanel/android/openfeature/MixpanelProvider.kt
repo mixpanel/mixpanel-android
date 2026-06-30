@@ -71,7 +71,11 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
     }
 
     override fun shutdown() {
-        // No-op: the Mixpanel SDK manages its own lifecycle.
+        // Releases the underlying flags worker HandlerThread + executor. These
+        // are non-daemon, so a multi-instance host (tests, multi-tenant) needs
+        // this to let the JVM exit cleanly. Note: this does NOT shut down the
+        // shared MixpanelAPI instance — only the resources this provider owns.
+        flags.shutdown()
     }
 
     override fun getBooleanEvaluation(
