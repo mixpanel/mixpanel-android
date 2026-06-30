@@ -462,6 +462,9 @@ public class FeatureFlagManagerTest {
 
     assertEquals("Should return fallback key", fallback.key, result.key);
     assertEquals("Should return fallback value", fallback.value, result.value);
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(MixpanelFlagVariant.Source.Fallback.Reason.NOT_READY),
+        result.source);
   }
 
   @Test
@@ -499,6 +502,10 @@ public class FeatureFlagManagerTest {
 
     assertEquals("Should return fallback key", fallback.key, result.key);
     assertEquals("Should return fallback value", fallback.value, result.value);
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(
+            MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND),
+        result.source);
   }
 
   @Test
