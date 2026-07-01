@@ -12,7 +12,7 @@ Autocapture captures three types of events:
 | Rage Click | `$mp_rage_click` | Fired when a user taps rapidly (4+ times) in the same area |
 | Dead Click | `$mp_dead_click` | Fired when a tap produces no visible UI response |
 
-**Privacy:** Autocapture is designed with privacy in mind. No personally identifiable information (PII) is captured by default. Secure text fields are never captured, and sensitive content patterns (credit cards, SSNs) are automatically redacted.
+**Privacy:** Autocapture is designed with privacy in mind. No personally identifiable information (PII) is captured by default.
 
 ## Quick Start
 
@@ -77,19 +77,12 @@ That's it! No additional setup required. Autocapture automatically intercepts al
 | `timeoutMs` | `500` | Response wait time in milliseconds |
 | `baselineDelayMs` | `150` | Delay before capturing baseline snapshot |
 
-### AutocaptureOptions
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `captureTextContent` | `false` | Capture text content of clicked elements as `$el_text`. Disabled by default to protect user privacy. |
-
 ### Custom Configuration Example
 
 #### Kotlin
 
 ```kotlin
 val autocaptureOptions = AutocaptureOptions.Builder()
-    .captureTextContent(true)     // Enable $el_text capture
     .clickOptions(ClickOptions.Builder().enabled(true).build())
     .rageClickOptions(
         RageClickOptions.Builder()
@@ -115,7 +108,6 @@ val options = MixpanelOptions.Builder()
 
 ```java
 AutocaptureOptions autocaptureOptions = new AutocaptureOptions.Builder()
-    .captureTextContent(true)     // Enable $el_text capture
     .clickOptions(new ClickOptions.Builder().enabled(true).build())
     .rageClickOptions(
         new RageClickOptions.Builder()
@@ -147,7 +139,6 @@ All autocapture events include these properties:
 | `$y` | Touch Y coordinate (screen pixels) |
 | `$el_id` | Element identifier (see resolution rules below) |
 | `$el_tag_name` | Class name of the view (e.g., `Button`, `TextView`) |
-| `$el_text` | Visible text content (max 100 chars, **opt-in** — requires `captureTextContent(true)`) |
 | `$attr-aria-label` | Content description (accessibility label) |
 | `$attr-role` | Element role (Button, Switch, etc.) |
 | `$elements` | View hierarchy string (max 5 levels) |
@@ -224,7 +215,6 @@ Autocapture has **full support** for Jetpack Compose UI. The SDK uses Compose's 
 | Compose Semantics | Maps To |
 |-------------------|---------|
 | `contentDescription` / `testTag` | `$el_id` |
-| `text` property | `$el_text` |
 | `role` | `$attr-role` |
 | Semantic flags | Element type detection |
 
@@ -240,59 +230,10 @@ fun CheckoutButton() {
             role = Role.Button                       // → $attr-role: "Button"
         }
     ) {
-        Text("Checkout")  // → $el_text: "Checkout"
+        Text("Checkout")
     }
 }
 ```
-
-## Disabling for Specific Elements
-
-Mark elements with `mp-no-track` to exclude them from **all** autocapture events:
-
-### Using contentDescription
-
-#### XML
-
-```xml
-<Button
-    android:id="@+id/sensitive_button"
-    android:contentDescription="mp-no-track"
-    android:text="Sensitive Action"/>
-```
-
-#### Kotlin/Java
-
-```kotlin
-// Mark a view to exclude from autocapture
-button.contentDescription = "mp-no-track"
-```
-
-### Using View Tags
-
-```kotlin
-// Mark via tag (Kotlin)
-sensitiveView.tag = "mp-no-track"
-
-// Java
-sensitiveView.setTag("mp-no-track");
-```
-
-### Jetpack Compose
-
-```kotlin
-Button(
-    onClick = { /* ... */ },
-    modifier = Modifier.semantics {
-        contentDescription = "mp-no-track"
-    }
-) {
-    Text("Sensitive Action")
-}
-```
-
-The check uses `contains()`, so identifiers like `payment-form-mp-no-track` also work.
-
-**Note:** When a view is marked with `mp-no-track`, it is completely excluded - no `$mp_click`, `$mp_rage_click`, or `$mp_dead_click` events are emitted. Child views inherit this exclusion.
 
 ## Dead Click Detection
 
@@ -375,41 +316,10 @@ This cancels any pending dead click detection by notifying the SDK that a UI cha
 - View class names and hierarchy
 - Content descriptions (accessibility labels)
 - Resource ID names
-- Visible text content — **only when `captureTextContent(true)` is set** (redacted for sensitive patterns)
 
 ### What is NOT Captured
 
-- Secure text field content (`inputType` with password flags)
-- Email/phone fields (configurable via input type detection)
-- Credit card numbers (regex redacted)
-- Social Security Numbers (regex redacted)
-- Content from elements marked `mp-no-track`
-
-### Auto-Detection of Sensitive Fields
-
-The SDK automatically excludes `$el_text` from:
-
-```java
-// Password fields
-EditText password = findViewById(R.id.password);
-password.setInputType(InputType.TYPE_TEXT_VARIATION_PASSWORD);
-
-// Email fields (optional, enabled by default)
-EditText email = findViewById(R.id.email);
-email.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-```
-
-### Text Content Filtering
-
-All captured text is filtered through regex patterns:
-
-```kotlin
-// Credit card patterns → "[REDACTED]"
-"Card: 4532-1234-5678-9010" → "Card: [REDACTED]"
-
-// SSN patterns → "[REDACTED]"
-"SSN: 123-45-6789" → "SSN: [REDACTED]"
-```
+Autocapture does not capture visible text content (`$el_text`) from tapped elements. Tracking text can be invasive and raise privacy concerns. Additionally, the complexity of nested view hierarchies can cause text extraction to capture content from unintended views — for example, tapping a container layout might extract text from a deeply nested label that isn't semantically related to the tap. The remaining captured properties (`$el_id`, `$el_tag_name`, `$attr-aria-label`, `$attr-role`, `$elements`) are purely structural UI metadata.
 
 ## Platform Support
 
@@ -459,7 +369,6 @@ MP.AutocaptureManager: emitted $mp_dead_click for broken_link
 
 **Events not appearing:**
 - Verify `AutocaptureOptions` is passed to `MixpanelOptions`
-- Check that the view is not marked as sensitive
 - Ensure autocapture is enabled (check `isEnabled()` returns true)
 - Verify network connectivity and event flushing
 
@@ -469,7 +378,6 @@ MP.AutocaptureManager: emitted $mp_dead_click for broken_link
 
 **False positive dead clicks:**
 - Element may have a handler that doesn't produce visible UI change
-- Consider excluding specific elements with `mp-no-track`
 - Use `signalUIChange()` for custom navigation
 
 **Missing clicks on dialogs/popups:**

@@ -325,21 +325,6 @@ class ComposeAutocaptureInstrumentedTest {
     }
 
     @Test
-    fun testComposePrivacyFilterBlocksEvents() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
-
-            tapNode(
-                composeTestRule.onNodeWithContentDescription("mp-sensitive"),
-                scenario
-            )
-
-            val event = mEvents.poll(2, TimeUnit.SECONDS)
-            assert(event == null) { "Sensitive element should not emit any event" }
-        }
-    }
-
-    @Test
     fun testComposeMultipleClicksGenerateMultipleEvents() {
         ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
@@ -372,28 +357,6 @@ class ComposeAutocaptureInstrumentedTest {
 
             assert(clickEvents.size == 3) {
                 "Should capture exactly 3 click events, got: ${clickEvents.size}"
-            }
-        }
-    }
-
-    @Test
-    fun testComposeClickEventCapturesElText() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
-
-            tapNode(
-                composeTestRule.onNodeWithContentDescription("compose_rule1_btn"),
-                scenario
-            )
-
-            val event = mEvents.poll(10, TimeUnit.SECONDS)
-            assert(event != null) { "Event should be captured" }
-            event!!
-
-            val properties = event.getJSONObject("properties")
-            assert(properties.has("\$el_text")) { "\$el_text should exist" }
-            assert(properties.getString("\$el_text") == "Rule 1 - contentDescription") {
-                "Expected button text, got: ${properties.getString("\$el_text")}"
             }
         }
     }

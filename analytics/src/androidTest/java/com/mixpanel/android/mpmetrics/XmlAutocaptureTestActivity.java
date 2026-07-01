@@ -19,8 +19,6 @@ public class XmlAutocaptureTestActivity extends Activity {
     public static final int ID_RULE3_BTN = 10003;
     public static final int ID_DEAD_XML_BTN = 10004;
     public static final int ID_RAGE_ZONE = 10005;
-    public static final int ID_SENSITIVE_BTN = 10006;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,13 +77,6 @@ public class XmlAutocaptureTestActivity extends Activity {
         rageZone.setContentDescription("rage_zone");
         addMarginTop(rageZone, 16);
         layout.addView(rageZone);
-
-        // Sensitive button - privacy test
-        Button sensitiveBtn = createButton("Sensitive (mp-sensitive)");
-        sensitiveBtn.setId(ID_SENSITIVE_BTN);
-        sensitiveBtn.setContentDescription("mp-sensitive");
-        addMarginTop(sensitiveBtn, 16);
-        layout.addView(sensitiveBtn);
 
         scrollView.addView(layout);
         setContentView(scrollView);

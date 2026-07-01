@@ -2,7 +2,6 @@ package com.mixpanel.android.autocapture;
 
 import android.graphics.Rect;
 import android.os.Build;
-import android.text.InputType;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -25,43 +24,15 @@ import androidx.annotation.Nullable;
 
 import com.mixpanel.android.util.MPLog;
 
-import java.util.regex.Pattern;
 
 /**
  * Extracts semantic information from Views and AccessibilityNodeInfo for autocapture.
  *
  * <p>Handles both traditional XML Views and Jetpack Compose views (via AccessibilityNodeProvider).
- * Includes privacy protection by filtering sensitive fields and redacting PII patterns.
  */
 final class SemanticExtractor {
 
     private static final String TAG = "MP.SemanticExtractor";
-
-    // Regex patterns for sensitive data detection
-    private static final Pattern CREDIT_CARD_PATTERN = Pattern.compile(
-            "\\b(?:4[0-9]{12}(?:[0-9]{3})?|" +           // Visa
-            "5[1-5][0-9]{14}|" +                          // Mastercard
-            "3[47][0-9]{13}|" +                           // Amex
-            "6(?:011|5[0-9]{2})[0-9]{12}|" +              // Discover
-            "(?:2131|1800|35\\d{3})\\d{11})\\b"           // JCB
-    );
-
-    private static final Pattern SSN_PATTERN = Pattern.compile(
-            "\\b\\d{3}-\\d{2}-\\d{4}\\b"
-    );
-
-    // Sensitive input types that should not have text captured
-    private static final int SENSITIVE_INPUT_MASK =
-            InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD |
-            InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD |
-            InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD |
-            InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD;
-
-    private static final int PASSWORD_MASK =
-            InputType.TYPE_TEXT_VARIATION_PASSWORD |
-            InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD |
-            InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD |
-            InputType.TYPE_NUMBER_VARIATION_PASSWORD;
 
     // Flag to track if Compose is available (checked once at runtime)
     private static volatile Boolean composeAvailable = null;
@@ -72,11 +43,10 @@ final class SemanticExtractor {
      * @param rootView           The root view to search within.
      * @param x                  Screen X coordinate.
      * @param y                  Screen Y coordinate.
-     * @param captureTextContent Whether to capture the text content of the element as {@code $el_text}.
      * @return A ClickEvent.Builder with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent.Builder extract(@NonNull View rootView, float x, float y, boolean captureTextContent) {
+    static ClickEvent.Builder extract(@NonNull View rootView, float x, float y) {
         try {
             // Find the view at the tap position
             View targetView = findViewAtPosition(rootView, (int) x, (int) y);
@@ -90,7 +60,7 @@ final class SemanticExtractor {
             MPLog.d(TAG, "findComposeRoot result: " + (composeRoot != null ? composeRoot.getClass().getSimpleName() : "null") +
                     ", targetView: " + targetView.getClass().getSimpleName());
             if (composeRoot != null) {
-                ComposeSemanticHelper.ExtractResult composeResult = extractFromCompose(composeRoot, x, y, captureTextContent);
+                ComposeSemanticHelper.ExtractResult composeResult = extractFromCompose(composeRoot, x, y);
                 MPLog.d(TAG, "extractFromCompose result: " + composeResult.result);
 
                 if (composeResult.result == ComposeSemanticHelper.ExtractionResult.SUCCESS) {
@@ -99,22 +69,16 @@ final class SemanticExtractor {
                     return composeResult.builder;
                 }
 
-                if (composeResult.result == ComposeSemanticHelper.ExtractionResult.SENSITIVE_BLOCKED) {
-                    // Element is sensitive - do NOT fall back, block all events
-                    MPLog.d(TAG, "Sensitive element detected, blocking all events (no fallback)");
-                    return null;
-                }
-
                 // Only fall back to accessibility if Compose didn't find a node (NOT_FOUND)
                 MPLog.d(TAG, "Compose node not found, falling back to accessibility");
-                ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y, captureTextContent);
+                ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y);
                 if (accessibilityResult != null) {
                     return accessibilityResult;
                 }
             }
 
             // Fall back to direct view extraction (XML views)
-            return extractFromView(targetView, x, y, captureTextContent);
+            return extractFromView(targetView, x, y);
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
         }
@@ -155,9 +119,9 @@ final class SemanticExtractor {
      * Extracts semantics from a Compose root using Compose's SemanticsNode API.
      */
     @NonNull
-    private static ComposeSemanticHelper.ExtractResult extractFromCompose(@NonNull View composeRoot, float x, float y, boolean captureTextContent) {
+    private static ComposeSemanticHelper.ExtractResult extractFromCompose(@NonNull View composeRoot, float x, float y) {
         try {
-            return ComposeSemanticHelper.extract(composeRoot, x, y, captureTextContent);
+            return ComposeSemanticHelper.extract(composeRoot, x, y);
         } catch (NoClassDefFoundError e) {
             // Compose not available at runtime
             composeAvailable = false;
@@ -190,7 +154,7 @@ final class SemanticExtractor {
      * Extracts semantics using AccessibilityNodeProvider (for Compose views).
      */
     @Nullable
-    private static ClickEvent.Builder extractFromAccessibility(@NonNull View viewWithProvider, float x, float y, boolean captureTextContent) {
+    private static ClickEvent.Builder extractFromAccessibility(@NonNull View viewWithProvider, float x, float y) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             return null;
         }
@@ -225,7 +189,7 @@ final class SemanticExtractor {
                         ", viewId: " + viewId +
                         ", clickable: " + targetNode.isClickable());
 
-                ClickEvent.Builder builder = extractFromNode(targetNode, x, y, captureTextContent);
+                ClickEvent.Builder builder = extractFromNode(targetNode, x, y);
                 targetNode.recycle();
                 rootNode.recycle();
                 return builder;
@@ -309,28 +273,10 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from an AccessibilityNodeInfo.
-     * Returns null if the node is marked with mp-no-track.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y, boolean captureTextContent) {
-        // Check if node is marked as sensitive - block ALL events
+    private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y) {
         CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null) {
-            String desc = contentDesc.toString();
-            if (desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
-                MPLog.d(TAG, "Skipping autocapture for sensitive element (accessibility node)");
-                return null;
-            }
-        }
-
-        // Also check viewIdResourceName for sensitive markers (testTag in Compose)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            String viewId = node.getViewIdResourceName();
-            if (viewId != null && viewId.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
-                MPLog.d(TAG, "Skipping autocapture for sensitive element (testTag): " + viewId);
-                return null;
-            }
-        }
 
         ClickEvent.Builder builder = new ClickEvent.Builder()
                 .x(x)
@@ -384,11 +330,6 @@ final class SemanticExtractor {
             // Map generic Compose class names to more meaningful ones
             String tagName = mapComposeClassName(simpleName, node);
             builder.tagName(tagName);
-        }
-
-        // Text content (only when captureTextContent is enabled, with privacy filtering)
-        if (captureTextContent && text != null && text.length() > 0 && !isPasswordNode(node)) {
-            builder.text(sanitizeText(text.toString()));
         }
 
         // Role
@@ -489,16 +430,9 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from a traditional View.
-     * Returns null if the view is marked with mp-no-track.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y, boolean captureTextContent) {
-        // Check if view or ancestors are marked as sensitive - block ALL events
-        if (isSensitiveView(view)) {
-            MPLog.d(TAG, "Skipping autocapture for sensitive element: " + view.getClass().getSimpleName());
-            return null;
-        }
-
+    private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y) {
         ClickEvent.Builder builder = new ClickEvent.Builder()
                 .x(x)
                 .y(y);
@@ -514,14 +448,6 @@ final class SemanticExtractor {
         CharSequence contentDesc = view.getContentDescription();
         if (contentDesc != null && contentDesc.length() > 0) {
             builder.ariaLabel(contentDesc.toString());
-        }
-
-        // Text content (only when captureTextContent is enabled, with privacy filtering)
-        if (captureTextContent) {
-            String text = extractText(view);
-            if (text != null && !isSensitiveInput(view)) {
-                builder.text(sanitizeText(text));
-            }
         }
 
         // Role
@@ -600,55 +526,6 @@ final class SemanticExtractor {
 
         // 3. Fallback: ClassName_view_<hashCode>
         return view.getClass().getSimpleName() + "_view_" + Integer.toHexString(view.hashCode());
-    }
-
-    /**
-     * Extracts visible text from a view, walking children if needed.
-     */
-    @Nullable
-    private static String extractText(@NonNull View view) {
-        // Direct text from TextView
-        if (view instanceof TextView) {
-            CharSequence text = ((TextView) view).getText();
-            if (text != null && text.length() > 0) {
-                return text.toString();
-            }
-        }
-
-        // For containers (e.g., Button with child TextView), walk children
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            StringBuilder sb = new StringBuilder();
-            collectTextFromChildren(group, sb, 0);
-            if (sb.length() > 0) {
-                return sb.toString();
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Recursively collects text from child TextViews.
-     */
-    private static void collectTextFromChildren(@NonNull ViewGroup group, @NonNull StringBuilder sb, int depth) {
-        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            View child = group.getChildAt(i);
-            if (child instanceof TextView) {
-                CharSequence text = ((TextView) child).getText();
-                if (text != null && text.length() > 0) {
-                    if (sb.length() > 0) {
-                        sb.append(" ");
-                    }
-                    sb.append(text);
-                }
-            } else if (child instanceof ViewGroup) {
-                collectTextFromChildren((ViewGroup) child, sb, depth + 1);
-            }
-        }
     }
 
     /**
@@ -794,92 +671,6 @@ final class SemanticExtractor {
         return view.getVisibility() == View.VISIBLE &&
                view.getWidth() > 0 &&
                view.getHeight() > 0;
-    }
-
-    /**
-     * Checks if a view or its ancestors are marked as sensitive.
-     */
-    private static boolean isSensitiveView(@Nullable View view) {
-        View current = view;
-        while (current != null) {
-            // Check tag
-            Object tag = current.getTag();
-            if (tag instanceof String) {
-                String tagStr = (String) tag;
-                if (tagStr.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
-                    return true;
-                }
-            }
-
-            // Check contentDescription
-            CharSequence contentDesc = current.getContentDescription();
-            if (contentDesc != null) {
-                String desc = contentDesc.toString();
-                if (desc.contains(AutocaptureDefaults.NO_TRACK_TAG)) {
-                    return true;
-                }
-            }
-
-            // Walk up the hierarchy
-            if (current.getParent() instanceof View) {
-                current = (View) current.getParent();
-            } else {
-                break;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks if an EditText has a sensitive input type (password, email, phone).
-     */
-    private static boolean isSensitiveInput(@NonNull View view) {
-        if (!(view instanceof EditText)) {
-            return false;
-        }
-
-        EditText editText = (EditText) view;
-        int inputType = editText.getInputType();
-
-        // Check for password types
-        if ((inputType & PASSWORD_MASK) != 0) {
-            return true;
-        }
-
-        // Check for email and phone (optionally sensitive)
-        int variation = inputType & InputType.TYPE_MASK_VARIATION;
-        return variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
-               variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS ||
-               (inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_PHONE;
-    }
-
-    /**
-     * Checks if an AccessibilityNodeInfo represents a password field.
-     */
-    private static boolean isPasswordNode(@NonNull AccessibilityNodeInfo node) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            return node.isPassword();
-        }
-        return false;
-    }
-
-    /**
-     * Sanitizes text by truncating and redacting sensitive patterns.
-     */
-    @NonNull
-    private static String sanitizeText(@NonNull String text) {
-        // Truncate to max length
-        String result = text.length() > AutocaptureDefaults.MAX_TEXT_LENGTH
-                ? text.substring(0, AutocaptureDefaults.MAX_TEXT_LENGTH)
-                : text;
-
-        // Redact credit card numbers
-        result = CREDIT_CARD_PATTERN.matcher(result).replaceAll(AutocaptureDefaults.REDACTED_PLACEHOLDER);
-
-        // Redact SSN patterns
-        result = SSN_PATTERN.matcher(result).replaceAll(AutocaptureDefaults.REDACTED_PLACEHOLDER);
-
-        return result;
     }
 
     /**

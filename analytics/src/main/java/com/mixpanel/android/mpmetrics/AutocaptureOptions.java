@@ -44,13 +44,10 @@ public class AutocaptureOptions {
     private final ClickOptions mClickOptions;
     private final RageClickOptions mRageClickOptions;
     private final DeadClickOptions mDeadClickOptions;
-    private final boolean mCaptureTextContent;
-
     private AutocaptureOptions(Builder builder) {
         this.mClickOptions = builder.mClickOptions;
         this.mRageClickOptions = builder.mRageClickOptions;
         this.mDeadClickOptions = builder.mDeadClickOptions;
-        this.mCaptureTextContent = builder.mCaptureTextContent;
     }
 
     /**
@@ -98,18 +95,6 @@ public class AutocaptureOptions {
     }
 
     /**
-     * Returns whether text content capture is enabled.
-     *
-     * <p>When {@code true}, the {@code $el_text} property will be included in autocapture events.
-     * Disabled by default to protect user privacy.
-     *
-     * @return {@code true} if text content capture is enabled, {@code false} otherwise.
-     */
-    public boolean isCaptureTextContent() {
-        return mCaptureTextContent;
-    }
-
-    /**
      * Builder for creating {@link AutocaptureOptions} instances.
      *
      * <p>When built, all event types are enabled by default with their respective default settings.
@@ -119,8 +104,6 @@ public class AutocaptureOptions {
         private ClickOptions mClickOptions = new ClickOptions.Builder().build();
         private RageClickOptions mRageClickOptions = new RageClickOptions.Builder().build();
         private DeadClickOptions mDeadClickOptions = new DeadClickOptions.Builder().build();
-        private boolean mCaptureTextContent = false;
-
         public Builder() {
         }
 
@@ -133,7 +116,6 @@ public class AutocaptureOptions {
             this.mClickOptions = source.mClickOptions;
             this.mRageClickOptions = source.mRageClickOptions;
             this.mDeadClickOptions = source.mDeadClickOptions;
-            this.mCaptureTextContent = source.mCaptureTextContent;
         }
 
         /**
@@ -166,18 +148,6 @@ public class AutocaptureOptions {
          */
         public Builder deadClickOptions(@NonNull DeadClickOptions deadClickOptions) {
             this.mDeadClickOptions = deadClickOptions;
-            return this;
-        }
-
-        /**
-         * Sets whether to capture the text content of clicked elements as the {@code $el_text}
-         * property. Disabled by default to protect user privacy.
-         *
-         * @param captureTextContent {@code true} to capture text content, {@code false} to skip it.
-         * @return This Builder instance for chaining.
-         */
-        public Builder captureTextContent(boolean captureTextContent) {
-            this.mCaptureTextContent = captureTextContent;
             return this;
         }
 

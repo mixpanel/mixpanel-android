@@ -192,7 +192,7 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                 OutlinedTextField(
                     value = passwordValue,
                     onValueChange = { passwordValue = it },
-                    label = { Text("Password - \$el_text absent") },
+                    label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -205,31 +205,6 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                         "Slider - no dead click (value: ${(sliderValue * 100).toInt()}%)",
                         style = MaterialTheme.typography.bodySmall
                     )
-                }
-            }
-
-            // Privacy
-            item { SectionHeader("Privacy - zero events captured") }
-
-            item {
-                Button(
-                    onClick = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "mp-sensitive" }
-                ) {
-                    Text("mp-sensitive (no events)")
-                }
-            }
-
-            item {
-                Button(
-                    onClick = { },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "mp-no-track" }
-                ) {
-                    Text("mp-no-track (no events)")
                 }
             }
 
