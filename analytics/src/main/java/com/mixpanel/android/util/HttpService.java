@@ -60,7 +60,7 @@ public class HttpService implements RemoteService {
         this.shouldGzipRequestPayload = shouldGzipRequestPayload;
         this.networkErrorListener = networkErrorListener;
         this.mBackupHost = backupHost;
-        this.mServerHost = TextUtils.isEmpty(serverHost) ? DEFAULT_SERVER_HOST : serverHost;
+        setServerHost(serverHost);
     }
 
     public HttpService(
@@ -74,6 +74,14 @@ public class HttpService implements RemoteService {
 
     public void setBackupHost(String backupHost) {
         this.mBackupHost = backupHost;
+    }
+
+    public void setServerHost(String serverHost) {
+        this.mServerHost = TextUtils.isEmpty(serverHost) ? DEFAULT_SERVER_HOST : serverHost;
+    }
+
+    public String getServerHost() {
+        return mServerHost;
     }
 
     public void setNetworkErrorListener(MixpanelNetworkErrorListener networkErrorListener) {
