@@ -97,16 +97,5 @@ private fun TestContent() {
                 .semantics { contentDescription = "compose_rage_zone" }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Sensitive button - privacy test
-        Button(
-            onClick = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "mp-sensitive" }
-        ) {
-            Text("Sensitive (mp-sensitive)")
-        }
     }
 }

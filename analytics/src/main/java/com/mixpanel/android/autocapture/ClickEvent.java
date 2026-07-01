@@ -33,10 +33,6 @@ final class ClickEvent {
     @Nullable
     public final String tagName;
 
-    /** Visible text content of the element (max 100 chars, sensitive data redacted). */
-    @Nullable
-    public final String text;
-
     /** Accessibility label (contentDescription). */
     @Nullable
     public final String ariaLabel;
@@ -73,7 +69,6 @@ final class ClickEvent {
             float y,
             @Nullable String elementId,
             @Nullable String tagName,
-            @Nullable String text,
             @Nullable String ariaLabel,
             @Nullable String role,
             @Nullable String elements,
@@ -84,7 +79,6 @@ final class ClickEvent {
         this.y = y;
         this.elementId = elementId;
         this.tagName = tagName;
-        this.text = text;
         this.ariaLabel = ariaLabel;
         this.role = role;
         this.elements = elements;
@@ -127,9 +121,6 @@ final class ClickEvent {
             if (tagName != null) {
                 props.put(AutocaptureDefaults.PROP_EL_TAG_NAME, tagName);
             }
-            if (text != null) {
-                props.put(AutocaptureDefaults.PROP_EL_TEXT, text);
-            }
             if (ariaLabel != null) {
                 props.put(AutocaptureDefaults.PROP_ARIA_LABEL, ariaLabel);
             }
@@ -153,7 +144,6 @@ final class ClickEvent {
         private float y;
         private String elementId;
         private String tagName;
-        private String text;
         private String ariaLabel;
         private String role;
         private String elements;
@@ -182,11 +172,6 @@ final class ClickEvent {
 
         Builder tagName(@Nullable String tagName) {
             this.tagName = tagName;
-            return this;
-        }
-
-        Builder text(@Nullable String text) {
-            this.text = text;
             return this;
         }
 
@@ -221,7 +206,7 @@ final class ClickEvent {
         }
 
         ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, text, ariaLabel, role, elements, timestamp, isInteractive, composeRoot);
+            return new ClickEvent(x, y, elementId, tagName, ariaLabel, role, elements, timestamp, isInteractive, composeRoot);
         }
     }
 }

@@ -8,12 +8,6 @@ package com.mixpanel.android.autocapture;
 final class AutocaptureDefaults {
 
     /**
-     * Maximum length for text content captured in {@code $el_text}.
-     * Text exceeding this length will be truncated.
-     */
-    static final int MAX_TEXT_LENGTH = 100;
-
-    /**
      * Maximum depth of the view hierarchy captured in {@code $elements}.
      * Limits the number of ancestor elements included in the hierarchy string.
      */
@@ -67,11 +61,6 @@ final class AutocaptureDefaults {
     static final String PROP_EL_TAG_NAME = "$el_tag_name";
 
     /**
-     * Property name for element text content.
-     */
-    static final String PROP_EL_TEXT = "$el_text";
-
-    /**
      * Property name for accessibility label (contentDescription).
      */
     static final String PROP_ARIA_LABEL = "$attr-aria-label";
@@ -90,16 +79,6 @@ final class AutocaptureDefaults {
      * Separator used in view hierarchy string.
      */
     static final String HIERARCHY_SEPARATOR = " > ";
-
-    /**
-     * Placeholder for redacted sensitive content.
-     */
-    static final String REDACTED_PLACEHOLDER = "[REDACTED]";
-
-    /**
-     * Tag value used to mark views as excluded from autocapture.
-     */
-    static final String NO_TRACK_TAG = "mp-no-track";
 
     private AutocaptureDefaults() {
         // Prevent instantiation

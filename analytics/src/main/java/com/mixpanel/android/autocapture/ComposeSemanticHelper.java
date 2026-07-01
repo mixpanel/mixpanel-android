@@ -38,8 +38,6 @@ final class ComposeSemanticHelper {
     enum ExtractionResult {
         /** No semantic node found at position - fallback may be appropriate */
         NOT_FOUND,
-        /** Element is sensitive - do NOT fall back, block all events */
-        SENSITIVE_BLOCKED,
         /** Extraction succeeded - builder is available */
         SUCCESS
     }
@@ -58,10 +56,6 @@ final class ComposeSemanticHelper {
             return new ExtractResult(ExtractionResult.NOT_FOUND, null);
         }
 
-        static ExtractResult blocked() {
-            return new ExtractResult(ExtractionResult.SENSITIVE_BLOCKED, null);
-        }
-
         static ExtractResult success(ClickEvent.Builder builder) {
             return new ExtractResult(ExtractionResult.SUCCESS, builder);
         }
@@ -72,12 +66,11 @@ final class ComposeSemanticHelper {
      *
      * @param view The view (must implement RootForTest)
      * @param x    Screen X coordinate
-     * @param y                  Screen Y coordinate
-     * @param captureTextContent Whether to capture the text content of the element as {@code $el_text}.
-     * @return ExtractResult indicating success, not found, or blocked
+     * @param y    Screen Y coordinate
+     * @return ExtractResult indicating success or not found
      */
     @NonNull
-    static ExtractResult extract(@NonNull View view, float x, float y, boolean captureTextContent) {
+    static ExtractResult extract(@NonNull View view, float x, float y) {
         MPLog.d(TAG, "extract() called - view: " + view.getClass().getSimpleName() +
                 ", isRootForTest: " + (view instanceof RootForTest) + ", x: " + x + ", y: " + y);
 
@@ -92,55 +85,18 @@ final class ComposeSemanticHelper {
         MPLog.d(TAG, "Root semantics node bounds: " + rootBounds.getLeft() + "," + rootBounds.getTop() +
                 " to " + rootBounds.getRight() + "," + rootBounds.getBottom());
 
-        // Find the node at the tap position, also collecting the path for sensitivity check
-        NodeSearchResult result = findNodeAtPositionWithPath(rootNode, x, y);
-        if (result == null || result.node == null) {
+        // Find the node at the tap position
+        SemanticsNode node = findNodeAtPosition(rootNode, x, y);
+        if (node == null) {
             MPLog.d(TAG, "No Compose semantics node at position (" + x + ", " + y + ")");
             return ExtractResult.notFound();
         }
 
-        MPLog.d(TAG, "Found node, path length: " + result.path.size());
-
-        // Check if any node in the path (including target) is sensitive
-        if (isAnySensitive(result.path)) {
-            MPLog.d(TAG, "Skipping autocapture for sensitive Compose element (ancestor check)");
-            return ExtractResult.blocked();
-        }
-
-        ClickEvent.Builder builder = extractFromNode(result.node, x, y, captureTextContent);
+        ClickEvent.Builder builder = extractFromNode(node, x, y);
         if (builder == null) {
             return ExtractResult.notFound();
         }
         return ExtractResult.success(builder);
-    }
-
-    /**
-     * Result of node search, including the path from root to target.
-     */
-    private static class NodeSearchResult {
-        final SemanticsNode node;
-        final List<SemanticsNode> path;
-
-        NodeSearchResult(SemanticsNode node, List<SemanticsNode> path) {
-            this.node = node;
-            this.path = path;
-        }
-    }
-
-    /**
-     * Checks if any node in the path has sensitive markers.
-     */
-    private static boolean isAnySensitive(@NonNull List<SemanticsNode> path) {
-        for (SemanticsNode node : path) {
-            SemanticsConfiguration config = node.getConfig();
-            String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
-            String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
-
-            if (isSensitive(contentDesc) || isSensitive(testTag)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -252,22 +208,17 @@ final class ComposeSemanticHelper {
     }
 
     /**
-     * Finds the best SemanticsNode at the given position, tracking the path from root.
+     * Finds the best SemanticsNode at the given position.
      * Prefers clickable nodes over non-interactive leaf nodes.
      */
     @Nullable
-    private static NodeSearchResult findNodeAtPositionWithPath(@NonNull SemanticsNode node, float x, float y) {
-        List<SemanticsNode> path = new java.util.ArrayList<>();
-        SemanticsNode result = findNodeAtPositionRecursive(node, x, y, path, 0);
-        if (result == null) {
-            return null;
-        }
-        return new NodeSearchResult(result, path);
+    private static SemanticsNode findNodeAtPosition(@NonNull SemanticsNode node, float x, float y) {
+        return findNodeAtPositionRecursive(node, x, y, 0);
     }
 
     @Nullable
     private static SemanticsNode findNodeAtPositionRecursive(
-            @NonNull SemanticsNode node, float x, float y, @NonNull List<SemanticsNode> path, int depth) {
+            @NonNull SemanticsNode node, float x, float y, int depth) {
         if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
             return null;
         }
@@ -280,41 +231,30 @@ final class ComposeSemanticHelper {
             return null;
         }
 
-        // Add current node to path
-        path.add(node);
-
         // Check children (iterate in reverse for top-most first)
         List<SemanticsNode> children = node.getChildren();
         SemanticsNode bestMatch = null;
-        List<SemanticsNode> bestPath = null;
 
         for (int i = children.size() - 1; i >= 0; i--) {
             SemanticsNode child = children.get(i);
-            List<SemanticsNode> childPath = new java.util.ArrayList<>(path);
-            SemanticsNode childMatch = findNodeAtPositionRecursive(child, x, y, childPath, depth + 1);
+            SemanticsNode childMatch = findNodeAtPositionRecursive(child, x, y, depth + 1);
             if (childMatch != null) {
                 // Prefer clickable nodes
                 if (isClickable(childMatch)) {
-                    path.clear();
-                    path.addAll(childPath);
                     return childMatch;
                 }
                 if (bestMatch == null) {
                     bestMatch = childMatch;
-                    bestPath = childPath;
                 }
             }
         }
 
         // If we found a non-clickable child but current node is clickable, prefer current
         if (bestMatch != null && !isClickable(bestMatch) && isClickable(node)) {
-            // Keep current path (don't update with child path)
             return node;
         }
 
-        if (bestMatch != null && bestPath != null) {
-            path.clear();
-            path.addAll(bestPath);
+        if (bestMatch != null) {
             return bestMatch;
         }
 
@@ -331,10 +271,9 @@ final class ComposeSemanticHelper {
 
     /**
      * Extracts semantic information from a SemanticsNode.
-     * Note: Sensitive check is done in extract() by checking the entire path.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y, boolean captureTextContent) {
+    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y) {
         SemanticsConfiguration config = node.getConfig();
 
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
@@ -366,19 +305,9 @@ final class ComposeSemanticHelper {
 
         builder.elementId(elementId);
 
-        String text = getTextProperty(config);
-
         // Tag name from role
         String tagName = getTagName(config);
         builder.tagName(tagName);
-
-        // Text content (only when captureTextContent is enabled, and not editable)
-        if (captureTextContent && text != null && !text.isEmpty() && !isEditable(config)) {
-            String sanitizedText = text.length() > AutocaptureDefaults.MAX_TEXT_LENGTH
-                    ? text.substring(0, AutocaptureDefaults.MAX_TEXT_LENGTH)
-                    : text;
-            builder.text(sanitizedText);
-        }
 
         // Role
         String role = getRoleString(config);
@@ -391,11 +320,6 @@ final class ComposeSemanticHelper {
                 ", tag: " + tagName + ", role: " + role);
 
         return builder;
-    }
-
-    private static boolean isSensitive(@Nullable String value) {
-        if (value == null) return false;
-        return value.contains(AutocaptureDefaults.NO_TRACK_TAG);
     }
 
     /**

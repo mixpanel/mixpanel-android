@@ -180,7 +180,7 @@ public final class AutocaptureManager implements
 
     private void processTouchEvent(float x, float y, @NonNull View decorView) {
         // Extract semantics from the touched view
-        ClickEvent.Builder builder = SemanticExtractor.extract(decorView, x, y, mOptions.isCaptureTextContent());
+        ClickEvent.Builder builder = SemanticExtractor.extract(decorView, x, y);
         if (builder == null) {
             // No view found at position
             return;

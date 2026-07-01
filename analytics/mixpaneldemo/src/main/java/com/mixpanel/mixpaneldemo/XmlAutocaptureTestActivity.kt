@@ -85,16 +85,5 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
     }
 
     private fun setupPrivacyTests() {
-        // mp-sensitive via contentDescription (set in XML)
-        findViewById<Button>(R.id.sensitive_btn).setOnClickListener {
-            // Should NOT emit any events due to mp-sensitive
-        }
-
-        // mp-no-track via tag
-        val noTrackBtn = findViewById<Button>(R.id.no_track_btn)
-        noTrackBtn.tag = "mp-no-track"
-        noTrackBtn.setOnClickListener {
-            // Should NOT emit any events due to mp-no-track tag
-        }
     }
 }

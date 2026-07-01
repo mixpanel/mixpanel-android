@@ -196,7 +196,7 @@
             android:id="@+id/test_password"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Password - $el_text absent"
+            android:hint="Password"
             android:inputType="textPassword"
             android:layout_marginTop="8dp" />
 
@@ -212,36 +212,6 @@
             android:text="SeekBar - no dead click"
             android:textSize="12sp"
             android:gravity="center" />
-
-        <!-- Privacy -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="PRIVACY - ZERO EVENTS"
-            android:textStyle="bold"
-            android:textColor="@android:color/holo_blue_dark"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="4dp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@android:color/darker_gray"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/sensitive_btn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="mp-sensitive (contentDescription)"
-            android:contentDescription="mp-sensitive" />
-
-        <Button
-            android:id="@+id/no_track_btn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="mp-no-track (tag)"
-            android:layout_marginTop="8dp" />
 
         <View
             android:layout_width="match_parent"
