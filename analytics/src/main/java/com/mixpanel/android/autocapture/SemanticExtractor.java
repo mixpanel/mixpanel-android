@@ -467,6 +467,15 @@ final class SemanticExtractor {
      */
     @Nullable
     private static View findViewAtPosition(@NonNull View view, int x, int y) {
+        return findViewAtPosition(view, x, y, 0);
+    }
+
+    @Nullable
+    private static View findViewAtPosition(@NonNull View view, int x, int y, int depth) {
+        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+            return null;
+        }
+
         if (!isViewVisible(view)) {
             return null;
         }
@@ -487,7 +496,7 @@ final class SemanticExtractor {
             ViewGroup group = (ViewGroup) view;
             for (int i = group.getChildCount() - 1; i >= 0; i--) {
                 View child = group.getChildAt(i);
-                View result = findViewAtPosition(child, x, y);
+                View result = findViewAtPosition(child, x, y, depth + 1);
                 if (result != null) {
                     return result;
                 }

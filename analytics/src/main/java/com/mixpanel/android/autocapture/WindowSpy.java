@@ -1,6 +1,5 @@
 package com.mixpanel.android.autocapture;
 
-import android.os.Build;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -64,13 +63,6 @@ final class WindowSpy {
 
         synchronized (sLock) {
             if (sInstalled) {
-                return;
-            }
-
-            // Requires API 19+ for WindowManagerGlobal
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                MPLog.d(TAG, "WindowSpy not supported below API 19");
-                sInstalled = true; // Mark as installed to avoid retries
                 return;
             }
 

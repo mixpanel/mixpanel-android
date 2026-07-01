@@ -273,7 +273,11 @@ public class MixpanelOptions {
          * @return This Builder instance for chaining.
          * @see AutocaptureOptions
          */
-        public Builder autocaptureOptions(AutocaptureOptions autocaptureOptions) {
+        public Builder autocaptureOptions(@NonNull AutocaptureOptions autocaptureOptions) {
+            if (autocaptureOptions == null) {
+                MPLog.w(LOGTAG, "autocaptureOptions must not be null, ignoring");
+                return this;
+            }
             this.mAutocaptureOptions = autocaptureOptions;
             return this;
         }
