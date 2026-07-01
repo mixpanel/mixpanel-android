@@ -249,15 +249,33 @@ Dead click detection monitors interactive elements for UI response:
 
 ### Excluded Controls
 
-These controls are excluded from dead click detection because they have inherent feedback not detected by UI snapshots:
+These controls are excluded from dead click detection because they always produce a visual response when tapped (inherent feedback). They still emit `$mp_click` events.
 
-- `Switch` / `CompoundButton` - Toggles own state
-- `EditText` - Keyboard appears (separate window)
+**Android (XML Views):**
+- `EditText` - Keyboard appears
+- `Switch` / `CompoundButton` / `Checkbox` / `RadioButton` / `ToggleButton` - Toggles own state
 - `SeekBar` - Thumb moves
-- `Checkbox` / `RadioButton` - Toggles own state
-- `ToggleButton` - Toggles own state
+- `Spinner` - Dropdown opens
+- `DatePicker` / `NumberPicker` - Picker UI appears
 
-These controls still emit `$mp_click` events.
+**Android (Compose):**
+- `TextField` / `BasicTextField` - Keyboard appears
+- `Switch` / `Checkbox` / `RadioButton` - Toggles own state
+- `Slider` - Thumb moves
+
+**iOS (UIKit):**
+- `UITextField` / `UITextView` - Keyboard appears
+- `UISwitch` - Toggles own state
+- `UISlider` - Thumb moves
+- `UIStepper` - Value changes
+- `UISegmentedControl` - Selection changes
+- `UIDatePicker` / `UIPickerView` - Picker UI appears
+
+**iOS (SwiftUI):**
+- `TextField` / `TextEditor` / `SecureField` - Keyboard appears
+- `Toggle` - Toggles own state
+- `Slider` / `Stepper` - Value changes
+- `Picker` / `DatePicker` - Picker UI appears
 
 ### What Counts as UI Change
 
@@ -266,7 +284,7 @@ These controls still emit `$mp_click` events.
 - Window count change (alerts, dialogs, bottom sheets)
 - Navigation events (Activity changes)
 
-**Note:** Keyboard appearance does not count as a UI change for the tapped element.
+**Note:** Text input controls (`EditText`, `UITextField`, `TextField`, etc.) are fully excluded from dead click monitoring, so the keyboard appearing after a tap does not produce a false `$mp_dead_click`.
 
 ## Multi-Window Support
 

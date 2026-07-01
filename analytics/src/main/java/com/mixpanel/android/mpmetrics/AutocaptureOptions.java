@@ -104,6 +104,14 @@ public class AutocaptureOptions {
         private ClickOptions mClickOptions = new ClickOptions.Builder().build();
         private RageClickOptions mRageClickOptions = new RageClickOptions.Builder().build();
         private DeadClickOptions mDeadClickOptions = new DeadClickOptions.Builder().build();
+
+        /**
+         * Creates a Builder with all event types enabled by default.
+         *
+         * <p>{@code new AutocaptureOptions.Builder().build()} enables click, rage click,
+         * and dead click tracking with default settings. Use the individual setters
+         * only to customize or disable specific event types.
+         */
         public Builder() {
         }
 
