@@ -660,8 +660,52 @@ public class FeatureFlagManagerTest {
     assertNotNull(resultRef.get());
     assertEquals(fallback.key, resultRef.get().key);
     assertEquals(fallback.value, resultRef.get().value);
+    // SDK-79: async fetch-fail with no cached/persisted data → BACKEND_ERROR,
+    // distinguishing "the backend gave us nothing" from "we haven't tried yet."
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(
+            MixpanelFlagVariant.Source.Fallback.Reason.BACKEND_ERROR),
+        resultRef.get().source);
     assertFalse(mFeatureFlagManager.areFlagsReady());
     assertEquals(0, mMockDelegate.trackCalls.size()); // No tracking on fallback
+  }
+
+  @Test
+  public void testGetVariant_Async_flagsReady_flagMissing_returnsFallbackWithFlagNotFound()
+      throws InterruptedException {
+    // Prime a successful fetch so mFlags is populated but doesn't contain the key we'll ask for.
+    setupFlagsConfig(true, new JSONObject());
+    Map<String, MixpanelFlagVariant> serverFlags = new HashMap<>();
+    serverFlags.put("some_other_flag", new MixpanelFlagVariant("v", "val"));
+    mMockRemoteService.addResponse(
+        createFlagsResponseJson(serverFlags).getBytes(StandardCharsets.UTF_8));
+    mFeatureFlagManager.loadFlags();
+    for (int i = 0; i < 20 && !mFeatureFlagManager.areFlagsReady(); ++i) Thread.sleep(100);
+    assertTrue(mFeatureFlagManager.areFlagsReady());
+
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<MixpanelFlagVariant> resultRef = new AtomicReference<>();
+    MixpanelFlagVariant fallback = new MixpanelFlagVariant("fb_key_async", "fb_val_async");
+
+    mFeatureFlagManager.getVariant(
+        "not_in_the_response",
+        fallback,
+        result -> {
+          resultRef.set(result);
+          latch.countDown();
+        });
+
+    assertTrue(
+        "Callback should complete within timeout",
+        latch.await(ASYNC_TEST_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    assertNotNull(resultRef.get());
+    assertEquals(fallback.key, resultRef.get().key);
+    assertEquals(fallback.value, resultRef.get().value);
+    // Flags loaded, key just isn't there — FLAG_NOT_FOUND, not NOT_READY or BACKEND_ERROR.
+    assertEquals(
+        MixpanelFlagVariant.Source.fallback(
+            MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND),
+        resultRef.get().source);
   }
 
   @Test

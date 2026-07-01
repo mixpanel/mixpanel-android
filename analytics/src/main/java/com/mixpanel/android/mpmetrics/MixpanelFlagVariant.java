@@ -25,7 +25,8 @@ public class MixpanelFlagVariant {
      * keyword) so that variant-specific data — namely the {@code persistedAtMillis}
      * timestamp on {@link Persistence} — is bundled with the variant rather than
      * floating as a separate nullable field on {@link MixpanelFlagVariant}.
-     * Construct via {@link #network()} / {@link #persistence(long)} / {@link #fallback()}.
+     * Construct via {@link #network()} / {@link #persistence(long)} /
+     * {@link #fallback(Fallback.Reason)}.
      */
     public abstract static class Source {
         Source() {}
@@ -47,10 +48,15 @@ public class MixpanelFlagVariant {
             return new Persistence(persistedAtMillis);
         }
 
-        /** Singleton {@link Fallback} instance — every call returns the same one. */
+        /**
+         * Returns a {@link Fallback} source tagged with the given reason.
+         * The SDK uses this to explain why a fallback was returned (flag missing
+         * from the cache, evaluation error, etc.) so callers — especially the
+         * OpenFeature wrapper — can map to the right user-facing error code.
+         */
         @NonNull
-        public static Fallback fallback() {
-            return Fallback.INSTANCE;
+        public static Fallback fallback(@NonNull Fallback.Reason reason) {
+            return new Fallback(reason);
         }
 
         /** Variant assigned by the most recent successful /flags/ network call. */
@@ -60,6 +66,8 @@ public class MixpanelFlagVariant {
             static final Network INSTANCE = new Network();
 
             Network() {}
+
+            @Override public String toString() { return "Network"; }
         }
 
         /** Variant loaded from the on-disk persistence layer. */
@@ -70,19 +78,75 @@ public class MixpanelFlagVariant {
             Persistence(long persistedAtMillis) {
                 this.persistedAtMillis = persistedAtMillis;
             }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Persistence)) return false;
+                return persistedAtMillis == ((Persistence) o).persistedAtMillis;
+            }
+
+            @Override
+            public int hashCode() {
+                return (int) (persistedAtMillis ^ (persistedAtMillis >>> 32));
+            }
+
+            @Override public String toString() { return "Persistence(persistedAtMillis=" + persistedAtMillis + ")"; }
         }
 
         /**
          * Developer-supplied fallback returned by the SDK because no flag was found, the
          * lookup happened before flags were ready, or a fetch failed without a usable
          * persisted blob to fall back to.
+         *
+         * <p>Carries a {@link Reason} so callers can tell <em>why</em> the SDK fell back —
+         * previously a Fallback meant only "not a real variant," which collapsed several
+         * distinct outcomes into one (SDK-79).
          */
         public static final class Fallback extends Source {
-            // Held inside the subclass so the outer class's <clinit> does not reference it,
-            // sidestepping the "subclass referenced from superclass initializer" deadlock pattern.
-            static final Fallback INSTANCE = new Fallback();
+            /**
+             * Why the SDK returned the developer fallback.
+             *
+             * <p>Network/cache SDKs (like Android) cannot distinguish "flag does not exist"
+             * from "user is not in any rollout" without server-side cooperation — both
+             * surface as {@link #FLAG_NOT_FOUND} for now. Future server changes can add
+             * a more specific reason without breaking callers that already handle this enum.
+             */
+            public enum Reason {
+                /** Flag key was not present in the cache or network response. */
+                FLAG_NOT_FOUND,
+                /** Flags were not ready when the sync lookup happened. */
+                NOT_READY,
+                /**
+                 * Network fetch failed and no cached/persisted variant was available.
+                 * Only surfaced on the async {@link MixpanelAPI.Flags#getVariant} path —
+                 * {@link MixpanelAPI.Flags#getVariantSync} cannot distinguish
+                 * "network error" from "flags never loaded."
+                 */
+                BACKEND_ERROR,
+            }
 
-            Fallback() {}
+            /** Reason the SDK returned this fallback. */
+            @NonNull
+            public final Reason reason;
+
+            Fallback(@NonNull Reason reason) {
+                this.reason = reason;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof Fallback)) return false;
+                return reason == ((Fallback) o).reason;
+            }
+
+            @Override
+            public int hashCode() {
+                return reason.hashCode();
+            }
+
+            @Override public String toString() { return "Fallback(" + reason + ")"; }
         }
     }
 
@@ -147,7 +211,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -166,7 +230,7 @@ public class MixpanelFlagVariant {
         this.experimentID = experimentID;
         this.isExperimentActive = isExperimentActive;
         this.isQATester = isQATester;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -191,9 +255,13 @@ public class MixpanelFlagVariant {
     /**
      * Returns a copy of this variant stamped with the given source metadata.
      * Other fields (key, value, experiment fields) are preserved by reference.
+     *
+     * <p>Public so callers (and tests in adjacent packages) can construct
+     * variants with explicit source metadata — the SDK uses this internally
+     * to stamp the reason a developer-supplied fallback was returned.
      */
     @NonNull
-    MixpanelFlagVariant withSource(@NonNull Source source) {
+    public MixpanelFlagVariant withSource(@NonNull Source source) {
         return new MixpanelFlagVariant(
                 this.key,
                 this.value,
@@ -217,7 +285,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -235,7 +303,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -249,6 +317,6 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 }
