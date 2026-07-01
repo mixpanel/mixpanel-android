@@ -48,16 +48,6 @@ public class MixpanelFlagVariant {
         }
 
         /**
-         * Singleton {@link Fallback} instance with {@link Fallback.Reason#UNSPECIFIED}.
-         * Used when constructing developer-supplied fallbacks; the SDK stamps a
-         * specific reason before returning.
-         */
-        @NonNull
-        public static Fallback fallback() {
-            return Fallback.INSTANCE;
-        }
-
-        /**
          * Returns a {@link Fallback} source tagged with the given reason.
          * The SDK uses this to explain why a fallback was returned (flag missing
          * from the cache, evaluation error, etc.) so callers — especially the
@@ -122,29 +112,15 @@ public class MixpanelFlagVariant {
              * a more specific reason without breaking callers that already handle this enum.
              */
             public enum Reason {
-                /**
-                 * Developer-constructed default. The SDK stamps a more specific reason
-                 * before returning, so callers should rarely observe this value.
-                 */
-                UNSPECIFIED,
                 /** Flag key was not present in the cache or network response. */
                 FLAG_NOT_FOUND,
                 /** Flags were not ready when the sync lookup happened. */
                 NOT_READY,
             }
 
-            /** Singleton for the unspecified case (developer construction). */
-            // Held inside the subclass so the outer class's <clinit> does not reference it,
-            // sidestepping the "subclass referenced from superclass initializer" deadlock pattern.
-            static final Fallback INSTANCE = new Fallback(Reason.UNSPECIFIED);
-
             /** Reason the SDK returned this fallback. */
             @NonNull
             public final Reason reason;
-
-            Fallback() {
-                this(Reason.UNSPECIFIED);
-            }
 
             Fallback(@NonNull Reason reason) {
                 this.reason = reason;
@@ -227,7 +203,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -246,7 +222,7 @@ public class MixpanelFlagVariant {
         this.experimentID = experimentID;
         this.isExperimentActive = isExperimentActive;
         this.isQATester = isQATester;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -301,7 +277,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -319,7 +295,7 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 
     /**
@@ -333,6 +309,6 @@ public class MixpanelFlagVariant {
         this.experimentID = null;
         this.isExperimentActive = null;
         this.isQATester = null;
-        this.source = Source.fallback();
+        this.source = Source.fallback(Source.Fallback.Reason.FLAG_NOT_FOUND);
     }
 }
