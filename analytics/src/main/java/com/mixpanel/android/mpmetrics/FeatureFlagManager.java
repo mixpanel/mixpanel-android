@@ -483,7 +483,15 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
             MixpanelFlagVariant flagVariant = mFlags.get(flagName);
             final MixpanelFlagVariant variantForLambda = flagVariant;
             boolean needsTracking = (variantForLambda != null) && checkAndSetTrackedFlag(flagName);
-            MixpanelFlagVariant result = (variantForLambda != null) ? variantForLambda : fallback;
+            // Flags loaded (not network-first-awaiting, not stale) but this key isn't in
+            // mFlags — stamp .FLAG_NOT_FOUND so the OpenFeature wrapper can map to
+            // FLAG_NOT_FOUND. Same treatment getVariantSync applies on its miss path.
+            MixpanelFlagVariant result =
+                (variantForLambda != null)
+                    ? variantForLambda
+                    : fallback.withSource(
+                        MixpanelFlagVariant.Source.fallback(
+                            MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND));
 
             new Handler(Looper.getMainLooper())
                 .post(
@@ -535,8 +543,18 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
                 final MixpanelFlagVariant variantForLambda = fetchedVariant;
                 boolean tracked =
                     (variantForLambda != null) && checkAndSetTrackedFlag(flagName);
+                // No served variant. Distinguish "fetch failed AND we have no cached/persisted
+                // flags" (BACKEND_ERROR) from "key just isn't in the loaded set" (FLAG_NOT_FOUND).
+                // The former lets the OpenFeature wrapper map to GENERAL_ERROR instead of
+                // FLAG_NOT_FOUND.
+                final MixpanelFlagVariant.Source.Fallback.Reason fallbackReason =
+                    (!success && mFlags == null)
+                        ? MixpanelFlagVariant.Source.Fallback.Reason.BACKEND_ERROR
+                        : MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND;
                 MixpanelFlagVariant finalResult =
-                    (variantForLambda != null) ? variantForLambda : fallback;
+                    (variantForLambda != null)
+                        ? variantForLambda
+                        : fallback.withSource(MixpanelFlagVariant.Source.fallback(fallbackReason));
 
                 new Handler(Looper.getMainLooper())
                     .post(

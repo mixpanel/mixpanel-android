@@ -25,7 +25,8 @@ public class MixpanelFlagVariant {
      * keyword) so that variant-specific data — namely the {@code persistedAtMillis}
      * timestamp on {@link Persistence} — is bundled with the variant rather than
      * floating as a separate nullable field on {@link MixpanelFlagVariant}.
-     * Construct via {@link #network()} / {@link #persistence(long)} / {@link #fallback()}.
+     * Construct via {@link #network()} / {@link #persistence(long)} /
+     * {@link #fallback(Fallback.Reason)}.
      */
     public abstract static class Source {
         Source() {}
@@ -116,6 +117,13 @@ public class MixpanelFlagVariant {
                 FLAG_NOT_FOUND,
                 /** Flags were not ready when the sync lookup happened. */
                 NOT_READY,
+                /**
+                 * Network fetch failed and no cached/persisted variant was available.
+                 * Only surfaced on the async {@link MixpanelAPI.Flags#getVariant} path —
+                 * {@link MixpanelAPI.Flags#getVariantSync} cannot distinguish
+                 * "network error" from "flags never loaded."
+                 */
+                BACKEND_ERROR,
             }
 
             /** Reason the SDK returned this fallback. */
