@@ -1,1 +1,4 @@
 -dontwarn com.mixpanel.**
+
+# Autocapture WindowSpy reflection
+-keep class android.view.WindowManagerGlobal { *; }

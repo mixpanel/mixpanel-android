@@ -4,5 +4,11 @@
         <activity
             android:name="com.mixpanel.android.mpmetrics.TestActivity"
             android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.XmlAutocaptureTestActivity"
+            android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.ComposeAutocaptureTestActivity"
+            android:exported="false" />
     </application>
 </manifest>
