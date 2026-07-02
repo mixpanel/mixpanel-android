@@ -14,10 +14,12 @@ final class AutocaptureDefaults {
     static final int MAX_HIERARCHY_DEPTH = 5;
 
     /**
-     * Maximum number of accessibility nodes to probe when searching for an element.
-     * Prevents excessive traversal in complex UI hierarchies.
+     * Maximum number of accessibility nodes to visit during hit-test traversal.
+     * Limits total work per tap on complex screens (e.g., large RecyclerViews,
+     * dashboards with many cards). When exceeded, the traversal returns the best
+     * match found so far rather than continuing to search.
      */
-    static final int MAX_ACCESSIBILITY_NODES = 500;
+    static final int MAX_ACCESSIBILITY_NODES = 200;
 
     /**
      * Maximum recursion depth for tree traversal operations.

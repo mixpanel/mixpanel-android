@@ -173,7 +173,8 @@ final class SemanticExtractor {
                 return null;
             }
 
-            AccessibilityNodeInfo targetNode = findNodeAtPosition(rootNode, (int) x, (int) y, 0);
+            AccessibilityNodeInfo targetNode = findNodeAtPosition(
+                    rootNode, (int) x, (int) y, 0, new int[]{0});
             if (targetNode != null) {
                 // Log what we found for debugging
                 CharSequence className = targetNode.getClassName();
@@ -207,12 +208,31 @@ final class SemanticExtractor {
     /**
      * Recursively finds the best AccessibilityNodeInfo at the given position.
      * Prefers clickable/interactive nodes over non-interactive leaf nodes.
+     *
+     * @param nodeCount Mutable counter tracking total nodes visited across the
+     *                  entire traversal. When {@code nodeCount[0]} exceeds
+     *                  {@link AutocaptureDefaults#MAX_ACCESSIBILITY_NODES}, the
+     *                  traversal stops early and returns the best match found so far.
      */
     @Nullable
     private static AccessibilityNodeInfo findNodeAtPosition(
-            @NonNull AccessibilityNodeInfo node, int x, int y, int depth) {
+            @NonNull AccessibilityNodeInfo node, int x, int y, int depth,
+            @NonNull int[] nodeCount) {
 
-        if (depth > AutocaptureDefaults.MAX_ACCESSIBILITY_NODES) {
+        if (depth > AutocaptureDefaults.MAX_RECURSION_DEPTH) {
+            return null;
+        }
+
+        nodeCount[0]++;
+        if (nodeCount[0] > AutocaptureDefaults.MAX_ACCESSIBILITY_NODES) {
+            if (nodeCount[0] == AutocaptureDefaults.MAX_ACCESSIBILITY_NODES + 1) {
+                MPLog.w(TAG, "Accessibility node limit ("
+                        + AutocaptureDefaults.MAX_ACCESSIBILITY_NODES
+                        + ") reached during hit-test. This screen has a very complex view "
+                        + "hierarchy (e.g., large list, dense dashboard). Autocapture will "
+                        + "use the best match found so far. This limit prevents excessive "
+                        + "main-thread work per tap.");
+            }
             return null;
         }
 
@@ -231,7 +251,8 @@ final class SemanticExtractor {
             try {
                 child = node.getChild(i);
                 if (child != null) {
-                    AccessibilityNodeInfo result = findNodeAtPosition(child, x, y, depth + 1);
+                    AccessibilityNodeInfo result = findNodeAtPosition(
+                            child, x, y, depth + 1, nodeCount);
                     if (result != null) {
                         child.recycle();
                         child = null;
