@@ -156,6 +156,9 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
     implementation 'io.github.jamsesso:json-logic-java:1.1.0'
+    // Curtains: root view (window) observation for autocapture dialog/popup tracking.
+    // Compatible with other Curtains consumers (e.g., Session Replay SDK).
+    implementation 'com.squareup.curtains:curtains:1.2.5'
     // json-logic-java pulls in an outdated json with cve
     implementation 'com.google.code.gson:gson:2.13.2'
     // Compose UI for autocapture semantics extraction (optional - graceful degradation if not present)
