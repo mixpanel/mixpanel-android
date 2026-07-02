@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
  * Compose test activity for autocapture instrumentation tests.
  * All composables are created programmatically with explicit semantics.
  */
-class ComposeAutocaptureTestActivity : ComponentActivity() {
+class AutocaptureComposeTestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class XmlAutocaptureInstrumentedTest {
+public class AutocaptureXmlInstrumentedTest {
 
     private static final String TEST_TOKEN = "AUTOCAPTURE_TEST_TOKEN";
 
@@ -151,14 +151,14 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testXmlClickEventBasic() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             // Wait for autocapture to attach to window
             Thread.sleep(500);
 
             // Click the rule1_btn button
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
 
             // Poll for the event with 10-second timeout
             JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
@@ -187,15 +187,15 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testRageClickDetection() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Get rage zone coordinates for rapid touch injection
             final int[] location = new int[2];
             scenario.onActivity(activity -> {
-                View rageZone = activity.findViewById(XmlAutocaptureTestActivity.ID_RAGE_ZONE);
+                View rageZone = activity.findViewById(AutocaptureXmlTestActivity.ID_RAGE_ZONE);
                 rageZone.getLocationOnScreen(location);
                 location[0] += rageZone.getWidth() / 2;
                 location[1] += rageZone.getHeight() / 2;
@@ -248,13 +248,13 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testDeadClickDetection() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Click the dead button (has NO click listener)
-            onView(withId(XmlAutocaptureTestActivity.ID_DEAD_XML_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_DEAD_XML_BTN)).perform(click());
 
             // First, collect the $mp_click event
             JSONObject clickEvent = mEvents.poll(2, TimeUnit.SECONDS);
@@ -277,13 +277,13 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testElementIdResolutionRule2() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Click button with resource ID only (no contentDescription)
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE2_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE2_BTN)).perform(click());
 
             JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
             assertNotNull("Event should be captured", event);
@@ -297,19 +297,19 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testMultipleClicksGenerateMultipleEvents() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Click 3 different buttons with spacing to avoid rage click
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
             Thread.sleep(200);
 
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE2_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE2_BTN)).perform(click());
             Thread.sleep(200);
 
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE3_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE3_BTN)).perform(click());
             Thread.sleep(200);
 
             // Collect all events and filter for $mp_click only
@@ -329,13 +329,13 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testClickEventHasTokenProperty() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Click a button
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
 
             // Poll for the event
             JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
@@ -430,12 +430,12 @@ public class XmlAutocaptureInstrumentedTest {
             }
         };
 
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
 
             JSONObject event = events.poll(10, TimeUnit.SECONDS);
             assertNotNull(
@@ -450,14 +450,14 @@ public class XmlAutocaptureInstrumentedTest {
 
     @Test
     public void testElementIdResolutionRule3HashFallback() throws Exception {
-        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
-                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             Thread.sleep(500);
 
             // Click button with no contentDescription and invalid resource ID (10003)
             // This forces resolveElementId to fall through Rule 1 and Rule 2 to the hash fallback
-            onView(withId(XmlAutocaptureTestActivity.ID_RULE3_BTN)).perform(click());
+            onView(withId(AutocaptureXmlTestActivity.ID_RULE3_BTN)).perform(click());
 
             JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
             assertNotNull("Event should be captured", event);

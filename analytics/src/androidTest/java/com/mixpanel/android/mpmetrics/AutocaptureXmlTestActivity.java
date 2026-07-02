@@ -12,7 +12,7 @@ import android.widget.ScrollView;
  * Test activity for autocapture instrumentation tests.
  * UI is created programmatically to avoid R class issues in library modules.
  */
-public class XmlAutocaptureTestActivity extends Activity {
+public class AutocaptureXmlTestActivity extends Activity {
 
     public static final int ID_RULE1_BTN = 10001;
     public static final int ID_RULE2_BTN = android.R.id.button1;

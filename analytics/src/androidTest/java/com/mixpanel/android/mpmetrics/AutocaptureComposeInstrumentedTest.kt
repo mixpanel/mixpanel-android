@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
  */
 @RunWith(AndroidJUnit4::class)
 @LargeTest
-class ComposeAutocaptureInstrumentedTest {
+class AutocaptureComposeInstrumentedTest {
 
     companion object {
         private const val TEST_TOKEN = "COMPOSE_AUTOCAPTURE_TEST_TOKEN"
@@ -211,7 +211,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeClickEventBasic() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
@@ -235,7 +235,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeElementIdFromTestTag() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
@@ -256,7 +256,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeElementIdHashFallback() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
@@ -278,7 +278,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeRageClickDetection() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             rapidTapNode(
@@ -303,7 +303,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeDeadClickDetection() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
@@ -326,7 +326,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeMultipleClicksGenerateMultipleEvents() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
@@ -363,7 +363,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     @Test
     fun testComposeClickEventHasTokenProperty() {
-        ActivityScenario.launch(ComposeAutocaptureTestActivity::class.java).use { scenario ->
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
             Thread.sleep(1000)
 
             tapNode(
