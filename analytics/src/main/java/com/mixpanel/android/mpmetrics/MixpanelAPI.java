@@ -2199,9 +2199,9 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     mContext,
                     options,
                     (eventName, properties) -> {
-                        // Use track() to emit autocapture events
-                        // These are internal events so we use the internal tracking method
-                        track(eventName, properties, true);
+                        // Autocapture events are NOT automatic events ($ae_ prefixed).
+                        // Pass false so they are not gated by trackAutomaticEvents flag.
+                        track(eventName, properties, false);
                     }
             );
             mAutocaptureManager.start();
