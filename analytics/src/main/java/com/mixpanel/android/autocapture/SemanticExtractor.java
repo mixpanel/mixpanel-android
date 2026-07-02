@@ -1,7 +1,6 @@
 package com.mixpanel.android.autocapture;
 
 import android.graphics.Rect;
-import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -155,10 +154,6 @@ final class SemanticExtractor {
      */
     @Nullable
     private static ClickEvent.Builder extractFromAccessibility(@NonNull View viewWithProvider, float x, float y) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-            return null;
-        }
-
         AccessibilityNodeProvider provider = viewWithProvider.getAccessibilityNodeProvider();
         if (provider == null) {
             return null;
@@ -180,10 +175,7 @@ final class SemanticExtractor {
                 CharSequence className = targetNode.getClassName();
                 CharSequence contentDesc = targetNode.getContentDescription();
                 CharSequence text = targetNode.getText();
-                String viewId = null;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                    viewId = targetNode.getViewIdResourceName();
-                }
+                String viewId = targetNode.getViewIdResourceName();
                 MPLog.d(TAG, "Found accessibility node - class: " + className +
                         ", contentDesc: " + contentDesc +
                         ", text: " + text +
@@ -311,13 +303,11 @@ final class SemanticExtractor {
         String elementId = null;
 
         // Try viewIdResourceName first (Compose testTag)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            String viewId = node.getViewIdResourceName();
-            if (viewId != null && !viewId.isEmpty()) {
-                // viewIdResourceName format: "package:id/name" - extract just the name
-                int slashIndex = viewId.lastIndexOf('/');
-                elementId = slashIndex >= 0 ? viewId.substring(slashIndex + 1) : viewId;
-            }
+        String viewId = node.getViewIdResourceName();
+        if (viewId != null && !viewId.isEmpty()) {
+            // viewIdResourceName format: "package:id/name" - extract just the name
+            int slashIndex = viewId.lastIndexOf('/');
+            elementId = slashIndex >= 0 ? viewId.substring(slashIndex + 1) : viewId;
         }
 
         // Try contentDescription
