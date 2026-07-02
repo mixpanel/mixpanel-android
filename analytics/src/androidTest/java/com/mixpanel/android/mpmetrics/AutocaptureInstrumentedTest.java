@@ -97,8 +97,7 @@ public class AutocaptureInstrumentedTest {
                 .autocaptureOptions(autocaptureOptions)
                 .build();
 
-        // Create MixpanelAPI directly with trackAutomaticEvents=true
-        // (autocapture events use the isAutomaticEvent=true flag in track())
+        // Create MixpanelAPI with trackAutomaticEvents=true for most tests
         mMixpanel = new MixpanelAPI(mContext, mockPreferences, TEST_TOKEN, config, options, true) {
             @Override
             AnalyticsMessages getAnalyticsMessages() {
@@ -351,6 +350,101 @@ public class AutocaptureInstrumentedTest {
 
             // Assert token matches (token is in properties)
             assertEquals("Token should match", TEST_TOKEN, properties.getString("token"));
+        }
+    }
+
+    // Note: Dialog/BottomSheet/Popup autocapture tests require the full Application lifecycle
+    // (WindowSpy + ActivityLifecycleCallbacks) which isn't available in instrumented tests
+    // with a mock MixpanelAPI. These are tested manually via the demo app's
+    // "Multi-Window / Overlay" section in both Compose and XML test screens.
+
+    /**
+     * Regression test: autocapture events must NOT be gated by trackAutomaticEvents flag.
+     * The trackAutomaticEvents flag controls legacy $ae_ lifecycle events only.
+     * Autocapture events ($mp_click, $mp_rage_click, $mp_dead_click) must flow
+     * regardless of this flag.
+     *
+     * @see <a href="https://github.com/mixpanel/mixpanel-android/pull/982#issuecomment-4860033738">PR #982 review - Issue 1</a>
+     */
+    @Test
+    public void testAutocaptureEventsNotDroppedWhenTrackAutomaticEventsFalse() throws Exception {
+        // Create a separate MixpanelAPI with trackAutomaticEvents=false
+        final BlockingQueue<JSONObject> events = new LinkedBlockingQueue<>();
+        final TestUtils.EmptyPreferences prefs = new TestUtils.EmptyPreferences(mContext);
+        final MPConfig config = MPConfig.getInstance(mContext, null);
+
+        final MPDbAdapter adapter = new MPDbAdapter(mContext, config) {
+            @Override
+            public int addJSON(JSONObject message, String token, MPDbAdapter.Table table) {
+                if (table == MPDbAdapter.Table.EVENTS) {
+                    try {
+                        String eventName = message.optString("event", "");
+                        if (eventName.startsWith("$mp_")) {
+                            events.add(message);
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+                return super.addJSON(message, token, table);
+            }
+        };
+
+        final AnalyticsMessages messages = new AnalyticsMessages(mContext, config) {
+            @Override
+            protected MPDbAdapter makeDbAdapter(Context context) {
+                return adapter;
+            }
+        };
+
+        AutocaptureOptions autocaptureOpts = new AutocaptureOptions.Builder().build();
+        MixpanelOptions opts = new MixpanelOptions.Builder()
+                .autocaptureOptions(autocaptureOpts)
+                .build();
+
+        // trackAutomaticEvents = FALSE
+        MixpanelAPI api = new MixpanelAPI(mContext, prefs, "TRACK_AUTO_FALSE_TOKEN", config, opts, false) {
+            @Override
+            AnalyticsMessages getAnalyticsMessages() {
+                return messages;
+            }
+
+            @Override
+            PersistentIdentity getPersistentIdentity(
+                    final Context context,
+                    final Future<SharedPreferences> referrerPreferences,
+                    final String token,
+                    final String instanceName,
+                    final DeviceIdProvider deviceIdProvider) {
+                String instanceKey = instanceName != null ? instanceName : token;
+                final String prefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI_" + instanceKey;
+                final SharedPreferences ret = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE);
+                ret.edit().clear().commit();
+                final String timeEventsPrefsName = "com.mixpanel.android.mpmetrics.MixpanelAPI.TimeEvents_" + instanceKey;
+                final SharedPreferences timeSharedPrefs = context.getSharedPreferences(timeEventsPrefsName, Context.MODE_PRIVATE);
+                timeSharedPrefs.edit().clear().commit();
+                final String mixpanelPrefsName = "com.mixpanel.android.mpmetrics.Mixpanel";
+                final SharedPreferences mpSharedPrefs = context.getSharedPreferences(mixpanelPrefsName, Context.MODE_PRIVATE);
+                mpSharedPrefs.edit().clear().putBoolean(token, true).putBoolean("has_launched", true).apply();
+                return super.getPersistentIdentity(context, referrerPreferences, token, instanceName, deviceIdProvider);
+            }
+        };
+
+        try (ActivityScenario<XmlAutocaptureTestActivity> scenario =
+                     ActivityScenario.launch(XmlAutocaptureTestActivity.class)) {
+
+            Thread.sleep(500);
+
+            onView(withId(XmlAutocaptureTestActivity.ID_RULE1_BTN)).perform(click());
+
+            JSONObject event = events.poll(10, TimeUnit.SECONDS);
+            assertNotNull(
+                    "Autocapture $mp_click must not be dropped when trackAutomaticEvents=false",
+                    event);
+            assertEquals("$mp_click", event.getString("event"));
+        } finally {
+            api.clearSuperProperties();
+            api.flush();
         }
     }
 
