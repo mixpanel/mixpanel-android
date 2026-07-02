@@ -1,10 +1,12 @@
 package com.mixpanel.android.autocapture;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.os.Build;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.accessibility.AccessibilityEvent;
 
@@ -23,9 +25,18 @@ final class TouchInterceptor implements Window.Callback {
 
     private static final String TAG = "MP.TouchInterceptor";
 
+    /** Maximum duration (ms) for a touch to be considered a tap, not a long press. */
+    private static final long MAX_TAP_DURATION_MS = 800;
+
     private final Window mWindow;
     private final Window.Callback mOriginalCallback;
     private final TouchListener mTouchListener;
+    private final int mTouchSlopSquared;
+
+    // ACTION_DOWN state for tap detection
+    private float mDownX;
+    private float mDownY;
+    private long mDownTime;
 
     /**
      * Listener interface for processed touch events.
@@ -82,6 +93,11 @@ final class TouchInterceptor implements Window.Callback {
         mWindow = window;
         mOriginalCallback = originalCallback;
         mTouchListener = touchListener;
+
+        // Use the system touch slop to distinguish taps from scrolls/swipes
+        Context context = window.getContext();
+        int touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        mTouchSlopSquared = touchSlop * touchSlop;
     }
 
     @Override
@@ -100,16 +116,44 @@ final class TouchInterceptor implements Window.Callback {
     }
 
     /**
-     * Processes the touch event and notifies the listener if it's a valid click.
+     * Processes the touch event and notifies the listener if it's a valid tap.
+     *
+     * <p>A tap is defined as a single-pointer touch where:
+     * <ul>
+     *   <li>The finger moves less than the system touch slop between DOWN and UP</li>
+     *   <li>The duration is less than {@link #MAX_TAP_DURATION_MS}</li>
+     * </ul>
+     * This filters out scrolls, swipes, flings, and long presses.
      */
     private void processTouchEvent(@NonNull MotionEvent event) {
-        // Only process ACTION_UP events
-        if (event.getActionMasked() != MotionEvent.ACTION_UP) {
+        int action = event.getActionMasked();
+
+        if (action == MotionEvent.ACTION_DOWN) {
+            mDownX = event.getRawX();
+            mDownY = event.getRawY();
+            mDownTime = event.getEventTime();
+            return;
+        }
+
+        if (action != MotionEvent.ACTION_UP) {
             return;
         }
 
         // Only process single-pointer events (filter out multi-touch gestures)
         if (event.getPointerCount() != 1) {
+            return;
+        }
+
+        // Check duration — reject long presses
+        long duration = event.getEventTime() - mDownTime;
+        if (mDownTime == 0 || duration > MAX_TAP_DURATION_MS) {
+            return;
+        }
+
+        // Check displacement — reject scrolls and swipes
+        float dx = event.getRawX() - mDownX;
+        float dy = event.getRawY() - mDownY;
+        if ((dx * dx + dy * dy) > mTouchSlopSquared) {
             return;
         }
 

@@ -17,6 +17,7 @@ import com.mixpanel.android.util.MPLog;
 import org.json.JSONObject;
 
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -327,20 +328,33 @@ public final class AutocaptureManager implements
     /**
      * Attaches a touch listener to a root view that has no Window (e.g., Toast overlays).
      *
-     * <p>This is a best-effort fallback for windowless root views. It intercepts ACTION_UP
-     * events without consuming them. Note: PopupWindow-based views (DropdownMenu, Spinner
-     * popups, PopupMenu) are not supported — their child views consume touches before
-     * they reach this listener.
+     * <p>This is a best-effort fallback for windowless root views. It intercepts taps
+     * (ACTION_DOWN + ACTION_UP within touch slop and duration threshold) without consuming
+     * them. Note: PopupWindow-based views (DropdownMenu, Spinner popups, PopupMenu) are
+     * not supported — their child views consume touches before they reach this listener.
      */
     @SuppressWarnings("ClickableViewAccessibility")
     private void attachRootViewTouchListener(@NonNull View rootView) {
+        int touchSlop = ViewConfiguration.get(rootView.getContext()).getScaledTouchSlop();
+        final int touchSlopSq = touchSlop * touchSlop;
+        final float[] down = new float[3]; // downX, downY, downTime
+
         rootView.setOnTouchListener((v, event) -> {
             try {
-                if (event.getActionMasked() == MotionEvent.ACTION_UP
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    down[0] = event.getRawX();
+                    down[1] = event.getRawY();
+                    down[2] = event.getEventTime();
+                } else if (action == MotionEvent.ACTION_UP
                         && event.getPointerCount() == 1) {
-                    float x = event.getRawX();
-                    float y = event.getRawY();
-                    onTouchUp(x, y, rootView);
+                    long duration = event.getEventTime() - (long) down[2];
+                    float dx = event.getRawX() - down[0];
+                    float dy = event.getRawY() - down[1];
+                    if (down[2] > 0 && duration <= 800
+                            && (dx * dx + dy * dy) <= touchSlopSq) {
+                        onTouchUp(event.getRawX(), event.getRawY(), rootView);
+                    }
                 }
             } catch (Exception e) {
                 MPLog.e(TAG, "Error in root view touch listener", e);
