@@ -313,9 +313,13 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     ContextCompat.RECEIVER_NOT_EXPORTED);
         }
 
-        // Initialize autocapture if enabled
-        if (options.getAutocaptureOptions().isEnabled()) {
-            initializeAutocapture(options.getAutocaptureOptions());
+        // Initialize autocapture if enabled.
+        // Null check is the primary gate — null means the caller never opted in.
+        // isEnabled() is a secondary check to avoid initializing the machinery
+        // when all sub-options (click, rage, dead) are individually disabled.
+        AutocaptureOptions autocaptureOptions = options.getAutocaptureOptions();
+        if (autocaptureOptions != null && autocaptureOptions.isEnabled()) {
+            initializeAutocapture(autocaptureOptions);
         }
     }
 
