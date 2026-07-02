@@ -36,7 +36,7 @@ import java.util.WeakHashMap;
 public final class AutocaptureManager implements
         Application.ActivityLifecycleCallbacks,
         WindowSpy.OnRootViewChangedListener,
-        TouchInterceptor.TouchListener,
+        TapListener,
         DeadClickDetector.DeadClickListener {
 
     private static final String TAG = "MP.AutocaptureManager";
@@ -179,10 +179,10 @@ public final class AutocaptureManager implements
         }
     }
 
-    // ==================== TouchInterceptor.TouchListener ====================
+    // ==================== TapListener ====================
 
     @Override
-    public void onTouchUp(float x, float y, @NonNull View decorView) {
+    public void onTap(float x, float y, @NonNull View decorView) {
         try {
             processTouchEvent(x, y, decorView);
         } catch (Exception e) {
@@ -361,7 +361,7 @@ public final class AutocaptureManager implements
                     float dy = event.getRawY() - down[1];
                     if (down[2] > 0 && duration <= 800
                             && (dx * dx + dy * dy) <= touchSlopSq) {
-                        onTouchUp(event.getRawX(), event.getRawY(), rootView);
+                        onTap(event.getRawX(), event.getRawY(), rootView);
                     }
                 }
             } catch (Exception e) {

@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit
  * Instrumentation tests for autocapture on Jetpack Compose UIs.
  *
  * Uses sendPointerSync for clicks because compose-ui-test's performTouchInput
- * bypasses Window.Callback, which is where autocapture's TouchInterceptor lives.
+ * bypasses Window.Callback, which is where autocapture's touch interceptor lives.
  * The compose test rule is used only to find element bounds.
  */
 @RunWith(AndroidJUnit4::class)
@@ -164,7 +164,7 @@ class ComposeAutocaptureInstrumentedTest {
 
     /**
      * Sends a real touch event (DOWN + UP) at the center of a Compose node.
-     * Uses sendPointerSync so the event goes through Window.Callback → TouchInterceptor.
+     * Uses sendPointerSync so the event goes through Window.Callback → touch interceptor.
      */
     private fun tapNode(node: SemanticsNodeInteraction, scenario: ActivityScenario<*>) {
         val (screenX, screenY) = getNodeScreenCenter(node, scenario)
