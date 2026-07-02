@@ -143,12 +143,6 @@ All autocapture events include these properties:
 | `$attr-role` | Element role (Button, Switch, etc.) |
 | `$elements` | View hierarchy string (max 5 levels) |
 
-### Rage Click Additional Properties
-
-| Property | Description |
-|----------|-------------|
-| `$tap_count` | Number of taps in the rage click sequence |
-
 ## Element Identification (`$el_id`)
 
 The `$el_id` property uses the following resolution order:
