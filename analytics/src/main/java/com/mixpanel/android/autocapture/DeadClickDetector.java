@@ -22,10 +22,11 @@ import java.lang.ref.WeakReference;
  *
  * <p>Detection strategy:
  * <ol>
- *   <li>On click detected, wait for baseline delay (default 150ms) for UI to settle</li>
- *   <li>Capture baseline snapshot (view count, content hash)</li>
- *   <li>Attach listeners for UI changes (layout, scroll, window focus, new windows)</li>
- *   <li>After timeout (default 500ms total), compare final state to baseline</li>
+ *   <li>On click detected, capture baseline snapshot immediately (before the click
+ *       handler runs), so any UI response is visible as a delta</li>
+ *   <li>Attach listeners for UI changes (layout, scroll, window focus, new windows)
+ *       — any change cancels detection early</li>
+ *   <li>After timeout (default 500ms), compare final state to baseline</li>
  *   <li>If no change detected, emit dead click event</li>
  * </ol>
  *
@@ -48,7 +49,6 @@ final class DeadClickDetector {
     }
 
     private final long mTimeoutMs;
-    private final long mBaselineDelayMs;
     private final Handler mHandler;
     private final DeadClickListener mListener;
 
@@ -64,7 +64,6 @@ final class DeadClickDetector {
      */
     DeadClickDetector(@NonNull DeadClickOptions options, @NonNull DeadClickListener listener) {
         mTimeoutMs = options.getTimeoutMs();
-        mBaselineDelayMs = options.getBaselineDelayMs();
         mHandler = new Handler(Looper.getMainLooper());
         mListener = listener;
     }
@@ -156,7 +155,6 @@ final class DeadClickDetector {
         @Nullable
         private ComposeSemanticHelper.SemanticSnapshot mComposeSnapshot;
 
-        private final Runnable mCaptureBaselineRunnable = this::captureBaseline;
         private final Runnable mCheckResultRunnable = this::checkResult;
 
         DetectionSession(@NonNull ClickEvent clickEvent, @NonNull View rootView) {
@@ -192,15 +190,17 @@ final class DeadClickDetector {
                     mComposeSnapshot = ComposeSemanticHelper.captureSnapshot(composeRoot);
                     mBaselineCaptured = mComposeSnapshot != null;
                 }
-                if (!mBaselineCaptured) {
-                    cancel();
-                    return;
-                }
             } else {
-                // XML: use layout/scroll listeners with configurable baseline
-                mHandler.postDelayed(mCaptureBaselineRunnable, mBaselineDelayMs);
+                // XML: capture baseline immediately (before click handler runs),
+                // then attach listeners so any post-click UI change cancels detection.
+                captureBaseline();
                 observer.addOnGlobalLayoutListener(this);
                 observer.addOnScrollChangedListener(this);
+            }
+
+            if (!mBaselineCaptured) {
+                cancel();
+                return;
             }
         }
 
@@ -218,33 +218,22 @@ final class DeadClickDetector {
 
         @Override
         public void onGlobalLayout() {
-            if (!mBaselineCaptured) {
-                // UI change before baseline - expected settling, ignore
-                return;
-            }
             onUiChange("layout");
         }
 
         @Override
         public void onScrollChanged() {
-            if (!mBaselineCaptured) {
-                return;
-            }
             onUiChange("scroll");
         }
 
+        /**
+         * Captures the XML baseline snapshot (view count + content hash).
+         * Called synchronously before click handler runs.
+         */
         private void captureBaseline() {
-            if (mCancelled) return;
-
-            // Only called for XML views (Compose captures in start())
-            if (mIsComposeClick) {
-                return;
-            }
-
             try {
                 View rootView = mRootViewRef.get();
                 if (rootView == null) {
-                    cancel();
                     return;
                 }
                 mBaselineViewCount = countViews(rootView, 0);
@@ -252,7 +241,6 @@ final class DeadClickDetector {
                 mBaselineCaptured = true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing baseline", e);
-                cancel();
             }
         }
 
@@ -309,7 +297,6 @@ final class DeadClickDetector {
         }
 
         private void cleanup() {
-            mHandler.removeCallbacks(mCaptureBaselineRunnable);
             mHandler.removeCallbacks(mCheckResultRunnable);
 
             // Only XML uses view tree listeners
