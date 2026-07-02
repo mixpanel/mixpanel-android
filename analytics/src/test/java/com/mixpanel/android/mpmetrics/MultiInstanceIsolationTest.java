@@ -2,6 +2,7 @@ package com.mixpanel.android.mpmetrics;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -74,7 +75,7 @@ public class MultiInstanceIsolationTest {
         api.setServerURL(EU_URL);
         HttpService after = (HttpService) messages.getPoster();
 
-        assertEquals("Poster instance should be reused, not recreated", initial, after);
+        assertSame("Poster instance should be reused, not recreated", initial, after);
         assertNotSame(
                 "serverHost must reflect the updated endpoint", initialHost, after.getServerHost());
         assertEquals("api-eu.mixpanel.com", after.getServerHost());
