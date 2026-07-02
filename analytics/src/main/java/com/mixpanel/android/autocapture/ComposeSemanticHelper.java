@@ -79,14 +79,25 @@ final class ComposeSemanticHelper {
             return ExtractResult.notFound();
         }
 
+        // Convert screen coordinates to window coordinates.
+        // Touch events provide rawX/rawY in screen space, but SemanticsNode.getBoundsInWindow()
+        // returns bounds in window space. These diverge when the window doesn't fill the screen:
+        // split-screen, picture-in-picture, or non-fullscreen dialog windows.
+        // Compose's ModalBottomSheet and AlertDialog typically use fullscreen transparent windows
+        // (so coords match), but this conversion ensures correctness in all window configurations.
+        int[] windowLocation = new int[2];
+        view.getLocationOnScreen(windowLocation);
+        float windowX = x - windowLocation[0];
+        float windowY = y - windowLocation[1];
+
         RootForTest root = (RootForTest) view;
         SemanticsNode rootNode = root.getSemanticsOwner().getRootSemanticsNode();
         Rect rootBounds = rootNode.getBoundsInWindow();
         MPLog.d(TAG, "Root semantics node bounds: " + rootBounds.getLeft() + "," + rootBounds.getTop() +
                 " to " + rootBounds.getRight() + "," + rootBounds.getBottom());
 
-        // Find the node at the tap position
-        SemanticsNode node = findNodeAtPosition(rootNode, x, y);
+        // Find the node at the tap position (using window-space coordinates)
+        SemanticsNode node = findNodeAtPosition(rootNode, windowX, windowY);
         if (node == null) {
             MPLog.d(TAG, "No Compose semantics node at position (" + x + ", " + y + ")");
             return ExtractResult.notFound();
