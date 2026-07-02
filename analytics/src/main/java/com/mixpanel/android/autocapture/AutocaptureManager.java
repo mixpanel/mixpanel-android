@@ -3,9 +3,10 @@ package com.mixpanel.android.autocapture;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.Window;
 
 import androidx.annotation.NonNull;
@@ -16,8 +17,8 @@ import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONObject;
 
-import android.view.MotionEvent;
-import android.view.ViewConfiguration;
+import curtains.Curtains;
+import curtains.OnTouchEventListener;
 
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -62,8 +63,8 @@ public final class AutocaptureManager implements
     @Nullable
     private DeadClickDetector mDeadClickDetector;
 
-    // Track interceptors per window to avoid duplicate installations
-    private final Map<Window, TouchInterceptor> mWindowInterceptors = new WeakHashMap<>();
+    // Track Curtains touch listeners per window to avoid duplicates and enable cleanup
+    private final Map<Window, OnTouchEventListener> mWindowListeners = new WeakHashMap<>();
 
     // Track the current activity for lifecycle management
     @Nullable
@@ -113,9 +114,18 @@ public final class AutocaptureManager implements
                 ((Application) mContext).registerActivityLifecycleCallbacks(this);
             }
 
-            // Install WindowSpy for dialog/popup tracking
+            // Install WindowSpy (Curtains-backed) for dialog/popup tracking
             WindowSpy.install();
             WindowSpy.addListener(this);
+
+            // Retroactively attach to already-visible root views.
+            // registerActivityLifecycleCallbacks does not replay onActivityResumed
+            // for already-resumed activities, and WindowSpy's initial copy of existing
+            // views doesn't trigger add notifications. This ensures deferred SDK init
+            // captures the current screen.
+            for (View rootView : Curtains.getRootViews()) {
+                onRootViewChanged(rootView, true);
+            }
 
             mStarted = true;
             MPLog.d(TAG, "Autocapture started");
@@ -144,14 +154,12 @@ public final class AutocaptureManager implements
             // Remove WindowSpy listener
             WindowSpy.removeListener(this);
 
-            // Uninstall all interceptors (copy to avoid ConcurrentModificationException from WeakHashMap)
-            java.util.List<TouchInterceptor> interceptors = new java.util.ArrayList<>(mWindowInterceptors.values());
-            for (TouchInterceptor interceptor : interceptors) {
-                if (interceptor != null) {
-                    interceptor.uninstall();
-                }
+            // Remove all Curtains touch listeners
+            for (Map.Entry<Window, OnTouchEventListener> entry :
+                    new java.util.ArrayList<>(mWindowListeners.entrySet())) {
+                CurtainsHelper.removeTouchListener(entry.getKey(), entry.getValue());
             }
-            mWindowInterceptors.clear();
+            mWindowListeners.clear();
 
             // Cancel pending detection
             if (mDeadClickDetector != null) {
@@ -233,10 +241,10 @@ public final class AutocaptureManager implements
                     mDeadClickDetector.onWindowAdded();
                 }
 
-                // Try to attach interceptor to the new window
-                Window window = getWindowFromView(view);
-                if (window != null && !mWindowInterceptors.containsKey(window)) {
-                    attachInterceptor(window);
+                // Try to attach touch listener via Curtains
+                Window window = CurtainsHelper.getWindow(view);
+                if (window != null && !mWindowListeners.containsKey(window)) {
+                    attachTouchListener(window);
                 } else if (window == null) {
                     // No Window object (e.g., PopupWindow, DropdownMenu, Spinner popup).
                     // Attach a touch listener directly on the root view as a fallback.
@@ -270,10 +278,10 @@ public final class AutocaptureManager implements
         try {
             mCurrentActivityRef = new WeakReference<>(activity);
 
-            // Attach interceptor to activity window
+            // Attach touch listener to activity window
             Window window = activity.getWindow();
-            if (window != null && !mWindowInterceptors.containsKey(window)) {
-                attachInterceptor(window);
+            if (window != null && !mWindowListeners.containsKey(window)) {
+                attachTouchListener(window);
             }
         } catch (Exception e) {
             MPLog.e(TAG, "Error in onActivityResumed", e);
@@ -310,12 +318,12 @@ public final class AutocaptureManager implements
     @Override
     public void onActivityDestroyed(@NonNull Activity activity) {
         try {
-            // Clean up interceptor for this activity's window
+            // Clean up touch listener for this activity's window
             Window window = activity.getWindow();
             if (window != null) {
-                TouchInterceptor interceptor = mWindowInterceptors.remove(window);
-                if (interceptor != null) {
-                    interceptor.uninstall();
+                OnTouchEventListener listener = mWindowListeners.remove(window);
+                if (listener != null) {
+                    CurtainsHelper.removeTouchListener(window, listener);
                 }
             }
         } catch (Exception e) {
@@ -365,12 +373,14 @@ public final class AutocaptureManager implements
                 + rootView.getClass().getSimpleName());
     }
 
-    private void attachInterceptor(@NonNull Window window) {
-        TouchInterceptor interceptor = TouchInterceptor.install(window, this);
-        if (interceptor != null) {
-            mWindowInterceptors.put(window, interceptor);
-            MPLog.d(TAG, "Attached interceptor to window: " + window);
-        }
+    /**
+     * Attaches a Curtains-based touch listener to a window.
+     * The listener filters for taps (touch slop + duration) and forwards to onTouchUp.
+     */
+    private void attachTouchListener(@NonNull Window window) {
+        OnTouchEventListener listener = CurtainsHelper.installTouchListener(window, this);
+        mWindowListeners.put(window, listener);
+        MPLog.d(TAG, "Attached touch listener to window: " + window);
     }
 
     private void emitEvent(@NonNull String eventName, @NonNull ClickEvent clickEvent) {
@@ -381,78 +391,5 @@ public final class AutocaptureManager implements
         } catch (Exception e) {
             MPLog.e(TAG, "Error emitting event: " + eventName, e);
         }
-    }
-
-    /**
-     * Attempts to get the Window from a root View.
-     *
-     * <p>Handles Activity windows, dialog windows, and other overlay windows by:
-     * 1. Unwrapping ContextWrapper chain to find an Activity
-     * 2. Using reflection to access the Window field on decor views (for dialogs/popups)
-     */
-    @Nullable
-    private Window getWindowFromView(@NonNull View view) {
-        try {
-            // First, try reflection on the view to get its Window directly.
-            // DecorView and similar root views often have a reference to their Window.
-            Window reflectedWindow = getWindowViaReflection(view);
-            if (reflectedWindow != null) {
-                return reflectedWindow;
-            }
-
-            // Unwrap ContextWrapper chain to find an Activity
-            Context context = view.getContext();
-            while (context instanceof ContextWrapper) {
-                if (context instanceof Activity) {
-                    return ((Activity) context).getWindow();
-                }
-                context = ((ContextWrapper) context).getBaseContext();
-            }
-        } catch (Exception e) {
-            MPLog.d(TAG, "Could not get window from view", e);
-        }
-        return null;
-    }
-
-    /**
-     * Uses reflection to get the Window from a decor view.
-     *
-     * <p>Android's DecorView (and PopupWindow's PopupDecorView) hold a reference
-     * to their Window via internal fields. This enables interceptor installation
-     * on dialog, popup, and bottom sheet windows detected by WindowSpy.
-     */
-    @Nullable
-    private static Window getWindowViaReflection(@NonNull View view) {
-        try {
-            // Try common field names for the Window reference on decor views
-            Class<?> clazz = view.getClass();
-            while (clazz != null && clazz != View.class) {
-                try {
-                    java.lang.reflect.Field windowField = clazz.getDeclaredField("mWindow");
-                    windowField.setAccessible(true);
-                    Object value = windowField.get(view);
-                    if (value instanceof Window) {
-                        return (Window) value;
-                    }
-                } catch (NoSuchFieldException ignored) {
-                    // Try parent class
-                }
-                clazz = clazz.getSuperclass();
-            }
-
-            // Also try getWindow() method if available (some custom view types)
-            try {
-                java.lang.reflect.Method getWindow = view.getClass().getMethod("getWindow");
-                Object value = getWindow.invoke(view);
-                if (value instanceof Window) {
-                    return (Window) value;
-                }
-            } catch (NoSuchMethodException ignored) {
-                // Not available
-            }
-        } catch (Exception e) {
-            MPLog.d(TAG, "Reflection failed for window lookup", e);
-        }
-        return null;
     }
 }

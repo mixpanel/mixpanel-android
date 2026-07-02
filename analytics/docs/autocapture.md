@@ -306,13 +306,7 @@ Autocapture tracks touches across multiple windows using `WindowSpy`:
 
 ### How It Works
 
-`WindowSpy` hooks into Android's internal `WindowManagerGlobal` to detect when windows are added or removed. This allows autocapture to track clicks on dialogs, popups, and other overlays without any manual setup.
-
-**ProGuard Note:** The SDK includes ProGuard rules to preserve `WindowManagerGlobal` reflection:
-
-```proguard
--keep class android.view.WindowManagerGlobal { *; }
-```
+Autocapture uses [Square's Curtains](https://github.com/square/curtains) library to observe root view (window) additions and removals. This allows autocapture to track clicks on dialogs, popups, and other overlays without any manual setup. Curtains is compatible with other consumers such as the Mixpanel Session Replay SDK.
 
 ## Signal UI Change API
 
