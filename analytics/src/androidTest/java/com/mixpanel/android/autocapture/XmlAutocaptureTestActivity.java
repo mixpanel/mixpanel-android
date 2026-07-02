@@ -1,4 +1,4 @@
-package com.mixpanel.android.mpmetrics;
+package com.mixpanel.android.autocapture;
 
 import android.app.Activity;
 import android.os.Bundle;
