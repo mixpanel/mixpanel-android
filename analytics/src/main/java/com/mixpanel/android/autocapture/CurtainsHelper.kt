@@ -10,6 +10,21 @@ import curtains.phoneWindow
 import curtains.touchEventInterceptors
 
 /**
+ * Listener interface for processed tap events.
+ */
+internal fun interface TapListener {
+    /**
+     * Called when a valid tap is detected (single-pointer ACTION_UP within touch slop
+     * and duration threshold).
+     *
+     * @param x         Screen X coordinate.
+     * @param y         Screen Y coordinate.
+     * @param decorView The window's decor view.
+     */
+    fun onTap(x: Float, y: Float, decorView: View)
+}
+
+/**
  * Bridge between Curtains' Kotlin extensions and the Java-based autocapture code.
  *
  * Provides window resolution via [phoneWindow] and touch interception via
@@ -46,7 +61,7 @@ internal object CurtainsHelper {
      * @return The installed [OnTouchEventListener], to be kept for later removal.
      */
     @JvmStatic
-    fun installTouchListener(window: Window, onTap: TouchInterceptor.TouchListener): OnTouchEventListener {
+    fun installTouchListener(window: Window, onTap: TapListener): OnTouchEventListener {
         val context = window.context
         val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
         val touchSlopSq = touchSlop * touchSlop
@@ -72,7 +87,7 @@ internal object CurtainsHelper {
                                 && (dx * dx + dy * dy) <= touchSlopSq
                             ) {
                                 val decorView = window.decorView
-                                onTap.onTouchUp(event.rawX, event.rawY, decorView)
+                                onTap.onTap(event.rawX, event.rawY, decorView)
                             }
                         }
                     }
