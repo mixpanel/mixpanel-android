@@ -87,14 +87,16 @@ public class MixpanelOptions {
     }
 
     /**
-     * Returns the autocapture options for this Mixpanel instance.
+     * Returns the autocapture options for this Mixpanel instance, or null if autocapture
+     * is not enabled.
      *
-     * <p>Autocapture is disabled by default. When no AutocaptureOptions are explicitly
-     * configured, this returns a disabled configuration.
+     * <p>Autocapture is disabled by default. It is only enabled when the caller
+     * explicitly passes an {@link AutocaptureOptions} instance via
+     * {@link Builder#autocaptureOptions(AutocaptureOptions)}.
      *
-     * @return The {@link AutocaptureOptions} configuration, never null.
+     * @return The {@link AutocaptureOptions} configuration, or null if not enabled.
      */
-    @NonNull
+    @Nullable
     public AutocaptureOptions getAutocaptureOptions() {
         return mAutocaptureOptions;
     }
@@ -144,12 +146,9 @@ public class MixpanelOptions {
         private boolean optOutTrackingDefault = false;
         private JSONObject superProperties;
         private FeatureFlagOptions mFeatureFlagOptions = new FeatureFlagOptions.Builder().build();
-        // Autocapture is disabled by default - all event types disabled
-        private AutocaptureOptions mAutocaptureOptions = new AutocaptureOptions.Builder()
-                .clickOptions(new ClickOptions.Builder().enabled(false).build())
-                .rageClickOptions(new RageClickOptions.Builder().enabled(false).build())
-                .deadClickOptions(new DeadClickOptions.Builder().enabled(false).build())
-                .build();
+        // Autocapture is disabled by default — null means disabled.
+        // Users opt in by passing an AutocaptureOptions instance.
+        private AutocaptureOptions mAutocaptureOptions = null;
         private DeviceIdProvider deviceIdProvider = null;
         private String serverURL;
         private ProxyServerInteractor proxyServerInteractor;
