@@ -20,7 +20,6 @@ import org.json.JSONObject;
 import curtains.Curtains;
 import curtains.OnTouchEventListener;
 
-import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -65,10 +64,6 @@ public final class AutocaptureManager implements
 
     // Track Curtains touch listeners per window to avoid duplicates and enable cleanup
     private final Map<Window, OnTouchEventListener> mWindowListeners = new WeakHashMap<>();
-
-    // Track the current activity for lifecycle management
-    @Nullable
-    private WeakReference<Activity> mCurrentActivityRef;
 
     private boolean mStarted = false;
 
@@ -276,8 +271,6 @@ public final class AutocaptureManager implements
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
         try {
-            mCurrentActivityRef = new WeakReference<>(activity);
-
             // Attach touch listener to activity window
             Window window = activity.getWindow();
             if (window != null && !mWindowListeners.containsKey(window)) {
