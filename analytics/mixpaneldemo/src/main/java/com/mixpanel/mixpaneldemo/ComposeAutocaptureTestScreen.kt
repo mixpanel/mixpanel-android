@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 
 /**
  * Jetpack Compose Autocapture Test Screen
@@ -38,8 +39,14 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
     var textValue by remember { mutableStateOf("") }
     var passwordValue by remember { mutableStateOf("") }
     var sliderValue by remember { mutableFloatStateOf(0.5f) }
+    var showAlertDialog by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var showDropdownMenu by remember { mutableStateOf(false) }
+    var snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Compose Autocapture Test") },
@@ -208,6 +215,82 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                 }
             }
 
+            // Multi-Window / Overlay
+            item { SectionHeader("Multi-Window / Overlay") }
+
+            item {
+                Button(
+                    onClick = { showAlertDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "compose_alert_trigger" }
+                ) {
+                    Text("Show AlertDialog")
+                }
+            }
+
+            item {
+                Button(
+                    onClick = { showBottomSheet = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "compose_bottomsheet_trigger" }
+                ) {
+                    Text("Show Bottom Sheet")
+                }
+            }
+
+            item {
+                Box {
+                    Button(
+                        onClick = { showDropdownMenu = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_dropdown_trigger" }
+                    ) {
+                        Text("Show Dropdown Menu")
+                    }
+                    DropdownMenu(
+                        expanded = showDropdownMenu,
+                        onDismissRequest = { showDropdownMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Option 1") },
+                            onClick = { showDropdownMenu = false },
+                            modifier = Modifier.semantics { contentDescription = "compose_dropdown_option_1" }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Option 2") },
+                            onClick = { showDropdownMenu = false },
+                            modifier = Modifier.semantics { contentDescription = "compose_dropdown_option_2" }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Option 3") },
+                            onClick = { showDropdownMenu = false },
+                            modifier = Modifier.semantics { contentDescription = "compose_dropdown_option_3" }
+                        )
+                    }
+                }
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Snackbar message",
+                                actionLabel = "Dismiss"
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "compose_snackbar_trigger" }
+                ) {
+                    Text("Show Snackbar")
+                }
+            }
+
             // Navigate to XML Test
             item { SectionHeader("XML Views Test") }
 
@@ -220,6 +303,72 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {
                     Text("Open XML Test Activity")
+                }
+            }
+        }
+
+        if (showAlertDialog) {
+            AlertDialog(
+                onDismissRequest = { showAlertDialog = false },
+                title = { Text("Test Alert Dialog") },
+                text = { Text("Tap buttons inside this dialog to test autocapture") },
+                confirmButton = {
+                    TextButton(
+                        onClick = { showAlertDialog = false },
+                        modifier = Modifier.semantics { contentDescription = "compose_alert_confirm" }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAlertDialog = false },
+                        modifier = Modifier.semantics { contentDescription = "compose_alert_cancel" }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Button(
+                        onClick = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_sheet_action_1" }
+                    ) {
+                        Text("Bottom Sheet Action 1")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_sheet_action_2" }
+                    ) {
+                        Text("Bottom Sheet Action 2")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_sheet_action_3" }
+                    ) {
+                        Text("Bottom Sheet Action 3")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { showBottomSheet = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Close")
+                    }
                 }
             }
         }

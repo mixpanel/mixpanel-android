@@ -288,19 +288,21 @@ These controls are excluded from dead click detection because they always produc
 
 ## Multi-Window Support
 
-Autocapture tracks touches on **all windows** in your app using `WindowSpy`:
+Autocapture tracks touches across multiple windows using `WindowSpy`:
 
-| Window Type | Tracked |
-|-------------|---------|
-| Activity | ✅ |
-| AlertDialog | ✅ |
-| BottomSheetDialog | ✅ |
-| PopupWindow | ✅ |
-| PopupMenu | ✅ |
-| Spinner dropdown | ✅ |
-| DatePickerDialog | ✅ |
-| TimePickerDialog | ✅ |
-| Toast | ⚠️ Detected but not interactive |
+| Window Type | Tracked | Notes |
+|-------------|---------|-------|
+| Activity | ✅ | |
+| AlertDialog | ✅ | Both `android.app.AlertDialog` and `androidx.appcompat.app.AlertDialog` |
+| BottomSheetDialog | ✅ | Material `BottomSheetDialog` and Compose `ModalBottomSheet` |
+| DatePickerDialog | ✅ | |
+| TimePickerDialog | ✅ | |
+| Snackbar | ✅ | |
+| Toast | ⚠️ | Detected but not interactive |
+| PopupWindow | ❌ | Child views consume touches before interception (known limitation) |
+| PopupMenu | ❌ | Uses `PopupWindow` internally |
+| Spinner dropdown | ❌ | Uses `PopupWindow` internally |
+| Compose DropdownMenu | ❌ | Uses `PopupWindow` internally |
 
 ### How It Works
 
@@ -399,9 +401,10 @@ MP.AutocaptureManager: emitted $mp_dead_click for broken_link
 - Use `signalUIChange()` for custom navigation
 
 **Missing clicks on dialogs/popups:**
-- WindowSpy should handle this automatically
+- Dialogs, bottom sheets, and snackbars are tracked automatically via `WindowSpy`
 - Check ProGuard rules are applied (if using ProGuard)
 - Verify `WindowManagerGlobal` is not obfuscated
+- `PopupWindow`-based components (PopupMenu, Spinner dropdown, Compose DropdownMenu) are **not supported** — see Multi-Window Support table
 
 ## Technical Details
 
