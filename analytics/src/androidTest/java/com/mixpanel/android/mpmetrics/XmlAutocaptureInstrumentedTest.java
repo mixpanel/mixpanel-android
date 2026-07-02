@@ -36,7 +36,7 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class AutocaptureInstrumentedTest {
+public class XmlAutocaptureInstrumentedTest {
 
     private static final String TEST_TOKEN = "AUTOCAPTURE_TEST_TOKEN";
 
