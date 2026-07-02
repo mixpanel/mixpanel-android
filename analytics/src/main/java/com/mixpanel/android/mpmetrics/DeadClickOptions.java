@@ -10,7 +10,6 @@ package com.mixpanel.android.mpmetrics;
  * DeadClickOptions deadClickOptions = new DeadClickOptions.Builder()
  *     .enabled(true)
  *     .timeoutMs(600)         // Wait 600ms for UI response
- *     .baselineDelayMs(200)   // Wait 200ms before taking baseline snapshot
  *     .build();
  * }</pre>
  *
@@ -20,12 +19,10 @@ public class DeadClickOptions {
 
     private final boolean mEnabled;
     private final long mTimeoutMs;
-    private final long mBaselineDelayMs;
 
     private DeadClickOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
         this.mTimeoutMs = builder.mTimeoutMs;
-        this.mBaselineDelayMs = builder.mBaselineDelayMs;
     }
 
     /**
@@ -50,31 +47,17 @@ public class DeadClickOptions {
     }
 
     /**
-     * Returns the delay in milliseconds before capturing the baseline UI snapshot.
-     *
-     * <p>This allows initial UI settling (e.g., ripple effects) before establishing
-     * the baseline state against which changes are detected.
-     *
-     * @return The baseline delay in milliseconds. Defaults to 150.
-     */
-    public long getBaselineDelayMs() {
-        return mBaselineDelayMs;
-    }
-
-    /**
      * Builder for creating {@link DeadClickOptions} instances.
      *
      * <p>Default values:
      * <ul>
      *   <li>{@code enabled} = {@code true}</li>
      *   <li>{@code timeoutMs} = 500</li>
-     *   <li>{@code baselineDelayMs} = 150</li>
      * </ul>
      */
     public static class Builder {
         private boolean mEnabled = true;
         private long mTimeoutMs = 500;
-        private long mBaselineDelayMs = 150;
 
         public Builder() {
         }
@@ -87,7 +70,6 @@ public class DeadClickOptions {
         public Builder(DeadClickOptions source) {
             this.mEnabled = source.mEnabled;
             this.mTimeoutMs = source.mTimeoutMs;
-            this.mBaselineDelayMs = source.mBaselineDelayMs;
         }
 
         /**
@@ -109,17 +91,6 @@ public class DeadClickOptions {
          */
         public Builder timeoutMs(long timeoutMs) {
             this.mTimeoutMs = Math.max(1, timeoutMs);
-            return this;
-        }
-
-        /**
-         * Sets the delay in milliseconds before capturing the baseline UI snapshot.
-         *
-         * @param baselineDelayMs The baseline delay in milliseconds. Must be non-negative.
-         * @return This Builder instance for chaining.
-         */
-        public Builder baselineDelayMs(long baselineDelayMs) {
-            this.mBaselineDelayMs = Math.max(0, baselineDelayMs);
             return this;
         }
 

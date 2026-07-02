@@ -75,7 +75,6 @@ That's it! No additional setup required. Autocapture automatically intercepts al
 |--------|---------|-------------|
 | `enabled` | `true` | Track dead click events |
 | `timeoutMs` | `500` | Response wait time in milliseconds |
-| `baselineDelayMs` | `150` | Delay before capturing baseline snapshot |
 
 ### Custom Configuration Example
 
@@ -236,10 +235,11 @@ Dead click detection monitors interactive elements for UI response:
 ### How It Works
 
 1. User taps an element with click handlers
-2. Wait 150ms for animations to settle (baseline delay)
-3. Capture a snapshot of the UI state (view count, content hash, window count)
-4. Wait until 500ms total (timeout)
-5. If UI hasn't changed, emit `$mp_dead_click`
+2. Capture a baseline snapshot of the UI state immediately (before the click handler runs)
+3. Attach listeners for layout changes, scroll events, and window additions
+4. If any UI change is detected, cancel detection early (not a dead click)
+5. After 500ms (timeout), compare final state to baseline
+6. If UI hasn't changed, emit `$mp_dead_click`
 
 ### Excluded Controls
 
