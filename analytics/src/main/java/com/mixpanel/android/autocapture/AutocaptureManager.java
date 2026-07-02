@@ -3,6 +3,7 @@ package com.mixpanel.android.autocapture;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
@@ -14,6 +15,8 @@ import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.util.MPLog;
 
 import org.json.JSONObject;
+
+import android.view.MotionEvent;
 
 import java.lang.ref.WeakReference;
 import java.util.Map;
@@ -233,6 +236,15 @@ public final class AutocaptureManager implements
                 Window window = getWindowFromView(view);
                 if (window != null && !mWindowInterceptors.containsKey(window)) {
                     attachInterceptor(window);
+                } else if (window == null) {
+                    // No Window object (e.g., PopupWindow, DropdownMenu, Spinner popup).
+                    // Attach a touch listener directly on the root view as a fallback.
+                    attachRootViewTouchListener(view);
+                }
+            } else {
+                // Window removed (dialog/sheet dismissed) — this is a UI change
+                if (mDeadClickDetector != null) {
+                    mDeadClickDetector.cancelDetection();
                 }
             }
         } catch (Exception e) {
@@ -312,6 +324,33 @@ public final class AutocaptureManager implements
 
     // ==================== Private Helpers ====================
 
+    /**
+     * Attaches a touch listener to a root view that has no Window (e.g., Toast overlays).
+     *
+     * <p>This is a best-effort fallback for windowless root views. It intercepts ACTION_UP
+     * events without consuming them. Note: PopupWindow-based views (DropdownMenu, Spinner
+     * popups, PopupMenu) are not supported — their child views consume touches before
+     * they reach this listener.
+     */
+    @SuppressWarnings("ClickableViewAccessibility")
+    private void attachRootViewTouchListener(@NonNull View rootView) {
+        rootView.setOnTouchListener((v, event) -> {
+            try {
+                if (event.getActionMasked() == MotionEvent.ACTION_UP
+                        && event.getPointerCount() == 1) {
+                    float x = event.getRawX();
+                    float y = event.getRawY();
+                    onTouchUp(x, y, rootView);
+                }
+            } catch (Exception e) {
+                MPLog.e(TAG, "Error in root view touch listener", e);
+            }
+            return false; // Don't consume - let the view handle the touch normally
+        });
+        MPLog.d(TAG, "Attached touch listener to windowless root view: "
+                + rootView.getClass().getSimpleName());
+    }
+
     private void attachInterceptor(@NonNull Window window) {
         TouchInterceptor interceptor = TouchInterceptor.install(window, this);
         if (interceptor != null) {
@@ -331,27 +370,74 @@ public final class AutocaptureManager implements
     }
 
     /**
-     * Attempts to get the Window from a View.
+     * Attempts to get the Window from a root View.
      *
-     * <p>Works for decor views that have a PhoneWindow attached.
+     * <p>Handles Activity windows, dialog windows, and other overlay windows by:
+     * 1. Unwrapping ContextWrapper chain to find an Activity
+     * 2. Using reflection to access the Window field on decor views (for dialogs/popups)
      */
     @Nullable
     private Window getWindowFromView(@NonNull View view) {
         try {
-            // Try to get window via reflection (decor view has mWindow field on some versions)
-            // For most cases, we rely on WindowSpy notifying us when the Activity is resumed
-            // and we attach via activity.getWindow() directly
-
-            // Check if this is a decor view from an Activity
-            Context context = view.getContext();
-            if (context instanceof Activity) {
-                return ((Activity) context).getWindow();
+            // First, try reflection on the view to get its Window directly.
+            // DecorView and similar root views often have a reference to their Window.
+            Window reflectedWindow = getWindowViaReflection(view);
+            if (reflectedWindow != null) {
+                return reflectedWindow;
             }
 
-            // For dialogs and other windows, we get notified via ActivityLifecycleCallbacks
-            // or WindowSpy when the root view is added
+            // Unwrap ContextWrapper chain to find an Activity
+            Context context = view.getContext();
+            while (context instanceof ContextWrapper) {
+                if (context instanceof Activity) {
+                    return ((Activity) context).getWindow();
+                }
+                context = ((ContextWrapper) context).getBaseContext();
+            }
         } catch (Exception e) {
             MPLog.d(TAG, "Could not get window from view", e);
+        }
+        return null;
+    }
+
+    /**
+     * Uses reflection to get the Window from a decor view.
+     *
+     * <p>Android's DecorView (and PopupWindow's PopupDecorView) hold a reference
+     * to their Window via internal fields. This enables interceptor installation
+     * on dialog, popup, and bottom sheet windows detected by WindowSpy.
+     */
+    @Nullable
+    private static Window getWindowViaReflection(@NonNull View view) {
+        try {
+            // Try common field names for the Window reference on decor views
+            Class<?> clazz = view.getClass();
+            while (clazz != null && clazz != View.class) {
+                try {
+                    java.lang.reflect.Field windowField = clazz.getDeclaredField("mWindow");
+                    windowField.setAccessible(true);
+                    Object value = windowField.get(view);
+                    if (value instanceof Window) {
+                        return (Window) value;
+                    }
+                } catch (NoSuchFieldException ignored) {
+                    // Try parent class
+                }
+                clazz = clazz.getSuperclass();
+            }
+
+            // Also try getWindow() method if available (some custom view types)
+            try {
+                java.lang.reflect.Method getWindow = view.getClass().getMethod("getWindow");
+                Object value = getWindow.invoke(view);
+                if (value instanceof Window) {
+                    return (Window) value;
+                }
+            } catch (NoSuchMethodException ignored) {
+                // Not available
+            }
+        } catch (Exception e) {
+            MPLog.d(TAG, "Reflection failed for window lookup", e);
         }
         return null;
     }

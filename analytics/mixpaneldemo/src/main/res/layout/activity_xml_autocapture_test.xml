@@ -213,6 +213,53 @@
             android:textSize="12sp"
             android:gravity="center" />
 
+        <!-- Multi-Window / Overlay -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MULTI-WINDOW / OVERLAY"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/show_alert_dialog_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show AlertDialog"
+            android:contentDescription="xml_alert_trigger" />
+
+        <Button
+            android:id="@+id/show_bottom_sheet_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show BottomSheetDialog"
+            android:contentDescription="xml_bottomsheet_trigger"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/show_popup_menu_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show PopupMenu"
+            android:contentDescription="xml_popup_trigger"
+            android:layout_marginTop="8dp" />
+
+        <Spinner
+            android:id="@+id/test_spinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="xml_spinner"
+            android:entries="@array/spinner_options"
+            android:layout_marginTop="8dp" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="32dp" />

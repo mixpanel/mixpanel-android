@@ -19,6 +19,9 @@ public class XmlAutocaptureTestActivity extends Activity {
     public static final int ID_RULE3_BTN = 10003;
     public static final int ID_DEAD_XML_BTN = 10004;
     public static final int ID_RAGE_ZONE = 10005;
+    public static final int ID_ALERT_DIALOG_BTN = 10006;
+    public static final int ID_BOTTOM_SHEET_BTN = 10007;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +80,49 @@ public class XmlAutocaptureTestActivity extends Activity {
         rageZone.setContentDescription("rage_zone");
         addMarginTop(rageZone, 16);
         layout.addView(rageZone);
+
+        // AlertDialog trigger button
+        Button alertBtn = createButton("Show AlertDialog");
+        alertBtn.setId(ID_ALERT_DIALOG_BTN);
+        alertBtn.setContentDescription("test_alert_trigger");
+        alertBtn.setOnClickListener(v -> {
+            android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                    .setTitle("Test Alert Dialog")
+                    .setMessage("Tap buttons inside this dialog")
+                    .setPositiveButton("Confirm", null)
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+                    .setContentDescription("test_alert_confirm");
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)
+                    .setContentDescription("test_alert_cancel");
+        });
+        addMarginTop(alertBtn, 16);
+        layout.addView(alertBtn);
+
+        // BottomSheet trigger button (uses a regular Dialog for test simplicity)
+        Button sheetBtn = createButton("Show Bottom Sheet");
+        sheetBtn.setId(ID_BOTTOM_SHEET_BTN);
+        sheetBtn.setContentDescription("test_sheet_trigger");
+        sheetBtn.setOnClickListener(v -> {
+            android.app.Dialog dialog = new android.app.Dialog(this);
+            LinearLayout sheetLayout = new LinearLayout(this);
+            sheetLayout.setOrientation(LinearLayout.VERTICAL);
+            int pad = dpToPx(16);
+            sheetLayout.setPadding(pad, pad, pad, pad);
+
+            Button sheetAction = new Button(this);
+            sheetAction.setText("Sheet Action");
+            sheetAction.setContentDescription("test_sheet_action");
+            sheetLayout.addView(sheetAction, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            dialog.setContentView(sheetLayout);
+            dialog.show();
+        });
+        addMarginTop(sheetBtn, 8);
+        layout.addView(sheetBtn);
 
         scrollView.addView(layout);
         setContentView(scrollView);

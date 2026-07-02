@@ -5,8 +5,11 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**
  * XML Views Autocapture Test Screen
@@ -29,6 +32,7 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
         setupElIdResolutionTests()
         setupRageClickTests()
         setupPrivacyTests()
+        setupMultiWindowTests()
     }
 
     private fun setupElIdResolutionTests() {
@@ -85,5 +89,64 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
     }
 
     private fun setupPrivacyTests() {
+    }
+
+    private fun setupMultiWindowTests() {
+        // AlertDialog
+        findViewById<Button>(R.id.show_alert_dialog_btn).setOnClickListener {
+            val dialog = AlertDialog.Builder(this)
+                .setTitle("Test Alert Dialog")
+                .setMessage("Tap buttons inside this dialog")
+                .setPositiveButton("Confirm", null)
+                .setNegativeButton("Cancel", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.contentDescription = "xml_alert_confirm"
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.contentDescription = "xml_alert_cancel"
+        }
+
+        // BottomSheetDialog
+        findViewById<Button>(R.id.show_bottom_sheet_btn).setOnClickListener {
+            val bottomSheet = BottomSheetDialog(this)
+
+            val layout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(48, 48, 48, 48)
+            }
+
+            val layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 16
+            }
+
+            for (i in 1..3) {
+                val btn = Button(this).apply {
+                    text = "Bottom Sheet Action $i"
+                    contentDescription = "xml_sheet_action_$i"
+                }
+                layout.addView(btn, layoutParams)
+            }
+
+            val closeBtn = Button(this).apply {
+                text = "Close"
+                contentDescription = "xml_sheet_close"
+                setOnClickListener { bottomSheet.dismiss() }
+            }
+            layout.addView(closeBtn, layoutParams)
+
+            bottomSheet.setContentView(layout)
+            bottomSheet.show()
+        }
+
+        // PopupMenu
+        findViewById<Button>(R.id.show_popup_menu_btn).setOnClickListener { anchor ->
+            val popup = PopupMenu(this, anchor)
+            popup.menu.add(0, 1, 0, "Option 1")
+            popup.menu.add(0, 2, 1, "Option 2")
+            popup.menu.add(0, 3, 2, "Option 3")
+            popup.show()
+        }
     }
 }
