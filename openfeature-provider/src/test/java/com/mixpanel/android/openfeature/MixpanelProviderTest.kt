@@ -12,6 +12,8 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.any
 import org.mockito.Mockito.eq
@@ -323,9 +325,13 @@ class MixpanelProviderTest {
     }
 
     @Test
-    fun `shutdown is a no-op`() {
-        // Should not throw
+    fun `shutdown does not tear down injected flags`() {
+        // provider was constructed via MixpanelProvider(mockFlags), i.e. the
+        // caller owns the MixpanelAPI lifecycle. Shutting down flags here
+        // would silently break every subsequent flag evaluation on the
+        // shared MixpanelAPI instance.
         provider.shutdown()
+        verify(mockFlags, never()).shutdown()
     }
 
     @Test

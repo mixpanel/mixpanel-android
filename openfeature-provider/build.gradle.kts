@@ -43,7 +43,7 @@ java {
 
 dependencies {
     // official release
-    implementation("com.mixpanel.android:mixpanel-android:8.5.0")
+    implementation("com.mixpanel.android:mixpanel-android:8.9.0")
     // or use below for local testing
     // implementation(project(":analytics"))
 

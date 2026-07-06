@@ -71,7 +71,15 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
     }
 
     override fun shutdown() {
-        // No-op: the Mixpanel SDK manages its own lifecycle.
+        // Only release the flags worker when this provider created the
+        // MixpanelAPI itself (via the convenience constructor). When flags
+        // were injected via MixpanelProvider(mixpanel.getFlags()), the
+        // caller owns the MixpanelAPI lifecycle — shutting down its
+        // flags HandlerThread here would silently break every subsequent
+        // flag evaluation on the shared instance.
+        if (mixpanel != null) {
+            flags.shutdown()
+        }
     }
 
     override fun getBooleanEvaluation(
