@@ -120,28 +120,15 @@ final class ComposeSemanticHelper {
 
         /**
          * Checks if the tree has meaningfully changed.
-         * Navigation is detected by significant node count increase.
+         * The content hash is structurally sensitive — computeTreeHash folds
+         * child hashes sequentially, so any node addition/removal (even
+         * text-less nodes) produces a different hash.
          */
         boolean hasChanged(SemanticSnapshot current) {
             if (current == null) return true;
 
-            // Content hash changed = state change (text, labels, etc.)
             if (this.contentHash != current.contentHash) {
                 MPLog.d(TAG, "Snapshot: contentHash changed");
-                return true;
-            }
-
-            // Node count increased by 5+ = likely navigation (new screen added)
-            // During navigation animation, both screens may be present
-            if (current.nodeCount >= this.nodeCount + 5) {
-                MPLog.d(TAG, "Snapshot: nodeCount increased significantly (" +
-                        this.nodeCount + " -> " + current.nodeCount + ")");
-                return true;
-            }
-
-            // Node count decreased significantly = screen removed
-            if (current.nodeCount <= this.nodeCount - 5) {
-                MPLog.d(TAG, "Snapshot: nodeCount decreased significantly");
                 return true;
             }
 
