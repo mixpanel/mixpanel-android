@@ -45,9 +45,6 @@ final class ClickEvent {
     @Nullable
     public final String elements;
 
-    /** Timestamp when the click was captured. */
-    public final long timestamp;
-
     /** Whether the clicked view is considered interactive (clickable/longClickable). */
     public final boolean isInteractive;
 
@@ -72,7 +69,6 @@ final class ClickEvent {
             @Nullable String ariaLabel,
             @Nullable String role,
             @Nullable String elements,
-            long timestamp,
             boolean isInteractive,
             @Nullable View composeRoot) {
         this.x = x;
@@ -82,7 +78,6 @@ final class ClickEvent {
         this.ariaLabel = ariaLabel;
         this.role = role;
         this.elements = elements;
-        this.timestamp = timestamp;
         this.isInteractive = isInteractive;
         this.isCompose = composeRoot != null;
         this.composeRootRef = composeRoot != null ? new WeakReference<>(composeRoot) : null;
@@ -147,12 +142,10 @@ final class ClickEvent {
         private String ariaLabel;
         private String role;
         private String elements;
-        private long timestamp;
         private boolean isInteractive;
         private View composeRoot;
 
         Builder() {
-            this.timestamp = System.currentTimeMillis();
         }
 
         Builder x(float x) {
@@ -190,11 +183,6 @@ final class ClickEvent {
             return this;
         }
 
-        Builder timestamp(long timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
         Builder isInteractive(boolean isInteractive) {
             this.isInteractive = isInteractive;
             return this;
@@ -206,7 +194,7 @@ final class ClickEvent {
         }
 
         ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, ariaLabel, role, elements, timestamp, isInteractive, composeRoot);
+            return new ClickEvent(x, y, elementId, tagName, ariaLabel, role, elements, isInteractive, composeRoot);
         }
     }
 }
