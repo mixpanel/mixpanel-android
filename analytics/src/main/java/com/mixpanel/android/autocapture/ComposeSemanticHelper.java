@@ -33,50 +33,21 @@ final class ComposeSemanticHelper {
     private static final String TAG = "MP.ComposeHelper";
 
     /**
-     * Result of Compose extraction indicating why it returned null.
-     */
-    enum ExtractionResult {
-        /** No semantic node found at position - fallback may be appropriate */
-        NOT_FOUND,
-        /** Extraction succeeded - builder is available */
-        SUCCESS
-    }
-
-    /** Holds extraction result and optional builder */
-    static class ExtractResult {
-        final ExtractionResult result;
-        final ClickEvent.Builder builder;
-
-        private ExtractResult(ExtractionResult result, ClickEvent.Builder builder) {
-            this.result = result;
-            this.builder = builder;
-        }
-
-        static ExtractResult notFound() {
-            return new ExtractResult(ExtractionResult.NOT_FOUND, null);
-        }
-
-        static ExtractResult success(ClickEvent.Builder builder) {
-            return new ExtractResult(ExtractionResult.SUCCESS, builder);
-        }
-    }
-
-    /**
      * Extracts semantics from a Compose view at the given coordinates.
      *
      * @param view The view (must implement RootForTest)
      * @param x    Screen X coordinate
      * @param y    Screen Y coordinate
-     * @return ExtractResult indicating success or not found
+     * @return A ClickEvent.Builder with extracted semantics, or null if no node found
      */
-    @NonNull
-    static ExtractResult extract(@NonNull View view, float x, float y) {
+    @Nullable
+    static ClickEvent.Builder extract(@NonNull View view, float x, float y) {
         MPLog.d(TAG, "extract() called - view: " + view.getClass().getSimpleName() +
                 ", isRootForTest: " + (view instanceof RootForTest) + ", x: " + x + ", y: " + y);
 
         if (!(view instanceof RootForTest)) {
-            MPLog.d(TAG, "View is not RootForTest, returning NOT_FOUND");
-            return ExtractResult.notFound();
+            MPLog.d(TAG, "View is not RootForTest, returning null");
+            return null;
         }
 
         RootForTest root = (RootForTest) view;
@@ -89,14 +60,10 @@ final class ComposeSemanticHelper {
         SemanticsNode node = findNodeAtPosition(rootNode, x, y);
         if (node == null) {
             MPLog.d(TAG, "No Compose semantics node at position (" + x + ", " + y + ")");
-            return ExtractResult.notFound();
+            return null;
         }
 
-        ClickEvent.Builder builder = extractFromNode(node, x, y);
-        if (builder == null) {
-            return ExtractResult.notFound();
-        }
-        return ExtractResult.success(builder);
+        return extractFromNode(node, x, y);
     }
 
     /**
