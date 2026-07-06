@@ -59,16 +59,16 @@ final class SemanticExtractor {
             MPLog.d(TAG, "findComposeRoot result: " + (composeRoot != null ? composeRoot.getClass().getSimpleName() : "null") +
                     ", targetView: " + targetView.getClass().getSimpleName());
             if (composeRoot != null) {
-                ComposeSemanticHelper.ExtractResult composeResult = extractFromCompose(composeRoot, x, y);
-                MPLog.d(TAG, "extractFromCompose result: " + composeResult.result);
+                ClickEvent.Builder composeResult = extractFromCompose(composeRoot, x, y);
+                MPLog.d(TAG, "extractFromCompose result: " + (composeResult != null ? "found" : "not found"));
 
-                if (composeResult.result == ComposeSemanticHelper.ExtractionResult.SUCCESS) {
+                if (composeResult != null) {
                     // Set Compose root for dead click detection using semantic comparison
-                    composeResult.builder.composeRoot(composeRoot);
-                    return composeResult.builder;
+                    composeResult.composeRoot(composeRoot);
+                    return composeResult;
                 }
 
-                // Only fall back to accessibility if Compose didn't find a node (NOT_FOUND)
+                // Only fall back to accessibility if Compose didn't find a node
                 MPLog.d(TAG, "Compose node not found, falling back to accessibility");
                 ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y);
                 if (accessibilityResult != null) {
@@ -117,18 +117,18 @@ final class SemanticExtractor {
     /**
      * Extracts semantics from a Compose root using Compose's SemanticsNode API.
      */
-    @NonNull
-    private static ComposeSemanticHelper.ExtractResult extractFromCompose(@NonNull View composeRoot, float x, float y) {
+    @Nullable
+    private static ClickEvent.Builder extractFromCompose(@NonNull View composeRoot, float x, float y) {
         try {
             return ComposeSemanticHelper.extract(composeRoot, x, y);
         } catch (NoClassDefFoundError e) {
             // Compose not available at runtime
             composeAvailable = false;
             MPLog.d(TAG, "Compose semantics not available: " + e.getMessage());
-            return ComposeSemanticHelper.ExtractResult.notFound();
+            return null;
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting Compose semantics", e);
-            return ComposeSemanticHelper.ExtractResult.notFound();
+            return null;
         }
     }
 
