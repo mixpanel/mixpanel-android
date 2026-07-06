@@ -66,6 +66,11 @@ final class WindowSpy {
                 sInstalled = true;
                 MPLog.d(TAG, "WindowSpy installed via Curtains");
             } catch (Exception e) {
+                // Defensive: Curtains relies on WindowManagerGlobal.mViews reflection
+                // which has been stable since API 17 but the library is no longer
+                // actively maintained. If a future Android version restricts this
+                // internal API, we degrade gracefully — activity windows still work
+                // via lifecycle callbacks, only dialogs/popups lose coverage.
                 MPLog.e(TAG, "Failed to install WindowSpy via Curtains, "
                         + "only Activity windows will be tracked", e);
             }

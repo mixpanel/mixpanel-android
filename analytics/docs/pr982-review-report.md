@@ -154,7 +154,8 @@ Updated: 2026-07-06 (Tyler's inline review + Greptile bot findings)
 - **Status:** VALID
 - **Description:** The Compose path classifies dead clicks using a hardcoded +/-5 node count threshold. The XML path uses exact equality. A Compose click that adds/removes 1-4 nodes (toggling an icon, revealing a badge) is a false dead click.
 - **Fix:** Make sensitivity configurable or use consistent logic across both paths.
-- [ ] Not yet addressed
+- [x] Fixed
+- **Resolution:** Removed the ±5 node count checks. `computeTreeHash` folds child hashes sequentially (`31 * hash + childResult[1]`), so any structural change — even adding/removing a text-less node — produces a different hash. The node count check was redundant. `hasChanged()` now relies solely on `contentHash` comparison, consistent with the XML path's exact-equality approach.
 
 ### D6. Duplicate `ActivityLifecycleCallbacks` registration
 - **File:** `AutocaptureManager.java:109`, `MixpanelAPI.java:2178`
@@ -226,9 +227,9 @@ Updated: 2026-07-06 (Tyler's inline review + Greptile bot findings)
 
 ### T4. Node count threshold of ±5 is arbitrary
 - **File:** `ComposeSemanticHelper.java`
-- **Status:** PARTIALLY VALID — same as D3
-- **Description:** The `contentHash` check already catches text/label changes with zero threshold. The ±5 node count is specifically for structural navigation detection — small fluctuations (1-3 nodes) occur during Compose animations. The number 5 is a heuristic that should be documented or made configurable.
-- [ ] Not yet addressed (tracked as D3)
+- **Status:** VALID — same as D3
+- **Description:** The ±5 node count check was redundant — `contentHash` already catches all structural changes because `computeTreeHash` folds child hashes sequentially. Any node add/remove produces a different hash.
+- [x] Fixed (see D3 resolution)
 
 ### T5. WindowSpy error message accuracy / can Curtains throw?
 - **File:** `WindowSpy.java`
