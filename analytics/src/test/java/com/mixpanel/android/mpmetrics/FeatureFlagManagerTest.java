@@ -336,7 +336,7 @@ public class FeatureFlagManagerTest {
   @After
   public void tearDown() {
     if (mFeatureFlagManager != null) {
-      mFeatureFlagManager.close();
+      mFeatureFlagManager.shutdown();
     }
     MPLog.setLevel(mPreviousLogLevel);
   }

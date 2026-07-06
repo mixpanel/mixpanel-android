@@ -175,10 +175,14 @@ class FeatureFlagManager implements MixpanelAPI.Flags {
     }
   }
 
-  // Stop the worker HandlerThread and network executor so they don't outlive a test JVM
-  // worker (non-daemon threads would otherwise keep gradle's test JVM alive after a failure).
-  // Package-private; idempotent.
-  void close() {
+  /**
+   * Stops the worker {@link HandlerThread} and the network request executor.
+   * Invoked from lifecycle hooks that own this flag instance — notably
+   * an OpenFeature {@code FeatureProvider.shutdown()} hook — so the
+   * non-daemon threads don't outlive their intended owner. Idempotent.
+   */
+  @Override
+  public void shutdown() {
     try {
       mHandler.getLooper().quitSafely();
     } catch (Exception e) {

@@ -2088,6 +2088,19 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          */
         boolean areFlagsReady();
 
+        /**
+         * Releases resources held by this flags instance. Intended to be
+         * invoked from lifecycle hooks that own the flag instance — most
+         * notably an OpenFeature {@code FeatureProvider.shutdown()} hook.
+         * The SDK-provided implementation stops its dedicated worker
+         * thread and network executor; both are non-daemon and would
+         * otherwise keep a long-lived process from exiting cleanly.
+         *
+         * <p>Idempotent. Calling any flag method after {@code shutdown()}
+         * is undefined and may silently no-op.
+         */
+        void shutdown();
+
         // --- Sync Flag Retrieval ---
 
         /**
