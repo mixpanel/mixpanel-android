@@ -397,7 +397,14 @@ final class SemanticExtractor {
                 sb.insert(0, getSimpleClassName(className.toString()));
             }
 
-            AccessibilityNodeInfo parent = current.getParent();
+            AccessibilityNodeInfo parent;
+            try {
+                parent = current.getParent();
+            } catch (IllegalStateException e) {
+                // Nodes from AccessibilityNodeProvider.createAccessibilityNodeInfo()
+                // are not sealed and cannot call getParent(). Return what we have.
+                break;
+            }
             if (current != node) {
                 current.recycle();
             }
