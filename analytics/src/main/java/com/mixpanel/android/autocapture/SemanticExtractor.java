@@ -161,14 +161,16 @@ final class SemanticExtractor {
 
         MPLog.d(TAG, "Using AccessibilityNodeProvider from: " + viewWithProvider.getClass().getSimpleName());
 
+        AccessibilityNodeInfo rootNode = null;
+        AccessibilityNodeInfo targetNode = null;
         try {
-            AccessibilityNodeInfo rootNode = provider.createAccessibilityNodeInfo(View.NO_ID);
+            rootNode = provider.createAccessibilityNodeInfo(View.NO_ID);
             if (rootNode == null) {
                 MPLog.d(TAG, "No root accessibility node from provider");
                 return null;
             }
 
-            AccessibilityNodeInfo targetNode = findNodeAtPosition(
+            targetNode = findNodeAtPosition(
                     rootNode, (int) x, (int) y, 0, new int[]{0});
             if (targetNode != null) {
                 // Log what we found for debugging
@@ -182,16 +184,19 @@ final class SemanticExtractor {
                         ", viewId: " + viewId +
                         ", clickable: " + targetNode.isClickable());
 
-                ClickEvent.Builder builder = extractFromNode(targetNode, x, y);
-                targetNode.recycle();
-                rootNode.recycle();
-                return builder;
+                return extractFromNode(targetNode, x, y);
             }
 
             MPLog.d(TAG, "No accessibility node found at position");
-            rootNode.recycle();
         } catch (Exception e) {
             MPLog.d(TAG, "Error extracting from accessibility", e);
+        } finally {
+            if (targetNode != null) {
+                targetNode.recycle();
+            }
+            if (rootNode != null) {
+                rootNode.recycle();
+            }
         }
 
         return null;
