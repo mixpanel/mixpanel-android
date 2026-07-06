@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.Window;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -31,6 +32,7 @@ import java.util.WeakHashMap;
  * and detach interceptors appropriately.
  *
  * <p>Thread safety: All public methods must be called from the main thread.
+ * {@link #start()} and {@link #stop()} are idempotent — duplicate calls are no-ops.
  */
 public final class AutocaptureManager implements
         Application.ActivityLifecycleCallbacks,
@@ -97,7 +99,9 @@ public final class AutocaptureManager implements
      *
      * <p>Registers lifecycle callbacks and installs window tracking.
      * This should be called once during SDK initialization.
+     * Duplicate calls are no-ops.
      */
+    @MainThread
     public void start() {
         if (mStarted) {
             return;
@@ -134,7 +138,9 @@ public final class AutocaptureManager implements
      * Stops autocapture.
      *
      * <p>Unregisters lifecycle callbacks and removes all interceptors.
+     * Duplicate calls are no-ops.
      */
+    @MainThread
     public void stop() {
         if (!mStarted) {
             return;
