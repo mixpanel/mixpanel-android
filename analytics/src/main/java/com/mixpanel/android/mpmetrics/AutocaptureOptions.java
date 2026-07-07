@@ -133,6 +133,7 @@ public class AutocaptureOptions {
          * @return This Builder instance for chaining.
          */
         public Builder clickOptions(@NonNull ClickOptions clickOptions) {
+            if (clickOptions == null) return this;
             this.mClickOptions = clickOptions;
             return this;
         }
@@ -144,6 +145,7 @@ public class AutocaptureOptions {
          * @return This Builder instance for chaining.
          */
         public Builder rageClickOptions(@NonNull RageClickOptions rageClickOptions) {
+            if (rageClickOptions == null) return this;
             this.mRageClickOptions = rageClickOptions;
             return this;
         }
@@ -155,6 +157,7 @@ public class AutocaptureOptions {
          * @return This Builder instance for chaining.
          */
         public Builder deadClickOptions(@NonNull DeadClickOptions deadClickOptions) {
+            if (deadClickOptions == null) return this;
             this.mDeadClickOptions = deadClickOptions;
             return this;
         }
