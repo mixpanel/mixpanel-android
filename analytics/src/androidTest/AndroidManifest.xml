@@ -10,8 +10,5 @@
         <activity
             android:name="com.mixpanel.android.mpmetrics.AutocaptureComposeTestActivity"
             android:exported="false" />
-        <activity
-            android:name="com.mixpanel.android.mpmetrics.AutocaptureMixedTestActivity"
-            android:exported="false" />
     </application>
 </manifest>

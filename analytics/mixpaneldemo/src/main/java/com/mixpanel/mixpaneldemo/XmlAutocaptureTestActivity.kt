@@ -9,6 +9,13 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**
@@ -33,6 +40,7 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
         setupRageClickTests()
         setupPrivacyTests()
         setupMultiWindowTests()
+        setupCrossFrameworkTests()
     }
 
     private fun setupElIdResolutionTests() {
@@ -89,6 +97,26 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
     }
 
     private fun setupPrivacyTests() {
+    }
+
+    private fun setupCrossFrameworkTests() {
+        val xmlLabel = findViewById<TextView>(R.id.cross_framework_label)
+        var clickCount = 0
+
+        findViewById<ComposeView>(R.id.cross_framework_compose_view).setContent {
+            Button(
+                onClick = {
+                    // Updates only the XML TextView — no Compose state change
+                    clickCount++
+                    xmlLabel.text = "XML Label: updated $clickCount"
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "xml_compose_updates_xml_btn" }
+            ) {
+                Text("Compose \u2192 XML update (should NOT dead click)")
+            }
+        }
     }
 
     private fun setupMultiWindowTests() {
