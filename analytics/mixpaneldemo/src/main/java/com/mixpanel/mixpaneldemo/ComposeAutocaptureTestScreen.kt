@@ -1,7 +1,6 @@
 package com.mixpanel.mixpaneldemo
 
 import android.content.Intent
-import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +18,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 
@@ -290,42 +288,6 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                         .semantics { contentDescription = "compose_snackbar_trigger" }
                 ) {
                     Text("Show Snackbar")
-                }
-            }
-
-            // Cross-Framework Dead Click
-            item { SectionHeader("Cross-Framework Dead Click") }
-
-            item {
-                var xmlLabel by remember { mutableStateOf<TextView?>(null) }
-                var clickCount by remember { mutableIntStateOf(0) }
-
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    // Embedded XML TextView — updated by the Compose button below
-                    AndroidView(
-                        factory = { ctx ->
-                            TextView(ctx).apply {
-                                text = "XML Label: waiting..."
-                                textSize = 16f
-                                setPadding(0, 8, 0, 8)
-                                xmlLabel = this
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Button(
-                        onClick = {
-                            // Updates only the XML TextView — no Compose state change
-                            clickCount++
-                            xmlLabel?.text = "XML Label: updated $clickCount"
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics { contentDescription = "compose_updates_xml_btn" }
-                    ) {
-                        Text("Compose \u2192 XML update (should NOT dead click)")
-                    }
                 }
             }
 
