@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -178,6 +179,9 @@ final class DeadClickDetector {
      * Monitors XML view hierarchy for changes using view count and content hash.
      */
     private static class XmlUiChangeMonitor implements UiChangeMonitor {
+        private static final int IDX_COUNT = 0;
+        private static final int IDX_HASH = 1;
+
         private final WeakReference<View> mRootViewRef;
         private int mBaselineViewCount;
         private int mBaselineContentHash;
@@ -191,8 +195,9 @@ final class DeadClickDetector {
             try {
                 View rootView = mRootViewRef.get();
                 if (rootView == null) return false;
-                mBaselineViewCount = countViews(rootView, 0);
-                mBaselineContentHash = computeContentHash(rootView, 0);
+                int[] snapshot = snapshotViewTree(rootView, 0);
+                mBaselineViewCount = snapshot[IDX_COUNT];
+                mBaselineContentHash = snapshot[IDX_HASH];
                 return true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing XML baseline", e);
@@ -204,10 +209,9 @@ final class DeadClickDetector {
         public boolean hasChanged() {
             View rootView = mRootViewRef.get();
             if (rootView == null) return true; // View gone = change
-            int currentViewCount = countViews(rootView, 0);
-            int currentContentHash = computeContentHash(rootView, 0);
-            return currentViewCount != mBaselineViewCount ||
-                   currentContentHash != mBaselineContentHash;
+            int[] snapshot = snapshotViewTree(rootView, 0);
+            return snapshot[IDX_COUNT] != mBaselineViewCount ||
+                snapshot[IDX_HASH] != mBaselineContentHash;
         }
 
         @Override
@@ -228,44 +232,43 @@ final class DeadClickDetector {
             }
         }
 
-        private static int countViews(@NonNull View view, int depth) {
-            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0;
-            if (view.getVisibility() != View.VISIBLE) return 0;
+        /**
+         * Captures view count and content hash in a single tree walk.
+         *
+         * @return int[]{viewCount, contentHash}
+         */
+        private static int[] snapshotViewTree(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return new int[]{0, 0};
+            if (view.getVisibility() != View.VISIBLE) return new int[]{0, 0};
 
             int count = 1;
-            if (view instanceof ViewGroup) {
-                ViewGroup group = (ViewGroup) view;
-                for (int i = 0; i < group.getChildCount(); i++) {
-                    count += countViews(group.getChildAt(i), depth + 1);
-                }
-            }
-            return count;
-        }
-
-        private static int computeContentHash(@NonNull View view, int depth) {
-            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0;
-            if (view.getVisibility() != View.VISIBLE) return 0;
-
             int hash = 17;
+
+            // Position and size
             hash = 31 * hash + view.getLeft();
             hash = 31 * hash + view.getTop();
             hash = 31 * hash + view.getWidth();
             hash = 31 * hash + view.getHeight();
 
-            if (view instanceof android.widget.TextView) {
-                CharSequence text = ((android.widget.TextView) view).getText();
+            // Text content (for TextViews)
+            if (view instanceof TextView) {
+                CharSequence text = ((TextView) view).getText();
                 if (text != null) {
                     hash = 31 * hash + text.hashCode();
                 }
             }
 
+            // Recurse into children
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    hash = 31 * hash + computeContentHash(group.getChildAt(i), depth + 1);
+                    int[] child = snapshotViewTree(group.getChildAt(i), depth + 1);
+                    count += child[IDX_COUNT];
+                    hash = 31 * hash + child[IDX_HASH];
                 }
             }
-            return hash;
+
+            return new int[]{count, hash};
         }
     }
 
