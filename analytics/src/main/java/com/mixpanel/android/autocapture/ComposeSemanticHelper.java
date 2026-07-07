@@ -33,37 +33,47 @@ final class ComposeSemanticHelper {
     private static final String TAG = "MP.ComposeHelper";
 
     /**
-     * Extracts semantics from a Compose view at the given coordinates.
+     * Extracts semantics from a Compose view at the given screen coordinates.
      *
-     * @param view The view (must implement RootForTest)
-     * @param x    Screen X coordinate
-     * @param y    Screen Y coordinate
+     * <p>Converts screen coordinates to window-relative coordinates before matching
+     * against Compose's {@code getBoundsInWindow()}, which is necessary for correct
+     * hit testing in split-screen, multi-window, or any mode where the window origin
+     * is offset from the screen origin.
+     *
+     * @param view    The view (must implement RootForTest)
+     * @param screenX Screen X coordinate (from MotionEvent.getRawX)
+     * @param screenY Screen Y coordinate (from MotionEvent.getRawY)
      * @return A ClickEvent.Builder with extracted semantics, or null if no node found
      */
     @Nullable
-    static ClickEvent.Builder extract(@NonNull View view, float x, float y) {
-        MPLog.d(TAG, "extract() called - view: " + view.getClass().getSimpleName() +
-                ", isRootForTest: " + (view instanceof RootForTest) + ", x: " + x + ", y: " + y);
-
+    static ClickEvent.Builder extract(@NonNull View view, float screenX, float screenY) {
         if (!(view instanceof RootForTest)) {
             MPLog.d(TAG, "View is not RootForTest, returning null");
             return null;
         }
 
+        // Convert screen coordinates to window-relative coordinates.
+        // Compose's getBoundsInWindow() returns bounds relative to the window, not the
+        // screen. In split-screen or multi-window the window origin is offset from (0,0).
+        int[] windowOffset = new int[2];
+        view.getLocationInWindow(windowOffset);
+        int[] screenOffset = new int[2];
+        view.getLocationOnScreen(screenOffset);
+        float windowX = screenX - (screenOffset[0] - windowOffset[0]);
+        float windowY = screenY - (screenOffset[1] - windowOffset[1]);
+
         RootForTest root = (RootForTest) view;
         SemanticsNode rootNode = root.getSemanticsOwner().getRootSemanticsNode();
-        Rect rootBounds = rootNode.getBoundsInWindow();
-        MPLog.d(TAG, "Root semantics node bounds: " + rootBounds.getLeft() + "," + rootBounds.getTop() +
-                " to " + rootBounds.getRight() + "," + rootBounds.getBottom());
 
-        // Find the node at the tap position
-        SemanticsNode node = findNodeAtPosition(rootNode, x, y);
+        // Find the node using window-relative coordinates
+        SemanticsNode node = findNodeAtPosition(rootNode, windowX, windowY);
         if (node == null) {
-            MPLog.d(TAG, "No Compose semantics node at position (" + x + ", " + y + ")");
+            MPLog.d(TAG, "No Compose semantics node at position (" + windowX + ", " + windowY + ")");
             return null;
         }
 
-        return extractFromNode(node, x, y);
+        // Pass original screen coordinates to extractFromNode for the ClickEvent
+        return extractFromNode(node, screenX, screenY);
     }
 
     /**
