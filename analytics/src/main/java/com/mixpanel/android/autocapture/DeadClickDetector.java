@@ -128,7 +128,7 @@ final class DeadClickDetector {
             if (clickEvent.isComposeClick()) {
                 View composeRoot = clickEvent.getComposeRoot();
                 if (composeRoot == null) return;
-                monitor = new ComposeUiChangeMonitor(composeRoot, rootView);
+                monitor = new ComposeUiChangeMonitor(composeRoot);
             } else {
                 monitor = new XmlUiChangeMonitor(rootView);
             }
@@ -172,42 +172,10 @@ final class DeadClickDetector {
         }
     }
 
-    // ==================== Shared Helpers ====================
-
-    /**
-     * Computes a hash of the visible XML view hierarchy content for change detection.
-     * Includes view position, size, and text content.
-     */
-    private static int computeContentHash(@NonNull View view, int depth) {
-        if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0;
-        if (view.getVisibility() != View.VISIBLE) return 0;
-
-        int hash = 17;
-        hash = 31 * hash + view.getLeft();
-        hash = 31 * hash + view.getTop();
-        hash = 31 * hash + view.getWidth();
-        hash = 31 * hash + view.getHeight();
-
-        if (view instanceof android.widget.TextView) {
-            CharSequence text = ((android.widget.TextView) view).getText();
-            if (text != null) {
-                hash = 31 * hash + text.hashCode();
-            }
-        }
-
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                hash = 31 * hash + computeContentHash(group.getChildAt(i), depth + 1);
-            }
-        }
-        return hash;
-    }
-
     // ==================== UiChangeMonitor Implementations ====================
 
     /**
-     * Monitors XML view hierarchy for changes via view count and content hash comparison.
+     * Monitors XML view hierarchy for changes using view count and content hash.
      */
     private static class XmlUiChangeMonitor implements UiChangeMonitor {
         private final WeakReference<View> mRootViewRef;
@@ -224,7 +192,7 @@ final class DeadClickDetector {
                 View rootView = mRootViewRef.get();
                 if (rootView == null) return false;
                 mBaselineViewCount = countViews(rootView, 0);
-                mBaselineContentHash = DeadClickDetector.computeContentHash(rootView, 0);
+                mBaselineContentHash = computeContentHash(rootView, 0);
                 return true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing XML baseline", e);
@@ -237,7 +205,7 @@ final class DeadClickDetector {
             View rootView = mRootViewRef.get();
             if (rootView == null) return true; // View gone = change
             int currentViewCount = countViews(rootView, 0);
-            int currentContentHash = DeadClickDetector.computeContentHash(rootView, 0);
+            int currentContentHash = computeContentHash(rootView, 0);
             return currentViewCount != mBaselineViewCount ||
                    currentContentHash != mBaselineContentHash;
         }
@@ -274,87 +242,73 @@ final class DeadClickDetector {
             return count;
         }
 
+        private static int computeContentHash(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0;
+            if (view.getVisibility() != View.VISIBLE) return 0;
+
+            int hash = 17;
+            hash = 31 * hash + view.getLeft();
+            hash = 31 * hash + view.getTop();
+            hash = 31 * hash + view.getWidth();
+            hash = 31 * hash + view.getHeight();
+
+            if (view instanceof android.widget.TextView) {
+                CharSequence text = ((android.widget.TextView) view).getText();
+                if (text != null) {
+                    hash = 31 * hash + text.hashCode();
+                }
+            }
+
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    hash = 31 * hash + computeContentHash(group.getChildAt(i), depth + 1);
+                }
+            }
+            return hash;
+        }
     }
 
     /**
-     * Monitors both Compose semantic tree and XML view hierarchy for changes.
-     *
-     * <p>In mixed Compose/XML layouts, a Compose button click may modify only XML views.
-     * This monitor catches such cross-framework changes by:
-     * <ul>
-     *   <li>Attaching ViewTreeObserver listeners on the root view for early cancellation
-     *       when XML layout or scroll changes occur</li>
-     *   <li>Checking both the Compose semantic snapshot and XML content hash at timeout,
-     *       so changes in either framework are detected</li>
-     * </ul>
+     * Monitors Compose semantic tree for changes using semantic snapshots.
      */
     private static class ComposeUiChangeMonitor implements UiChangeMonitor {
         private final WeakReference<View> mComposeRootRef;
-        private final WeakReference<View> mRootViewRef;
         @Nullable
-        private ComposeSemanticHelper.SemanticSnapshot mComposeBaseline;
-        private int mXmlBaselineContentHash;
+        private ComposeSemanticHelper.SemanticSnapshot mBaseline;
 
-        ComposeUiChangeMonitor(@NonNull View composeRoot, @NonNull View rootView) {
+        ComposeUiChangeMonitor(@NonNull View composeRoot) {
             mComposeRootRef = new WeakReference<>(composeRoot);
-            mRootViewRef = new WeakReference<>(rootView);
         }
 
         @Override
         public boolean captureBaseline() {
             View composeRoot = mComposeRootRef.get();
             if (composeRoot == null) return false;
-            mComposeBaseline = ComposeSemanticHelper.captureSnapshot(composeRoot);
-            if (mComposeBaseline == null) return false;
-
-            View rootView = mRootViewRef.get();
-            if (rootView != null) {
-                mXmlBaselineContentHash = DeadClickDetector.computeContentHash(rootView, 0);
-            }
-            return true;
+            mBaseline = ComposeSemanticHelper.captureSnapshot(composeRoot);
+            return mBaseline != null;
         }
 
         @Override
         public boolean hasChanged() {
-            // Check Compose semantic tree
             View composeRoot = mComposeRootRef.get();
             if (composeRoot == null) return true; // View gone = change
             ComposeSemanticHelper.SemanticSnapshot current =
                     ComposeSemanticHelper.captureSnapshot(composeRoot);
-            boolean composeChanged = mComposeBaseline.hasChanged(current);
-
-            // Check XML view hierarchy for cross-framework changes
-            boolean xmlChanged = false;
-            View rootView = mRootViewRef.get();
-            if (rootView != null) {
-                int currentHash = DeadClickDetector.computeContentHash(rootView, 0);
-                xmlChanged = currentHash != mXmlBaselineContentHash;
-            }
-
-            boolean changed = composeChanged || xmlChanged;
-            MPLog.d(TAG, "Compose dead click check - composeChanged: " + composeChanged
-                    + ", xmlChanged: " + xmlChanged);
+            boolean changed = mBaseline.hasChanged(current);
+            MPLog.d(TAG, "Compose dead click check - changed: " + changed);
             return changed;
         }
 
         @Override
         public void attachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            // Attach ViewTreeObserver listeners on the root view to catch XML changes
-            // (layout, scroll) for early cancellation in mixed Compose/XML layouts.
-            ViewTreeObserver observer = rootView.getViewTreeObserver();
-            if (observer.isAlive()) {
-                observer.addOnGlobalLayoutListener(session);
-                observer.addOnScrollChangedListener(session);
-            }
+            // Compose doesn't use ViewTreeObserver listeners — change detection is
+            // snapshot-based (baseline vs current at timeout).
         }
 
         @Override
         public void detachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            ViewTreeObserver observer = rootView.getViewTreeObserver();
-            if (observer.isAlive()) {
-                observer.removeOnGlobalLayoutListener(session);
-                observer.removeOnScrollChangedListener(session);
-            }
+            // No listeners to detach.
         }
     }
 

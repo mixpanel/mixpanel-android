@@ -260,6 +260,37 @@
             android:entries="@array/spinner_options"
             android:layout_marginTop="8dp" />
 
+        <!-- Cross-Framework Dead Click -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CROSS-FRAMEWORK DEAD CLICK"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/cross_framework_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="XML Label: waiting..."
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/cross_framework_compose_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="32dp" />
