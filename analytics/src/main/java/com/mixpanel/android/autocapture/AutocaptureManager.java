@@ -353,6 +353,9 @@ public final class AutocaptureManager implements
                     down[0] = event.getRawX();
                     down[1] = event.getRawY();
                     down[2] = event.getEventTime();
+                } else if (action == MotionEvent.ACTION_POINTER_DOWN
+                        || action == MotionEvent.ACTION_CANCEL) {
+                    down[2] = 0;
                 } else if (action == MotionEvent.ACTION_UP
                         && event.getPointerCount() == 1) {
                     long duration = event.getEventTime() - (long) down[2];

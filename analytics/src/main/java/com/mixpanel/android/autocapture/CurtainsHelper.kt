@@ -78,6 +78,10 @@ internal object CurtainsHelper {
                         downY = event.rawY
                         downTime = event.eventTime
                     }
+                    MotionEvent.ACTION_POINTER_DOWN,
+                    MotionEvent.ACTION_CANCEL -> {
+                        downTime = 0L
+                    }
                     MotionEvent.ACTION_UP -> {
                         if (event.pointerCount == 1) {
                             val duration = event.eventTime - downTime
