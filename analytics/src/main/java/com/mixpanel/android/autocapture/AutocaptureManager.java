@@ -4,9 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.Window;
 
 import androidx.annotation.MainThread;
@@ -246,10 +244,6 @@ public final class AutocaptureManager implements
                 Window window = CurtainsHelper.getWindow(view);
                 if (window != null && !mWindowListeners.containsKey(window)) {
                     attachTouchListener(window);
-                } else if (window == null) {
-                    // No Window object (e.g., PopupWindow, DropdownMenu, Spinner popup).
-                    // Attach a touch listener directly on the root view as a fallback.
-                    attachRootViewTouchListener(view);
                 }
             } else {
                 // Window removed (dialog/sheet dismissed) — this is a UI change
@@ -331,49 +325,6 @@ public final class AutocaptureManager implements
     }
 
     // ==================== Private Helpers ====================
-
-    /**
-     * Attaches a touch listener to a root view that has no Window (e.g., Toast overlays).
-     *
-     * <p>This is a best-effort fallback for windowless root views. It intercepts taps
-     * (ACTION_DOWN + ACTION_UP within touch slop and duration threshold) without consuming
-     * them. Note: PopupWindow-based views (DropdownMenu, Spinner popups, PopupMenu) are
-     * not supported — their child views consume touches before they reach this listener.
-     */
-    @SuppressWarnings("ClickableViewAccessibility")
-    private void attachRootViewTouchListener(@NonNull View rootView) {
-        int touchSlop = ViewConfiguration.get(rootView.getContext()).getScaledTouchSlop();
-        final int touchSlopSq = touchSlop * touchSlop;
-        final float[] down = new float[3]; // downX, downY, downTime
-
-        rootView.setOnTouchListener((v, event) -> {
-            try {
-                int action = event.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN) {
-                    down[0] = event.getRawX();
-                    down[1] = event.getRawY();
-                    down[2] = event.getEventTime();
-                } else if (action == MotionEvent.ACTION_POINTER_DOWN
-                        || action == MotionEvent.ACTION_CANCEL) {
-                    down[2] = 0;
-                } else if (action == MotionEvent.ACTION_UP
-                        && event.getPointerCount() == 1) {
-                    long duration = event.getEventTime() - (long) down[2];
-                    float dx = event.getRawX() - down[0];
-                    float dy = event.getRawY() - down[1];
-                    if (down[2] > 0 && duration <= 800
-                            && (dx * dx + dy * dy) <= touchSlopSq) {
-                        onTap(event.getRawX(), event.getRawY(), rootView);
-                    }
-                }
-            } catch (Exception e) {
-                MPLog.e(TAG, "Error in root view touch listener", e);
-            }
-            return false; // Don't consume - let the view handle the touch normally
-        });
-        MPLog.d(TAG, "Attached touch listener to windowless root view: "
-                + rootView.getClass().getSimpleName());
-    }
 
     /**
      * Attaches a Curtains-based touch listener to a window.
