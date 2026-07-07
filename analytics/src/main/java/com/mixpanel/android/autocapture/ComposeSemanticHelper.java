@@ -87,11 +87,9 @@ final class ComposeSemanticHelper {
      * Snapshot of semantic tree state for dead click detection.
      */
     static class SemanticSnapshot {
-        final int nodeCount;
         final int contentHash;
 
-        SemanticSnapshot(int nodeCount, int contentHash) {
-            this.nodeCount = nodeCount;
+        SemanticSnapshot(int contentHash) {
             this.contentHash = contentHash;
         }
 
@@ -125,9 +123,9 @@ final class ComposeSemanticHelper {
         try {
             RootForTest root = (RootForTest) view;
             SemanticsNode rootNode = root.getSemanticsOwner().getRootSemanticsNode();
-            int[] result = computeTreeHash(rootNode, 0);
-            MPLog.d(TAG, "Captured snapshot - nodes: " + result[0] + ", hash: " + result[1]);
-            return new SemanticSnapshot(result[0], result[1]);
+            int hash = computeTreeHash(rootNode, 0);
+            MPLog.d(TAG, "Captured snapshot - hash: " + hash);
+            return new SemanticSnapshot(hash);
         } catch (Exception e) {
             MPLog.e(TAG, "Error capturing semantic snapshot", e);
             return null;
@@ -135,15 +133,15 @@ final class ComposeSemanticHelper {
     }
 
     /**
-     * Computes node count and content hash for the semantic tree.
-     * Returns [nodeCount, contentHash].
+     * Computes a content hash for the semantic tree.
+     * The hash is structurally sensitive — child hashes are folded sequentially,
+     * so any node addition/removal produces a different hash.
      */
-    private static int[] computeTreeHash(@NonNull SemanticsNode node, int depth) {
+    private static int computeTreeHash(@NonNull SemanticsNode node, int depth) {
         if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
-            return new int[]{0, 0};
+            return 0;
         }
 
-        int nodeCount = 1;
         int hash = 17;
 
         SemanticsConfiguration config = node.getConfig();
@@ -163,12 +161,10 @@ final class ComposeSemanticHelper {
         // Recurse into children
         List<SemanticsNode> children = node.getChildren();
         for (SemanticsNode child : children) {
-            int[] childResult = computeTreeHash(child, depth + 1);
-            nodeCount += childResult[0];
-            hash = 31 * hash + childResult[1];
+            hash = 31 * hash + computeTreeHash(child, depth + 1);
         }
 
-        return new int[]{nodeCount, hash};
+        return hash;
     }
 
     /**
