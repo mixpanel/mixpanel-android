@@ -239,19 +239,16 @@ final class ComposeSemanticHelper {
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
         String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
 
-        ClickEvent.Builder builder = new ClickEvent.Builder()
-                .x(x)
-                .y(y);
-
         // Element ID resolution (matching Android plan):
         // 1. contentDescription (from semantics { contentDescription = ... })
         // 2. testTag (from Modifier.testTag(...)) - equivalent to resource ID
         // 3. ClassName_view_<hashCode>
         String elementId = null;
+        String ariaLabel = null;
 
         if (contentDesc != null && !contentDesc.isEmpty()) {
             elementId = contentDesc;
-            builder.ariaLabel(contentDesc);
+            ariaLabel = contentDesc;
         }
 
         if (elementId == null && testTag != null && !testTag.isEmpty()) {
@@ -263,7 +260,11 @@ final class ComposeSemanticHelper {
             elementId = tagName + "_view_" + Integer.toHexString(node.hashCode());
         }
 
-        builder.elementId(elementId);
+        ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
+
+        if (ariaLabel != null) {
+            builder.ariaLabel(ariaLabel);
+        }
 
         // Tag name from role
         String tagName = getTagName(config);
