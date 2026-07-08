@@ -17,7 +17,7 @@ import java.lang.ref.WeakReference;
  * This snapshot is captured immediately on click to ensure accurate attribution
  * even when views are recycled (e.g., RecyclerView, LazyColumn).
  */
-final class ClickEvent {
+public final class ClickEvent {
 
     /** Screen X coordinate of the click. */
     public final float x;
@@ -26,7 +26,7 @@ final class ClickEvent {
     public final float y;
 
     /** Primary element identifier (contentDescription, resource ID, or fallback). */
-    @Nullable
+    @NonNull
     public final String elementId;
 
     /** Element class name (e.g., "Button", "TextView"). */
@@ -64,7 +64,7 @@ final class ClickEvent {
     ClickEvent(
             float x,
             float y,
-            @Nullable String elementId,
+            @NonNull String elementId,
             @Nullable String tagName,
             @Nullable String ariaLabel,
             @Nullable String role,
@@ -104,15 +104,12 @@ final class ClickEvent {
      * @return A JSONObject containing all non-null properties.
      */
     @NonNull
-    JSONObject toProperties() {
+    public JSONObject toProperties() {
         JSONObject props = new JSONObject();
         try {
             props.put(AutocaptureDefaults.PROP_X, (int) x);
             props.put(AutocaptureDefaults.PROP_Y, (int) y);
-
-            if (elementId != null) {
-                props.put(AutocaptureDefaults.PROP_EL_ID, elementId);
-            }
+            props.put(AutocaptureDefaults.PROP_EL_ID, elementId);
             if (tagName != null) {
                 props.put(AutocaptureDefaults.PROP_EL_TAG_NAME, tagName);
             }
@@ -133,11 +130,15 @@ final class ClickEvent {
 
     /**
      * Builder for creating {@link ClickEvent} instances.
+     *
+     * @param x         Screen X coordinate of the click.
+     * @param y         Screen Y coordinate of the click.
+     * @param elementId Primary identifier for the clicked element.
      */
-    static class Builder {
-        private float x;
-        private float y;
-        private String elementId;
+    public static class Builder {
+        private final float x;
+        private final float y;
+        private final String elementId;
         private String tagName;
         private String ariaLabel;
         private String role;
@@ -145,40 +146,28 @@ final class ClickEvent {
         private boolean isInteractive;
         private View composeRoot;
 
-        Builder() {
-        }
-
-        Builder x(float x) {
+        public Builder(float x, float y, @NonNull String elementId) {
             this.x = x;
-            return this;
-        }
-
-        Builder y(float y) {
             this.y = y;
-            return this;
-        }
-
-        Builder elementId(@Nullable String elementId) {
             this.elementId = elementId;
-            return this;
         }
 
-        Builder tagName(@Nullable String tagName) {
+        public Builder tagName(@Nullable String tagName) {
             this.tagName = tagName;
             return this;
         }
 
-        Builder ariaLabel(@Nullable String ariaLabel) {
+        public Builder ariaLabel(@Nullable String ariaLabel) {
             this.ariaLabel = ariaLabel;
             return this;
         }
 
-        Builder role(@Nullable String role) {
+        public Builder role(@Nullable String role) {
             this.role = role;
             return this;
         }
 
-        Builder elements(@Nullable String elements) {
+        public Builder elements(@Nullable String elements) {
             this.elements = elements;
             return this;
         }
@@ -193,7 +182,7 @@ final class ClickEvent {
             return this;
         }
 
-        ClickEvent build() {
+        public ClickEvent build() {
             return new ClickEvent(x, y, elementId, tagName, ariaLabel, role, elements, isInteractive, composeRoot);
         }
     }

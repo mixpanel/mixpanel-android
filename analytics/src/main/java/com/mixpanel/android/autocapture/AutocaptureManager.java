@@ -12,9 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.mixpanel.android.mpmetrics.AutocaptureOptions;
+import com.mixpanel.android.mpmetrics.MixpanelAPI;
 import com.mixpanel.android.util.MPLog;
-
-import org.json.JSONObject;
 
 import curtains.Curtains;
 import curtains.OnTouchEventListener;
@@ -40,22 +39,9 @@ public final class AutocaptureManager implements
 
     private static final String TAG = "MP.AutocaptureManager";
 
-    /**
-     * Interface for emitting tracked events.
-     */
-    public interface EventEmitter {
-        /**
-         * Emits a tracked event.
-         *
-         * @param eventName  The event name (e.g., "$mp_click").
-         * @param properties The event properties.
-         */
-        void emit(@NonNull String eventName, @NonNull JSONObject properties);
-    }
-
     private final Context mContext;
     private final AutocaptureOptions mOptions;
-    private final EventEmitter mEmitter;
+    private final MixpanelAPI.Autocapture mAutocapture;
 
     @Nullable
     private RageClickTracker mRageClickTracker;
@@ -70,17 +56,17 @@ public final class AutocaptureManager implements
     /**
      * Creates an AutocaptureManager.
      *
-     * @param context The application context.
-     * @param options The autocapture configuration options.
-     * @param emitter The event emitter for tracked events.
+     * @param context     The application context.
+     * @param options     The autocapture configuration options.
+     * @param autocapture The Autocapture instance for event tracking.
      */
     public AutocaptureManager(
             @NonNull Context context,
             @NonNull AutocaptureOptions options,
-            @NonNull EventEmitter emitter) {
+            @NonNull MixpanelAPI.Autocapture autocapture) {
         mContext = context.getApplicationContext();
         mOptions = options;
-        mEmitter = emitter;
+        mAutocapture = autocapture;
 
         // Initialize trackers based on options
         if (mOptions.getRageClickOptions().isEnabled()) {
@@ -201,14 +187,16 @@ public final class AutocaptureManager implements
 
         // Track basic click
         if (mOptions.getClickOptions().isEnabled()) {
-            emitEvent(AutocaptureDefaults.EVENT_CLICK, clickEvent);
+            mAutocapture.trackClick(clickEvent);
+            MPLog.d(TAG, "Emitted $mp_click event");
         }
 
         // Check for rage click
         if (mRageClickTracker != null) {
             ClickEvent rageClick = mRageClickTracker.recordClick(clickEvent);
             if (rageClick != null) {
-                emitEvent(AutocaptureDefaults.EVENT_RAGE_CLICK, rageClick);
+                mAutocapture.trackRageClick(rageClick);
+                MPLog.d(TAG, "Emitted $mp_rage_click event");
             }
         }
 
@@ -223,7 +211,8 @@ public final class AutocaptureManager implements
     @Override
     public void onDeadClickDetected(@NonNull ClickEvent clickEvent) {
         try {
-            emitEvent(AutocaptureDefaults.EVENT_DEAD_CLICK, clickEvent);
+            mAutocapture.trackDeadClick(clickEvent);
+            MPLog.d(TAG, "Emitted $mp_dead_click event");
         } catch (Exception e) {
             MPLog.e(TAG, "Error emitting dead click event", e);
         }
@@ -336,13 +325,4 @@ public final class AutocaptureManager implements
         MPLog.d(TAG, "Attached touch listener to window: " + window);
     }
 
-    private void emitEvent(@NonNull String eventName, @NonNull ClickEvent clickEvent) {
-        try {
-            JSONObject properties = clickEvent.toProperties();
-            mEmitter.emit(eventName, properties);
-            MPLog.d(TAG, "Emitted " + eventName + " event");
-        } catch (Exception e) {
-            MPLog.e(TAG, "Error emitting event: " + eventName, e);
-        }
-    }
 }

@@ -296,16 +296,13 @@ final class SemanticExtractor {
     private static ClickEvent.Builder extractFromNode(@NonNull AccessibilityNodeInfo node, float x, float y) {
         CharSequence contentDesc = node.getContentDescription();
 
-        ClickEvent.Builder builder = new ClickEvent.Builder()
-                .x(x)
-                .y(y);
-
         // Element ID resolution for Compose:
         // 1. viewIdResourceName (from Modifier.testTag)
         // 2. contentDescription (from Modifier.semantics { contentDescription = ... })
         // 3. text content (from Text composable)
         // 4. Class name fallback
         String elementId = null;
+        String ariaLabel = null;
 
         // Try viewIdResourceName first (Compose testTag)
         String viewId = node.getViewIdResourceName();
@@ -318,7 +315,7 @@ final class SemanticExtractor {
         // Try contentDescription
         if (elementId == null && contentDesc != null && contentDesc.length() > 0) {
             elementId = contentDesc.toString();
-            builder.ariaLabel(contentDesc.toString());
+            ariaLabel = contentDesc.toString();
         }
 
         // Try text content for buttons/clickable nodes
@@ -337,7 +334,15 @@ final class SemanticExtractor {
             }
         }
 
-        builder.elementId(elementId);
+        if (elementId == null) {
+            elementId = "unknown_view_" + Integer.toHexString(node.hashCode());
+        }
+
+        ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
+
+        if (ariaLabel != null) {
+            builder.ariaLabel(ariaLabel);
+        }
 
         // Tag name - for Compose, try to get a meaningful name
         CharSequence className = node.getClassName();
@@ -456,13 +461,13 @@ final class SemanticExtractor {
      */
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y) {
-        ClickEvent.Builder builder = new ClickEvent.Builder()
-                .x(x)
-                .y(y);
-
         // Element ID resolution: contentDescription > resource ID > fallback
         String elementId = resolveElementId(view);
-        builder.elementId(elementId);
+        if (elementId == null) {
+            elementId = "unknown_view_" + Integer.toHexString(view.hashCode());
+        }
+
+        ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
         // Tag name
         builder.tagName(view.getClass().getSimpleName());

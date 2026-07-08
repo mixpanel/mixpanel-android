@@ -1,6 +1,7 @@
 package com.mixpanel.mixpaneldemo
 
 import android.app.Application
+import com.mixpanel.android.autocapture.ClickEvent
 import com.mixpanel.android.mpmetrics.AutocaptureOptions
 import com.mixpanel.android.mpmetrics.MixpanelAPI
 import com.mixpanel.android.mpmetrics.MixpanelOptions
