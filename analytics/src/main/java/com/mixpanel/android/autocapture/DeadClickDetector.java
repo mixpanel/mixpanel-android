@@ -239,7 +239,7 @@ final class DeadClickDetector {
          */
         private static int[] snapshotViewTree(@NonNull View view, int depth) {
             if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return new int[]{0, 0};
-            if (view.getVisibility() != View.VISIBLE) return new int[]{0, 0};
+            if (view.getVisibility() != View.VISIBLE || view.getAlpha() <= 0f) return new int[]{0, 0};
 
             int count = 1;
             int hash = 17;
@@ -250,12 +250,23 @@ final class DeadClickDetector {
             hash = 31 * hash + view.getWidth();
             hash = 31 * hash + view.getHeight();
 
-            // Text content (for TextViews)
+            // Class name
+            hash = 31 * hash + view.getClass().getSimpleName().hashCode();
+
+            // Text content (for TextViews, which includes Button)
             if (view instanceof TextView) {
                 CharSequence text = ((TextView) view).getText();
                 if (text != null) {
                     hash = 31 * hash + text.hashCode();
                 }
+            }
+
+            // Control state
+            if (view instanceof android.widget.CompoundButton) {
+                hash = 31 * hash + (((android.widget.CompoundButton) view).isChecked() ? 1 : 0);
+            }
+            if (view.isEnabled()) {
+                hash = 31 * hash + 1;
             }
 
             // Recurse into children
