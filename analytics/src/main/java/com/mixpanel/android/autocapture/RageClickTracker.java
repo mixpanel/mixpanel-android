@@ -124,14 +124,13 @@ final class RageClickTracker {
      */
     private int countClicksInRadius(float x, float y) {
         int count = 0;
-        float radiusSquared = mRadiusPx * mRadiusPx;
 
         for (ClickRecord record : mRecentClicks) {
             float dx = record.x - x;
             float dy = record.y - y;
-            float distanceSquared = dx * dx + dy * dy;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
-            if (distanceSquared <= radiusSquared) {
+            if (distance <= mRadiusPx) {
                 count++;
             }
         }
