@@ -1,5 +1,16 @@
 # Changelog
 
+## [v8.9.0](https://github.com/mixpanel/mixpanel-android/tree/v8.9.0) (2026-07-06)
+
+### Features
+- extend Source.Fallback with Reason enum (SDK-79) ([#981](https://github.com/mixpanel/mixpanel-android/pull/981))
+- add trackScreenView and trackScreenLeave tracking methods ([#980](https://github.com/mixpanel/mixpanel-android/pull/980))
+
+### Fixes
+- expose Flags.shutdown() to release worker thread + executor ([#984](https://github.com/mixpanel/mixpanel-android/pull/984))
+
+[Full Changelog](https://github.com/mixpanel/mixpanel-android/compare/v8.8.0...v8.9.0)
+
 ## [v8.8.0](https://github.com/mixpanel/mixpanel-android/tree/v8.8.0) (2026-06-01)
 
 ### Features
