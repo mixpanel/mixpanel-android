@@ -35,7 +35,7 @@ internal object CurtainsHelper {
     private const val TAG = "MP.CurtainsHelper"
 
     /** Maximum duration (ms) for a touch to be considered a tap, not a long press. */
-    private const val MAX_TAP_DURATION_MS = 800L
+    private const val MAX_TAP_DURATION_MS = 500L
 
     /**
      * Gets the [Window] associated with a root [View] using Curtains' phoneWindow extension.
