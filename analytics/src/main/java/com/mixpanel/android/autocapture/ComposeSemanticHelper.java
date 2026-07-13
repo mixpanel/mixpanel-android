@@ -244,11 +244,11 @@ final class ComposeSemanticHelper {
         // 2. testTag (from Modifier.testTag(...)) - equivalent to resource ID
         // 3. ClassName_view_<hashCode>
         String elementId = null;
-        String ariaLabel = null;
+        String accessibleLabel = null;
 
         if (contentDesc != null && !contentDesc.isEmpty()) {
             elementId = contentDesc;
-            ariaLabel = contentDesc;
+            accessibleLabel = contentDesc;
         }
 
         if (elementId == null && testTag != null && !testTag.isEmpty()) {
@@ -262,8 +262,8 @@ final class ComposeSemanticHelper {
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
-        if (ariaLabel != null) {
-            builder.ariaLabel(ariaLabel);
+        if (accessibleLabel != null) {
+            builder.accessibleLabel(accessibleLabel);
         }
 
         // Tag name from role

@@ -35,7 +35,7 @@ public final class ClickEvent {
 
     /** Accessibility label (contentDescription). */
     @Nullable
-    public final String ariaLabel;
+    public final String accessibleLabel;
 
     /** Semantic role of the element (e.g., "button", "switch", "checkbox"). */
     @Nullable
@@ -66,7 +66,7 @@ public final class ClickEvent {
             float y,
             @NonNull String elementId,
             @Nullable String tagName,
-            @Nullable String ariaLabel,
+            @Nullable String accessibleLabel,
             @Nullable String role,
             @Nullable String elements,
             boolean isInteractive,
@@ -75,7 +75,7 @@ public final class ClickEvent {
         this.y = y;
         this.elementId = elementId;
         this.tagName = tagName;
-        this.ariaLabel = ariaLabel;
+        this.accessibleLabel = accessibleLabel;
         this.role = role;
         this.elements = elements;
         this.isInteractive = isInteractive;
@@ -113,8 +113,8 @@ public final class ClickEvent {
             if (tagName != null) {
                 props.put(AutocaptureDefaults.PROP_EL_TAG_NAME, tagName);
             }
-            if (ariaLabel != null) {
-                props.put(AutocaptureDefaults.PROP_ARIA_LABEL, ariaLabel);
+            if (accessibleLabel != null) {
+                props.put(AutocaptureDefaults.PROP_ARIA_LABEL, accessibleLabel);
             }
             if (role != null) {
                 props.put(AutocaptureDefaults.PROP_ROLE, role);
@@ -140,7 +140,7 @@ public final class ClickEvent {
         private final float y;
         private final String elementId;
         private String tagName;
-        private String ariaLabel;
+        private String accessibleLabel;
         private String role;
         private String elements;
         private boolean isInteractive;
@@ -157,8 +157,8 @@ public final class ClickEvent {
             return this;
         }
 
-        public Builder ariaLabel(@Nullable String ariaLabel) {
-            this.ariaLabel = ariaLabel;
+        public Builder accessibleLabel(@Nullable String accessibleLabel) {
+            this.accessibleLabel = accessibleLabel;
             return this;
         }
 
@@ -183,7 +183,7 @@ public final class ClickEvent {
         }
 
         public ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, ariaLabel, role, elements, isInteractive, composeRoot);
+            return new ClickEvent(x, y, elementId, tagName, accessibleLabel, role, elements, isInteractive, composeRoot);
         }
     }
 }

@@ -302,7 +302,7 @@ final class SemanticExtractor {
         // 3. text content (from Text composable)
         // 4. Class name fallback
         String elementId = null;
-        String ariaLabel = null;
+        String accessibleLabel = null;
 
         // Try viewIdResourceName first (Compose testTag)
         String viewId = node.getViewIdResourceName();
@@ -315,7 +315,7 @@ final class SemanticExtractor {
         // Try contentDescription
         if (elementId == null && contentDesc != null && contentDesc.length() > 0) {
             elementId = contentDesc.toString();
-            ariaLabel = contentDesc.toString();
+            accessibleLabel = contentDesc.toString();
         }
 
         // Try text content for buttons/clickable nodes
@@ -340,8 +340,8 @@ final class SemanticExtractor {
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
 
-        if (ariaLabel != null) {
-            builder.ariaLabel(ariaLabel);
+        if (accessibleLabel != null) {
+            builder.accessibleLabel(accessibleLabel);
         }
 
         // Tag name - for Compose, try to get a meaningful name
@@ -475,7 +475,7 @@ final class SemanticExtractor {
         // Content description (aria-label)
         CharSequence contentDesc = view.getContentDescription();
         if (contentDesc != null && contentDesc.length() > 0) {
-            builder.ariaLabel(contentDesc.toString());
+            builder.accessibleLabel(contentDesc.toString());
         }
 
         // Role
