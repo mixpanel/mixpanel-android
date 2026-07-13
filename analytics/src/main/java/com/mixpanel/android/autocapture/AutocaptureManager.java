@@ -54,6 +54,13 @@ public final class AutocaptureManager implements
     private boolean mStarted = false;
 
     /**
+     * Returns whether autocapture is currently started.
+     */
+    public boolean isStarted() {
+        return mStarted;
+    }
+
+    /**
      * Creates an AutocaptureManager.
      *
      * @param context     The application context.

@@ -317,13 +317,18 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     ContextCompat.RECEIVER_NOT_EXPORTED);
         }
 
-        // Initialize autocapture if enabled.
+        // Initialize autocapture if enabled and tracking is not opted out.
         // Null check is the primary gate — null means the caller never opted in.
         // isEnabled() is a secondary check to avoid initializing the machinery
         // when all sub-options (click, rage, dead) are individually disabled.
         AutocaptureOptions autocaptureOptions = options.getAutocaptureOptions();
         if (autocaptureOptions != null && autocaptureOptions.isEnabled()) {
-            initializeAutocapture(autocaptureOptions);
+            mAutocaptureOptions = autocaptureOptions;
+            if (hasOptedOutTracking()) {
+                MPLog.i(LOGTAG, "Autocapture disabled: tracking is opted out");
+            } else {
+                initializeAutocapture(autocaptureOptions);
+            }
         }
     }
 
@@ -1048,6 +1053,14 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Returns the AutocaptureManager instance, or null if autocapture is not configured.
+     * Package-private for testing.
+     */
+    AutocaptureManager getAutocaptureManager() {
+        return mAutocaptureManager;
+    }
+
+    /**
      * Initializes the autocapture functionality with the provided options.
      *
      * <p>Autocapture automatically tracks user interactions (clicks, rage clicks, dead clicks)
@@ -1514,6 +1527,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // Drop in-memory feature flag state (and any persisted variants) so the prior user's
         // variants can't be served via getVariant after they've opted out.
         mFeatureFlagManager.reset();
+
+        if (mAutocaptureManager != null) {
+            mAutocaptureManager.stop();
+        }
     }
 
     /**
@@ -1559,6 +1576,15 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             identify(distinctId);
         }
         track("$opt_in", properties);
+
+        // Restart autocapture if it was configured but stopped due to opt-out
+        if (mAutocaptureOptions != null && mAutocaptureOptions.isEnabled()) {
+            if (mAutocaptureManager == null) {
+                initializeAutocapture(mAutocaptureOptions);
+            } else {
+                mAutocaptureManager.start();
+            }
+        }
     }
 
     /**
@@ -3282,6 +3308,7 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final Set<String> mExcludeProperties;
     private FeatureFlagManager mFeatureFlagManager;
     private AutocaptureManager mAutocaptureManager;
+    private AutocaptureOptions mAutocaptureOptions;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground
     private final AtomicBoolean mHasAppForegrounded = new AtomicBoolean(false);
