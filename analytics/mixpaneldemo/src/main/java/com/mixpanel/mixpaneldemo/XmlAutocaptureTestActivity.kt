@@ -9,6 +9,22 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**
@@ -23,6 +39,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 class XmlAutocaptureTestActivity : AppCompatActivity() {
 
     private var tapCount = 0
+    private var xmlCounter = 0
+    private val composeCounter = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +51,7 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
         setupRageClickTests()
         setupPrivacyTests()
         setupMultiWindowTests()
+        setupComposeInXmlTests()
     }
 
     private fun setupElIdResolutionTests() {
@@ -89,6 +108,65 @@ class XmlAutocaptureTestActivity : AppCompatActivity() {
     }
 
     private fun setupPrivacyTests() {
+    }
+
+    private fun setupComposeInXmlTests() {
+        val xmlTextCounter = findViewById<TextView>(R.id.xml_text_counter)
+
+        // Case 1: XML Button -> XML Text
+        findViewById<android.widget.Button>(R.id.xml_btn_xml_text).setOnClickListener {
+            xmlCounter++
+            xmlTextCounter.text = "XML counter: $xmlCounter"
+        }
+
+        // Case 2: XML Button -> Compose Text
+        findViewById<android.widget.Button>(R.id.xml_btn_compose_text).setOnClickListener {
+            composeCounter.intValue++
+        }
+
+        // Cases 3 & 4 are Compose buttons inside the ComposeView
+        findViewById<ComposeView>(R.id.compose_click_counter).setContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFE8F5E9))
+                    .padding(16.dp)
+            ) {
+                // Case 3: Compose Button -> XML Text
+                Button(
+                    onClick = {
+                        xmlCounter++
+                        xmlTextCounter.text = "XML counter: $xmlCounter"
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "compose_btn_xml_text" }
+                ) {
+                    Text("3. Compose Btn -> XML Text")
+                }
+
+                // Case 4: Compose Button -> Compose Text
+                Button(
+                    onClick = { composeCounter.intValue++ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .semantics { contentDescription = "compose_btn_compose_text" }
+                ) {
+                    Text("4. Compose Btn -> Compose Text")
+                }
+
+                // Compose text counter (updated by cases 2 & 4)
+                Text(
+                    text = "Compose counter: ${composeCounter.intValue}",
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .semantics { contentDescription = "compose_text_counter" }
+                )
+            }
+        }
     }
 
     private fun setupMultiWindowTests() {
