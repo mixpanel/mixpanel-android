@@ -124,16 +124,7 @@ final class DeadClickDetector {
         }
 
         try {
-            // Choose the appropriate monitor based on click type
-            UiChangeMonitor monitor;
-            if (clickEvent.isComposeClick()) {
-                View composeRoot = clickEvent.getComposeRoot();
-                if (composeRoot == null) return;
-                monitor = new ComposeUiChangeMonitor(composeRoot);
-            } else {
-                monitor = new XmlUiChangeMonitor(rootView);
-            }
-
+            UiChangeMonitor monitor = new UnifiedUiChangeMonitor(rootView, clickEvent);
             mCurrentSession = new DetectionSession(clickEvent, rootView, monitor);
             mCurrentSession.start();
         } catch (Exception e) {
@@ -173,21 +164,59 @@ final class DeadClickDetector {
         }
     }
 
-    // ==================== UiChangeMonitor Implementations ====================
+    // ==================== UiChangeMonitor Implementation ====================
 
     /**
-     * Monitors XML view hierarchy for changes using view count and content hash.
+     * Unified monitor that detects UI changes across both XML and Compose frameworks.
+     *
+     * <p>Automatically detects the UI framework composition at baseline time and adapts
+     * its detection strategy:
+     *
+     * <ul>
+     *   <li><b>Pure XML:</b> Full structural hash (position, size, class, text, state)
+     *       with ViewTreeObserver early cancellation. Maximum sensitivity.</li>
+     *   <li><b>Pure Compose:</b> Compose semantic snapshot only (text, contentDescription).
+     *       No ViewTreeObserver (Compose ripple causes false positives).</li>
+     *   <li><b>Mixed framework:</b> Content-only XOR hash for XML views (immune to
+     *       Compose ripple structural changes) + Compose semantic snapshot. Together
+     *       these cover the complete UI surface. No ViewTreeObserver.</li>
+     * </ul>
+     *
+     * <p>For mixed-framework screens, the XOR hash detects text and toggle state changes
+     * in XML views while ignoring structural changes caused by Compose animations.
+     * The semantic snapshot covers all Compose text and contentDescription changes.
      */
-    private static class XmlUiChangeMonitor implements UiChangeMonitor {
-        private static final int IDX_COUNT = 0;
-        private static final int IDX_HASH = 1;
+    private static class UnifiedUiChangeMonitor implements UiChangeMonitor {
 
         private final WeakReference<View> mRootViewRef;
-        private int mBaselineViewCount;
-        private int mBaselineContentHash;
 
-        XmlUiChangeMonitor(@NonNull View rootView) {
+        // Framework detection flags, determined once at baseline time
+        private boolean mHasCompose;
+
+        // XML baseline — always captured
+        // Pure XML: structural hash (position, size, class, text, state)
+        // Mixed: content-only XOR hash (text and toggle state only)
+        private int mBaselineXmlViewCount;
+        private int mBaselineXmlHash;
+
+        // Compose baseline — captured only when Compose is present
+        @Nullable
+        private WeakReference<View> mComposeRootRef;
+        @Nullable
+        private ComposeSemanticHelper.SemanticSnapshot mComposeBaseline;
+
+        UnifiedUiChangeMonitor(@NonNull View rootView, @NonNull ClickEvent clickEvent) {
             mRootViewRef = new WeakReference<>(rootView);
+
+            // Resolve Compose root:
+            // - For Compose clicks, the ClickEvent already has the reference
+            // - For XML clicks, search the view tree for a Compose root
+            View composeRoot = clickEvent.getComposeRoot();
+            if (composeRoot == null) {
+                composeRoot = findComposeRoot(rootView);
+            }
+            mHasCompose = composeRoot != null;
+            mComposeRootRef = composeRoot != null ? new WeakReference<>(composeRoot) : null;
         }
 
         @Override
@@ -195,12 +224,33 @@ final class DeadClickDetector {
             try {
                 View rootView = mRootViewRef.get();
                 if (rootView == null) return false;
-                int[] snapshot = snapshotViewTree(rootView, 0);
-                mBaselineViewCount = snapshot[IDX_COUNT];
-                mBaselineContentHash = snapshot[IDX_HASH];
+
+                // Capture XML baseline
+                if (mHasCompose) {
+                    mBaselineXmlHash = captureXmlContentHash(rootView);
+                } else {
+                    int[] snapshot = captureStructuralSnapshot(rootView);
+                    mBaselineXmlViewCount = snapshot[IDX_COUNT];
+                    mBaselineXmlHash = snapshot[IDX_HASH];
+                }
+
+                // Capture Compose baseline if present
+                if (mHasCompose) {
+                    View composeRoot = mComposeRootRef != null ? mComposeRootRef.get() : null;
+                    if (composeRoot == null) return false;
+                    mComposeBaseline = ComposeSemanticHelper.captureSnapshot(composeRoot);
+                    if (mComposeBaseline == null) return false;
+                }
+
                 return true;
+            } catch (NoClassDefFoundError e) {
+                // Compose classes not available at runtime — fall back to XML-only
+                mHasCompose = false;
+                mComposeRootRef = null;
+                mComposeBaseline = null;
+                return captureBaseline();
             } catch (Exception e) {
-                MPLog.e(TAG, "Error capturing XML baseline", e);
+                MPLog.e(TAG, "Error capturing baseline", e);
                 return false;
             }
         }
@@ -209,35 +259,72 @@ final class DeadClickDetector {
         public boolean hasChanged() {
             View rootView = mRootViewRef.get();
             if (rootView == null) return true; // View gone = change
-            int[] snapshot = snapshotViewTree(rootView, 0);
-            return snapshot[IDX_COUNT] != mBaselineViewCount ||
-                snapshot[IDX_HASH] != mBaselineContentHash;
+
+            // Check XML changes
+            if (hasXmlChanged(rootView)) return true;
+
+            // Check Compose changes
+            if (mHasCompose && hasComposeChanged()) return true;
+
+            return false;
         }
 
         @Override
         public void attachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            ViewTreeObserver observer = rootView.getViewTreeObserver();
-            if (observer.isAlive()) {
-                observer.addOnGlobalLayoutListener(session);
-                observer.addOnScrollChangedListener(session);
+            // ViewTreeObserver early cancellation is only safe for pure XML screens.
+            // When Compose is present, ripple animations trigger layout changes that
+            // would cause false cancellation of dead click detection.
+            if (!mHasCompose) {
+                ViewTreeObserver observer = rootView.getViewTreeObserver();
+                if (observer.isAlive()) {
+                    observer.addOnGlobalLayoutListener(session);
+                    observer.addOnScrollChangedListener(session);
+                }
             }
         }
 
         @Override
         public void detachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            ViewTreeObserver observer = rootView.getViewTreeObserver();
-            if (observer.isAlive()) {
-                observer.removeOnGlobalLayoutListener(session);
-                observer.removeOnScrollChangedListener(session);
+            if (!mHasCompose) {
+                ViewTreeObserver observer = rootView.getViewTreeObserver();
+                if (observer.isAlive()) {
+                    observer.removeOnGlobalLayoutListener(session);
+                    observer.removeOnScrollChangedListener(session);
+                }
+            }
+        }
+
+        // -------------------- XML Change Detection --------------------
+
+        /**
+         * Checks whether XML views have changed since baseline.
+         * Uses structural hash for pure XML, content-only hash for mixed screens.
+         */
+        private boolean hasXmlChanged(@NonNull View rootView) {
+            if (mHasCompose) {
+                // Mixed screen: content-only comparison (immune to Compose ripple)
+                int currentHash = captureXmlContentHash(rootView);
+                return currentHash != mBaselineXmlHash;
+            } else {
+                // Pure XML: full structural comparison
+                int[] snapshot = captureStructuralSnapshot(rootView);
+                return snapshot[IDX_COUNT] != mBaselineXmlViewCount ||
+                        snapshot[IDX_HASH] != mBaselineXmlHash;
             }
         }
 
         /**
-         * Captures view count and content hash in a single tree walk.
+         * Captures view count and structural hash in a single tree walk.
+         * Includes position, size, class name, text, and control state.
+         * Used for pure XML screens where maximum detection sensitivity is desired.
          *
          * @return int[]{viewCount, contentHash}
          */
-        private static int[] snapshotViewTree(@NonNull View view, int depth) {
+        private static int[] captureStructuralSnapshot(@NonNull View view) {
+            return captureStructuralSnapshotRecursive(view, 0);
+        }
+
+        private static int[] captureStructuralSnapshotRecursive(@NonNull View view, int depth) {
             if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return new int[]{0, 0};
             if (view.getVisibility() != View.VISIBLE || view.getAlpha() <= 0f) return new int[]{0, 0};
 
@@ -273,7 +360,7 @@ final class DeadClickDetector {
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    int[] child = snapshotViewTree(group.getChildAt(i), depth + 1);
+                    int[] child = captureStructuralSnapshotRecursive(group.getChildAt(i), depth + 1);
                     count += child[IDX_COUNT];
                     hash = 31 * hash + child[IDX_HASH];
                 }
@@ -281,48 +368,112 @@ final class DeadClickDetector {
 
             return new int[]{count, hash};
         }
-    }
 
-    /**
-     * Monitors Compose semantic tree for changes using semantic snapshots.
-     */
-    private static class ComposeUiChangeMonitor implements UiChangeMonitor {
-        private final WeakReference<View> mComposeRootRef;
-        @Nullable
-        private ComposeSemanticHelper.SemanticSnapshot mBaseline;
+        private static final int IDX_COUNT = 0;
+        private static final int IDX_HASH = 1;
 
-        ComposeUiChangeMonitor(@NonNull View composeRoot) {
-            mComposeRootRef = new WeakReference<>(composeRoot);
+        /**
+         * Captures a content-only hash of XML views using XOR accumulation.
+         * Only hashes text content (TextView) and toggle state (CompoundButton).
+         *
+         * <p>XOR accumulation makes the hash immune to tree structure changes
+         * (node additions/removals from Compose ripple animations) while still
+         * detecting meaningful content changes in XML views.
+         *
+         * <p>Used for mixed-framework screens where structural changes from Compose
+         * animations would cause false positives with the full structural hash.
+         */
+        private static int captureXmlContentHash(@NonNull View view) {
+            return captureXmlContentHashRecursive(view, 0);
         }
 
-        @Override
-        public boolean captureBaseline() {
-            View composeRoot = mComposeRootRef.get();
-            if (composeRoot == null) return false;
-            mBaseline = ComposeSemanticHelper.captureSnapshot(composeRoot);
-            return mBaseline != null;
+        private static int captureXmlContentHashRecursive(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0;
+            if (view.getVisibility() != View.VISIBLE) return 0;
+
+            int hash = 0;
+
+            // Text content
+            if (view instanceof TextView) {
+                CharSequence text = ((TextView) view).getText();
+                if (text != null) {
+                    hash ^= text.hashCode();
+                }
+            }
+
+            // Toggle state (use distinct constants to differentiate checked/unchecked)
+            if (view instanceof android.widget.CompoundButton) {
+                hash ^= ((android.widget.CompoundButton) view).isChecked() ? 0x55555555 : 0xAAAAAAAA;
+            }
+
+            // Recurse into children
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    hash ^= captureXmlContentHashRecursive(group.getChildAt(i), depth + 1);
+                }
+            }
+
+            return hash;
         }
 
-        @Override
-        public boolean hasChanged() {
-            View composeRoot = mComposeRootRef.get();
+        // -------------------- Compose Change Detection --------------------
+
+        /**
+         * Checks whether the Compose semantic tree has changed since baseline.
+         */
+        private boolean hasComposeChanged() {
+            View composeRoot = mComposeRootRef != null ? mComposeRootRef.get() : null;
             if (composeRoot == null) return true; // View gone = change
-            ComposeSemanticHelper.SemanticSnapshot current =
-                    ComposeSemanticHelper.captureSnapshot(composeRoot);
-            boolean changed = mBaseline.hasChanged(current);
-            MPLog.d(TAG, "Compose dead click check - changed: " + changed);
-            return changed;
+
+            try {
+                ComposeSemanticHelper.SemanticSnapshot current =
+                        ComposeSemanticHelper.captureSnapshot(composeRoot);
+                boolean changed = mComposeBaseline != null && mComposeBaseline.hasChanged(current);
+                MPLog.d(TAG, "Compose dead click check - changed: " + changed);
+                return changed;
+            } catch (NoClassDefFoundError e) {
+                // Compose classes no longer available — treat as changed to be safe
+                return true;
+            }
         }
 
-        @Override
-        public void attachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            // Compose doesn't use ViewTreeObserver listeners — change detection is
-            // snapshot-based (baseline vs current at timeout).
+        // -------------------- Compose Root Discovery --------------------
+
+        /**
+         * Searches the view tree for a Compose root (a view implementing RootForTest).
+         * Used for XML clicks in mixed-framework screens to locate the Compose root
+         * for semantic baseline capture.
+         *
+         * @return The Compose root view, or null if no Compose is present.
+         */
+        @Nullable
+        private static View findComposeRoot(@NonNull View view) {
+            try {
+                return findComposeRootRecursive(view, 0);
+            } catch (NoClassDefFoundError e) {
+                // Compose not available at runtime
+                return null;
+            }
         }
 
-        @Override
-        public void detachListeners(@NonNull View rootView, @NonNull DetectionSession session) {
-            // No listeners to detach.
+        @Nullable
+        private static View findComposeRootRecursive(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return null;
+
+            if (ComposeSemanticHelper.isComposeRoot(view)) {
+                return view;
+            }
+
+            if (view instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    View result = findComposeRootRecursive(group.getChildAt(i), depth + 1);
+                    if (result != null) return result;
+                }
+            }
+
+            return null;
         }
     }
 
