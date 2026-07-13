@@ -229,9 +229,9 @@ final class DeadClickDetector {
                 if (mHasCompose) {
                     mBaselineXmlHash = captureXmlContentHash(rootView);
                 } else {
-                    int[] snapshot = captureStructuralSnapshot(rootView);
-                    mBaselineXmlViewCount = snapshot[IDX_COUNT];
-                    mBaselineXmlHash = snapshot[IDX_HASH];
+                    long snapshot = captureStructuralSnapshot(rootView);
+                    mBaselineXmlViewCount = unpackCount(snapshot);
+                    mBaselineXmlHash = unpackHash(snapshot);
                 }
 
                 // Capture Compose baseline if present
@@ -244,11 +244,18 @@ final class DeadClickDetector {
 
                 return true;
             } catch (NoClassDefFoundError e) {
-                // Compose classes not available at runtime — fall back to XML-only
+                // Compose classes not available at runtime — fall back to XML-only.
+                // Capture the XML structural baseline directly instead of recursing,
+                // to avoid infinite recursion if an unexpected error occurs.
                 mHasCompose = false;
                 mComposeRootRef = null;
                 mComposeBaseline = null;
-                return captureBaseline();
+                View rootView = mRootViewRef.get();
+                if (rootView == null) return false;
+                long snapshot = captureStructuralSnapshot(rootView);
+                mBaselineXmlViewCount = unpackCount(snapshot);
+                mBaselineXmlHash = unpackHash(snapshot);
+                return true;
             } catch (Exception e) {
                 MPLog.e(TAG, "Error capturing baseline", e);
                 return false;
@@ -307,9 +314,9 @@ final class DeadClickDetector {
                 return currentHash != mBaselineXmlHash;
             } else {
                 // Pure XML: full structural comparison
-                int[] snapshot = captureStructuralSnapshot(rootView);
-                return snapshot[IDX_COUNT] != mBaselineXmlViewCount ||
-                        snapshot[IDX_HASH] != mBaselineXmlHash;
+                long snapshot = captureStructuralSnapshot(rootView);
+                return unpackCount(snapshot) != mBaselineXmlViewCount ||
+                        unpackHash(snapshot) != mBaselineXmlHash;
             }
         }
 
@@ -318,15 +325,17 @@ final class DeadClickDetector {
          * Includes position, size, class name, text, and control state.
          * Used for pure XML screens where maximum detection sensitivity is desired.
          *
-         * @return int[]{viewCount, contentHash}
+         * <p>Returns a packed {@code long}: upper 32 bits = view count, lower 32 bits = hash.
+         * Use {@link #unpackCount} and {@link #unpackHash} to extract values.
+         * This avoids allocating an {@code int[]} per node during recursion.
          */
-        private static int[] captureStructuralSnapshot(@NonNull View view) {
+        private static long captureStructuralSnapshot(@NonNull View view) {
             return captureStructuralSnapshotRecursive(view, 0);
         }
 
-        private static int[] captureStructuralSnapshotRecursive(@NonNull View view, int depth) {
-            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return new int[]{0, 0};
-            if (view.getVisibility() != View.VISIBLE || view.getAlpha() <= 0f) return new int[]{0, 0};
+        private static long captureStructuralSnapshotRecursive(@NonNull View view, int depth) {
+            if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) return 0L;
+            if (view.getVisibility() != View.VISIBLE || view.getAlpha() <= 0f) return 0L;
 
             int count = 1;
             int hash = 17;
@@ -337,8 +346,8 @@ final class DeadClickDetector {
             hash = 31 * hash + view.getWidth();
             hash = 31 * hash + view.getHeight();
 
-            // Class name
-            hash = 31 * hash + view.getClass().getSimpleName().hashCode();
+            // Class name (getName() is JVM-cached, unlike getSimpleName())
+            hash = 31 * hash + view.getClass().getName().hashCode();
 
             // Text content (for TextViews, which includes Button)
             if (view instanceof TextView) {
@@ -360,17 +369,29 @@ final class DeadClickDetector {
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
-                    int[] child = captureStructuralSnapshotRecursive(group.getChildAt(i), depth + 1);
-                    count += child[IDX_COUNT];
-                    hash = 31 * hash + child[IDX_HASH];
+                    long child = captureStructuralSnapshotRecursive(group.getChildAt(i), depth + 1);
+                    count += unpackCount(child);
+                    hash = 31 * hash + unpackHash(child);
                 }
             }
 
-            return new int[]{count, hash};
+            return pack(count, hash);
         }
 
-        private static final int IDX_COUNT = 0;
-        private static final int IDX_HASH = 1;
+        /** Packs view count and hash into a single long. */
+        private static long pack(int count, int hash) {
+            return ((long) count << 32) | (hash & 0xFFFFFFFFL);
+        }
+
+        /** Extracts view count from a packed long. */
+        private static int unpackCount(long packed) {
+            return (int) (packed >>> 32);
+        }
+
+        /** Extracts hash from a packed long. */
+        private static int unpackHash(long packed) {
+            return (int) packed;
+        }
 
         /**
          * Captures a content-only hash of XML views using XOR accumulation.
@@ -440,19 +461,43 @@ final class DeadClickDetector {
 
         // -------------------- Compose Root Discovery --------------------
 
+        // Cached result of Compose classpath check. Null = not yet checked.
+        @Nullable
+        private static Boolean sComposeAvailable;
+
+        /**
+         * Checks if Compose UI library is available at runtime.
+         * Result is cached after the first check.
+         */
+        private static boolean isComposeAvailable() {
+            if (sComposeAvailable != null) return sComposeAvailable;
+            try {
+                Class.forName("androidx.compose.ui.node.RootForTest");
+                sComposeAvailable = true;
+            } catch (ClassNotFoundException e) {
+                sComposeAvailable = false;
+            }
+            return sComposeAvailable;
+        }
+
         /**
          * Searches the view tree for a Compose root (a view implementing RootForTest).
          * Used for XML clicks in mixed-framework screens to locate the Compose root
          * for semantic baseline capture.
          *
+         * <p>Skips the tree walk entirely if Compose is not on the classpath,
+         * avoiding unnecessary traversal for pure XML apps.
+         *
          * @return The Compose root view, or null if no Compose is present.
          */
         @Nullable
         private static View findComposeRoot(@NonNull View view) {
+            if (!isComposeAvailable()) return null;
             try {
                 return findComposeRootRecursive(view, 0);
             } catch (NoClassDefFoundError e) {
-                // Compose not available at runtime
+                // Compose classes unexpectedly missing — update cache
+                sComposeAvailable = false;
                 return null;
             }
         }
