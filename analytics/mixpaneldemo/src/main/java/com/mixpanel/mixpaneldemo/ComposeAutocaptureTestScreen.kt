@@ -1,16 +1,20 @@
 package com.mixpanel.mixpaneldemo
 
 import android.content.Intent
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -18,6 +22,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
 
@@ -288,6 +294,125 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                         .semantics { contentDescription = "compose_snackbar_trigger" }
                 ) {
                     Text("Show Snackbar")
+                }
+            }
+
+            // Mixed Framework Dead Click Tests
+            item { SectionHeader("Mixed Framework Dead Click Tests") }
+
+            item {
+                Text(
+                    "None of these should trigger \$mp_dead_click",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            item {
+                val composeCounter = remember { mutableIntStateOf(0) }
+                var xmlCounter by remember { mutableIntStateOf(0) }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // XML elements (Cases 1 & 2) inside AndroidView with orange background
+                    AndroidView(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFFF3E0)),
+                        factory = { ctx ->
+                            LinearLayout(ctx).apply {
+                                orientation = LinearLayout.VERTICAL
+                                val dp16 = (16 * ctx.resources.displayMetrics.density).toInt()
+                                val dp8 = (8 * ctx.resources.displayMetrics.density).toInt()
+                                setPadding(dp16, dp16, dp16, dp16)
+
+                                val xmlTextCounter = TextView(ctx).apply {
+                                    text = "XML counter: 0"
+                                    textSize = 16f
+                                    setPadding(0, dp8, 0, 0)
+                                    this.contentDescription = "xml_text_counter"
+                                }
+
+                                // Case 1: XML Button -> XML Text
+                                val xmlBtnXmlText = android.widget.Button(ctx).apply {
+                                    text = "1. XML Btn -> XML Text"
+                                    this.contentDescription = "xml_btn_xml_text"
+                                    setOnClickListener {
+                                        xmlCounter++
+                                        xmlTextCounter.text = "XML counter: $xmlCounter"
+                                    }
+                                }
+                                addView(xmlBtnXmlText, LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT,
+                                    LinearLayout.LayoutParams.WRAP_CONTENT
+                                ))
+
+                                addView(xmlTextCounter, LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT,
+                                    LinearLayout.LayoutParams.WRAP_CONTENT
+                                ))
+
+                                // Case 2: XML Button -> Compose Text
+                                val xmlBtnComposeText = android.widget.Button(ctx).apply {
+                                    text = "2. XML Btn -> Compose Text"
+                                    this.contentDescription = "xml_btn_compose_text"
+                                    layoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    ).apply { topMargin = dp8 }
+                                    setOnClickListener {
+                                        composeCounter.intValue++
+                                    }
+                                }
+                                addView(xmlBtnComposeText)
+                            }
+                        }
+                    )
+
+                    // Case 3: Compose Button -> XML Text
+                    Button(
+                        onClick = {
+                            xmlCounter++
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_btn_xml_text" }
+                    ) {
+                        Text("3. Compose Btn -> XML Text")
+                    }
+
+                    // XML text updated by Compose button (Case 3)
+                    AndroidView(
+                        modifier = Modifier.fillMaxWidth(),
+                        factory = { ctx ->
+                            TextView(ctx).apply {
+                                this.contentDescription = "xml_text_from_compose"
+                            }
+                        },
+                        update = { textView ->
+                            textView.text = "XML counter (from Compose): $xmlCounter"
+                        }
+                    )
+
+                    // Case 4: Compose Button -> Compose Text
+                    Button(
+                        onClick = {
+                            composeCounter.intValue++
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "compose_btn_compose_text" }
+                    ) {
+                        Text("4. Compose Btn -> Compose Text")
+                    }
+
+                    // Compose text counter (updated by cases 2 & 4)
+                    Text(
+                        text = "Compose counter: ${composeCounter.intValue}",
+                        modifier = Modifier.semantics { contentDescription = "compose_text_counter" }
+                    )
                 }
             }
 
