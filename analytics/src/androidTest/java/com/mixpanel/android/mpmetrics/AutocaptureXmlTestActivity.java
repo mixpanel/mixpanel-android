@@ -1,18 +1,25 @@
 package com.mixpanel.android.mpmetrics;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
+
+import androidx.activity.ComponentActivity;
+import androidx.compose.runtime.MutableIntState;
+import androidx.compose.ui.platform.ComposeView;
 
 /**
  * Test activity for autocapture instrumentation tests.
  * UI is created programmatically to avoid R class issues in library modules.
+ *
+ * <p>Includes mixed-framework elements (ComposeView inside XML) for cross-framework
+ * dead click testing.
  */
-public class AutocaptureXmlTestActivity extends Activity {
+public class AutocaptureXmlTestActivity extends ComponentActivity {
 
     public static final int ID_RULE1_BTN = 10001;
     public static final int ID_RULE2_BTN = android.R.id.button1;
@@ -21,6 +28,21 @@ public class AutocaptureXmlTestActivity extends Activity {
     public static final int ID_RAGE_ZONE = 10005;
     public static final int ID_ALERT_DIALOG_BTN = 10006;
     public static final int ID_BOTTOM_SHEET_BTN = 10007;
+
+    // Mixed-framework dead click test IDs
+    public static final int ID_XML_BTN_XML_TEXT = 10010;
+    public static final int ID_XML_TEXT_COUNTER = 10011;
+    public static final int ID_XML_BTN_COMPOSE_TEXT = 10012;
+    public static final int ID_COMPOSE_VIEW = 10013;
+
+    // Counters for mixed-framework tests
+    private int mXmlCounter = 0;
+    private int mComposeCounter = 0;
+
+    // Compose state exposed for the ComposeView
+    // Accessed from MixedFrameworkComposeContent helper
+    MutableIntState composeTextCounter;
+    TextView xmlTextCounter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +145,58 @@ public class AutocaptureXmlTestActivity extends Activity {
         });
         addMarginTop(sheetBtn, 8);
         layout.addView(sheetBtn);
+
+        // ============ Mixed-Framework Dead Click Test Elements ============
+
+        // XML button that changes XML text
+        Button xmlBtnXmlText = createButton("XML Btn -> XML Text");
+        xmlBtnXmlText.setId(ID_XML_BTN_XML_TEXT);
+        xmlBtnXmlText.setContentDescription("xml_btn_xml_text");
+        addMarginTop(xmlBtnXmlText, 16);
+        layout.addView(xmlBtnXmlText);
+
+        // XML text counter (updated by XML and Compose buttons)
+        xmlTextCounter = new TextView(this);
+        xmlTextCounter.setId(ID_XML_TEXT_COUNTER);
+        xmlTextCounter.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        xmlTextCounter.setText("XML counter: 0");
+        xmlTextCounter.setContentDescription("xml_text_counter");
+        addMarginTop(xmlTextCounter, 4);
+        layout.addView(xmlTextCounter);
+
+        // XML button that changes Compose text
+        Button xmlBtnComposeText = createButton("XML Btn -> Compose Text");
+        xmlBtnComposeText.setId(ID_XML_BTN_COMPOSE_TEXT);
+        xmlBtnComposeText.setContentDescription("xml_btn_compose_text");
+        addMarginTop(xmlBtnComposeText, 8);
+        layout.addView(xmlBtnComposeText);
+
+        // ComposeView hosting Compose button + Compose text counter
+        ComposeView composeView = new ComposeView(this);
+        composeView.setId(ID_COMPOSE_VIEW);
+        composeView.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        addMarginTop(composeView, 8);
+        layout.addView(composeView);
+
+        // Wire up XML button -> XML text
+        xmlBtnXmlText.setOnClickListener(v -> {
+            mXmlCounter++;
+            xmlTextCounter.setText("XML counter: " + mXmlCounter);
+        });
+
+        // Wire up XML button -> Compose text (increments compose state)
+        xmlBtnComposeText.setOnClickListener(v -> {
+            if (composeTextCounter != null) {
+                composeTextCounter.setIntValue(composeTextCounter.getIntValue() + 1);
+            }
+        });
+
+        // Set Compose content with buttons and text counter
+        MixedFrameworkComposeContent.setContent(composeView, this);
 
         scrollView.addView(layout);
         setContentView(scrollView);
