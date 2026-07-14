@@ -318,13 +318,6 @@ final class SemanticExtractor {
             accessibleLabel = contentDesc.toString();
         }
 
-        // Try text content for buttons/clickable nodes
-        CharSequence text = node.getText();
-        if (elementId == null && text != null && text.length() > 0 &&
-            (node.isClickable() || node.isCheckable())) {
-            elementId = text.toString();
-        }
-
         // Fallback to class name + hash
         if (elementId == null) {
             CharSequence className = node.getClassName();
