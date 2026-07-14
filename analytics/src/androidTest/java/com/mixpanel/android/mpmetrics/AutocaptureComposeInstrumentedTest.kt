@@ -270,7 +270,7 @@ class AutocaptureComposeInstrumentedTest {
 
             val properties = event.getJSONObject("properties")
             val elId = properties.getString("\$el_id")
-            assert(elId.matches(Regex("Button_view_-?[0-9a-f]+"))) {
+            assert(elId.matches(Regex("Button_-?[0-9a-f]+"))) {
                 "\$el_id should use hash fallback format, got: $elId"
             }
         }

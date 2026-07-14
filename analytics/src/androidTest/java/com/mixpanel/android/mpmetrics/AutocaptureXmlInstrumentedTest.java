@@ -464,10 +464,10 @@ public class AutocaptureXmlInstrumentedTest {
 
             JSONObject properties = event.getJSONObject("properties");
 
-            // Verify $el_id uses hash fallback format: ClassName_view_<hexHashCode>
+            // Verify $el_id uses hash fallback format: ClassName_<hexHashCode>
             String elId = properties.getString("$el_id");
-            assertTrue("$el_id should start with 'Button_view_' for hash fallback, got: " + elId,
-                    elId.matches("Button_view_[0-9a-f]+"));
+            assertTrue("$el_id should start with 'Button_' for hash fallback, got: " + elId,
+                    elId.matches("Button_[0-9a-f]+"));
         }
     }
 
