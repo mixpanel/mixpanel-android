@@ -323,12 +323,12 @@ final class SemanticExtractor {
             CharSequence className = node.getClassName();
             if (className != null) {
                 String simpleName = getSimpleClassName(className.toString());
-                elementId = simpleName + "_view_" + Integer.toHexString(node.hashCode());
+                elementId = simpleName + "_" + Integer.toHexString(node.hashCode());
             }
         }
 
         if (elementId == null) {
-            elementId = "unknown_view_" + Integer.toHexString(node.hashCode());
+            elementId = "unknown_" + Integer.toHexString(node.hashCode());
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
@@ -457,7 +457,7 @@ final class SemanticExtractor {
         // Element ID resolution: contentDescription > resource ID > fallback
         String elementId = resolveElementId(view);
         if (elementId == null) {
-            elementId = "unknown_view_" + Integer.toHexString(view.hashCode());
+            elementId = "unknown_" + Integer.toHexString(view.hashCode());
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
@@ -531,7 +531,7 @@ final class SemanticExtractor {
      * Resolves the element ID according to the priority:
      * 1. contentDescription (if non-empty)
      * 2. Resource ID name (R.id.xxx)
-     * 3. ClassName_view_<hashCode>
+     * 3. ClassName_<hashCode>
      */
     @NonNull
     private static String resolveElementId(@NonNull View view) {
@@ -554,8 +554,8 @@ final class SemanticExtractor {
             }
         }
 
-        // 3. Fallback: ClassName_view_<hashCode>
-        return view.getClass().getSimpleName() + "_view_" + Integer.toHexString(view.hashCode());
+        // 3. Fallback: ClassName_<hashCode>
+        return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
     }
 
     /**

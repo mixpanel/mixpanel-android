@@ -242,7 +242,7 @@ final class ComposeSemanticHelper {
         // Element ID resolution (matching Android plan):
         // 1. contentDescription (from semantics { contentDescription = ... })
         // 2. testTag (from Modifier.testTag(...)) - equivalent to resource ID
-        // 3. ClassName_view_<hashCode>
+        // 3. ClassName_<hashCode>
         String elementId = null;
         String accessibleLabel = null;
 
@@ -257,7 +257,7 @@ final class ComposeSemanticHelper {
 
         if (elementId == null) {
             String tagName = getTagName(config);
-            elementId = tagName + "_view_" + Integer.toHexString(node.hashCode());
+            elementId = tagName + "_" + Integer.toHexString(node.hashCode());
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
