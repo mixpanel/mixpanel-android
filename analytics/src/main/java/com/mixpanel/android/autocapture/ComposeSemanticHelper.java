@@ -381,34 +381,34 @@ final class ComposeSemanticHelper {
     /**
      * Gets role string for $attr-role.
      */
-    @NonNull
+    @Nullable
     private static String getRoleString(@NonNull SemanticsConfiguration config) {
         SemanticsPropertyKey<Role> roleKey = SemanticsProperties.INSTANCE.getRole();
         if (config.contains(roleKey)) {
             Role role = config.get(roleKey);
             if (role != null) {
                 String roleName = role.toString().toLowerCase();
-                if (roleName.contains("button")) return "button";
-                if (roleName.contains("checkbox")) return "checkbox";
-                if (roleName.contains("switch")) return "switch";
-                if (roleName.contains("radiobutton")) return "radio";
-                if (roleName.contains("tab")) return "tab";
-                if (roleName.contains("slider")) return "slider";
-                if (roleName.contains("image")) return "img";
-                if (roleName.contains("dropdownlist")) return "combobox";
+                if (roleName.contains("button")) return "Button";
+                if (roleName.contains("checkbox")) return "Checkbox";
+                if (roleName.contains("switch")) return "Switch";
+                if (roleName.contains("radiobutton")) return "Radio";
+                if (roleName.contains("tab")) return "Tab";
+                if (roleName.contains("slider")) return "Slider";
+                if (roleName.contains("image")) return "Image";
+                if (roleName.contains("dropdownlist")) return "ComboBox";
             }
         }
 
         // Infer from properties - check EditableText BEFORE OnClick
-        // (TextFields are clickable to gain focus but should be identified as textbox)
+        // (TextFields are clickable to gain focus but should be identified as TextField)
         if (config.contains(SemanticsProperties.INSTANCE.getEditableText())) {
-            return "textbox";
+            return "TextField";
         }
         if (config.contains(SemanticsActions.INSTANCE.getOnClick())) {
-            return "button";
+            return "Button";
         }
 
-        return "none";
+        return null;
     }
 
     /**

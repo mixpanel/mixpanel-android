@@ -587,83 +587,83 @@ final class SemanticExtractor {
     /**
      * Infers the semantic role from a View's class.
      */
-    @NonNull
+    @Nullable
     private static String inferRoleFromView(@NonNull View view) {
         if (view instanceof Button || view instanceof ImageButton) {
-            return "button";
+            return "Button";
         }
         if (view instanceof Switch || view instanceof ToggleButton) {
-            return "switch";
+            return "Switch";
         }
         if (view instanceof CheckBox) {
-            return "checkbox";
+            return "Checkbox";
         }
         if (view instanceof RadioButton) {
-            return "radio";
+            return "Radio";
         }
         if (view instanceof SeekBar) {
-            return "slider";
+            return "Slider";
         }
         if (view instanceof Spinner) {
-            return "combobox";
+            return "ComboBox";
         }
         if (view instanceof EditText) {
-            return "textbox";
+            return "TextField";
         }
         if (view instanceof ImageView) {
-            return "img";
+            return "Image";
         }
         if (view instanceof TextView) {
-            return "text";
+            return "Text";
         }
         if (view.isClickable() || view.isLongClickable()) {
-            return "button";
+            return "Button";
         }
-        return "none";
+        return null;
     }
 
     /**
      * Infers the semantic role from an AccessibilityNodeInfo.
      */
-    @NonNull
+    @Nullable
     private static String inferRoleFromNode(@NonNull AccessibilityNodeInfo node) {
         CharSequence className = node.getClassName();
         if (className == null) {
-            return "none";
+            return null;
         }
 
         String name = className.toString();
         if (name.contains("Button")) {
-            return "button";
+            return "Button";
         }
         if (name.contains("Switch") || name.contains("Toggle")) {
-            return "switch";
+            return "Switch";
         }
         if (name.contains("CheckBox")) {
-            return "checkbox";
+            return "Checkbox";
         }
         if (name.contains("RadioButton")) {
-            return "radio";
+            return "Radio";
         }
         if (name.contains("SeekBar") || name.contains("Slider")) {
-            return "slider";
+            return "Slider";
         }
         if (name.contains("Spinner")) {
-            return "combobox";
+            return "ComboBox";
         }
         if (name.contains("EditText")) {
-            return "textbox";
+            return "TextField";
         }
         if (name.contains("Image")) {
-            return "img";
+            return "Image";
         }
         if (name.contains("Text")) {
-            return "text";
+            return "Text";
         }
         if (node.isClickable() || node.isLongClickable()) {
-            return "button";
+            return "Button";
         }
-        return "none";
+        return null;
     }
 
     /**
