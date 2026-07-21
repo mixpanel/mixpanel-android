@@ -9,7 +9,7 @@ package com.mixpanel.android.mpmetrics;
  * <pre>{@code
  * DeadClickOptions deadClickOptions = new DeadClickOptions.Builder()
  *     .enabled(true)
- *     .timeoutMs(600)         // Wait 600ms for UI response
+ *     .timeWindowMs(1200)     // Wait 1200ms for UI response
  *     .build();
  * }</pre>
  *
@@ -18,11 +18,11 @@ package com.mixpanel.android.mpmetrics;
 public class DeadClickOptions {
 
     private final boolean mEnabled;
-    private final long mTimeoutMs;
+    private final long mTimeWindowMs;
 
     private DeadClickOptions(Builder builder) {
         this.mEnabled = builder.mEnabled;
-        this.mTimeoutMs = builder.mTimeoutMs;
+        this.mTimeWindowMs = builder.mTimeWindowMs;
     }
 
     /**
@@ -36,14 +36,14 @@ public class DeadClickOptions {
     }
 
     /**
-     * Returns the timeout in milliseconds to wait for a UI response after a click.
+     * Returns the time window in milliseconds to wait for a UI response after a click.
      *
-     * <p>If no UI change is detected within this time, a dead click event is emitted.
+     * <p>If no UI change is detected within this window, a dead click event is emitted.
      *
-     * @return The timeout in milliseconds. Defaults to 500.
+     * @return The time window in milliseconds. Defaults to 500.
      */
-    public long getTimeoutMs() {
-        return mTimeoutMs;
+    public long getTimeWindowMs() {
+        return mTimeWindowMs;
     }
 
     /**
@@ -52,12 +52,12 @@ public class DeadClickOptions {
      * <p>Default values:
      * <ul>
      *   <li>{@code enabled} = {@code true}</li>
-     *   <li>{@code timeoutMs} = 500</li>
+     *   <li>{@code timeWindowMs} = 500</li>
      * </ul>
      */
     public static class Builder {
         private boolean mEnabled = true;
-        private long mTimeoutMs = 500;
+        private long mTimeWindowMs = 500;
 
         public Builder() {
         }
@@ -69,7 +69,7 @@ public class DeadClickOptions {
          */
         public Builder(DeadClickOptions source) {
             this.mEnabled = source.mEnabled;
-            this.mTimeoutMs = source.mTimeoutMs;
+            this.mTimeWindowMs = source.mTimeWindowMs;
         }
 
         /**
@@ -84,13 +84,13 @@ public class DeadClickOptions {
         }
 
         /**
-         * Sets the timeout in milliseconds to wait for a UI response.
+         * Sets the time window in milliseconds to wait for a UI response.
          *
-         * @param timeoutMs The timeout in milliseconds. Must be positive.
+         * @param timeWindowMs The time window in milliseconds. Must be positive.
          * @return This Builder instance for chaining.
          */
-        public Builder timeoutMs(long timeoutMs) {
-            this.mTimeoutMs = Math.max(1, timeoutMs);
+        public Builder timeWindowMs(long timeWindowMs) {
+            this.mTimeWindowMs = Math.max(1, timeWindowMs);
             return this;
         }
 

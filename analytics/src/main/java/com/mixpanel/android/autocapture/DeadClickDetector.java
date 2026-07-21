@@ -27,7 +27,7 @@ import java.lang.ref.WeakReference;
  *       handler runs), so any UI response is visible as a delta</li>
  *   <li>Attach listeners for UI changes (layout, scroll, window focus, new windows)
  *       — any change cancels detection early</li>
- *   <li>After timeout (default 500ms), compare final state to baseline</li>
+ *   <li>After time window (default 500ms), compare final state to baseline</li>
  *   <li>If no change detected, emit dead click event</li>
  * </ol>
  *
@@ -100,7 +100,7 @@ final class DeadClickDetector {
      * @param listener The listener to receive dead click events.
      */
     DeadClickDetector(@NonNull DeadClickOptions options, @NonNull DeadClickListener listener) {
-        mTimeoutMs = options.getTimeoutMs();
+        mTimeoutMs = options.getTimeWindowMs();
         mHandler = new Handler(Looper.getMainLooper());
         mListener = listener;
     }

@@ -74,7 +74,7 @@ That's it! No additional setup required. Autocapture automatically intercepts al
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Track dead click events |
-| `timeoutMs` | `500` | Response wait time in milliseconds |
+| `timeWindowMs` | `500` | Response wait time in milliseconds |
 
 ### Custom Configuration Example
 
@@ -150,7 +150,7 @@ The `$el_id` property uses the following resolution order:
 
 1. `contentDescription` (if non-empty)
 2. Resource ID name (e.g., `R.id.checkout_button` → `"checkout_button"`)
-3. `ClassName_view_<hashCode>` (fallback)
+3. `ClassName_<hashCode>` (fallback)
 
 ### Best Practices
 
@@ -238,7 +238,7 @@ Dead click detection monitors interactive elements for UI response:
 2. Capture a baseline snapshot of the UI state immediately (before the click handler runs)
 3. Attach listeners for layout changes, scroll events, and window additions
 4. If any UI change is detected, cancel detection early (not a dead click)
-5. After 500ms (timeout), compare final state to baseline
+5. After 500ms (time window), compare final state to baseline
 6. If UI hasn't changed, emit `$mp_dead_click`
 
 ### Excluded Controls
