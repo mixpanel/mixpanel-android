@@ -427,8 +427,28 @@ class MixpanelProviderTest {
      * ensuring identity check detects the flag was found.
      */
     private fun setupFlag(flagName: String, value: Any?) {
+        // Stamp Source.Network so the wrapper sees a "real" variant instead of
+        // interpreting the default Fallback source as flag-not-found.
         `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
-            .thenReturn(MixpanelFlagVariant("variant-key", value))
+            .thenReturn(
+                MixpanelFlagVariant("variant-key", value)
+                    .withSource(MixpanelFlagVariant.Source.network())
+            )
+    }
+
+    /**
+     * Sets up the mock so that getVariantSync returns a fallback with the given reason,
+     * simulating each of the distinct fallback paths the SDK can take.
+     */
+    private fun setupFallback(
+        flagName: String,
+        reason: MixpanelFlagVariant.Source.Fallback.Reason
+    ) {
+        `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
+            .thenAnswer { invocation ->
+                val fallback = invocation.getArgument<MixpanelFlagVariant>(1)
+                fallback.withSource(MixpanelFlagVariant.Source.fallback(reason))
+            }
     }
 
     /**
@@ -447,6 +467,35 @@ class MixpanelProviderTest {
     private fun setupFlagException(flagName: String) {
         `when`(mockFlags.getVariantSync(eq(flagName), any(MixpanelFlagVariant::class.java)))
             .thenThrow(RuntimeException("SDK internal error"))
+    }
+
+    // --- Fallback.Reason mapping (SDK-79) ---
+
+    @Test
+    fun `fallback with FLAG_NOT_FOUND reason maps to ErrorCode FLAG_NOT_FOUND`() {
+        setupFallback("missing", MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND)
+        val result = provider.getBooleanEvaluation("missing", false, ImmutableContext())
+        assertEquals(false, result.value)
+        assertEquals(ErrorCode.FLAG_NOT_FOUND, result.errorCode)
+        assertEquals(Reason.DEFAULT.toString(), result.reason)
+    }
+
+    @Test
+    fun `fallback with NOT_READY reason maps to ErrorCode PROVIDER_NOT_READY`() {
+        setupFallback("not-ready", MixpanelFlagVariant.Source.Fallback.Reason.NOT_READY)
+        val result = provider.getBooleanEvaluation("not-ready", false, ImmutableContext())
+        assertEquals(false, result.value)
+        assertEquals(ErrorCode.PROVIDER_NOT_READY, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
+    }
+
+    @Test
+    fun `fallback with BACKEND_ERROR reason maps to ErrorCode GENERAL`() {
+        setupFallback("backend-fail", MixpanelFlagVariant.Source.Fallback.Reason.BACKEND_ERROR)
+        val result = provider.getBooleanEvaluation("backend-fail", false, ImmutableContext())
+        assertEquals(false, result.value)
+        assertEquals(ErrorCode.GENERAL, result.errorCode)
+        assertEquals(Reason.ERROR.toString(), result.reason)
     }
 
 }

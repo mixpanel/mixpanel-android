@@ -42,8 +42,9 @@ java {
 }
 
 dependencies {
-    // official release
-    implementation("com.mixpanel.android:mixpanel-android:8.5.0")
+    // official release — 8.9.0 ships Source.Fallback.Reason (SDK-79) which
+    // MixpanelProvider.kt now dispatches on. Earlier versions lack the enum.
+    implementation("com.mixpanel.android:mixpanel-android:8.9.0")
     // or use below for local testing
     // implementation(project(":analytics"))
 

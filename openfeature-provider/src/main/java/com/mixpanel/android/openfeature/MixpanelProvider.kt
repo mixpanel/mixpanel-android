@@ -184,11 +184,31 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
             return generalError(defaultValue, e.message)
         }
 
-        if (variant === fallbackVariant) {
-            return flagNotFound(key, defaultValue)
+        // A fallback source means the SDK had no real variant to serve. The
+        // reason discriminates why (missing key, not-ready, backend error) so
+        // callers get the OpenFeature error code the spec assigns to each,
+        // instead of collapsing every fallback to FLAG_NOT_FOUND.
+        val source = variant.source
+        if (source is MixpanelFlagVariant.Source.Fallback) {
+            return mapFallback(source.reason, key, defaultValue)
         }
 
         return coerce(variant)
+    }
+
+    private fun <T> mapFallback(
+        reason: MixpanelFlagVariant.Source.Fallback.Reason,
+        flagKey: String,
+        defaultValue: T
+    ): ProviderEvaluation<T> {
+        return when (reason) {
+            MixpanelFlagVariant.Source.Fallback.Reason.FLAG_NOT_FOUND ->
+                flagNotFound(flagKey, defaultValue)
+            MixpanelFlagVariant.Source.Fallback.Reason.NOT_READY ->
+                providerNotReady(defaultValue)
+            MixpanelFlagVariant.Source.Fallback.Reason.BACKEND_ERROR ->
+                generalError(defaultValue, "Flag \"$flagKey\" evaluation failed at backend")
+        }
     }
 
     private fun <T> success(value: T, variant: String? = null): ProviderEvaluation<T> {
