@@ -3,6 +3,10 @@ package com.mixpanel.android.mpmetrics;
 /**
  * Configuration options for click event autocapture.
  *
+ * <p>When enabled, a {@code $mp_click} event is tracked for every tap on any element.
+ * Each event includes the touch coordinates, element identifier, class name,
+ * accessibility label, semantic role, and view hierarchy path.
+ *
  * <p>Use this class to enable or disable click event tracking when autocapture is enabled.
  *
  * <pre>{@code
