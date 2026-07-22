@@ -57,7 +57,8 @@ class AutocaptureComposeInstrumentedTest {
             MPConfig.getInstance(mContext, null)
         )
         messages.hardKill()
-        Thread.sleep(2000)
+        var attempts = 0
+        while (!messages.isDead && attempts++ < 40) Thread.sleep(50)
 
         mEvents.clear()
 
@@ -212,7 +213,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeClickEventBasic() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_rule1_btn"),
@@ -236,7 +237,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeElementIdFromTestTag() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithTag("compose_rule2_btn"),
@@ -257,7 +258,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeElementIdHashFallback() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithText("Rule 3 - hash fallback"),
@@ -279,7 +280,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeRageClickDetection() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             rapidTapNode(
                 composeTestRule.onNodeWithContentDescription("compose_rage_zone"),
@@ -304,7 +305,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeDeadClickDetection() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_dead_btn"),
@@ -327,25 +328,25 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeMultipleClicksGenerateMultipleEvents() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_rule1_btn"),
                 scenario
             )
-            Thread.sleep(200)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_dead_btn"),
                 scenario
             )
-            Thread.sleep(200)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_rage_zone"),
                 scenario
             )
-            Thread.sleep(200)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             val clickEvents = mutableListOf<JSONObject>()
             var event: JSONObject?
@@ -364,7 +365,7 @@ class AutocaptureComposeInstrumentedTest {
     @Test
     fun testComposeClickEventHasTokenProperty() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapNode(
                 composeTestRule.onNodeWithContentDescription("compose_rule1_btn"),

@@ -70,7 +70,8 @@ class AutocaptureMixedFrameworkInstrumentedTest {
             MPConfig.getInstance(mContext, null)
         )
         messages.hardKill()
-        Thread.sleep(2000)
+        var attempts = 0
+        while (!messages.isDead && attempts++ < 40) Thread.sleep(50)
 
         mEvents.clear()
 
@@ -152,7 +153,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testXmlScreen_xmlButtonChangesXmlText_noDeadClick() {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use {
-            Thread.sleep(500)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_XML_TEXT)).perform(click())
 
@@ -163,7 +164,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testXmlScreen_xmlButtonChangesComposeText_noDeadClick() {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use {
-            Thread.sleep(500)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_COMPOSE_TEXT)).perform(click())
 
@@ -174,7 +175,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testXmlScreen_composeButtonChangesXmlText_noDeadClick() {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapComposeNode(
                 composeTestRule.onNodeWithContentDescription("compose_btn_xml_text"),
@@ -188,7 +189,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testXmlScreen_composeButtonChangesComposeText_noDeadClick() {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapComposeNode(
                 composeTestRule.onNodeWithContentDescription("compose_btn_compose_text"),
@@ -204,7 +205,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testComposeScreen_xmlButtonChangesXmlText_noDeadClick() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapViewByContentDescription(
                 "xml_btn_xml_text_in_compose",
@@ -218,7 +219,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testComposeScreen_xmlButtonChangesComposeText_noDeadClick() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapViewByContentDescription(
                 "xml_btn_compose_text_in_compose",
@@ -232,7 +233,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testComposeScreen_composeButtonChangesXmlText_noDeadClick() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapComposeNode(
                 composeTestRule.onNodeWithContentDescription("compose_btn_xml_text_in_compose"),
@@ -246,7 +247,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
     @Test
     fun testComposeScreen_composeButtonChangesComposeText_noDeadClick() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
-            Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             tapComposeNode(
                 composeTestRule.onNodeWithContentDescription("compose_btn_compose_text_in_compose"),
