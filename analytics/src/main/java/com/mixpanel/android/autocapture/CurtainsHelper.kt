@@ -54,9 +54,9 @@ internal object CurtainsHelper {
     /**
      * Installs a tap listener on a [Window] using Curtains' touchEventInterceptors.
      *
-     * The listener filters for taps (single-pointer ACTION_UP within touch slop
-     * and duration threshold) and notifies [onTap] with screen coordinates
-     * and the window's decor view.
+     * The listener filters for taps (single-pointer ACTION_UP where no
+     * ACTION_MOVE exceeded touch slop, within duration threshold) and notifies
+     * [onTap] with screen coordinates and the window's decor view.
      *
      * @return The installed [OnTouchEventListener], to be kept for later removal.
      */
@@ -69,6 +69,7 @@ internal object CurtainsHelper {
         var downX = 0f
         var downY = 0f
         var downTime = 0L
+        var exceededSlop = false
 
         val listener = OnTouchEventListener { event ->
             try {
@@ -77,6 +78,16 @@ internal object CurtainsHelper {
                         downX = event.rawX
                         downY = event.rawY
                         downTime = event.eventTime
+                        exceededSlop = false
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!exceededSlop && downTime > 0) {
+                            val dx = event.rawX - downX
+                            val dy = event.rawY - downY
+                            if ((dx * dx + dy * dy) > touchSlopSq) {
+                                exceededSlop = true
+                            }
+                        }
                     }
                     MotionEvent.ACTION_POINTER_DOWN,
                     MotionEvent.ACTION_CANCEL -> {
@@ -85,10 +96,8 @@ internal object CurtainsHelper {
                     MotionEvent.ACTION_UP -> {
                         if (event.pointerCount == 1) {
                             val duration = event.eventTime - downTime
-                            val dx = event.rawX - downX
-                            val dy = event.rawY - downY
-                            if (downTime > 0 && duration <= MAX_TAP_DURATION_MS
-                                && (dx * dx + dy * dy) <= touchSlopSq
+                            if (downTime > 0 && !exceededSlop
+                                && duration <= MAX_TAP_DURATION_MS
                             ) {
                                 val decorView = window.decorView
                                 onTap.onTap(event.rawX, event.rawY, decorView)
