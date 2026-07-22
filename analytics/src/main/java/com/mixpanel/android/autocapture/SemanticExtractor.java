@@ -42,10 +42,10 @@ final class SemanticExtractor {
      * @param rootView           The root view to search within.
      * @param x                  Screen X coordinate.
      * @param y                  Screen Y coordinate.
-     * @return A ClickEvent.Builder with extracted semantics, or null if no view found.
+     * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent.Builder extract(@NonNull View rootView, float x, float y) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y) {
         try {
             // Find the view at the tap position
             View targetView = findViewAtPosition(rootView, (int) x, (int) y);
@@ -63,21 +63,26 @@ final class SemanticExtractor {
                 MPLog.d(TAG, "extractFromCompose result: " + (composeResult != null ? "found" : "not found"));
 
                 if (composeResult != null) {
-                    // Set Compose root for dead click detection using semantic comparison
-                    composeResult.composeRoot(composeRoot);
-                    return composeResult;
+                    // Build the ClickEvent and wrap in ComposeClickEvent for dead click detection
+                    ClickEvent baseEvent = composeResult.build();
+                    return new ComposeClickEvent(
+                            baseEvent.x, baseEvent.y, baseEvent.elementId,
+                            baseEvent.tagName, baseEvent.accessibleLabel,
+                            baseEvent.role, baseEvent.elements,
+                            baseEvent.isInteractive, composeRoot);
                 }
 
                 // Only fall back to accessibility if Compose didn't find a node
                 MPLog.d(TAG, "Compose node not found, falling back to accessibility");
                 ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y);
                 if (accessibilityResult != null) {
-                    return accessibilityResult;
+                    return accessibilityResult.build();
                 }
             }
 
             // Fall back to direct view extraction (XML views)
-            return extractFromView(targetView, x, y);
+            ClickEvent.Builder viewResult = extractFromView(targetView, x, y);
+            return viewResult != null ? viewResult.build() : null;
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
         }
