@@ -54,7 +54,9 @@ public class AutocaptureXmlInstrumentedTest {
                 mContext,
                 MPConfig.getInstance(mContext, null));
         messages.hardKill();
-        Thread.sleep(2000);
+        for (int i = 0; i < 40 && !messages.isDead(); i++) {
+            Thread.sleep(50);
+        }
 
         // Clear events queue
         mEvents.clear();
@@ -155,7 +157,7 @@ public class AutocaptureXmlInstrumentedTest {
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
             // Wait for autocapture to attach to window
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Click the rule1_btn button
             onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
@@ -190,7 +192,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Get rage zone coordinates for rapid touch injection
             final int[] location = new int[2];
@@ -251,7 +253,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Click the dead button (has NO click listener)
             onView(withId(AutocaptureXmlTestActivity.ID_DEAD_XML_BTN)).perform(click());
@@ -280,7 +282,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Click button with resource ID only (no contentDescription)
             onView(withId(AutocaptureXmlTestActivity.ID_RULE2_BTN)).perform(click());
@@ -300,17 +302,17 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
-            // Click 3 different buttons with spacing to avoid rage click
+            // Click 3 different buttons, waiting for idle between each
             onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
-            Thread.sleep(200);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             onView(withId(AutocaptureXmlTestActivity.ID_RULE2_BTN)).perform(click());
-            Thread.sleep(200);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             onView(withId(AutocaptureXmlTestActivity.ID_RULE3_BTN)).perform(click());
-            Thread.sleep(200);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Collect all events and filter for $mp_click only
             // (dead click events may also fire since empty listeners cause no UI change)
@@ -332,7 +334,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Click a button
             onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
@@ -433,7 +435,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             onView(withId(AutocaptureXmlTestActivity.ID_RULE1_BTN)).perform(click());
 
@@ -461,7 +463,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Get button center coordinates
             final int[] location = new int[2];
@@ -521,7 +523,7 @@ public class AutocaptureXmlInstrumentedTest {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
                      ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
 
-            Thread.sleep(500);
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
 
             // Click button with no contentDescription and invalid resource ID (10003)
             // This forces resolveElementId to fall through Rule 1 and Rule 2 to the hash fallback
