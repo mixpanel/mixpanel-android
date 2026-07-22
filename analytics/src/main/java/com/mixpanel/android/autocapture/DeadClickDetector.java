@@ -209,9 +209,11 @@ final class DeadClickDetector {
             mRootViewRef = new WeakReference<>(rootView);
 
             // Resolve Compose root:
-            // - For Compose clicks, the ClickEvent already has the reference
+            // - For Compose clicks, ComposeClickEvent holds the reference
             // - For XML clicks, search the view tree for a Compose root
-            View composeRoot = clickEvent.getComposeRoot();
+            View composeRoot = (clickEvent instanceof ComposeClickEvent)
+                    ? ((ComposeClickEvent) clickEvent).getComposeRoot()
+                    : null;
             if (composeRoot == null) {
                 composeRoot = findComposeRoot(rootView);
             }

@@ -1,14 +1,10 @@
 package com.mixpanel.android.autocapture;
 
-import android.view.View;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.lang.ref.WeakReference;
 
 /**
  * Represents a captured click event with element metadata.
@@ -16,8 +12,10 @@ import java.lang.ref.WeakReference;
  * <p>Contains all semantic information about the clicked element and its context.
  * Create a {@code ClickEvent} using the {@link Builder} and pass it to
  * {@code mixpanel.getAutocapture().trackClick()} to track click events with full element metadata.
+ *
+ * @see ComposeClickEvent
  */
-public final class ClickEvent {
+public class ClickEvent {
 
     /**
      * Touch X coordinate in absolute screen pixels.
@@ -95,16 +93,6 @@ public final class ClickEvent {
     /** Whether the clicked view is considered interactive (clickable/longClickable). */
     public final boolean isInteractive;
 
-    /** Whether this click originated from a Compose element (set at construction, not affected by GC). */
-    final boolean isCompose;
-
-    /**
-     * Reference to Compose root view for dead click detection.
-     * Only set for clicks on Compose elements. Weak reference to avoid memory leaks.
-     */
-    @Nullable
-    final WeakReference<View> composeRootRef;
-
     /**
      * Creates a new ClickEvent.
      */
@@ -116,8 +104,7 @@ public final class ClickEvent {
             @Nullable String accessibleLabel,
             @Nullable String role,
             @Nullable String elements,
-            boolean isInteractive,
-            @Nullable View composeRoot) {
+            boolean isInteractive) {
         this.x = x;
         this.y = y;
         this.elementId = elementId;
@@ -126,23 +113,6 @@ public final class ClickEvent {
         this.role = role;
         this.elements = elements;
         this.isInteractive = isInteractive;
-        this.isCompose = composeRoot != null;
-        this.composeRootRef = composeRoot != null ? new WeakReference<>(composeRoot) : null;
-    }
-
-    /**
-     * Returns true if this click was on a Compose element.
-     */
-    boolean isComposeClick() {
-        return isCompose;
-    }
-
-    /**
-     * Returns the Compose root view, or null if not a Compose click or view was garbage collected.
-     */
-    @Nullable
-    View getComposeRoot() {
-        return composeRootRef != null ? composeRootRef.get() : null;
     }
 
     /**
@@ -207,7 +177,6 @@ public final class ClickEvent {
         private String role;
         private String elements;
         private boolean isInteractive;
-        private View composeRoot;
 
         /**
          * @param x         Touch X coordinate in absolute screen pixels
@@ -257,13 +226,8 @@ public final class ClickEvent {
             return this;
         }
 
-        Builder composeRoot(@Nullable View composeRoot) {
-            this.composeRoot = composeRoot;
-            return this;
-        }
-
         public ClickEvent build() {
-            return new ClickEvent(x, y, elementId, tagName, accessibleLabel, role, elements, isInteractive, composeRoot);
+            return new ClickEvent(x, y, elementId, tagName, accessibleLabel, role, elements, isInteractive);
         }
     }
 }
