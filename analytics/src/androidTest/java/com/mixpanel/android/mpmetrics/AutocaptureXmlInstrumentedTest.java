@@ -448,6 +448,74 @@ public class AutocaptureXmlInstrumentedTest {
         }
     }
 
+    /**
+     * Regression test: a swipe that returns to the starting position must NOT register as a tap.
+     *
+     * Before the fix, touch slop was only checked at ACTION_UP by comparing final vs initial
+     * position. A quick down-swipe-up-swipe that ended at the start point would falsely pass
+     * the check. Now, ACTION_MOVE events are tracked and a tap is rejected if any intermediate
+     * move exceeds the touch slop threshold.
+     */
+    @Test
+    public void testSwipeBackToSamePositionDoesNotFireClick() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            Thread.sleep(500);
+
+            // Get button center coordinates
+            final int[] location = new int[2];
+            scenario.onActivity(activity -> {
+                View btn = activity.findViewById(AutocaptureXmlTestActivity.ID_RULE1_BTN);
+                btn.getLocationOnScreen(location);
+                location[0] += btn.getWidth() / 2;
+                location[1] += btn.getHeight() / 2;
+            });
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+
+            // ACTION_DOWN at button center
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            down.recycle();
+
+            // ACTION_MOVE 200px down (well beyond touch slop)
+            android.view.MotionEvent move1 = android.view.MotionEvent.obtain(
+                    downTime, downTime + 50,
+                    android.view.MotionEvent.ACTION_MOVE,
+                    location[0], location[1] + 200, 0);
+            instrumentation.sendPointerSync(move1);
+            move1.recycle();
+
+            // ACTION_MOVE back to original position
+            android.view.MotionEvent move2 = android.view.MotionEvent.obtain(
+                    downTime, downTime + 100,
+                    android.view.MotionEvent.ACTION_MOVE,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(move2);
+            move2.recycle();
+
+            // ACTION_UP at original position
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 150,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(up);
+            up.recycle();
+
+            // Wait briefly — no $mp_click event should fire
+            JSONObject event = mEvents.poll(2, TimeUnit.SECONDS);
+            assertTrue(
+                    "Swipe-back-to-same-position should NOT fire $mp_click event",
+                    event == null || !"$mp_click".equals(event.optString("event")));
+        }
+    }
+
     @Test
     public void testElementIdResolutionRule3HashFallback() throws Exception {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
