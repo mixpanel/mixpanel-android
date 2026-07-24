@@ -335,6 +335,21 @@ class MixpanelProviderTest {
     }
 
     @Test
+    fun `shutdown tears down flags when this provider owns the MixpanelAPI`() {
+        // Simulate having been constructed via the convenience constructor
+        // (which sets `mixpanel` to the internally-created MixpanelAPI).
+        // The convenience constructor itself requires a real Android Context
+        // and would create a live MixpanelAPI singleton, so we bypass it
+        // with reflection — the branch under test only reads `mixpanel != null`.
+        val mixpanelField = MixpanelProvider::class.java.getDeclaredField("mixpanel")
+        mixpanelField.isAccessible = true
+        mixpanelField.set(provider, mock(MixpanelAPI::class.java))
+
+        provider.shutdown()
+        verify(mockFlags).shutdown()
+    }
+
+    @Test
     fun `hooks list is empty`() {
         assertEquals(emptyList<Any>(), provider.hooks)
     }
