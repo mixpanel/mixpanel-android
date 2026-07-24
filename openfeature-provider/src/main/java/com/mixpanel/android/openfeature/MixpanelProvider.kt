@@ -208,6 +208,11 @@ class MixpanelProvider(private val flags: MixpanelAPI.Flags) : FeatureProvider {
                 providerNotReady(defaultValue)
             MixpanelFlagVariant.Source.Fallback.Reason.BACKEND_ERROR ->
                 generalError(defaultValue, "Flag \"$flagKey\" evaluation failed at backend")
+            // Fail closed on unrecognized reasons so a new value added to the
+            // base SDK enum doesn't compile-break this wrapper (Kotlin `when`
+            // exhaustiveness) nor throw NoWhenBranchMatchedException at
+            // runtime if an old wrapper JAR meets a new base value.
+            else -> generalError(defaultValue, "Unrecognized fallback reason $reason for flag: $flagKey")
         }
     }
 
