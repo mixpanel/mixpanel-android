@@ -12,6 +12,8 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.any
 import org.mockito.Mockito.eq
@@ -323,9 +325,28 @@ class MixpanelProviderTest {
     }
 
     @Test
-    fun `shutdown is a no-op`() {
-        // Should not throw
+    fun `shutdown does not tear down injected flags`() {
+        // provider was constructed via MixpanelProvider(mockFlags), i.e. the
+        // caller owns the MixpanelAPI lifecycle. Shutting down flags here
+        // would silently break every subsequent flag evaluation on the
+        // shared MixpanelAPI instance.
         provider.shutdown()
+        verify(mockFlags, never()).shutdown()
+    }
+
+    @Test
+    fun `shutdown tears down flags when this provider owns the MixpanelAPI`() {
+        // Simulate having been constructed via the convenience constructor
+        // (which sets `mixpanel` to the internally-created MixpanelAPI).
+        // The convenience constructor itself requires a real Android Context
+        // and would create a live MixpanelAPI singleton, so we bypass it
+        // with reflection — the branch under test only reads `mixpanel != null`.
+        val mixpanelField = MixpanelProvider::class.java.getDeclaredField("mixpanel")
+        mixpanelField.isAccessible = true
+        mixpanelField.set(provider, mock(MixpanelAPI::class.java))
+
+        provider.shutdown()
+        verify(mockFlags).shutdown()
     }
 
     @Test
