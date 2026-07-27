@@ -37,6 +37,26 @@ final class SemanticExtractor {
     private static volatile Boolean composeAvailable = null;
 
     /**
+     * Result of the single-pass hit-test descent through the view tree.
+     * Captures the target view, compose root, and ancestor hierarchy in one traversal,
+     * eliminating the need for separate post-hoc parent walks.
+     */
+    private static final class HitResult {
+        /** The deepest view at the tap coordinates. */
+        @NonNull final View target;
+        /** The nearest Compose root (AndroidComposeView) encountered during descent, or null. */
+        @Nullable final View composeRoot;
+        /** Pre-built ancestor hierarchy string (top-down order), captured during descent. */
+        @NonNull final String hierarchy;
+
+        HitResult(@NonNull View target, @Nullable View composeRoot, @NonNull String hierarchy) {
+            this.target = target;
+            this.composeRoot = composeRoot;
+            this.hierarchy = hierarchy;
+        }
+    }
+
+    /**
      * Extracts semantic information from a view at the given coordinates.
      *
      * @param rootView           The root view to search within.
@@ -47,19 +67,17 @@ final class SemanticExtractor {
     @Nullable
     static ClickEvent extract(@NonNull View rootView, float x, float y) {
         try {
-            // Find the view at the tap position
-            View targetView = findViewAtPosition(rootView, (int) x, (int) y);
-            if (targetView == null) {
+            // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
+            HitResult hit = findTargetView(rootView, (int) x, (int) y);
+            if (hit == null) {
                 return null;
             }
 
-            // Check if target view (or an ancestor) is a Compose root
-            // This handles Compose views by using Compose's SemanticsNode API directly
-            View composeRoot = findComposeRoot(targetView);
-            MPLog.d(TAG, "findComposeRoot result: " + (composeRoot != null ? composeRoot.getClass().getSimpleName() : "null") +
-                    ", targetView: " + targetView.getClass().getSimpleName());
-            if (composeRoot != null) {
-                ClickEvent.Builder composeResult = extractFromCompose(composeRoot, x, y);
+            MPLog.d(TAG, "findTargetView result: target=" + hit.target.getClass().getSimpleName() +
+                    ", composeRoot=" + (hit.composeRoot != null ? hit.composeRoot.getClass().getSimpleName() : "null"));
+
+            if (hit.composeRoot != null) {
+                ClickEvent.Builder composeResult = extractFromCompose(hit.composeRoot, x, y);
                 MPLog.d(TAG, "extractFromCompose result: " + (composeResult != null ? "found" : "not found"));
 
                 if (composeResult != null) {
@@ -69,53 +87,24 @@ final class SemanticExtractor {
                             baseEvent.x, baseEvent.y, baseEvent.elementId,
                             baseEvent.tagName, baseEvent.accessibleLabel,
                             baseEvent.role, baseEvent.elements,
-                            baseEvent.isInteractive, composeRoot);
+                            baseEvent.isInteractive, hit.composeRoot);
                 }
 
                 // Only fall back to accessibility if Compose didn't find a node
                 MPLog.d(TAG, "Compose node not found, falling back to accessibility");
-                ClickEvent.Builder accessibilityResult = extractFromAccessibility(composeRoot, x, y);
+                ClickEvent.Builder accessibilityResult = extractFromAccessibility(hit.composeRoot, x, y);
                 if (accessibilityResult != null) {
                     return accessibilityResult.build();
                 }
             }
 
             // Fall back to direct view extraction (XML views)
-            ClickEvent.Builder viewResult = extractFromView(targetView, x, y);
+            ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
             return viewResult != null ? viewResult.build() : null;
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
         }
 
-        return null;
-    }
-
-    /**
-     * Finds a Compose root view (AndroidComposeView) in the view hierarchy.
-     */
-    @Nullable
-    private static View findComposeRoot(@NonNull View view) {
-        if (!isComposeAvailable()) {
-            return null;
-        }
-
-        View current = view;
-        while (current != null) {
-            try {
-                if (ComposeSemanticHelper.isComposeRoot(current)) {
-                    return current;
-                }
-            } catch (NoClassDefFoundError e) {
-                // Compose not available, mark it and stop checking
-                composeAvailable = false;
-                return null;
-            }
-            if (current.getParent() instanceof View) {
-                current = (View) current.getParent();
-            } else {
-                break;
-            }
-        }
         return null;
     }
 
@@ -456,9 +445,14 @@ final class SemanticExtractor {
 
     /**
      * Extracts semantics from a traditional View.
+     *
+     * @param view      The target view to extract from.
+     * @param hierarchy Pre-built hierarchy string from {@link #findTargetView}, or null
+     *                  to build on demand (fallback for callers that don't have it).
      */
     @Nullable
-    private static ClickEvent.Builder extractFromView(@NonNull View view, float x, float y) {
+    private static ClickEvent.Builder extractFromView(@NonNull View view, @Nullable String hierarchy,
+                                                      float x, float y) {
         // Element ID resolution: contentDescription > resource ID > fallback
         String elementId = resolveElementId(view);
         if (elementId == null) {
@@ -479,8 +473,8 @@ final class SemanticExtractor {
         // Role
         builder.role(inferRoleFromView(view));
 
-        // View hierarchy
-        builder.elements(buildHierarchyString(view));
+        // View hierarchy — use pre-built string from descent when available
+        builder.elements(hierarchy != null ? hierarchy : buildHierarchyString(view));
 
         // Interactive check
         builder.isInteractive(isInteractive(view));
@@ -489,15 +483,29 @@ final class SemanticExtractor {
     }
 
     /**
-     * Finds the deepest view at the given screen coordinates.
+     * Single-pass descent through the view tree that finds the deepest view at the given
+     * screen coordinates while simultaneously detecting the Compose root and building
+     * the ancestor hierarchy string.
+     *
+     * <p>This replaces three separate traversals:
+     * <ol>
+     *   <li>{@code findViewAtPosition} — downward hit-test (O(n), each node calls getLocationOnScreen)</li>
+     *   <li>{@code findComposeRoot} — upward walk from target to find AndroidComposeView</li>
+     *   <li>{@code buildHierarchyString} — upward walk to collect ancestor names</li>
+     * </ol>
+     *
+     * <p>The {@code int[2]} array for {@link View#getLocationOnScreen} is allocated once and
+     * reused across all recursive calls.
      */
     @Nullable
-    private static View findViewAtPosition(@NonNull View view, int x, int y) {
-        return findViewAtPosition(view, x, y, 0);
+    private static HitResult findTargetView(@NonNull View rootView, int x, int y) {
+        int[] locationBuf = new int[2];
+        return findTargetView(rootView, x, y, 0, null, locationBuf);
     }
 
     @Nullable
-    private static View findViewAtPosition(@NonNull View view, int x, int y, int depth) {
+    private static HitResult findTargetView(@NonNull View view, int x, int y, int depth,
+                                            @Nullable View composeRoot, @NonNull int[] locationBuf) {
         if (depth >= AutocaptureDefaults.MAX_RECURSION_DEPTH) {
             return null;
         }
@@ -506,10 +514,9 @@ final class SemanticExtractor {
             return null;
         }
 
-        int[] location = new int[2];
-        view.getLocationOnScreen(location);
-        int left = location[0];
-        int top = location[1];
+        view.getLocationOnScreen(locationBuf);
+        int left = locationBuf[0];
+        int top = locationBuf[1];
         int right = left + view.getWidth();
         int bottom = top + view.getHeight();
 
@@ -517,19 +524,34 @@ final class SemanticExtractor {
             return null;
         }
 
+        // Detect Compose root during descent — no separate upward walk needed
+        View currentComposeRoot = composeRoot;
+        if (currentComposeRoot == null && isComposeAvailable()) {
+            try {
+                if (ComposeSemanticHelper.isComposeRoot(view)) {
+                    currentComposeRoot = view;
+                }
+            } catch (NoClassDefFoundError e) {
+                composeAvailable = false;
+            }
+        }
+
         // Check children in reverse order (top-most first)
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = group.getChildCount() - 1; i >= 0; i--) {
                 View child = group.getChildAt(i);
-                View result = findViewAtPosition(child, x, y, depth + 1);
+                HitResult result = findTargetView(child, x, y, depth + 1,
+                        currentComposeRoot, locationBuf);
                 if (result != null) {
                     return result;
                 }
             }
         }
 
-        return view;
+        // This view is the deepest match — build hierarchy by walking up (only once, at the leaf)
+        String hierarchy = buildHierarchyString(view);
+        return new HitResult(view, currentComposeRoot, hierarchy);
     }
 
     /**
