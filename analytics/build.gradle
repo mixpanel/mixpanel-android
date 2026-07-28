@@ -134,7 +134,8 @@ tasks.register("androidJavadocs", Javadoc) {
             '**/util/RemoteService.java',
             '**/ResourceIds.java',
             '**/ResourceReader.java',
-            '**/*.md'
+            '**/*.md',
+            '**/*.kt'
     )
 
     options {
