@@ -7,9 +7,11 @@ import android.view.MotionEvent
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
@@ -155,7 +157,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
-            onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_XML_TEXT)).perform(click())
+            onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_XML_TEXT)).perform(scrollTo(), click())
 
             assertClickWithoutDeadClick("xml_btn_xml_text")
         }
@@ -166,7 +168,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
         ActivityScenario.launch(AutocaptureXmlTestActivity::class.java).use {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
-            onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_COMPOSE_TEXT)).perform(click())
+            onView(withId(AutocaptureXmlTestActivity.ID_XML_BTN_COMPOSE_TEXT)).perform(scrollTo(), click())
 
             assertClickWithoutDeadClick("xml_btn_compose_text")
         }
@@ -287,15 +289,40 @@ class AutocaptureMixedFrameworkInstrumentedTest {
 
     /**
      * Sends a real touch event at the center of a Compose node.
-     * Uses positionInWindow from the semantics node for accurate screen coordinates.
+     * Scrolls the target into view first (handles both XML ScrollView parents
+     * and Compose verticalScroll containers), then uses boundsInWindow for
+     * accurate screen coordinates.
      * Calls waitForIdle() after tap to ensure Compose recomposition completes
      * before the dead click detector's timeout fires.
      */
     private fun tapComposeNode(node: SemanticsNodeInteraction, scenario: ActivityScenario<*>) {
+        // Scroll into view — handles both activity types:
+        // 1. XML activity: scroll the parent ScrollView to show the ComposeView
+        scrollComposeViewIntoView(scenario)
+        // 2. Compose activity: performScrollTo scrolls the Compose Column
+        //    (no-op catch for XML activities where Compose node has no scrollable parent)
+        try { node.performScrollTo() } catch (_: AssertionError) { }
+        composeTestRule.waitForIdle()
+
+        // Use boundsInRoot + ComposeView screen offset for accurate coordinates.
+        // boundsInWindow can be inaccurate for ComposeViews embedded in XML ScrollViews
+        // and causes sendPointerSync UID errors on API 34 when coordinates land outside
+        // the app window.
         val semanticsNode = node.fetchSemanticsNode()
-        val bounds = semanticsNode.boundsInWindow
-        val screenX = (bounds.left + bounds.right) / 2
-        val screenY = (bounds.top + bounds.bottom) / 2
+        val bounds = semanticsNode.boundsInRoot
+        val centerX = (bounds.left + bounds.right) / 2
+        val centerY = (bounds.top + bounds.bottom) / 2
+
+        // Get the ComposeView's screen position
+        val composeViewOffset = intArrayOf(0, 0)
+        scenario.onActivity { activity ->
+            // Find the ComposeView ancestor of this semantics node
+            val composeView = findComposeView(activity.window.decorView)
+            composeView?.getLocationOnScreen(composeViewOffset)
+        }
+
+        val screenX = composeViewOffset[0] + centerX
+        val screenY = composeViewOffset[1] + centerY
 
         sendTap(screenX, screenY)
 
@@ -307,6 +334,7 @@ class AutocaptureMixedFrameworkInstrumentedTest {
 
     /**
      * Sends a real touch event at the center of an XML view found by contentDescription.
+     * Scrolls the view into the visible area first to handle small CI emulator screens.
      */
     private fun tapViewByContentDescription(
         desc: String,
@@ -317,11 +345,16 @@ class AutocaptureMixedFrameworkInstrumentedTest {
             val view = findViewByContentDescription(
                 activity.window.decorView, desc
             ) ?: throw AssertionError("View with contentDescription '$desc' not found")
+
+            // Scroll the view into visible area — it may be below the fold
+            view.parent?.requestChildFocus(view, view)
+
             val loc = intArrayOf(0, 0)
             view.getLocationOnScreen(loc)
             location[0] = loc[0] + view.width / 2f
             location[1] = loc[1] + view.height / 2f
         }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
         sendTap(location[0], location[1])
     }
@@ -338,6 +371,43 @@ class AutocaptureMixedFrameworkInstrumentedTest {
             }
         }
         return null
+    }
+
+    /**
+     * Finds the first ComposeView (AndroidComposeView) in the view hierarchy.
+     * Used to get screen coordinates for Compose nodes via boundsInRoot + screen offset.
+     */
+    private fun findComposeView(root: android.view.View): android.view.View? {
+        if (root.javaClass.name.contains("AndroidComposeView")) return root
+        if (root is android.view.ViewGroup) {
+            for (i in 0 until root.childCount) {
+                val found = findComposeView(root.getChildAt(i))
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    /**
+     * Scrolls the ComposeView into the visible area for XML-based activities.
+     * On small emulator screens the mixed-framework elements sit below the fold.
+     */
+    private fun scrollComposeViewIntoView(scenario: ActivityScenario<*>) {
+        scenario.onActivity { activity ->
+            val composeView = activity.findViewById<android.view.View>(
+                AutocaptureXmlTestActivity.ID_COMPOSE_VIEW
+            ) ?: return@onActivity
+            // Walk up to find the ScrollView ancestor (ComposeView → LinearLayout → ScrollView)
+            var parent = composeView.parent
+            while (parent != null && parent !is android.widget.ScrollView) {
+                parent = (parent as? android.view.View)?.parent
+            }
+            if (parent is android.widget.ScrollView) {
+                // scrollTo with the view's top relative to the ScrollView's direct child
+                parent.scrollTo(0, composeView.top)
+            }
+        }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
     }
 
     private fun sendTap(screenX: Float, screenY: Float) {
