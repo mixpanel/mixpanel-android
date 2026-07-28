@@ -1045,7 +1045,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * Track a screen view event. This is a convenience method for tracking when users view
          * a screen/page in your application.
          *
-         * @param screenName The name of the screen/page being viewed
+         * @param screenName The name of the screen/page being viewed. Must be non-empty;
+         *                   if an empty or whitespace-only string is passed, the event is silently dropped.
          * @param properties A JSONObject containing additional properties to include with this event.
          *                   Pass null if no extra properties exist.
          */
@@ -1077,7 +1078,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         /**
          * Track a screen view event without additional properties.
          *
-         * @param screenName The name of the screen/page being viewed
+         * @param screenName The name of the screen/page being viewed. Must be non-empty;
+         *                   if an empty or whitespace-only string is passed, the event is silently dropped.
          */
         public void trackScreenView(@NonNull String screenName) {
             trackScreenView(screenName, null);
@@ -1087,7 +1089,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
          * Track a screen leave event. This is a convenience method for tracking when users leave
          * a screen/page in your application.
          *
-         * @param screenName The name of the screen/page being left
+         * @param screenName The name of the screen/page being left. Must be non-empty;
+         *                   if an empty or whitespace-only string is passed, the event is silently dropped.
          * @param properties A JSONObject containing additional properties to include with this event.
          *                   Pass null if no extra properties exist.
          */
@@ -1119,7 +1122,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         /**
          * Track a screen leave event without additional properties.
          *
-         * @param screenName The name of the screen/page being left
+         * @param screenName The name of the screen/page being left. Must be non-empty;
+         *                   if an empty or whitespace-only string is passed, the event is silently dropped.
          */
         public void trackScreenLeave(@NonNull String screenName) {
             trackScreenLeave(screenName, null);
