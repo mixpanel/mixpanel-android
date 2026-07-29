@@ -25,7 +25,13 @@
             android:name=".XmlAutocaptureTestActivity"
             android:exported="false"
             android:label="XML Autocapture Test"
-            android:theme="@style/Theme.AppCompat.Light.DarkActionBar" />
+            android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar" />
+
+        <activity
+            android:name=".ComplexUIXmlStressTestActivity"
+            android:exported="false"
+            android:label="Complex UI Stress Test (XML)"
+            android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar" />
     </application>
 
 </manifest>
