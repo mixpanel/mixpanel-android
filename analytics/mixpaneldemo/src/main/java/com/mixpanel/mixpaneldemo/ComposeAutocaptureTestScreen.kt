@@ -1,6 +1,5 @@
 package com.mixpanel.mixpaneldemo
 
-import android.content.Intent
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.compose.foundation.background
@@ -416,20 +415,6 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
                 }
             }
 
-            // Navigate to XML Test
-            item { SectionHeader("XML Views Test") }
-
-            item {
-                Button(
-                    onClick = {
-                        context.startActivity(Intent(context, XmlAutocaptureTestActivity::class.java))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                ) {
-                    Text("Open XML Test Activity")
-                }
-            }
         }
 
         if (showAlertDialog) {
