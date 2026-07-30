@@ -44,10 +44,13 @@ public class AutocaptureOptions {
     private final ClickOptions mClickOptions;
     private final RageClickOptions mRageClickOptions;
     private final DeadClickOptions mDeadClickOptions;
+    private final boolean mWalkUpToClickableParent;
+
     private AutocaptureOptions(Builder builder) {
         this.mClickOptions = builder.mClickOptions;
         this.mRageClickOptions = builder.mRageClickOptions;
         this.mDeadClickOptions = builder.mDeadClickOptions;
+        this.mWalkUpToClickableParent = builder.mWalkUpToClickableParent;
     }
 
     /**
@@ -95,6 +98,29 @@ public class AutocaptureOptions {
     }
 
     /**
+     * Returns whether walk-up-to-clickable-parent is enabled.
+     *
+     * <p>When enabled, if the tapped view has no meaningful identifier
+     * (contentDescription or valid resource ID), the SDK walks up the
+     * view hierarchy to the nearest clickable ancestor and uses its
+     * identity instead.
+     *
+     * <p>This affects the {@code $el_id} property on all autocapture events
+     * ({@code $mp_click}, {@code $mp_rage_click}, {@code $mp_dead_click}).
+     *
+     * <p>Intended for cross-platform frameworks (e.g., React Native, Flutter)
+     * where interactive components are wrappers around leaf views that don't
+     * carry their own identity. Only affects the {@code android.view.View}
+     * extraction path — Compose semantics extraction is not affected.
+     *
+     * @return {@code true} if ancestor walk-up is enabled, {@code false} otherwise.
+     *         Defaults to {@code false}.
+     */
+    public boolean isWalkUpToClickableParent() {
+        return mWalkUpToClickableParent;
+    }
+
+    /**
      * Builder for creating {@link AutocaptureOptions} instances.
      *
      * <p>When built, all event types are enabled by default with their respective default settings.
@@ -104,6 +130,7 @@ public class AutocaptureOptions {
         private ClickOptions mClickOptions = new ClickOptions.Builder().build();
         private RageClickOptions mRageClickOptions = new RageClickOptions.Builder().build();
         private DeadClickOptions mDeadClickOptions = new DeadClickOptions.Builder().build();
+        private boolean mWalkUpToClickableParent = false;
 
         /**
          * Creates a Builder with all event types enabled by default.
@@ -124,6 +151,7 @@ public class AutocaptureOptions {
             this.mClickOptions = source.mClickOptions;
             this.mRageClickOptions = source.mRageClickOptions;
             this.mDeadClickOptions = source.mDeadClickOptions;
+            this.mWalkUpToClickableParent = source.mWalkUpToClickableParent;
         }
 
         /**
@@ -159,6 +187,31 @@ public class AutocaptureOptions {
         public Builder deadClickOptions(@NonNull DeadClickOptions deadClickOptions) {
             if (deadClickOptions == null) return this;
             this.mDeadClickOptions = deadClickOptions;
+            return this;
+        }
+
+        /**
+         * When enabled, if the tapped view has no meaningful identifier
+         * (contentDescription or valid resource ID), the SDK walks up the
+         * view hierarchy to the nearest clickable ancestor and uses its
+         * identity instead.
+         *
+         * <p>This affects the {@code $el_id} property on all autocapture events
+         * ({@code $mp_click}, {@code $mp_rage_click}, {@code $mp_dead_click}).
+         *
+         * <p>Intended for cross-platform frameworks (e.g., React Native, Flutter)
+         * where interactive components are wrappers around leaf views that don't
+         * carry their own identity. Only affects the {@code android.view.View}
+         * extraction path — Compose semantics extraction is not affected.
+         *
+         * <p>Defaults to {@code false}. Native Android apps should generally
+         * leave this disabled.
+         *
+         * @param walkUp {@code true} to enable ancestor walk-up
+         * @return This Builder instance for chaining.
+         */
+        public Builder walkUpToClickableParent(boolean walkUp) {
+            this.mWalkUpToClickableParent = walkUp;
             return this;
         }
 

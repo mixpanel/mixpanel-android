@@ -22,7 +22,7 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.mpmetrics.ClickOptions;
+import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.util.MPLog;
 
 
@@ -67,7 +67,7 @@ final class SemanticExtractor {
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent extract(@NonNull View rootView, float x, float y, @NonNull ClickOptions clickOptions) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y, @NonNull AutocaptureOptions autocaptureOptions) {
         try {
             // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
             HitResult hit = findTargetView(rootView, (int) x, (int) y);
@@ -104,7 +104,7 @@ final class SemanticExtractor {
             ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
 
             // Walk up to clickable parent if enabled and the tapped view resolved to a hash fallback
-            if (viewResult != null && clickOptions.isWalkUpToClickableParent()) {
+            if (viewResult != null && autocaptureOptions.isWalkUpToClickableParent()) {
                 viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
             }
 
