@@ -563,20 +563,19 @@ final class SemanticExtractor {
     }
 
     /**
-     * Resolves the element ID according to the priority:
+     * Returns the view's meaningful identity (contentDescription or resource ID name),
+     * or null if the view has no identity and would fall back to a hash.
+     *
+     * <p>Resolution order:
      * 1. contentDescription (if non-empty)
      * 2. Resource ID name (R.id.xxx)
-     * 3. ClassName_<hashCode>
      */
-    @NonNull
-    private static String resolveElementId(@NonNull View view) {
-        // 1. Try contentDescription
+    @Nullable
+    private static String resolveIdentity(@NonNull View view) {
         CharSequence contentDesc = view.getContentDescription();
         if (contentDesc != null && contentDesc.length() > 0) {
             return contentDesc.toString();
         }
-
-        // 2. Try resource ID name
         int id = view.getId();
         if (id != View.NO_ID) {
             try {
@@ -585,11 +584,24 @@ final class SemanticExtractor {
                     return resourceName;
                 }
             } catch (Exception ignored) {
-                // Resource not found, use fallback
+                // Resource not found
             }
         }
+        return null;
+    }
 
-        // 3. Fallback: ClassName_<hashCode>
+    /**
+     * Resolves the element ID according to the priority:
+     * 1. contentDescription (if non-empty)
+     * 2. Resource ID name (R.id.xxx)
+     * 3. ClassName_<hashCode>
+     */
+    @NonNull
+    private static String resolveElementId(@NonNull View view) {
+        String identity = resolveIdentity(view);
+        if (identity != null) {
+            return identity;
+        }
         return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
     }
 
@@ -784,21 +796,7 @@ final class SemanticExtractor {
      * Returns true if the view has a meaningful identity (contentDescription or valid resource ID).
      */
     private static boolean hasIdentity(@NonNull View view) {
-        CharSequence contentDesc = view.getContentDescription();
-        if (contentDesc != null && contentDesc.length() > 0) {
-            return true;
-        }
-        int id = view.getId();
-        if (id != View.NO_ID) {
-            try {
-                String resourceName = view.getResources().getResourceEntryName(id);
-                if (resourceName != null && !resourceName.isEmpty()) {
-                    return true;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return false;
+        return resolveIdentity(view) != null;
     }
 
     private SemanticExtractor() {
