@@ -3,6 +3,7 @@ package com.mixpanel.android.autocapture;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.Button;
@@ -21,6 +22,7 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.mixpanel.android.mpmetrics.ClickOptions;
 import com.mixpanel.android.util.MPLog;
 
 
@@ -65,7 +67,7 @@ final class SemanticExtractor {
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent extract(@NonNull View rootView, float x, float y) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y, @NonNull ClickOptions clickOptions) {
         try {
             // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
             HitResult hit = findTargetView(rootView, (int) x, (int) y);
@@ -100,6 +102,12 @@ final class SemanticExtractor {
 
             // Fall back to direct view extraction (XML views)
             ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
+
+            // Walk up to clickable parent if enabled and the tapped view resolved to a hash fallback
+            if (viewResult != null && clickOptions.isWalkUpToClickableParent()) {
+                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
+            }
+
             return viewResult != null ? viewResult.build() : null;
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
@@ -737,6 +745,60 @@ final class SemanticExtractor {
     private static String getSimpleClassName(@NonNull String fullyQualifiedName) {
         int lastDot = fullyQualifiedName.lastIndexOf('.');
         return lastDot >= 0 ? fullyQualifiedName.substring(lastDot + 1) : fullyQualifiedName;
+    }
+
+    /**
+     * When the tapped view's element ID is a hash fallback (no contentDescription,
+     * no valid resource ID), walks up the view hierarchy to the nearest clickable
+     * ancestor. If that ancestor has a contentDescription, its identity is used.
+     * Otherwise, uses the clickable ancestor's hash-based ID.
+     * Does not walk past the first clickable ancestor.
+     */
+    @NonNull
+    private static ClickEvent.Builder walkUpToClickableParent(
+            @NonNull View tappedView, @NonNull ClickEvent.Builder original,
+            @Nullable String hierarchy, float x, float y) {
+        // Only walk up if the tapped view resolved to a hash fallback
+        if (hasIdentity(tappedView)) {
+            return original;
+        }
+
+        // Walk up to nearest clickable ancestor
+        ViewParent parent = tappedView.getParent();
+        int depth = 0;
+        while (parent instanceof View && depth < AutocaptureDefaults.MAX_ANCESTOR_SEARCH_DEPTH) {
+            View ancestor = (View) parent;
+            if (ancestor.isClickable() || ancestor.isLongClickable()) {
+                // Found a clickable ancestor — use it regardless of whether it has identity
+                return extractFromView(ancestor, hierarchy, x, y);
+            }
+            parent = ancestor.getParent();
+            depth++;
+        }
+
+        // No clickable ancestor found, return original
+        return original;
+    }
+
+    /**
+     * Returns true if the view has a meaningful identity (contentDescription or valid resource ID).
+     */
+    private static boolean hasIdentity(@NonNull View view) {
+        CharSequence contentDesc = view.getContentDescription();
+        if (contentDesc != null && contentDesc.length() > 0) {
+            return true;
+        }
+        int id = view.getId();
+        if (id != View.NO_ID) {
+            try {
+                String resourceName = view.getResources().getResourceEntryName(id);
+                if (resourceName != null && !resourceName.isEmpty()) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
     }
 
     private SemanticExtractor() {

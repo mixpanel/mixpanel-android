@@ -28,6 +28,12 @@ final class AutocaptureDefaults {
     static final int MAX_RECURSION_DEPTH = 20;
 
     /**
+     * Maximum number of ancestors to walk up when searching for a clickable parent.
+     * Used by walkUpToClickableParent in SemanticExtractor.
+     */
+    static final int MAX_ANCESTOR_SEARCH_DEPTH = 20;
+
+    /**
      * Event name for click events.
      */
     static final String EVENT_CLICK = "$mp_click";
