@@ -781,8 +781,8 @@ final class SemanticExtractor {
         while (parent instanceof View && depth < AutocaptureDefaults.MAX_ANCESTOR_SEARCH_DEPTH) {
             View ancestor = (View) parent;
             if (ancestor.isClickable() || ancestor.isLongClickable()) {
-                // Found a clickable ancestor — use it regardless of whether it has identity
-                return extractFromView(ancestor, hierarchy, x, y);
+                // Found a clickable ancestor — rebuild hierarchy from its perspective
+                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y);
             }
             parent = ancestor.getParent();
             depth++;
