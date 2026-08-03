@@ -22,5 +22,6 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable("autocaptureTestPage") { AutocaptureMenuScreen(navController) }
         composable("composeAutocaptureTest") { ComposeAutocaptureTestScreen(navController) }
         composable("complexUIStressTest") { ComplexUIStressTestScreen(navController) }
+        composable("composeWalkUpTest") { ComposeWalkUpTestScreen(navController) }
     }
 }

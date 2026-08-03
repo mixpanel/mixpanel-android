@@ -103,8 +103,8 @@ final class SemanticExtractor {
             // Fall back to direct view extraction (XML views)
             ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
 
-            // Walk up to clickable parent if enabled and the tapped view resolved to a hash fallback
-            if (viewResult != null && autocaptureOptions.isWalkUpToClickableParent()) {
+            // Walk up to clickable parent if the tapped view resolved to a hash fallback
+            if (viewResult != null) {
                 viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
             }
 
