@@ -10,5 +10,11 @@
         <activity
             android:name="com.mixpanel.android.mpmetrics.AutocaptureComposeTestActivity"
             android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.WalkUpXmlTestActivity"
+            android:exported="false" />
+        <activity
+            android:name="com.mixpanel.android.mpmetrics.WalkUpComposeTestActivity"
+            android:exported="false" />
     </application>
 </manifest>
