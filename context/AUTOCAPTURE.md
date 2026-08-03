@@ -152,6 +152,15 @@ The `$el_id` property uses the following resolution order:
 2. Resource ID name (e.g., `R.id.checkout_button` → `"checkout_button"`)
 3. `ClassName_<hashCode>` (fallback)
 
+### Walk-Up to Clickable Parent
+
+When a non-interactive leaf view (e.g., `TextView` inside a `Button`) is tapped, the SDK walks up the view hierarchy to the nearest clickable ancestor and uses its identity for `$el_id`. This is always-on behavior — not configurable.
+
+- The walk-up always takes the clickable parent's identity, even if the leaf has its own `contentDescription`.
+- Stops at the first clickable ancestor (nested clickables: inner wins).
+- Max ancestor search depth: **10 levels**.
+- If no clickable ancestor is found within 10 levels, the leaf's own identity (or hash fallback) is used.
+
 ### Best Practices
 
 #### XML Views
