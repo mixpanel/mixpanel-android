@@ -162,7 +162,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Tap the text. It has its own contentDescription, so walk-up should NOT activate. $el_id should be 'inner_label'."
+            android:text="Tap the text. Even though it has its own contentDescription ('inner_label'), walk-up still activates and takes the clickable parent's identity. $el_id should be 'outer_container'."
             android:textSize="12sp"
             android:textColor="#888888"
             android:layout_marginBottom="4dp" />

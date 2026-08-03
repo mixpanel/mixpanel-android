@@ -137,7 +137,7 @@ fun ComposeWalkUpTestScreen(navController: NavHostController) {
             item { SectionHeader("Leaf Has Own Identity") }
 
             item {
-                TestDescription("Tap the text inside the button. The Text has its own contentDescription, so walk-up should NOT activate. \$el_id should be \"inner_label\".")
+                TestDescription("Tap the text inside the button. Even though the Text has its own contentDescription (\"inner_label\"), walk-up still activates and takes the clickable parent's identity. \$el_id should be \"outer_button\".")
             }
             item {
                 Button(
