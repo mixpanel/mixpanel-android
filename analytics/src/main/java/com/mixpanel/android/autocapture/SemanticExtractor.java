@@ -103,7 +103,7 @@ final class SemanticExtractor {
             // Fall back to direct view extraction (XML views)
             ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
 
-            // Walk up to clickable parent if the tapped view resolved to a hash fallback
+            // Walk up to clickable parent if the tapped view is not interactive
             if (viewResult != null) {
                 viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
             }
@@ -760,18 +760,22 @@ final class SemanticExtractor {
     }
 
     /**
-     * When the tapped view's element ID is a hash fallback (no contentDescription,
-     * no valid resource ID), walks up the view hierarchy to the nearest clickable
-     * ancestor. If that ancestor has a contentDescription, its identity is used.
-     * Otherwise, uses the clickable ancestor's hash-based ID.
+     * When the tapped view is not interactive (not clickable/long-clickable),
+     * walks up the view hierarchy to the nearest clickable ancestor and extracts
+     * semantics from that ancestor instead.
      * Does not walk past the first clickable ancestor.
+     *
+     * <p>This matches the iOS behavior where walk-up is based on interactivity,
+     * not identity. A non-interactive leaf (e.g., TextView inside a clickable
+     * LinearLayout) will always resolve to its clickable parent's identity,
+     * even if the leaf has its own contentDescription.
      */
     @NonNull
     private static ClickEvent.Builder walkUpToClickableParent(
             @NonNull View tappedView, @NonNull ClickEvent.Builder original,
             @Nullable String hierarchy, float x, float y) {
-        // Only walk up if the tapped view resolved to a hash fallback
-        if (hasIdentity(tappedView)) {
+        // Only walk up if the tapped view is not interactive
+        if (tappedView.isClickable() || tappedView.isLongClickable()) {
             return original;
         }
 
@@ -790,13 +794,6 @@ final class SemanticExtractor {
 
         // No clickable ancestor found, return original
         return original;
-    }
-
-    /**
-     * Returns true if the view has a meaningful identity (contentDescription or valid resource ID).
-     */
-    private static boolean hasIdentity(@NonNull View view) {
-        return resolveIdentity(view) != null;
     }
 
     private SemanticExtractor() {

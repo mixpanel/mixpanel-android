@@ -154,12 +154,14 @@ The `$el_id` property uses the following resolution order:
 
 ### Walk-Up to Clickable Parent
 
-When a non-interactive leaf view (e.g., `TextView` inside a `Button`) is tapped, the SDK walks up the view hierarchy to the nearest clickable ancestor and uses its identity for `$el_id`. This is always-on behavior — not configurable.
+When a non-interactive leaf view (e.g., `TextView` inside a clickable `LinearLayout`) is tapped, the SDK walks up the view hierarchy to the nearest clickable ancestor and uses its identity for `$el_id`. This is always-on behavior — not configurable.
 
-- The walk-up always takes the clickable parent's identity, even if the leaf has its own `contentDescription`.
+- Walk-up is based on **interactivity** (clickable/longClickable), not identity.
+- A non-interactive leaf always resolves to its clickable parent, even if the leaf has its own `contentDescription`.
 - Stops at the first clickable ancestor (nested clickables: inner wins).
 - Max ancestor search depth: **10 levels**.
 - If no clickable ancestor is found within 10 levels, the leaf's own identity (or hash fallback) is used.
+- Android XML and Compose both use the same interactivity-based logic, matching iOS behavior.
 
 ### Best Practices
 
