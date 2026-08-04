@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -21,11 +22,19 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
+
+import com.mixpanel.android.autocapture.AutocaptureManager;
+import com.mixpanel.android.autocapture.ClickEvent;
 import com.mixpanel.android.util.HttpService;
 import com.mixpanel.android.util.MPLog;
 import com.mixpanel.android.util.MixpanelNetworkErrorListener;
 import com.mixpanel.android.util.ProxyServerInteractor;
 import com.mixpanel.android.util.RemoteService;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -44,9 +53,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * Core class for interacting with Mixpanel Analytics.
@@ -309,6 +315,20 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                     sessionReplayReceiver,
                     SessionReplayBroadcastReceiver.INTENT_FILTER,
                     ContextCompat.RECEIVER_NOT_EXPORTED);
+        }
+
+        // Initialize autocapture if enabled and tracking is not opted out.
+        // Null check is the primary gate — null means the caller never opted in.
+        // isEnabled() is a secondary check to avoid initializing the machinery
+        // when all sub-options (click, rage, dead) are individually disabled.
+        AutocaptureOptions autocaptureOptions = options.getAutocaptureOptions();
+        if (autocaptureOptions != null && autocaptureOptions.isEnabled()) {
+            mAutocaptureOptions = autocaptureOptions;
+            if (hasOptedOutTracking()) {
+                MPLog.i(LOGTAG, "Autocapture disabled: tracking is opted out");
+            } else {
+                initializeAutocapture(autocaptureOptions);
+            }
         }
     }
 
@@ -1033,6 +1053,36 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     }
 
     /**
+     * Returns the AutocaptureManager instance, or null if autocapture is not configured.
+     * Package-private for testing.
+     */
+    AutocaptureManager getAutocaptureManager() {
+        return mAutocaptureManager;
+    }
+
+    /**
+     * Initializes the autocapture functionality with the provided options.
+     *
+     * <p>Autocapture automatically tracks user interactions (clicks, rage clicks, dead clicks)
+     * without requiring manual instrumentation.
+     *
+     * @param options The autocapture configuration options.
+     */
+    private void initializeAutocapture(AutocaptureOptions options) {
+        try {
+            mAutocaptureManager = new AutocaptureManager(
+                mContext,
+                options,
+                mAutocapture
+            );
+            mAutocaptureManager.start();
+            MPLog.d(LOGTAG, "Autocapture initialized");
+        } catch (Exception e) {
+            MPLog.e(LOGTAG, "Failed to initialize autocapture", e);
+        }
+    }
+
+     /**
      * Provides methods for tracking autocapture events. Events tracked through this class
      * are automatically tagged with the {@code $mp_autocapture} property, which causes them
      * to appear with an "[Auto]" prefix in the Mixpanel web app.
@@ -1575,6 +1625,10 @@ public class MixpanelAPI implements FeatureFlagDelegate {
         // Drop in-memory feature flag state (and any persisted variants) so the prior user's
         // variants can't be served via getVariant after they've opted out.
         mFeatureFlagManager.reset();
+
+        if (mAutocaptureManager != null) {
+            mAutocaptureManager.stop();
+        }
     }
 
     /**
@@ -1620,6 +1674,15 @@ public class MixpanelAPI implements FeatureFlagDelegate {
             identify(distinctId);
         }
         track("$opt_in", properties);
+
+        // Restart autocapture if it was configured but stopped due to opt-out
+        if (mAutocaptureOptions != null && mAutocaptureOptions.isEnabled()) {
+            if (mAutocaptureManager == null) {
+                initializeAutocapture(mAutocaptureOptions);
+            } else {
+                mAutocaptureManager.start();
+            }
+        }
     }
 
     /**
@@ -2296,6 +2359,207 @@ public class MixpanelAPI implements FeatureFlagDelegate {
                         "Context is not an Application, Mixpanel won't be able to automatically flush on an app"
                                 + " background.");
             }
+        }
+    }
+
+    /**
+     * Provides methods for tracking autocapture events. Events tracked through this class
+     * are automatically tagged with the {@code $mp_autocapture} property, which causes them
+     * to appear with an "[Auto]" prefix in the Mixpanel web app.
+     *
+     * <p>Access this via {@link MixpanelAPI#getAutocapture()}.
+     */
+    public class Autocapture {
+
+        /**
+         * Track a screen view event. This is a convenience method for tracking when users view
+         * a screen/page in your application.
+         *
+         * @param screenName The name of the screen/page being viewed
+         * @param properties A JSONObject containing additional properties to include with this event.
+         *                   Pass null if no extra properties exist.
+         */
+        public void trackScreenView(@NonNull String screenName, @Nullable JSONObject properties) {
+            if (screenName == null || screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenView called with null or empty screenName, ignoring event");
+                return;
+            }
+            JSONObject mergedProperties = new JSONObject();
+            try {
+                mergeProperties(mergedProperties, properties);
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception merging properties for trackScreenView", e);
+            }
+
+            trackAutocaptureEvent("$mp_page_view", mergedProperties);
+        }
+
+        /**
+         * Track a screen view event without additional properties.
+         *
+         * @param screenName The name of the screen/page being viewed
+         */
+        public void trackScreenView(@NonNull String screenName) {
+            trackScreenView(screenName, null);
+        }
+
+        /**
+         * Track a screen leave event. This is a convenience method for tracking when users leave
+         * a screen/page in your application.
+         *
+         * @param screenName The name of the screen/page being left
+         * @param properties A JSONObject containing additional properties to include with this event.
+         *                   Pass null if no extra properties exist.
+         */
+        public void trackScreenLeave(@NonNull String screenName, @Nullable JSONObject properties) {
+            if (screenName == null || screenName.trim().isEmpty()) {
+                MPLog.w(LOGTAG, "trackScreenLeave called with null or empty screenName, ignoring event");
+                return;
+            }
+            JSONObject mergedProperties = new JSONObject();
+            try {
+                mergeProperties(mergedProperties, properties);
+                // SDK properties set after caller properties to prevent overrides
+                mergedProperties.put("current_page_title", screenName);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception merging properties for trackScreenLeave", e);
+            }
+
+            trackAutocaptureEvent("$mp_page_leave", mergedProperties);
+        }
+
+        /**
+         * Track a screen leave event without additional properties.
+         *
+         * @param screenName The name of the screen/page being left
+         */
+        public void trackScreenLeave(@NonNull String screenName) {
+            trackScreenLeave(screenName, null);
+        }
+
+        // ==================== Click Tracking ====================
+
+        /**
+         * Track a click event from a ClickEvent object. Use this for full control over
+         * click metadata when your app handles its own click detection.
+         *
+         * @param clickEvent The click event containing element metadata.
+         */
+        public void trackClick(@NonNull ClickEvent clickEvent) {
+            trackClick(clickEvent, null);
+        }
+
+        /**
+         * Track a click event from a ClickEvent object with additional properties.
+         *
+         * @param clickEvent The click event containing element metadata.
+         * @param properties Additional properties to include with this event. Pass null if none.
+         */
+        public void trackClick(@NonNull ClickEvent clickEvent,
+                               @Nullable JSONObject properties) {
+            if (clickEvent == null) {
+                MPLog.w(LOGTAG, "trackClick called with null clickEvent, ignoring event");
+                return;
+            }
+            JSONObject clickProperties = clickEvent.toProperties();
+            mergeProperties(clickProperties, properties);
+            trackAutocaptureEvent("$mp_click", clickProperties);
+        }
+
+        // ==================== Rage Click Tracking ====================
+
+        /**
+         * Track a rage click event from a ClickEvent object. Use this for full control over
+         * click metadata when your app handles its own rage click detection.
+         *
+         * @param clickEvent The click event containing element metadata.
+         */
+        public void trackRageClick(@NonNull ClickEvent clickEvent) {
+            trackRageClick(clickEvent, null);
+        }
+
+        /**
+         * Track a rage click event from a ClickEvent object with additional properties.
+         *
+         * @param clickEvent The click event containing element metadata.
+         * @param properties Additional properties to include with this event. Pass null if none.
+         */
+        public void trackRageClick(@NonNull ClickEvent clickEvent,
+                                   @Nullable JSONObject properties) {
+            if (clickEvent == null) {
+                MPLog.w(LOGTAG, "trackRageClick called with null clickEvent, ignoring event");
+                return;
+            }
+            JSONObject clickProperties = clickEvent.toProperties();
+            mergeProperties(clickProperties, properties);
+            trackAutocaptureEvent("$mp_rage_click", clickProperties);
+        }
+
+        // ==================== Dead Click Tracking ====================
+
+        /**
+         * Track a dead click event from a ClickEvent object. Use this for full control over
+         * click metadata when your app handles its own dead click detection.
+         *
+         * @param clickEvent The click event containing element metadata.
+         */
+        public void trackDeadClick(@NonNull ClickEvent clickEvent) {
+            trackDeadClick(clickEvent, null);
+        }
+
+        /**
+         * Track a dead click event from a ClickEvent object with additional properties.
+         *
+         * @param clickEvent The click event containing element metadata.
+         * @param properties Additional properties to include with this event. Pass null if none.
+         */
+        public void trackDeadClick(@NonNull ClickEvent clickEvent,
+                                   @Nullable JSONObject properties) {
+            if (clickEvent == null) {
+                MPLog.w(LOGTAG, "trackDeadClick called with null clickEvent, ignoring event");
+                return;
+            }
+            JSONObject clickProperties = clickEvent.toProperties();
+            mergeProperties(clickProperties, properties);
+            trackAutocaptureEvent("$mp_dead_click", clickProperties);
+        }
+
+        // ==================== Private Helpers ====================
+
+        /**
+         * Copies all key-value pairs from source into target.
+         * If source is null, this is a no-op.
+         */
+        private void mergeProperties(@NonNull JSONObject target,
+                                     @Nullable JSONObject source) {
+            if (source != null) {
+                try {
+                    Iterator<String> keys = source.keys();
+                    while (keys.hasNext()) {
+                        String key = keys.next();
+                        target.put(key, source.get(key));
+                    }
+                } catch (JSONException e) {
+                    // Should not happen with get/put of existing keys
+                }
+            }
+        }
+
+        /**
+         * Adds the $mp_autocapture flag and tracks the event.
+         * All autocapture events (screen view, screen leave, click, rage click, dead click)
+         * are routed through this method.
+         */
+        private void trackAutocaptureEvent(@NonNull String eventName,
+                                           @NonNull JSONObject properties) {
+            try {
+                properties.put("$mp_autocapture", true);
+            } catch (JSONException e) {
+                MPLog.e(LOGTAG, "Exception setting autocapture flag for " + eventName, e);
+            }
+            track(eventName, properties);
         }
     }
 
@@ -3141,6 +3405,8 @@ public class MixpanelAPI implements FeatureFlagDelegate {
     private final FeatureFlagOptions mFeatureFlagOptions;
     private final Set<String> mExcludeProperties;
     private FeatureFlagManager mFeatureFlagManager;
+    private AutocaptureManager mAutocaptureManager;
+    private AutocaptureOptions mAutocaptureOptions;
     private RemoteService mHttpService;
     // Flag to track if app has entered foreground
     private final AtomicBoolean mHasAppForegrounded = new AtomicBoolean(false);
