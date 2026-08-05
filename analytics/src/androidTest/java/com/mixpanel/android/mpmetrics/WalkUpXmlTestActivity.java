@@ -36,6 +36,9 @@ public class WalkUpXmlTestActivity extends ComponentActivity {
     public static final int ID_INNER_LEAF = 20014;
     public static final int ID_DEEP_PARENT = 20015;
     public static final int ID_DEEP_LEAF = 20016;
+    public static final int ID_DISABLED_PARENT = 20017;
+    public static final int ID_ENABLED_GRANDPARENT = 20018;
+    public static final int ID_DISABLED_LEAF = 20019;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -229,6 +232,38 @@ public class WalkUpXmlTestActivity extends ComponentActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         current.addView(deepLeaf);
         layout.addView(deepParent);
+
+        // 8. Disabled clickable ancestor should be skipped — walk up to enabled grandparent
+        LinearLayout enabledGrandparent = new LinearLayout(this);
+        enabledGrandparent.setId(ID_ENABLED_GRANDPARENT);
+        enabledGrandparent.setOrientation(LinearLayout.VERTICAL);
+        enabledGrandparent.setClickable(true);
+        enabledGrandparent.setFocusable(true);
+        enabledGrandparent.setEnabled(true);
+        enabledGrandparent.setContentDescription("enabled_grandparent");
+        enabledGrandparent.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        enabledGrandparent.setPadding(padding, padding, padding, padding);
+        addMarginTop(enabledGrandparent, 16);
+
+        LinearLayout disabledParent = new LinearLayout(this);
+        disabledParent.setId(ID_DISABLED_PARENT);
+        disabledParent.setOrientation(LinearLayout.VERTICAL);
+        disabledParent.setClickable(true);
+        disabledParent.setFocusable(true);
+        disabledParent.setEnabled(false);
+        disabledParent.setContentDescription("disabled_parent");
+        disabledParent.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView disabledLeaf = new TextView(this);
+        disabledLeaf.setId(ID_DISABLED_LEAF);
+        disabledLeaf.setText("Leaf inside disabled parent");
+        disabledLeaf.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        disabledParent.addView(disabledLeaf);
+        enabledGrandparent.addView(disabledParent);
+        layout.addView(enabledGrandparent);
 
         scrollView.addView(layout);
         setContentView(scrollView);

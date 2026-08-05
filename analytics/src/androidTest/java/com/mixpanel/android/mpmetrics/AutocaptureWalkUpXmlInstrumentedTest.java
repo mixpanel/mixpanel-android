@@ -360,4 +360,51 @@ public class AutocaptureWalkUpXmlInstrumentedTest {
             assertEquals("deep_parent", properties.getString("$el_id"));
         }
     }
+
+    /**
+     * Tapping a non-interactive leaf inside a disabled clickable parent should stop at
+     * the disabled parent — it's still clickable, so it owns the click identity.
+     * A disabled delete button in a product card should still collect its own identity
+     * for dead click tracking.
+     */
+    @Test
+    public void testWalkUp_DisabledClickableParent_StopsAtDisabledParent() throws Exception {
+        try (ActivityScenario<WalkUpXmlTestActivity> scenario =
+                     ActivityScenario.launch(WalkUpXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            tapViewById(scenario, WalkUpXmlTestActivity.ID_DISABLED_LEAF);
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+            assertEquals("disabled_parent", properties.getString("$el_id"));
+        }
+    }
+
+    /**
+     * Tapping a disabled clickable button directly should keep its own identity.
+     * A disabled button is still clickable, so no walk-up occurs — the user is
+     * specifically targeting that element (e.g. rage-tapping a disabled delete button).
+     */
+    @Test
+    public void testNoWalkUp_DisabledButtonTappedDirectly_KeepsOwnId() throws Exception {
+        try (ActivityScenario<WalkUpXmlTestActivity> scenario =
+                     ActivityScenario.launch(WalkUpXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            tapViewById(scenario, WalkUpXmlTestActivity.ID_DISABLED_PARENT);
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+            assertEquals("disabled_parent", properties.getString("$el_id"));
+        }
+    }
 }
