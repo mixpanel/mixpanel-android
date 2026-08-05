@@ -8,6 +8,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.Checkable;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -760,39 +761,42 @@ final class SemanticExtractor {
     }
 
     /**
-     * When the tapped view is not interactive (not clickable/long-clickable),
-     * walks up the view hierarchy to the nearest clickable ancestor and extracts
+     * When the tapped view is not interactive (not clickable/long-clickable/checkable),
+     * walks up the view hierarchy to the nearest interactive ancestor and extracts
      * semantics from that ancestor instead.
-     * Does not walk past the first clickable ancestor.
+     * Does not walk past the first interactive ancestor.
      *
      * <p>This matches the iOS behavior where walk-up is based on interactivity,
      * not identity. A non-interactive leaf (e.g., TextView inside a clickable
      * LinearLayout) will always resolve to its clickable parent's identity,
      * even if the leaf has its own contentDescription.
+     *
+     * <p>Checkable views (e.g., CheckBox, RadioButton) are treated as interactive
+     * and will not trigger a walk-up, consistent with the accessibility node path.
      */
     @NonNull
     private static ClickEvent.Builder walkUpToClickableParent(
             @NonNull View tappedView, @NonNull ClickEvent.Builder original,
             @Nullable String hierarchy, float x, float y) {
         // Only walk up if the tapped view is not interactive
-        if (tappedView.isClickable() || tappedView.isLongClickable()) {
+        if (tappedView.isClickable() || tappedView.isLongClickable() || tappedView instanceof Checkable) {
             return original;
         }
 
-        // Walk up to nearest clickable ancestor
+        // Walk up to nearest interactive ancestor
         ViewParent parent = tappedView.getParent();
         int depth = 0;
         while (parent instanceof View && depth < AutocaptureDefaults.MAX_ANCESTOR_SEARCH_DEPTH) {
             View ancestor = (View) parent;
-            if (ancestor.isClickable() || ancestor.isLongClickable()) {
-                // Found a clickable ancestor — rebuild hierarchy from its perspective
+            if (ancestor.isClickable() || ancestor.isLongClickable() || ancestor instanceof Checkable) {
+                // Found an interactive ancestor — rebuild hierarchy from its perspective
                 return extractFromView(ancestor, buildHierarchyString(ancestor), x, y);
             }
             parent = ancestor.getParent();
             depth++;
         }
 
-        // No clickable ancestor found, return original
+        // No interactive ancestor found, return original
         return original;
     }
 

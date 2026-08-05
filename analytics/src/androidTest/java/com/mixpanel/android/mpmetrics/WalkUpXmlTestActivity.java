@@ -4,7 +4,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.activity.ComponentActivity;
@@ -39,6 +41,9 @@ public class WalkUpXmlTestActivity extends ComponentActivity {
     public static final int ID_DISABLED_PARENT = 20017;
     public static final int ID_ENABLED_GRANDPARENT = 20018;
     public static final int ID_DISABLED_LEAF = 20019;
+    public static final int ID_CHECKBOX = 20020;
+    public static final int ID_RADIO_BUTTON = 20021;
+    public static final int ID_CHECKABLE_CONTAINER = 20022;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -264,6 +269,37 @@ public class WalkUpXmlTestActivity extends ComponentActivity {
         disabledParent.addView(disabledLeaf);
         enabledGrandparent.addView(disabledParent);
         layout.addView(enabledGrandparent);
+
+        // 9. Checkable views (CheckBox, RadioButton) inside a clickable parent.
+        // They are clickable by default, so they should NOT walk up.
+        LinearLayout checkableContainer = new LinearLayout(this);
+        checkableContainer.setId(ID_CHECKABLE_CONTAINER);
+        checkableContainer.setOrientation(LinearLayout.VERTICAL);
+        checkableContainer.setClickable(true);
+        checkableContainer.setFocusable(true);
+        checkableContainer.setContentDescription("checkable_parent");
+        checkableContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        checkableContainer.setPadding(padding, padding, padding, padding);
+        addMarginTop(checkableContainer, 16);
+
+        CheckBox checkBox = new CheckBox(this);
+        checkBox.setId(ID_CHECKBOX);
+        checkBox.setText("A checkbox");
+        checkBox.setContentDescription("my_checkbox");
+        checkBox.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        checkableContainer.addView(checkBox);
+
+        RadioButton radioButton = new RadioButton(this);
+        radioButton.setId(ID_RADIO_BUTTON);
+        radioButton.setText("A radio button");
+        radioButton.setContentDescription("my_radio");
+        radioButton.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        addMarginTop(radioButton, 8);
+        checkableContainer.addView(radioButton);
+        layout.addView(checkableContainer);
 
         scrollView.addView(layout);
         setContentView(scrollView);

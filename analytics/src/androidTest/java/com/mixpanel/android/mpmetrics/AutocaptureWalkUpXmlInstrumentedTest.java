@@ -407,4 +407,48 @@ public class AutocaptureWalkUpXmlInstrumentedTest {
             assertEquals("disabled_parent", properties.getString("$el_id"));
         }
     }
+
+    /**
+     * Tapping a CheckBox inside a clickable parent should NOT walk up.
+     * CheckBox is clickable by default, so it owns its own click.
+     */
+    @Test
+    public void testNoWalkUp_CheckBox_KeepsOwnId() throws Exception {
+        try (ActivityScenario<WalkUpXmlTestActivity> scenario =
+                     ActivityScenario.launch(WalkUpXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            tapViewById(scenario, WalkUpXmlTestActivity.ID_CHECKBOX);
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+            assertEquals("my_checkbox", properties.getString("$el_id"));
+        }
+    }
+
+    /**
+     * Tapping a RadioButton inside a clickable parent should NOT walk up.
+     * RadioButton is clickable by default, so it owns its own click.
+     */
+    @Test
+    public void testNoWalkUp_RadioButton_KeepsOwnId() throws Exception {
+        try (ActivityScenario<WalkUpXmlTestActivity> scenario =
+                     ActivityScenario.launch(WalkUpXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            tapViewById(scenario, WalkUpXmlTestActivity.ID_RADIO_BUTTON);
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+            assertEquals("my_radio", properties.getString("$el_id"));
+        }
+    }
 }
