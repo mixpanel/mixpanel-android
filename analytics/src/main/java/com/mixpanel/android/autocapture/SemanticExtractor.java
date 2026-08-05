@@ -67,7 +67,7 @@ final class SemanticExtractor {
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
-    static ClickEvent extract(@NonNull View rootView, float x, float y, @NonNull AutocaptureOptions autocaptureOptions) {
+    static ClickEvent extract(@NonNull View rootView, float x, float y) {
         try {
             // Single-pass descent: finds target view, compose root, and hierarchy in one traversal
             HitResult hit = findTargetView(rootView, (int) x, (int) y);
