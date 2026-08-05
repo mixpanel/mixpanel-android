@@ -161,6 +161,8 @@ When a non-interactive leaf view (e.g., `TextView` inside a clickable `LinearLay
 - Stops at the first clickable ancestor (nested clickables: inner wins).
 - Max ancestor search depth: **10 levels**.
 - If no clickable ancestor is found within 10 levels, the leaf's own identity (or hash fallback) is used.
+- Walk-up checks `isClickable()` only, not `isEnabled()`. A disabled-but-clickable view still owns its click.
+- **XML vs Compose:** XML `setEnabled(false)` keeps `isClickable() == true` (walk-up stops). Compose `clickable(enabled = false)` removes the click action entirely (walk-up skips it).
 - Android XML and Compose both use the same interactivity-based logic, matching iOS behavior.
 
 ### Best Practices
