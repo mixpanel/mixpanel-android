@@ -294,4 +294,127 @@ class AutocaptureWalkUpComposeInstrumentedTest {
             }
         }
     }
+
+    /**
+     * Tapping a clickable element with no contentDescription or testTag inside a clickable
+     * parent should resolve to the inner clickable (no walk-up for clickable nodes).
+     * Falls back to hash-based $el_id (Button_<hex> since clickable elements get "Button" tag).
+     */
+    @Test
+    fun testNoWalkUp_ClickableLeafNoIdentity_GetsOwnHash() {
+        ActivityScenario.launch(WalkUpComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithText("Clickable row, no identity"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+            val elId = properties.getString("\$el_id")
+            assert(elId.matches(Regex("Button_[0-9a-f]+"))) {
+                "\$el_id should use hash fallback format Button_<hex>, got: $elId"
+            }
+        }
+    }
+
+    /**
+     * Tapping a non-interactive Text with no contentDescription and no clickable ancestor
+     * should fall back to hash-based $el_id (Text_<hex> since text elements get "Text" tag).
+     */
+    @Test
+    fun testNoWalkUp_NonInteractiveTextNoClickableAncestor_HashFallback() {
+        ActivityScenario.launch(WalkUpComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithText("Orphan text, no clickable ancestor"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+            val elId = properties.getString("\$el_id")
+            assert(elId.matches(Regex("Text_[0-9a-f]+"))) {
+                "\$el_id should use hash fallback format Text_<hex>, got: $elId"
+            }
+        }
+    }
+
+    /**
+     * Tapping a non-interactive Text with contentDescription but no clickable ancestor
+     * should use the leaf's own contentDescription as $el_id.
+     */
+    @Test
+    fun testNoWalkUp_NonInteractiveTextWithIdentityNoClickableAncestor_GetsOwnId() {
+        ActivityScenario.launch(WalkUpComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithContentDescription("compose_orphan_label"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+            assert(properties.getString("\$el_id") == "compose_orphan_label") {
+                "Expected compose_orphan_label as \$el_id, got: ${properties.getString("\$el_id")}"
+            }
+        }
+    }
+
+    /**
+     * Tapping a non-interactive Text 8 levels deep inside a clickable ancestor should
+     * successfully resolve to the clickable parent's identity.
+     *
+     * Note: Compose's findNodeAtPosition recurses top-down (max depth 20), unlike XML's
+     * walk-up which searches bottom-up (max depth 10). The effective behavior is the same:
+     * deep non-interactive leaves resolve to their clickable ancestor.
+     */
+    @Test
+    fun testWalkUp_DeepNesting_FindsClickableParent() {
+        ActivityScenario.launch(WalkUpComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithText("Deep leaf in compose"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+            assert(properties.getString("\$el_id") == "compose_deep_parent") {
+                "Expected compose_deep_parent as \$el_id, got: ${properties.getString("\$el_id")}"
+            }
+        }
+    }
+
+    // Tests 9 & 10 from XML (disabled clickable parent) are intentionally skipped for Compose.
+    // In Compose, Modifier.clickable(enabled = false) removes the OnClick action from the
+    // semantics tree, making the element non-clickable — unlike XML where setClickable(true) +
+    // setEnabled(false) keeps isClickable() == true. A disabled Compose element does not
+    // consume pointer events, so the parent's click handler fires instead. This makes the
+    // disabled-parent scenario equivalent to test case 1 (non-interactive leaf inside
+    // clickable parent), so separate tests would be redundant.
 }

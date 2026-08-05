@@ -85,7 +85,7 @@ private fun WalkUpTestContent() {
             }
         }
 
-        // 4. Non-interactive text with no clickable ancestor
+        // 4. Non-interactive text with no clickable ancestor (hash fallback)
         Text(
             "Orphan text, no clickable ancestor",
             modifier = Modifier.padding(8.dp)
@@ -107,6 +107,59 @@ private fun WalkUpTestContent() {
                     .padding(8.dp)
             ) {
                 Text("Leaf inside nested clickables")
+            }
+        }
+
+        // 6. Clickable element with no identity inside clickable parent (hash fallback)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { }
+                .semantics { contentDescription = "compose_parent_of_anon" }
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { }
+                    .padding(16.dp)
+            ) {
+                Text("Clickable row, no identity")
+            }
+        }
+
+        // 7. Non-interactive text with contentDescription, no clickable ancestor
+        Text(
+            "Labeled orphan text",
+            modifier = Modifier
+                .padding(8.dp)
+                .semantics { contentDescription = "compose_orphan_label" }
+        )
+
+        // 8. Deep nesting: clickable at top, 8 non-clickable wrapper Boxes, leaf Text
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { }
+                .semantics { contentDescription = "compose_deep_parent" }
+                .padding(16.dp)
+        ) {
+            Box(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth()) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth()) {
+                            Box(Modifier.fillMaxWidth()) {
+                                Box(Modifier.fillMaxWidth()) {
+                                    Box(Modifier.fillMaxWidth()) {
+                                        Box(Modifier.fillMaxWidth()) {
+                                            Text("Deep leaf in compose")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
