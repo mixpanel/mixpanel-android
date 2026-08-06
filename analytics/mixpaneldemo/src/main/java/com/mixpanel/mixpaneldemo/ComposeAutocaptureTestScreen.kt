@@ -486,7 +486,7 @@ fun ComposeAutocaptureTestScreen(navController: NavHostController) {
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+internal fun SectionHeader(text: String) {
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Text(
             text = text.uppercase(),

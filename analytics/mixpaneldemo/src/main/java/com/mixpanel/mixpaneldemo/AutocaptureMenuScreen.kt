@@ -72,6 +72,24 @@ fun AutocaptureMenuScreen(navController: NavHostController) {
             ) {
                 Text("Stress Test Compose (500+ views)")
             }
+
+            Button(
+                onClick = {
+                    context.startActivity(Intent(context, XmlWalkUpTestActivity::class.java))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+            ) {
+                Text("XML Walk-Up Tests")
+            }
+
+            Button(
+                onClick = { navController.navigate("composeWalkUpTest") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+            ) {
+                Text("Compose Walk-Up Tests")
+            }
         }
     }
 }

@@ -28,6 +28,17 @@ final class AutocaptureDefaults {
     static final int MAX_RECURSION_DEPTH = 20;
 
     /**
+     * Maximum number of ancestors to walk up when searching for a clickable parent.
+     * Used by walkUpToClickableParent in SemanticExtractor.
+     *
+     * Set to 10: covers all practical view depths in both native and React Native
+     * layouts (typically 1–5 levels from leaf to Pressable), with safety margin
+     * for unusual component libraries. Keeps the bound tight enough to avoid
+     * walking past the intended interactive element into navigation-level containers.
+     */
+    static final int MAX_ANCESTOR_SEARCH_DEPTH = 10;
+
+    /**
      * Event name for click events.
      */
     static final String EVENT_CLICK = "$mp_click";

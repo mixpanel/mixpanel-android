@@ -3,10 +3,12 @@ package com.mixpanel.android.autocapture;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.Checkable;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -21,6 +23,7 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.util.MPLog;
 
 
@@ -100,6 +103,12 @@ final class SemanticExtractor {
 
             // Fall back to direct view extraction (XML views)
             ClickEvent.Builder viewResult = extractFromView(hit.target, hit.hierarchy, x, y);
+
+            // Walk up to clickable parent if the tapped view is not interactive
+            if (viewResult != null) {
+                viewResult = walkUpToClickableParent(hit.target, viewResult, hit.hierarchy, x, y);
+            }
+
             return viewResult != null ? viewResult.build() : null;
         } catch (Exception e) {
             MPLog.e(TAG, "Error extracting semantics", e);
@@ -555,20 +564,19 @@ final class SemanticExtractor {
     }
 
     /**
-     * Resolves the element ID according to the priority:
+     * Returns the view's meaningful identity (contentDescription or resource ID name),
+     * or null if the view has no identity and would fall back to a hash.
+     *
+     * <p>Resolution order:
      * 1. contentDescription (if non-empty)
      * 2. Resource ID name (R.id.xxx)
-     * 3. ClassName_<hashCode>
      */
-    @NonNull
-    private static String resolveElementId(@NonNull View view) {
-        // 1. Try contentDescription
+    @Nullable
+    private static String resolveIdentity(@NonNull View view) {
         CharSequence contentDesc = view.getContentDescription();
         if (contentDesc != null && contentDesc.length() > 0) {
             return contentDesc.toString();
         }
-
-        // 2. Try resource ID name
         int id = view.getId();
         if (id != View.NO_ID) {
             try {
@@ -577,11 +585,24 @@ final class SemanticExtractor {
                     return resourceName;
                 }
             } catch (Exception ignored) {
-                // Resource not found, use fallback
+                // Resource not found
             }
         }
+        return null;
+    }
 
-        // 3. Fallback: ClassName_<hashCode>
+    /**
+     * Resolves the element ID according to the priority:
+     * 1. contentDescription (if non-empty)
+     * 2. Resource ID name (R.id.xxx)
+     * 3. ClassName_<hashCode>
+     */
+    @NonNull
+    private static String resolveElementId(@NonNull View view) {
+        String identity = resolveIdentity(view);
+        if (identity != null) {
+            return identity;
+        }
         return view.getClass().getSimpleName() + "_" + Integer.toHexString(view.hashCode());
     }
 
@@ -737,6 +758,46 @@ final class SemanticExtractor {
     private static String getSimpleClassName(@NonNull String fullyQualifiedName) {
         int lastDot = fullyQualifiedName.lastIndexOf('.');
         return lastDot >= 0 ? fullyQualifiedName.substring(lastDot + 1) : fullyQualifiedName;
+    }
+
+    /**
+     * When the tapped view is not interactive (not clickable/long-clickable/checkable),
+     * walks up the view hierarchy to the nearest interactive ancestor and extracts
+     * semantics from that ancestor instead.
+     * Does not walk past the first interactive ancestor.
+     *
+     * <p>This matches the iOS behavior where walk-up is based on interactivity,
+     * not identity. A non-interactive leaf (e.g., TextView inside a clickable
+     * LinearLayout) will always resolve to its clickable parent's identity,
+     * even if the leaf has its own contentDescription.
+     *
+     * <p>Checkable views (e.g., CheckBox, RadioButton) are treated as interactive
+     * and will not trigger a walk-up, consistent with the accessibility node path.
+     */
+    @NonNull
+    private static ClickEvent.Builder walkUpToClickableParent(
+            @NonNull View tappedView, @NonNull ClickEvent.Builder original,
+            @Nullable String hierarchy, float x, float y) {
+        // Only walk up if the tapped view is not interactive
+        if (tappedView.isClickable() || tappedView.isLongClickable() || tappedView instanceof Checkable) {
+            return original;
+        }
+
+        // Walk up to nearest interactive ancestor
+        ViewParent parent = tappedView.getParent();
+        int depth = 0;
+        while (parent instanceof View && depth < AutocaptureDefaults.MAX_ANCESTOR_SEARCH_DEPTH) {
+            View ancestor = (View) parent;
+            if (ancestor.isClickable() || ancestor.isLongClickable() || ancestor instanceof Checkable) {
+                // Found an interactive ancestor — rebuild hierarchy from its perspective
+                return extractFromView(ancestor, buildHierarchyString(ancestor), x, y);
+            }
+            parent = ancestor.getParent();
+            depth++;
+        }
+
+        // No interactive ancestor found, return original
+        return original;
     }
 
     private SemanticExtractor() {

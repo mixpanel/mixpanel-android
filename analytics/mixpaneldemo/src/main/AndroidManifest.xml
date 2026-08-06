@@ -32,6 +32,12 @@
             android:exported="false"
             android:label="Complex UI Stress Test (XML)"
             android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar" />
+
+        <activity
+            android:name=".XmlWalkUpTestActivity"
+            android:exported="false"
+            android:label="XML Walk-Up Test"
+            android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar" />
     </application>
 
 </manifest>

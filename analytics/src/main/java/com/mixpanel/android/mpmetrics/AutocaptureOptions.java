@@ -44,6 +44,7 @@ public class AutocaptureOptions {
     private final ClickOptions mClickOptions;
     private final RageClickOptions mRageClickOptions;
     private final DeadClickOptions mDeadClickOptions;
+
     private AutocaptureOptions(Builder builder) {
         this.mClickOptions = builder.mClickOptions;
         this.mRageClickOptions = builder.mRageClickOptions;
