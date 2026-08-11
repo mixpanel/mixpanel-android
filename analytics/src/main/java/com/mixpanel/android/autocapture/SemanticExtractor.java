@@ -473,10 +473,12 @@ final class SemanticExtractor {
         // Tag name
         builder.tagName(view.getClass().getSimpleName());
 
-        // Content description (aria-label)
-        CharSequence contentDesc = view.getContentDescription();
-        if (contentDesc != null && contentDesc.length() > 0) {
-            builder.accessibleLabel(contentDesc.toString());
+        // Content description (aria-label) — only when explicitly set
+        if (view.isImportantForAccessibility()) {
+            CharSequence contentDesc = view.getContentDescription();
+            if (contentDesc != null && contentDesc.length() > 0) {
+                builder.accessibleLabel(contentDesc.toString());
+            }
         }
 
         // Role
@@ -568,14 +570,23 @@ final class SemanticExtractor {
      * or null if the view has no identity and would fall back to a hash.
      *
      * <p>Resolution order:
-     * 1. contentDescription (if non-empty)
+     * 1. contentDescription (if non-empty and view is important for accessibility)
      * 2. Resource ID name (R.id.xxx)
+     *
+     * <p>contentDescription is only used when the view is important for accessibility,
+     * indicating the developer explicitly set it. Frameworks like React Native auto-derive
+     * contentDescription from child text content even when accessible={false}. That text
+     * may contain sensitive information (e.g., account numbers, personal details).
+     * Guarding on isImportantForAccessibility() ensures we only capture labels the
+     * developer intentionally exposed.
      */
     @Nullable
     private static String resolveIdentity(@NonNull View view) {
-        CharSequence contentDesc = view.getContentDescription();
-        if (contentDesc != null && contentDesc.length() > 0) {
-            return contentDesc.toString();
+        if (view.isImportantForAccessibility()) {
+            CharSequence contentDesc = view.getContentDescription();
+            if (contentDesc != null && contentDesc.length() > 0) {
+                return contentDesc.toString();
+            }
         }
         int id = view.getId();
         if (id != View.NO_ID) {
