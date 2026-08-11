@@ -518,6 +518,65 @@ public class AutocaptureXmlInstrumentedTest {
         }
     }
 
+    /**
+     * A clickable container with child text but no contentDescription must not leak
+     * the child's visible text into $attr-aria-label or $el_id.
+     *
+     * <p>This simulates a React Native Pressable where the developer did not set
+     * accessibilityLabel — the container has visible child text but contentDescription
+     * is null. The SDK must never read child text as a substitute.
+     */
+    @Test
+    public void testNullContentDescription_ChildTextDoesNotLeakIntoAriaLabel() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            // Tap the container that has a child label but NO contentDescription
+            final int[] location = new int[2];
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_NOT_IMPORTANT_VIEW);
+                v.getLocationOnScreen(location);
+                location[0] += v.getWidth() / 2;
+                location[1] += v.getHeight() / 2;
+            });
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 10,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            instrumentation.sendPointerSync(up);
+            down.recycle();
+            up.recycle();
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should still be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            // $el_id must NOT contain the child label text
+            String elId = properties.getString("$el_id");
+            assertTrue(
+                    "$el_id should not contain child text. Got: " + elId,
+                    !elId.contains("Sensitive"));
+
+            // $attr-aria-label must be absent — null contentDescription means no aria-label
+            assertTrue(
+                    "$attr-aria-label must not be present when contentDescription is null",
+                    !properties.has("$attr-aria-label"));
+        }
+    }
+
     @Test
     public void testElementIdResolutionRule3HashFallback() throws Exception {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =

@@ -28,6 +28,7 @@ public class AutocaptureXmlTestActivity extends ComponentActivity {
     public static final int ID_RAGE_ZONE = 10005;
     public static final int ID_ALERT_DIALOG_BTN = 10006;
     public static final int ID_BOTTOM_SHEET_BTN = 10007;
+    public static final int ID_NOT_IMPORTANT_VIEW = 10008;
 
     // Mixed-framework dead click test IDs
     public static final int ID_XML_BTN_XML_TEXT = 10010;
@@ -145,6 +146,30 @@ public class AutocaptureXmlTestActivity extends ComponentActivity {
         });
         addMarginTop(sheetBtn, 8);
         layout.addView(sheetBtn);
+
+        // Simulates a React Native Pressable with accessible={false}:
+        // - Parent container has a child TextView with visible text
+        // - contentDescription is NOT set (null) on the parent
+        // - The child text must NOT leak into $attr-aria-label or $el_id
+        LinearLayout notImportantContainer = new LinearLayout(this);
+        notImportantContainer.setId(ID_NOT_IMPORTANT_VIEW);
+        notImportantContainer.setOrientation(LinearLayout.VERTICAL);
+        notImportantContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dpToPx(60)));
+        notImportantContainer.setBackgroundColor(0x1A0000FF);
+        notImportantContainer.setClickable(true);
+        notImportantContainer.setFocusable(true);
+        // No contentDescription set — it stays null
+        addMarginTop(notImportantContainer, 16);
+        // Child label text (like RN's <Text> inside a <Pressable>)
+        TextView childLabel = new TextView(this);
+        childLabel.setText("Sensitive Account 1234");
+        childLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        notImportantContainer.addView(childLabel);
+        layout.addView(notImportantContainer);
 
         // ============ Mixed-Framework Dead Click Test Elements ============
 
