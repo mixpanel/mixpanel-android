@@ -577,6 +577,297 @@ public class AutocaptureXmlInstrumentedTest {
         }
     }
 
+    // ============ Accessibility Guard Tests ============
+
+    /**
+     * Scenario 1: contentDescription is null → child text must NOT leak.
+     *
+     * <p>This is the existing test (testNullContentDescription_ChildTextDoesNotLeakIntoAriaLabel)
+     * but listed here for completeness. The ID_NOT_IMPORTANT_VIEW element has
+     * importantForAccessibility=AUTO (default), contentDescription=null, and a child
+     * TextView with "Sensitive Account 1234".
+     *
+     * @see #testNullContentDescription_ChildTextDoesNotLeakIntoAriaLabel()
+     */
+
+    /**
+     * Scenario 2: View IS important for accessibility, but contentDescription is null.
+     * Child text must NOT leak into $el_id or $attr-aria-label.
+     *
+     * <p>Simulates a React Native Pressable with accessible={true} but no
+     * accessibilityLabel set. importantForAccessibility defaults to YES.
+     * The view's child text must never be used as a substitute for contentDescription.
+     */
+    @Test
+    public void testAccessibleNoCd_ChildTextDoesNotLeak() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            final int[] location = new int[2];
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_ACCESSIBLE_NO_CD);
+                v.getLocationOnScreen(location);
+                location[0] += v.getWidth() / 2;
+                location[1] += v.getHeight() / 2;
+            });
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 10,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            instrumentation.sendPointerSync(up);
+            down.recycle();
+            up.recycle();
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should still be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            String elId = properties.getString("$el_id");
+            assertTrue(
+                    "$el_id should not contain child text. Got: " + elId,
+                    !elId.contains("Sensitive") && !elId.contains("5678"));
+
+            assertTrue(
+                    "$attr-aria-label must not be present when contentDescription is null",
+                    !properties.has("$attr-aria-label"));
+        }
+    }
+
+    /**
+     * Scenario 3: View is NOT important for accessibility AND has no contentDescription.
+     * Child text must NOT leak into $el_id or $attr-aria-label.
+     *
+     * <p>This is covered by testNullContentDescription_ChildTextDoesNotLeakIntoAriaLabel()
+     * which uses ID_NOT_IMPORTANT_VIEW (importantForAccessibility=AUTO with no
+     * contentDescription). Listed for completeness.
+     *
+     * @see #testNullContentDescription_ChildTextDoesNotLeakIntoAriaLabel()
+     */
+
+    /**
+     * Scenario 4: View is NOT important for accessibility but HAS a contentDescription.
+     * The contentDescription must NOT appear in $el_id or $attr-aria-label because
+     * isImportantForAccessibility() returns false.
+     */
+    @Test
+    public void testNotImportantWithCd_ContentDescDoesNotLeak() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            final int[] location = new int[2];
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_NOT_IMPORTANT_WITH_CD);
+                v.getLocationOnScreen(location);
+                location[0] += v.getWidth() / 2;
+                location[1] += v.getHeight() / 2;
+            });
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 10,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            instrumentation.sendPointerSync(up);
+            down.recycle();
+            up.recycle();
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should still be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            // Neither contentDescription nor child text must appear in $el_id
+            String elId = properties.getString("$el_id");
+            assertTrue(
+                    "$el_id should not contain contentDescription. Got: " + elId,
+                    !elId.contains("Sensitive") && !elId.contains("9999"));
+            assertTrue(
+                    "$el_id should not contain child text. Got: " + elId,
+                    !elId.contains("Some Label"));
+
+            // $attr-aria-label must be absent — neither contentDescription nor child text
+            assertTrue(
+                    "$attr-aria-label must not be present when view is not important for accessibility",
+                    !properties.has("$attr-aria-label"));
+        }
+    }
+
+    /**
+     * Positive case: View IS important for accessibility AND HAS contentDescription.
+     * The contentDescription SHOULD appear in both $el_id and $attr-aria-label.
+     */
+    @Test
+    public void testAccessibleWithCd_ContentDescIsCaptured() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            final int[] location = new int[2];
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_ACCESSIBLE_WITH_CD);
+                v.getLocationOnScreen(location);
+                location[0] += v.getWidth() / 2;
+                location[1] += v.getHeight() / 2;
+            });
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 10,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            instrumentation.sendPointerSync(up);
+            down.recycle();
+            up.recycle();
+
+            JSONObject event = mEvents.poll(10, TimeUnit.SECONDS);
+            assertNotNull("Click event should still be captured", event);
+            assertEquals("$mp_click", event.getString("event"));
+
+            JSONObject properties = event.getJSONObject("properties");
+
+            // contentDescription SHOULD be used as $el_id
+            assertEquals("Intended Label", properties.getString("$el_id"));
+
+            // $attr-aria-label SHOULD be present
+            assertEquals("Intended Label", properties.getString("$attr-aria-label"));
+        }
+    }
+
+    // ============ Visibility Tests ============
+
+    /**
+     * An INVISIBLE view must not produce any autocapture event.
+     * View.INVISIBLE means the view is not drawn but still occupies layout space.
+     * Tapping at its coordinates should not capture its contentDescription.
+     */
+    @Test
+    public void testInvisibleView_NoEventCaptured() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            // Get the location where the invisible button would be
+            final int[] location = new int[2];
+            final boolean[] found = {false};
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_INVISIBLE_BTN);
+                if (v != null && v.getWidth() > 0) {
+                    v.getLocationOnScreen(location);
+                    location[0] += v.getWidth() / 2;
+                    location[1] += v.getHeight() / 2;
+                    found[0] = true;
+                }
+            });
+
+            if (!found[0]) {
+                // INVISIBLE view may have zero layout — still pass, nothing to tap
+                return;
+            }
+
+            android.app.Instrumentation instrumentation =
+                    InstrumentationRegistry.getInstrumentation();
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                    downTime, downTime,
+                    android.view.MotionEvent.ACTION_DOWN,
+                    location[0], location[1], 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                    downTime, downTime + 10,
+                    android.view.MotionEvent.ACTION_UP,
+                    location[0], location[1], 0);
+            instrumentation.sendPointerSync(down);
+            instrumentation.sendPointerSync(up);
+            down.recycle();
+            up.recycle();
+
+            // Wait briefly — should get no event, or at least not one with the invisible view's identity
+            JSONObject event = mEvents.poll(2, TimeUnit.SECONDS);
+            if (event != null) {
+                JSONObject properties = event.getJSONObject("properties");
+                String elId = properties.optString("$el_id", "");
+                String ariaLabel = properties.optString("$attr-aria-label", "");
+                assertTrue(
+                        "Invisible view's contentDescription must not appear in $el_id. Got: " + elId,
+                        !elId.contains("invisible_btn"));
+                assertTrue(
+                        "Invisible view's contentDescription must not appear in $attr-aria-label. Got: " + ariaLabel,
+                        !ariaLabel.contains("invisible_btn"));
+            }
+            // If event is null, test passes — no event captured for invisible view
+        }
+    }
+
+    /**
+     * A zero-alpha view (fully transparent) must not produce autocapture events
+     * with its identity. The view is in the layout but invisible to the user.
+     */
+    @Test
+    public void testZeroAlphaView_NoEventCaptured() throws Exception {
+        try (ActivityScenario<AutocaptureXmlTestActivity> scenario =
+                     ActivityScenario.launch(AutocaptureXmlTestActivity.class)) {
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            // Use performClick() directly since Android won't inject touch events
+            // into zero-alpha views (they fail with IllegalArgumentException).
+            // performClick() bypasses the visibility check and triggers the click listener,
+            // which lets us verify our autocapture code properly guards against invisible views.
+            scenario.onActivity(activity -> {
+                View v = activity.findViewById(AutocaptureXmlTestActivity.ID_ZERO_ALPHA_BTN);
+                if (v != null) {
+                    v.performClick();
+                }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            JSONObject event = mEvents.poll(2, TimeUnit.SECONDS);
+            if (event != null) {
+                JSONObject properties = event.getJSONObject("properties");
+                String elId = properties.optString("$el_id", "");
+                String ariaLabel = properties.optString("$attr-aria-label", "");
+                assertTrue(
+                        "Zero-alpha view's contentDescription must not appear in $el_id. Got: " + elId,
+                        !elId.contains("zero_alpha_btn"));
+                assertTrue(
+                        "Zero-alpha view's contentDescription must not appear in $attr-aria-label. Got: " + ariaLabel,
+                        !ariaLabel.contains("zero_alpha_btn"));
+            }
+        }
+    }
+
     @Test
     public void testElementIdResolutionRule3HashFallback() throws Exception {
         try (ActivityScenario<AutocaptureXmlTestActivity> scenario =

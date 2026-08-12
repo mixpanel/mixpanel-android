@@ -362,6 +362,141 @@ class AutocaptureComposeInstrumentedTest {
         }
     }
 
+    // ============ Accessibility Guard Tests ============
+
+    /**
+     * Scenario 1 & 2: Button with no contentDescription, only child Text.
+     *
+     * Compose's mergeDescendants puts child Text into node.getText(), NOT
+     * node.getContentDescription(). extractFromNode must not use getText()
+     * as $attr-aria-label or $el_id.
+     */
+    @Test
+    fun testComposeButtonNoCd_ChildTextDoesNotLeak() {
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithTag("compose_no_cd_btn"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+
+            // $el_id should use testTag, NOT child text
+            val elId = properties.getString("\$el_id")
+            assert(!elId.contains("Sensitive") && !elId.contains("1234")) {
+                "\$el_id should not contain child text. Got: $elId"
+            }
+
+            // $attr-aria-label must be absent — no contentDescription was set
+            assert(!properties.has("\$attr-aria-label")) {
+                "\$attr-aria-label must not be present when contentDescription is not set"
+            }
+        }
+    }
+
+    /**
+     * Scenario 3: Clickable Column with child Text, no contentDescription.
+     *
+     * Same as Button scenario but uses .clickable modifier directly.
+     * mergeDescendants is true for clickable, so child Text merges into getText(),
+     * not getContentDescription().
+     */
+    @Test
+    fun testComposeClickableNoCd_ChildTextDoesNotLeak() {
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithTag("compose_clickable_no_cd"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+
+            val elId = properties.getString("\$el_id")
+            assert(!elId.contains("Sensitive") && !elId.contains("5678")) {
+                "\$el_id should not contain child text. Got: $elId"
+            }
+
+            assert(!properties.has("\$attr-aria-label")) {
+                "\$attr-aria-label must not be present when contentDescription is not set"
+            }
+        }
+    }
+
+    /**
+     * Positive case: Button with explicit contentDescription.
+     * contentDescription SHOULD be captured in $el_id and $attr-aria-label.
+     */
+    @Test
+    fun testComposeButtonWithCd_ContentDescIsCaptured() {
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithContentDescription("Intended Label"),
+                scenario
+            )
+
+            val event = mEvents.poll(10, TimeUnit.SECONDS)
+            assert(event != null) { "Click event should be captured" }
+            event!!
+            assert(event.getString("event") == "\$mp_click")
+
+            val properties = event.getJSONObject("properties")
+            assert(properties.getString("\$el_id") == "Intended Label") {
+                "Expected 'Intended Label' as \$el_id, got: ${properties.getString("\$el_id")}"
+            }
+            assert(properties.getString("\$attr-aria-label") == "Intended Label") {
+                "Expected 'Intended Label' as \$attr-aria-label"
+            }
+        }
+    }
+
+    // ============ Visibility Tests ============
+
+    /**
+     * A zero-alpha Compose Button (fully transparent) must not produce autocapture events
+     * with its identity. The composable is in the layout tree but invisible to the user.
+     */
+    @Test
+    fun testComposeZeroAlpha_NoEventCaptured() {
+        ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            tapNode(
+                composeTestRule.onNodeWithContentDescription("compose_zero_alpha_btn"),
+                scenario
+            )
+
+            val event = mEvents.poll(2, TimeUnit.SECONDS)
+            if (event != null) {
+                val properties = event.getJSONObject("properties")
+                val elId = properties.optString("\$el_id", "")
+                val ariaLabel = properties.optString("\$attr-aria-label", "")
+                assert(!elId.contains("zero_alpha")) {
+                    "Zero-alpha view's contentDescription must not appear in \$el_id. Got: $elId"
+                }
+                assert(!ariaLabel.contains("zero_alpha")) {
+                    "Zero-alpha view's contentDescription must not appear in \$attr-aria-label. Got: $ariaLabel"
+                }
+            }
+            // If event is null, test passes — no event captured for invisible view
+        }
+    }
+
     @Test
     fun testComposeClickEventHasTokenProperty() {
         ActivityScenario.launch(AutocaptureComposeTestActivity::class.java).use { scenario ->

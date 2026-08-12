@@ -758,6 +758,7 @@ final class SemanticExtractor {
      */
     private static boolean isViewVisible(@NonNull View view) {
         return view.getVisibility() == View.VISIBLE &&
+               view.getAlpha() > 0f &&
                view.getWidth() > 0 &&
                view.getHeight() > 0;
     }

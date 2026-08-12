@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 
@@ -106,6 +107,65 @@ private fun TestContent() {
                 .clickable {}
                 .semantics { contentDescription = "compose_rage_zone" }
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ============ Accessibility Guard Test Elements ============
+
+        // Scenario 1 & 2: Button with no contentDescription, only child Text.
+        // mergeDescendants is auto for Button → child Text goes into node.getText(),
+        // NOT node.getContentDescription(). extractFromNode must not use getText()
+        // as $attr-aria-label or $el_id.
+        Button(
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("compose_no_cd_btn")
+        ) {
+            Text("Sensitive Account 1234")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Scenario 3: Clickable Column with child Text, no contentDescription.
+        // Same as Button but uses clickable modifier directly (mergeDescendants=true).
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .clickable {}
+                .testTag("compose_clickable_no_cd")
+        ) {
+            Text("Sensitive Account 5678")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Positive case: Button with explicit contentDescription.
+        // contentDescription SHOULD be captured in $el_id and $attr-aria-label.
+        Button(
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Intended Label" }
+        ) {
+            Text("Some Button Text")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ============ Visibility Test Elements ============
+
+        // Zero-alpha Button — fully transparent, invisible to the user
+        Button(
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(0f)
+                .semantics { contentDescription = "compose_zero_alpha_btn" }
+        ) {
+            Text("Zero Alpha Button")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
