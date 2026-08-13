@@ -183,6 +183,11 @@ final class ComposeSemanticHelper {
             return null;
         }
 
+        // Skip invisible nodes (alpha == 0 or not placed in layout)
+        if (isNodeInvisible(node)) {
+            return null;
+        }
+
         Rect bounds = node.getBoundsInWindow();
 
         // Check if point is within bounds
@@ -227,6 +232,30 @@ final class ComposeSemanticHelper {
     private static boolean isClickable(@NonNull SemanticsNode node) {
         SemanticsConfiguration config = node.getConfig();
         return config.contains(SemanticsActions.INSTANCE.getOnClick());
+    }
+
+    /**
+     * Checks if a Compose SemanticsNode is invisible (zero alpha or not placed).
+     *
+     * <p>{@code isTransparent$ui_release()} returns true when the node's graphics layer
+     * has alpha == 0 (e.g., {@code Modifier.alpha(0f)}). {@code LayoutInfo.isPlaced()}
+     * returns false for nodes removed from layout (e.g., {@code Modifier.hidden()} equivalent).
+     */
+    private static boolean isNodeInvisible(@NonNull SemanticsNode node) {
+        try {
+            // Check if the node is transparent (alpha == 0)
+            if (node.isTransparent$ui_release()) {
+                return true;
+            }
+            // Check if the node is not placed in layout
+            if (!node.getLayoutInfo().isPlaced()) {
+                return true;
+            }
+        } catch (Exception e) {
+            // API may not be available in older Compose versions — assume visible
+            MPLog.d(TAG, "Could not check node visibility: " + e.getMessage());
+        }
+        return false;
     }
 
     /**

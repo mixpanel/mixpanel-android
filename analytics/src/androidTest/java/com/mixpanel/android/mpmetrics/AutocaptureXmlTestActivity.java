@@ -28,6 +28,17 @@ public class AutocaptureXmlTestActivity extends ComponentActivity {
     public static final int ID_RAGE_ZONE = 10005;
     public static final int ID_ALERT_DIALOG_BTN = 10006;
     public static final int ID_BOTTOM_SHEET_BTN = 10007;
+    public static final int ID_NOT_IMPORTANT_VIEW = 10008;
+
+    // Accessibility guard test IDs
+    public static final int ID_ACCESSIBLE_NO_CD = 10020;
+    public static final int ID_NOT_IMPORTANT_WITH_CD = 10021;
+    public static final int ID_ACCESSIBLE_WITH_CD = 10022;
+
+    // Visibility test IDs
+    public static final int ID_INVISIBLE_BTN = 10030;
+    public static final int ID_GONE_BTN = 10031;
+    public static final int ID_ZERO_ALPHA_BTN = 10032;
 
     // Mixed-framework dead click test IDs
     public static final int ID_XML_BTN_XML_TEXT = 10010;
@@ -145,6 +156,116 @@ public class AutocaptureXmlTestActivity extends ComponentActivity {
         });
         addMarginTop(sheetBtn, 8);
         layout.addView(sheetBtn);
+
+        // Simulates a React Native Pressable with accessible={false}:
+        // - Parent container has a child TextView with visible text
+        // - contentDescription is NOT set (null) on the parent
+        // - The child text must NOT leak into $attr-aria-label or $el_id
+        LinearLayout notImportantContainer = new LinearLayout(this);
+        notImportantContainer.setId(ID_NOT_IMPORTANT_VIEW);
+        notImportantContainer.setOrientation(LinearLayout.VERTICAL);
+        notImportantContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dpToPx(60)));
+        notImportantContainer.setBackgroundColor(0x1A0000FF);
+        notImportantContainer.setClickable(true);
+        notImportantContainer.setFocusable(true);
+        // No contentDescription set — it stays null
+        addMarginTop(notImportantContainer, 16);
+        // Child label text (like RN's <Text> inside a <Pressable>)
+        TextView childLabel = new TextView(this);
+        childLabel.setText("Sensitive Account 1234");
+        childLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        notImportantContainer.addView(childLabel);
+        layout.addView(notImportantContainer);
+
+        // ============ Accessibility Guard Test Elements ============
+
+        // Scenario 2: Accessible (default) + no contentDescription + child text
+        // Simulates RN Pressable with accessible={true} but no accessibilityLabel
+        LinearLayout accessibleNoCd = new LinearLayout(this);
+        accessibleNoCd.setId(ID_ACCESSIBLE_NO_CD);
+        accessibleNoCd.setOrientation(LinearLayout.VERTICAL);
+        accessibleNoCd.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(60)));
+        accessibleNoCd.setBackgroundColor(0x1A00FF00);
+        accessibleNoCd.setClickable(true);
+        accessibleNoCd.setFocusable(true);
+        // importantForAccessibility defaults to YES — no contentDescription set
+        addMarginTop(accessibleNoCd, 8);
+        TextView accessibleNoCdLabel = new TextView(this);
+        accessibleNoCdLabel.setText("Sensitive Account 5678");
+        accessibleNoCdLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        accessibleNoCd.addView(accessibleNoCdLabel);
+        layout.addView(accessibleNoCd);
+
+        // Scenario 4: Not important for accessibility + HAS contentDescription
+        // Tests that contentDescription is NOT captured when view is not important
+        LinearLayout notImportantWithCd = new LinearLayout(this);
+        notImportantWithCd.setId(ID_NOT_IMPORTANT_WITH_CD);
+        notImportantWithCd.setOrientation(LinearLayout.VERTICAL);
+        notImportantWithCd.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(60)));
+        notImportantWithCd.setBackgroundColor(0x1AFF00FF);
+        notImportantWithCd.setClickable(true);
+        notImportantWithCd.setFocusable(true);
+        notImportantWithCd.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        notImportantWithCd.setContentDescription("Sensitive Account 9999");
+        addMarginTop(notImportantWithCd, 8);
+        TextView notImportantWithCdLabel = new TextView(this);
+        notImportantWithCdLabel.setText("Some Label");
+        notImportantWithCdLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        notImportantWithCd.addView(notImportantWithCdLabel);
+        layout.addView(notImportantWithCd);
+
+        // Positive case: Accessible + explicit contentDescription
+        // Tests that contentDescription IS captured when view is important
+        LinearLayout accessibleWithCd = new LinearLayout(this);
+        accessibleWithCd.setId(ID_ACCESSIBLE_WITH_CD);
+        accessibleWithCd.setOrientation(LinearLayout.VERTICAL);
+        accessibleWithCd.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(60)));
+        accessibleWithCd.setBackgroundColor(0x1A0000FF);
+        accessibleWithCd.setClickable(true);
+        accessibleWithCd.setFocusable(true);
+        accessibleWithCd.setContentDescription("Intended Label");
+        addMarginTop(accessibleWithCd, 8);
+        layout.addView(accessibleWithCd);
+
+        // ============ Visibility Test Elements ============
+
+        // INVISIBLE button — View.INVISIBLE, still in layout but not drawn
+        Button invisibleBtn = createButton("Invisible Button");
+        invisibleBtn.setId(ID_INVISIBLE_BTN);
+        invisibleBtn.setContentDescription("invisible_btn");
+        invisibleBtn.setOnClickListener(v -> {});
+        invisibleBtn.setVisibility(View.INVISIBLE);
+        addMarginTop(invisibleBtn, 8);
+        layout.addView(invisibleBtn);
+
+        // GONE button — View.GONE, removed from layout entirely
+        Button goneBtn = createButton("Gone Button");
+        goneBtn.setId(ID_GONE_BTN);
+        goneBtn.setContentDescription("gone_btn");
+        goneBtn.setOnClickListener(v -> {});
+        goneBtn.setVisibility(View.GONE);
+        addMarginTop(goneBtn, 8);
+        layout.addView(goneBtn);
+
+        // Zero-alpha button — alpha=0, fully transparent but in layout
+        Button zeroAlphaBtn = createButton("Zero Alpha Button");
+        zeroAlphaBtn.setId(ID_ZERO_ALPHA_BTN);
+        zeroAlphaBtn.setContentDescription("zero_alpha_btn");
+        zeroAlphaBtn.setOnClickListener(v -> {});
+        zeroAlphaBtn.setAlpha(0f);
+        addMarginTop(zeroAlphaBtn, 8);
+        layout.addView(zeroAlphaBtn);
 
         // ============ Mixed-Framework Dead Click Test Elements ============
 
