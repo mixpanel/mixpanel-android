@@ -474,11 +474,9 @@ final class SemanticExtractor {
         builder.tagName(view.getClass().getSimpleName());
 
         // Content description (aria-label) — only when explicitly set
-        if (view.isImportantForAccessibility()) {
-            CharSequence contentDesc = view.getContentDescription();
-            if (contentDesc != null && contentDesc.length() > 0) {
-                builder.accessibleLabel(contentDesc.toString());
-            }
+        String guardedDesc = getGuardedContentDescription(view);
+        if (guardedDesc != null) {
+            builder.accessibleLabel(guardedDesc);
         }
 
         // Role
@@ -566,27 +564,38 @@ final class SemanticExtractor {
     }
 
     /**
-     * Returns the view's meaningful identity (contentDescription or resource ID name),
-     * or null if the view has no identity and would fall back to a hash.
+     * Returns the view's contentDescription only when the view is important for accessibility,
+     * or null otherwise.
      *
-     * <p>Resolution order:
-     * 1. contentDescription (if non-empty and view is important for accessibility)
-     * 2. Resource ID name (R.id.xxx)
-     *
-     * <p>contentDescription is only used when the view is important for accessibility,
-     * indicating the developer explicitly set it. Frameworks like React Native auto-derive
-     * contentDescription from child text content even when accessible={false}. That text
-     * may contain sensitive information (e.g., account numbers, personal details).
-     * Guarding on isImportantForAccessibility() ensures we only capture labels the
-     * developer intentionally exposed.
+     * <p>Frameworks like React Native auto-derive contentDescription from child text content
+     * even when accessible={false}. That text may contain sensitive information (e.g., account
+     * numbers, personal details). Guarding on isImportantForAccessibility() ensures we only
+     * capture labels the developer intentionally exposed.
      */
     @Nullable
-    private static String resolveIdentity(@NonNull View view) {
+    private static String getGuardedContentDescription(@NonNull View view) {
         if (view.isImportantForAccessibility()) {
             CharSequence contentDesc = view.getContentDescription();
             if (contentDesc != null && contentDesc.length() > 0) {
                 return contentDesc.toString();
             }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the view's meaningful identity (contentDescription or resource ID name),
+     * or null if the view has no identity and would fall back to a hash.
+     *
+     * <p>Resolution order:
+     * 1. contentDescription (via {@link #getGuardedContentDescription})
+     * 2. Resource ID name (R.id.xxx)
+     */
+    @Nullable
+    private static String resolveIdentity(@NonNull View view) {
+        String guardedDesc = getGuardedContentDescription(view);
+        if (guardedDesc != null) {
+            return guardedDesc;
         }
         int id = view.getId();
         if (id != View.NO_ID) {
