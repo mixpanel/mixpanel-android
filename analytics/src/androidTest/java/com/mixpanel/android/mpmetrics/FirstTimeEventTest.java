@@ -211,6 +211,52 @@ public class FirstTimeEventTest {
 
                 pendingEvents.put(event2);
 
+                // Event 3: semver_compare property filter (app_version >= 2.0.0)
+                JSONObject event3 = new JSONObject();
+                event3.put(MPConstants.Flags.FLAG_KEY, "semver_flag");
+                event3.put(MPConstants.Flags.FLAG_ID, "flag_id_3");
+                event3.put(MPConstants.Flags.PROJECT_ID, "12345");
+                event3.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_3");
+                event3.put(MPConstants.Flags.EVENT_NAME, "AppLaunch");
+
+                // JsonLogic: {"semver_compare": [{"var": "app_version"}, ">=", "2.0.0"]}
+                JSONObject semverFilter = new JSONObject();
+                semverFilter.put("semver_compare", new JSONArray()
+                        .put(new JSONObject().put("var", "app_version"))
+                        .put(">=")
+                        .put("2.0.0"));
+                event3.put(MPConstants.Flags.PROPERTY_FILTERS, semverFilter);
+
+                JSONObject pendingVariant3 = new JSONObject();
+                pendingVariant3.put(MPConstants.Flags.VARIANT_KEY, "semver_variant");
+                pendingVariant3.put(MPConstants.Flags.VARIANT_VALUE, "matched");
+                event3.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant3);
+
+                pendingEvents.put(event3);
+
+                // Event 4: datetime_compare property filter (signup >= 2026-07-16T00:00:00Z)
+                JSONObject event4 = new JSONObject();
+                event4.put(MPConstants.Flags.FLAG_KEY, "datetime_flag");
+                event4.put(MPConstants.Flags.FLAG_ID, "flag_id_4");
+                event4.put(MPConstants.Flags.PROJECT_ID, "12345");
+                event4.put(MPConstants.Flags.FIRST_TIME_EVENT_HASH, "hash_4");
+                event4.put(MPConstants.Flags.EVENT_NAME, "SignupComplete");
+
+                // JsonLogic: {"datetime_compare": [{"var": "signup"}, ">=", 1784160000000]}
+                JSONObject datetimeFilter = new JSONObject();
+                datetimeFilter.put("datetime_compare", new JSONArray()
+                        .put(new JSONObject().put("var", "signup"))
+                        .put(">=")
+                        .put(1784160000000L));
+                event4.put(MPConstants.Flags.PROPERTY_FILTERS, datetimeFilter);
+
+                JSONObject pendingVariant4 = new JSONObject();
+                pendingVariant4.put(MPConstants.Flags.VARIANT_KEY, "datetime_variant");
+                pendingVariant4.put(MPConstants.Flags.VARIANT_VALUE, "matched");
+                event4.put(MPConstants.Flags.PENDING_VARIANT, pendingVariant4);
+
+                pendingEvents.put(event4);
+
                 response.put(MPConstants.Flags.PENDING_FIRST_TIME_EVENTS, pendingEvents);
 
                 return response.toString();
@@ -426,6 +472,56 @@ public class FirstTimeEventTest {
         MixpanelFlagVariant activatedVariant = mMixpanel.getFlags().getVariantSync("test_flag", fallback);
         assertEquals("Activated variant key should be 'treatment' from pending variant", "treatment", activatedVariant.key);
         assertEquals("Activated variant value should be true from pending variant", true, activatedVariant.value);
+    }
+
+    @Test
+    public void testSemverPropertyFilterMatching() throws Exception {
+        // Load flags with pending event "AppLaunch" gated on app_version >= 2.0.0
+        mMixpanel.getFlags().loadFlags();
+        Boolean flagsLoaded = mFlagLoadComplete.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Flags should load successfully", flagsLoaded);
+
+        // Track AppLaunch with app_version below the target - should NOT match
+        JSONObject belowProps = new JSONObject();
+        belowProps.put("app_version", "1.5.0");
+        mMixpanel.track("AppLaunch", belowProps);
+
+        RecordingAPICall call = mRecordingCalls.poll(1, TimeUnit.SECONDS);
+        assertNull("Version below 2.0.0 should not match semver filter", call);
+
+        // Track AppLaunch with app_version at or above the target - SHOULD match
+        JSONObject aboveProps = new JSONObject();
+        aboveProps.put("app_version", "2.1.0");
+        mMixpanel.track("AppLaunch", aboveProps);
+
+        call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Version >= 2.0.0 should match semver filter", call);
+        assertEquals("hash_3", call.body.getString("first_time_event_hash"));
+    }
+
+    @Test
+    public void testDatetimePropertyFilterMatching() throws Exception {
+        // Load flags with pending event "SignupComplete" gated on signup >= 2026-07-16T00:00:00Z
+        mMixpanel.getFlags().loadFlags();
+        Boolean flagsLoaded = mFlagLoadComplete.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Flags should load successfully", flagsLoaded);
+
+        // Track SignupComplete with an RFC3339 timestamp before the target - should NOT match
+        JSONObject beforeProps = new JSONObject();
+        beforeProps.put("signup", "2026-07-15T00:00:00Z");
+        mMixpanel.track("SignupComplete", beforeProps);
+
+        RecordingAPICall call = mRecordingCalls.poll(1, TimeUnit.SECONDS);
+        assertNull("Timestamp before target should not match datetime filter", call);
+
+        // Track SignupComplete with an RFC3339 timestamp at or after the target - SHOULD match
+        JSONObject afterProps = new JSONObject();
+        afterProps.put("signup", "2026-07-17T00:00:00Z");
+        mMixpanel.track("SignupComplete", afterProps);
+
+        call = mRecordingCalls.poll(2, TimeUnit.SECONDS);
+        assertNotNull("Timestamp >= target should match datetime filter", call);
+        assertEquals("hash_4", call.body.getString("first_time_event_hash"));
     }
 
     @Test
