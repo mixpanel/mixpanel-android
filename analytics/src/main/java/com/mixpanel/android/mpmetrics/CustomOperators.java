@@ -39,6 +39,9 @@ final class CustomOperators {
     // SemVer 2.0.0 requires major.minor.patch; partial versions are zero-padded to this.
     private static final int SEMVER_PARTS = 3;
 
+    // Epoch milliseconds are compared as a long, so anything at or beyond this is out of range.
+    private static final double MAX_EPOCH_MS = (double) Long.MAX_VALUE;
+
     private CustomOperators() {}
 
     /**
@@ -190,10 +193,16 @@ final class CustomOperators {
     }
 
     private static Long convertUnixMillisecondsToSeconds(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue() / 1000L;
+        if (!(value instanceof Number)) {
+            return null;
         }
-        return null;
+        double millis = ((Number) value).doubleValue();
+        // A value long cannot represent is not a real timestamp; narrowing one would saturate into a
+        // finite bound and let a nonsense target define a rollout window.
+        if (Double.isNaN(millis) || millis >= MAX_EPOCH_MS || millis <= -MAX_EPOCH_MS) {
+            return null;
+        }
+        return (long) millis / 1000L;
     }
 
     private static Long rfc3339ToUnixSeconds(String raw) {
@@ -209,18 +218,31 @@ final class CustomOperators {
         int minute = Integer.parseInt(m.group(5));
         int second = Integer.parseInt(m.group(6));
 
-        Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
-        cal.clear();
-        cal.set(year, month - 1, day, hour, minute, second);
-        long wallSeconds = cal.getTimeInMillis() / 1000L;
-
         long offsetSeconds = 0L;
         String offset = m.group(8);
         if (!"Z".equals(offset)) {
-            int sign = offset.charAt(0) == '-' ? -1 : 1;
             int offHours = Integer.parseInt(offset.substring(1, 3));
             int offMinutes = Integer.parseInt(offset.substring(4, 6));
+            // The pattern only guarantees two digits either side of the colon, so the values still have
+            // to be real clock offsets.
+            if (offHours > 23 || offMinutes > 59) {
+                return null;
+            }
+            int sign = offset.charAt(0) == '-' ? -1 : 1;
             offsetSeconds = sign * (offHours * 3600L + offMinutes * 60L);
+        }
+
+        Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+        cal.clear();
+        // A lenient calendar rolls an impossible date such as 2026-02-30 forward into a real instant, so
+        // a malformed property would match a date rule instead of failing closed.
+        cal.setLenient(false);
+        cal.set(year, month - 1, day, hour, minute, second);
+        long wallSeconds;
+        try {
+            wallSeconds = cal.getTimeInMillis() / 1000L;
+        } catch (IllegalArgumentException e) {
+            return null;
         }
         return wallSeconds - offsetSeconds;
     }

@@ -465,6 +465,20 @@ public class CustomOperatorsTest {
                 eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-07-16T00:00:00,5Z")));
         assertEquals("comma fractional separator, not-equal also false", false,
                 eval(datetimeRule("signup", "!=", JUL16_MS), data("signup", "2026-07-16T00:00:00,5Z")));
+        // This platform hand-rolls its RFC3339 parsing, so impossible field values are rejected here
+        // rather than by a date library. Not shared vectors: other platforms roll these forward.
+        assertEquals("impossible calendar date, no match", false,
+                eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-02-30T00:00:00Z")));
+        assertEquals("impossible calendar date, not-equal also false", false,
+                eval(datetimeRule("signup", "!=", JUL16_MS), data("signup", "2026-02-30T00:00:00Z")));
+        assertEquals("month 13, no match", false,
+                eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-13-01T00:00:00Z")));
+        assertEquals("hour 25, no match", false,
+                eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-07-16T25:00:00Z")));
+        assertEquals("offset minutes out of range, no match", false,
+                eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-07-16T00:00:00+99:99")));
+        assertEquals("offset hours out of range, no match", false,
+                eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-07-16T00:00:00+99:00")));
         assertEquals("numeric subject, no match", false,
                 eval(datetimeRule("signup", "=", JUL16_MS), data("signup", JUL16_MS)));
         assertEquals("negative epoch-ms target resolves to -1s", true,
@@ -485,6 +499,8 @@ public class CustomOperatorsTest {
                 eval(datetimeRuleTarget("signup", "=", 1e308), data("signup", "2026-07-16T00:00:00Z")));
         assertEquals("target beyond representable range, greater-than also false", false,
                 eval(datetimeRuleTarget("signup", ">", 1e308), data("signup", "2026-07-16T00:00:00Z")));
+        assertEquals("target beyond representable range, less-than also false", false,
+                eval(datetimeRuleTarget("signup", "<", 1e308), data("signup", "2026-07-16T00:00:00Z")));
         assertEquals("bare date subject, no match", false,
                 eval(datetimeRule("signup", "=", JUL16_MS), data("signup", "2026-07-16")));
         assertEquals("bare date subject, not-equal also false", false,
