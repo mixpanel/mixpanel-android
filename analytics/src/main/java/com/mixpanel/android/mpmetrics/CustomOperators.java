@@ -12,16 +12,6 @@ import org.semver4j.Semver;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.evaluator.expressions.PreEvaluatedArgumentsExpression;
 
-/**
- * Custom JsonLogic operators for typed runtime targeting.
- *
- * <p>Both operators share the shape {@code {"<op>": [{"var": key}, "<symbol>", <target>]}} where
- * symbol is one of {@code = != < <= > >=}. The engine resolves the {@code {"var": key}} node before
- * the operator runs, so operators receive the already-resolved subject as their first argument.
- *
- * <p>Every operator fails closed: any shape, type, or parse failure yields {@code false} rather than
- * throwing, so malformed runtime rules never match and never crash evaluation.
- */
 final class CustomOperators {
 
     // Using the official semantic versioning 2.0.0 regular expression to handle cross-platform validation
@@ -44,10 +34,9 @@ final class CustomOperators {
 
     private CustomOperators() {}
 
-    /**
-     * Registers the {@code semver_compare} and {@code datetime_compare} operators on the given
-     * JsonLogic instance.
-     */
+    // Registers custom operators into the JSONLogic engine.
+    // 1. Semantic Versioning 2.0.0 comparison
+    // 2. RFC3339 datetime comparison
     static void register(JsonLogic jsonLogic) {
         jsonLogic.addOperation(new PreEvaluatedArgumentsExpression() {
             @Override
