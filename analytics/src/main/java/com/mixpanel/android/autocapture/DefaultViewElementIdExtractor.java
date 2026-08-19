@@ -116,19 +116,15 @@ final class DefaultViewElementIdExtractor implements ViewElementIdExtractor {
     /**
      * Returns the view's content description when the developer intentionally exposed it.
      *
-     * <p>Frameworks such as React Native auto-derive a content description from child text even for
-     * views marked {@code accessible={false}}, and that text may contain sensitive information.
-     * Requiring {@link View#isImportantForAccessibility()} keeps derived text out of the payload.
+     * <p>Delegates to {@link AutocaptureDefaults#intentionalContentDescription(View)}, which guards
+     * both on {@link View#isImportantForAccessibility()} and — for React Native views — on
+     * focusability, since React Native expresses {@code accessible={false}} by clearing
+     * focusability while leaving the content description in place.
      */
     @Nullable
     private static String resolveContentDescription(@NonNull View view) {
         try {
-            if (view.isImportantForAccessibility()) {
-                CharSequence contentDescription = view.getContentDescription();
-                if (contentDescription != null && contentDescription.length() > 0) {
-                    return contentDescription.toString();
-                }
-            }
+            return AutocaptureDefaults.intentionalContentDescription(view);
         } catch (Exception e) {
             MPLog.d(TAG, "Unable to resolve content description", e);
         }

@@ -7,6 +7,8 @@ import android.widget.LinearLayout;
 
 import androidx.activity.ComponentActivity;
 
+import com.facebook.react.views.view.FakeReactViewGroup;
+
 import com.mixpanel.android.test.R;
 
 /**
@@ -30,7 +32,13 @@ public class ElementIdTestActivity extends ComponentActivity {
     /** No id resource, contentDescription only. */
     public static final int ID_CONTENT_DESC_ONLY_BTN = 20001;
 
+    /** React-Native-shaped view: accessible={false}, i.e. a contentDescription but not focusable. */
+    public static final int ID_RN_INACCESSIBLE_BTN = 20002;
+
     public static final String CHECKOUT_CONTENT_DESCRIPTION = "Checkout Label";
+
+    /** Stands in for a label carrying user data on a view excluded from accessibility. */
+    public static final String RN_INACCESSIBLE_LABEL = "Account ending 4321";
     public static final String CONTENT_DESC_ONLY_LABEL = "content_desc_only_btn";
 
     @Override
@@ -65,6 +73,16 @@ public class ElementIdTestActivity extends ComponentActivity {
         bareBtn.setText("Bare");
         bareBtn.setOnClickListener(v -> {});
         layout.addView(bareBtn);
+
+        // React Native shape: important for accessibility (RN never clears that) and carrying a
+        // contentDescription, but not focusable — which is how RN expresses accessible={false}.
+        FakeReactViewGroup rnInaccessible = new FakeReactViewGroup(this);
+        rnInaccessible.setId(ID_RN_INACCESSIBLE_BTN);
+        rnInaccessible.setContentDescription(RN_INACCESSIBLE_LABEL);
+        rnInaccessible.setFocusable(false);
+        rnInaccessible.setMinimumHeight(120);
+        rnInaccessible.setOnClickListener(v -> {});
+        layout.addView(rnInaccessible);
 
         setContentView(layout);
     }

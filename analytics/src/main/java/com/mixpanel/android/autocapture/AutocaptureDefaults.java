@@ -1,5 +1,10 @@
 package com.mixpanel.android.autocapture;
 
+import android.view.View;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 /**
  * Internal constants for autocapture functionality.
  *
@@ -92,6 +97,59 @@ final class AutocaptureDefaults {
      * Separator used in view hierarchy string.
      */
     static final String HIERARCHY_SEPARATOR = " > ";
+
+    /**
+     * Class-name prefix of every view React Native manages.
+     *
+     * <p>React Native's {@code BaseViewManager} applies accessibility props to the views it creates,
+     * and the view a tap resolves to in a React Native app is the Pressable/Touchable's own
+     * {@code ReactViewGroup}, so this prefix identifies the views whose accessibility metadata
+     * follows React Native's conventions rather than the platform's.
+     */
+    private static final String REACT_NATIVE_VIEW_PACKAGE = "com.facebook.react.";
+
+    /**
+     * Returns the view's content description only when the developer intentionally exposed it, or
+     * null otherwise. Shared by {@code $el_id} resolution and the {@code $attr-aria-label} property
+     * so the two can never disagree about whether a label is safe to report.
+     *
+     * <p>Two guards, because the two UI stacks signal intent differently:
+     *
+     * <ul>
+     *   <li><b>{@link View#isImportantForAccessibility()}</b> — the platform's own signal. Android
+     *       frameworks auto-derive a container's content description from child text; that text may
+     *       contain sensitive information (account numbers, personal details), and a view the
+     *       developer marked unimportant for accessibility is not an intentional label.</li>
+     *   <li><b>{@link View#isFocusable()}, for React Native views only</b> — React Native expresses
+     *       {@code accessible={false}} by clearing focusability and leaves the view important for
+     *       accessibility with its content description intact, so importance alone does not reflect
+     *       intent there. {@code accessible={true}}, and a label with no {@code accessible} prop at
+     *       all, both leave the view focusable.</li>
+     * </ul>
+     *
+     * <p>The focusability guard is deliberately scoped to React Native views: a native Android view
+     * can be clickable without being focusable while still carrying a perfectly intentional
+     * {@code android:contentDescription}.
+     */
+    @Nullable
+    static String intentionalContentDescription(@NonNull View view) {
+        if (!view.isImportantForAccessibility()) {
+            return null;
+        }
+        if (isReactNativeView(view) && !view.isFocusable()) {
+            return null;
+        }
+        CharSequence contentDescription = view.getContentDescription();
+        if (contentDescription != null && contentDescription.length() > 0) {
+            return contentDescription.toString();
+        }
+        return null;
+    }
+
+    /** Returns whether the view is one React Native created and manages. */
+    static boolean isReactNativeView(@NonNull View view) {
+        return view.getClass().getName().startsWith(REACT_NATIVE_VIEW_PACKAGE);
+    }
 
     private AutocaptureDefaults() {
         // Prevent instantiation

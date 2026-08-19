@@ -137,6 +137,29 @@ public class ElementIdExtractorInstrumentedTest {
         }
     }
 
+    @Test
+    public void testReactNativeInaccessibleLabelIsNotReported() throws Exception {
+        // accessible={false} in React Native leaves the view important for accessibility with its
+        // contentDescription intact, so neither $el_id nor $attr-aria-label may carry that label.
+        initMixpanel(new AutocaptureOptions.Builder().build());
+
+        try (ActivityScenario<ElementIdTestActivity> scenario =
+                     ActivityScenario.launch(ElementIdTestActivity.class)) {
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            onView(withId(ElementIdTestActivity.ID_RN_INACCESSIBLE_BTN)).perform(click());
+
+            JSONObject properties = awaitClickProperties();
+            String elId = properties.getString("$el_id");
+            assertTrue("Expected the anonymous hash id, got: " + elId,
+                    elId.matches(HASH_ID_PATTERN));
+            assertTrue("Label must not leak into $el_id: " + elId,
+                    !elId.contains("4321"));
+            assertNull("Label must not be reported as $attr-aria-label",
+                    properties.optString("$attr-aria-label", null));
+        }
+    }
+
     // ============ Custom extractor ============
 
     @Test

@@ -13,6 +13,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.facebook.react.views.view.FakeReactViewGroup;
+
 import com.mixpanel.android.test.R;
 
 import org.junit.Before;
@@ -172,6 +174,55 @@ public class DefaultViewElementIdExtractorTest {
 
         assertTrue("Expected the hash fallback, got: " + elementId,
                 elementId.matches(HASH_ID_PATTERN));
+    }
+
+    // ============ Priority 3: React Native accessible={false} ============
+
+    @Test
+    public void testReactNativeViewIgnoresContentDescriptionWhenNotFocusable() {
+        // React Native expresses accessible={false} by clearing focusability while leaving the view
+        // important for accessibility with its contentDescription intact, so the label must not be
+        // reported — it is exactly the shape that leaks user data into $el_id.
+        String elementId = resolve(context -> {
+            FakeReactViewGroup view = new FakeReactViewGroup(context);
+            view.setContentDescription("Account ending 4321");
+            view.setFocusable(false);
+            return view;
+        });
+
+        assertTrue("Expected the hash fallback, got: " + elementId,
+                elementId.matches(HASH_ID_PATTERN));
+        assertTrue("Label from an accessible={false} view must not leak: " + elementId,
+                !elementId.contains("4321"));
+    }
+
+    @Test
+    public void testReactNativeViewUsesContentDescriptionWhenFocusable() {
+        // accessible={true}, and a label with no accessible prop at all, both leave the view
+        // focusable — those labels are intentional and still resolve.
+        String elementId = resolve(context -> {
+            FakeReactViewGroup view = new FakeReactViewGroup(context);
+            view.setContentDescription("Checkout Label");
+            view.setFocusable(true);
+            return view;
+        });
+
+        assertEquals("Checkout Label", elementId);
+    }
+
+    @Test
+    public void testNativeViewUsesContentDescriptionEvenWhenNotFocusable() {
+        // The focusability guard is scoped to React Native views: a native Android view can be
+        // clickable without being focusable and still carry an intentional contentDescription.
+        String elementId = resolve(context -> {
+            TextView view = new TextView(context);
+            view.setContentDescription("Checkout Label");
+            view.setClickable(true);
+            view.setFocusable(false);
+            return view;
+        });
+
+        assertEquals("Checkout Label", elementId);
     }
 
     // ============ Priority 4: hash fallback ============

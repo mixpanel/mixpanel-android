@@ -155,7 +155,7 @@ public class ClickEvent {
         return props;
     }
 
-    /**
+     /**
      * Builder for creating {@link ClickEvent} instances.
      *
      * <p>Only {@code x}, {@code y}, and {@code elementId} are required.

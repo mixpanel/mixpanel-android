@@ -568,23 +568,15 @@ final class SemanticExtractor {
     }
 
     /**
-     * Returns the view's contentDescription only when the view is important for accessibility,
-     * or null otherwise.
+     * Returns the view's contentDescription only when the developer intentionally exposed it.
      *
-     * <p>Frameworks like React Native auto-derive contentDescription from child text content
-     * even when accessible={false}. That text may contain sensitive information (e.g., account
-     * numbers, personal details). Guarding on isImportantForAccessibility() ensures we only
-     * capture labels the developer intentionally exposed.
+     * <p>Delegates to {@link AutocaptureDefaults#intentionalContentDescription(View)} so that
+     * {@code $attr-aria-label} and {@code $el_id} apply exactly the same guards — a label that is
+     * unsafe to use as an identifier is equally unsafe to report as the accessibility label.
      */
     @Nullable
     private static String getGuardedContentDescription(@NonNull View view) {
-        if (view.isImportantForAccessibility()) {
-            CharSequence contentDesc = view.getContentDescription();
-            if (contentDesc != null && contentDesc.length() > 0) {
-                return contentDesc.toString();
-            }
-        }
-        return null;
+        return AutocaptureDefaults.intentionalContentDescription(view);
     }
 
     /**
