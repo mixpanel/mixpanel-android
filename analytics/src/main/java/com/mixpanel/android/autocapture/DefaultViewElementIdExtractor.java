@@ -8,7 +8,7 @@ import androidx.annotation.Nullable;
 import com.mixpanel.android.util.MPLog;
 
 /**
- * Default {@link ElementIdExtractor} used when the host app does not supply its own.
+ * Default {@link ViewElementIdExtractor} used when the host app does not supply its own.
  *
  * <p>Resolution priority:
  * <ol>
@@ -25,9 +25,9 @@ import com.mixpanel.android.util.MPLog;
  * <p>Every step is defensive: any exception thrown while resolving an identifier is swallowed and
  * resolution continues with the next step, so this class can never crash the host app.
  */
-final class DefaultElementIdExtractor implements ElementIdExtractor {
+final class DefaultViewElementIdExtractor implements ViewElementIdExtractor {
 
-    private static final String TAG = "MP.DefaultElementIdExtractor";
+    private static final String TAG = "MP.DefaultViewElementIdExtractor";
 
     /** Resource entry name React Native uses to store the {@code nativeID} prop as a view tag. */
     private static final String RN_NATIVE_ID_TAG = "view_tag_native_id";
@@ -35,9 +35,9 @@ final class DefaultElementIdExtractor implements ElementIdExtractor {
     /** Cached resolved resource id for {@link #RN_NATIVE_ID_TAG}: 0 means "absent". */
     private static volatile int sNativeIdTagRes = -1;
 
-    static final DefaultElementIdExtractor INSTANCE = new DefaultElementIdExtractor();
+    static final DefaultViewElementIdExtractor INSTANCE = new DefaultViewElementIdExtractor();
 
-    private DefaultElementIdExtractor() {
+    private DefaultViewElementIdExtractor() {
     }
 
     @Override

@@ -812,10 +812,12 @@ public class AutocaptureXmlInstrumentedTest {
                 }
             });
 
-            if (!found[0]) {
-                // INVISIBLE view has no tappable on-screen area — nothing to tap, nothing to assert
-                return;
-            }
+            // Fail rather than skip: scrolling the fixture in above is expected to put it inside the
+            // visible frame, so a point outside it means the setup regressed. Returning here would
+            // let the test pass without ever exercising the invisible-view invariant.
+            assertTrue(
+                    "Invisible view's tap point is outside the app's visible content area",
+                    found[0]);
 
             android.app.Instrumentation instrumentation =
                     InstrumentationRegistry.getInstrumentation();

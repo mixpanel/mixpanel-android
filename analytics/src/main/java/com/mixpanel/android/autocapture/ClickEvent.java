@@ -37,7 +37,7 @@ public class ClickEvent {
      * A stable identifier for the tapped element, used to group clicks in analytics.
      *
      * <p>Autocapture resolves this from the View hierarchy in the following order (see
-     * {@code DefaultElementIdExtractor}), and the same preferences apply when tracking manually:
+     * {@code DefaultViewElementIdExtractor}), and the same preferences apply when tracking manually:
      * <ul>
      *   <li>React Native {@code nativeID} — the JS-side prop, stored as a view tag</li>
      *   <li>Resource ID name — stable and not user-visible
@@ -50,7 +50,8 @@ public class ClickEvent {
      * {@code contentDescription}, then {@code TagName_<hashCode>}.
      *
      * <p>Supply a
-     * {@link com.mixpanel.android.mpmetrics.AutocaptureOptions.Builder#elementIdExtractor(ElementIdExtractor)}
+     * {@link com.mixpanel.android.mpmetrics.AutocaptureOptions.Builder#viewElementIdExtractor(ViewElementIdExtractor)}
+     * (or {@code composeElementIdExtractor} for Compose)
      * to override the View-path resolution entirely — for example a custom string like
      * {@code "buy_button"} or {@code "settings_row_notifications"}.
      *

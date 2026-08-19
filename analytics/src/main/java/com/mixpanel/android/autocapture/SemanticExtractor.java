@@ -66,7 +66,8 @@ final class SemanticExtractor {
      * @param x                  Screen X coordinate.
      * @param y                  Screen Y coordinate.
      * @param options            Autocapture configuration; supplies the optional custom
-     *                           {@link ElementIdExtractor} used to resolve {@code $el_id}.
+     *                           {@link ViewElementIdExtractor} / {@link ComposeElementIdExtractor}
+     *                           used to resolve {@code $el_id}.
      * @return A ClickEvent with extracted semantics, or null if no view found.
      */
     @Nullable
@@ -83,7 +84,7 @@ final class SemanticExtractor {
                     ", composeRoot=" + (hit.composeRoot != null ? hit.composeRoot.getClass().getSimpleName() : "null"));
 
             if (hit.composeRoot != null) {
-                ClickEvent.Builder composeResult = extractFromCompose(hit.composeRoot, x, y);
+                ClickEvent.Builder composeResult = extractFromCompose(hit.composeRoot, x, y, options);
                 MPLog.d(TAG, "extractFromCompose result: " + (composeResult != null ? "found" : "not found"));
 
                 if (composeResult != null) {
@@ -124,9 +125,10 @@ final class SemanticExtractor {
      * Extracts semantics from a Compose root using Compose's SemanticsNode API.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromCompose(@NonNull View composeRoot, float x, float y) {
+    private static ClickEvent.Builder extractFromCompose(@NonNull View composeRoot, float x, float y,
+                                                         @NonNull AutocaptureOptions options) {
         try {
-            return ComposeSemanticHelper.extract(composeRoot, x, y);
+            return ComposeSemanticHelper.extract(composeRoot, x, y, options);
         } catch (NoClassDefFoundError e) {
             // Compose not available at runtime
             composeAvailable = false;
@@ -462,7 +464,7 @@ final class SemanticExtractor {
      * @param hierarchy Pre-built hierarchy string from {@link #findTargetView}, or null
      *                  to build on demand (fallback for callers that don't have it).
      * @param options   Autocapture configuration; supplies the optional custom
-     *                  {@link ElementIdExtractor}.
+     *                  {@link ViewElementIdExtractor}.
      */
     @Nullable
     private static ClickEvent.Builder extractFromView(@NonNull View view, @Nullable String hierarchy,
@@ -588,18 +590,19 @@ final class SemanticExtractor {
     /**
      * Resolves the {@code $el_id} for a view.
      *
-     * <p>When the host app supplied an {@link ElementIdExtractor} via
-     * {@link AutocaptureOptions.Builder#elementIdExtractor(ElementIdExtractor)}, that extractor is
+     * <p>When the host app supplied a {@link ViewElementIdExtractor} via
+     * {@link AutocaptureOptions.Builder#viewElementIdExtractor(ViewElementIdExtractor)}, that
+     * extractor is
      * the only source of the identifier: a null/empty return (or a thrown exception) yields the
      * anonymous {@code <SimpleClassName>_<hash>} identifier rather than silently falling back to view metadata
      * the developer chose not to expose.
      *
-     * <p>Otherwise {@link DefaultElementIdExtractor} resolves it (React Native {@code nativeID} >
+     * <p>Otherwise {@link DefaultViewElementIdExtractor} resolves it (React Native {@code nativeID} >
      * resource id > content description > {@code <SimpleClassName>_<hash>}).
      */
     @NonNull
     private static String resolveElementId(@NonNull View view, @NonNull AutocaptureOptions options) {
-        ElementIdExtractor custom = options.getElementIdExtractor();
+        ViewElementIdExtractor custom = options.getViewElementIdExtractor();
         if (custom != null) {
             try {
                 String customId = custom.extractElementId(view);
@@ -608,11 +611,11 @@ final class SemanticExtractor {
                 }
             } catch (Exception e) {
                 // Never let a host-app implementation crash the app or drop the event.
-                MPLog.e(TAG, "Custom ElementIdExtractor threw, using anonymous element id", e);
+                MPLog.e(TAG, "Custom ViewElementIdExtractor threw, using anonymous element id", e);
             }
-            return DefaultElementIdExtractor.anonymousId(view);
+            return DefaultViewElementIdExtractor.anonymousId(view);
         }
-        return DefaultElementIdExtractor.INSTANCE.extractElementId(view);
+        return DefaultViewElementIdExtractor.INSTANCE.extractElementId(view);
     }
 
     /**

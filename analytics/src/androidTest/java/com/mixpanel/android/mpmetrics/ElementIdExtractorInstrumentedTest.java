@@ -20,7 +20,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.mixpanel.android.autocapture.ElementIdExtractor;
+import com.mixpanel.android.autocapture.ViewElementIdExtractor;
 
 import org.json.JSONObject;
 import org.junit.After;
@@ -35,9 +35,9 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * End-to-end tests for {@code $el_id} resolution: real taps through the autocapture pipeline, with
- * and without a host-app supplied {@link ElementIdExtractor}.
+ * and without a host-app supplied {@link ViewElementIdExtractor}.
  *
- * <p>Complements {@link com.mixpanel.android.autocapture.DefaultElementIdExtractorTest}, which
+ * <p>Complements {@link com.mixpanel.android.autocapture.DefaultViewElementIdExtractorTest}, which
  * covers the full priority matrix at the extractor level. These tests prove the wiring —
  * {@link MixpanelOptions} to {@link AutocaptureOptions} to the hit-test path — and that a custom
  * extractor is authoritative even when it returns null or throws.
@@ -142,7 +142,7 @@ public class ElementIdExtractorInstrumentedTest {
     @Test
     public void testCustomExtractorReplacesDefaultResolution() throws Exception {
         initMixpanel(new AutocaptureOptions.Builder()
-                .elementIdExtractor(view -> "custom_el_id")
+                .viewElementIdExtractor(view -> "custom_el_id")
                 .build());
 
         try (ActivityScenario<ElementIdTestActivity> scenario =
@@ -160,7 +160,7 @@ public class ElementIdExtractorInstrumentedTest {
     public void testCustomExtractorReceivesTheTappedView() throws Exception {
         // The extractor is handed the hit-tested view, so it can key off the app's own metadata.
         initMixpanel(new AutocaptureOptions.Builder()
-                .elementIdExtractor(view ->
+                .viewElementIdExtractor(view ->
                         view.getId() == ElementIdTestActivity.ID_CHECKOUT_BTN ? "saw_checkout" : null)
                 .build());
 
@@ -180,7 +180,7 @@ public class ElementIdExtractorInstrumentedTest {
         // A null return means "report nothing identifying" — the SDK must NOT quietly fall back to
         // the view metadata the developer declined to expose.
         initMixpanel(new AutocaptureOptions.Builder()
-                .elementIdExtractor(view -> null)
+                .viewElementIdExtractor(view -> null)
                 .build());
 
         try (ActivityScenario<ElementIdTestActivity> scenario =
@@ -203,7 +203,7 @@ public class ElementIdExtractorInstrumentedTest {
     @Test
     public void testCustomExtractorReturningEmptyStringFallsBackToAnonymousId() throws Exception {
         initMixpanel(new AutocaptureOptions.Builder()
-                .elementIdExtractor(view -> "")
+                .viewElementIdExtractor(view -> "")
                 .build());
 
         try (ActivityScenario<ElementIdTestActivity> scenario =
@@ -222,7 +222,7 @@ public class ElementIdExtractorInstrumentedTest {
     @Test
     public void testThrowingCustomExtractorDoesNotBreakTracking() throws Exception {
         initMixpanel(new AutocaptureOptions.Builder()
-                .elementIdExtractor(view -> {
+                .viewElementIdExtractor(view -> {
                     throw new IllegalStateException("host app bug");
                 })
                 .build());
@@ -246,12 +246,12 @@ public class ElementIdExtractorInstrumentedTest {
 
     @Test
     public void testOptionsDefaultToNoExtractor() {
-        assertNull(new AutocaptureOptions.Builder().build().getElementIdExtractor());
+        assertNull(new AutocaptureOptions.Builder().build().getViewElementIdExtractor());
     }
 
     @Test
     public void testOptionsRetainAndCopyTheExtractor() {
-        ElementIdExtractor extractor = new ElementIdExtractor() {
+        ViewElementIdExtractor extractor = new ViewElementIdExtractor() {
             @Nullable
             @Override
             public String extractElementId(@NonNull View view) {
@@ -260,13 +260,13 @@ public class ElementIdExtractorInstrumentedTest {
         };
 
         AutocaptureOptions options = new AutocaptureOptions.Builder()
-                .elementIdExtractor(extractor)
+                .viewElementIdExtractor(extractor)
                 .build();
-        assertSame(extractor, options.getElementIdExtractor());
+        assertSame(extractor, options.getViewElementIdExtractor());
 
         AutocaptureOptions copy = new AutocaptureOptions.Builder(options).build();
         assertSame("Builder(source) must carry the extractor over",
-                extractor, copy.getElementIdExtractor());
+                extractor, copy.getViewElementIdExtractor());
     }
 
     // ============ Helpers ============

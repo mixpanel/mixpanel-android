@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.SemanticsProperties;
 import androidx.compose.ui.semantics.SemanticsPropertyKey;
 import androidx.compose.ui.text.AnnotatedString;
 
+import com.mixpanel.android.mpmetrics.AutocaptureOptions;
 import com.mixpanel.android.util.MPLog;
 
 import java.util.List;
@@ -43,10 +44,13 @@ final class ComposeSemanticHelper {
      * @param view    The view (must implement RootForTest)
      * @param screenX Screen X coordinate (from MotionEvent.getRawX)
      * @param screenY Screen Y coordinate (from MotionEvent.getRawY)
+     * @param options Autocapture configuration; supplies the optional custom
+     *                {@link ComposeElementIdExtractor}.
      * @return A ClickEvent.Builder with extracted semantics, or null if no node found
      */
     @Nullable
-    static ClickEvent.Builder extract(@NonNull View view, float screenX, float screenY) {
+    static ClickEvent.Builder extract(@NonNull View view, float screenX, float screenY,
+                                      @NonNull AutocaptureOptions options) {
         if (!(view instanceof RootForTest)) {
             MPLog.d(TAG, "View is not RootForTest, returning null");
             return null;
@@ -73,7 +77,7 @@ final class ComposeSemanticHelper {
         }
 
         // Pass original screen coordinates to extractFromNode for the ClickEvent
-        return extractFromNode(node, screenX, screenY);
+        return extractFromNode(node, screenX, screenY, options);
     }
 
     /**
@@ -262,40 +266,25 @@ final class ComposeSemanticHelper {
      * Extracts semantic information from a SemanticsNode.
      */
     @Nullable
-    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y) {
+    private static ClickEvent.Builder extractFromNode(@NonNull SemanticsNode node, float x, float y,
+                                                     @NonNull AutocaptureOptions options) {
         SemanticsConfiguration config = node.getConfig();
 
         String contentDesc = getStringProperty(config, SemanticsProperties.INSTANCE.getContentDescription());
         String testTag = getStringProperty(config, SemanticsProperties.INSTANCE.getTestTag());
+        String tagName = getTagName(config);
+        String role = getRoleString(config);
 
-        // Element ID resolution — mirrors the View path's priority (DefaultElementIdExtractor),
-        // with testTag playing the role of the resource id:
-        // 1. testTag (from Modifier.testTag(...)) — developer-assigned and never user-visible
-        // 2. contentDescription (from semantics { contentDescription = ... })
-        // 3. TagName_<hashCode>
-        //
-        // The React Native nativeID lookup has no Compose equivalent and is deliberately absent:
-        // React Native renders through the legacy View hierarchy, not Compose.
-        String elementId = null;
-        String accessibleLabel = null;
+        ComposeElementInfo element = new ComposeElementInfo(
+                testTag, contentDesc, role, tagName,
+                tagName + "_" + Integer.toHexString(node.hashCode()));
+        String elementId = resolveElementId(element, options);
 
         // accessibleLabel ($attr-aria-label) always comes from contentDescription, regardless of
         // which source won the element id — testTag is not an accessibility label.
+        String accessibleLabel = null;
         if (contentDesc != null && !contentDesc.isEmpty()) {
             accessibleLabel = contentDesc;
-        }
-
-        if (testTag != null && !testTag.isEmpty()) {
-            elementId = testTag;
-        }
-
-        if (elementId == null && contentDesc != null && !contentDesc.isEmpty()) {
-            elementId = contentDesc;
-        }
-
-        if (elementId == null) {
-            String tagName = getTagName(config);
-            elementId = tagName + "_" + Integer.toHexString(node.hashCode());
         }
 
         ClickEvent.Builder builder = new ClickEvent.Builder(x, y, elementId);
@@ -305,11 +294,9 @@ final class ComposeSemanticHelper {
         }
 
         // Tag name from role
-        String tagName = getTagName(config);
         builder.tagName(tagName);
 
         // Role
-        String role = getRoleString(config);
         builder.role(role);
 
         // Interactive check
@@ -319,6 +306,46 @@ final class ComposeSemanticHelper {
                 ", tag: " + tagName + ", role: " + role);
 
         return builder;
+    }
+
+    /**
+     * Resolves the {@code $el_id} for a Compose element.
+     *
+     * <p>Priority:
+     * <ol>
+     *   <li>A host-app {@link ComposeElementIdExtractor}, when configured. Its return value is the
+     *       only source: null/empty (or a thrown exception) yields the anonymous
+     *       {@code <TagName>_<hash>} identifier rather than semantics the developer chose not to
+     *       expose.</li>
+     *   <li>The anonymous identifier, when the app configured a {@link ViewElementIdExtractor} but
+     *       no Compose one. An identifier policy set for one path must not be bypassed on the other,
+     *       so the SDK does not fall back to semantics-derived text here.</li>
+     *   <li>{@link DefaultComposeElementIdExtractor} — testTag, then contentDescription, then the
+     *       anonymous identifier.</li>
+     * </ol>
+     */
+    @NonNull
+    private static String resolveElementId(@NonNull ComposeElementInfo element,
+                                           @NonNull AutocaptureOptions options) {
+        ComposeElementIdExtractor custom = options.getComposeElementIdExtractor();
+        if (custom != null) {
+            try {
+                String customId = custom.extractElementId(element);
+                if (customId != null && !customId.isEmpty()) {
+                    return customId;
+                }
+            } catch (Exception e) {
+                // Never let a host-app implementation crash the app or drop the event.
+                MPLog.e(TAG, "Custom ComposeElementIdExtractor threw, using anonymous element id", e);
+            }
+            return element.getAnonymousId();
+        }
+
+        if (options.getViewElementIdExtractor() != null) {
+            return element.getAnonymousId();
+        }
+
+        return DefaultComposeElementIdExtractor.INSTANCE.extractElementId(element);
     }
 
     /**

@@ -3,7 +3,8 @@ package com.mixpanel.android.mpmetrics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.mixpanel.android.autocapture.ElementIdExtractor;
+import com.mixpanel.android.autocapture.ComposeElementIdExtractor;
+import com.mixpanel.android.autocapture.ViewElementIdExtractor;
 
 /**
  * Configuration options for Mixpanel autocapture.
@@ -47,13 +48,15 @@ public class AutocaptureOptions {
     private final ClickOptions mClickOptions;
     private final RageClickOptions mRageClickOptions;
     private final DeadClickOptions mDeadClickOptions;
-    private final ElementIdExtractor mElementIdExtractor;
+    private final ViewElementIdExtractor mViewElementIdExtractor;
+    private final ComposeElementIdExtractor mComposeElementIdExtractor;
 
     private AutocaptureOptions(Builder builder) {
         this.mClickOptions = builder.mClickOptions;
         this.mRageClickOptions = builder.mRageClickOptions;
         this.mDeadClickOptions = builder.mDeadClickOptions;
-        this.mElementIdExtractor = builder.mElementIdExtractor;
+        this.mViewElementIdExtractor = builder.mViewElementIdExtractor;
+        this.mComposeElementIdExtractor = builder.mComposeElementIdExtractor;
     }
 
     /**
@@ -101,17 +104,37 @@ public class AutocaptureOptions {
     }
 
     /**
-     * Returns the custom element id extractor, if one was provided.
+     * Returns the custom element id extractor for the View path, if one was provided.
      *
-     * <p>When {@code null}, the SDK resolves {@code $el_id} with its internal default
+     * <p>When {@code null}, the SDK resolves {@code $el_id} for Views with its internal default
      * implementation (React Native {@code nativeID}, then Android resource id, then content
      * description, then an anonymous {@code <SimpleClassName>_<hash>} identifier).
      *
-     * @return The {@link ElementIdExtractor} supplied by the host app, or {@code null}.
+     * @return The {@link ViewElementIdExtractor} supplied by the host app, or {@code null}.
      */
     @Nullable
-    public ElementIdExtractor getElementIdExtractor() {
-        return mElementIdExtractor;
+    public ViewElementIdExtractor getViewElementIdExtractor() {
+        return mViewElementIdExtractor;
+    }
+
+    /**
+     * Returns the custom element id extractor for the Jetpack Compose path, if one was provided.
+     *
+     * <p>When {@code null} <b>and</b> no {@link ViewElementIdExtractor} is configured either, the SDK
+     * resolves Compose {@code $el_id} with its internal default implementation
+     * ({@code Modifier.testTag(...)}, then contentDescription, then an anonymous
+     * {@code <TagName>_<hash>} identifier).
+     *
+     * <p>When this is {@code null} but a {@link ViewElementIdExtractor} <i>is</i> configured, Compose
+     * interactions report the anonymous identifier: an app that took control of identifiers on one
+     * path should never have semantics-derived text — which can contain user data — reported on the
+     * other.
+     *
+     * @return The {@link ComposeElementIdExtractor} supplied by the host app, or {@code null}.
+     */
+    @Nullable
+    public ComposeElementIdExtractor getComposeElementIdExtractor() {
+        return mComposeElementIdExtractor;
     }
 
     /**
@@ -124,7 +147,8 @@ public class AutocaptureOptions {
         private ClickOptions mClickOptions = new ClickOptions.Builder().build();
         private RageClickOptions mRageClickOptions = new RageClickOptions.Builder().build();
         private DeadClickOptions mDeadClickOptions = new DeadClickOptions.Builder().build();
-        private ElementIdExtractor mElementIdExtractor = null;
+        private ViewElementIdExtractor mViewElementIdExtractor = null;
+        private ComposeElementIdExtractor mComposeElementIdExtractor = null;
 
         /**
          * Creates a Builder with all event types enabled by default.
@@ -145,7 +169,8 @@ public class AutocaptureOptions {
             this.mClickOptions = source.mClickOptions;
             this.mRageClickOptions = source.mRageClickOptions;
             this.mDeadClickOptions = source.mDeadClickOptions;
-            this.mElementIdExtractor = source.mElementIdExtractor;
+            this.mViewElementIdExtractor = source.mViewElementIdExtractor;
+            this.mComposeElementIdExtractor = source.mComposeElementIdExtractor;
         }
 
         /**
@@ -185,18 +210,44 @@ public class AutocaptureOptions {
         }
 
         /**
-         * Sets a custom extractor that resolves the {@code $el_id} reported for a tapped view.
+         * Sets a custom extractor that resolves the {@code $el_id} reported for a tapped
+         * <b>View</b> — XML layouts, and everything React Native renders.
          *
          * <p>Use this to control exactly which identifier autocapture reports and to keep
          * personally identifiable information out of the payload. Pass {@code null} (the default)
          * to use the SDK's internal default resolution.
          *
-         * @param elementIdExtractor The {@link ElementIdExtractor} to use, or {@code null} for the
-         *                           SDK default.
+         * <p>If the app also renders Jetpack Compose, set
+         * {@link #composeElementIdExtractor(ComposeElementIdExtractor)} as well: Compose elements
+         * are semantics nodes rather than Views, and while this extractor is set on its own the SDK
+         * reports anonymous identifiers for them rather than semantics-derived text.
+         *
+         * @param viewElementIdExtractor The {@link ViewElementIdExtractor} to use, or {@code null}
+         *                               for the SDK default.
          * @return This Builder instance for chaining.
          */
-        public Builder elementIdExtractor(@Nullable ElementIdExtractor elementIdExtractor) {
-            this.mElementIdExtractor = elementIdExtractor;
+        public Builder viewElementIdExtractor(
+                @Nullable ViewElementIdExtractor viewElementIdExtractor) {
+            this.mViewElementIdExtractor = viewElementIdExtractor;
+            return this;
+        }
+
+        /**
+         * Sets a custom extractor that resolves the {@code $el_id} reported for a tapped
+         * <b>Jetpack Compose</b> element.
+         *
+         * <p>The Compose counterpart of
+         * {@link #viewElementIdExtractor(ViewElementIdExtractor)}. Pass {@code null} (the default)
+         * to use the SDK's internal default resolution — {@code Modifier.testTag(...)}, then
+         * contentDescription, then an anonymous identifier.
+         *
+         * @param composeElementIdExtractor The {@link ComposeElementIdExtractor} to use, or
+         *                                  {@code null} for the SDK default.
+         * @return This Builder instance for chaining.
+         */
+        public Builder composeElementIdExtractor(
+                @Nullable ComposeElementIdExtractor composeElementIdExtractor) {
+            this.mComposeElementIdExtractor = composeElementIdExtractor;
             return this;
         }
 

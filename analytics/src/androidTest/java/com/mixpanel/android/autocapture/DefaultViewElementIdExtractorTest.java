@@ -20,7 +20,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Tests the {@code $el_id} resolution order implemented by {@link DefaultElementIdExtractor}:
+ * Tests the {@code $el_id} resolution order implemented by {@link DefaultViewElementIdExtractor}:
  *
  * <ol>
  *   <li>React Native {@code nativeID} (view tag keyed by the {@code view_tag_native_id} resource)</li>
@@ -39,7 +39,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(AndroidJUnit4.class)
 @LargeTest
-public class DefaultElementIdExtractorTest {
+public class DefaultViewElementIdExtractorTest {
 
     /** Matches the anonymous fallback: SimpleClassName_hexHash. */
     private static final String HASH_ID_PATTERN = "[A-Za-z0-9$_]+_[0-9a-f]+";
@@ -190,9 +190,9 @@ public class DefaultElementIdExtractorTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             View first = new TextView(mContext);
             View second = new TextView(mContext);
-            ids[0] = DefaultElementIdExtractor.INSTANCE.extractElementId(first);
-            ids[1] = DefaultElementIdExtractor.INSTANCE.extractElementId(first);
-            ids[2] = DefaultElementIdExtractor.INSTANCE.extractElementId(second);
+            ids[0] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(first);
+            ids[1] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(first);
+            ids[2] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(second);
         });
 
         assertEquals("Same view must resolve to the same id", ids[0], ids[1]);
@@ -206,8 +206,8 @@ public class DefaultElementIdExtractorTest {
         final String[] ids = new String[2];
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             View view = new TextView(mContext);
-            ids[0] = DefaultElementIdExtractor.INSTANCE.extractElementId(view);
-            ids[1] = DefaultElementIdExtractor.anonymousId(view);
+            ids[0] = DefaultViewElementIdExtractor.INSTANCE.extractElementId(view);
+            ids[1] = DefaultViewElementIdExtractor.anonymousId(view);
         });
 
         assertEquals(ids[0], ids[1]);
@@ -219,7 +219,7 @@ public class DefaultElementIdExtractorTest {
         final String[] elementId = new String[1];
         InstrumentationRegistry.getInstrumentation().runOnMainSync(
                 () -> elementId[0] =
-                        DefaultElementIdExtractor.INSTANCE.extractElementId(builder.build(mContext)));
+                        DefaultViewElementIdExtractor.INSTANCE.extractElementId(builder.build(mContext)));
         assertNotNull("Extractor must never return null", elementId[0]);
         return elementId[0];
     }
